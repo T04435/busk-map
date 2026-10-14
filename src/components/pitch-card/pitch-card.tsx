@@ -51,7 +51,7 @@ export function PitchCard({ pitch, rank }: { pitch: PlanPitch; rank: number }) {
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
         <section aria-label="Why this crowd">
-          <h4 className="font-medium">Why this crowd</h4>
+          <h3 className="font-medium">Why this crowd</h3>
           <p className="text-muted-foreground">{pitch.why}</p>
           {pitch.origin === "taste" && pitch.cellRank !== null && (
             <p className="mt-1 text-xs text-muted-foreground">
@@ -67,7 +67,7 @@ export function PitchCard({ pitch, rank }: { pitch: PlanPitch; rank: number }) {
         </section>
 
         <section aria-label="Score breakdown">
-          <h4 className="font-medium">Score breakdown</h4>
+          <h3 className="font-medium">Score breakdown</h3>
           <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
             {(Object.keys(FACTOR_LABELS) as (keyof PlanPitch["factors"])[]).map((key) => (
               <div key={key} className="contents">
@@ -100,7 +100,7 @@ export function PitchCard({ pitch, rank }: { pitch: PlanPitch; rank: number }) {
 
         {(pitch.evidence.sensor || pitch.evidence.places.length > 0 || pitch.evidence.events.length > 0) && (
           <section aria-label="Evidence" className="space-y-2">
-            <h4 className="font-medium">Evidence</h4>
+            <h3 className="font-medium">Evidence</h3>
             {pitch.evidence.sensor && (
               <p className="flex flex-wrap items-center gap-2">
                 {pitch.footfallSource === "nearby-sensors"
@@ -133,7 +133,7 @@ export function PitchCard({ pitch, rank }: { pitch: PlanPitch; rank: number }) {
         )}
 
         <section aria-label="Rules" className="space-y-1">
-          <h4 className="font-medium">Rules to check</h4>
+          <h3 className="font-medium">Rules to check</h3>
           <p className="text-muted-foreground">{pitch.rules}</p>
           {pitch.cautions.length > 0 && (
             <ul className="list-disc pl-5">

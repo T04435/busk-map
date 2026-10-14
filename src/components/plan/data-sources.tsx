@@ -45,7 +45,7 @@ export function DataSources({ status, showAi }: { status: DataStatus[]; showAi: 
                 </a>
                 <span className="text-muted-foreground">({source.licence})</span>
                 {s && (
-                  <Badge variant={s.mode === "fallback" ? "destructive" : s.mode === "synthetic" ? "secondary" : "outline"}>
+                  <Badge variant={s.mode === "fallback" ? "default" : s.mode === "synthetic" ? "secondary" : "outline"}>
                     {s.source === "qloo" && s.mode === "synthetic" ? QLOO_TEST_LABEL : MODE_LABEL[s.mode]}
                     {s.reason ? `: ${REASON_LABEL[s.reason] ?? s.reason}` : ""}
                   </Badge>

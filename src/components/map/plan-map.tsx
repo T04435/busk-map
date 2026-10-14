@@ -152,12 +152,22 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
       ...plan.others.slice(0, 15).map((p) => ({ ...p, rank: null as number | null })),
     ];
     for (const pin of pins) {
+      if (pin.rank === null) {
+        // Other scored pitches are context only: a decorative dot (the "Other scored pitches"
+        // list beside the map names them). Only the top pitches are selectable pins.
+        const dot = document.createElement("span");
+        dot.setAttribute("aria-hidden", "true");
+        dot.dataset.pitchId = pin.id;
+        dot.className = "pointer-events-none block size-3 rounded-full border border-background bg-muted-foreground/70";
+        markers.current.push(new Marker({ element: dot }).setLngLat([pin.lon, pin.lat]).addTo(instance));
+        continue;
+      }
       const el = document.createElement("button");
       el.type = "button";
       el.dataset.pitchId = pin.id;
       const gem = pin.discovery === "hidden-gem" ? ", hidden gem" : pin.discovery === "usual" ? ", usual spot" : "";
-      el.setAttribute("aria-label", `${pin.rank ? `Pitch ${pin.rank}: ` : "Other pitch: "}${pin.name}, score ${pin.score}${gem}`);
-      const diamond = pin.rank !== null && pin.discovery === "hidden-gem";
+      el.setAttribute("aria-label", `Pitch ${pin.rank}: ${pin.name}, score ${pin.score}${gem}`);
+      const diamond = pin.discovery === "hidden-gem";
       if (diamond) {
         // Rotate a child, never the marker itself: MapLibre positions the marker with its transform.
         const shape = document.createElement("span");
@@ -165,15 +175,11 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
         shape.className = "absolute inset-0.5 rotate-45 rounded-sm border-2 border-background bg-primary shadow";
         el.appendChild(shape);
       }
-      if (pin.rank) {
-        const label = document.createElement("span");
-        label.className = "relative";
-        label.textContent = String(pin.rank);
-        el.appendChild(label);
-      }
-      el.className = pin.rank
-        ? `flex size-7 items-center justify-center text-xs font-semibold text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring ${diamond ? "" : "rounded-full border-2 border-background bg-primary shadow"}`
-        : "size-3 rounded-full border border-background bg-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring";
+      const label = document.createElement("span");
+      label.className = "relative";
+      label.textContent = String(pin.rank);
+      el.appendChild(label);
+      el.className = `z-10 flex size-7 items-center justify-center text-xs font-semibold text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring ${diamond ? "" : "rounded-full border-2 border-background bg-primary shadow"}`;
       el.addEventListener("click", () => onSelectRef.current(pin.id));
       markers.current.push(new Marker({ element: el }).setLngLat([pin.lon, pin.lat]).addTo(instance));
     }
@@ -192,6 +198,7 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
     const instance = map.current;
     for (const marker of markers.current) {
       const el = marker.getElement();
+      if (el.tagName !== "BUTTON") continue;
       const selected = el.dataset.pitchId === selectedId;
       el.setAttribute("aria-pressed", String(selected));
       el.classList.toggle("ring-2", selected);

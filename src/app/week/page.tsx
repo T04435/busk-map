@@ -49,7 +49,9 @@ async function WeekContent({ searchParams }: Pick<PageProps<"/week">, "searchPar
   const parsed = parseWeekParams(params, today, tipCookie);
   if (!parsed.ok) {
     return (
-      <Alert variant="destructive">
+      <>
+        <h1 className="mb-4 text-3xl font-semibold tracking-tight">Plan my week</h1>
+        <Alert variant="destructive">
         <AlertTitle>We couldn&apos;t read this week plan</AlertTitle>
         <AlertDescription>
           {parsed.error}{" "}
@@ -59,6 +61,7 @@ async function WeekContent({ searchParams }: Pick<PageProps<"/week">, "searchPar
           .
         </AlertDescription>
       </Alert>
+      </>
     );
   }
   const faults = typeof params.faults === "string" ? params.faults : null;
@@ -69,10 +72,13 @@ async function WeekContent({ searchParams }: Pick<PageProps<"/week">, "searchPar
   });
   if (!plan) {
     return (
-      <Alert variant="destructive">
+      <>
+        <h1 className="mb-4 text-3xl font-semibold tracking-tight">Plan my week</h1>
+        <Alert variant="destructive">
         <AlertTitle>Qloo is unavailable</AlertTitle>
         <AlertDescription>Busk Map needs Qloo&apos;s taste data to plan. Please try again in a few minutes.</AlertDescription>
       </Alert>
+      </>
     );
   }
   return (

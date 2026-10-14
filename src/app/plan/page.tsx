@@ -52,7 +52,9 @@ async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchPar
   const parsed = parsePlanParams(params, localToday(CITIES.melbourne.timeZone), tipCookie);
   if (!parsed.ok) {
     return (
-      <Alert variant="destructive">
+      <>
+        <h1 className="mb-4 text-3xl font-semibold tracking-tight">Plan</h1>
+        <Alert variant="destructive">
         <AlertTitle>We couldn&apos;t read this plan</AlertTitle>
         <AlertDescription>
           {parsed.error}{" "}
@@ -62,6 +64,7 @@ async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchPar
           .
         </AlertDescription>
       </Alert>
+      </>
     );
   }
   const faults = typeof params.faults === "string" ? params.faults : null;

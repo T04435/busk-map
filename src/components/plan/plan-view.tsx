@@ -1,10 +1,10 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ComparePanel } from "@/components/compare/compare-panel";
+import { LazyPlanMap } from "@/components/map/lazy-plan-map";
 import { MapLegend } from "@/components/map/map-legend";
 import { DiscoveryBadge, PitchCard } from "@/components/pitch-card/pitch-card";
 import { SetlistPanel } from "@/components/setlist/setlist-panel";
@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { QLOO_TEST_LABEL } from "@/lib/sources";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { planStreamEventSchema, type Plan, type PlanRequest } from "@/lib/plan-schema";
 import { weekSearchParams } from "@/lib/week-url";
 import { TipLogForm } from "@/components/tips/tip-log-form";
@@ -23,11 +22,6 @@ import { CrowdPanel } from "./crowd-panel";
 import { DataSources } from "./data-sources";
 import { WeatherStrip } from "./weather-strip";
 import { WeightsPanel } from "./weights-panel";
-
-const PlanMap = dynamic(() => import("@/components/map/plan-map").then((m) => m.PlanMap), {
-  ssr: false,
-  loading: () => <Skeleton className="h-80 w-full" />,
-});
 
 type RunState = { status: "idle" | "running" | "done" } | { status: "error"; message: string };
 
@@ -270,7 +264,7 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
         <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <div className="space-y-2">
             <div className="h-[22rem] sm:h-[28rem]">
-              <PlanMap plan={plan} center={center} selectedId={selected?.id ?? null} onSelect={select} />
+              <LazyPlanMap plan={plan} center={center} selectedId={selected?.id ?? null} onSelect={select} />
             </div>
             <MapLegend testData={plan.qlooMode === "synthetic"} />
           </div>

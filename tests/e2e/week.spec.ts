@@ -25,11 +25,11 @@ test.describe("week planner", () => {
     const sessions = page.getByRole("list", { name: "Top sessions" }).getByRole("listitem");
     await expect(sessions).toHaveCount(1);
     const firstLabel = await sessions.first().innerText();
-    const chosen = page.getByRole("button", { name: /, chosen\. Toggle availability\./ });
+    const chosen = page.getByRole("button", { name: /Chosen.*\. Toggle availability\./ });
     await expect(chosen).toHaveCount(1);
     await chosen.click();
     await expect(page).toHaveURL(/off=/);
-    await expect(page.getByRole("button", { name: /unavailable\. Toggle availability\./ })).toHaveCount(1);
+    await expect(page.getByRole("button", { name: /Unavailable.*\. Toggle availability\./ })).toHaveCount(1);
     await expect(sessions.first()).not.toHaveText(firstLabel);
   });
 

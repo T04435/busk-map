@@ -23,9 +23,15 @@ test.describe("tip log", () => {
     const first = (await pitches.nth(0).getAttribute("data-pitch-name"))!;
     const second = (await pitches.nth(1).getAttribute("data-pitch-name"))!;
 
-    // Validation.
+    // Validation. The plan is for a later day, so the date defaults to today.
+    await expect(form.getByLabel("Date")).toHaveValue(new Date().toLocaleDateString("en-CA"));
     await form.getByRole("button", { name: "Log session" }).click();
     await expect(form.getByRole("alert")).toHaveText("Enter what you earned, in dollars (0 or more).");
+    await form.getByLabel("Date").fill("2099-01-01");
+    await form.getByLabel("Takings (A$)").fill("10");
+    await form.getByRole("button", { name: "Log session" }).click();
+    await expect(form.getByRole("alert")).toHaveText("That date is in the future: log a session after you've played it.");
+    await form.getByLabel("Date").fill(new Date().toLocaleDateString("en-CA"));
 
     // A good night at the top pitch, a quiet one at the second.
     await form.getByLabel("Takings (A$)").fill("120");
@@ -52,7 +58,7 @@ test.describe("tip log", () => {
     const yours = page.getByRole("region", { name: "Sessions for Tip Tester" });
     await expect(yours.getByRole("listitem")).toHaveCount(2);
     await expect(page.getByRole("region", { name: "Bonus per pitch for Tip Tester" })).toContainText(/\+\d points/);
-    await yours.getByRole("button", { name: new RegExp(`Delete the 2026-10-24 session at ${second}`) }).click();
+    await yours.getByRole("button", { name: new RegExp(`Delete the \\d{4}-\\d{2}-\\d{2} session at ${second}`) }).click();
     await expect(yours.getByRole("listitem")).toHaveCount(1);
     await expect(page.getByRole("heading", { name: /Example sessions/ })).toContainText("Example data");
   });

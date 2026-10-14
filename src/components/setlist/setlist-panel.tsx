@@ -39,7 +39,7 @@ export function SetlistPanel({ pitch, learnThese }: { pitch: PlanPitch; learnThe
         )}
 
         <section aria-label="Learn these">
-          <h4 className="font-medium">Learn these</h4>
+          <h3 className="font-medium">Learn these</h3>
           {learnThese.length === 0 ? (
             <p className="text-muted-foreground">No suggestions for this crowd yet.</p>
           ) : (

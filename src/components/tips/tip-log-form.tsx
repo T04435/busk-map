@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useId, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,12 +23,20 @@ type Props = {
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 
+/** Today in the browser's time zone, as YYYY-MM-DD. */
+const todayHere = () => new Date().toLocaleDateString("en-CA");
+const noSubscribe = () => () => {};
+
 /** "After your session": log what you earned at a pitch. Saved in this browser only. */
 export function TipLogForm({ performerName, exampleId, slot, pitches, defaultPitchId }: Props) {
   const router = useRouter();
   const ids = useId();
   const [pitchId, setPitchId] = useState(defaultPitchId ?? pitches[0]?.id ?? "");
-  const [date, setDate] = useState(slot.date);
+  // Today is read in the browser (null while server-rendering, so both render the same).
+  const today = useSyncExternalStore(noSubscribe, todayHere, () => null);
+  const [chosenDate, setDate] = useState<string | null>(null);
+  // Takings are logged after playing: a plan for a later day defaults to today.
+  const date = chosenDate ?? (today && slot.date > today ? today : slot.date);
   const [startHour, setStartHour] = useState(slot.startHour);
   const [endHour, setEndHour] = useState(slot.endHour);
   const [amount, setAmount] = useState("");
@@ -41,6 +49,7 @@ export function TipLogForm({ performerName, exampleId, slot, pitches, defaultPit
     if (!pitch) return setStatus({ ok: false, message: "Choose the pitch you played." });
     if (amount.trim() === "" || !Number.isFinite(value) || value < 0) return setStatus({ ok: false, message: "Enter what you earned, in dollars (0 or more)." });
     if (endHour <= startHour) return setStatus({ ok: false, message: "The session must end after it starts." });
+    if (date > (today ?? todayHere())) return setStatus({ ok: false, message: "That date is in the future: log a session after you've played it." });
     const entry = tipEntrySchema.safeParse({
       id: newTipId(),
       performerKey: performerKeyFor(performerName, exampleId),
@@ -92,7 +101,7 @@ export function TipLogForm({ performerName, exampleId, slot, pitches, defaultPit
           </div>
           <div className="space-y-1">
             <Label htmlFor={`${ids}-date`}>Date</Label>
-            <Input id={`${ids}-date`} type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+            <Input id={`${ids}-date`} type="date" max={today ?? undefined} value={date} onChange={(e) => setDate(e.target.value)} required />
           </div>
           <div className="space-y-1">
             <Label htmlFor={`${ids}-amount`}>Takings (A$)</Label>

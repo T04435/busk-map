@@ -234,16 +234,32 @@ export function WeekView({ initialPlan, request, exampleId, faults }: Props) {
                         <Button
                           variant={c?.chosen ? "default" : c?.unavailable ? "ghost" : "outline"}
                           size="sm"
-                          className="h-auto w-full flex-col items-start gap-0 py-1 whitespace-normal"
+                          className="relative h-auto w-full flex-col items-start gap-0 py-1 whitespace-normal"
                           aria-pressed={c?.unavailable ?? false}
-                          aria-label={`${d.label} ${slot.label}: ${c?.unavailable ? "unavailable" : c?.score !== null && c?.score !== undefined ? `score ${c.score}` : "no pitch"}${c?.chosen ? ", chosen" : ""}. Toggle availability.`}
                           onClick={() => toggleUnavailable(d.date, slot.startHour, slot.endHour)}
                         >
-                          <span>{c?.unavailable ? "Unavailable" : (c?.score ?? "–")}</span>
-                          {c?.chosen && <span className="text-xs">Chosen</span>}
-                          {!c?.unavailable && c?.flags && c.flags.length > 0 && (
-                            <span className="text-[0.65rem] leading-tight opacity-80">{c.flags.map((f) => FLAG_LABEL[f]).join(" · ")}</span>
+                          {/* The accessible name includes the visible text (WCAG 2.5.3), with the day and slot added for screen readers. */}
+                          <span className="sr-only">
+                            {d.label} {slot.label}:{" "}
+                          </span>
+                          {c?.unavailable ? (
+                            <span>Unavailable</span>
+                          ) : c?.score !== null && c?.score !== undefined ? (
+                            <span>
+                              <span className="sr-only">score </span>
+                              {c.score}
+                            </span>
+                          ) : (
+                            <span>
+                              <span aria-hidden>–</span>
+                              <span className="sr-only">no pitch</span>
+                            </span>
                           )}
+                          {c?.chosen && <span className="text-xs">{" "}Chosen</span>}
+                          {!c?.unavailable && c?.flags && c.flags.length > 0 && (
+                            <span className="text-[0.65rem] leading-tight opacity-80">{" "}{c.flags.map((f) => FLAG_LABEL[f]).join(" · ")}</span>
+                          )}
+                          <span className="sr-only">. Toggle availability.</span>
                         </Button>
                         )}
                       </td>

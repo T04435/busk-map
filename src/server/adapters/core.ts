@@ -1,0 +1,185 @@
+import "server-only";
+import type { z } from "zod";
+import type { SourceId } from "@/lib/sources";
+import { log, redactUrl } from "@/server/log";
+
+/**
+ * Shared adapter plumbing (architecture.md, principle 2): every source has a
+ * typed client, response validation, a timeout, a cache policy and a defined
+ * fallback. A failing source lowers precision but never breaks the page.
+ */
+
+export type AdapterName =
+  | "qloo"
+  | "footfall"
+  | "pitches"
+  | "events"
+  | "songs"
+  | "repertoire"
+  | "weather";
+
+export const ADAPTER_NAMES: readonly AdapterName[] = [
+  "qloo",
+  "footfall",
+  "pitches",
+  "events",
+  "songs",
+  "repertoire",
+  "weather",
+];
+
+export type AdapterErrorKind =
+  | "missing_key"
+  | "timeout"
+  | "http"
+  | "rate_limited"
+  | "invalid_response"
+  | "not_found"
+  | "network"
+  | "fault_injected";
+
+export class AdapterError extends Error {
+  readonly kind: AdapterErrorKind;
+  readonly adapter: AdapterName;
+  readonly status?: number;
+
+  constructor(adapter: AdapterName, kind: AdapterErrorKind, message: string, status?: number) {
+    super(message);
+    this.name = "AdapterError";
+    this.adapter = adapter;
+    this.kind = kind;
+    this.status = status;
+  }
+}
+
+/**
+ * How a result was produced:
+ * - live: from the provider (possibly via cache)
+ * - synthetic: from labelled synthetic fixtures (offline mode, or Qloo before its key arrives)
+ * - fallback: the provider failed or is unconfigured; `data` is the adapter's defined fallback
+ */
+export type AdapterMode = "live" | "synthetic" | "fallback";
+
+export type AdapterResult<T> = {
+  adapter: AdapterName;
+  source: SourceId;
+  mode: AdapterMode;
+  data: T;
+  /** Why we fell back. Safe to show in the UI. */
+  reason?: AdapterErrorKind;
+};
+
+/** Per-request switches. Plain data so it can cross into cached scopes. */
+export type AdapterContext = {
+  /** Serve synthetic fixtures for every provider (e2e, CI). */
+  offline: boolean;
+  /** Adapters to treat as down (e2e fault injection; never in production). */
+  faults: readonly AdapterName[];
+};
+
+export const LIVE_CONTEXT: AdapterContext = { offline: false, faults: [] };
+
+type FetchJsonOptions<S extends z.ZodType> = {
+  adapter: AdapterName;
+  schema: S;
+  timeoutMs: number;
+  init?: RequestInit;
+};
+
+/**
+ * Fetch JSON with a timeout and validate it. Throws AdapterError on any
+ * failure; callers decide the fallback. Logs never include the query string.
+ */
+export async function fetchJson<S extends z.ZodType>(
+  url: string,
+  { adapter, schema, timeoutMs, init }: FetchJsonOptions<S>,
+): Promise<z.infer<S>> {
+  const started = Date.now();
+  let response: Response;
+  try {
+    response = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+  } catch (error) {
+    const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+    throw new AdapterError(
+      adapter,
+      timedOut ? "timeout" : "network",
+      timedOut ? `${redactUrl(url)} timed out after ${timeoutMs} ms` : `${redactUrl(url)} could not be reached`,
+    );
+  }
+
+  if (!response.ok) {
+    const kind: AdapterErrorKind =
+      response.status === 429 ? "rate_limited" : response.status === 404 ? "not_found" : "http";
+    throw new AdapterError(adapter, kind, `${redactUrl(url)} returned HTTP ${response.status}`, response.status);
+  }
+
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new AdapterError(adapter, "invalid_response", `${redactUrl(url)} did not return JSON`);
+  }
+
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    // Paths only: never the payload.
+    const paths = parsed.error.issues.slice(0, 5).map((issue) => issue.path.join(".") || "(root)");
+    throw new AdapterError(
+      adapter,
+      "invalid_response",
+      `${redactUrl(url)} returned an unexpected shape at ${paths.join(", ")}`,
+    );
+  }
+
+  log.debug("adapter fetch", { adapter, url: redactUrl(url), ms: Date.now() - started });
+  return parsed.data;
+}
+
+type RunAdapterOptions<T> = {
+  adapter: AdapterName;
+  source: SourceId;
+  context: AdapterContext;
+  /** Synthetic fixture data for offline mode. */
+  synthetic: () => T | Promise<T>;
+  /** The defined fallback when the provider is unavailable. */
+  fallback: T;
+  /** False when the provider's credentials are missing. */
+  configured?: boolean;
+  /** What to do when unconfigured: fall back (default), or serve synthetic data (Qloo before its key). */
+  whenUnconfigured?: "fallback" | "synthetic";
+  live: () => Promise<T>;
+};
+
+/** Run one adapter call and turn every failure into its defined fallback. */
+export async function runAdapter<T>({
+  adapter,
+  source,
+  context,
+  synthetic,
+  fallback,
+  configured = true,
+  whenUnconfigured = "fallback",
+  live,
+}: RunAdapterOptions<T>): Promise<AdapterResult<T>> {
+  if (context.faults.includes(adapter)) {
+    log.warn("adapter fault injected", { adapter });
+    return { adapter, source, mode: "fallback", data: fallback, reason: "fault_injected" };
+  }
+  if (context.offline || (!configured && whenUnconfigured === "synthetic")) {
+    return { adapter, source, mode: "synthetic", data: await synthetic() };
+  }
+  if (!configured) {
+    return { adapter, source, mode: "fallback", data: fallback, reason: "missing_key" };
+  }
+  try {
+    return { adapter, source, mode: "live", data: await live() };
+  } catch (error) {
+    const kind: AdapterErrorKind = error instanceof AdapterError ? error.kind : "network";
+    log.error("adapter failed, using fallback", {
+      adapter,
+      kind,
+      error: error instanceof Error ? error.message : "unknown error",
+    });
+    return { adapter, source, mode: "fallback", data: fallback, reason: kind };
+  }
+}

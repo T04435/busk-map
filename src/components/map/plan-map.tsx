@@ -47,6 +47,8 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
   const map = useRef<MapLibreMap | null>(null);
   const markers = useRef<Marker[]>([]);
   const onSelectRef = useRef(onSelect);
+  const frame = useRef<LngLatBounds | null>(null);
+  const interacted = useRef(false);
 
   useEffect(() => {
     onSelectRef.current = onSelect;
@@ -64,9 +66,20 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
     });
     instance.addControl(new NavigationControl({ showCompass: false }), "top-right");
     map.current = instance;
+    // Start with the attribution collapsed to its (i) button, so it doesn't cover the pins on phones.
+    instance.once("load", () => {
+      const attrib = container.current?.querySelector(".maplibregl-ctrl-attrib");
+      attrib?.classList.remove("maplibregl-compact-show");
+      attrib?.removeAttribute("open");
+    });
     // The container can change size after the map is created (layout, fonts,
     // the viewport): keep the canvas filling it.
-    const observer = new ResizeObserver(() => instance.resize());
+    const observer = new ResizeObserver(() => {
+      instance.resize();
+      // Keep the top pitches framed until the visitor moves the map themselves.
+      if (frame.current && !interacted.current) instance.fitBounds(frame.current, { padding: 70, maxZoom: 15, duration: 0 });
+    });
+    for (const event of ["dragstart", "wheel", "touchstart"] as const) instance.on(event, () => (interacted.current = true));
     observer.observe(container.current);
     return () => {
       observer.disconnect();
@@ -144,13 +157,22 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
       el.dataset.pitchId = pin.id;
       const gem = pin.discovery === "hidden-gem" ? ", hidden gem" : pin.discovery === "usual" ? ", usual spot" : "";
       el.setAttribute("aria-label", `${pin.rank ? `Pitch ${pin.rank}: ` : "Other pitch: "}${pin.name}, score ${pin.score}${gem}`);
+      const diamond = pin.rank !== null && pin.discovery === "hidden-gem";
+      if (diamond) {
+        // Rotate a child, never the marker itself: MapLibre positions the marker with its transform.
+        const shape = document.createElement("span");
+        shape.setAttribute("aria-hidden", "true");
+        shape.className = "absolute inset-0.5 rotate-45 rounded-sm border-2 border-background bg-primary shadow";
+        el.appendChild(shape);
+      }
       if (pin.rank) {
         const label = document.createElement("span");
+        label.className = "relative";
         label.textContent = String(pin.rank);
         el.appendChild(label);
       }
       el.className = pin.rank
-        ? `flex size-7 items-center justify-center border-2 border-background bg-primary text-xs font-semibold text-primary-foreground shadow focus-visible:ring-2 focus-visible:ring-ring ${pin.discovery === "hidden-gem" ? "rotate-45 rounded-sm [&>span]:-rotate-45" : "rounded-full"}`
+        ? `flex size-7 items-center justify-center text-xs font-semibold text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring ${diamond ? "" : "rounded-full border-2 border-background bg-primary shadow"}`
         : "size-3 rounded-full border border-background bg-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring";
       el.addEventListener("click", () => onSelectRef.current(pin.id));
       markers.current.push(new Marker({ element: el }).setLngLat([pin.lon, pin.lat]).addTo(instance));
@@ -159,6 +181,8 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
     if (plan.pitches.length > 0) {
       const bounds = new LngLatBounds();
       for (const p of plan.pitches) bounds.extend([p.lon, p.lat]);
+      frame.current = bounds;
+      interacted.current = false;
       instance.fitBounds(bounds, { padding: 70, maxZoom: 15, duration: 0 });
     }
   }, [plan.pitches, plan.others]);
@@ -173,8 +197,11 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
       el.classList.toggle("ring-2", selected);
       el.classList.toggle("ring-ring", selected);
     }
+    // Only pan when the selected pin is out of view: the first view is framed on the top pitches.
     const target = [...plan.pitches, ...plan.others].find((p) => p.id === selectedId);
-    if (instance && target) instance.easeTo({ center: [target.lon, target.lat], duration: 600 });
+    if (instance && target && !instance.getBounds().contains([target.lon, target.lat])) {
+      instance.easeTo({ center: [target.lon, target.lat], duration: 600 });
+    }
   }, [selectedId, plan.pitches, plan.others]);
 
   return <div ref={container} className="h-full min-h-80 w-full overflow-hidden rounded-lg border" role="region" aria-label="Map of pitches and Qloo taste affinity" />;

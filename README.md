@@ -18,6 +18,8 @@ pnpm dev
 
 Open http://localhost:3000. Try an example performer, plan your own act, or plan a week.
 
+Without `QLOO_API_KEY` (or with `QLOO_MOCK=1`), Qloo is served by a local mock of its documented HTTP contract, and every Qloo number is labelled "Qloo test data (key pending)". The other sources stay live. See [docs/qloo-mock.md](docs/qloo-mock.md).
+
 No keys at all? Run fully offline with synthetic data and a mock model:
 
 ```bash
@@ -32,7 +34,8 @@ pnpm test:e2e          # builds and starts an offline server, then runs the judg
 ```
 
 ## Data
-- [Qloo](https://qloo.com) taste API (hackathon key)
+- [Qloo](https://qloo.com) taste API (hackathon key; a local mock until it arrives)
+- OpenStreetMap public spaces and venue names (© OpenStreetMap contributors, ODbL)
 - City of Melbourne pedestrian counting system and busking locations (CC BY)
 - Ticketmaster Discovery API, Last.fm, Open-Meteo
 

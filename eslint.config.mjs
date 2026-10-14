@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "coverage/**",
     "playwright-report/**",
     "test-results/**",
+    // Third-party worker copied at dev/build time.
+    "public/vendor/**",
   ]),
 ]);
 

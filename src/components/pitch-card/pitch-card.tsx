@@ -1,0 +1,101 @@
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EstimateLabel } from "@/components/plan/estimate-label";
+import type { PlanPitch } from "@/lib/plan-schema";
+
+const FACTOR_LABELS: Record<keyof PlanPitch["factors"], string> = {
+  taste: "Taste affinity (Qloo)",
+  footfall: "Foot traffic for the slot",
+  places: "Busy places open nearby",
+  events: "Event crowds",
+  weatherPenalty: "Weather penalty",
+};
+
+const pct = (n: number | null) => (n === null ? "no data" : `${Math.round(n * 100)}/100`);
+
+export function PitchCard({ pitch, rank }: { pitch: PlanPitch; rank: number }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardDescription>Pitch {rank}</CardDescription>
+        <CardTitle className="flex flex-wrap items-baseline justify-between gap-2">
+          <span>{pitch.name}</span>
+          <span aria-label={`Score ${pitch.score} out of 100`}>{pitch.score}/100</span>
+        </CardTitle>
+        <div className="flex flex-wrap gap-1">
+          <Badge variant="secondary">{pitch.kind === "designated" ? "Council-designated site" : "General-permit footpath"}</Badge>
+          {pitch.amplification === "unamplified-zone" && <Badge variant="outline">Unamplified only</Badge>}
+          <Badge variant="outline">{pitch.whySource === "ai" ? "Explained by Claude" : "Explanation from the data"}</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 text-sm">
+        <section aria-label="Why this crowd">
+          <h4 className="font-medium">Why this crowd</h4>
+          <p className="text-muted-foreground">{pitch.why}</p>
+        </section>
+
+        <section aria-label="Score breakdown">
+          <h4 className="font-medium">Score breakdown</h4>
+          <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
+            {(Object.keys(FACTOR_LABELS) as (keyof PlanPitch["factors"])[]).map((key) => (
+              <div key={key} className="contents">
+                <dt className="text-muted-foreground">{FACTOR_LABELS[key]}</dt>
+                <dd>{pct(pitch.factors[key])}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
+        {(pitch.evidence.sensor || pitch.evidence.places.length > 0 || pitch.evidence.events.length > 0) && (
+          <section aria-label="Evidence" className="space-y-2">
+            <h4 className="font-medium">Evidence</h4>
+            {pitch.evidence.sensor && (
+              <p className="flex flex-wrap items-center gap-2">
+                About {pitch.evidence.sensor.avgHourly.toLocaleString("en-AU")} people an hour at {pitch.evidence.sensor.name} on recent
+                same weekdays <EstimateLabel />
+              </p>
+            )}
+            {pitch.evidence.places.length > 0 && (
+              <ul className="list-disc pl-5">
+                {pitch.evidence.places.map((place) => (
+                  <li key={place.name}>
+                    {place.name}, {place.distanceM} m {place.open === "open" ? "(open in your slot)" : "(hours not confirmed)"}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {pitch.evidence.events.map((event) => (
+              <p key={event.name} className="flex flex-wrap items-center gap-2">
+                {event.name} at {event.venue}: crowd {event.moment === "leaving" ? "leaves" : "arrives"} around {event.localTime}
+                {event.endEstimated && event.moment === "leaving" && <EstimateLabel>Estimated end</EstimateLabel>}
+                {event.url && (
+                  <a className="underline" href={event.url} target="_blank" rel="noreferrer">
+                    Ticketmaster
+                  </a>
+                )}
+              </p>
+            ))}
+          </section>
+        )}
+
+        <section aria-label="Rules" className="space-y-1">
+          <h4 className="font-medium">Rules to check</h4>
+          <p className="text-muted-foreground">{pitch.rules}</p>
+          {pitch.cautions.length > 0 && (
+            <ul className="list-disc pl-5">
+              {pitch.cautions.map((c) => (
+                <li key={c}>{c}</li>
+              ))}
+            </ul>
+          )}
+          {pitch.rulesUrl && (
+            <a className="underline" href={pitch.rulesUrl} target="_blank" rel="noreferrer">
+              Site rules and contact
+            </a>
+          )}
+          <p className="text-muted-foreground">Busk Map never confirms a pitch is legal. Check your permit conditions on the day.</p>
+        </section>
+      </CardContent>
+    </Card>
+  );
+}

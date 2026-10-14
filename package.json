@@ -14,7 +14,9 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "check:fixtures": "node scripts/check-fixtures.mjs",
-    "check": "pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm check:fixtures && pnpm build"
+    "check": "pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm check:fixtures && pnpm build",
+    "predev": "node scripts/copy-maplibre-worker.mjs",
+    "prebuild": "node scripts/copy-maplibre-worker.mjs"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.141",

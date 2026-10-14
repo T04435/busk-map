@@ -19,7 +19,7 @@ export function templateWhy(pitch: ScoredPitch, weekday: string, startHour: numb
   if (pitch.factors.taste !== null) parts.push(`Taste match ${Math.round(pitch.factors.taste * 100)}/100 for your artists in this part of the city (Qloo).`);
   if (pitch.evidence.sensor) {
     parts.push(
-      `About ${pitch.evidence.sensor.avgHourly.toLocaleString("en-AU")} people an hour passed ${pitch.evidence.sensor.name} on recent ${weekday}s, ${formatHour(startHour)}–${formatHour(endHour)} (estimate from city sensors).`,
+      `About ${pitch.evidence.sensor.avgHourly.toLocaleString("en-AU")} people an hour passed ${pitch.evidence.sensor.name} on recent ${weekday[0].toUpperCase()}${weekday.slice(1)}s, ${formatHour(startHour)}–${formatHour(endHour)} (estimate from city sensors).`,
     );
   }
   const places = pitch.evidence.places.slice(0, 2).map((p) => p.name);

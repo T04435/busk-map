@@ -1,3 +1,4 @@
+import { rejectBots } from "@/server/bot";
 import { z } from "zod";
 import { findTracks, getArtistCatalogue } from "@/server/adapters/repertoire";
 import { CITIES } from "@/server/cities";
@@ -14,6 +15,8 @@ const querySchema = z.discriminatedUnion("type", [
  * Spotify app credentials only; no user login.
  */
 export async function GET(request: Request) {
+  const blocked = await rejectBots("/api/repertoire");
+  if (blocked) return blocked;
   const params = Object.fromEntries(new URL(request.url).searchParams);
   const parsed = querySchema.safeParse(params);
   if (!parsed.success) {

@@ -1,3 +1,4 @@
+import { rejectBots } from "@/server/bot";
 import { weekRequestSchema } from "@/lib/week-schema";
 import { buildWeekPlan, WeekQlooUnavailableError } from "@/server/agent/week";
 import { CITIES } from "@/server/cities";
@@ -11,6 +12,8 @@ export const maxDuration = 60;
 
 /** POST /api/week: the week plan with the model's explanations of the chosen sessions. */
 export async function POST(request: Request) {
+  const blocked = await rejectBots("/api/week");
+  if (blocked) return blocked;
   const limit = testSwitches().offline ? { ok: true, retryAfterS: 0 } : planLimiter.check(clientIp(request.headers));
   if (!limit.ok) {
     return Response.json(

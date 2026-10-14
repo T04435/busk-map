@@ -1,3 +1,4 @@
+import { rejectBots } from "@/server/bot";
 import { planRequestSchema, type PlanStreamEvent } from "@/lib/plan-schema";
 import { QlooUnavailableError, runPlanAgent } from "@/server/agent/agent";
 import { PlanContext } from "@/server/agent/context";
@@ -19,6 +20,8 @@ function jsonError(status: number, code: string, message: string, headers: Heade
  * (one PlanStreamEvent per line), ending with a `plan` or an `error` event.
  */
 export async function POST(request: Request) {
+  const blocked = await rejectBots("/api/plan");
+  if (blocked) return blocked;
   // Offline test mode spends nothing, so it is not rate limited.
   const limit = testSwitches().offline ? { ok: true, retryAfterS: 0 } : planLimiter.check(clientIp(request.headers));
   if (!limit.ok) {

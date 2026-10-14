@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { PerformerForm } from "@/components/landing/performer-form";
+import { Warmup } from "@/components/landing/warmup";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { EXAMPLES } from "@/lib/examples";
@@ -11,6 +12,7 @@ import { SOURCES } from "@/lib/sources";
 export default function Home() {
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 space-y-10 px-4 py-12">
+      <Warmup />
       <header className="max-w-2xl space-y-4">
         <h1 className="text-4xl font-semibold tracking-tight">Busk Map</h1>
         <p className="text-lg text-muted-foreground">

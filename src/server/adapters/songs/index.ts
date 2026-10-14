@@ -1,7 +1,7 @@
 import "server-only";
 import { providerStatus } from "@/server/env";
 import { log } from "@/server/log";
-import { runAdapter, type AdapterContext, type AdapterResult } from "../core";
+import { runAdapter, settleWithLimit, type AdapterContext, type AdapterResult } from "../core";
 import { fetchTopTracks } from "./client";
 import { syntheticTopTracks } from "./fixtures/synthetic";
 import type { SongsData } from "./schema";
@@ -26,7 +26,8 @@ export async function getSongs(artists: string[], context: AdapterContext): Prom
     fallback: {},
     synthetic: () => Object.fromEntries(names.map((name) => [name, syntheticTopTracks(name)])),
     live: async () => {
-      const settled = await Promise.allSettled(names.map((name) => fetchTopTracks(name, TOP_TRACKS_PER_ARTIST)));
+      // Last.fm asks for about 5 requests a second: stay polite.
+      const settled = await settleWithLimit(names, 4, (name) => fetchTopTracks(name, TOP_TRACKS_PER_ARTIST));
       const failures = settled.filter((s) => s.status === "rejected");
       if (names.length > 0 && failures.length === names.length) throw (failures[0] as PromiseRejectedResult).reason;
       if (failures.length > 0) log.warn("last.fm lookups failed for some artists", { failed: failures.length, total: names.length });

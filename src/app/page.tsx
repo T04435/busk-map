@@ -19,6 +19,10 @@ export default function Home() {
           Know where to play, and what to play there. Busk Map finds the street pitches whose crowd matches your music at the hour you
           want to play, and orders your setlist for each one.
         </p>
+        <p className="text-muted-foreground">
+          Not the spots every busker already plays: Busk Map starts from where your crowd&apos;s taste concentrates on Qloo&apos;s taste map,
+          checks the council&apos;s busking rules, then weighs real foot traffic for your slot. It flags the hidden gems.
+        </p>
         <p className="text-sm text-muted-foreground">
           Melbourne: Qloo taste data, the city&apos;s pedestrian sensors and busking rules, Ticketmaster events and the weather.
         </p>
@@ -68,7 +72,7 @@ export default function Home() {
       </section>
 
       <footer className="space-y-1 text-xs text-muted-foreground">
-        <p>Data: {[SOURCES.qloo, SOURCES["melbourne-pedestrian"], SOURCES["melbourne-busking"], SOURCES.ticketmaster, SOURCES.lastfm, SOURCES["open-meteo"], SOURCES.spotify].map((s) => s.name).join(" · ")}</p>
+        <p>Data: {[SOURCES.qloo, SOURCES["melbourne-pedestrian"], SOURCES["melbourne-busking"], SOURCES.ticketmaster, SOURCES.lastfm, SOURCES["open-meteo"], SOURCES.spotify, SOURCES.osm].map((s) => s.name).join(" · ")}</p>
         <p>
           Busk Map never confirms a pitch is legal; check your permit conditions. Built for the Qloo Agentic Hackathon. MIT licence.
         </p>

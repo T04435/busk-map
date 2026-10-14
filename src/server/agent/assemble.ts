@@ -2,6 +2,7 @@ import "server-only";
 import { formatHour, describeSlot } from "@/lib/slot";
 import { planSchema, type Plan, type PlanPitch } from "@/lib/plan-schema";
 import type { ScoredPitch } from "@/server/scoring";
+import * as qloo from "@/server/adapters/qloo";
 import type { PlanContext } from "./context";
 
 /** What the model contributes: words only. Numbers and places come from the engine. */
@@ -110,9 +111,10 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null): Pro
   const funnel = await context.funnel();
   const genres = top[0] ? await context.crowdGenres(top[0]) : [];
 
+  const qlooDown = context.qlooFailed();
   const aiWhy = new Map((ai?.pitches ?? []).map((p) => [p.pitchId, p.why.trim()]));
   const pitches = await Promise.all(
-    top.map(async (pitch) => {
+    (qlooDown ? [] : top).map(async (pitch) => {
       const fromAi = aiWhy.get(pitch.id);
       const why = fromAi || templateWhy(pitch, context.weekday, request.slot.startHour, request.slot.endHour);
       return toPlanPitch(pitch, why, fromAi ? "ai" : "template", await context.setlistFor(pitch));
@@ -131,17 +133,19 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null): Pro
     slotLabel: describeSlot(request.slot),
     performerName: request.performer.name,
     permit: request.permit,
-    qlooMode: context.adapters.offline || context.dataStatus().find((s) => s.adapter === "qloo")?.mode === "synthetic" ? "synthetic" : "live",
+    qlooMode: qloo.qlooMode(context.adapters),
     explanations: usedAi ? "ai" : "template",
     summary:
       (usedAi && ai?.summary.trim()) ||
-      (pitches.length > 0
+      (qlooDown
+        ? "Without Qloo's taste data Busk Map can't tell where your crowd is, so nothing is recommended."
+        : pitches.length > 0
         ? `Top pitch: ${pitches[0].name} (score ${pitches[0].score}/100).`
         : "No pitch could be recommended for this slot with the data available."),
     notes: [...context.notes, ...(usedAi ? (ai?.notes ?? []).slice(0, 3) : [])],
     weights: context.weights,
     pitches,
-    others: ranked
+    others: (qlooDown ? [] : ranked)
       .filter((p) => !topIds.has(p.id))
       .slice(0, 25)
       .map((p) => ({ id: p.id, name: p.name, lat: p.lat, lon: p.lon, score: p.score, kind: p.kind, discovery: p.discovery })),

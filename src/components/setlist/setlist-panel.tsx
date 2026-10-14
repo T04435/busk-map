@@ -11,7 +11,8 @@ export function SetlistPanel({ pitch, learnThese }: { pitch: PlanPitch; learnThe
         </CardTitle>
         <CardDescription>
           Your songs, ordered by how much this crowd likes each artist (Qloo) and how well-known the song is (Last.fm). Qloo has no
-          song-level data, so a song inherits its artist&apos;s affinity.
+          song-level data, so a song inherits its artist&apos;s affinity. The set opens with the best-known of the top three and never plays
+          the same artist twice in a row, so the order is not strictly by score.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 text-sm">

@@ -77,6 +77,13 @@ describe("plan agent (offline, mock model)", () => {
     expect(plan.dataStatus.find((s) => s.adapter === "footfall")).toMatchObject({ mode: "fallback", reason: "fault_injected" });
   });
 
+  it("recommends nothing, and says so, when Qloo is down", async () => {
+    const { PlanContext, assemblePlan } = await load();
+    const plan = await assemblePlan(new PlanContext(request, { offline: true, faults: ["qloo"] }, "2026-10-15"), null);
+    expect(plan).toMatchObject({ qlooFailed: true, qlooMode: "synthetic", pitches: [], others: [] });
+    expect(plan.summary).toMatch(/Without Qloo/);
+  });
+
   it("recommends nothing when the busking rules are unavailable", async () => {
     const { PlanContext, assemblePlan } = await load();
     const ctx = new PlanContext(request, { offline: true, faults: ["pitches"] }, "2026-10-15");

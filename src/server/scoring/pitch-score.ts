@@ -26,6 +26,11 @@ export const FOOTFALL_ESTIMATE_DISCOUNT = 0.9;
 export const FOOTFALL_PROXY_DISCOUNT = 0.8;
 /** A pitch off the usual circuit with at least this taste fit is a hidden gem. */
 export const HIDDEN_GEM_MIN_TASTE = 0.6;
+/**
+ * At a well-known hotspot the crowd is shared with the other buskers who go
+ * there: its foot traffic counts for this share.
+ */
+export const USUAL_SPOT_FOOTFALL_SHARE = 0.85;
 /** ...and earns the discovery bonus from this fit up. */
 export const DISCOVERY_BONUS_MIN_TASTE = 0.75;
 export const PLACES_RADIUS_M = 250;
@@ -258,7 +263,7 @@ export function scorePitch(candidate: Candidate, inputs: ScoreInputs, weights: W
   const discovery = discoveryOf(candidate, taste);
   const factors: Factors = {
     taste,
-    footfall: footfall.value,
+    footfall: footfall.value === null ? null : candidate.usualSpot ? footfall.value * USUAL_SPOT_FOOTFALL_SHARE : footfall.value,
     // With no place data at all, the factor is unknown rather than zero.
     places: inputs.places.length === 0 ? null : places.value,
     events: events.value,

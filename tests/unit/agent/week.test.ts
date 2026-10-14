@@ -47,6 +47,13 @@ describe("week planner (offline)", () => {
         { busyness: null, busiestHour: null, events: [], forecast: [{ hour: 12, precipitationProbability: 60, temperatureC: null }], timeZone: "Australia/Melbourne" },
       ),
     ).toEqual(["Rain likely (up to 60%)"]);
+    const run = (date: string) => ({ name: "Long exhibition", venue: { name: "Museum" }, start: `${date}T00:00:00Z` });
+    expect(
+      dayDrivers(
+        { date: "2026-10-17", weekday: "saturday" },
+        { busyness: 0.96, busiestHour: null, events: ["2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18"].map(run), forecast: [], timeZone: "Australia/Melbourne" },
+      ),
+    ).toEqual(["About as busy as the busiest day (96%, typical, estimate)"]);
     expect(
       dayDrivers(
         { date: "2026-10-17", weekday: "saturday" },

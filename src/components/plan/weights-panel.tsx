@@ -20,7 +20,8 @@ export function WeightsPanel({ weights }: { weights: Plan["weights"] }) {
         </CardTitle>
         <CardDescription>
           Candidates come from your top Qloo taste cells, snapped to public spaces and checked against the council&apos;s busking rules. Each
-          is scored as a weighted average of the factors with data, plus a small bonus for hidden gems, minus the weather penalty. Missing
+          is scored as a weighted average of the factors with data, plus a small bonus for hidden gems, minus the weather penalty. At the well-known busking spots, foot traffic counts 85%: other buskers
+          share that crowd. Missing
           sources drop out instead of counting as zero.
         </CardDescription>
       </CardHeader>

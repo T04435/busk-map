@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { getVersion, Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
+import { getVersion, LngLatBounds, Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { geohashBounds } from "@/lib/geo";
 import type { Plan } from "@/lib/plan-schema";
@@ -64,7 +64,12 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
     });
     instance.addControl(new NavigationControl({ showCompass: false }), "top-right");
     map.current = instance;
+    // The container can change size after the map is created (layout, fonts,
+    // the viewport): keep the canvas filling it.
+    const observer = new ResizeObserver(() => instance.resize());
+    observer.observe(container.current);
     return () => {
+      observer.disconnect();
       instance.remove();
       map.current = null;
     };
@@ -149,6 +154,12 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
         : "size-3 rounded-full border border-background bg-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring";
       el.addEventListener("click", () => onSelectRef.current(pin.id));
       markers.current.push(new Marker({ element: el }).setLngLat([pin.lon, pin.lat]).addTo(instance));
+    }
+    // Frame the top pitches, with room around them.
+    if (plan.pitches.length > 0) {
+      const bounds = new LngLatBounds();
+      for (const p of plan.pitches) bounds.extend([p.lon, p.lat]);
+      instance.fitBounds(bounds, { padding: 70, maxZoom: 15, duration: 0 });
     }
   }, [plan.pitches, plan.others]);
 

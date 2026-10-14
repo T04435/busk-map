@@ -159,8 +159,8 @@ describe("combine", () => {
   it("drops missing factors and zero weights from the mean, then subtracts the weather penalty", () => {
     const all = { taste: 1, footfall: 0.5, places: 0, events: 0, weatherPenalty: null, discovery: 0 };
     const { score, contributions } = combine(all, DEFAULT_WEIGHTS);
-    expect(score).toBeCloseTo((0.35 + 0.15) / 1);
-    expect(contributions.taste).toBeCloseTo(0.35);
+    expect(score).toBeCloseTo((0.4 + 0.125) / 1);
+    expect(contributions.taste).toBeCloseTo(0.4);
     expect(contributions.discovery).toBeNull();
 
     const missing = combine({ taste: 1, footfall: null, places: null, events: null, weatherPenalty: 0.5, discovery: 0 }, DEFAULT_WEIGHTS);
@@ -216,7 +216,10 @@ describe("ranking", () => {
 
     expect(pitch).toMatchObject({ discovery: "hidden-gem", footfallSource: "sensor" });
     expect(pitch.factors.discovery).toBe(1);
-    expect(scorePitch(candidate("u", here, "Famous corner"), inputs, DEFAULT_WEIGHTS)).toMatchObject({ discovery: "usual", factors: { discovery: 0 } });
+    const usual = scorePitch(candidate("u", here, "Famous corner"), inputs, DEFAULT_WEIGHTS);
+    expect(usual).toMatchObject({ discovery: "usual", factors: { discovery: 0 } });
+    // The crowd at a usual spot is shared with other buskers.
+    expect(usual.factors.footfall).toBeCloseTo(pitch.factors.footfall! * 0.85);
 
     const noPlaces = scorePitch(candidate("b", offsetM(1000)), { ...inputs, places: [], weather: null }, DEFAULT_WEIGHTS);
     expect(noPlaces.factors.places).toBeNull();

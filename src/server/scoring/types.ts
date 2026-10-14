@@ -40,7 +40,7 @@ export type HeatCellInput = LatLon & {
 export type SpotInput = LatLon & { id: string; name: string; kind: string };
 
 /** A well-known busking hotspot: pitches near one are "usual spots". */
-export type HotspotInput = LatLon & { name: string };
+export type HotspotInput = LatLon & { name: string; /** Defaults to USUAL_SPOT_RADIUS_M; large sites such as a market need more. */ radiusM?: number };
 
 export type PlaceInput = LatLon & {
   id: string;

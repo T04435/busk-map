@@ -74,6 +74,7 @@ export function PitchCard({ pitch, rank }: { pitch: PlanPitch; rank: number }) {
                 <dt className="text-muted-foreground">
                   {FACTOR_LABELS[key]}
                   {key === "footfall" && pitch.footfallSource ? FOOTFALL_NOTE[pitch.footfallSource] : ""}
+                  {key === "footfall" && pitch.discovery === "usual" ? " (shared with other buskers)" : ""}
                 </dt>
                 <dd>{key === "discovery" && pitch.factors.discovery === 0 ? "none" : pct(pitch.factors[key])}</dd>
               </div>

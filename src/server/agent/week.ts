@@ -44,10 +44,16 @@ export function dayDrivers(
 ): string[] {
   const out: string[] = [];
   if (input.busyness !== null) {
-    if (input.busyness >= 0.97) out.push(`Busiest day for foot traffic${input.busiestHour !== null ? `, peaking around ${formatHour(input.busiestHour)}` : ""} (typical, estimate)`);
+    if (input.busyness >= 0.999) out.push(`Busiest day for foot traffic${input.busiestHour !== null ? `, peaking around ${formatHour(input.busiestHour)}` : ""} (typical, estimate)`);
+    else if (input.busyness >= 0.95) out.push(`About as busy as the busiest day (${Math.round(input.busyness * 100)}%, typical, estimate)`);
     else out.push(`Foot traffic about ${Math.round(input.busyness * 100)}% of the week's busiest day (typical, estimate)`);
   }
-  const events = input.events.filter((e) => localDate(e.start, input.timeZone) === day.date);
+  // Long runs (exhibitions, residencies) on most days of the week don't make a day different.
+  const daysByName = new Map<string, Set<string>>();
+  for (const e of input.events) daysByName.set(e.name, (daysByName.get(e.name) ?? new Set()).add(localDate(e.start, input.timeZone)));
+  const events = input.events
+    .filter((e) => localDate(e.start, input.timeZone) === day.date && (daysByName.get(e.name)?.size ?? 0) < 4)
+    .sort((a, b) => a.start.localeCompare(b.start));
   if (events.length > 0) {
     const names = events.slice(0, 2).map((e) => `${e.name} at ${e.venue.name}${e.localTime ? ` (${e.localTime})` : ""}`);
     out.push(`${events.length} ticketed event${events.length > 1 ? "s" : ""}: ${names.join("; ")}${events.length > 2 ? "…" : ""}`);
@@ -283,7 +289,7 @@ export async function buildWeekPlan(
       (usedAi && ai?.summary.trim()) ||
       (sessions.length > 0 ? `Best session: ${sessions[0].label} at ${sessions[0].pitch.name} (${sessions[0].score}/100).` : "No session could be recommended this week with the data available."),
     notes,
-    qlooMode: adapters.offline || statuses.get("qloo")?.mode === "synthetic" ? "synthetic" : "live",
+    qlooMode: qloo.qlooMode(adapters),
     qlooFailed: false,
     footfallLevel: typical.level,
     dataStatus: [...statuses.values()],

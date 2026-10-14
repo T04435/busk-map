@@ -9,8 +9,8 @@ import type { Weights } from "./types";
  * precision without dragging the score down.
  */
 export const DEFAULT_WEIGHTS: Weights = {
-  taste: 0.35,
-  footfall: 0.3,
+  taste: 0.4,
+  footfall: 0.25,
   places: 0.2,
   events: 0.15,
   weather: 0.3,

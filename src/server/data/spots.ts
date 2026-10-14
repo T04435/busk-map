@@ -82,12 +82,12 @@ export const PUBLIC_SPOTS: PublicSpot[] = [
  * a plain search or a tourist guide would send you. A pitch close to one
  * (scoring's USUAL_SPOT_RADIUS_M) is a "usual spot". Busk Map's own list.
  */
-export const USUAL_HOTSPOTS: (LatLon & { name: string })[] = [
+export const USUAL_HOTSPOTS: (LatLon & { name: string; radiusM?: number })[] = [
   { name: "Bourke Street Mall", lat: -37.81372, lon: 144.96454 },
   { name: "Federation Square", lat: -37.81777, lon: 144.96931 },
   { name: "Flinders Street Station", lat: -37.8178, lon: 144.96705 },
   { name: "Southbank Promenade at Southgate", lat: -37.82015, lon: 144.9661 },
   { name: "State Library Victoria", lat: -37.80985, lon: 144.9646 },
-  { name: "Queen Victoria Market", lat: -37.8075, lon: 144.9572 },
+  { name: "Queen Victoria Market", lat: -37.8075, lon: 144.9572, radiusM: 300 },
   { name: "Melbourne Central (Swanston St)", lat: -37.8102, lon: 144.9632 },
 ];

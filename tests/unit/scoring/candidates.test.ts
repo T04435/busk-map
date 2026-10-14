@@ -122,5 +122,6 @@ describe("topCells and usualSpotAt", () => {
     const hotspots = [{ name: "Corner", lat: -37.81, lon: 144.96 }];
     expect(usualSpotAt({ lat: -37.8101, lon: 144.9601 }, hotspots)).toBe("Corner");
     expect(usualSpotAt({ lat: -37.82, lon: 144.96 }, hotspots)).toBeNull();
+    expect(usualSpotAt({ lat: -37.8125, lon: 144.96 }, [{ name: "Market", lat: -37.81, lon: 144.96, radiusM: 300 }])).toBe("Market");
   });
 });

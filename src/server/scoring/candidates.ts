@@ -61,7 +61,7 @@ function cautionsFor(site: SiteInput | null, permit: PerformerPermit, unamplifie
 
 /** The well-known hotspot a point sits at, if any. */
 export function usualSpotAt(point: LatLon, hotspots: HotspotInput[]): string | null {
-  return hotspots.find((h) => distanceM(point, h) <= USUAL_SPOT_RADIUS_M)?.name ?? null;
+  return hotspots.find((h) => distanceM(point, h) <= (h.radiusM ?? USUAL_SPOT_RADIUS_M))?.name ?? null;
 }
 
 /** The performer's strongest cells, best first. */

@@ -18,8 +18,8 @@ import { LIMITS, MODELS } from "./models";
  * Cached per performer and slot.
  */
 export const plainAnswerSchema = z.object({
-  spots: z.array(z.object({ name: z.string().max(120), why: z.string().max(300) })).max(3),
-  setlist: z.array(z.string().max(120)).max(8),
+  spots: z.array(z.object({ name: z.string().max(160), why: z.string().max(600) })).max(3),
+  setlist: z.array(z.string().max(160)).max(10),
 });
 
 export type PlainSpot = { name: string; why: string; usualSpot: string | null };
@@ -48,7 +48,7 @@ export function comparePrompt(request: Pick<PlanRequest, "city" | "slot" | "perf
   return [
     `I'm a street performer in ${CITIES[request.city].name}. My music sounds like ${request.performer.artists.join(", ")}.`,
     songs ? `Songs I can play: ${songs}.` : "",
-    `Where should I busk on ${describeSlot(request.slot)}, and what setlist should I play? Give three spots with a one-sentence reason each, and a short setlist.`,
+    `Where should I busk on ${describeSlot(request.slot)}, and what setlist should I play? Give three spots, each with one short reason (under 25 words), and a setlist of up to six songs.`,
   ]
     .filter(Boolean)
     .join(" ");
@@ -58,13 +58,16 @@ async function cachedCompare(prompt: string, offline: boolean): Promise<z.infer<
   "use cache: remote";
   cacheLife("days");
   cacheTag("compare");
-  const { output } = await generateText({
-    model: offline ? createMockCompare() : MODELS.cheap,
-    output: Output.object({ schema: plainAnswerSchema }),
-    prompt,
-    maxOutputTokens: LIMITS.compareMaxOutputTokens,
-    abortSignal: AbortSignal.timeout(LIMITS.compareTimeoutMs),
-  });
+  const ask = () =>
+    generateText({
+      model: offline ? createMockCompare() : MODELS.cheap,
+      output: Output.object({ schema: plainAnswerSchema }),
+      prompt,
+      maxOutputTokens: LIMITS.compareMaxOutputTokens,
+      abortSignal: AbortSignal.timeout(LIMITS.compareTimeoutMs),
+    });
+  // A small model sometimes breaks the JSON: one retry, then give up.
+  const { output } = await ask().catch(() => ask());
   return output;
 }
 

@@ -42,6 +42,7 @@ export type PlaceInput = LatLon & {
 export type EventInput = {
   id: string;
   name: string;
+  url?: string | null;
   venue: LatLon & { name: string };
   /** UTC ISO. */
   start: string;

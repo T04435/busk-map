@@ -49,13 +49,19 @@ export function tasteFactor(point: LatLon, cells: HeatCellInput[]): number | nul
 
 /**
  * Foot traffic for the slot at the nearest sensor within the radius, on a log
- * scale relative to the busiest sensor. Null when no sensor is close enough
- * (the weight then drops out rather than scoring zero).
+ * scale relative to the busiest sensor in the slot, or to `reference` when
+ * slots must be comparable (the week planner passes the week's busiest).
+ * Null when no sensor is close enough (the weight then drops out rather than
+ * scoring zero).
  */
-export function footfallFactor(point: LatLon, sensors: SensorInput[]): { value: number | null; sensor: SensorInput | null } {
+export function footfallFactor(
+  point: LatLon,
+  sensors: SensorInput[],
+  reference?: number,
+): { value: number | null; sensor: SensorInput | null } {
   const counted = sensors.filter((s): s is SensorInput & { avgHourly: number } => s.avgHourly !== null);
   if (counted.length === 0) return { value: null, sensor: null };
-  const max = Math.max(...counted.map((s) => s.avgHourly));
+  const max = reference ?? Math.max(...counted.map((s) => s.avgHourly));
   let nearest: (SensorInput & { avgHourly: number }) | null = null;
   let nearestD = Number.POSITIVE_INFINITY;
   for (const sensor of counted) {
@@ -176,6 +182,8 @@ export type ScoreInputs = {
   endHour: number;
   slotStartMs: number;
   slotEndMs: number;
+  /** Busiest footfall to scale against; defaults to the busiest sensor in this slot. */
+  footfallReference?: number;
 };
 
 export type ScoredPitch = Candidate & {
@@ -191,7 +199,7 @@ export type ScoredPitch = Candidate & {
 };
 
 export function scorePitch(candidate: Candidate, inputs: ScoreInputs, weights: Weights): ScoredPitch {
-  const footfall = footfallFactor(candidate, inputs.sensors);
+  const footfall = footfallFactor(candidate, inputs.sensors, inputs.footfallReference);
   const places = placesFactor(candidate, inputs.places, inputs.weekday, inputs.startHour, inputs.endHour);
   const events = eventsFactor(candidate, inputs.events, inputs.slotStartMs, inputs.slotEndMs);
   const factors: Factors = {

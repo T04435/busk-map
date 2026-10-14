@@ -1,6 +1,6 @@
 // SYNTHETIC FIXTURE: invented sensors and counts for tests and offline mode.
 // Coordinates are rough CBD points; names are made up. Not City of Melbourne data.
-import type { FootfallData, Sensor } from "../schema";
+import type { FootfallData, Sensor, TypicalFootfallData } from "../schema";
 
 export const SYNTHETIC_SENSORS: Sensor[] = [
   { id: 9001, name: "Synthetic sensor: Swanston St north", lat: -37.8111, lon: 144.9643 },
@@ -53,3 +53,33 @@ export const SYNTHETIC_RAW = {
     ],
   },
 };
+
+const WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
+/** Synthetic weekday × hour profile: busier evenings and weekends. */
+export function syntheticTypical(historyFrom: string, historyTo: string): TypicalFootfallData {
+  return {
+    level: "city-sensors",
+    historyFrom,
+    historyTo,
+    sensors: SYNTHETIC_SENSORS.map((sensor) => ({
+      ...sensor,
+      byWeekdayHour: Object.fromEntries(
+        WEEKDAYS.map((day, d) => [
+          day,
+          Object.fromEntries(
+            Array.from({ length: 24 }, (_, h) => [h, Math.round(COUNTS[sensor.id] * (d >= 4 ? 1.2 : 0.9) * (h >= 11 && h <= 20 ? 1 : 0.4))]),
+          ),
+        ]),
+      ),
+    })),
+  };
+}
+
+export const SYNTHETIC_RAW_TYPICAL = [
+  { location_id: 9001, hourday: 18, "date_format(sensing_date,'E')": "Sat", dow: null, avg_count: 1500 },
+  { location_id: 9001, hourday: 19, "date_format(sensing_date,'E')": "Sat", dow: null, avg_count: 1300.5 },
+  { location_id: 9002, hourday: 10, "date_format(sensing_date,'E')": "Mon", dow: null, avg_count: 400 },
+  { location_id: 9002, hourday: 11, "date_format(sensing_date,'E')": "Xyz", dow: null, avg_count: 1 },
+  { location_id: 9002, hourday: 12, "date_format(sensing_date,'E')": "Mon", dow: null, avg_count: null },
+];

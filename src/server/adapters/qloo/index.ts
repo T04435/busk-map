@@ -66,12 +66,12 @@ export function tasteMap(entityIds: string[], area: BBox, context: AdapterContex
   return run(context, [], () => syn.synHeatmap(entityIds, area), () => client.heatmap(entityIds, area));
 }
 
-/** busy_places: places near a point that are open on the slot's weekday. */
+/** busy_places: places near a point, open on the slot's weekday (or any day, with null). */
 export function busyPlaces(
   entityIds: string[],
   center: LatLon,
   radiusM: number,
-  weekday: string,
+  weekday: string | null,
   context: AdapterContext,
 ): Promise<AdapterResult<QlooPlace[]>> {
   return run(context, [], () => syn.synPlaces(entityIds, center, radiusM, weekday), () => client.places(entityIds, center, radiusM, weekday));

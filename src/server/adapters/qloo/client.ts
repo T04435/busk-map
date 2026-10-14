@@ -117,12 +117,16 @@ export async function heatmap(entityIds: string[], area: BBox): Promise<HeatCell
   }));
 }
 
-/** `urn:entity:place` near a point, open on the weekday, ranked for this taste. */
+/**
+ * `urn:entity:place` near a point, ranked for this taste. With a weekday, only
+ * places open that day (filter.hours); with null, all places (the week planner
+ * then checks opening hours per slot).
+ */
 export async function places(
   entityIds: string[],
   center: LatLon,
   radiusM: number,
-  weekday: string,
+  weekday: string | null,
 ): Promise<QlooPlace[]> {
   "use cache: remote";
   cacheLife("days");
@@ -131,7 +135,7 @@ export async function places(
     "filter.type": "urn:entity:place",
     "filter.location": wktPoint(center),
     "filter.location.radius": radiusM,
-    "filter.hours": weekday,
+    "filter.hours": weekday ?? undefined,
     "signal.interests.entities": ids(entityIds),
     take: MAX_TAKE,
   };

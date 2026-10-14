@@ -57,3 +57,22 @@ export type FootfallData = {
   /** Timestamp of the newest live reading (ISO), when the live feed responded. */
   liveAsOf: string | null;
 };
+
+/** exports/json rows of the weekday × hour aggregation. The grouped expression comes back under its own text. */
+export const typicalRowsSchema = z.array(
+  z
+    .object({
+      location_id: z.number().int(),
+      hourday: z.number().int().min(0).max(23),
+      avg_count: z.number().nullable(),
+    })
+    .catchall(z.unknown()),
+);
+
+export type TypicalFootfallData = {
+  level: "city-sensors" | "unavailable";
+  sensors: (Sensor & { byWeekdayHour: Record<string, Record<number, number>> })[];
+  /** First and last history date used (inclusive). */
+  historyFrom: string | null;
+  historyTo: string | null;
+};

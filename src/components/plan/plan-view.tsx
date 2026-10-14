@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ComparePanel } from "@/components/compare/compare-panel";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { planStreamEventSchema, type Plan, type PlanRequest } from "@/lib/plan-schema";
+import { weekSearchParams } from "@/lib/week-url";
 import { AgentSteps, applyStreamEvent, type AgentStep } from "./agent-steps";
 import { CrowdPanel } from "./crowd-panel";
 import { DataSources } from "./data-sources";
@@ -123,6 +125,15 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
           <Badge variant="outline">{plan.footfallLevel === "city-sensors" ? "Foot traffic: city sensors" : "Foot traffic: unavailable"}</Badge>
           <Badge variant="outline">{plan.explanations === "ai" ? "Explanations: Claude" : "Explanations: from the data"}</Badge>
         </div>
+        <Link
+          className="text-sm underline"
+          href={`/week?${weekSearchParams(
+            { city: request.city, permit: request.permit, performer: request.performer, startDate: request.slot.date, limits: { maxSessions: 5, maxPerDay: 1, unavailable: [] }, weights: request.weights },
+            null,
+          )}`}
+        >
+          Plan my week instead
+        </Link>
       </header>
 
       {plan.qlooMode === "synthetic" && (

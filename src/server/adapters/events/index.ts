@@ -37,3 +37,21 @@ export async function getEvents(
     live: () => fetchEvents(city.center, EVENTS_RADIUS_KM, from, end.toISOString()),
   });
 }
+
+/** Events near the city centre between two instants (the week planner's whole week). */
+export async function getEventsBetween(
+  cityId: CityId,
+  startIso: string,
+  endIso: string,
+  context: AdapterContext,
+): Promise<AdapterResult<CrowdEvent[]>> {
+  return runAdapter({
+    adapter: "events",
+    source: "ticketmaster",
+    context,
+    configured: providerStatus().ticketmaster,
+    fallback: [],
+    synthetic: syntheticEvents,
+    live: () => fetchEvents(CITIES[cityId].center, EVENTS_RADIUS_KM, startIso, endIso),
+  });
+}

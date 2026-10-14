@@ -41,6 +41,17 @@ export default function Home() {
             </li>
           ))}
         </ul>
+        <p className="text-sm text-muted-foreground">
+          Or plan a whole week:{" "}
+          {EXAMPLES.map((example, i) => (
+            <span key={example.id}>
+              {i > 0 && " · "}
+              <Link className="underline" href={`/week?example=${example.id}`}>
+                Week: {example.label}
+              </Link>
+            </span>
+          ))}
+        </p>
       </section>
 
       <Separator />

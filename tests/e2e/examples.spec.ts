@@ -5,7 +5,7 @@ test.describe("landing", () => {
   test("shows the three example performers and the own-act form", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1, name: "Busk Map" })).toBeVisible();
-    for (const example of EXAMPLES) await expect(page.getByRole("link", { name: new RegExp(example.label) })).toBeVisible();
+    for (const example of EXAMPLES) await expect(page.getByRole("link", { name: new RegExp(`^${example.label} `) })).toBeVisible();
     await expect(page.getByRole("form", { name: "Plan for your own act" })).toBeVisible();
   });
 });
@@ -14,7 +14,7 @@ for (const example of EXAMPLES) {
   test.describe(`example: ${example.label}`, () => {
     test("opens instantly with three scored pitches, a map and a setlist", async ({ page }) => {
       await page.goto("/");
-      await page.getByRole("link", { name: new RegExp(example.label) }).click();
+      await page.getByRole("link", { name: new RegExp(`^${example.label} `) }).click();
       await expect(page).toHaveURL(new RegExp(`/plan\\?example=${example.id}`));
       await expect(page.getByRole("heading", { level: 1, name: example.performer.name })).toBeVisible();
       await waitForPlan(page);

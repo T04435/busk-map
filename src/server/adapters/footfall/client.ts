@@ -2,6 +2,7 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { fetchJson } from "../core";
 import {
+  typicalRowsSchema,
   latestSchema,
   liveCountsSchema,
   sensorLocationsSchema,
@@ -103,4 +104,46 @@ export async function fetchLiveCounts(): Promise<{ asOf: string | null; counts: 
       body.results.filter((row) => row.count !== null).map((row) => [row.location_id, row.count as number]),
     ),
   };
+}
+
+const WEEKDAY_BY_ABBREVIATION: Record<string, string> = {
+  Mon: "monday",
+  Tue: "tuesday",
+  Wed: "wednesday",
+  Thu: "thursday",
+  Fri: "friday",
+  Sat: "saturday",
+  Sun: "sunday",
+};
+const WEEKDAY_EXPRESSION = "date_format(sensing_date, 'E')";
+
+/**
+ * Typical pedestrians per hour by sensor, weekday and hour, averaged over the
+ * history window. One request for the whole week planner. The hourly history
+ * has gaps (not every hour is present), so these average the hours that exist.
+ */
+export async function fetchTypicalByWeekdayHour(
+  from: string,
+  toExclusive: string,
+  startHour: number,
+  endHour: number,
+): Promise<Record<number, Record<string, Record<number, number>>>> {
+  "use cache: remote";
+  cacheLife("days");
+  cacheTag("footfall", "footfall:typical");
+
+  const url = `${BASE}/pedestrian-counting-system-monthly-counts-per-hour/exports/json?${new URLSearchParams({
+    select: `location_id, hourday, ${WEEKDAY_EXPRESSION} as dow, avg(pedestriancount) as avg_count`,
+    where: `sensing_date >= date'${from}' and sensing_date < date'${toExclusive}' and hourday >= ${startHour} and hourday < ${endHour}`,
+    group_by: `location_id, hourday, ${WEEKDAY_EXPRESSION}`,
+  })}`;
+  const rows = await fetchJson(url, { adapter: "footfall", schema: typicalRowsSchema, timeoutMs: 12_000 });
+  const out: Record<number, Record<string, Record<number, number>>> = {};
+  for (const row of rows) {
+    const abbreviation = row[WEEKDAY_EXPRESSION.replace(" ", "")];
+    const weekday = typeof abbreviation === "string" ? WEEKDAY_BY_ABBREVIATION[abbreviation] : undefined;
+    if (!weekday || row.avg_count === null) continue;
+    ((out[row.location_id] ??= {})[weekday] ??= {})[row.hourday] = row.avg_count;
+  }
+  return out;
 }

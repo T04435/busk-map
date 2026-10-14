@@ -2,9 +2,9 @@ import "server-only";
 import { addDays, localToday, slotHours, type Slot } from "@/lib/slot";
 import { CITIES, type CityId } from "@/server/cities";
 import { AdapterError, runAdapter, type AdapterContext, type AdapterResult } from "../core";
-import { fetchHourlyForecast } from "./client";
+import { fetchHourlyForecast, fetchHourlyForecastRange } from "./client";
 import { syntheticWeather } from "./fixtures/synthetic";
-import type { WeatherData } from "./schema";
+import type { WeatherData, WeatherHour } from "./schema";
 
 export type { WeatherData, WeatherHour } from "./schema";
 
@@ -35,6 +35,37 @@ export async function getWeather(
       }
       const all = await fetchHourlyForecast(city.center, slot.date, city.timeZone);
       return { date: slot.date, hours: all.filter((h) => hours.includes(h.hour)) };
+    },
+  });
+}
+
+/**
+ * Hourly forecast for `days` days from `startDate`, keyed by date (week
+ * planner). Days beyond the forecast range are simply absent. Fallback: {}.
+ */
+export async function getWeatherWeek(
+  cityId: CityId,
+  startDate: string,
+  days: number,
+  context: AdapterContext,
+  today: string = localToday(CITIES[cityId].timeZone),
+): Promise<AdapterResult<Record<string, WeatherHour[]>>> {
+  const city = CITIES[cityId];
+  const last = addDays(today, FORECAST_DAYS - 1);
+  const wantedEnd = addDays(startDate, days - 1);
+  const endDate = wantedEnd < last ? wantedEnd : last;
+  return runAdapter<Record<string, WeatherHour[]>>({
+    adapter: "weather",
+    source: "open-meteo",
+    context,
+    fallback: {},
+    synthetic: () =>
+      Object.fromEntries(
+        Array.from({ length: days }, (_, i) => addDays(startDate, i)).map((date) => [date, syntheticWeather(date, Array.from({ length: 24 }, (_, h) => h)).hours]),
+      ),
+    live: async () => {
+      if (startDate > endDate) throw new AdapterError("weather", "not_found", "The week is outside the forecast range");
+      return fetchHourlyForecastRange(city.center, startDate, endDate, city.timeZone);
     },
   });
 }

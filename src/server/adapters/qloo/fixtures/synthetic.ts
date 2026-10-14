@@ -83,7 +83,7 @@ const PLACE_TEMPLATES: { name: string; lat: number; lon: number; tag: string }[]
   { name: "Synthetic place: theatre foyer", lat: -37.8150, lon: 144.9690, tag: "Theatre" },
 ];
 
-export function synPlaces(entityIds: string[], center: LatLon, radiusM: number, weekday: string): QlooPlace[] {
+export function synPlaces(entityIds: string[], center: LatLon, radiusM: number, weekday: string | null): QlooPlace[] {
   const seed = entityIds.slice().sort().join("|");
   return PLACE_TEMPLATES.filter((p) => distanceM(center, p) <= radiusM).map((p) => ({
     id: `syn-place-${slug(p.name)}`,
@@ -91,7 +91,7 @@ export function synPlaces(entityIds: string[], center: LatLon, radiusM: number, 
     lat: p.lat,
     lon: p.lon,
     address: null,
-    hours: { [weekday]: [{ opens: "T10:00", closes: "T23:00" }] },
+    hours: Object.fromEntries((weekday ? [weekday] : ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]).map((d) => [d, [{ opens: "T10:00", closes: "T23:00" }]])),
     popularity: r3(0.3 + 0.7 * unit(`ppop:${p.name}`)),
     affinity: r3(unit(`paff:${seed}:${p.name}`)),
     tags: [{ id: `syn-tag-${slug(p.tag)}`, name: p.tag }],

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { planRequestSchema } from "@/lib/plan-schema";
 import { planSearchParams } from "@/lib/plan-url";
+import { weekSearchParams } from "@/lib/week-url";
 import { formatHour } from "@/lib/slot";
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
@@ -71,8 +72,9 @@ export function PerformerForm({ defaultDate }: { defaultDate: string }) {
     setSongs((current) => [current.trim(), `${track.title} - ${track.artists[0]?.name ?? ""}`].filter(Boolean).join("\n"));
   }
 
-  function submit(event: React.FormEvent) {
+  function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const target = (event.nativeEvent as SubmitEvent).submitter?.getAttribute("value") === "week" ? "week" : "plan";
     const parsedSongs = parseSongLines(songs);
     const artistList = [
       ...new Set([
@@ -98,6 +100,11 @@ export function PerformerForm({ defaultDate }: { defaultDate: string }) {
       return;
     }
     setError(null);
+    if (target === "week") {
+      const { slot, ...rest } = result.data;
+      router.push(`/week?${weekSearchParams({ ...rest, startDate: slot.date, limits: { maxSessions: 5, maxPerDay: 1, unavailable: [] } }, null)}`);
+      return;
+    }
     router.push(`/plan?${planSearchParams(result.data, { run: "1" })}`);
   }
 
@@ -208,7 +215,14 @@ export function PerformerForm({ defaultDate }: { defaultDate: string }) {
           {error}
         </p>
       )}
-      <Button type="submit">Plan my set</Button>
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" value="plan">
+          Plan my set
+        </Button>
+        <Button type="submit" value="week" variant="outline">
+          Plan my week from this date
+        </Button>
+      </div>
     </form>
   );
 }

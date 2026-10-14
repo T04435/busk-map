@@ -79,3 +79,34 @@ export function createMockCompare() {
     }),
   });
 }
+
+/** Offline stand-in for the week explainer: echoes the session keys it was given. */
+export function createMockWeekExplainer() {
+  return new MockLanguageModelV4({
+    modelId: "mock-week",
+    doGenerate: async (options) => {
+      const user = (options.prompt as PromptMessage[]).find((m) => m.role === "user");
+      const text = Array.isArray(user?.content) ? (user.content as { type: string; text?: string }[]).map((p) => p.text ?? "").join("") : "";
+      let keys: string[] = [];
+      try {
+        keys = (JSON.parse(text) as { sessions: { key: string }[] }).sessions.map((s) => s.key);
+      } catch {
+        keys = [];
+      }
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              summary: "Mock week summary (offline test mode).",
+              sessions: keys.map((key) => ({ key, why: `Mock explanation for ${key}.` })),
+            }),
+          },
+        ],
+        finishReason: { unified: "stop", raw: undefined },
+        usage,
+        warnings: [],
+      };
+    },
+  });
+}

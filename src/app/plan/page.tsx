@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { PlanView } from "@/components/plan/plan-view";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { parsePlanParams } from "@/lib/plan-url";
+import { parsePlanParams, planSearchParams } from "@/lib/plan-url";
 import { localToday } from "@/lib/slot";
 import { buildEnginePlan } from "@/server/agent/preload";
 import { CITIES } from "@/server/cities";
@@ -65,6 +65,8 @@ async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchPar
   const plan = await buildEnginePlan(parsed.request, adapters);
   return (
     <PlanView
+      // Keyed by the request (not the selected pitch): a new request remounts the view.
+      key={planSearchParams(parsed.request).toString()}
       initialPlan={plan}
       request={parsed.request}
       center={CITIES[parsed.request.city].center}

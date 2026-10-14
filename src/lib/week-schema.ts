@@ -66,7 +66,18 @@ export const weekPlanSchema = z.object({
   performerName: z.string(),
   permit: z.enum(PERMITS),
   startDate: isoDate,
-  days: z.array(z.object({ date: isoDate, weekday: z.string(), label: z.string(), hasForecast: z.boolean() })),
+  days: z.array(
+    z.object({
+      date: isoDate,
+      weekday: z.string(),
+      label: z.string(),
+      hasForecast: z.boolean(),
+      /** What makes this day different: foot traffic, events and weather, in plain words. */
+      drivers: z.array(z.string()).default([]),
+      /** Typical foot traffic over the day relative to the week's busiest day (0–1), when sensors are available. */
+      busyness: z.number().min(0).max(1).nullable().default(null),
+    }),
+  ),
   slots: z.array(z.object({ startHour: z.number().int(), endHour: z.number().int(), label: z.string() })),
   grid: z.array(
     z.object({
@@ -79,6 +90,8 @@ export const weekPlanSchema = z.object({
       chosen: z.boolean(),
       /** The slot has already started. */
       past: z.boolean(),
+      /** Why this slot stands out: an event crowd nearby, rain risk, or peak foot traffic. */
+      flags: z.array(z.enum(["event", "rain", "busy"])).default([]),
     }),
   ),
   sessions: z.array(weekSessionSchema).max(5),

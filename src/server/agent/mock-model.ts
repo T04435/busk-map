@@ -68,11 +68,27 @@ export function createMockPlanner() {
   });
 }
 
+/**
+ * Offline stand-in for the plain-LLM comparison. It answers the way a model
+ * with no data typically does: the famous tourist spots and the biggest hits.
+ */
 export function createMockCompare() {
   return new MockLanguageModelV4({
     modelId: "mock-compare",
     doGenerate: async () => ({
-      content: [{ type: "text", text: "Mock plain-LLM answer (offline test mode): play near the main station and cover well-known hits." }],
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            spots: [
+              { name: "Bourke Street Mall", why: "Mock plain-LLM answer (offline test mode): the busiest shopping strip in the city." },
+              { name: "Federation Square", why: "Mock plain-LLM answer: tourists and big crowds all day." },
+              { name: "Flinders Street Station", why: "Mock plain-LLM answer: thousands of commuters pass the steps." },
+            ],
+            setlist: ["Wonderwall", "Hallelujah", "Riptide", "Shallow"],
+          }),
+        },
+      ],
       finishReason: { unified: "stop", raw: undefined },
       usage,
       warnings: [],

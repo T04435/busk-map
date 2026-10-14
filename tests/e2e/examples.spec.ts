@@ -90,6 +90,8 @@ test.describe("live agent (mock model offline)", () => {
     await waitForPlan(page);
     await page.getByRole("switch", { name: "What a plain LLM would suggest" }).click();
     await expect(page.getByText("Plain LLM answer (unverified, no data)")).toBeVisible();
-    await expect(page.getByText(/Mock plain-LLM answer/)).toBeVisible();
+    await expect(page.getByText(/Mock plain-LLM answer/).first()).toBeVisible();
+    await expect(page.getByTestId("compare-verdict")).toContainText("usual busking spots");
+    await expect(page.getByRole("region", { name: "Busk Map answer" }).getByRole("listitem")).toHaveCount(3);
   });
 });

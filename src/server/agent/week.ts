@@ -29,6 +29,42 @@ import { MODELS } from "./models";
 
 export const WEEK_DAYS = 7;
 
+const localDate = (iso: string, timeZone: string) => new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+
+/** Plain-words reasons a day differs from the rest of the week. */
+export function dayDrivers(
+  day: { date: string; weekday: string },
+  input: {
+    busyness: number | null;
+    busiestHour: number | null;
+    events: { name: string; venue: { name: string }; start: string; localTime?: string | null }[];
+    forecast: { hour: number; precipitationProbability: number | null; temperatureC: number | null; windKmh?: number | null }[] | undefined;
+    timeZone: string;
+  },
+): string[] {
+  const out: string[] = [];
+  if (input.busyness !== null) {
+    if (input.busyness >= 0.97) out.push(`Busiest day for foot traffic${input.busiestHour !== null ? `, peaking around ${formatHour(input.busiestHour)}` : ""} (typical, estimate)`);
+    else out.push(`Foot traffic about ${Math.round(input.busyness * 100)}% of the week's busiest day (typical, estimate)`);
+  }
+  const events = input.events.filter((e) => localDate(e.start, input.timeZone) === day.date);
+  if (events.length > 0) {
+    const names = events.slice(0, 2).map((e) => `${e.name} at ${e.venue.name}${e.localTime ? ` (${e.localTime})` : ""}`);
+    out.push(`${events.length} ticketed event${events.length > 1 ? "s" : ""}: ${names.join("; ")}${events.length > 2 ? "…" : ""}`);
+  }
+  const hours = (input.forecast ?? []).filter((h) => h.hour >= 10 && h.hour < 22);
+  if (hours.length > 0) {
+    const rain = Math.max(...hours.map((h) => h.precipitationProbability ?? 0));
+    const temps = hours.flatMap((h) => (h.temperatureC === null ? [] : [h.temperatureC]));
+    const top = temps.length ? Math.round(Math.max(...temps)) : null;
+    const wind = Math.max(0, ...hours.map((h) => h.windKmh ?? 0));
+    out.push(
+      `${rain >= 50 ? `Rain likely (up to ${rain}%)` : rain >= 25 ? `Some rain risk (up to ${rain}%)` : "Mostly dry"}${top !== null ? `, up to ${top}°C` : ""}${wind >= 30 ? `, gusty (${Math.round(wind)} km/h)` : ""}`,
+    );
+  }
+  return out;
+}
+
 type Status = { adapter: AdapterName; source: string; mode: AdapterResult<unknown>["mode"]; reason?: string };
 
 export class WeekQlooUnavailableError extends Error {}
@@ -124,6 +160,23 @@ export async function buildWeekPlan(
   const chosen = selectSessions(grid.filter((c) => !isPast(c)), request.limits);
   const chosenKeys = new Set(chosen.map((c) => sessionKey(c.date, c.startHour)));
 
+  // Typical foot traffic per weekday (all sensors, 10 am to 10 pm), relative to the busiest day.
+  const busyness = new Map<string, { share: number; peakHour: number | null }>();
+  if (typical.sensors.length > 0) {
+    const totals = days.map((d) => {
+      const byHour = new Map<number, number>();
+      for (const sensor of typical.sensors) for (const [h, v] of Object.entries(sensor.byWeekdayHour[d.weekday] ?? {})) byHour.set(Number(h), (byHour.get(Number(h)) ?? 0) + v);
+      const total = [...byHour.values()].reduce((a, b) => a + b, 0);
+      const peak = [...byHour.entries()].sort((a, b) => b[1] - a[1])[0];
+      return { weekday: d.weekday, total, peakHour: peak ? peak[0] : null };
+    });
+    const max = Math.max(...totals.map((t) => t.total));
+    for (const t of totals) if (max > 0) busyness.set(t.weekday, { share: Math.round((t.total / max) * 100) / 100, peakHour: t.peakHour });
+  }
+  // A slot is "busy" when its best pitch's foot traffic is in the top quarter of the week.
+  const footfalls = grid.flatMap((c) => (c.best?.factors.footfall == null ? [] : [c.best.factors.footfall])).sort((a, b) => a - b);
+  const busyCutoff = footfalls.length ? footfalls[Math.floor(footfalls.length * 0.75)] : Number.POSITIVE_INFINITY;
+
   let ai: z.infer<typeof explanationSchema> | null = null;
   if (explain && chosen.length > 0) {
     if (!adapters.offline && !providerStatus().aiGateway) {
@@ -195,7 +248,18 @@ export async function buildWeekPlan(
     performerName: request.performer.name,
     permit: request.permit,
     startDate: request.startDate,
-    days: dates.map((date) => ({ date, weekday: weekdayOf(date), label: `${capitalise(weekdayOf(date)).slice(0, 3)} ${date.slice(8)}`, hasForecast: Boolean(weather[date]) })),
+    days: dates.map((date) => {
+      const weekday = weekdayOf(date);
+      const b = busyness.get(weekday) ?? null;
+      return {
+        date,
+        weekday,
+        label: `${capitalise(weekday).slice(0, 3)} ${date.slice(8)}`,
+        hasForecast: Boolean(weather[date]),
+        busyness: b?.share ?? null,
+        drivers: dayDrivers({ date, weekday }, { busyness: b?.share ?? null, busiestHour: b?.peakHour ?? null, events, forecast: weather[date], timeZone: city.timeZone }),
+      };
+    }),
     slots: WEEK_SLOTS.map((s) => ({ ...s, label: `${formatHour(s.startHour)}–${formatHour(s.endHour)}` })),
     grid: grid.map((c) => ({
       date: c.date,
@@ -206,6 +270,11 @@ export async function buildWeekPlan(
       unavailable: request.limits.unavailable.some((u) => u.date === c.date && u.startHour < c.endHour && u.endHour > c.startHour),
       chosen: chosenKeys.has(sessionKey(c.date, c.startHour)),
       past: isPast(c),
+      flags: [
+        ...(c.best && c.best.evidence.events.length > 0 ? (["event"] as const) : []),
+        ...(c.best && (c.best.factors.weatherPenalty ?? 0) >= 0.3 ? (["rain"] as const) : []),
+        ...(c.best && (c.best.factors.footfall ?? 0) >= busyCutoff ? (["busy"] as const) : []),
+      ],
     })),
     sessions,
     limits: request.limits,

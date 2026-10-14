@@ -28,6 +28,33 @@ describe("week planner (offline)", () => {
     expect(plan.grid.every((c) => !c.past)).toBe(true);
   });
 
+  it("shows what makes each day different: foot traffic, events and weather", async () => {
+    const { buildWeekPlan, dayDrivers } = await load();
+    const plan = await buildWeekPlan(request, OFFLINE, "2026-10-15", false, now);
+    const shares = plan.days.map((d) => d.busyness);
+    expect(new Set(shares).size).toBeGreaterThan(3);
+    expect(shares).toContain(1);
+    expect(plan.days.every((d) => d.drivers.length >= 2)).toBe(true);
+    expect(plan.days.some((d) => d.drivers.some((line) => /^Busiest day/.test(line)))).toBe(true);
+    expect(plan.days.some((d) => d.drivers.some((line) => /ticketed event/.test(line)))).toBe(true);
+    expect(plan.grid.some((c) => c.flags.length > 0)).toBe(true);
+    // Different days pick different best slots, not one slot repeated all week.
+    expect(new Set(plan.sessions.map((s) => s.startHour)).size).toBeGreaterThan(1);
+
+    expect(
+      dayDrivers(
+        { date: "2026-10-17", weekday: "saturday" },
+        { busyness: null, busiestHour: null, events: [], forecast: [{ hour: 12, precipitationProbability: 60, temperatureC: null }], timeZone: "Australia/Melbourne" },
+      ),
+    ).toEqual(["Rain likely (up to 60%)"]);
+    expect(
+      dayDrivers(
+        { date: "2026-10-17", weekday: "saturday" },
+        { busyness: 0.5, busiestHour: 13, events: [], forecast: [{ hour: 12, precipitationProbability: 30, temperatureC: 21.4 }], timeZone: "Australia/Melbourne" },
+      ),
+    ).toEqual(["Foot traffic about 50% of the week's busiest day (typical, estimate)", "Some rain risk (up to 30%), up to 21°C"]);
+  });
+
   it("explains only the chosen sessions with the model", async () => {
     const { buildWeekPlan } = await load();
     const plan = await buildWeekPlan(request, OFFLINE, "2026-10-15", true, now);

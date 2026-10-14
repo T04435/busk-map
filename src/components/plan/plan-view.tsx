@@ -277,13 +277,12 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
 
       <div className="grid gap-6 lg:grid-cols-2">
         <CrowdPanel crowd={plan.crowd} resolved={plan.resolvedArtists} topPitch={plan.pitches[0]?.name ?? null} />
-        <ComparePanel request={request} />
+        <WeightsPanel weights={plan.weights} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <WeightsPanel weights={plan.weights} />
-        <DataSources status={plan.dataStatus} showAi={plan.explanations === "ai"} />
-      </div>
+      <ComparePanel request={request} pitches={plan.pitches} />
+
+      <DataSources status={plan.dataStatus} showAi={plan.explanations === "ai"} />
     </div>
   );
 }

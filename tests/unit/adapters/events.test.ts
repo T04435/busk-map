@@ -58,6 +58,6 @@ describe("getEvents", () => {
   it("serves synthetic events offline", async () => {
     const result = await getEvents("melbourne", slot, OFFLINE);
     expect(result.mode).toBe("synthetic");
-    expect(result.data.length).toBe(2);
+    expect(result.data.length).toBe(5);
   });
 });

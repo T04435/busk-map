@@ -64,7 +64,8 @@ export function tasteFactor(point: LatLon, cells: HeatCellInput[]): number | nul
 }
 
 /**
- * Foot traffic for the slot, on a log scale relative to the busiest sensor in
+ * Foot traffic for the slot, on a square-root scale (diminishing returns, but a
+ * quiet slot still scores clearly lower) relative to the busiest sensor in
  * the slot, or to `reference` when slots must be comparable (the week planner
  * passes the week's busiest). In order of preference:
  * - "sensor": the nearest sensor within FOOTFALL_RADIUS_M;
@@ -82,7 +83,7 @@ export function footfallFactor(
 ): { value: number | null; sensor: SensorInput | null; source: FootfallSource | null; estimatedHourly: number | null } {
   const counted = sensors.filter((s): s is SensorInput & { avgHourly: number } => s.avgHourly !== null);
   const max = reference ?? Math.max(0, ...counted.map((s) => s.avgHourly));
-  const scale = (hourly: number) => (max <= 0 ? 0 : clamp01(Math.log1p(hourly) / Math.log1p(max)));
+  const scale = (hourly: number) => (max <= 0 ? 0 : clamp01(Math.sqrt(hourly / max)));
   const byDistance = counted.map((sensor) => ({ sensor, d: distanceM(point, sensor) })).sort((a, b) => a.d - b.d);
   const [nearest] = byDistance;
   if (nearest && nearest.d <= FOOTFALL_RADIUS_M) {

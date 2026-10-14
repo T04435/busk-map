@@ -77,7 +77,7 @@ describe("factors", () => {
       { id: 3, name: "busiest, far", ...offsetM(5000), avgHourly: 9999 },
     ]);
     expect(result).toMatchObject({ source: "sensor", sensor: { id: 2 }, estimatedHourly: null });
-    expect(result.value).toBeCloseTo(Math.log1p(999) / Math.log1p(9999));
+    expect(result.value).toBeCloseTo(Math.sqrt(999 / 9999));
 
     const estimate = footfallFactor(here, [
       { id: 1, name: "A", ...offsetM(300), avgHourly: 1000 },
@@ -85,7 +85,7 @@ describe("factors", () => {
     ]);
     expect(estimate).toMatchObject({ source: "nearby-sensors", sensor: { id: 1 } });
     expect(estimate.estimatedHourly).toBe(Math.round((1000 / 300 + 200 / 500) / (1 / 300 + 1 / 500)));
-    expect(estimate.value).toBeCloseTo(0.9 * (Math.log1p(estimate.estimatedHourly!) / Math.log1p(1000)), 2);
+    expect(estimate.value).toBeCloseTo(0.9 * Math.sqrt(estimate.estimatedHourly! / 1000), 2);
 
     const proxy = footfallFactor(here, [], undefined, [{ ...offsetM(100), affinity: 1, popularity: 0.5 }, { ...offsetM(400), affinity: 1, popularity: 0.9 }, { ...offsetM(50), affinity: 1 }]);
     expect(proxy).toEqual({ value: 0.4, sensor: null, source: "qloo-popularity", estimatedHourly: null });

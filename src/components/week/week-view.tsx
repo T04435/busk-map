@@ -16,6 +16,8 @@ import { weekSearchParams } from "@/lib/week-url";
 
 type Props = { initialPlan: WeekPlan; request: WeekRequest; exampleId: string | null; faults: string | null };
 
+const FLAG_LABEL: Record<"event" | "rain" | "busy", string> = { event: "Event", rain: "Rain", busy: "Busy" };
+
 export function WeekView({ initialPlan, request, exampleId, faults }: Props) {
   const [plan, setPlan] = useState(initialPlan);
   const [state, setState] = useState<{ status: "idle" | "running" | "done" } | { status: "error"; message: string }>({ status: "idle" });
@@ -151,8 +153,12 @@ export function WeekView({ initialPlan, request, exampleId, faults }: Props) {
               {plan.sessions.map((s, i) => (
                 <li key={s.key} className="space-y-1">
                   <p className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="font-medium">
-                      {i + 1}. {s.label} · {s.pitch.name}
+                    <span className="flex flex-wrap items-center gap-2 font-medium">
+                      <span>
+                        {i + 1}. {s.label} · {s.pitch.name}
+                      </span>
+                      {s.pitch.discovery === "hidden-gem" && <Badge>Hidden gem</Badge>}
+                      {s.pitch.discovery === "usual" && <Badge variant="outline">Usual spot</Badge>}
                     </span>
                     <span aria-label={`Score ${s.score} out of 100`}>{s.score}/100</span>
                   </p>
@@ -217,6 +223,9 @@ export function WeekView({ initialPlan, request, exampleId, faults }: Props) {
                         >
                           <span>{c?.unavailable ? "Unavailable" : (c?.score ?? "–")}</span>
                           {c?.chosen && <span className="text-xs">Chosen</span>}
+                          {!c?.unavailable && c?.flags && c.flags.length > 0 && (
+                            <span className="text-[0.65rem] leading-tight opacity-80">{c.flags.map((f) => FLAG_LABEL[f]).join(" · ")}</span>
+                          )}
                         </Button>
                         )}
                       </td>
@@ -227,6 +236,32 @@ export function WeekView({ initialPlan, request, exampleId, faults }: Props) {
             </tbody>
           </table>
         </div>
+        <p className="text-xs text-muted-foreground">Event: a ticketed crowd arrives or leaves near the pitch. Rain: weather risk. Busy: among the week&apos;s busiest slots.</p>
+      </section>
+
+      <section aria-label="What changes day to day" className="space-y-2">
+        <h2 className="text-lg font-semibold">What changes day to day</h2>
+        <ul className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          {plan.days.map((d) => (
+            <li key={d.date} className="rounded-md border p-3">
+              <p className="font-medium">{d.label}</p>
+              {d.busyness !== null && (
+                <span className="mt-1 block h-1.5 rounded-full bg-muted" aria-hidden>
+                  <span className="block h-1.5 rounded-full bg-foreground" style={{ width: `${Math.round(d.busyness * 100)}%` }} />
+                </span>
+              )}
+              {d.drivers.length === 0 ? (
+                <p className="text-muted-foreground">No foot traffic, event or weather data for this day.</p>
+              ) : (
+                <ul className="mt-1 space-y-0.5 text-muted-foreground">
+                  {d.drivers.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   );

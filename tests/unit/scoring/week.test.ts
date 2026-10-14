@@ -45,7 +45,7 @@ describe("scoreWeek", () => {
     expect(satEvening.best?.factors.weatherPenalty).toBeCloseTo(0.7);
     expect(satMorning.best?.factors.weatherPenalty).toBeNull(); // no forecast hours in that slot
     // Scaled against the week's busiest slot (Saturday 7–10 pm), not this slot's.
-    expect(satMorning.best?.factors.footfall).toBeCloseTo(Math.log1p(150) / Math.log1p(3100));
+    expect(satMorning.best?.factors.footfall).toBeCloseTo(Math.sqrt(150 / 3100));
     expect(satEvening.best?.factors.footfall).toBeCloseTo(1);
     expect(grid.find((c) => c.date === "2026-10-18" && c.startHour === 13)!.best?.factors.footfall).toBeNull();
     // No candidates: no best pitch.

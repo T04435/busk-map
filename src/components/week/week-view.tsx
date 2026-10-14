@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { QLOO_TEST_LABEL } from "@/lib/sources";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -74,7 +75,7 @@ export function WeekView({ initialPlan, request, exampleId, faults }: Props) {
         <h1 className="text-3xl font-semibold tracking-tight">Plan my week: {plan.performerName}</h1>
         <div className="flex flex-wrap gap-2">
           <Badge variant={plan.qlooMode === "live" ? "outline" : "secondary"}>
-            {plan.qlooMode === "live" ? "Live Qloo data" : "Synthetic Qloo data (key pending)"}
+            {plan.qlooMode === "live" ? "Live Qloo data" : QLOO_TEST_LABEL}
           </Badge>
           <Badge variant="outline">{plan.footfallLevel === "city-sensors" ? "Foot traffic: typical by weekday and hour (estimate)" : "Foot traffic: unavailable"}</Badge>
           <Badge variant="outline">{plan.explanations === "ai" ? "Explanations: Claude" : "Explanations: from the data"}</Badge>

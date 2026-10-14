@@ -28,7 +28,7 @@ for (const example of EXAMPLES) {
       for (const credit of ["Taste data by Qloo", "Pedestrian counts: City of Melbourne Open Data", "Weather data by Open-Meteo.com"]) {
         await expect(page.getByRole("link", { name: credit })).toBeVisible();
       }
-      if (LOCAL) await expect(page.getByText("Synthetic Qloo data (key pending)")).toBeVisible();
+      if (LOCAL) await expect(page.getByText("Qloo test data (key pending)").first()).toBeVisible();
     });
 
     test("selects a pitch from the keyboard and keeps it in the URL", async ({ page }) => {

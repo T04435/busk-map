@@ -12,7 +12,11 @@ export type SourceId =
   | "spotify"
   | "open-meteo"
   | "openfreemap"
+  | "osm"
   | "ai";
+
+/** How every Qloo-derived number is labelled while the key is pending. */
+export const QLOO_TEST_LABEL = "Qloo test data (key pending)";
 
 export type SourceInfo = {
   id: SourceId;
@@ -78,6 +82,13 @@ export const SOURCES: Record<SourceId, SourceInfo> = {
     credit: "Map tiles: OpenFreeMap, © OpenMapTiles, data © OpenStreetMap contributors",
     url: "https://openfreemap.org",
     licence: "OpenStreetMap ODbL",
+  },
+  osm: {
+    id: "osm",
+    name: "OpenStreetMap",
+    credit: "Public spaces and venue names: © OpenStreetMap contributors",
+    url: "https://www.openstreetmap.org/copyright",
+    licence: "ODbL 1.0",
   },
   ai: {
     id: "ai",

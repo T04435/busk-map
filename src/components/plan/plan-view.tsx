@@ -9,6 +9,7 @@ import { PitchCard } from "@/components/pitch-card/pitch-card";
 import { SetlistPanel } from "@/components/setlist/setlist-panel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { QLOO_TEST_LABEL } from "@/lib/sources";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -120,7 +121,7 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
         <h1 className="text-3xl font-semibold tracking-tight">{plan.performerName}</h1>
         <div className="flex flex-wrap gap-2">
           <Badge variant={plan.qlooMode === "live" ? "outline" : "secondary"}>
-            {plan.qlooMode === "live" ? "Live Qloo data" : "Synthetic Qloo data (key pending)"}
+            {plan.qlooMode === "live" ? "Live Qloo data" : QLOO_TEST_LABEL}
           </Badge>
           <Badge variant="outline">{plan.footfallLevel === "city-sensors" ? "Foot traffic: city sensors" : "Foot traffic: unavailable"}</Badge>
           <Badge variant="outline">{plan.explanations === "ai" ? "Explanations: Claude" : "Explanations: from the data"}</Badge>
@@ -138,10 +139,11 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
 
       {plan.qlooMode === "synthetic" && (
         <Alert>
-          <AlertTitle>Synthetic taste data</AlertTitle>
+          <AlertTitle>{QLOO_TEST_LABEL}</AlertTitle>
           <AlertDescription>
-            Qloo data on this page is generated test data while the hackathon API key is pending. Foot traffic, rules, events and weather are
-            real where shown as live.
+            The taste map, crowd and trends on this page come from Busk Map&apos;s local mock of the Qloo API, built from Qloo&apos;s documentation
+            while the hackathon key is pending. It is test data, not Qloo data. Venue and street names are real (OpenStreetMap); foot traffic,
+            busking rules, events and weather are real wherever the sources below say Live.
           </AlertDescription>
         </Alert>
       )}

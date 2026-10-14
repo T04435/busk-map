@@ -84,6 +84,8 @@ type FetchJsonOptions<S extends z.ZodType> = {
   schema: S;
   timeoutMs: number;
   init?: RequestInit;
+  /** Defaults to the global fetch. The Qloo mock passes an in-process fetch. */
+  fetcher?: (input: string, init?: RequestInit) => Promise<Response>;
 };
 
 /**
@@ -92,12 +94,12 @@ type FetchJsonOptions<S extends z.ZodType> = {
  */
 export async function fetchJson<S extends z.ZodType>(
   url: string,
-  { adapter, schema, timeoutMs, init }: FetchJsonOptions<S>,
+  { adapter, schema, timeoutMs, init, fetcher = fetch }: FetchJsonOptions<S>,
 ): Promise<z.infer<S>> {
   const started = Date.now();
   let response: Response;
   try {
-    response = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+    response = await fetcher(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
   } catch (error) {
     const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
     throw new AdapterError(

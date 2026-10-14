@@ -1,7 +1,64 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SYNTHETIC_RAW } from "@/server/adapters/qloo/fixtures/synthetic";
 import { extractExplanations } from "@/server/adapters/qloo/normalize";
 import { json, LIVE, mockFetch, OFFLINE, route } from "../../helpers";
+
+// Small synthetic, API-shaped payloads for client tests. Not Qloo data.
+const SYNTHETIC_RAW = {
+  search: {
+    results: [
+      { entity_id: "syn-raw-artist-1", name: "Synthetic Artist", types: ["urn:entity:artist"], popularity: 0.91, tags: [{ id: "urn:tag:genre:music:synthetic", name: "Synthetic", type: "urn:tag:genre:music" }] },
+      { entity_id: "syn-raw-artist-2", name: "Synthetic Artist Tribute", popularity: 0.2 },
+    ],
+  },
+  insightsArtists: {
+    results: {
+      entities: [
+        {
+          entity_id: "syn-raw-local-1",
+          name: "Synthetic Local",
+          popularity: 0.7,
+          query: { affinity: 0.88, explainability: { "signal.interests.entities": [{ entity_id: "syn-raw-artist-1", name: "Synthetic Artist", score: 0.9 }, { entity_id: "syn-raw-artist-3", score: 0.35 }] } },
+        },
+        { entity_id: "syn-raw-local-2", name: "Synthetic Local Two", query: { affinity: 0.5 } },
+        { name: "missing id" },
+      ],
+    },
+  },
+  places: {
+    results: {
+      entities: [
+        { entity_id: "syn-raw-place-1", name: "Synthetic Bar", popularity: 0.8, location: { lat: -37.8158, lon: 144.9653 }, properties: { address: "1 Synthetic Lane", hours: { saturday: [{ opens: "T16:00", closes: "T23:00" }] } }, query: { affinity: 0.6 } },
+        { entity_id: "syn-raw-place-2", name: "Synthetic Cafe", properties: { geocode: { latitude: -37.81, longitude: 144.96 } } },
+        { entity_id: "syn-raw-place-3", name: "Synthetic Nowhere" },
+      ],
+    },
+  },
+  heatmap: {
+    results: {
+      heatmap: [
+        { location: { latitude: -37.81, longitude: 144.96, geohash: "r1r0fs" }, query: { affinity: 0.9, affinity_rank: 1, popularity: 0.5 } },
+        { location: { latitude: -37.82, longitude: 144.95 }, query: { affinity: 0.2 } },
+      ],
+    },
+  },
+  heatmapEmpty: { results: { heatmap: [] } },
+  trending: {
+    results: {
+      trending: [
+        { date: "2026-10-08", population_percentile: 60, population_rank_velocity: 3, population_percent_delta: 6 },
+        { date: "2026-10-01", population_percentile: 50, population_rank_velocity: 1, population_percent_delta: 2 },
+      ],
+    },
+  },
+  demographics: {
+    results: {
+      demographics: [
+        { entity_id: "a", query: { age: { "24_and_younger": 0.2, "55_and_older": -0.1 }, gender: { male: 0.1, female: -0.1 } } },
+        { entity_id: "b", query: { age: { "24_and_younger": 0.4 } } },
+      ],
+    },
+  },
+};
 
 const area = { south: -37.83, west: 144.94, north: -37.8, east: 144.98 };
 const center = { lat: -37.8136, lon: 144.9631 };
@@ -14,34 +71,54 @@ async function fresh() {
 describe("qloo without a key", () => {
   beforeEach(() => vi.stubEnv("QLOO_API_KEY", "SET_ME"));
 
-  it("serves labelled synthetic data and never calls the network", async () => {
+  it("runs the real client against the local mock, labelled synthetic, with no network", async () => {
     const qloo = await fresh();
     const { calls } = mockFetch([]);
     expect(qloo.qlooMode(LIVE)).toBe("synthetic");
 
     const resolved = await qloo.resolveArtists(["Paul Kelly", "paul kelly ", "Courtney Barnett"], LIVE);
     expect(resolved.mode).toBe("synthetic");
-    // Names are deduplicated case-insensitively.
-    expect(resolved.data.map((r) => r.entity?.id)).toEqual(["syn-artist-paul-kelly", "syn-artist-courtney-barnett"]);
+    // Names are deduplicated case-insensitively; mock ids start with 4D4F434B ("MOCK").
+    expect(resolved.data.map((r) => r.entity?.name)).toEqual(["Paul Kelly", "Courtney Barnett"]);
+    expect(resolved.data.every((r) => r.entity!.id.startsWith("4D4F434B-"))).toBe(true);
 
     const ids = resolved.data.map((r) => r.entity!.id);
     const heat = await qloo.tasteMap(ids, area, LIVE);
-    expect(heat.data).toHaveLength(120);
-    expect(heat.data.every((c) => c.affinity >= 0 && c.affinity <= 1)).toBe(true);
-    // Deterministic, and different for a different performer.
+    expect(heat.data.length).toBeGreaterThan(10);
+    expect(heat.data.every((c) => c.affinity >= 0 && c.affinity <= 1 && c.geohash?.length === 6)).toBe(true);
     expect((await qloo.tasteMap(ids, area, LIVE)).data).toEqual(heat.data);
-    expect((await qloo.tasteMap(["syn-other"], area, LIVE)).data).not.toEqual(heat.data);
 
     const places = await qloo.busyPlaces(ids, center, 1500, "saturday", LIVE);
-    expect(places.data.length).toBeGreaterThan(0);
-    expect(places.data.every((p) => p.name.startsWith("Synthetic"))).toBe(true);
+    expect(places.data.length).toBe(50);
+    expect(places.data[0].hours).toBeTruthy();
 
-    expect((await qloo.localArtists(ids, area, 5, LIVE)).data).toHaveLength(5);
-    expect(Object.keys((await qloo.artistAffinityAt(ids, center, 300, LIVE)).data)).toEqual(ids);
-    expect((await qloo.rising(ids, "2026-09-01", "2026-10-14", LIVE)).data).toHaveLength(2);
+    const locals = await qloo.localArtists(ids, area, 5, LIVE);
+    expect(locals.data).toHaveLength(5);
+    expect(locals.data[0].explanation.length).toBeGreaterThan(0);
+    expect(Object.keys((await qloo.artistAffinityAt(ids, center, 300, LIVE)).data).sort()).toEqual([...ids].sort());
+    const trend = await qloo.rising(locals.data.map((a) => a.id), "2026-09-01", "2026-10-14", LIVE);
+    expect(trend.data).toHaveLength(5);
+    expect(new Set(trend.data.map((t) => t.windowChange)).size).toBeGreaterThan(1);
     expect((await qloo.crowdProfile(ids, LIVE)).data?.age).toBeDefined();
-    expect((await qloo.resolveSpotifyArtists(["abc"], LIVE)).data).toHaveLength(1);
+    expect((await qloo.crowdTags(ids, center, 400, 5, LIVE)).data).toHaveLength(5);
+    expect((await qloo.compareGenres(ids, locals.data.map((a) => a.id), LIVE)).data.length).toBeGreaterThan(0);
+    expect((await qloo.resolveSpotifyArtists(["not-a-known-id"], LIVE)).data).toEqual([]);
     expect(calls).toHaveLength(0);
+  });
+
+  it("uses the mock when QLOO_MOCK=1 even with a key", async () => {
+    vi.stubEnv("QLOO_API_KEY", "synthetic-test-key");
+    vi.stubEnv("QLOO_MOCK", "1");
+    const qloo = await fresh();
+    const { calls } = mockFetch([]);
+    expect(qloo.qlooMode(LIVE)).toBe("synthetic");
+    expect((await qloo.resolveArtists(["Hiatus Kaiyote"], LIVE)).mode).toBe("synthetic");
+    expect(calls).toHaveLength(0);
+  });
+
+  it("still honours injected faults", async () => {
+    const qloo = await fresh();
+    expect(await qloo.tasteMap(["a"], area, { offline: true, faults: ["qloo"] })).toMatchObject({ mode: "fallback", reason: "fault_injected" });
   });
 });
 
@@ -114,9 +191,12 @@ describe("qloo with a key", () => {
       route((u) => u.pathname === "/entities", () => json(SYNTHETIC_RAW.search)),
     ]);
     const trend = await qloo.rising(["syn-raw-local-1", "b", "c", "d", "e", "f"], "2026-09-01", "2026-10-14", LIVE);
-    expect(trend.data).toContainEqual({ entityId: "syn-raw-local-1", percentDelta: 6, velocity: 3, percentile: 0.6 });
-    expect(calls[0].url.searchParams.get("signal.interests.entities")!.split(",")).toHaveLength(5);
-    expect(calls[0].url.searchParams.get("filter.start_date")).toBe("2026-09-01");
+    // One request per artist (the rows carry no entity id), at most five.
+    expect(trend.data).toHaveLength(5);
+    expect(trend.data[0]).toEqual({ entityId: "syn-raw-local-1", percentDelta: 6, velocity: 3, percentile: 60, windowChange: 10, series: [50, 60] });
+    const trendCalls = calls.filter((c) => c.url.pathname === "/v2/trending");
+    expect(trendCalls.map((c) => c.url.searchParams.get("signal.interests.entities"))).toEqual(["syn-raw-local-1", "b", "c", "d", "e"]);
+    expect(trendCalls[0].url.searchParams.get("filter.start_date")).toBe("2026-09-01");
 
     const demo = await qloo.crowdProfile(["a", "b"], LIVE);
     expect(demo.data?.age["24_and_younger"]).toBeCloseTo(0.3);
@@ -124,7 +204,7 @@ describe("qloo with a key", () => {
 
     const spotify = await qloo.resolveSpotifyArtists(["sp1", "sp2"], LIVE);
     expect(spotify.data).toHaveLength(2);
-    expect(calls[2].url.searchParams.get("external.spotify.ids")).toBe("sp1,sp2");
+    expect(calls.find((c) => c.url.pathname === "/entities")!.url.searchParams.get("external.spotify.ids")).toBe("sp1,sp2");
   });
 
   it("logs empty results with the parameter names (Qloo ignores invalid params silently)", async () => {
@@ -152,7 +232,7 @@ describe("qloo with a key", () => {
     const qloo = await fresh();
     mockFetch([
       route((u) => u.searchParams.get("query") === "ok", () => json(SYNTHETIC_RAW.search)),
-      route((u) => u.searchParams.get("query") === "none", () => json({ results: [] })),
+      route((u) => u.searchParams.get("query") === "none", () => json({ code: 404, reason: "Not Found", message: "No results" }, 404)),
       route(() => true, () => json({}, 500)),
     ]);
     const result = await qloo.resolveArtists(["ok", "none", "broken"], LIVE);
@@ -180,15 +260,23 @@ describe("extractExplanations", () => {
 });
 
 describe("qloo trending attribution", () => {
-  it("attributes id-less rows only when one entity was asked about, keeping the latest week", async () => {
+  it("keeps the newest week and ignores rows attributed to another entity", async () => {
     vi.stubEnv("QLOO_API_KEY", "synthetic-test-key");
     const qloo = await fresh();
     mockFetch([
       route(() => true, () =>
-        json({ results: { trending: [{ date: "2026-10-08", population_percent_delta: 5 }, { date: "2026-10-01", population_percent_delta: 1 }] } }),
+        json({ results: { trending: [{ date: "2026-10-01", population_percent_delta: 1 }, { date: "2026-10-08", population_percent_delta: 5 }, { entity_id: "other", date: "2026-10-15", population_percent_delta: 9 }] } }),
       ),
     ]);
     const result = await qloo.rising(["only"], "2026-09-01", "2026-10-14", LIVE);
-    expect(result.data).toEqual([{ entityId: "only", percentDelta: 5, velocity: null, percentile: null }]);
+    expect(result.data).toEqual([{ entityId: "only", percentDelta: 5, velocity: null, percentile: null, windowChange: null, series: [] }]);
+  });
+
+  it("returns nothing for an empty series and fails only when every request fails", async () => {
+    vi.stubEnv("QLOO_API_KEY", "synthetic-test-key");
+    const qloo = await fresh();
+    mockFetch([route((u) => u.searchParams.get("signal.interests.entities") === "empty", () => json({ results: { trending: [] } })), route(() => true, () => json({}, 500))]);
+    expect(await qloo.rising(["empty", "broken"], "2026-09-01", "2026-10-14", LIVE)).toMatchObject({ mode: "live", data: [] });
+    expect(await qloo.rising(["broken"], "2026-09-01", "2026-10-14", LIVE)).toMatchObject({ mode: "fallback", data: [] });
   });
 });

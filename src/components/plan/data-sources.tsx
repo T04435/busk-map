@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { DataStatus } from "@/lib/plan-schema";
-import { SOURCES, type SourceId } from "@/lib/sources";
+import { QLOO_TEST_LABEL, SOURCES, type SourceId } from "@/lib/sources";
 
 const MODE_LABEL: Record<DataStatus["mode"], string> = {
   live: "Live",
@@ -23,7 +23,7 @@ const REASON_LABEL: Record<string, string> = {
 /** Every data source, its credit, licence link and how this plan used it. */
 export function DataSources({ status, showAi }: { status: DataStatus[]; showAi: boolean }) {
   const used = new Map(status.map((s) => [s.source, s]));
-  const ids: SourceId[] = ["qloo", "melbourne-pedestrian", "melbourne-busking", "ticketmaster", "lastfm", "open-meteo", "spotify", "openfreemap"];
+  const ids: SourceId[] = ["qloo", "melbourne-pedestrian", "melbourne-busking", "osm", "ticketmaster", "lastfm", "open-meteo", "spotify", "openfreemap"];
   if (showAi) ids.push("ai");
   return (
     <Card>
@@ -46,7 +46,7 @@ export function DataSources({ status, showAi }: { status: DataStatus[]; showAi: 
                 <span className="text-muted-foreground">({source.licence})</span>
                 {s && (
                   <Badge variant={s.mode === "fallback" ? "destructive" : s.mode === "synthetic" ? "secondary" : "outline"}>
-                    {MODE_LABEL[s.mode]}
+                    {s.source === "qloo" && s.mode === "synthetic" ? QLOO_TEST_LABEL : MODE_LABEL[s.mode]}
                     {s.reason ? `: ${REASON_LABEL[s.reason] ?? s.reason}` : ""}
                   </Badge>
                 )}

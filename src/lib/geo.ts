@@ -96,3 +96,80 @@ export function round(value: number, decimals: number): number {
   const factor = 10 ** decimals;
   return Math.round(value * factor) / factor;
 }
+
+/** Bounds of a geohash cell. */
+export function geohashBounds(hash: string): BBox {
+  const lat = [-90, 90];
+  const lon = [-180, 180];
+  let evenBit = true;
+  for (const char of hash) {
+    const value = GEOHASH_ALPHABET.indexOf(char);
+    if (value < 0) throw new Error(`Invalid geohash: ${hash}`);
+    for (let bit = 4; bit >= 0; bit--) {
+      const range = evenBit ? lon : lat;
+      const mid = (range[0] + range[1]) / 2;
+      if ((value >> bit) & 1) range[0] = mid;
+      else range[1] = mid;
+      evenBit = !evenBit;
+    }
+  }
+  return { south: lat[0], north: lat[1], west: lon[0], east: lon[1] };
+}
+
+export function geohashCenter(hash: string): LatLon {
+  const b = geohashBounds(hash);
+  return { lat: (b.south + b.north) / 2, lon: (b.west + b.east) / 2 };
+}
+
+/** Every geohash cell of the given precision that overlaps the box, west to east, south to north. */
+export function geohashesInBBox(box: BBox, precision: number): string[] {
+  const probe = geohashBounds(geohashEncode({ lat: box.south, lon: box.west }, precision));
+  const dLat = probe.north - probe.south;
+  const dLon = probe.east - probe.west;
+  const out: string[] = [];
+  for (let lat = probe.south + dLat / 2; lat - dLat / 2 < box.north; lat += dLat) {
+    for (let lon = probe.west + dLon / 2; lon - dLon / 2 < box.east; lon += dLon) {
+      out.push(geohashEncode({ lat, lon }, precision));
+    }
+  }
+  return [...new Set(out)];
+}
+
+/** Ray-casting point-in-polygon for a single ring of [lon, lat] pairs. */
+export function pointInRing({ lat, lon }: LatLon, ring: readonly (readonly [number, number])[]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+export type WktGeometry =
+  | { type: "point"; point: LatLon }
+  | { type: "polygon"; rings: [number, number][][] };
+
+/**
+ * Parse the WKT subset Qloo accepts for locations: POINT, POLYGON and
+ * MULTIPOLYGON (outer rings only). Longitude first. Null when unreadable.
+ */
+export function parseWkt(text: string): WktGeometry | null {
+  const value = text.trim();
+  const point = /^POINT\s*\(\s*(-?[\d.]+)\s+(-?[\d.]+)\s*\)$/i.exec(value);
+  if (point) return { type: "point", point: { lon: Number(point[1]), lat: Number(point[2]) } };
+  if (!/^(MULTI)?POLYGON\s*\(/i.test(value)) return null;
+  const rings: [number, number][][] = [];
+  for (const match of value.matchAll(/\(\s*([-\d.\s,]+?)\s*\)/g)) {
+    const ring = match[1].split(",").map((pair) => pair.trim().split(/\s+/).map(Number) as [number, number]);
+    if (ring.length < 3 || ring.some((p) => p.length !== 2 || p.some((n) => !Number.isFinite(n)))) return null;
+    rings.push(ring);
+  }
+  return rings.length > 0 ? { type: "polygon", rings } : null;
+}
+
+export function ringBBox(ring: readonly (readonly [number, number])[]): BBox {
+  const lats = ring.map((p) => p[1]);
+  const lons = ring.map((p) => p[0]);
+  return { south: Math.min(...lats), north: Math.max(...lats), west: Math.min(...lons), east: Math.max(...lons) };
+}

@@ -30,6 +30,13 @@ const flag = z
 export const envSchema = z.object({
   QLOO_API_KEY: optionalSecret,
   QLOO_API_BASE_URL: z.url().default("https://hackathon.api.qloo.com"),
+  /**
+   * Serve Qloo from the local mock (src/server/qloo-mock) even when a key is
+   * set. The mock is also used whenever QLOO_API_KEY is missing.
+   */
+  QLOO_MOCK: flag,
+  /** Expose the mock over HTTP at /api/_mock/qloo (always on outside production). */
+  QLOO_MOCK_ROUTE: flag,
   TICKETMASTER_API_KEY: optionalSecret,
   LASTFM_API_KEY: optionalSecret,
   SPOTIFY_CLIENT_ID: optionalSecret,
@@ -86,6 +93,18 @@ export function testSwitchesOf(env: Env) {
   };
 }
 
+export type QlooBackend = "live" | "mock";
+
+/** Live Qloo needs a key and no mock switch; everything else uses the local mock. */
+export function qlooBackendOf(env: Env, offline: boolean): QlooBackend {
+  return !offline && env.QLOO_API_KEY && !env.QLOO_MOCK ? "live" : "mock";
+}
+
+/** The HTTP mock route is for development: off in production unless explicitly enabled. */
+export function qlooMockRouteEnabledOf(env: Env): boolean {
+  return env.VERCEL_ENV !== "production" || env.QLOO_MOCK_ROUTE;
+}
+
 let cached: Env | undefined;
 
 /** The process environment, parsed once. */
@@ -97,6 +116,10 @@ export function env(): Env {
 /** Which providers have credentials. Booleans only: safe to log or render. */
 export function providerStatus(): ProviderStatus {
   return providerStatusOf(env());
+}
+
+export function qlooBackend(offline: boolean): QlooBackend {
+  return qlooBackendOf(env(), offline);
 }
 
 export function testSwitches() {

@@ -2,20 +2,25 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import type { z } from "zod";
 import { wktPoint, wktPolygon, type BBox, type LatLon } from "@/lib/geo";
-import { env } from "@/server/env";
+import { env, type QlooBackend } from "@/server/env";
 import { log } from "@/server/log";
+import { QLOO_MOCK_BASE_URL, qlooMockFetch } from "@/server/qloo-mock/fetch";
 import { AdapterError, fetchJson } from "../core";
 import { parseEntities, toEntity, toPlace } from "./normalize";
 import {
+  compareResponseSchema,
   demographicsResponseSchema,
   entitiesResponseSchema,
   heatmapResponseSchema,
   searchResponseSchema,
+  tagsResponseSchema,
   trendingResponseSchema,
   type CrowdProfile,
+  type GenreContrast,
   type HeatCell,
   type QlooEntity,
   type QlooPlace,
+  type TasteTag,
   type TrendRow,
 } from "./schema";
 
@@ -28,6 +33,11 @@ import {
  *
  * Qloo silently ignores invalid parameters, so an empty result is logged with
  * the parameter names we sent: that is usually the first sign of a bad one.
+ *
+ * Every cached call takes the backend ("live" or "mock") as its first
+ * argument, so cache entries from the local mock (src/server/qloo-mock) can
+ * never be served as live data once the key arrives. In mock mode the same
+ * code runs against an in-process fetch that implements Qloo's HTTP contract.
  */
 const TIMEOUT_MS = 8_000;
 export const MAX_TAKE = 50;
@@ -42,16 +52,33 @@ function toSearch(params: Params): URLSearchParams {
   return search;
 }
 
-export async function qlooGet<S extends z.ZodType>(path: string, params: Params, schema: S): Promise<z.infer<S>> {
+function target(backend: QlooBackend) {
+  if (backend === "mock") return { base: QLOO_MOCK_BASE_URL, apiKey: "mock-key", fetcher: qlooMockFetch };
   const { QLOO_API_KEY: apiKey, QLOO_API_BASE_URL: base } = env();
+  return { base, apiKey, fetcher: undefined };
+}
+
+export async function qlooGet<S extends z.ZodType>(backend: QlooBackend, path: string, params: Params, schema: S): Promise<z.infer<S>> {
+  const { base, apiKey, fetcher } = target(backend);
   if (!apiKey) throw new AdapterError("qloo", "missing_key", "Qloo key is not configured");
   const query = toSearch(params);
   return fetchJson(`${base}${path}?${query}`, {
     adapter: "qloo",
     schema,
     timeoutMs: TIMEOUT_MS,
+    fetcher,
     init: { headers: { "X-Api-Key": apiKey, Accept: "application/json" } },
   });
+}
+
+/** /search and /entities answer 404 "No results" when nothing matches (docs): that is not an outage. */
+async function orNotFound<T>(load: () => Promise<T>, empty: T): Promise<T> {
+  try {
+    return await load();
+  } catch (error) {
+    if (error instanceof AdapterError && error.kind === "not_found") return empty;
+    throw error;
+  }
 }
 
 export function logIfEmpty(path: string, params: Params, count: number) {
@@ -75,28 +102,28 @@ const ids = (list: readonly string[]) => list.join(",");
 // ---- Tool calls (spec.md, Agent design) ----------------------------------
 
 /** `/search` for one artist name. Returns the best match, or null. */
-export async function searchArtist(name: string): Promise<QlooEntity | null> {
+export async function searchArtist(backend: QlooBackend, name: string): Promise<QlooEntity | null> {
   "use cache: remote";
   cacheLife("days");
   cacheTag("qloo", "qloo:search");
   const params = { query: name, types: "urn:entity:artist", take: 3 };
-  const body = await qlooGet("/search", params, searchResponseSchema);
-  const [best] = listEntities("/search", params, body.results);
+  const results = await orNotFound(async () => (await qlooGet(backend, "/search", params, searchResponseSchema)).results, []);
+  const [best] = listEntities("/search", params, results);
   return best ? toEntity(best) : null;
 }
 
 /** `/entities` by Spotify artist id. */
-export async function entitiesBySpotifyIds(spotifyIds: string[]): Promise<QlooEntity[]> {
+export async function entitiesBySpotifyIds(backend: QlooBackend, spotifyIds: string[]): Promise<QlooEntity[]> {
   "use cache: remote";
   cacheLife("days");
   cacheTag("qloo", "qloo:entities");
   const params = { "external.spotify.ids": ids(spotifyIds) };
-  const body = await qlooGet("/entities", params, entitiesResponseSchema);
-  return listEntities("/entities", params, body.results).map(toEntity);
+  const results = await orNotFound(async () => (await qlooGet(backend, "/entities", params, entitiesResponseSchema)).results, []);
+  return listEntities("/entities", params, results).map(toEntity);
 }
 
 /** `urn:heatmap`: where in the area this taste concentrates. */
-export async function heatmap(entityIds: string[], area: BBox): Promise<HeatCell[]> {
+export async function heatmap(backend: QlooBackend, entityIds: string[], area: BBox): Promise<HeatCell[]> {
   "use cache: remote";
   cacheLife("days");
   cacheTag("qloo", "qloo:heatmap");
@@ -105,7 +132,7 @@ export async function heatmap(entityIds: string[], area: BBox): Promise<HeatCell
     "signal.interests.entities": ids(entityIds),
     "filter.location": wktPolygon(area),
   };
-  const body = await qlooGet("/v2/insights", params, heatmapResponseSchema);
+  const body = await qlooGet(backend, "/v2/insights", params, heatmapResponseSchema);
   logIfEmpty("/v2/insights", params, body.results.heatmap.length);
   return body.results.heatmap.map((cell) => ({
     lat: cell.location.latitude,
@@ -123,6 +150,7 @@ export async function heatmap(entityIds: string[], area: BBox): Promise<HeatCell
  * then checks opening hours per slot).
  */
 export async function places(
+  backend: QlooBackend,
   entityIds: string[],
   center: LatLon,
   radiusM: number,
@@ -139,14 +167,14 @@ export async function places(
     "signal.interests.entities": ids(entityIds),
     take: MAX_TAKE,
   };
-  const body = await qlooGet("/v2/insights", params, entitiesResponseSchema);
+  const body = await qlooGet(backend, "/v2/insights", params, entitiesResponseSchema);
   return listEntities("/v2/insights", params, body.results)
     .map(toPlace)
     .filter((p): p is QlooPlace => p !== null);
 }
 
 /** `urn:entity:artist` liked in the area by fans of these artists, with explanations. */
-export async function localArtists(entityIds: string[], area: BBox, take: number): Promise<QlooEntity[]> {
+export async function localArtists(backend: QlooBackend, entityIds: string[], area: BBox, take: number): Promise<QlooEntity[]> {
   "use cache: remote";
   cacheLife("days");
   cacheTag("qloo", "qloo:artists");
@@ -157,12 +185,12 @@ export async function localArtists(entityIds: string[], area: BBox, take: number
     "feature.explainability": true,
     take: Math.min(take, MAX_TAKE),
   };
-  const body = await qlooGet("/v2/insights", params, entitiesResponseSchema);
+  const body = await qlooGet(backend, "/v2/insights", params, entitiesResponseSchema);
   return listEntities("/v2/insights", params, body.results).map(toEntity);
 }
 
 /** Score specific artists for the crowd around one point (`filter.results.entities`). */
-export async function affinityAt(entityIds: string[], point: LatLon, radiusM: number): Promise<Record<string, number>> {
+export async function affinityAt(backend: QlooBackend, entityIds: string[], point: LatLon, radiusM: number): Promise<Record<string, number>> {
   "use cache: remote";
   cacheLife("days");
   cacheTag("qloo", "qloo:affinity");
@@ -173,55 +201,62 @@ export async function affinityAt(entityIds: string[], point: LatLon, radiusM: nu
     "signal.location.radius": radiusM,
     take: Math.min(entityIds.length, MAX_TAKE),
   };
-  const body = await qlooGet("/v2/insights", params, entitiesResponseSchema);
+  const body = await qlooGet(backend, "/v2/insights", params, entitiesResponseSchema);
   const entities = listEntities("/v2/insights", params, body.results);
   return Object.fromEntries(
     entities.filter((e) => e.query?.affinity !== undefined).map((e) => [e.entity_id, e.query!.affinity as number]),
   );
 }
 
-/** `/v2/trending`: weekly momentum for up to five artists. */
-export async function trending(entityIds: string[], startDate: string, endDate: string): Promise<TrendRow[]> {
+/**
+ * `/v2/trending` for one entity: weekly rows, newest first. The docs describe
+ * a single entity's series and the rows carry no entity id, so callers ask
+ * once per artist (see `trending`).
+ */
+export async function trendingFor(backend: QlooBackend, entityId: string, startDate: string, endDate: string): Promise<TrendRow | null> {
   "use cache: remote";
   cacheLife("days");
   cacheTag("qloo", "qloo:trending");
   const params = {
-    "signal.interests.entities": ids(entityIds.slice(0, 5)),
+    "signal.interests.entities": entityId,
     "filter.type": "urn:entity:artist",
     "filter.start_date": startDate,
     "filter.end_date": endDate,
   };
-  const body = await qlooGet("/v2/trending", params, trendingResponseSchema);
+  const body = await qlooGet(backend, "/v2/trending", params, trendingResponseSchema);
   logIfEmpty("/v2/trending", params, body.results.trending.length);
-  // Rows are weekly; keep the latest row per entity. A row without an entity id
-  // can only be attributed when we asked about a single entity.
-  const latest = new Map<string, { date: string; row: TrendRow }>();
-  for (const row of body.results.trending) {
-    const entityId = row.entity_id ?? (entityIds.length === 1 ? entityIds[0] : null);
-    if (!entityId) continue;
-    const date = row.date ?? "";
-    const previous = latest.get(entityId);
-    if (previous && previous.date > date) continue;
-    latest.set(entityId, {
-      date,
-      row: {
-        entityId,
-        percentDelta: row.population_percent_delta ?? null,
-        velocity: row.population_rank_velocity ?? row.velocity_fold_change ?? null,
-        percentile: row.population_percentile ?? null,
-      },
-    });
-  }
-  return [...latest.values()].map((entry) => entry.row);
+  const rows = body.results.trending.filter((row) => row.entity_id === undefined || row.entity_id === entityId);
+  const [latest] = [...rows].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  if (!latest) return null;
+  const oldest = rows.reduce((min, row) => ((row.date ?? "") < (min.date ?? "") ? row : min), latest);
+  const series = [...rows].sort((a, b) => (a.date ?? "").localeCompare(b.date ?? "")).flatMap((row) => (row.population_percentile === undefined ? [] : [row.population_percentile]));
+  return {
+    entityId,
+    percentDelta: latest.population_percent_delta ?? null,
+    velocity: latest.population_rank_velocity ?? latest.velocity_fold_change ?? null,
+    percentile: latest.population_percentile ?? null,
+    windowChange:
+      latest.population_percentile !== undefined && oldest.population_percentile !== undefined && oldest !== latest
+        ? Math.round((latest.population_percentile - oldest.population_percentile) * 100) / 100
+        : null,
+    series,
+  };
+}
+
+/** `/v2/trending` for up to five artists, one request each, in parallel. */
+export async function trending(backend: QlooBackend, entityIds: string[], startDate: string, endDate: string): Promise<TrendRow[]> {
+  const settled = await Promise.allSettled(entityIds.slice(0, 5).map((id) => trendingFor(backend, id, startDate, endDate)));
+  if (settled.length > 0 && settled.every((s) => s.status === "rejected")) throw (settled[0] as PromiseRejectedResult).reason;
+  return settled.flatMap((s) => (s.status === "fulfilled" && s.value ? [s.value] : []));
 }
 
 /** `urn:demographics`: the age and gender lean of fans of these artists. */
-export async function demographics(entityIds: string[]): Promise<CrowdProfile | null> {
+export async function demographics(backend: QlooBackend, entityIds: string[]): Promise<CrowdProfile | null> {
   "use cache: remote";
   cacheLife("days");
   cacheTag("qloo", "qloo:demographics");
   const params = { "filter.type": "urn:demographics", "signal.interests.entities": ids(entityIds) };
-  const body = await qlooGet("/v2/insights", params, demographicsResponseSchema);
+  const body = await qlooGet(backend, "/v2/insights", params, demographicsResponseSchema);
   logIfEmpty("/v2/insights", params, body.results.demographics.length);
   const rows = body.results.demographics;
   if (rows.length === 0) return null;
@@ -231,4 +266,51 @@ export async function demographics(entityIds: string[]): Promise<CrowdProfile | 
     return totals;
   };
   return { age: average("age"), gender: average("gender") };
+}
+
+/**
+ * `urn:tag` taste analysis: the music genres that characterise fans of these
+ * artists around a point (signal.location), strongest first.
+ */
+export async function crowdTags(backend: QlooBackend, entityIds: string[], point: LatLon, radiusM: number, take: number): Promise<TasteTag[]> {
+  "use cache: remote";
+  cacheLife("days");
+  cacheTag("qloo", "qloo:tags");
+  const params = {
+    "filter.type": "urn:tag",
+    "filter.tag.types": "urn:tag:genre:music",
+    "filter.parents.types": "urn:entity:artist",
+    "signal.interests.entities": ids(entityIds),
+    "signal.location": wktPoint(point),
+    "signal.location.radius": radiusM,
+    take: Math.min(take, MAX_TAKE),
+  };
+  const body = await qlooGet(backend, "/v2/insights", params, tagsResponseSchema);
+  logIfEmpty("/v2/insights", params, body.results.tags.length);
+  return body.results.tags.map((tag) => ({ id: tag.tag_id ?? tag.id ?? "", name: tag.name, affinity: tag.query?.affinity ?? null })).filter((t) => t.id);
+}
+
+/**
+ * `/v2/analysis/compare` by genre: how the performer's fans (a) differ from
+ * the crowd the city already gets (b). The response shape is not documented
+ * in detail; rows without both affinities are skipped.
+ */
+export async function compareGenres(backend: QlooBackend, groupA: string[], groupB: string[]): Promise<GenreContrast[]> {
+  "use cache: remote";
+  cacheLife("days");
+  cacheTag("qloo", "qloo:compare");
+  const params = {
+    "a.signal.interests.entities": ids(groupA),
+    "b.signal.interests.entities": ids(groupB),
+    "filter.type": "urn:entity:artist",
+    "filter.subtype": "urn:tag:genre",
+    take: 20,
+  };
+  const body = await qlooGet(backend, "/v2/analysis/compare", params, compareResponseSchema);
+  logIfEmpty("/v2/analysis/compare", params, body.results.length);
+  return body.results.flatMap((row) => {
+    const a = row.query?.a?.affinity;
+    const b = row.query?.b?.affinity;
+    return a === undefined || b === undefined ? [] : [{ id: row.tag_id ?? row.id ?? row.name, name: row.name, a, b }];
+  });
 }

@@ -1,10 +1,11 @@
 import { z } from "zod";
 
 /**
- * Qloo hackathon API response schemas, shaped from the docs in
- * research/rules-and-api.md. The key has not arrived yet, so these are
- * deliberately lenient (optional fields, unknown keys stripped) and MUST be
- * re-checked against live responses the day the key arrives.
+ * Qloo hackathon API response schemas, shaped from docs.qloo.com (checked
+ * 2026-10-15) and exercised against the local mock (src/server/qloo-mock).
+ * The key has not arrived yet, so these are deliberately lenient (optional
+ * fields, unknown keys stripped) and MUST be re-checked against live
+ * responses the day the key arrives.
  */
 
 const num = z.number().finite();
@@ -102,6 +103,42 @@ export const trendingResponseSchema = z.object({
   }),
 });
 
+/** `urn:tag` insights: `results.tags[]` with `tag_id` (docs: Taste Analysis). */
+export const tagsResponseSchema = z.object({
+  results: z.object({
+    tags: z.array(
+      z
+        .object({
+          tag_id: z.string().optional(),
+          id: z.string().optional(),
+          name: z.string(),
+          query: z.object({ affinity: num.optional() }).loose().optional(),
+        })
+        .loose(),
+    ),
+  }),
+});
+
+/**
+ * `/v2/analysis/compare`. The docs give no example; accept `results` as a list
+ * or as `{ tags }`, with per-group affinities under `query.a` / `query.b`.
+ */
+const compareRow = z
+  .object({
+    tag_id: z.string().optional(),
+    id: z.string().optional(),
+    name: z.string(),
+    query: z
+      .object({ a: z.object({ affinity: num.optional() }).loose().optional(), b: z.object({ affinity: num.optional() }).loose().optional() })
+      .loose()
+      .optional(),
+  })
+  .loose();
+
+export const compareResponseSchema = z.object({
+  results: z.union([z.array(compareRow), z.object({ tags: z.array(compareRow) }).transform((r) => r.tags)]),
+});
+
 // ---- Domain types the rest of the app uses ------------------------------
 
 export type Explanation = { entityId: string; name: string | null; score: number };
@@ -135,11 +172,19 @@ export type HeatCell = {
 
 export type TrendRow = {
   entityId: string;
-  /** Change in population percentile over the window (positive means rising). */
+  /** Week-over-week change in population percentile, in percent (positive means rising). */
   percentDelta: number | null;
   velocity: number | null;
   percentile: number | null;
+  /** Percentile points gained over the whole window (newest minus oldest week). */
+  windowChange?: number | null;
+  /** Weekly percentiles, oldest first. */
+  series?: number[];
 };
+
+export type TasteTag = { id: string; name: string; affinity: number | null };
+
+export type GenreContrast = { id: string; name: string; a: number; b: number };
 
 export type CrowdProfile = {
   age: Record<string, number>;

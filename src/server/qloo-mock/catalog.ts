@@ -245,30 +245,10 @@ export const CATALOG: CatalogArtist[] = ARTISTS.map((artist) => ({
 export const ARTIST_BY_ID = new Map(CATALOG.map((artist) => [artist.id, artist]));
 
 /**
- * An artist the catalogue doesn't know: Qloo's real graph has hundreds of
- * millions of entities, so the mock invents a deterministic profile instead of
- * returning nothing. The profile is derived from the id alone, so a later
- * insights call can recover it from `signal.interests.entities`.
+ * Profile for a mock artist id, or null for an id the catalogue doesn't hold.
+ * Like real Qloo, the mock knows nothing about artists outside its graph.
  */
-export function inventedProfile(id: string, name = "Unlisted artist"): CatalogArtist {
-  const keys = Object.keys(GENRES) as Genre[];
-  const first = keys[fnv1a(`g1:${id}`) % keys.length];
-  const second = keys[fnv1a(`g2:${id}`) % keys.length];
-  return {
-    name,
-    popularity: Math.round((0.3 + 0.5 * unit(`pop:${id}`)) * 1000) / 1000,
-    genres: first === second ? { [first]: 1 } : { [first]: 1, [second]: 0.5 },
-    id,
-    spotifyId: mockSpotifyId(name),
-  };
-}
-
-export function inventArtist(name: string): CatalogArtist {
-  return inventedProfile(mockId("artist", name), name.trim());
-}
-
-/** Profile for any mock artist id: curated, or invented from the id. */
 export function artistById(id: string): CatalogArtist | null {
   if (!isMockId(id)) return null;
-  return ARTIST_BY_ID.get(id.toUpperCase()) ?? inventedProfile(id.toUpperCase());
+  return ARTIST_BY_ID.get(id.toUpperCase()) ?? null;
 }

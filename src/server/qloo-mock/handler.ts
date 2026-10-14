@@ -40,7 +40,6 @@ import {
   artistById,
   fnv1a,
   genreTagId,
-  inventArtist,
   isMockId,
   mockId,
   normalizeName,
@@ -283,20 +282,19 @@ function genreTags(genres: GenreVector) {
 }
 
 function artistPayload(artist: CatalogArtist, query?: Record<string, unknown>) {
-  const curated = CATALOG.some((c) => c.id === artist.id);
   return {
     name: artist.name,
     entity_id: artist.id,
     type: "urn:entity",
     subtype: "urn:entity:artist",
     properties: {
-      short_description: curated ? "Musical artist (Qloo mock test entity)" : "Musical artist (Qloo mock: not in the curated test catalogue)",
+      short_description: "Musical artist (Qloo mock test entity)",
       akas: (artist.aka ?? []).map((value) => ({ value, languages: ["en"] })),
     },
     popularity: artist.popularity,
     tags: genreTags(artist.genres),
     ...(query ? { query } : {}),
-    disambiguation: curated ? (artist.local ? "Australian artist (mock)" : "Artist (mock)") : "Artist (mock, generated profile)",
+    disambiguation: artist.local ? "Australian artist (mock)" : "Artist (mock)",
     external: { spotify: [{ id: artist.spotifyId }] },
   };
 }
@@ -474,7 +472,7 @@ function artists(params: Params, key: string): Response {
   const popMax = params.number("filter.popularity.max");
   const inputIds = new Set(signals.entityIds);
 
-  // filter.results.entities may name artists outside the curated catalogue.
+  // Ids outside the catalogue are unknown to the mock, as they would be to Qloo.
   const pool: CatalogArtist[] = only.size
     ? [...only].flatMap((id) => {
         const artist = artistById(id);
@@ -590,10 +588,10 @@ function searchArtists(query: string): CatalogArtist[] {
   if (!q) return [];
   const names = (artist: CatalogArtist) => [artist.name, ...(artist.aka ?? [])].map(normalizeName);
   const exact = CATALOG.filter((artist) => names(artist).includes(q));
-  const partial = CATALOG.filter((artist) => !exact.includes(artist) && names(artist).some((n) => n.includes(q) || (q.length >= 4 && q.includes(n))));
-  const found = [...exact, ...partial];
-  // Qloo's graph knows far more artists than this catalogue: invent one rather than fail.
-  return found.length > 0 ? found : [inventArtist(query)];
+  // Partial matches need four characters, so "the" or "jo" don't match half the catalogue.
+  const partial = q.length < 4 ? [] : CATALOG.filter((artist) => !exact.includes(artist) && names(artist).some((n) => n.includes(q) || q.includes(n)));
+  // Like real Qloo, an artist outside the graph is no match (the caller answers 404 "No results").
+  return [...exact, ...partial];
 }
 
 function search(params: Params, key: string): Response {

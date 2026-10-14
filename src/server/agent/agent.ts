@@ -79,6 +79,11 @@ export async function runPlanAgent(
   // Qloo is required: check it before spending tokens.
   await ctx.artists();
   if (ctx.qlooFailed()) throw new QlooUnavailableError();
+  // With no artist matched there is no taste to explain: don't spend tokens.
+  if ((await ctx.entityIds()).length === 0) {
+    ctx.notes.push("Qloo couldn't match any of your artists, so the agent wasn't run and the reasons come from the data.");
+    return { plan: await assemblePlan(ctx, null), usage: null };
+  }
 
   const offline = ctx.adapters.offline;
   if (!offline && !providerStatus().aiGateway) {

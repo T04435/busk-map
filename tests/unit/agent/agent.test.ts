@@ -108,3 +108,36 @@ describe("plan agent (offline, mock model)", () => {
     expect(plan.notes.join(" ")).toMatch(/not configured/);
   });
 });
+
+describe("artists Qloo can't match", () => {
+  const withArtists = (artists: string[]) =>
+    planRequestSchema.parse({ ...request, performer: { ...request.performer, artists, songs: request.performer.songs.slice(0, 2) } });
+
+  it("plans with the matched artists and lists the unmatched ones", async () => {
+    mockFetch([]);
+    const { PlanContext, runPlanAgent } = await load();
+    const ctx = new PlanContext(withArtists(["Paul Kelly", "Zzyzx Unknown Busker"]), OFFLINE, "2026-10-15");
+    const { plan } = await runPlanAgent(ctx);
+    expect(plan.resolvedArtists).toEqual([
+      { query: "Paul Kelly", matched: "Paul Kelly" },
+      { query: "Zzyzx Unknown Busker", matched: null },
+    ]);
+    expect(plan.qlooFailed).toBe(false);
+    expect(plan.pitches).toHaveLength(3);
+    expect(plan.tasteCells.length).toBeGreaterThan(0);
+    expect(plan.explanations).toBe("ai");
+  });
+
+  it("explains, and spends no tokens, when no artist matched", async () => {
+    mockFetch([]);
+    const { PlanContext, runPlanAgent } = await load();
+    const ctx = new PlanContext(withArtists(["Zzyzx Unknown Busker", "Nobody Knows Us"]), OFFLINE, "2026-10-15");
+    const { plan, usage } = await runPlanAgent(ctx);
+    expect(usage).toBeNull();
+    expect(plan.qlooFailed).toBe(false);
+    expect(plan.resolvedArtists.every((a) => a.matched === null)).toBe(true);
+    expect(plan.tasteCells).toEqual([]);
+    expect(plan.explanations).toBe("template");
+    expect(plan.notes.join(" ")).toMatch(/couldn't match any of your artists/);
+  });
+});

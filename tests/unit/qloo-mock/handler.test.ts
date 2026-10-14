@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { wktPolygon } from "@/lib/geo";
-import { CATALOG } from "@/server/qloo-mock/catalog";
+import { CATALOG, mockId } from "@/server/qloo-mock/catalog";
 import { handleQlooMock } from "@/server/qloo-mock/handler";
 import { qlooMockFetch } from "@/server/qloo-mock/fetch";
 
@@ -71,12 +71,14 @@ describe("qloo mock: HTTP contract", () => {
 });
 
 describe("qloo mock: /search and /entities", () => {
-  it("finds catalogue artists by name and aka, and invents a profile for unknown names", async () => {
+  it("finds catalogue artists by name and aka, and answers 404 No results for unknown names", async () => {
     const exact = await call("/search", { query: "boy and bear", types: "urn:entity:artist" });
     expect(exact.body.results[0]).toMatchObject({ name: "Boy & Bear", subtype: "urn:entity:artist", entity_id: expect.stringMatching(/^4D4F434B-/) });
     expect(exact.body.results[0].tags[0]).toMatchObject({ type: "urn:tag:genre:music" });
-    const invented = await call("/search", { query: "Totally Unknown Busker", types: "urn:entity:artist" });
-    expect(invented.body.results[0]).toMatchObject({ name: "Totally Unknown Busker", disambiguation: "Artist (mock, generated profile)" });
+    expect(await call("/search", { query: "Totally Unknown Busker", types: "urn:entity:artist" })).toMatchObject({ status: 404, body: { message: "No results" } });
+    // Short queries don't partially match half the catalogue.
+    expect((await call("/search", { query: "the", types: "urn:entity:artist" })).status).toBe(404);
+    expect((await call("/search", { query: "Paul Kelly and the Coloured Girls", types: "urn:entity:artist" })).body.results[0].name).toBe("Paul Kelly");
     expect((await call("/search", {})).status).toBe(400);
     expect(await call("/search", { query: "zzzz-nothing", types: "urn:entity:place" })).toMatchObject({ status: 404, body: { message: "No results" } });
     expect((await call("/search", { query: "Queen Victoria Market", types: "urn:entity:place" })).body.results[0].subtype).toBe("urn:entity:place");
@@ -88,6 +90,7 @@ describe("qloo mock: /search and /entities", () => {
     expect((await call("/entities", { "external.spotify.ids": artist.spotifyId })).body.results[0].entity_id).toBe(artist.id);
     expect(await call("/entities", {})).toMatchObject({ status: 400, body: { message: "entity_ids must be specified." } });
     expect((await call("/entities", { "external.spotify.ids": "nope" })).status).toBe(404);
+    expect((await call("/entities", { entity_ids: mockId("artist", "Not In The Catalogue") })).status).toBe(404);
   });
 });
 

@@ -101,7 +101,7 @@ export function CrowdPanel({ crowd, resolved, topPitch }: { crowd: Plan["crowd"]
             Your fans skew {list(ages.map((a) => AGE_LABEL[a.band] ?? a.band))} (Qloo demographics): pick songs and banter to suit.
           </p>
         )}
-        {unmatched.length > 0 && <p className="text-muted-foreground">Not found in Qloo: {unmatched.join(", ")}.</p>}
+        {unmatched.length > 0 && <p className="text-muted-foreground">Qloo couldn&apos;t match: {unmatched.join(", ")}.</p>}
       </CardContent>
     </Card>
   );

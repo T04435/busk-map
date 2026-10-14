@@ -11,8 +11,9 @@ import * as qloo from "@/server/adapters/qloo";
 import { getSongs } from "@/server/adapters/songs";
 import { getWeather } from "@/server/adapters/weather";
 import { CITIES } from "@/server/cities";
+import { PUBLIC_SPOTS, USUAL_HOTSPOTS } from "@/server/data/spots";
 import {
-  buildCandidates,
+  buildCandidatesWithFunnel,
   buildSetlist,
   learnThese,
   normalizeWeights,
@@ -31,6 +32,9 @@ export const PITCH_CROWD_RADIUS_M = 400;
 export const LOCAL_ARTISTS_TAKE = 20;
 export const TRENDING_WEEKS = 6;
 export const WIDEN_FACTOR = 2;
+/** Radius of "the crowd" at a pitch for genre analysis, and around the busiest hotspot for the contrast. */
+export const CROWD_RADIUS_M = 400;
+export const HOTSPOT_CROWD_TAKE = 10;
 
 function widen(box: BBox, factor: number): BBox {
   const dLat = ((box.north - box.south) * (factor - 1)) / 2;
@@ -189,9 +193,59 @@ export class PlanContext {
 
   // ---- Scoring ------------------------------------------------------------
 
-  async candidates() {
-    const [pitchData, footfall] = await Promise.all([this.pitchData(), this.footfall()]);
-    return buildCandidates(pitchData.sites, pitchData.zones, footfall.sensors, this.request.permit);
+  /** Candidates from the data: top taste cells snapped to public spots and sensors, plus council sites, legality-filtered. */
+  candidates() {
+    return this.once("candidates", async () => {
+      const [pitchData, footfall, cells] = await Promise.all([this.pitchData(), this.footfall(), this.tasteCells()]);
+      if (this.statuses.get("pitches")?.mode === "fallback") {
+        // Without the council's layers nothing can be checked against the rules: recommend nothing.
+        this.notes.push("The council's busking rules are unavailable right now, so Busk Map can't check which spots are allowed. Try again later.");
+        return { candidates: [], funnel: null };
+      }
+      return buildCandidatesWithFunnel({
+        sites: pitchData.sites,
+        zones: pitchData.zones,
+        sensors: footfall.sensors,
+        spots: PUBLIC_SPOTS,
+        cells,
+        hotspots: USUAL_HOTSPOTS,
+        permit: this.request.permit,
+      });
+    });
+  }
+
+  /** Genres that characterise the crowd around a point (Qloo urn:tag). */
+  async crowdGenres(point: { lat: number; lon: number }) {
+    const ids = await this.entityIds();
+    if (ids.length === 0) return [];
+    return this.track(`genres:${point.lat.toFixed(4)},${point.lon.toFixed(4)}`, () => qloo.crowdTags(ids, point, CROWD_RADIUS_M, 6, this.adapters));
+  }
+
+  /**
+   * What the crowd at the city's busiest busking hotspot likes, with no
+   * performer signal: the "usual crowd" the performer's fans are compared with.
+   */
+  hotspotCrowd() {
+    const [hotspot] = USUAL_HOTSPOTS;
+    const d = 0.004;
+    const box = { south: hotspot.lat - d, north: hotspot.lat + d, west: hotspot.lon - d, east: hotspot.lon + d };
+    return this.track("hotspotCrowd", () => qloo.localArtists([], box, HOTSPOT_CROWD_TAKE, this.adapters)).then((artists) => ({ hotspot: hotspot.name, artists }));
+  }
+
+  /** How the performer's fans differ from the usual hotspot crowd, by genre (Qloo compare). */
+  contrast() {
+    return this.once("contrast", async () => {
+      const [ids, crowd] = await Promise.all([this.entityIds(), this.hotspotCrowd()]);
+      if (ids.length === 0 || crowd.artists.length === 0) return null;
+      const rows = await this.track("compare", () => qloo.compareGenres(ids, crowd.artists.map((a) => a.id), this.adapters));
+      if (rows.length === 0) return null;
+      const byDelta = [...rows].sort((a, b) => b.a - b.b - (a.a - a.b));
+      return {
+        hotspot: crowd.hotspot,
+        more: byDelta.filter((r) => r.a - r.b >= 0.15).slice(0, 3).map((r) => r.name),
+        less: byDelta.reverse().filter((r) => r.b - r.a >= 0.15).slice(0, 3).map((r) => r.name),
+      };
+    });
   }
 
   async scoreInputs(): Promise<ScoreInputs> {
@@ -219,9 +273,13 @@ export class PlanContext {
 
   ranked(): Promise<ScoredPitch[]> {
     return this.once("ranked", async () => {
-      const [candidates, inputs] = await Promise.all([this.candidates(), this.scoreInputs()]);
+      const [{ candidates }, inputs] = await Promise.all([this.candidates(), this.scoreInputs()]);
       return rankPitches(candidates, inputs, this.weights);
     });
+  }
+
+  async funnel() {
+    return (await this.candidates()).funnel;
   }
 
   async topPitches(): Promise<ScoredPitch[]> {

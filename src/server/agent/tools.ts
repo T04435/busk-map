@@ -89,15 +89,20 @@ export function createTools(ctx: PlanContext) {
     }),
 
     busking_rules: tool({
-      description: "Legal candidate pitches for the performer's permit, from the council's busking layers.",
+      description:
+        "Candidate pitches from the data: the performer's top Qloo taste cells snapped to public spaces and sensor footpaths, plus council sites, filtered by the council's busking layers for the performer's permit.",
       inputSchema: noInput,
       execute: async () => {
-        const candidates = await ctx.candidates();
+        const { candidates, funnel } = await ctx.candidates();
         const designated = candidates.filter((c) => c.kind === "designated").length;
+        const usual = candidates.filter((c) => c.usualSpot).length;
         return {
-          summary: `${candidates.length} candidate pitches (${designated} designated sites)`,
+          summary: funnel
+            ? `${candidates.length} legal candidates from ${funnel.topCells} top taste cells (${designated} council sites, ${usual} at well-known hotspots; ${funnel.excluded} ruled out by the rules)`
+            : "Busking rules unavailable: no pitch can be checked",
+          funnel,
           designated,
-          footpaths: candidates.length - designated,
+          offTheUsualCircuit: candidates.length - usual,
           permit: ctx.request.permit,
         };
       },
@@ -186,7 +191,11 @@ export function createTools(ctx: PlanContext) {
             name: p.name,
             score: p.score,
             kind: p.kind,
-            factors: { taste: r2(p.factors.taste), footfall: r2(p.factors.footfall), places: r2(p.factors.places), events: r2(p.factors.events), weatherPenalty: r2(p.factors.weatherPenalty) },
+            discovery: p.discovery,
+            usualSpot: p.usualSpot,
+            tasteCellRank: p.cell?.rank ?? null,
+            factors: { taste: r2(p.factors.taste), footfall: r2(p.factors.footfall), places: r2(p.factors.places), events: r2(p.factors.events), weatherPenalty: r2(p.factors.weatherPenalty), discovery: r2(p.factors.discovery) },
+            footfallSource: p.footfallSource,
             sensor: p.evidence.sensor,
             nearbyPlaces: p.evidence.places.slice(0, 3).map((pl) => pl.name),
             events: p.evidence.events.map((e) => ({ name: e.name, moment: e.moment, endEstimated: e.endEstimated })),

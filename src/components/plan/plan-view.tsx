@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ComparePanel } from "@/components/compare/compare-panel";
-import { PitchCard } from "@/components/pitch-card/pitch-card";
+import { MapLegend } from "@/components/map/map-legend";
+import { DiscoveryBadge, PitchCard } from "@/components/pitch-card/pitch-card";
 import { SetlistPanel } from "@/components/setlist/setlist-panel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -187,6 +188,13 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p>{plan.summary}</p>
+          {plan.funnel && plan.funnel.topCells > 0 && (
+            <p className="text-muted-foreground" data-testid="plan-funnel">
+              How this plan was found: Qloo mapped your taste over {plan.funnel.cells} areas of the city. Your top {plan.funnel.topCells} areas gave{" "}
+              {plan.funnel.considered} public spaces, footpaths and council sites; the council&apos;s busking rules ruled out {plan.funnel.excluded},
+              and {plan.funnel.candidates} were scored on foot traffic, nearby places, events and weather for your slot.
+            </p>
+          )}
           {plan.notes.length > 0 && (
             <ul className="list-disc pl-5 text-muted-foreground">
               {plan.notes.map((note) => (
@@ -211,8 +219,11 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
         </Alert>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-          <div className="h-[28rem]">
-            <PlanMap plan={plan} center={center} selectedId={selected?.id ?? null} onSelect={select} />
+          <div className="space-y-2">
+            <div className="h-[22rem] sm:h-[28rem]">
+              <PlanMap plan={plan} center={center} selectedId={selected?.id ?? null} onSelect={select} />
+            </div>
+            <MapLegend testData={plan.qlooMode === "synthetic"} />
           </div>
           <section aria-label="Pitches" className="space-y-2">
             <h2 className="text-lg font-semibold">Top pitches</h2>
@@ -223,12 +234,16 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
                     variant={pitch.id === selected?.id ? "default" : "outline"}
                     className="h-auto w-full justify-between whitespace-normal text-left"
                     aria-pressed={pitch.id === selected?.id}
+                    data-pitch-name={pitch.name}
                     onClick={() => select(pitch.id)}
                   >
-                    <span>
-                      {i + 1}. {pitch.name}
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span>
+                        {i + 1}. {pitch.name}
+                      </span>
+                      <DiscoveryBadge discovery={pitch.discovery} className="border-current bg-transparent text-current" />
                     </span>
-                    <span>{pitch.score}/100</span>
+                    <span className="shrink-0">{pitch.score}/100</span>
                   </Button>
                 </li>
               ))}
@@ -239,7 +254,10 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
                 <ul className="mt-2 space-y-1">
                   {plan.others.map((p) => (
                     <li key={p.id} className="flex justify-between gap-2">
-                      <span>{p.name}</span>
+                      <span>
+                        {p.name}
+                        {p.discovery === "hidden-gem" ? " · hidden gem" : p.discovery === "usual" ? " · usual spot" : ""}
+                      </span>
                       <span className="text-muted-foreground">{p.score}/100</span>
                     </li>
                   ))}
@@ -258,7 +276,7 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <CrowdPanel crowd={plan.crowd} resolved={plan.resolvedArtists} />
+        <CrowdPanel crowd={plan.crowd} resolved={plan.resolvedArtists} topPitch={plan.pitches[0]?.name ?? null} />
         <ComparePanel request={request} />
       </div>
 

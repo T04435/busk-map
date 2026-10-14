@@ -3,7 +3,7 @@ import { DEFAULT_WEIGHTS, isUnavailable, scoreWeek, selectSessions, typicalForSl
 import type { Candidate, TypicalSensor, WeekCell, WeekDay } from "@/server/scoring";
 
 const here = { lat: -37.815, lon: 144.965 };
-const candidate: Candidate = { id: "c1", name: "Pitch", ...here, kind: "footpath", amplification: "allowed", permit: "general", rules: "", rulesUrl: null, cautions: [] };
+const candidate: Candidate = { id: "c1", name: "Pitch", ...here, kind: "footpath", origin: "taste", cell: null, usualSpot: null, amplification: "allowed", permit: "general", rules: "", rulesUrl: null, cautions: [] };
 const sensor: TypicalSensor = {
   id: 1,
   name: "S",

@@ -3,6 +3,7 @@ import type { Weights } from "./types";
 /**
  * Default weights (shown in the UI). Score =
  *   Σ wᵢ·factorᵢ / Σ wᵢ   over the factors we have data for
+ *   + w_discovery · discovery bonus (a strong hidden gem's taste fit)
  *   − w_weather · weather penalty
  * clamped to 0–1. A missing source drops out of both sums, so it lowers
  * precision without dragging the score down.
@@ -13,6 +14,7 @@ export const DEFAULT_WEIGHTS: Weights = {
   places: 0.2,
   events: 0.15,
   weather: 0.3,
+  discovery: 0.08,
 };
 
 export const WEIGHT_LABELS: Record<keyof Weights, string> = {
@@ -21,6 +23,7 @@ export const WEIGHT_LABELS: Record<keyof Weights, string> = {
   places: "Busy places open nearby (Qloo)",
   events: "Event crowds arriving or leaving (Ticketmaster)",
   weather: "Weather penalty (Open-Meteo)",
+  discovery: "Discovery bonus: strong taste fit off the usual busking spots",
 };
 
 /** Clamp each weight to 0–1, filling gaps from the defaults. */

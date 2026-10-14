@@ -30,7 +30,17 @@ export type ZoneInput = { id: string; kind: "unamplified" | "no-busking"; lines:
 
 export type SensorInput = LatLon & { id: number; name: string; avgHourly: number | null };
 
-export type HeatCellInput = LatLon & { affinity: number };
+export type HeatCellInput = LatLon & {
+  affinity: number;
+  /** Qloo's popularity for the cell (0–1): the last-resort footfall proxy. */
+  popularity?: number | null;
+};
+
+/** A walkable public spot (OpenStreetMap-derived), a candidate pitch location. */
+export type SpotInput = LatLon & { id: string; name: string; kind: string };
+
+/** A well-known busking hotspot: pitches near one are "usual spots". */
+export type HotspotInput = LatLon & { name: string };
 
 export type PlaceInput = LatLon & {
   id: string;
@@ -60,8 +70,17 @@ export type WeatherHourInput = {
 export type Candidate = LatLon & {
   id: string;
   name: string;
-  /** A council-designated site, or a footpath under the general permit near a sensor. */
-  kind: "designated" | "footpath";
+  /**
+   * A council-designated site, a public space (square, laneway, promenade…)
+   * or a footpath at a pedestrian sensor, both under the general permit.
+   */
+  kind: "designated" | "public-space" | "footpath";
+  /** Why it is a candidate: a top Qloo taste cell, a council site, or the no-taste fallback. */
+  origin: "taste" | "council" | "fallback";
+  /** The taste cell it was snapped from (origin "taste"). */
+  cell: { lat: number; lon: number; affinity: number; rank: number } | null;
+  /** The well-known hotspot it sits at, or null when it is off the usual circuit. */
+  usualSpot: string | null;
   amplification: "allowed" | "unamplified-zone";
   permit: PermitCategory;
   rules: string;
@@ -72,6 +91,14 @@ export type Candidate = LatLon & {
 
 export type FactorName = "taste" | "footfall" | "places" | "events";
 
-export type Weights = Record<FactorName | "weather", number>;
+export type Weights = Record<FactorName | "weather" | "discovery", number>;
 
-export type Factors = Record<FactorName, number | null> & { weatherPenalty: number | null };
+export type Factors = Record<FactorName, number | null> & {
+  weatherPenalty: number | null;
+  /** Hidden-gem bonus, 0–1: the taste fit of a strong pitch off the usual circuit, else 0. */
+  discovery: number;
+};
+
+export type FootfallSource = "sensor" | "nearby-sensors" | "qloo-popularity";
+
+export type Discovery = "hidden-gem" | "usual" | null;

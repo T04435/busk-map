@@ -6,6 +6,7 @@ const LABELS: Record<keyof Plan["weights"], string> = {
   footfall: "Foot traffic for the slot (city sensors)",
   places: "Busy places open nearby (Qloo)",
   events: "Event crowds arriving or leaving (Ticketmaster)",
+  discovery: "Discovery bonus: hidden gems with a strong taste fit",
   weather: "Weather penalty (Open-Meteo)",
 };
 
@@ -18,7 +19,9 @@ export function WeightsPanel({ weights }: { weights: Plan["weights"] }) {
           <h2>How pitches are scored</h2>
         </CardTitle>
         <CardDescription>
-          A weighted average of the factors with data, minus the weather penalty. Missing sources drop out instead of counting as zero.
+          Candidates come from your top Qloo taste cells, snapped to public spaces and checked against the council&apos;s busking rules. Each
+          is scored as a weighted average of the factors with data, plus a small bonus for hidden gems, minus the weather penalty. Missing
+          sources drop out instead of counting as zero.
         </CardDescription>
       </CardHeader>
       <CardContent>

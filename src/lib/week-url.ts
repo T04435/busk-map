@@ -5,6 +5,7 @@
  * `off` lists unavailable slots by date and start hour (3-hour slots).
  */
 import { findExample } from "./examples";
+import { parseWeightsParam, weightsParam } from "./weights-url";
 import { weekRequestSchema, type WeekRequest } from "./week-schema";
 
 type Params = Record<string, string | string[] | undefined>;
@@ -36,7 +37,6 @@ export function parseWeekParams(params: Params, today: string): ParsedWeekUrl {
     const startHour = Number(hour);
     return Number.isInteger(startHour) ? [{ date, startHour, endHour: Math.min(24, startHour + WEEK_SLOT_HOURS) }] : [];
   });
-  const weights = first(params.w)?.split(",").map(Number);
   const parsed = weekRequestSchema.safeParse({
     city: first(params.city) ?? "melbourne",
     permit: first(params.permit) ?? "general",
@@ -47,10 +47,7 @@ export function parseWeekParams(params: Params, today: string): ParsedWeekUrl {
       maxPerDay: first(params.perDay) ? Number(first(params.perDay)) : undefined,
       unavailable,
     },
-    weights:
-      weights && weights.length === 5 && weights.every(Number.isFinite)
-        ? { taste: weights[0], footfall: weights[1], places: weights[2], events: weights[3], weather: weights[4] }
-        : undefined,
+    weights: parseWeightsParam(first(params.w)),
   });
   if (!parsed.success) {
     const fields = [...new Set(parsed.error.issues.map((i) => i.path.join(".")))];
@@ -75,8 +72,7 @@ export function weekSearchParams(request: WeekRequest, exampleId: string | null)
   params.set("max", String(request.limits.maxSessions));
   params.set("perDay", String(request.limits.maxPerDay));
   if (request.limits.unavailable.length) params.set("off", request.limits.unavailable.map((u) => `${u.date}@${u.startHour}`).join("|"));
-  const w = request.weights;
-  const values = w ? [w.taste, w.footfall, w.places, w.events, w.weather] : [];
-  if (values.length === 5 && values.every((v) => typeof v === "number")) params.set("w", values.join(","));
+  const w = weightsParam(request.weights);
+  if (w) params.set("w", w);
   return params;
 }

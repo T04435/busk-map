@@ -23,6 +23,7 @@ export const weightsSchema = z
     places: z.number().min(0).max(1),
     events: z.number().min(0).max(1),
     weather: z.number().min(0).max(1),
+    discovery: z.number().min(0).max(1),
   })
   .partial();
 
@@ -52,12 +53,23 @@ export const dataStatusSchema = z.object({
 
 const factorValue = z.number().min(0).max(1).nullable();
 
+export const PITCH_KINDS = ["designated", "public-space", "footpath"] as const;
+export const discoverySchema = z.enum(["hidden-gem", "usual"]).nullable();
+
 export const planPitchSchema = z.object({
   id: z.string(),
   name: z.string(),
   lat: z.number(),
   lon: z.number(),
-  kind: z.enum(["designated", "footpath"]),
+  kind: z.enum(PITCH_KINDS),
+  /** Why it was a candidate: a top Qloo taste cell, a council site, or the no-taste fallback. */
+  origin: z.enum(["taste", "council", "fallback"]),
+  /** Rank of the Qloo taste cell it came from (1 = the performer's strongest area). */
+  cellRank: z.number().int().nullable(),
+  discovery: discoverySchema,
+  /** The well-known busking hotspot it sits at, if any. */
+  usualSpot: z.string().nullable(),
+  footfallSource: z.enum(["sensor", "nearby-sensors", "qloo-popularity"]).nullable(),
   amplification: z.enum(["allowed", "unamplified-zone"]),
   rules: z.string(),
   rulesUrl: z.string().nullable(),
@@ -69,10 +81,12 @@ export const planPitchSchema = z.object({
     places: factorValue,
     events: factorValue,
     weatherPenalty: factorValue,
+    discovery: z.number().min(0).max(1),
   }),
   why: z.string(),
   whySource: z.enum(["ai", "template"]),
   evidence: z.object({
+    /** With footfallSource "nearby-sensors", avgHourly is the estimate and name the nearest sensor. */
     sensor: z.object({ name: z.string(), avgHourly: z.number() }).nullable(),
     places: z.array(z.object({ name: z.string(), distanceM: z.number(), popularity: z.number().nullable(), open: z.enum(["open", "unknown"]) })),
     events: z.array(
@@ -113,12 +127,37 @@ export const planSchema = z.object({
   explanations: z.enum(["ai", "template"]),
   summary: z.string(),
   notes: z.array(z.string()),
-  weights: z.object({ taste: z.number(), footfall: z.number(), places: z.number(), events: z.number(), weather: z.number() }),
+  weights: z.object({ taste: z.number(), footfall: z.number(), places: z.number(), events: z.number(), weather: z.number(), discovery: z.number() }),
   pitches: z.array(planPitchSchema).max(3),
-  others: z.array(z.object({ id: z.string(), name: z.string(), lat: z.number(), lon: z.number(), score: z.number(), kind: z.enum(["designated", "footpath"]) })),
-  tasteCells: z.array(z.object({ lat: z.number(), lon: z.number(), affinity: z.number().min(0).max(1) })),
+  others: z.array(z.object({ id: z.string(), name: z.string(), lat: z.number(), lon: z.number(), score: z.number(), kind: z.enum(PITCH_KINDS), discovery: discoverySchema })),
+  /** How the data narrowed down to the pitches (see scoring/candidates.ts). */
+  funnel: z
+    .object({ cells: z.number().int(), topCells: z.number().int(), considered: z.number().int(), excluded: z.number().int(), candidates: z.number().int() })
+    .nullable()
+    .default(null),
+  /** Qloo heatmap cells, affinity relative to the best cell; geohash for drawing the cell. */
+  tasteCells: z.array(z.object({ lat: z.number(), lon: z.number(), affinity: z.number().min(0).max(1), geohash: z.string().nullable() })),
   crowd: z.object({
-    localArtists: z.array(z.object({ name: z.string(), affinity: z.number().nullable(), because: z.array(z.string()) })),
+    localArtists: z.array(
+      z.object({
+        name: z.string(),
+        affinity: z.number().nullable(),
+        because: z.array(z.string()),
+        /** Percentile points gained over the trending window (Qloo trending), when known. */
+        trend: z.number().nullable().default(null),
+      }),
+    ),
+    /** Genres that characterise the crowd at the top pitch (Qloo urn:tag). */
+    genres: z.array(z.object({ name: z.string(), affinity: z.number().nullable() })).default([]),
+    /** How the performer's fans differ from the crowd the city centre already likes (Qloo compare). */
+    contrast: z.object({ hotspot: z.string(), more: z.array(z.string()), less: z.array(z.string()) }).nullable().default(null),
+    /** Age and gender lean of the performer's fans (Qloo demographics); positive is above average. */
+    demographics: z
+      .object({ age: z.array(z.object({ band: z.string(), lean: z.number() })), gender: z.array(z.object({ band: z.string(), lean: z.number() })) })
+      .nullable()
+      .default(null),
+    /** Which of the performer's artists drove the crowd's picks most (aggregate of explainability). */
+    drivers: z.array(z.object({ name: z.string(), share: z.number() })).default([]),
   }),
   learnThese: z.array(
     z.object({

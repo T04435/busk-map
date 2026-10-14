@@ -78,8 +78,8 @@ describe("week planner (offline)", () => {
     expect(plan.days.every((d) => !d.hasForecast)).toBe(true);
     expect(plan.explanations).toBe("template");
     expect(plan.notes.join(" ")).toMatch(/not configured/);
-    // Without sensors, only designated sites remain, so sessions may still be found.
-    expect(plan.sessions.every((s) => s.pitch.kind === "designated")).toBe(true);
+    // Without sensors, Qloo's area popularity stands in for foot traffic, so sessions are still found.
+    expect(plan.sessions.length).toBeGreaterThan(0);
   });
 
   it("returns no sessions when the rules are unavailable", async () => {
@@ -87,6 +87,7 @@ describe("week planner (offline)", () => {
     const plan = await buildWeekPlan(request, { offline: true, faults: ["pitches", "footfall"] }, "2026-10-15", false, now);
     expect(plan.sessions).toEqual([]);
     expect(plan.summary).toMatch(/No session/);
+    expect(plan.notes.join(" ")).toMatch(/busking rules are unavailable/);
   });
 });
 

@@ -72,9 +72,18 @@ describe("plan agent (offline, mock model)", () => {
     expect(plan.footfallLevel).toBe("unavailable");
     expect(plan.weather).toBeNull();
     expect(plan.pitches.length).toBeGreaterThan(0);
-    // Without sensors, only designated sites remain.
-    expect(plan.pitches.every((p) => p.kind === "designated")).toBe(true);
+    // Without sensors, busyness falls back to Qloo's area popularity.
+    expect(plan.pitches.every((p) => p.footfallSource !== "sensor" && p.footfallSource !== "nearby-sensors")).toBe(true);
     expect(plan.dataStatus.find((s) => s.adapter === "footfall")).toMatchObject({ mode: "fallback", reason: "fault_injected" });
+  });
+
+  it("recommends nothing when the busking rules are unavailable", async () => {
+    const { PlanContext, assemblePlan } = await load();
+    const ctx = new PlanContext(request, { offline: true, faults: ["pitches"] }, "2026-10-15");
+    const plan = await assemblePlan(ctx, null);
+    expect(plan.pitches).toEqual([]);
+    expect(plan.funnel).toBeNull();
+    expect(plan.notes.join(" ")).toMatch(/busking rules are unavailable/);
   });
 
   it("completes with template explanations when the gateway is not configured", async () => {

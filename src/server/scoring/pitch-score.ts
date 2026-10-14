@@ -2,9 +2,11 @@ import { distanceM, type LatLon } from "@/lib/geo";
 import { openDuring } from "./hours";
 import type {
   Candidate,
+  Discovery,
   EventInput,
   FactorName,
   Factors,
+  FootfallSource,
   HeatCellInput,
   PlaceInput,
   SensorInput,
@@ -14,8 +16,18 @@ import type {
 
 // ---- Radii and constants (documented in the UI's "how we score") ----------
 
-export const TASTE_RADIUS_M = 600;
+/** Cells within this distance inform a pitch's taste (geohash-6 cells are about 600 × 1,000 m). */
+export const TASTE_RADIUS_M = 900;
 export const FOOTFALL_RADIUS_M = 250;
+/** Sensors within this distance give an estimate when none is close enough to measure the pitch. */
+export const FOOTFALL_ESTIMATE_RADIUS_M = 600;
+/** Estimates count for a little less than a sensor at the pitch. */
+export const FOOTFALL_ESTIMATE_DISCOUNT = 0.9;
+export const FOOTFALL_PROXY_DISCOUNT = 0.8;
+/** A pitch off the usual circuit with at least this taste fit is a hidden gem. */
+export const HIDDEN_GEM_MIN_TASTE = 0.6;
+/** ...and earns the discovery bonus from this fit up. */
+export const DISCOVERY_BONUS_MIN_TASTE = 0.75;
 export const PLACES_RADIUS_M = 250;
 export const EVENTS_RADIUS_M = 800;
 /** Crowds arrive in the hour before an event and leave within 45 minutes of the end. */
@@ -27,52 +39,83 @@ export const PLACES_SATURATION = 1.5;
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 
 /**
- * Taste affinity near a point, relative to the best cell in the city (so the
- * strongest area scores 1). Inverse-distance weighted over cells within the
- * radius; null when there are no cells.
+ * Taste affinity near a point, scaled between the city's median cell (0) and
+ * its best cell (1), so the performer's strong areas stand apart: Qloo's
+ * heatmap affinity is percentile-like, which on its own barely separates the
+ * top cells. Inverse-square-distance weighted over cells within the radius,
+ * so the cell a pitch sits in dominates; null when there are no cells.
  */
 export function tasteFactor(point: LatLon, cells: HeatCellInput[]): number | null {
   if (cells.length === 0) return null;
-  const max = Math.max(...cells.map((c) => c.affinity));
-  if (max <= 0) return 0;
+  const sorted = cells.map((c) => c.affinity).sort((a, b) => a - b);
+  const max = sorted[sorted.length - 1];
+  const floor = cells.length >= 4 ? sorted[Math.floor(sorted.length / 2)] : 0;
+  if (max <= floor) return max > 0 ? 1 : 0;
   let weighted = 0;
   let total = 0;
   for (const cell of cells) {
     const d = distanceM(point, cell);
     if (d > TASTE_RADIUS_M) continue;
-    const w = 1 / Math.max(d, 50);
+    const w = 1 / Math.max(d, 100) ** 2;
     weighted += w * cell.affinity;
     total += w;
   }
-  return total === 0 ? 0 : clamp01(weighted / total / max);
+  return total === 0 ? 0 : clamp01((weighted / total - floor) / (max - floor));
 }
 
 /**
- * Foot traffic for the slot at the nearest sensor within the radius, on a log
- * scale relative to the busiest sensor in the slot, or to `reference` when
- * slots must be comparable (the week planner passes the week's busiest).
- * Null when no sensor is close enough (the weight then drops out rather than
- * scoring zero).
+ * Foot traffic for the slot, on a log scale relative to the busiest sensor in
+ * the slot, or to `reference` when slots must be comparable (the week planner
+ * passes the week's busiest). In order of preference:
+ * - "sensor": the nearest sensor within FOOTFALL_RADIUS_M;
+ * - "nearby-sensors": an inverse-distance estimate from sensors within
+ *   FOOTFALL_ESTIMATE_RADIUS_M, discounted;
+ * - "qloo-popularity": the Qloo heatmap's popularity for the nearest cell,
+ *   discounted (the global baseline in spec.md);
+ * - null when there is nothing (the weight then drops out rather than scoring zero).
  */
 export function footfallFactor(
   point: LatLon,
   sensors: SensorInput[],
   reference?: number,
-): { value: number | null; sensor: SensorInput | null } {
+  cells: HeatCellInput[] = [],
+): { value: number | null; sensor: SensorInput | null; source: FootfallSource | null; estimatedHourly: number | null } {
   const counted = sensors.filter((s): s is SensorInput & { avgHourly: number } => s.avgHourly !== null);
-  if (counted.length === 0) return { value: null, sensor: null };
-  const max = reference ?? Math.max(...counted.map((s) => s.avgHourly));
-  let nearest: (SensorInput & { avgHourly: number }) | null = null;
-  let nearestD = Number.POSITIVE_INFINITY;
-  for (const sensor of counted) {
-    const d = distanceM(point, sensor);
-    if (d <= FOOTFALL_RADIUS_M && d < nearestD) {
-      nearest = sensor;
-      nearestD = d;
-    }
+  const max = reference ?? Math.max(0, ...counted.map((s) => s.avgHourly));
+  const scale = (hourly: number) => (max <= 0 ? 0 : clamp01(Math.log1p(hourly) / Math.log1p(max)));
+  const byDistance = counted.map((sensor) => ({ sensor, d: distanceM(point, sensor) })).sort((a, b) => a.d - b.d);
+  const [nearest] = byDistance;
+  if (nearest && nearest.d <= FOOTFALL_RADIUS_M) {
+    return { value: scale(nearest.sensor.avgHourly), sensor: nearest.sensor, source: "sensor", estimatedHourly: null };
   }
-  if (!nearest) return { value: null, sensor: null };
-  return { value: max <= 0 ? 0 : clamp01(Math.log1p(nearest.avgHourly) / Math.log1p(max)), sensor: nearest };
+  const around = byDistance.filter((x) => x.d <= FOOTFALL_ESTIMATE_RADIUS_M);
+  if (around.length > 0) {
+    let weighted = 0;
+    let total = 0;
+    for (const { sensor, d } of around) {
+      weighted += sensor.avgHourly / d;
+      total += 1 / d;
+    }
+    const hourly = weighted / total;
+    return { value: scale(hourly) * FOOTFALL_ESTIMATE_DISCOUNT, sensor: around[0].sensor, source: "nearby-sensors", estimatedHourly: Math.round(hourly) };
+  }
+  const withPopularity = cells.filter((c): c is HeatCellInput & { popularity: number } => typeof c.popularity === "number");
+  if (withPopularity.length > 0) {
+    const cell = withPopularity.reduce((best, c) => (distanceM(point, c) < distanceM(point, best) ? c : best));
+    if (distanceM(point, cell) <= TASTE_RADIUS_M) return { value: clamp01(cell.popularity) * FOOTFALL_PROXY_DISCOUNT, sensor: null, source: "qloo-popularity", estimatedHourly: null };
+  }
+  return { value: null, sensor: null, source: null, estimatedHourly: null };
+}
+
+/** Hidden gem: off the usual circuit with a strong taste fit. Usual spot: at a well-known hotspot. */
+export function discoveryOf(candidate: Pick<Candidate, "usualSpot">, taste: number | null): Discovery {
+  if (candidate.usualSpot) return "usual";
+  return taste !== null && taste >= HIDDEN_GEM_MIN_TASTE ? "hidden-gem" : null;
+}
+
+/** The discovery bonus: a hidden gem's taste fit, from DISCOVERY_BONUS_MIN_TASTE up; otherwise 0. */
+export function discoveryFactor(discovery: Discovery, taste: number | null): number {
+  return discovery === "hidden-gem" && taste !== null && taste >= DISCOVERY_BONUS_MIN_TASTE ? taste : 0;
 }
 
 export type NearbyPlace = PlaceInput & { distanceM: number; open: "open" | "unknown" };
@@ -151,11 +194,14 @@ export function weatherPenalty(hours: WeatherHourInput[] | null): number | null 
 
 const FACTORS: FactorName[] = ["taste", "footfall", "places", "events"];
 
-/** Combine factors with weights. Missing factors drop out of the weighted mean. */
-export function combine(factors: Factors, weights: Weights): { score: number; contributions: Record<FactorName, number | null> } {
+/**
+ * Combine factors with weights. Missing factors drop out of the weighted mean;
+ * the discovery bonus is added on top and the weather penalty taken off.
+ */
+export function combine(factors: Factors, weights: Weights): { score: number; contributions: Record<FactorName | "discovery", number | null> } {
   let weighted = 0;
   let total = 0;
-  const contributions = {} as Record<FactorName, number | null>;
+  const contributions = {} as Record<FactorName | "discovery", number | null>;
   for (const name of FACTORS) {
     const value = factors[name];
     if (value === null || weights[name] === 0) {
@@ -167,8 +213,10 @@ export function combine(factors: Factors, weights: Weights): { score: number; co
     contributions[name] = weights[name] * value;
   }
   const base = total === 0 ? 0 : weighted / total;
+  const bonus = weights.discovery * factors.discovery;
+  contributions.discovery = bonus > 0 ? bonus : null;
   const penalty = factors.weatherPenalty === null ? 0 : weights.weather * factors.weatherPenalty;
-  return { score: clamp01(base - penalty), contributions };
+  return { score: clamp01(base + bonus - penalty), contributions };
 }
 
 export type ScoreInputs = {
@@ -190,8 +238,11 @@ export type ScoredPitch = Candidate & {
   /** 0–100, rounded. */
   score: number;
   factors: Factors;
-  contributions: Record<FactorName, number | null>;
+  contributions: Record<FactorName | "discovery", number | null>;
+  discovery: Discovery;
+  footfallSource: FootfallSource | null;
   evidence: {
+    /** The sensor behind the footfall factor; with "nearby-sensors", the nearest one and the estimate. */
     sensor: { id: number; name: string; avgHourly: number } | null;
     places: NearbyPlace[];
     events: NearbyEvent[];
@@ -199,16 +250,19 @@ export type ScoredPitch = Candidate & {
 };
 
 export function scorePitch(candidate: Candidate, inputs: ScoreInputs, weights: Weights): ScoredPitch {
-  const footfall = footfallFactor(candidate, inputs.sensors, inputs.footfallReference);
+  const footfall = footfallFactor(candidate, inputs.sensors, inputs.footfallReference, inputs.cells);
   const places = placesFactor(candidate, inputs.places, inputs.weekday, inputs.startHour, inputs.endHour);
   const events = eventsFactor(candidate, inputs.events, inputs.slotStartMs, inputs.slotEndMs);
+  const taste = tasteFactor(candidate, inputs.cells);
+  const discovery = discoveryOf(candidate, taste);
   const factors: Factors = {
-    taste: tasteFactor(candidate, inputs.cells),
+    taste,
     footfall: footfall.value,
     // With no place data at all, the factor is unknown rather than zero.
     places: inputs.places.length === 0 ? null : places.value,
     events: events.value,
     weatherPenalty: weatherPenalty(inputs.weather),
+    discovery: discoveryFactor(discovery, taste),
   };
   const { score, contributions } = combine(factors, weights);
   return {
@@ -216,8 +270,12 @@ export function scorePitch(candidate: Candidate, inputs: ScoreInputs, weights: W
     score: Math.round(score * 100),
     factors,
     contributions,
+    discovery,
+    footfallSource: footfall.source,
     evidence: {
-      sensor: footfall.sensor ? { id: footfall.sensor.id, name: footfall.sensor.name, avgHourly: Math.round(footfall.sensor.avgHourly!) } : null,
+      sensor: footfall.sensor
+        ? { id: footfall.sensor.id, name: footfall.sensor.name, avgHourly: footfall.estimatedHourly ?? Math.round(footfall.sensor.avgHourly!) }
+        : null,
       places: places.nearby.slice(0, 5),
       events: events.nearby,
     },

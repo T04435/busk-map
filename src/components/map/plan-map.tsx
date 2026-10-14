@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { getVersion, Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { geohashBounds } from "@/lib/geo";
 import type { Plan } from "@/lib/plan-schema";
 
 /**
@@ -69,17 +70,29 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
     };
   }, [center.lat, center.lon]);
 
-  // Taste grid layer.
+  // Taste grid layer: Qloo heatmap cells drawn as their geohash rectangles,
+  // shaded by affinity relative to the performer's best cell.
   useEffect(() => {
     const instance = map.current;
     if (!instance) return;
     const data = {
       type: "FeatureCollection" as const,
-      features: plan.tasteCells.map((c) => ({
-        type: "Feature" as const,
-        properties: { affinity: c.affinity },
-        geometry: { type: "Point" as const, coordinates: [c.lon, c.lat] },
-      })),
+      features: plan.tasteCells.map((c) => {
+        if (c.geohash) {
+          const b = geohashBounds(c.geohash);
+          return {
+            type: "Feature" as const,
+            properties: { affinity: c.affinity },
+            geometry: { type: "Polygon" as const, coordinates: [[[b.west, b.south], [b.east, b.south], [b.east, b.north], [b.west, b.north], [b.west, b.south]]] },
+          };
+        }
+        const d = 0.0015;
+        return {
+          type: "Feature" as const,
+          properties: { affinity: c.affinity },
+          geometry: { type: "Polygon" as const, coordinates: [[[c.lon - d, c.lat - d], [c.lon + d, c.lat - d], [c.lon + d, c.lat + d], [c.lon - d, c.lat + d], [c.lon - d, c.lat - d]]] },
+        };
+      }),
     };
     const apply = () => {
       const source = instance.getSource("taste") as GeoJSONSource | undefined;
@@ -87,17 +100,23 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
         source.setData(data);
         return;
       }
+      const color = themeColor("--foreground", "#111111");
       instance.addSource("taste", { type: "geojson", data });
       instance.addLayer({
         id: "taste",
-        type: "circle",
+        type: "fill",
         source: "taste",
         paint: {
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 8, 15, 40],
-          "circle-color": themeColor("--chart-3", "#555555"),
-          "circle-opacity": ["*", 0.45, ["get", "affinity"]],
-          "circle-blur": 0.6,
+          "fill-color": color,
+          // Weak cells fade out so the strong areas read at a glance.
+          "fill-opacity": ["interpolate", ["linear"], ["get", "affinity"], 0, 0, 0.5, 0.04, 1, 0.42],
         },
+      });
+      instance.addLayer({
+        id: "taste-outline",
+        type: "line",
+        source: "taste",
+        paint: { "line-color": color, "line-opacity": 0.12, "line-width": 1 },
       });
     };
     if (instance.isStyleLoaded()) apply();
@@ -111,17 +130,22 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
     for (const marker of markers.current) marker.remove();
     markers.current = [];
     const pins = [
-      ...plan.pitches.map((p, i) => ({ id: p.id, name: p.name, score: p.score, lat: p.lat, lon: p.lon, rank: i + 1 })),
+      ...plan.pitches.map((p, i) => ({ id: p.id, name: p.name, score: p.score, lat: p.lat, lon: p.lon, rank: i + 1, discovery: p.discovery })),
       ...plan.others.slice(0, 15).map((p) => ({ ...p, rank: null as number | null })),
     ];
     for (const pin of pins) {
       const el = document.createElement("button");
       el.type = "button";
       el.dataset.pitchId = pin.id;
-      el.setAttribute("aria-label", `${pin.rank ? `Pitch ${pin.rank}: ` : "Other pitch: "}${pin.name}, score ${pin.score}`);
-      el.textContent = pin.rank ? String(pin.rank) : "";
+      const gem = pin.discovery === "hidden-gem" ? ", hidden gem" : pin.discovery === "usual" ? ", usual spot" : "";
+      el.setAttribute("aria-label", `${pin.rank ? `Pitch ${pin.rank}: ` : "Other pitch: "}${pin.name}, score ${pin.score}${gem}`);
+      if (pin.rank) {
+        const label = document.createElement("span");
+        label.textContent = String(pin.rank);
+        el.appendChild(label);
+      }
       el.className = pin.rank
-        ? "flex size-7 items-center justify-center rounded-full border-2 border-background bg-primary text-xs font-semibold text-primary-foreground shadow focus-visible:ring-2 focus-visible:ring-ring"
+        ? `flex size-7 items-center justify-center border-2 border-background bg-primary text-xs font-semibold text-primary-foreground shadow focus-visible:ring-2 focus-visible:ring-ring ${pin.discovery === "hidden-gem" ? "rotate-45 rounded-sm [&>span]:-rotate-45" : "rounded-full"}`
         : "size-3 rounded-full border border-background bg-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring";
       el.addEventListener("click", () => onSelectRef.current(pin.id));
       markers.current.push(new Marker({ element: el }).setLngLat([pin.lon, pin.lat]).addTo(instance));
@@ -142,5 +166,6 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
     if (instance && target) instance.easeTo({ center: [target.lon, target.lat], duration: 600 });
   }, [selectedId, plan.pitches, plan.others]);
 
-  return <div ref={container} className="h-full min-h-80 w-full overflow-hidden rounded-lg border" role="region" aria-label="Map of pitches and taste affinity" />;
+  return <div ref={container} className="h-full min-h-80 w-full overflow-hidden rounded-lg border" role="region" aria-label="Map of pitches and Qloo taste affinity" />;
 }
+

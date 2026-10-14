@@ -10,6 +10,7 @@ import { getPitches } from "@/server/adapters/pitches";
 import * as qloo from "@/server/adapters/qloo";
 import { getWeatherWeek } from "@/server/adapters/weather";
 import { CITIES } from "@/server/cities";
+import { PUBLIC_SPOTS, USUAL_HOTSPOTS } from "@/server/data/spots";
 import { providerStatus } from "@/server/env";
 import { log } from "@/server/log";
 import {
@@ -105,7 +106,17 @@ export async function buildWeekPlan(
   const weights = normalizeWeights(request.weights);
   // Candidate footpaths sit at sensors; their counts are applied per slot in scoreWeek.
   const sensorSpots = typical.sensors.map((s) => ({ id: s.id, name: s.name, lat: s.lat, lon: s.lon, avgHourly: null }));
-  const candidates = buildCandidates(pitchData.sites, pitchData.zones, sensorSpots, request.permit);
+  const rulesDown = statuses.get("pitches")?.mode === "fallback";
+  if (rulesDown) notes.push("The council's busking rules are unavailable right now, so Busk Map can't check which spots are allowed. Try again later.");
+  const candidates = rulesDown ? [] : buildCandidates({
+    sites: pitchData.sites,
+    zones: pitchData.zones,
+    sensors: sensorSpots,
+    spots: PUBLIC_SPOTS,
+    cells,
+    hotspots: USUAL_HOTSPOTS,
+    permit: request.permit,
+  });
   const grid = scoreWeek(candidates, { days, cells, sensors: typical.sensors, places, events, weather }, weights);
   // Slots that have already started can't be chosen.
   const startMs = (date: string, hour: number) => zonedHourToUtc(date, hour, city.timeZone).getTime();
@@ -162,7 +173,7 @@ export async function buildWeekPlan(
       endHour: c.endHour,
       label: `${capitalise(c.weekday)} ${c.date}, ${formatHour(c.startHour)}–${formatHour(c.endHour)}`,
       score: c.best.score,
-      pitch: { id: c.best.id, name: c.best.name, lat: c.best.lat, lon: c.best.lon, kind: c.best.kind, amplification: c.best.amplification, cautions: c.best.cautions },
+      pitch: { id: c.best.id, name: c.best.name, lat: c.best.lat, lon: c.best.lon, kind: c.best.kind, discovery: c.best.discovery, amplification: c.best.amplification, cautions: c.best.cautions },
       factors: c.best.factors,
       evidence: {
         typicalPerHour: c.best.evidence.sensor?.avgHourly ?? null,

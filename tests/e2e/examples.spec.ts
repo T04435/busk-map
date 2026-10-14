@@ -21,7 +21,7 @@ for (const example of EXAMPLES) {
 
       const pitches = page.getByRole("region", { name: "Pitches", exact: true }).getByRole("listitem");
       await expect(pitches).toHaveCount(3);
-      await expect(page.getByRole("region", { name: "Map of pitches and taste affinity" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Map of pitches and Qloo taste affinity" })).toBeVisible();
       await expect(page.getByRole("heading", { name: /^Setlist for / })).toBeVisible();
       await expect(page.getByText("Explanations: from the data")).toBeVisible();
       // Every data source is credited.
@@ -35,7 +35,7 @@ for (const example of EXAMPLES) {
       await page.goto(`/plan?example=${example.id}`);
       await waitForPlan(page);
       const second = page.getByRole("region", { name: "Pitches", exact: true }).getByRole("button").nth(1);
-      const name = (await second.innerText()).split("\n")[0].replace(/^2\.\s*/, "").trim();
+      const name = (await second.getAttribute("data-pitch-name"))!;
       await second.focus();
       await page.keyboard.press("Enter");
       await expect(second).toHaveAttribute("aria-pressed", "true");
@@ -48,6 +48,27 @@ for (const example of EXAMPLES) {
     });
   });
 }
+
+test.describe("data-led plans", () => {
+  test("the three examples get different top pitches, each with a hidden gem and Qloo's reasons", async ({ page }) => {
+    const tops: string[][] = [];
+    for (const example of EXAMPLES) {
+      await page.goto(`/plan?example=${example.id}`);
+      await waitForPlan(page);
+      const buttons = page.getByRole("region", { name: "Pitches", exact: true }).getByRole("button");
+      await expect(buttons).toHaveCount(3);
+      const names = await buttons.evaluateAll((els) => els.map((el) => el.getAttribute("data-pitch-name") ?? ""));
+      tops.push(names);
+      await expect(page.getByRole("region", { name: "Pitches", exact: true }).getByText("Hidden gem").first()).toBeVisible();
+      await expect(page.getByTestId("plan-funnel")).toContainText("Qloo mapped your taste");
+      await expect(page.getByRole("heading", { name: "Who this crowd likes" })).toBeVisible();
+      await expect(page.getByText(/^Because your fans like /).first()).toBeVisible();
+      await expect(page.getByLabel("Map legend")).toContainText("Taste map (Qloo heatmap");
+    }
+    expect(new Set(tops.map((t) => t.join("|"))).size).toBe(3);
+    expect(new Set(tops.map((t) => t[0])).size).toBe(3);
+  });
+});
 
 test.describe("live agent (mock model offline)", () => {
   test.skip(!LOCAL, "Runs the agent; only against the local offline server to avoid spend");

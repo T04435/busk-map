@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildCandidates, nearLines, siteAllowsPerformer } from "@/server/scoring";
-import type { SensorInput, SiteInput, ZoneInput } from "@/server/scoring";
+import { buildCandidates, buildCandidatesWithFunnel, nearLines, siteAllowsPerformer, topCells, usualSpotAt } from "@/server/scoring";
+import type { HeatCellInput, HotspotInput, SensorInput, SiteInput, SpotInput, ZoneInput } from "@/server/scoring";
 
 const site = (over: Partial<SiteInput>): SiteInput => ({
   id: "s",
@@ -44,8 +44,9 @@ describe("buildCandidates", () => {
     { id: "nb", kind: "no-busking", lines: [[{ lat: -37.8, lon: 144.95 }, { lat: -37.8, lon: 144.951 }]] },
     { id: "ua", kind: "unamplified", lines: [[{ lat: -37.82, lon: 144.97 }, { lat: -37.82, lon: 144.971 }]] },
   ];
+  const base = { zones, sensors: [] as SensorInput[], spots: [] as SpotInput[], cells: [] as HeatCellInput[], hotspots: [] as HotspotInput[] };
 
-  it("keeps only sites open to the performer, with cautions", () => {
+  it("keeps only council sites open to the performer, with cautions", () => {
     const sites = [
       site({ id: "gen", permit: "general", lat: -37.815, lon: 144.96 }),
       site({ id: "circle", permit: "circle-act", lat: -37.816, lon: 144.97 }),
@@ -55,39 +56,71 @@ describe("buildCandidates", () => {
       site({ id: "quiet", permit: "general", lat: -37.8201, lon: 144.9705 }),
       site({ id: "private", permit: "private", lat: -37.83, lon: 144.96 }),
     ];
-    const general = buildCandidates(sites, zones, [], "general");
+    const general = buildCandidates({ ...base, sites, permit: "general" });
     expect(general.map((c) => c.id)).toEqual(["site:gen", "site:circle", "site:chess", "site:quiet"]);
-    expect(general.every((c) => c.kind === "designated")).toBe(true);
+    expect(general.every((c) => c.kind === "designated" && c.origin === "council" && c.cell === null)).toBe(true);
     expect(general[0].cautions).toEqual([]);
     expect(general[1].cautions).toEqual(["Circle act permit holders have priority here."]);
     expect(general[2].cautions[0]).toMatch(/Special conditions/);
     expect(general[3]).toMatchObject({ amplification: "unamplified-zone", cautions: ["Unamplified busking only."] });
 
-    const premium = buildCandidates(sites, zones, [], "premium");
-    expect(premium.map((c) => c.id)).toContain("site:prem");
+    const premium = buildCandidates({ ...base, sites, permit: "premium" });
     expect(premium.find((c) => c.id === "site:prem")!.cautions).toEqual(["Premium permit holders only."]);
-
-    const circle = buildCandidates(sites, zones, [], "circle-act");
-    expect(circle.find((c) => c.id === "site:circle")!.cautions).toEqual([]);
+    expect(buildCandidates({ ...base, sites, permit: "circle-act" }).find((c) => c.id === "site:circle")!.cautions).toEqual([]);
   });
 
-  it("adds footpath candidates at sensors, away from restrictions and from each other", () => {
-    const sites = [site({ id: "station", permit: "no-busking", lat: -37.81, lon: 144.96 }), site({ id: "gen", permit: "general", lat: -37.83, lon: 144.96 })];
-    const sensors = [
-      sensor(1, -37.8102, 144.9601), // next to the no-busking site
-      sensor(2, -37.8, 144.9505), // on a no-busking line
-      sensor(3, -37.815, 144.965), // fine
-      sensor(4, -37.8151, 144.9651), // too close to sensor 3
-      sensor(5, -37.83, 144.9601), // too close to the designated site
-      sensor(6, -37.8201, 144.9705), // in the unamplified zone
+  it("snaps the performer's top taste cells to nearby public spots and sensors, then applies the rules", () => {
+    const sites = [site({ id: "station", permit: "no-busking", lat: -37.81, lon: 144.96 })];
+    const cells: HeatCellInput[] = [
+      { lat: -37.81, lon: 144.96, affinity: 1 },
+      { lat: -37.82, lon: 144.97, affinity: 0.9 },
+      { lat: -37.79, lon: 144.99, affinity: 0.1 },
+      { lat: -37.78, lon: 144.99, affinity: 0.05 },
+      { lat: -37.77, lon: 144.99, affinity: 0 },
     ];
-    const result = buildCandidates(sites, zones, sensors, "general");
-    const footpaths = result.filter((c) => c.kind === "footpath");
-    expect(footpaths.map((c) => c.id)).toEqual(["footpath:3", "footpath:6"]);
-    expect(footpaths[0]).toMatchObject({ name: "Footpath near Sensor 3", permit: "general", amplification: "allowed" });
-    expect(footpaths[0].cautions[0]).toMatch(/clearances/);
-    expect(footpaths[1].amplification).toBe("unamplified-zone");
+    const spots: SpotInput[] = [
+      { id: "next-to-station", name: "Next to the station", kind: "square", lat: -37.8102, lon: 144.9601 },
+      { id: "plaza", name: "Plaza", kind: "square", lat: -37.812, lon: 144.962 },
+      { id: "plaza-twin", name: "Plaza twin", kind: "square", lat: -37.8121, lon: 144.9621 },
+      { id: "riverside", name: "Riverside", kind: "promenade", lat: -37.8201, lon: 144.9705 },
+      { id: "far", name: "Far away", kind: "square", lat: -37.85, lon: 144.9 },
+    ];
+    const sensors = [sensor(3, -37.8135, 144.9605), sensor(9, -37.79, 144.99)];
+    const hotspots: HotspotInput[] = [{ name: "The famous corner", lat: -37.8201, lon: 144.9704 }];
+    const { candidates, funnel } = buildCandidatesWithFunnel({ sites, zones, sensors, spots, cells, hotspots, permit: "general" });
+    expect(candidates.map((c) => c.id)).toEqual(["spot:plaza", "footpath:3", "spot:riverside", "footpath:9"]);
+    expect(candidates[0]).toMatchObject({ kind: "public-space", origin: "taste", cell: { rank: 1, affinity: 1 }, usualSpot: null, permit: "general" });
+    expect(candidates[0].cautions[0]).toMatch(/clearances/);
+    expect(candidates[1]).toMatchObject({ kind: "footpath", name: "Footpath near Sensor 3" });
+    expect(candidates[2]).toMatchObject({ amplification: "unamplified-zone", usualSpot: "The famous corner", cell: { rank: 2 } });
+    // Four top cells (the minimum), so the weak cell near sensor 9 counts too. The plaza twin is too close to the plaza.
+    expect(funnel).toEqual({ cells: 5, topCells: 4, considered: 6, excluded: 1, candidates: 4 });
+    expect(candidates.map((c) => c.id)).not.toContain("spot:far");
+  });
 
-    expect(buildCandidates(sites, zones, sensors, "general", { includeFootpaths: false }).every((c) => c.kind === "designated")).toBe(true);
+  it("falls back to every spot and sensor when there is no taste data", () => {
+    const spots: SpotInput[] = [{ id: "a", name: "A", kind: "square", lat: -37.81, lon: 144.96 }];
+    const { candidates, funnel } = buildCandidatesWithFunnel({ ...base, sites: [], spots, sensors: [sensor(1, -37.83, 144.96)], permit: "general" });
+    expect(candidates.map((c) => [c.id, c.origin])).toEqual([["spot:a", "fallback"], ["footpath:1", "fallback"]]);
+    expect(funnel.topCells).toBe(0);
+  });
+});
+
+describe("topCells and usualSpotAt", () => {
+  it("takes the best share of cells, at least four, ranked", () => {
+    const cells = Array.from({ length: 20 }, (_, i) => ({ lat: -37.8 - i * 0.001, lon: 144.96, affinity: i / 20 }));
+    const top = topCells(cells);
+    expect(top).toHaveLength(6);
+    expect(top[0]).toMatchObject({ affinity: 0.95, rank: 1 });
+    expect(topCells(cells.slice(0, 2))).toHaveLength(2);
+    // Ties break by position, so the order is stable.
+    const tied = [{ lat: -37.8, lon: 144.97, affinity: 1 }, { lat: -37.8, lon: 144.96, affinity: 1 }, { lat: -37.81, lon: 144.99, affinity: 1 }];
+    expect(topCells(tied).map((c) => [c.lat, c.lon])).toEqual([[-37.81, 144.99], [-37.8, 144.96], [-37.8, 144.97]]);
+  });
+
+  it("names the hotspot a point is at", () => {
+    const hotspots = [{ name: "Corner", lat: -37.81, lon: 144.96 }];
+    expect(usualSpotAt({ lat: -37.8101, lon: 144.9601 }, hotspots)).toBe("Corner");
+    expect(usualSpotAt({ lat: -37.82, lon: 144.96 }, hotspots)).toBeNull();
   });
 });

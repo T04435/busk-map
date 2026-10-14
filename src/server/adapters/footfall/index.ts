@@ -36,7 +36,7 @@ export async function getFootfall(
     context,
     configured: CITIES[cityId].footfallLevel === "city-sensors",
     fallback: FOOTFALL_FALLBACK,
-    synthetic: () => syntheticFootfall(dates),
+    synthetic: () => syntheticFootfall(dates, slot),
     live: async () => {
       const [sensors, averages, live] = await Promise.all([
         fetchSensors(),

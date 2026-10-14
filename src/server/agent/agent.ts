@@ -44,6 +44,7 @@ Rules:
 - Foot traffic and event exit times are estimates: say so.
 - Busk Map never claims a pitch is legal. Mention cautions when a tool lists them.
 - Taste data is aggregate. Never describe an individual.
+- Pitches come from the performer's Qloo taste cells. When score_pitches marks one as a hidden gem, say why it beats the obvious spots (taste fit, less competition); when it is a usual spot, say buskers already go there.
 - Be brief and concrete. Australian English.`;
 
 export function buildPrompt(ctx: PlanContext): string {

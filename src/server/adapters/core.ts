@@ -176,7 +176,7 @@ export async function runAdapter<T>({
   try {
     return { adapter, source, mode: "live", data: await live() };
   } catch (error) {
-    const kind: AdapterErrorKind = error instanceof AdapterError ? error.kind : "network";
+    const kind = errorKindOf(error);
     log.error("adapter failed, using fallback", {
       adapter,
       kind,
@@ -184,6 +184,23 @@ export async function runAdapter<T>({
     });
     return { adapter, source, mode: "fallback", data: fallback, reason: kind };
   }
+}
+
+/**
+ * The kind of a failure. Errors thrown inside `"use cache"` functions reach us without their class
+ * (the cache serialises them), so an AdapterError's kind is recovered from its message as a fallback.
+ */
+export function errorKindOf(error: unknown): AdapterErrorKind {
+  if (error instanceof AdapterError) return error.kind;
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  const status = /returned HTTP (\d{3})/.exec(message)?.[1];
+  if (status === "404") return "not_found";
+  if (status === "429") return "rate_limited";
+  if (status) return "http";
+  if (/timed out after/.test(message)) return "timeout";
+  if (/is not configured|are not configured/.test(message)) return "missing_key";
+  if (/returned an unexpected shape|did not return JSON/i.test(message)) return "invalid_response";
+  return "network";
 }
 
 /** Like Promise.allSettled over `items.map(fn)`, but at most `limit` calls at a time (polite to rate-limited APIs). */

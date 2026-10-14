@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { AdapterError, fetchJson, runAdapter } from "@/server/adapters/core";
+import { AdapterError, errorKindOf, fetchJson, runAdapter } from "@/server/adapters/core";
 import { json, LIVE, mockFetch, route } from "../../helpers";
 
 const schema = z.object({ ok: z.boolean() });
@@ -64,5 +64,25 @@ describe("runAdapter", () => {
       },
     });
     expect(result).toMatchObject({ mode: "fallback", reason: "network", data: "fallback" });
+  });
+
+  it("keeps the failure kind when the cache strips the error class", async () => {
+    // A cached function's AdapterError arrives as a plain Error with the same message.
+    const stripped = (message: string) => async () => {
+      throw new Error(message);
+    };
+    const run = (message: string) => runAdapter({ ...base, context: LIVE, live: stripped(message) });
+    await expect(run("api.spotify.com/v1/artists/x/albums returned HTTP 404")).resolves.toMatchObject({ reason: "not_found" });
+    await expect(run("api.example.com returned HTTP 429")).resolves.toMatchObject({ reason: "rate_limited" });
+    await expect(run("api.example.com returned HTTP 500")).resolves.toMatchObject({ reason: "http" });
+    await expect(run("api.example.com timed out after 4000 ms")).resolves.toMatchObject({ reason: "timeout" });
+  });
+});
+
+describe("errorKindOf", () => {
+  it("prefers the AdapterError's own kind", () => {
+    expect(errorKindOf(new AdapterError("weather", "rate_limited", "x returned HTTP 404"))).toBe("rate_limited");
+    expect(errorKindOf("boom")).toBe("network");
+    expect(errorKindOf(new Error("Spotify credentials are not configured"))).toBe("missing_key");
   });
 });

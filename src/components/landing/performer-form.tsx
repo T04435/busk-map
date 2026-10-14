@@ -52,7 +52,15 @@ export function PerformerForm({ defaultDate }: { defaultDate: string }) {
     const res = await fetch(`/api/repertoire?${new URLSearchParams({ type: "tracks", q: query })}`).catch(() => null);
     const body = res?.ok ? await res.json() : null;
     setFound(body?.tracks ?? []);
-    setSearchNote(!body || body.mode === "fallback" ? "Song search is unavailable; type your songs below instead." : body.tracks.length ? null : "No songs found.");
+    setSearchNote(
+      !body || body.mode === "fallback"
+        ? "Song search is unavailable; type your songs below instead."
+        : body.mode === "synthetic"
+          ? "Offline test mode: these songs are made up, not from Spotify."
+          : body.tracks.length
+            ? null
+            : "No songs found.",
+    );
   }
 
   async function loadOwnSongs() {
@@ -61,11 +69,21 @@ export function PerformerForm({ defaultDate }: { defaultDate: string }) {
     const body = res?.ok ? await res.json() : null;
     const tracks: Found[] = body?.tracks ?? [];
     if (!tracks.length) {
-      setSearchNote("Couldn't load songs from that link. Paste an open.spotify.com/artist/… link, or type your songs.");
+      setSearchNote(
+        body?.reason === "not_found"
+          ? "Spotify has no artist at that link. Open it in Spotify to check it, then copy the artist's share link again."
+          : body?.mode === "fallback"
+            ? "Spotify isn't answering right now. Try again in a minute, or type your songs below."
+            : "Couldn't load songs from that link. Paste an open.spotify.com/artist/… link, or type your songs.",
+      );
       return;
     }
     setSongs((current) => [current.trim(), ...tracks.slice(0, 20).map((t) => `${t.title} - ${t.artists[0]?.name ?? ""} (own)`)].filter(Boolean).join("\n"));
-    setSearchNote(`Added ${Math.min(tracks.length, 20)} of your songs. Remove any you don't play.`);
+    setSearchNote(
+      body?.mode === "synthetic"
+        ? "Offline test mode: these songs are made up, not from Spotify."
+        : `Added ${Math.min(tracks.length, 20)} of your songs from Spotify. Remove any you don't play.`,
+    );
   }
 
   function addSong(track: Found) {

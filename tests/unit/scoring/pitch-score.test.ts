@@ -242,4 +242,17 @@ describe("ranking", () => {
     expect(pickTopPitches(ranked, 1).map((p) => p.id)).toEqual(["a-here"]);
     expect(pickTopPitches(ranked, 3, 0)).toHaveLength(3);
   });
+
+  it("adds the personal tip bonus to the score, and only where the history covers the pitch", () => {
+    const history = { source: "yours" as const, sessions: 4, perHour: 20, pitches: [{ id: "far", sessions: 3, perHour: 40 }] };
+    const without = scorePitch(candidate("far", offsetM(1000)), inputs, DEFAULT_WEIGHTS);
+    const withTips = scorePitch(candidate("far", offsetM(1000)), { ...inputs, history }, DEFAULT_WEIGHTS);
+    expect(without.tip).toBeNull();
+    expect(withTips.tip).toMatchObject({ bonus: 0.05, sessions: 3, perHour: 40, averagePerHour: 20, lift: 1 });
+    expect(withTips.score).toBe(without.score + 5);
+    expect(scorePitch(candidate("a", here), { ...inputs, history }, DEFAULT_WEIGHTS).tip).toBeNull();
+    // Never above 100.
+    const top = scorePitch(candidate("a", here), { ...inputs, history: { ...history, pitches: [{ id: "a", sessions: 3, perHour: 40 }] } }, { ...DEFAULT_WEIGHTS, weather: 0, discovery: 1 });
+    expect(top.score).toBe(100);
+  });
 });

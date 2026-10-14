@@ -79,7 +79,23 @@ export function PitchCard({ pitch, rank }: { pitch: PlanPitch; rank: number }) {
                 <dd>{key === "discovery" && pitch.factors.discovery === 0 ? "none" : pct(pitch.factors[key])}</dd>
               </div>
             ))}
+            {pitch.tip && (
+              <div className="contents" data-testid="tip-bonus">
+                <dt className="text-muted-foreground">
+                  Your tip log: {pitch.tip.sessions} session{pitch.tip.sessions === 1 ? "" : "s"} here at ${Math.round(pitch.tip.perHour)}/h, against your $
+                  {Math.round(pitch.tip.averagePerHour)}/h average
+                </dt>
+                <dd>{pitch.tip.points > 0 ? `+${pitch.tip.points}` : "none"}</dd>
+              </div>
+            )}
           </dl>
+          {pitch.tip && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {pitch.tip.points > 0
+                ? `You earned ${Math.round(pitch.tip.lift * 100)}% more per hour here than on average, so the score includes a personal bonus (at most +5).`
+                : "You earned less here than on average. Tips never lower a score; this pitch just gets no bonus."}
+            </p>
+          )}
         </section>
 
         {(pitch.evidence.sensor || pitch.evidence.places.length > 0 || pitch.evidence.events.length > 0) && (

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { TIP_COOKIE } from "@/lib/tips";
 import { PlanView } from "@/components/plan/plan-view";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,7 +47,9 @@ async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchPar
   const params = await searchParams;
   // Plans depend on today's date and live data: always render at request time.
   await connection();
-  const parsed = parsePlanParams(params, localToday(CITIES.melbourne.timeZone));
+  // The tip log's summary (this browser's cookie), for the personal bonus. Never in the URL.
+  const tipCookie = (await cookies()).get(TIP_COOKIE)?.value ?? null;
+  const parsed = parsePlanParams(params, localToday(CITIES.melbourne.timeZone), tipCookie);
   if (!parsed.ok) {
     return (
       <Alert variant="destructive">
@@ -66,11 +70,13 @@ async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchPar
   return (
     <PlanView
       // Keyed by the request (not the selected pitch): a new request remounts the view.
+      // A changed tip log re-renders in place (PlanView adopts the new plan), so the log form keeps its message.
       key={planSearchParams(parsed.request).toString()}
       initialPlan={plan}
       request={parsed.request}
       center={CITIES[parsed.request.city].center}
       autoRun={parsed.autoRun}
+      exampleId={parsed.exampleId}
       faults={adapters.faults.length > 0 ? adapters.faults.join(",") : null}
     />
   );

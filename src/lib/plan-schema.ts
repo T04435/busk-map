@@ -4,6 +4,7 @@
  */
 import { z } from "zod";
 import { slotSchema } from "./slot";
+import { tipHistorySchema } from "./tips";
 
 export const PERMITS = ["general", "premium", "circle-act"] as const;
 export const CITY_IDS = ["melbourne"] as const;
@@ -37,6 +38,8 @@ export const planRequestSchema = z.object({
     songs: z.array(repertoireSongSchema).max(60).default([]),
   }),
   weights: weightsSchema.optional(),
+  /** Summary of the performer's tip log (from this browser), for the personal bonus. */
+  history: tipHistorySchema.optional(),
 });
 
 export type PlanRequest = z.infer<typeof planRequestSchema>;
@@ -55,6 +58,15 @@ const factorValue = z.number().min(0).max(1).nullable();
 
 export const PITCH_KINDS = ["designated", "public-space", "footpath"] as const;
 export const discoverySchema = z.enum(["hidden-gem", "usual"]).nullable();
+
+export const tipBonusSchema = z.object({
+  /** Points added to the score (0–5). */
+  points: z.number().int().min(0).max(100),
+  sessions: z.number().int(),
+  perHour: z.number(),
+  averagePerHour: z.number(),
+  lift: z.number(),
+});
 
 export const planPitchSchema = z.object({
   id: z.string(),
@@ -85,6 +97,8 @@ export const planPitchSchema = z.object({
   }),
   why: z.string(),
   whySource: z.enum(["ai", "template"]),
+  /** The personal bonus from the tip log (already in the score), when the log covers this pitch. */
+  tip: tipBonusSchema.nullable().default(null),
   evidence: z.object({
     /** With footfallSource "nearby-sensors", avgHourly is the estimate and name the nearest sensor. */
     sensor: z.object({ name: z.string(), avgHourly: z.number() }).nullable(),
@@ -129,7 +143,20 @@ export const planSchema = z.object({
   notes: z.array(z.string()),
   weights: z.object({ taste: z.number(), footfall: z.number(), places: z.number(), events: z.number(), weather: z.number(), discovery: z.number() }),
   pitches: z.array(planPitchSchema).max(3),
-  others: z.array(z.object({ id: z.string(), name: z.string(), lat: z.number(), lon: z.number(), score: z.number(), kind: z.enum(PITCH_KINDS), discovery: discoverySchema })),
+  others: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      lat: z.number(),
+      lon: z.number(),
+      score: z.number(),
+      kind: z.enum(PITCH_KINDS),
+      discovery: discoverySchema,
+      tipPoints: z.number().int().nullable().default(null),
+    }),
+  ),
+  /** The tip log behind the personal bonus, when one was used. */
+  tipHistory: z.object({ source: z.enum(["example", "yours", "mixed"]), sessions: z.number().int(), perHour: z.number() }).nullable().default(null),
   /** How the data narrowed down to the pitches (see scoring/candidates.ts). */
   funnel: z
     .object({ cells: z.number().int(), topCells: z.number().int(), considered: z.number().int(), excluded: z.number().int(), candidates: z.number().int() })

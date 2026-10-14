@@ -4,7 +4,9 @@
  * plus the same performer params as /plan (name, artists, songs, permit, w).
  * `off` lists unavailable slots by date and start hour (3-hour slots).
  */
+import { exampleHistory } from "./example-tips";
 import { findExample } from "./examples";
+import { historyFromCookie, performerKeyFor } from "./tips";
 import { parseWeightsParam, weightsParam } from "./weights-url";
 import { weekRequestSchema, type WeekRequest } from "./week-schema";
 
@@ -17,7 +19,7 @@ export const WEEK_SLOT_HOURS = 3;
 
 export type ParsedWeekUrl = { ok: true; request: WeekRequest; exampleId: string | null } | { ok: false; error: string };
 
-export function parseWeekParams(params: Params, today: string): ParsedWeekUrl {
+export function parseWeekParams(params: Params, today: string, tipCookie?: string | null): ParsedWeekUrl {
   const example = findExample(first(params.example));
   const name = first(params.name);
   const performer = name
@@ -48,6 +50,7 @@ export function parseWeekParams(params: Params, today: string): ParsedWeekUrl {
       unavailable,
     },
     weights: parseWeightsParam(first(params.w)),
+    history: historyFromCookie(tipCookie, performerKeyFor(performer.name, name ? null : (example?.id ?? null))) ?? (name ? undefined : exampleHistory(example?.id)),
   });
   if (!parsed.success) {
     const fields = [...new Set(parsed.error.issues.map((i) => i.path.join(".")))];

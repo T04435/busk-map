@@ -5,3 +5,4 @@ export * from "./hours";
 export * from "./pitch-score";
 export * from "./setlist";
 export * from "./week";
+export * from "./tips";

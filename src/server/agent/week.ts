@@ -159,7 +159,7 @@ export async function buildWeekPlan(
     hotspots: USUAL_HOTSPOTS,
     permit: request.permit,
   });
-  const grid = scoreWeek(candidates, { days, cells, sensors: typical.sensors, places, events, weather }, weights);
+  const grid = scoreWeek(candidates, { days, cells, sensors: typical.sensors, places, events, weather, history: request.history ?? null }, weights);
   // Slots that have already started can't be chosen.
   const startMs = (date: string, hour: number) => zonedHourToUtc(date, hour, city.timeZone).getTime();
   const isPast = (c: WeekCell) => startMs(c.date, c.startHour) <= now.getTime();
@@ -234,6 +234,7 @@ export async function buildWeekPlan(
       score: c.best.score,
       pitch: { id: c.best.id, name: c.best.name, lat: c.best.lat, lon: c.best.lon, kind: c.best.kind, discovery: c.best.discovery, amplification: c.best.amplification, cautions: c.best.cautions },
       factors: c.best.factors,
+      tipPoints: c.best.tip ? Math.round(c.best.tip.bonus * 100) : null,
       evidence: {
         typicalPerHour: c.best.evidence.sensor?.avgHourly ?? null,
         sensorName: c.best.evidence.sensor?.name ?? null,
@@ -293,5 +294,6 @@ export async function buildWeekPlan(
     qlooFailed: false,
     footfallLevel: typical.level,
     dataStatus: [...statuses.values()],
+    tipHistory: request.history ? { source: request.history.source, sessions: request.history.sessions, perHour: request.history.perHour } : null,
   });
 }

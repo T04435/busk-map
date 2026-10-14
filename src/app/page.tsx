@@ -58,6 +58,13 @@ export default function Home() {
             </span>
           ))}
         </p>
+        <p className="text-sm text-muted-foreground">
+          Played a session? Log your takings in the{" "}
+          <Link className="underline" href="/tips">
+            tip log
+          </Link>
+          : it stays in this browser, and pitches where you earn more get a small bonus in your next plans.
+        </p>
       </section>
 
       <Separator />

@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { planStreamEventSchema, type Plan, type PlanRequest } from "@/lib/plan-schema";
 import { weekSearchParams } from "@/lib/week-url";
+import { TipLogForm } from "@/components/tips/tip-log-form";
+import { useTipSync } from "@/components/tips/use-tip-sync";
 import { AgentSteps, applyStreamEvent, type AgentStep } from "./agent-steps";
 import { CrowdPanel } from "./crowd-panel";
 import { DataSources } from "./data-sources";
@@ -34,12 +36,22 @@ type Props = {
   request: PlanRequest;
   center: { lat: number; lon: number };
   autoRun: boolean;
+  /** The example performer this plan is for, if any (tip log key). */
+  exampleId: string | null;
   /** Simulated outages to pass on to the agent (e2e only; the server ignores it in production). */
   faults: string | null;
 };
 
-export function PlanView({ initialPlan, request, center, autoRun, faults }: Props) {
+const list = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
+
+export function PlanView({ initialPlan, request, center, autoRun, exampleId, faults }: Props) {
   const [plan, setPlan] = useState(initialPlan);
+  // A refresh after logging takings brings a new engine plan for the same request: adopt it.
+  const [shownInitial, setShownInitial] = useState(initialPlan);
+  if (initialPlan !== shownInitial) {
+    setShownInitial(initialPlan);
+    setPlan(initialPlan);
+  }
   const [steps, setSteps] = useState<AgentStep[]>([]);
   const [run, setRun] = useState<RunState>({ status: "idle" });
   const router = useRouter();
@@ -48,6 +60,7 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
   const selectedId = searchParams.get("pitch") ?? plan.pitches[0]?.id ?? null;
   const selected = plan.pitches.find((p) => p.id === selectedId) ?? plan.pitches[0] ?? null;
   const started = useRef(false);
+  useTipSync(request.performer.name, exampleId, request.history);
 
   const select = useCallback(
     (pitchId: string) => {
@@ -112,6 +125,9 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
   }, [autoRun, runAgent]);
 
   const qlooDown = plan.qlooFailed || (run.status === "error" && run.message.startsWith("Qloo"));
+  const unmatched = qlooDown ? [] : plan.resolvedArtists.filter((a) => a.matched === null).map((a) => a.query);
+  const matched = plan.resolvedArtists.filter((a) => a.matched !== null).map((a) => a.matched!);
+  const tipPitches = plan.pitches.filter((p) => p.tip && p.tip.points > 0);
 
   return (
     <div className="space-y-6">
@@ -127,15 +143,20 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
           <Badge variant="outline">{plan.footfallLevel === "city-sensors" ? "Foot traffic: city sensors" : "Foot traffic: unavailable"}</Badge>
           <Badge variant="outline">{plan.explanations === "ai" ? "Explanations: Claude" : "Explanations: from the data"}</Badge>
         </div>
-        <Link
-          className="text-sm underline"
-          href={`/week?${weekSearchParams(
-            { city: request.city, permit: request.permit, performer: request.performer, startDate: request.slot.date, limits: { maxSessions: 5, maxPerDay: 1, unavailable: [] }, weights: request.weights },
-            null,
-          )}`}
-        >
-          Plan my week instead
-        </Link>
+        <p className="flex flex-wrap gap-x-4 text-sm">
+          <Link
+            className="underline"
+            href={`/week?${weekSearchParams(
+              { city: request.city, permit: request.permit, performer: request.performer, startDate: request.slot.date, limits: { maxSessions: 5, maxPerDay: 1, unavailable: [] }, weights: request.weights },
+              exampleId,
+            )}`}
+          >
+            Plan my week instead
+          </Link>
+          <Link className="underline" href="/tips">
+            Tip log
+          </Link>
+        </p>
       </header>
 
       {plan.qlooMode === "synthetic" && (
@@ -145,6 +166,20 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
             The taste map, crowd and trends on this page come from Busk Map&apos;s local mock of the Qloo API, built from Qloo&apos;s documentation
             while the hackathon key is pending. It is test data, not Qloo data. Venue and street names are real (OpenStreetMap); foot traffic,
             busking rules, events and weather are real wherever the sources below say Live.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {unmatched.length > 0 && (
+        <Alert data-testid="unmatched-artists">
+          <AlertTitle>
+            Qloo couldn&apos;t match {list(unmatched)}
+          </AlertTitle>
+          <AlertDescription>
+            {matched.length > 0
+              ? `This plan uses the artists Qloo did match: ${list(matched)}.`
+              : "Without a matched artist Busk Map can't map where your crowd's taste is, so taste is left out: the pitches below are ranked on foot traffic, events and weather only. Try better-known artists you sound like."}
+            {plan.qlooMode === "synthetic" ? " (Qloo test data: the local mock knows about 130 artists.)" : ""}
           </AlertDescription>
         </Alert>
       )}
@@ -202,6 +237,20 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
               ))}
             </ul>
           )}
+          {plan.tipHistory && (
+            <p className="flex flex-wrap items-center gap-2 text-muted-foreground" data-testid="tip-history">
+              {plan.tipHistory.source !== "yours" && <Badge variant="secondary">Example data</Badge>}
+              <span>
+                Your tip log ({plan.tipHistory.sessions} sessions, average ${Math.round(plan.tipHistory.perHour)}/h)
+                {tipPitches.length > 0
+                  ? ` adds a small bonus to ${list(tipPitches.map((p) => `${p.name} (+${p.tip!.points})`))}, where you earned more than your average.`
+                  : " doesn't change these pitches: none of them earned you more than your average yet."}{" "}
+                <Link className="underline" href="/tips">
+                  How it works
+                </Link>
+              </span>
+            </p>
+          )}
           <WeatherStrip weather={plan.weather} />
         </CardContent>
       </Card>
@@ -257,6 +306,7 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
                       <span>
                         {p.name}
                         {p.discovery === "hidden-gem" ? " · hidden gem" : p.discovery === "usual" ? " · usual spot" : ""}
+                        {p.tipPoints ? ` · tips +${p.tipPoints}` : ""}
                       </span>
                       <span className="text-muted-foreground">{p.score}/100</span>
                     </li>
@@ -273,6 +323,16 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
           <PitchCard pitch={selected} rank={plan.pitches.indexOf(selected) + 1} />
           <SetlistPanel pitch={selected} learnThese={plan.learnThese} />
         </div>
+      )}
+
+      {!qlooDown && plan.pitches.length > 0 && (
+        <TipLogForm
+          performerName={request.performer.name}
+          exampleId={exampleId}
+          slot={request.slot}
+          pitches={[...plan.pitches, ...plan.others].map((p) => ({ id: p.id, name: p.name }))}
+          defaultPitchId={selected?.id ?? null}
+        />
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">

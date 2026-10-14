@@ -1,6 +1,7 @@
 /** Shared, client-safe schemas for the week planner. */
 import { z } from "zod";
 import { CITY_IDS, dataStatusSchema, PERMITS, planRequestSchema, weightsSchema } from "./plan-schema";
+import { tipHistorySchema } from "./tips";
 
 const isoDate = z.iso.date();
 
@@ -23,6 +24,8 @@ export const weekRequestSchema = z.object({
     })
     .prefault({}),
   weights: weightsSchema.optional(),
+  /** Summary of the performer's tip log (from this browser), for the personal bonus. */
+  history: tipHistorySchema.optional(),
 });
 
 export type WeekRequest = z.infer<typeof weekRequestSchema>;
@@ -48,6 +51,8 @@ export const weekSessionSchema = z.object({
     cautions: z.array(z.string()),
   }),
   factors: z.object({ taste: factor, footfall: factor, places: factor, events: factor, weatherPenalty: factor, discovery: z.number().min(0).max(1) }),
+  /** Points from the performer's tip log (already in the score), when it covers this pitch. */
+  tipPoints: z.number().int().nullable().default(null),
   evidence: z.object({
     typicalPerHour: z.number().nullable(),
     sensorName: z.string().nullable(),
@@ -103,6 +108,8 @@ export const weekPlanSchema = z.object({
   qlooFailed: z.boolean(),
   footfallLevel: z.enum(["city-sensors", "unavailable"]),
   dataStatus: z.array(dataStatusSchema),
+  /** The tip log behind the personal bonus, when one was used. */
+  tipHistory: z.object({ source: z.enum(["example", "yours", "mixed"]), sessions: z.number().int(), perHour: z.number() }).nullable().default(null),
 });
 
 export type WeekPlan = z.infer<typeof weekPlanSchema>;

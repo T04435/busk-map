@@ -1,5 +1,6 @@
 import { distanceM, type LatLon } from "@/lib/geo";
 import { openDuring } from "./hours";
+import { tipBonus, type TipBonus, type TipHistory } from "./tips";
 import type {
   Candidate,
   Discovery,
@@ -238,6 +239,8 @@ export type ScoreInputs = {
   slotEndMs: number;
   /** Busiest footfall to scale against; defaults to the busiest sensor in this slot. */
   footfallReference?: number;
+  /** The performer's logged takings (tip log), for the personal bonus. */
+  history?: TipHistory | null;
 };
 
 export type ScoredPitch = Candidate & {
@@ -247,6 +250,8 @@ export type ScoredPitch = Candidate & {
   contributions: Record<FactorName | "discovery", number | null>;
   discovery: Discovery;
   footfallSource: FootfallSource | null;
+  /** The personal bonus from the tip log, when it covers this pitch (already in the score). */
+  tip: TipBonus | null;
   evidence: {
     /** The sensor behind the footfall factor; with "nearby-sensors", the nearest one and the estimate. */
     sensor: { id: number; name: string; avgHourly: number } | null;
@@ -271,13 +276,15 @@ export function scorePitch(candidate: Candidate, inputs: ScoreInputs, weights: W
     discovery: discoveryFactor(discovery, taste),
   };
   const { score, contributions } = combine(factors, weights);
+  const tip = tipBonus(candidate.id, inputs.history);
   return {
     ...candidate,
-    score: Math.round(score * 100),
+    score: Math.round(clamp01(score + (tip?.bonus ?? 0)) * 100),
     factors,
     contributions,
     discovery,
     footfallSource: footfall.source,
+    tip,
     evidence: {
       sensor: footfall.sensor
         ? { id: footfall.sensor.id, name: footfall.sensor.name, avgHourly: footfall.estimatedHourly ?? Math.round(footfall.sensor.avgHourly!) }

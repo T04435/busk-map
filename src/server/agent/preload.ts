@@ -1,4 +1,6 @@
 import "server-only";
+import { cacheLife, cacheTag } from "next/cache";
+import { exampleHistory } from "@/lib/example-tips";
 import { EXAMPLES } from "@/lib/examples";
 import { planRequestSchema, type Plan, type PlanRequest } from "@/lib/plan-schema";
 import { localToday, nextWeekday } from "@/lib/slot";
@@ -25,35 +27,65 @@ function memoKey(request: PlanRequest, adapters: AdapterContext, today: string) 
   return JSON.stringify([request, adapters.offline, [...adapters.faults].sort(), today]);
 }
 
+/** A plan built while a source (other than a deliberate test fault) was down. */
+const degraded = (plan: Plan) => plan.dataStatus.some((s) => s.mode === "fallback" && s.reason !== "missing_key" && s.reason !== "fault_injected");
+
+async function assembleEnginePlan(request: PlanRequest, adapters: AdapterContext, day: string): Promise<Plan> {
+  const context = new PlanContext(request, adapters, day);
+  await context.artists();
+  return assemblePlan(context, null);
+}
+
+/**
+ * The example plans, in the shared remote cache: on Vercel the warm-up
+ * (POST /api/warm) and the plan page can run on different instances, so the
+ * in-memory memo alone would often miss. Only the examples are cached here:
+ * their requests are fixed and hold no personal data (their tip log is the
+ * example data). Plans with a failed source are kept briefly, then retried.
+ */
+async function cachedExamplePlan(requestJson: string, offline: boolean, day: string): Promise<Plan> {
+  "use cache: remote";
+  cacheTag("example-plans");
+  const plan = await assembleEnginePlan(planRequestSchema.parse(JSON.parse(requestJson)), { offline, faults: [] }, day);
+  if (degraded(plan)) cacheLife({ stale: 30, revalidate: 60, expire: 120 });
+  else cacheLife({ stale: 300, revalidate: PLAN_MEMO_TTL_MS / 1000, expire: 3600 });
+  return plan;
+}
+
+function isExampleRequest(request: PlanRequest, day: string): boolean {
+  const json = JSON.stringify(request);
+  return exampleRequests(day).some((example) => JSON.stringify(example) === json);
+}
+
 export async function buildEnginePlan(request: PlanRequest, adapters: AdapterContext, today?: string): Promise<Plan> {
   const day = today ?? localToday(CITIES[request.city].timeZone);
   const key = memoKey(request, adapters, day);
   const hit = memo.get(key);
   if (hit && Date.now() - hit.at < hit.ttl) return hit.plan;
-  const plan = (async () => {
-    const context = new PlanContext(request, adapters, day);
-    await context.artists();
-    return assemblePlan(context, null);
-  })();
+  const plan =
+    adapters.faults.length === 0 && isExampleRequest(request, day)
+      ? cachedExamplePlan(JSON.stringify(request), adapters.offline, day)
+      : assembleEnginePlan(request, adapters, day);
   const entry = { at: Date.now(), ttl: PLAN_MEMO_TTL_MS, plan };
   memo.set(key, entry);
   // A failed build must not stick.
   plan.catch(() => memo.delete(key));
   // Plans with a source that failed are retried sooner.
   plan.then((p) => {
-    if (p.dataStatus.some((s) => s.mode === "fallback" && s.reason !== "missing_key" && s.reason !== "fault_injected")) entry.ttl = DEGRADED_PLAN_TTL_MS;
+    if (degraded(p)) entry.ttl = DEGRADED_PLAN_TTL_MS;
   }, () => {});
   if (memo.size > MEMO_MAX) memo.delete(memo.keys().next().value!);
   return plan;
 }
 
-/** The example requests as the landing page links them (next matching weekday). */
+/** The example requests as the landing page links them (next matching weekday, with their example tip log). */
 export function exampleRequests(today: string): PlanRequest[] {
   return EXAMPLES.map((example) =>
     planRequestSchema.parse({
       city: "melbourne",
       slot: { date: nextWeekday(example.weekday, today), startHour: example.startHour, endHour: example.endHour },
       performer: example.performer,
+      history: exampleHistory(example.id),
     }),
   );
 }

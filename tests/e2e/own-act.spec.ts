@@ -40,3 +40,26 @@ test.describe("own act", () => {
     await expect(page.getByRole("link", { name: "Start again" })).toBeVisible();
   });
 });
+
+test.describe("artists Qloo can't match", () => {
+  test.skip(!LOCAL, "Relies on the mock's catalogue");
+
+  test("plans with the matched artists and names the unmatched one", async ({ page }) => {
+    await page.goto("/plan?name=Half%20Known&artists=Paul%20Kelly|Zzyzx%20Nobody&date=2026-10-24&from=18&to=21");
+    await waitForPlan(page);
+    const alert = page.getByTestId("unmatched-artists");
+    await expect(alert).toContainText("Qloo couldn't match Zzyzx Nobody");
+    await expect(alert).toContainText("This plan uses the artists Qloo did match: Paul Kelly.");
+    await expect(page.getByRole("region", { name: "Pitches", exact: true }).getByRole("listitem")).toHaveCount(3);
+  });
+
+  test("explains when no artist matched, and still ranks pitches on the other data", async ({ page }) => {
+    await page.goto("/plan?name=Nobody%20Knows&artists=Zzyzx%20Nobody|Qqq%20Unknown&date=2026-10-24&from=18&to=21");
+    await waitForPlan(page);
+    const alert = page.getByTestId("unmatched-artists");
+    await expect(alert).toContainText("Qloo couldn't match Zzyzx Nobody and Qqq Unknown");
+    await expect(alert).toContainText("taste is left out");
+    await page.getByRole("button", { name: "Plan with the agent (live)" }).click();
+    await expect(page.getByText("Qloo couldn't match any of your artists, so the agent wasn't run")).toBeVisible();
+  });
+});

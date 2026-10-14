@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { planSearchParams } from "@/lib/plan-url";
 import type { WeekPlan, WeekRequest } from "@/lib/week-schema";
 import { weekSearchParams } from "@/lib/week-url";
+import { useTipSync } from "@/components/tips/use-tip-sync";
 
 type Props = { initialPlan: WeekPlan; request: WeekRequest; exampleId: string | null; faults: string | null };
 
@@ -23,6 +24,7 @@ export function WeekView({ initialPlan, request, exampleId, faults }: Props) {
   const [state, setState] = useState<{ status: "idle" | "running" | "done" } | { status: "error"; message: string }>({ status: "idle" });
   const router = useRouter();
   const pathname = usePathname();
+  useTipSync(request.performer.name, exampleId, request.history);
 
   /** Change the request: state lives in the URL, so the server re-plans. */
   function navigate(next: WeekRequest) {
@@ -139,6 +141,17 @@ export function WeekView({ initialPlan, request, exampleId, faults }: Props) {
           <CardDescription>{plan.summary}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
+          {plan.tipHistory && (
+            <p className="flex flex-wrap items-center gap-2 text-muted-foreground">
+              {plan.tipHistory.source !== "yours" && <Badge variant="secondary">Example data</Badge>}
+              <span>
+                Scores include a small bonus from your tip log ({plan.tipHistory.sessions} sessions) where you earned more than your average.{" "}
+                <Link className="underline" href="/tips">
+                  Tip log
+                </Link>
+              </span>
+            </p>
+          )}
           {plan.notes.length > 0 && (
             <ul className="list-disc pl-5 text-muted-foreground">
               {plan.notes.map((n) => (
@@ -159,6 +172,7 @@ export function WeekView({ initialPlan, request, exampleId, faults }: Props) {
                       </span>
                       {s.pitch.discovery === "hidden-gem" && <Badge>Hidden gem</Badge>}
                       {s.pitch.discovery === "usual" && <Badge variant="outline">Usual spot</Badge>}
+                      {s.tipPoints ? <Badge variant="outline">Your tips +{s.tipPoints}</Badge> : null}
                     </span>
                     <span aria-label={`Score ${s.score} out of 100`}>{s.score}/100</span>
                   </p>
@@ -166,7 +180,11 @@ export function WeekView({ initialPlan, request, exampleId, faults }: Props) {
                   {s.pitch.cautions.length > 0 && <p className="text-muted-foreground">{s.pitch.cautions.join(" ")}</p>}
                   <Link
                     className="underline"
-                    href={`/plan?${planSearchParams({ city: request.city, permit: request.permit, performer: request.performer, slot: { date: s.date, startHour: s.startHour, endHour: s.endHour } })}`}
+                    href={
+                      exampleId
+                        ? `/plan?${new URLSearchParams({ example: exampleId, date: s.date, from: String(s.startHour), to: String(s.endHour), permit: request.permit })}`
+                        : `/plan?${planSearchParams({ city: request.city, permit: request.permit, performer: request.performer, slot: { date: s.date, startHour: s.startHour, endHour: s.endHour } })}`
+                    }
                   >
                     Open this session&apos;s plan and setlist
                   </Link>

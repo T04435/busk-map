@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { TIP_COOKIE } from "@/lib/tips";
 import { WeekView } from "@/components/week/week-view";
 import { DataSources } from "@/components/plan/data-sources";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -43,7 +45,8 @@ async function WeekContent({ searchParams }: Pick<PageProps<"/week">, "searchPar
   const params = await searchParams;
   await connection();
   const today = localToday(CITIES.melbourne.timeZone);
-  const parsed = parseWeekParams(params, today);
+  const tipCookie = (await cookies()).get(TIP_COOKIE)?.value ?? null;
+  const parsed = parseWeekParams(params, today, tipCookie);
   if (!parsed.ok) {
     return (
       <Alert variant="destructive">
@@ -76,7 +79,7 @@ async function WeekContent({ searchParams }: Pick<PageProps<"/week">, "searchPar
     <div className="space-y-6">
       {/* Keyed by the request: a changed URL means a new plan, not stale client state. */}
       <WeekView
-        key={weekSearchParams(parsed.request, parsed.exampleId).toString()}
+        key={`${weekSearchParams(parsed.request, parsed.exampleId)}#${JSON.stringify(parsed.request.history ?? null)}`}
         initialPlan={plan} request={parsed.request} exampleId={parsed.exampleId} faults={adapters.faults.length ? adapters.faults.join(",") : null} />
       <DataSources status={plan.dataStatus} showAi={plan.explanations === "ai"} />
     </div>

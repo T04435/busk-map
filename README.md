@@ -8,15 +8,28 @@ Status: in development.
 
 ## Run locally
 
-Needs Node.js 22+ and pnpm.
+Needs Node.js 24 and pnpm.
 
 ```bash
 pnpm install
-cp .env.example .env.local   # then fill in the keys
+vercel env pull .env.local --yes --scope cubanos-dev   # or: cp .env.example .env.local and fill in keys
 pnpm dev
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000. Try an example performer, plan your own act, or plan a week.
+
+No keys at all? Run fully offline with synthetic data and a mock model:
+
+```bash
+BUSKMAP_OFFLINE=1 BUSKMAP_ALLOW_FAULTS=1 pnpm dev
+```
+
+## Checks
+
+```bash
+pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm check:fixtures && pnpm build
+pnpm test:e2e          # builds and starts an offline server, then runs the judge paths
+```
 
 ## Data
 - [Qloo](https://qloo.com) taste API (hackathon key)

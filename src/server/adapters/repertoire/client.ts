@@ -1,6 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import type { z } from "zod";
+import { songKey } from "@/lib/text";
 import { env } from "@/server/env";
 import { AdapterError, fetchJson } from "../core";
 import {
@@ -89,16 +90,6 @@ export async function searchArtists(query: string, market: string): Promise<Cata
   return (body.artists?.items ?? [])
     .filter((a): a is NonNullable<typeof a> => a !== null)
     .map((a) => ({ id: a.id, name: a.name, url: a.external_urls?.spotify ?? null }));
-}
-
-/** Normalise a title so remasters, edits and live takes collapse into one song. */
-export function songKey(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/\s*[-–]\s*(remaster|radio edit|live|single|mono|stereo|demo|acoustic|edit|version|mix).*$/i, "")
-    .replace(/\s*[([].*?(remaster|edit|live|version|mix|deluxe|demo|mono|stereo).*?[)\]]/gi, "")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
 }
 
 /** An artist's own songs: albums and singles, deduplicated by title. */

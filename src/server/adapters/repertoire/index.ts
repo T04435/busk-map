@@ -6,7 +6,8 @@ import { syntheticArtistSearch, syntheticCatalogue, syntheticTrackSearch } from 
 import type { CatalogueArtist, CatalogueTrack } from "./schema";
 
 export type { CatalogueArtist, CatalogueTrack } from "./schema";
-export { parseSpotifyArtistId, songKey } from "./client";
+export { parseSpotifyArtistId } from "./client";
+export { songKey } from "@/lib/text";
 
 /**
  * Repertoire from Spotify's catalogue. Fallback for every call: an empty list,

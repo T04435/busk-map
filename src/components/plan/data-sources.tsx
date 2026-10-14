@@ -28,7 +28,9 @@ export function DataSources({ status, showAi }: { status: DataStatus[]; showAi: 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Data sources</CardTitle>
+        <CardTitle>
+          <h2>Data sources</h2>
+        </CardTitle>
         <CardDescription>Where every number on this page comes from.</CardDescription>
       </CardHeader>
       <CardContent>

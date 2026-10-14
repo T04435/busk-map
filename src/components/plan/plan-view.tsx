@@ -168,7 +168,9 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
 
       <Card>
         <CardHeader>
-          <CardTitle>Plan</CardTitle>
+          <CardTitle>
+            <h2>Plan</h2>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p>{plan.summary}</p>
@@ -183,7 +185,7 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
         </CardContent>
       </Card>
 
-      {plan.pitches.length === 0 && !qlooDown ? (
+      {qlooDown ? null : plan.pitches.length === 0 ? (
         <Alert>
           <AlertTitle>No pitch to recommend</AlertTitle>
           <AlertDescription>
@@ -235,7 +237,7 @@ export function PlanView({ initialPlan, request, center, autoRun, faults }: Prop
         </div>
       )}
 
-      {selected && (
+      {selected && !qlooDown && (
         <div className="grid gap-6 lg:grid-cols-2">
           <PitchCard pitch={selected} rank={plan.pitches.indexOf(selected) + 1} />
           <SetlistPanel pitch={selected} learnThese={plan.learnThese} />

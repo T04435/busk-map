@@ -19,7 +19,7 @@ export function PitchCard({ pitch, rank }: { pitch: PlanPitch; rank: number }) {
       <CardHeader>
         <CardDescription>Pitch {rank}</CardDescription>
         <CardTitle className="flex flex-wrap items-baseline justify-between gap-2">
-          <span>{pitch.name}</span>
+          <h2>{pitch.name}</h2>
           <span aria-label={`Score ${pitch.score} out of 100`}>{pitch.score}/100</span>
         </CardTitle>
         <div className="flex flex-wrap gap-1">

@@ -1,5 +1,6 @@
 import { planRequestSchema } from "@/lib/plan-schema";
 import { plainLlmSuggestion } from "@/server/agent/compare";
+import { testSwitches } from "@/server/env";
 import { compareLimiter } from "@/server/rate-limit";
 import { clientIp, adapterContextFor } from "@/server/request";
 
@@ -9,7 +10,8 @@ const compareRequestSchema = planRequestSchema.pick({ city: true, slot: true, pe
 
 /** POST /api/compare: the plain-LLM answer (no tools, no data), for the comparison panel. */
 export async function POST(request: Request) {
-  const limit = compareLimiter.check(clientIp(request.headers));
+  // Offline test mode spends nothing, so it is not rate limited.
+  const limit = testSwitches().offline ? { ok: true, retryAfterS: 0 } : compareLimiter.check(clientIp(request.headers));
   if (!limit.ok) {
     return Response.json({ error: { code: "rate_limited", message: "Too many requests. Try again in a few minutes." } }, { status: 429 });
   }

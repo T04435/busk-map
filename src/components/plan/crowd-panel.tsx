@@ -7,7 +7,9 @@ export function CrowdPanel({ crowd, resolved }: { crowd: Plan["crowd"]; resolved
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Who this crowd likes</CardTitle>
+        <CardTitle>
+          <h2>Who this crowd likes</h2>
+        </CardTitle>
         <CardDescription>Aggregate taste from Qloo, never data about individuals.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2 text-sm">

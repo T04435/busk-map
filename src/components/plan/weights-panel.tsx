@@ -14,7 +14,9 @@ export function WeightsPanel({ weights }: { weights: Plan["weights"] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>How pitches are scored</CardTitle>
+        <CardTitle>
+          <h2>How pitches are scored</h2>
+        </CardTitle>
         <CardDescription>
           A weighted average of the factors with data, minus the weather penalty. Missing sources drop out instead of counting as zero.
         </CardDescription>

@@ -2,6 +2,7 @@ import { planRequestSchema, type PlanStreamEvent } from "@/lib/plan-schema";
 import { QlooUnavailableError, runPlanAgent } from "@/server/agent/agent";
 import { PlanContext } from "@/server/agent/context";
 import { LIMITS } from "@/server/agent/models";
+import { testSwitches } from "@/server/env";
 import { log } from "@/server/log";
 import { planLimiter } from "@/server/rate-limit";
 import { adapterContextFor, clientIp, FAULTS_HEADER } from "@/server/request";
@@ -18,7 +19,8 @@ function jsonError(status: number, code: string, message: string, headers: Heade
  * (one PlanStreamEvent per line), ending with a `plan` or an `error` event.
  */
 export async function POST(request: Request) {
-  const limit = planLimiter.check(clientIp(request.headers));
+  // Offline test mode spends nothing, so it is not rate limited.
+  const limit = testSwitches().offline ? { ok: true, retryAfterS: 0 } : planLimiter.check(clientIp(request.headers));
   if (!limit.ok) {
     return jsonError(429, "rate_limited", "Too many plans in a short time. Try again in a few minutes.", {
       "Retry-After": String(limit.retryAfterS),

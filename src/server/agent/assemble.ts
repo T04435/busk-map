@@ -117,14 +117,25 @@ export function drivers(
     .sort((a, b) => b.share - a.share);
 }
 
+export type AssembleOptions = {
+  /** Every pitch the agent's score_pitches scored (the engine's pool plus the agent's additions). */
+  pool?: ScoredPitch[];
+  /** The agent run's own notes (fallbacks, limits). */
+  agentNotes?: string[];
+  /** Numbers in Claude's text that no tool returned (accepted only after repeated rejections): texts with them use the template. */
+  unverifiedNumbers?: string[];
+};
+
 /**
  * Build the final plan from the engine's results and, when available, the
- * model's words. Only the engine's top pitches can appear; a "why" from the
- * model is used only for a pitch id the engine produced.
+ * agent's answer. The agent may choose its three pitches from the pool the
+ * engine scored (including spots it added and checked); any id outside that
+ * pool is rejected and the engine's top three are used. Scores, places and
+ * songs always come from the engine.
  */
-export async function assemblePlan(context: PlanContext, ai: AiText | null): Promise<Plan> {
+export async function assemblePlan(context: PlanContext, ai: AiText | null, options: AssembleOptions = {}): Promise<Plan> {
   const { request, city } = context;
-  const [top, ranked, cells, locals, learn, weather, artists, footfall, trends, contrast, profile, impact, usual] = await Promise.all([
+  const [engineTop, engineRanked, cells, locals, learn, weather, artists, footfall, trends, contrast, profile, impact, usual] = await Promise.all([
     context.topPitches(),
     context.ranked(),
     context.tasteCells(),
@@ -140,12 +151,26 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null): Pro
     context.entityIds().then((ids) => (ids.length > 0 ? context.hotspotCrowd() : null)),
   ]);
   const funnel = await context.funnel();
-  const genres = top[0] ? await context.crowdGenres(top[0]) : [];
-
   const qlooDown = context.qlooFailed();
   const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
-  // The model is asked for short text; generous schema limits keep a long answer from failing the run, and it is clipped here.
-  const aiWhy = new Map((ai?.pitches ?? []).map((p) => [p.pitchId, clip(p.why.trim(), 500)]));
+  const unverified = options.unverifiedNumbers ?? [];
+  const traceable = (text: string) => !unverified.some((n) => new RegExp(`(^|[^\\d.])${n.replace(".", "\\.")}([^\\d]|$)`).test(text.replaceAll(/(\d),(\d{3})/g, "$1$2")));
+
+  // The pool the agent chose from: the engine's ranked candidates plus its scored additions.
+  const poolById = new Map<string, ScoredPitch>([...engineRanked, ...(options.pool ?? [])].map((p) => [p.id, p]));
+  const aiPicks = (ai?.pitches ?? []).filter((p, i, all) => poolById.has(p.pitchId) && all.findIndex((q) => q.pitchId === p.pitchId) === i);
+  const valid = ai !== null && aiPicks.length > 0 && aiPicks.length === ai.pitches.length;
+  let top = engineTop;
+  if (valid) {
+    // Claude's choice, best first; topped up from the engine's picks if it named fewer than three.
+    const chosen = aiPicks.map((p) => poolById.get(p.pitchId)!);
+    for (const p of engineTop) if (chosen.length < 3 && !chosen.some((c) => c.id === p.id)) chosen.push(p);
+    top = chosen.slice(0, 3);
+  }
+  const ranked = [...poolById.values()].sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+  const genres = top[0] ? await context.crowdGenres(top[0]) : [];
+
+  const aiWhy = new Map(valid ? aiPicks.filter((p) => traceable(p.why)).map((p) => [p.pitchId, clip(p.why.trim(), 500)]) : []);
   const pitches = await Promise.all(
     (qlooDown ? [] : top).map(async (pitch) => {
       const fromAi = aiWhy.get(pitch.id);
@@ -169,13 +194,13 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null): Pro
     qlooMode: qloo.qlooMode(context.adapters),
     explanations: usedAi ? "ai" : "template",
     summary:
-      (usedAi && ai?.summary.trim() && clip(ai.summary.trim(), 600)) ||
+      (usedAi && ai?.summary.trim() && traceable(ai.summary) && clip(ai.summary.trim(), 600)) ||
       (qlooDown
         ? "Without Qloo's taste data Busk Map can't tell where your crowd is, so nothing is recommended."
         : pitches.length > 0
         ? `Top pitch: ${pitches[0].name} (score ${pitches[0].score}/100).`
         : "No pitch could be recommended for this slot with the data available."),
-    notes: [...context.notes, ...(usedAi ? (ai?.notes ?? []).slice(0, 3).map((n) => clip(n, 240)) : [])],
+    notes: [...context.notes, ...(options.agentNotes ?? []), ...(usedAi ? (ai?.notes ?? []).filter(traceable).slice(0, 3).map((n) => clip(n, 240)) : [])],
     weights: context.weights,
     pitches,
     others: (qlooDown ? [] : ranked)
@@ -230,6 +255,14 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null): Pro
     footfallLevel: footfall.level,
     rulesUrl: city.rulesUrl,
     qlooFailed: context.qlooFailed(),
+    agent:
+      usedAi && valid
+        ? {
+            engineTop: engineTop.map((p) => ({ id: p.id, name: p.name, score: p.score })),
+            differs: top.some((p) => !engineTop.some((e) => e.id === p.id)),
+            added: top.filter((p) => p.origin === "agent").map((p) => p.name),
+          }
+        : null,
   };
   return planSchema.parse(plan);
 }

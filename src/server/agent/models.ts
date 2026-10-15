@@ -11,12 +11,26 @@ export const MODELS = {
   cheap: "anthropic/claude-haiku-5.5",
 } as const;
 
+/**
+ * Claude's thinking for the planner. Claude Sonnet 5.5 takes adaptive
+ * thinking only (a fixed `budgetTokens` is rejected), so "a modest budget"
+ * is effort "medium". `display: "summarized"` returns readable reasoning
+ * summaries; the default ("omitted") would stream empty thinking blocks.
+ * The gateway forwards these to Anthropic.
+ */
+export const PLANNER_PROVIDER_OPTIONS = {
+  anthropic: { thinking: { type: "adaptive", display: "summarized" }, effort: "medium" },
+} as const;
+
 /** Cost and runaway limits. The gateway's US$50/month budget is the backstop. */
 export const LIMITS = {
-  /** Tool steps plus the final structured-output step. */
-  maxSteps: 8,
-  maxOutputTokensPerStep: 1200,
-  agentTimeoutMs: 75_000,
+  /** Model steps (each may call several tools), including the finish_plan step. */
+  maxSteps: 12,
+  /** Input plus output tokens over the whole run; past 75% only finish_plan is offered. */
+  tokenBudget: 200_000,
+  /** Per step, thinking included. */
+  maxOutputTokensPerStep: 4000,
+  agentTimeoutMs: 90_000,
   compareMaxOutputTokens: 1600,
   compareTimeoutMs: 30_000,
 } as const;

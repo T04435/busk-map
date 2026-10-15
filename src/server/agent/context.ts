@@ -66,6 +66,7 @@ const OPTIONAL_QLOO: [prefix: string, feature: string][] = [
   ["songArtists", "the setlist order by local taste"],
   ["eventArtists", "how well event crowds match your taste"],
   ["eventTaste", "how well event crowds match your taste"],
+  ["agent:", "one of the agent's extra looks"],
 ];
 
 export function optionalQlooFeature(key: string): string | null {
@@ -122,6 +123,16 @@ export class PlanContext {
       }
       return result.data;
     });
+  }
+
+  /** An extra Qloo call (the agent's own looks), tracked and memoised like the engine's. Keys start with "agent:". */
+  trackQloo<T>(key: `agent:${string}`, load: () => Promise<AdapterResult<T>>): Promise<T> {
+    return this.track(key, load);
+  }
+
+  /** Typical foot traffic by weekday and hour (for the agent's footfall_at), loaded once. */
+  trackFootfallTypical<T>(load: () => Promise<AdapterResult<T>>): Promise<T> {
+    return this.track("footfallTypical", load);
   }
 
   dataStatus(): Status[] {

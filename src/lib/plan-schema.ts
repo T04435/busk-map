@@ -82,7 +82,7 @@ export const planPitchSchema = z.object({
   lon: z.number(),
   kind: z.enum(PITCH_KINDS),
   /** Why it was a candidate: a top Qloo taste cell, a council site, or the no-taste fallback. */
-  origin: z.enum(["taste", "council", "fallback"]),
+  origin: z.enum(["taste", "council", "fallback", "agent"]),
   /** Rank of the Qloo taste cell it came from (1 = the performer's strongest area). */
   cellRank: z.number().int().nullable(),
   discovery: discoverySchema,
@@ -239,6 +239,15 @@ export const planSchema = z.object({
   rulesUrl: z.string(),
   /** Whether Qloo (required) failed: the plan is then unusable and the UI shows an error. */
   qlooFailed: z.boolean(),
+  /** When Claude's answer was used: the engine's own top 3, whether Claude chose differently, and spots it added. */
+  agent: z
+    .object({
+      engineTop: z.array(z.object({ id: z.string(), name: z.string(), score: z.number() })),
+      differs: z.boolean(),
+      added: z.array(z.string()),
+    })
+    .nullable()
+    .default(null),
 });
 
 export type Plan = z.infer<typeof planSchema>;
@@ -249,8 +258,22 @@ export type DataStatus = z.infer<typeof dataStatusSchema>;
 export const planStreamEventSchema = z.discriminatedUnion("type", [
   // `replay`: the run already finished and is being replayed from the cache (no new model call).
   z.object({ type: z.literal("status"), message: z.string(), replay: z.boolean().optional() }),
-  z.object({ type: z.literal("tool-start"), id: z.string(), tool: z.string(), label: z.string(), source: z.string().optional() }),
-  z.object({ type: z.literal("tool-end"), id: z.string(), tool: z.string(), ok: z.boolean(), summary: z.string() }),
+  /** Claude's words between tool calls: a reasoning summary (extended thinking) or the sentence it writes before a call. */
+  z.object({ type: z.literal("note"), kind: z.enum(["reasoning", "text"]), text: z.string() }),
+  /** `input`: the inputs Claude chose. */
+  z.object({ type: z.literal("tool-start"), id: z.string(), tool: z.string(), label: z.string(), source: z.string().optional(), input: z.unknown().optional() }),
+  /** `output`: the data the tool returned, exactly as the model saw it. */
+  z.object({ type: z.literal("tool-end"), id: z.string(), tool: z.string(), ok: z.boolean(), summary: z.string(), output: z.unknown().optional() }),
+  /** Run totals, sent before the plan. */
+  z.object({
+    type: z.literal("usage"),
+    steps: z.number().int(),
+    inputTokens: z.number().int(),
+    outputTokens: z.number().int(),
+    reasoningTokens: z.number().int(),
+    ms: z.number().int(),
+    stoppedBy: z.string(),
+  }),
   z.object({ type: z.literal("plan"), plan: planSchema }),
   z.object({ type: z.literal("error"), code: z.string(), message: z.string() }),
 ]);

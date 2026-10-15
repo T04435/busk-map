@@ -18,30 +18,43 @@ async function load() {
 }
 
 describe("plan agent (offline, mock model)", () => {
-  it("calls the tools, streams steps and returns a validated plan with AI explanations", async () => {
+  it("investigates with chosen inputs, streams notes, inputs and data, and returns a validated plan with AI explanations", async () => {
     mockFetch([]); // offline: no network at all
     const { PlanContext, runPlanAgent } = await load();
     const ctx = new PlanContext(request, OFFLINE, "2026-10-15");
-    const started: string[] = [];
-    const ended: { tool: string; ok: boolean; summary: string }[] = [];
+    const started: { tool: string; input: unknown }[] = [];
+    const ended: { tool: string; ok: boolean; summary: string; output: unknown }[] = [];
+    const notes: { kind: string; text: string }[] = [];
 
-    const { plan, usage } = await runPlanAgent(ctx, {
-      onToolStart: (e) => started.push(e.tool),
+    const { plan, usage, engineTop, agentTop } = await runPlanAgent(ctx, {
+      onNote: (e) => notes.push(e),
+      onToolStart: (e) => started.push(e),
       onToolEnd: (e) => ended.push(e),
     });
 
     expect(() => planSchema.parse(plan)).not.toThrow();
-    expect(started).toContain("resolve_repertoire");
-    expect(started).toContain("score_pitches");
-    expect(started).toContain("build_setlists");
-    expect(ended.every((e) => e.ok && e.summary.length > 0)).toBe(true);
-    expect(usage?.steps).toBe(4);
+    const tools = started.map((s) => s.tool);
+    expect(tools[0]).toBe("taste_map");
+    expect(tools).toEqual(expect.arrayContaining(["score_pitches", "crowd_at", "footfall_at", "check_pitch", "compare_crowds", "build_setlist", "finish_plan"]));
+    // Inputs are Claude's choices, passed through to the step.
+    expect(started.find((s) => s.tool === "crowd_at")!.input).toMatchObject({ at: { pitchId: expect.any(String) }, radiusM: 400 });
+    expect(started.find((s) => s.tool === "check_pitch")!.input).toEqual({ spot: { place: "Federation Square" } });
+    // Each step carries the data the tool returned, as the model saw it.
+    expect(ended.every((e) => e.ok && e.summary.length > 0 && e.output !== undefined)).toBe(true);
+    expect(ended.find((e) => e.tool === "crowd_at")!.output).toMatchObject({ radiusM: 400, artists: expect.any(Array) });
+    // A note before every call, and a reasoning summary.
+    expect(notes.filter((n) => n.kind === "text").length).toBeGreaterThanOrEqual(started.filter((s, i, all) => all.findIndex((x) => x.tool === s.tool) === i).length - 1);
+    expect(notes.some((n) => n.kind === "reasoning")).toBe(true);
+    expect(usage).toMatchObject({ stoppedBy: "finished" });
+    expect(usage!.steps).toBeLessThanOrEqual(12);
 
     expect(plan.explanations).toBe("ai");
     expect(plan.qlooMode).toBe("synthetic");
     expect(plan.pitches).toHaveLength(3);
     expect(plan.pitches[0].why).toMatch(/^Mock explanation/);
-    expect(plan.pitches[0].score).toBeGreaterThanOrEqual(plan.pitches[1].score);
+    expect(plan.agent).toMatchObject({ engineTop: expect.any(Array), differs: expect.any(Boolean) });
+    expect(engineTop).toHaveLength(3);
+    expect(agentTop!.map((p) => p.id)).toEqual(plan.pitches.map((p) => p.id));
     expect(plan.pitches.every((p) => p.setlist.length === request.performer.songs.length)).toBe(true);
     expect(plan.learnThese.length).toBeGreaterThan(0);
     expect(plan.tasteCells.length).toBeGreaterThan(0);

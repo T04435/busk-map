@@ -1,29 +1,16 @@
 import "server-only";
-import { isStepCount, Output, ToolLoopAgent } from "ai";
-import { z } from "zod";
+import { ToolLoopAgent, type LanguageModel, type StopCondition } from "ai";
 import { describeSlot } from "@/lib/slot";
 import type { Plan } from "@/lib/plan-schema";
 import { providerStatus } from "@/server/env";
 import { log } from "@/server/log";
-import { assemblePlan, type AiText } from "./assemble";
+import { assemblePlan } from "./assemble";
 import type { PlanContext } from "./context";
 import { createMockPlanner } from "./mock-model";
-import { LIMITS, MODELS } from "./models";
-import { createTools, TOOL_LABELS, TOOL_SOURCES } from "./tools";
+import { LIMITS, MODELS, PLANNER_PROVIDER_OPTIONS } from "./models";
+import { AgentState, createTools, finishSchema, TOOL_LABELS, TOOL_SOURCES } from "./tools";
 
-/** What the model may return. Words only; the engine owns numbers and places. */
-export const aiTextSchema = z.object({
-  summary: z.string().max(1500).describe("Two sentences for the performer: where to play and why, from the tool results only."),
-  pitches: z
-    .array(
-      z.object({
-        pitchId: z.string().describe("A pitchId exactly as returned by score_pitches."),
-        why: z.string().max(1200).describe("Why this crowd: one or two sentences citing the evidence. Say 'estimated' for estimates."),
-      }),
-    )
-    .max(3),
-  notes: z.array(z.string().max(600)).max(8).describe("Data caveats, e.g. a widened search or a missing source."),
-});
+export { finishSchema as aiTextSchema };
 
 export class QlooUnavailableError extends Error {
   constructor() {
@@ -32,108 +19,221 @@ export class QlooUnavailableError extends Error {
   }
 }
 
-export const INSTRUCTIONS = `You are Busk Map's planning agent. You help a street performer choose where to play and what to play.
+/**
+ * Agent v2: the goal, the guardrails and the tools, but no fixed order.
+ * Claude decides each next look from what it found; the engine scores.
+ */
+export const INSTRUCTIONS = `You are Busk Map's planning agent. A street performer wants the three best pitches for one time slot, and why each crowd fits. You investigate with tools. Busk Map's scoring engine is the calculator: it scores every pitch, and you choose among the pitches it has scored.
 
 How to work:
-- Start with resolve_repertoire. Then gather data with taste_map, footfall, busking_rules, busy_places, events, weather and local_artists (call several at once).
-- Then call score_pitches, rising and build_setlists. crowd_profile is optional.
-- Finish with the structured answer. Use only pitch ids returned by score_pitches, in the same order.
+- There is no fixed order. Decide each next look from what you have found so far: a strong taste area, an event crowd leaving nearby, a busy corner worth a footfall check, a well-known spot the engine might have missed, two close scores worth comparing.
+- Before each tool call, write one short sentence saying what you will check next and why.
+- Look only inside the city centre planning area. Point at places by pitchId, by name, or with coordinates from a tool result.
+- score_pitches scores the engine's own candidates plus any spot you add after check_pitch. Call it at least once before you finish.
+- You have about 10 tool calls. Don't repeat a call with the same inputs.
+- Finish with finish_plan: three pitchIds from score_pitches, best first, a why for each, a two-sentence summary and any data caveats. You may rank a lower-scored pitch above a higher one only for a reason you found in the data, and you must say it in that pitch's why. If finish_plan rejects your answer, fix what it says and call it again.
 
 Rules:
-- Never invent a number, a place, an event or a song. Only restate what the tools returned.
-- Foot traffic and event exit times are estimates: say so.
+- Never invent a number, a place, an event or a song. Every number you write must come from a tool result.
+- Foot traffic and event end times are estimates: say so.
 - Busk Map never claims a pitch is legal. Mention cautions when a tool lists them.
 - Taste data is aggregate. Never describe an individual.
-- Pitches come from the performer's Qloo taste cells. When score_pitches marks one as a hidden gem, say why it beats the obvious spots (taste fit, less competition); when it is a usual spot, say buskers already go there.
 - Be brief and concrete. Australian English.`;
 
-export function buildPrompt(ctx: PlanContext): string {
+export function buildPrompt(ctx: PlanContext, matched: { query: string; match: string | null }[]): string {
   const { request } = ctx;
   const songs = request.performer.songs.map((s) => `${s.title} (${s.artist}${s.own ? ", own song" : ""})`).join("; ");
+  const box = ctx.city.bbox;
+  const found = matched.filter((m) => m.match);
+  const missing = matched.filter((m) => !m.match).map((m) => m.query);
   return [
     `Performer: ${request.performer.name}.`,
-    `Sounds like: ${request.performer.artists.join(", ")}.`,
+    `Sounds like: ${request.performer.artists.join(", ")}. Qloo matched: ${found.map((m) => m.match).join(", ") || "none"}${missing.length ? `; no match for ${missing.join(", ")}` : ""}.`,
     songs ? `Can play: ${songs}.` : "No song list given.",
-    `City: ${ctx.city.name}. Slot: ${describeSlot(request.slot)}. Permit: ${request.permit}.`,
-    "Plan the three best pitches and explain why each crowd fits.",
+    `City: ${ctx.city.name}. Slot: ${describeSlot(request.slot)} (${ctx.weekday}, hours ${request.slot.startHour} to ${request.slot.endHour}). Permit: ${request.permit}.`,
+    `Planning area: latitude ${box.south} to ${box.north}, longitude ${box.west} to ${box.east}.`,
+    "Find the three best pitches for this act in this slot and explain why each crowd fits.",
   ].join("\n");
 }
 
 export type AgentEvents = {
-  onToolStart?: (event: { id: string; tool: string; label: string; source?: string }) => void;
-  onToolEnd?: (event: { id: string; tool: string; ok: boolean; summary: string }) => void;
+  onNote?: (event: { kind: "reasoning" | "text"; text: string }) => void;
+  onToolStart?: (event: { id: string; tool: string; label: string; source?: string; input: unknown }) => void;
+  onToolEnd?: (event: { id: string; tool: string; ok: boolean; summary: string; output: unknown }) => void;
 };
 
-type Usage = { inputTokens: number; outputTokens: number; steps: number };
+export type Usage = {
+  inputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+  steps: number;
+  ms: number;
+  stoppedBy: "finished" | "steps" | "tokens" | "no-answer";
+};
+
+type Limits = { maxSteps: number; tokenBudget: number; timeoutMs: number };
+
+/** Tests swap the model and the limits. */
+export type AgentOptions = { model?: LanguageModel; limits?: Partial<Limits> };
+
+export type AgentResult = {
+  plan: Plan;
+  usage: Usage | null;
+  /** The engine's own top 3 (no agent additions, no agent choice). */
+  engineTop: { id: string; score: number }[];
+  /** Claude's accepted top 3, or null when the plan fell back to the engine's. */
+  agentTop: { id: string; score: number }[] | null;
+};
 
 /**
- * Run the agent loop and assemble the validated plan. Without the gateway
- * (or if the model fails), the plan still completes from the engine with
- * template explanations, labelled as such.
+ * Run the agent loop and assemble the validated plan. Without the gateway,
+ * or if the model fails, times out or never gives an acceptable answer, the
+ * plan still completes from the engine with template explanations, labelled.
  */
-export async function runPlanAgent(
-  ctx: PlanContext,
-  events: AgentEvents = {},
-  abortSignal?: AbortSignal,
-): Promise<{ plan: Plan; usage: Usage | null }> {
+export async function runPlanAgent(ctx: PlanContext, events: AgentEvents = {}, abortSignal?: AbortSignal, options: AgentOptions = {}): Promise<AgentResult> {
   // Qloo is required: check it before spending tokens.
-  await ctx.artists();
+  const artists = await ctx.artists();
   if (ctx.qlooFailed()) throw new QlooUnavailableError();
-  // With no artist matched there is no taste to explain: don't spend tokens.
+  const engineTop = async () => (await ctx.topPitches()).map((p) => ({ id: p.id, score: p.score }));
+  const notes: string[] = [];
+  // With no artist matched there is no taste to investigate: don't spend tokens.
   if ((await ctx.entityIds()).length === 0) {
-    ctx.notes.push("Qloo couldn't match any of your artists, so the agent wasn't run and the reasons come from the data.");
-    return { plan: await assemblePlan(ctx, null), usage: null };
+    notes.push("Qloo couldn't match any of your artists, so the agent wasn't run and the reasons come from the data.");
+    return { plan: await assemblePlan(ctx, null, { agentNotes: notes }), usage: null, engineTop: await engineTop(), agentTop: null };
   }
 
   const offline = ctx.adapters.offline;
-  if (!offline && !providerStatus().aiGateway) {
-    ctx.notes.push("AI explanations are not configured here, so the reasons are generated from the data.");
-    return { plan: await assemblePlan(ctx, null), usage: null };
+  if (!offline && !options.model && !providerStatus().aiGateway) {
+    notes.push("AI explanations are not configured here, so the reasons are generated from the data.");
+    return { plan: await assemblePlan(ctx, null, { agentNotes: notes }), usage: null, engineTop: await engineTop(), agentTop: null };
   }
 
-  let ai: AiText | null = null;
+  const limits: Limits = { maxSteps: LIMITS.maxSteps, tokenBudget: LIMITS.tokenBudget, timeoutMs: LIMITS.agentTimeoutMs, ...options.limits };
+  const state = new AgentState();
+  const prompt = buildPrompt(
+    ctx,
+    artists.map((a) => ({ query: a.query, match: a.entity?.name ?? null })),
+  );
+  state.seen.add(prompt);
+  const started = Date.now();
+  let tokens = 0;
+  type Tools = ReturnType<typeof createTools>;
+  const finished: StopCondition<Tools> = () => state.answer !== null;
+  const overBudget: StopCondition<Tools> = () => tokens >= limits.tokenBudget;
+  const outOfSteps: StopCondition<Tools> = ({ steps }) => steps.length >= limits.maxSteps;
+
   let usage: Usage | null = null;
+  const timeout = AbortSignal.timeout(limits.timeoutMs);
   try {
     const agent = new ToolLoopAgent({
-      model: offline ? createMockPlanner() : MODELS.planner,
+      model: options.model ?? (offline ? createMockPlanner() : MODELS.planner),
       instructions: INSTRUCTIONS,
-      tools: createTools(ctx),
-      output: Output.object({ schema: aiTextSchema }),
-      stopWhen: isStepCount(LIMITS.maxSteps),
+      tools: createTools(ctx, state),
+      stopWhen: [finished, overBudget, outOfSteps],
       maxOutputTokens: LIMITS.maxOutputTokensPerStep,
+      providerOptions: PLANNER_PROVIDER_OPTIONS,
+      // Near the step cap or the token budget only finish_plan is left, so the run ends with an answer.
+      prepareStep: ({ stepNumber }) =>
+        stepNumber >= limits.maxSteps - 2 || tokens >= limits.tokenBudget * 0.75
+          ? { activeTools: ["finish_plan"], instructions: `${INSTRUCTIONS}\n\nYour research budget is used up: call finish_plan now with what you have.` }
+          : {},
     });
-    const result = await agent.generate({
-      prompt: buildPrompt(ctx),
-      abortSignal: abortSignal ?? AbortSignal.timeout(LIMITS.agentTimeoutMs),
-      onToolExecutionStart: ({ toolCall }) => {
-        events.onToolStart?.({
-          id: toolCall.toolCallId,
-          tool: toolCall.toolName,
-          label: TOOL_LABELS[toolCall.toolName] ?? toolCall.toolName,
-          source: TOOL_SOURCES[toolCall.toolName],
-        });
-      },
-      onToolExecutionEnd: ({ toolCall, toolOutput }) => {
-        const ok = toolOutput.type === "tool-result";
-        const output = ok ? (toolOutput as { output?: { summary?: unknown } }).output : undefined;
-        events.onToolEnd?.({
-          id: toolCall.toolCallId,
-          tool: toolCall.toolName,
-          ok,
-          summary: typeof output?.summary === "string" ? output.summary : ok ? "Done" : "Failed",
-        });
-      },
+    const result = await agent.stream({
+      prompt,
+      abortSignal: AbortSignal.any([timeout, ...(abortSignal ? [abortSignal] : [])]),
     });
-    ai = result.output;
-    usage = {
-      inputTokens: result.usage.inputTokens ?? 0,
-      outputTokens: result.usage.outputTokens ?? 0,
-      steps: result.steps.length,
+    // Notes stream as whole blocks: Claude's reasoning summary and the sentence it writes before a call.
+    const buffers = new Map<string, { kind: "reasoning" | "text"; text: string }>();
+    const flush = (key: string) => {
+      const b = buffers.get(key);
+      buffers.delete(key);
+      const text = b?.text.trim();
+      if (b && text) events.onNote?.({ kind: b.kind, text });
     };
-    log.info("agent finished", { ...usage, model: offline ? "mock" : MODELS.planner });
+    let inputTokens = 0;
+    let outputTokens = 0;
+    let reasoningTokens = 0;
+    let steps = 0;
+    for await (const part of result.fullStream) {
+      switch (part.type) {
+        case "reasoning-start":
+          buffers.set(`r:${part.id}`, { kind: "reasoning", text: "" });
+          break;
+        case "text-start":
+          buffers.set(`t:${part.id}`, { kind: "text", text: "" });
+          break;
+        case "reasoning-delta": {
+          const b = buffers.get(`r:${part.id}`);
+          if (b) b.text += part.text;
+          break;
+        }
+        case "text-delta": {
+          const b = buffers.get(`t:${part.id}`);
+          if (b) b.text += part.text;
+          break;
+        }
+        case "reasoning-end":
+          flush(`r:${part.id}`);
+          break;
+        case "text-end":
+          flush(`t:${part.id}`);
+          break;
+        case "tool-call":
+          for (const key of [...buffers.keys()]) flush(key);
+          events.onToolStart?.({ id: part.toolCallId, tool: part.toolName, label: TOOL_LABELS[part.toolName] ?? part.toolName, source: TOOL_SOURCES[part.toolName], input: part.input });
+          break;
+        case "tool-result": {
+          const output = part.output as { summary?: unknown; accepted?: boolean } | undefined;
+          const ok = part.toolName !== "finish_plan" || output?.accepted === true;
+          events.onToolEnd?.({ id: part.toolCallId, tool: part.toolName, ok, summary: typeof output?.summary === "string" ? output.summary : "Done", output: part.output });
+          break;
+        }
+        case "tool-error": {
+          const message = part.error instanceof Error ? part.error.message : String(part.error);
+          events.onToolEnd?.({ id: part.toolCallId, tool: part.toolName, ok: false, summary: message.slice(0, 300), output: { error: message.slice(0, 600) } });
+          break;
+        }
+        case "finish-step":
+          steps++;
+          inputTokens += part.usage.inputTokens ?? 0;
+          outputTokens += part.usage.outputTokens ?? 0;
+          reasoningTokens += part.usage.outputTokenDetails?.reasoningTokens ?? 0;
+          tokens = inputTokens + outputTokens;
+          break;
+        case "error":
+          throw part.error instanceof Error ? part.error : new Error(String(part.error));
+        case "abort":
+          throw Object.assign(new Error(timeout.aborted ? "agent timeout" : "agent aborted"), { name: timeout.aborted ? "TimeoutError" : "AbortError" });
+        default:
+          break;
+      }
+    }
+    for (const key of [...buffers.keys()]) flush(key);
+    const stoppedBy: Usage["stoppedBy"] = state.answer ? "finished" : tokens >= limits.tokenBudget ? "tokens" : steps >= limits.maxSteps ? "steps" : "no-answer";
+    usage = { inputTokens, outputTokens, reasoningTokens, steps, ms: Date.now() - started, stoppedBy };
+    log.info("agent finished", { ...usage, model: options.model ? "custom" : offline ? "mock" : MODELS.planner });
   } catch (error) {
-    log.error("agent failed; using template explanations", { error: error instanceof Error ? error.message : "unknown" });
-    ctx.notes.push("The AI planner was unavailable, so the reasons are generated from the data.");
+    log.error("agent failed; using the engine's plan", { error: error instanceof Error ? error.message : "unknown" });
+    const timedOut = timeout.aborted || (error instanceof Error && error.name === "TimeoutError");
+    notes.push(
+      timedOut
+        ? "The agent ran out of time, so this is the engine's plan with reasons generated from the data."
+        : "The AI planner was unavailable, so this is the engine's plan with reasons generated from the data.",
+    );
+    state.answer = null;
   }
-  return { plan: await assemblePlan(ctx, ai), usage };
+  if (!state.answer && usage) {
+    notes.push(
+      usage.stoppedBy === "tokens" || usage.stoppedBy === "steps"
+        ? "The agent reached its step or token limit without an answer the engine could accept, so this is the engine's plan with reasons generated from the data."
+        : "The agent didn't give an answer the engine could accept, so this is the engine's plan with reasons generated from the data.",
+    );
+  }
+  const plan = await assemblePlan(ctx, state.answer, { pool: [...state.pool.values()], agentNotes: notes, unverifiedNumbers: state.unverifiedNumbers });
+  return {
+    plan,
+    usage,
+    engineTop: await engineTop(),
+    agentTop: plan.explanations === "ai" ? plan.pitches.map((p) => ({ id: p.id, score: p.score })) : null,
+  };
 }

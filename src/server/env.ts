@@ -39,6 +39,8 @@ export const envSchema = z.object({
   QLOO_MOCK_ROUTE: flag,
   /** Postgres (e.g. Neon) for the plain-AI baseline comparison stats. Optional: without it, comparisons aren't recorded. */
   DATABASE_URL: optionalSecret,
+  /** Vercel Cron's bearer secret for /api/cron/prune (retention). Without it the route refuses to run. */
+  CRON_SECRET: optionalSecret,
   TICKETMASTER_API_KEY: optionalSecret,
   LASTFM_API_KEY: optionalSecret,
   SPOTIFY_CLIENT_ID: optionalSecret,

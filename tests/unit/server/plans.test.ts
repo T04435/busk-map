@@ -101,6 +101,7 @@ describe("short plan store (memory)", () => {
       insert: vi.fn(async () => "duplicate-request" as const),
       get: vi.fn(),
       saveSnapshot: vi.fn(),
+      pruneRawSteps: vi.fn(),
     };
     expect(await createPlanId(store, habana(), null, DAY)).toBe("RaceWin01");
     expect(store.insert).toHaveBeenCalledTimes(1);

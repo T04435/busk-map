@@ -116,6 +116,11 @@ export function AgentSteps({ steps }: { steps: AgentStep[] }) {
               </CollapsibleContent>
             </Collapsible>
           )}
+          {step.pruned && (
+            <p className="text-xs text-muted-foreground" data-testid="agent-step-pruned">
+              Raw data removed: it is kept 7 days.
+            </p>
+          )}
           <span className="sr-only">{step.status}</span>
         </li>
       ))}

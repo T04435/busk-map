@@ -1,7 +1,9 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { neon } from "@neondatabase/serverless";
-import type { PlanRequest } from "@/lib/plan-schema";
+import type { PlanRequest, PlanStreamEvent } from "@/lib/plan-schema";
+import { hasRawStepData, stripStepOutputs } from "@/server/plans/retention-core";
+import { hasRawSql, stripEventsSql } from "@/server/plans/sql";
 import { env } from "@/server/env";
 import { log } from "@/server/log";
 import { processMap } from "@/server/memo";
@@ -19,7 +21,14 @@ export interface PlanStore {
   readonly kind: "postgres" | "memory";
   get<T>(kind: StoreKind, key: string): Promise<{ value: T; createdAt: number } | null>;
   put(kind: StoreKind, key: string, value: unknown, ttlMs: number): Promise<void>;
+  /**
+   * Retention: strip raw tool output from runs stored before `cutoffMs`, and delete rows expired by `now`.
+   * Idempotent.
+   */
+  pruneRawSteps(cutoffMs: number, now?: number): Promise<{ runs: number; expired: number }>;
 }
+
+type RunValue = { events?: PlanStreamEvent[] };
 
 /** The plan's key: the request, test mode and day, hashed (the request holds the act's details). */
 export function planKey(request: PlanRequest, offline: boolean, day: string): string {
@@ -41,6 +50,23 @@ export class MemoryPlanStore implements PlanStore {
   async put(kind: StoreKind, key: string, value: unknown, ttlMs: number, now = Date.now()) {
     this.rows.set(`${kind}:${key}`, { value: structuredClone(value), createdAt: now, expiresAt: now + ttlMs });
     if (this.rows.size > 200) this.rows.delete(this.rows.keys().next().value!);
+  }
+  async pruneRawSteps(cutoffMs: number, now = Date.now()) {
+    let runs = 0;
+    let expired = 0;
+    for (const [key, row] of this.rows) {
+      if (row.expiresAt <= now) {
+        this.rows.delete(key);
+        expired++;
+        continue;
+      }
+      const value = row.value as RunValue;
+      if (key.startsWith("run:") && row.createdAt < cutoffMs && value.events && hasRawStepData(value.events)) {
+        row.value = { ...value, events: stripStepOutputs(value.events) };
+        runs++;
+      }
+    }
+    return { runs, expired };
   }
 }
 
@@ -71,6 +97,17 @@ export class PostgresPlanStore implements PlanStore {
        ON CONFLICT (kind, plan_key) DO UPDATE SET value = EXCLUDED.value, created_at = now(), expires_at = EXCLUDED.expires_at`,
       [kind, key, JSON.stringify(value), String(ttlMs)],
     );
+  }
+
+  async pruneRawSteps(cutoffMs: number) {
+    const expired = (await this.sql.query("DELETE FROM plan_store WHERE expires_at <= now() RETURNING plan_key")) as unknown[];
+    const runs = (await this.sql.query(
+      `UPDATE plan_store SET value = jsonb_set(value, '{events}', ${stripEventsSql("value->'events'")})
+        WHERE kind = 'run' AND created_at < to_timestamp($1::double precision / 1000) AND jsonb_typeof(value->'events') = 'array' AND ${hasRawSql("value->'events'")}
+        RETURNING plan_key`,
+      [cutoffMs],
+    )) as unknown[];
+    return { runs: runs.length, expired: expired.length };
   }
 }
 

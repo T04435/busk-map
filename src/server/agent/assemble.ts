@@ -1,5 +1,6 @@
 import "server-only";
 import { formatHour, describeSlot } from "@/lib/slot";
+import { titleCase } from "@/lib/text";
 import { planSchema, type Plan, type PlanPitch } from "@/lib/plan-schema";
 import type { ScoredPitch } from "@/server/scoring";
 import * as qloo from "@/server/adapters/qloo";
@@ -182,8 +183,12 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null): Pro
           .filter((n): n is string => n !== null),
         trend: trends.find((t) => t.entityId === a.id)?.windowChange ?? null,
       })),
-      genres: genres.map((g) => ({ name: g.name, affinity: g.affinity })),
-      contrast: contrast && (contrast.more.length > 0 || contrast.less.length > 0) ? { hotspot: contrast.hotspot, more: contrast.more, less: contrast.less } : null,
+      // Qloo genre names arrive in mixed case ("indie", "Alternative Rock"): shown in title case.
+      genres: [...new Map(genres.map((g) => [titleCase(g.name), { name: titleCase(g.name), affinity: g.affinity }])).values()],
+      contrast:
+        contrast && (contrast.more.length > 0 || contrast.less.length > 0)
+          ? { hotspot: contrast.hotspot, more: contrast.more.map(titleCase), less: contrast.less.map(titleCase) }
+          : null,
       demographics: profile
         ? {
             age: Object.entries(profile.age).map(([band, lean]) => ({ band, lean: Math.round(lean * 100) / 100 })),

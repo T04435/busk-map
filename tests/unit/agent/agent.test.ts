@@ -213,3 +213,16 @@ describe("setlist artists", () => {
     expect((await ctx.artists()).map((a) => a.query)).toEqual(request.performer.artists);
   });
 });
+
+describe("genre names", () => {
+  it("are shown in title case whatever case Qloo sends", async () => {
+    mockFetch([]);
+    const { PlanContext, assemblePlan } = await load();
+    const raw = await new PlanContext(request, OFFLINE, "2026-10-15").crowdGenres({ lat: -37.81593, lon: 144.9671 });
+    expect(raw.some((g) => g.name === "acoustic")).toBe(true);
+    const plan = await assemblePlan(new PlanContext(request, OFFLINE, "2026-10-15"), null);
+    const names = [...plan.crowd.genres.map((g) => g.name), ...(plan.crowd.contrast?.more ?? []), ...(plan.crowd.contrast?.less ?? [])];
+    expect(names.length).toBeGreaterThan(0);
+    expect(names.every((n) => /^\p{Lu}/u.test(n))).toBe(true);
+  });
+});

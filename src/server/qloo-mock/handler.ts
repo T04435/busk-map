@@ -610,8 +610,9 @@ function tags(params: Params, key: string): Response {
     {
       tags: page.map(({ g, affinity }) => ({
         tag_id: genreTagId(g),
-        // Live names can arrive padded (" indie"); the mock pads one so clients keep trimming.
-        name: g === "indie_rock" ? ` ${GENRES[g]}` : GENRES[g],
+        // Live names can arrive padded and lowercase (" indie") next to title case ("Alternative Rock");
+        // the mock sends two that way so clients keep trimming and casing them.
+        name: g === "indie_rock" ? ` ${GENRES[g]}` : g === "acoustic" || g === "soul" ? GENRES[g].toLowerCase() : GENRES[g],
         types: ["urn:entity:artist"],
         popularity: r3(0.5 + 0.5 * unit(`tagpop:${g}`)),
         subtype: "urn:tag:genre:music",

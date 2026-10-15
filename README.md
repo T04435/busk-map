@@ -18,7 +18,7 @@ pnpm dev
 
 Open http://localhost:3000. Try an example performer, plan your own act, or plan a week.
 
-Without `QLOO_API_KEY` (or with `QLOO_MOCK=1`), Qloo is served by a local mock of its documented HTTP contract, and every Qloo number is labelled "Qloo test data (key pending)". The other sources stay live. See [docs/qloo-mock.md](docs/qloo-mock.md).
+Without `QLOO_API_KEY` (or with `QLOO_MOCK=1`), Qloo is served by a local mock of its documented HTTP contract, and every Qloo number is labelled "Qloo test data (local mock)". The other sources stay live. See [docs/qloo-mock.md](docs/qloo-mock.md).
 
 No keys at all? Run fully offline with synthetic data and a mock model:
 

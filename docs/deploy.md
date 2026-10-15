@@ -8,7 +8,7 @@ Set these for **Production** (and Preview, if previews should use live data) und
 
 | Variable | Needed for | Without it |
 |---|---|---|
-| `QLOO_API_KEY` | live Qloo data | the local Qloo mock runs and every Qloo number is labelled "Qloo test data (key pending)" |
+| `QLOO_API_KEY` | live Qloo data | the local Qloo mock runs and every Qloo number is labelled "Qloo test data (local mock)" |
 | `AI_GATEWAY_API_KEY` | the live agent, the plain-LLM comparison, week explanations | on Vercel the gateway authenticates with OIDC, so this is optional; without either, explanations come from the data |
 | `TICKETMASTER_API_KEY` | events | the events source shows "Unavailable" |
 | `LASTFM_API_KEY` | song popularity and "learn these" | setlists keep the performer's songs, without popularity |
@@ -76,7 +76,7 @@ On Pro you can add a second, stricter rule for the agent alone: path `^/api/plan
 
 - [ ] `pnpm check` and `pnpm test:e2e` green on the commit being deployed.
 - [ ] Run the e2e tests against the preview: `PLAYWRIGHT_BASE_URL=https://<preview> VERCEL_AUTOMATION_BYPASS_SECRET=… pnpm test:e2e` (fault and mock tests skip themselves).
-- [ ] The Qloo badge says "Live Qloo data" once the key is set; check the UNVERIFIED shapes in `docs/qloo-mock.md` against live responses.
+- [ ] The Qloo badge says "Live Qloo data" once the key is set (response shapes were verified against live Qloo on 2026-10-15; see `docs/qloo-mock.md`).
 - [ ] One live agent run and one comparison work in production (BotID passes).
 - [ ] The WAF rule shows matches in Firewall → Overview.
 - [ ] AI Gateway budget set.

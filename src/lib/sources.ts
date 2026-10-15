@@ -15,8 +15,8 @@ export type SourceId =
   | "osm"
   | "ai";
 
-/** How every Qloo-derived number is labelled while the key is pending. */
-export const QLOO_TEST_LABEL = "Qloo test data (key pending)";
+/** How every Qloo-derived number is labelled when the local mock answers (no key, QLOO_MOCK=1, or tests). */
+export const QLOO_TEST_LABEL = "Qloo test data (local mock)";
 
 export type SourceInfo = {
   id: SourceId;

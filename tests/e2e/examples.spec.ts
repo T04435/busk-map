@@ -28,7 +28,12 @@ for (const example of EXAMPLES) {
       for (const credit of ["Taste data by Qloo", "Pedestrian counts: City of Melbourne Open Data", "Weather data by Open-Meteo.com"]) {
         await expect(page.getByRole("link", { name: credit })).toBeVisible();
       }
-      if (LOCAL) await expect(page.getByText("Qloo test data (key pending)").first()).toBeVisible();
+      // Offline runs use the Qloo mock and say so; a deploy with the key says Live, never "test data".
+      if (LOCAL) await expect(page.getByText("Qloo test data (local mock)").first()).toBeVisible();
+      else {
+        await expect(page.getByText("Live Qloo data").first()).toBeVisible();
+        await expect(page.getByText(/Qloo test data/)).toHaveCount(0);
+      }
     });
 
     test("selects a pitch from the keyboard and keeps it in the URL", async ({ page }) => {

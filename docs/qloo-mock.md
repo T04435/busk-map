@@ -1,6 +1,6 @@
 # Local Qloo mock
 
-Busk Map talks to Qloo through one client (`src/server/adapters/qloo/client.ts`). Until the hackathon key arrives, that same client runs against a local mock of Qloo's HTTP contract (`src/server/qloo-mock/`). Every plan made this way is labelled **"Qloo test data (key pending)"** in the UI.
+Busk Map talks to Qloo through one client (`src/server/adapters/qloo/client.ts`). With the hackathon key set it calls live Qloo, and the UI says **"Live Qloo data"**. Without a key (and in tests), the same client runs against a local mock of Qloo's HTTP contract (`src/server/qloo-mock/`), and every plan made this way is labelled **"Qloo test data (local mock)"**.
 
 ## When the mock is used
 
@@ -25,7 +25,7 @@ Busk Map talks to Qloo through one client (`src/server/adapters/qloo/client.ts`)
 
 ## What it implements
 
-Checked against docs.qloo.com on 2026-10-15 (Insights deep dive, Entity Type Parameter Guide, Heatmaps, Demographics, Taste Analysis, Trending, Search, Entities, Analysis Compare, hackathon developer guide).
+Checked against docs.qloo.com on 2026-10-15, then **verified against live responses from the hackathon host on 2026-10-15** (shapes only; no Qloo data is stored here).
 
 | Endpoint | Parameters |
 |---|---|
@@ -33,7 +33,7 @@ Checked against docs.qloo.com on 2026-10-15 (Insights deep dive, Entity Type Par
 | `GET /entities` | `entity_ids`, `external.spotify.ids` |
 | `GET /v2/insights` | `filter.type` = `urn:entity:artist`, `urn:entity:place`, `urn:heatmap`, `urn:demographics`, `urn:tag`; `signal.interests.entities`, `signal.interests.tags`; `signal.location` (+ `.radius`, `.query`); `filter.location` (`lat,lon`, WKT POINT/POLYGON/MULTIPOLYGON, locality id), `filter.location.query`, `filter.location.radius`; `filter.hours`, `filter.tags`, `filter.popularity.min/max`, `filter.results.entities`, `filter.exclude.entities`, `filter.tag.types`, `filter.parents.types`, `sort_by`; `feature.explainability`; `take`, `page`, `offset` |
 | `GET /v2/trending` | `signal.interests.entities`, `filter.type`, `filter.start_date`, `filter.end_date` (required) |
-| `GET /v2/analysis/compare` | `a.signal.interests.entities`, `b.signal.interests.entities` (required), `filter.subtype` |
+| `GET /v2/analysis/compare` | `a.signal.interests.entities`, `b.signal.interests.entities` (required) |
 | `GET /v2/tags` | `filter.query` (music genres) |
 
 Behaviour taken from the docs:
@@ -44,12 +44,17 @@ Behaviour taken from the docs:
 - Locations outside the mock's coverage (inner Melbourne), or unreadable ones, give an empty 200.
 - `/search` and `/entities` answer 404 "No results" when nothing matches, as their OpenAPI pages document. The client treats that as "no match", not an outage.
 
-Shapes the docs do not show in full, so they are the mock's reading of the parameter descriptions and **must be checked against live responses** (UNVERIFIED):
-- `query.explainability` per result: `{"signal.interests.entities": [{"entity_id", "score"}]}`, scores 0–1, only ≥ 0.1; and the top-level aggregate `{"signal.interests.entities": [{"entity_id", "average_impact": {"top_3", "top_5", "top_10", "all"}}]}`.
-- Place `properties.hours`: `{"Monday": [{"opens": "T11:00", "closes": "T23:00"}]}`, plus `location: {lat, lon, geohash}` and `query.distance` in metres.
-- `/v2/analysis/compare` rows: `{tag_id, name, subtype, query: {a: {affinity}, b: {affinity}, delta}}`.
-- `/v2/trending` with several entities: the docs describe one entity's series and rows carry no entity id, so the client asks once per artist.
-- Heatmap resolution: geohash precision 6, as in the docs' NYC example. The real resolution for a small polygon may differ.
+### Response shapes (VERIFIED against live, 2026-10-15)
+
+- **Explainability.** Per result: `query.explainability = {"signal.interests.entities": [{entity_id, score}]}`. Top level: `query.explainability["signal.interests.entities"] = {effect_on_top3_recs: [{entity_id, avg_score}], effect_on_top5_recs, effect_on_top10_recs, effect_on_all_recs}`. Busk Map's "who drives your crowd" uses the top-10 effect. (The mock used to send `average_impact.top_3…`; that was wrong.)
+- **Place hours.** `properties.hours` has **lowercase** weekday keys, each a list of `{opens: "T12:00:00", closes: "T02:00:00", closed: false}`; a closed day is `[{opens: null, closes: null, closed: true}]`. A closing time at or before the opening time runs **past midnight** into the next day. Places carry `location: {lat, lon, geohash}` and `query.distance` in metres. `tags` can be `null`.
+- **Heatmap.** Cells `{location: {latitude, longitude, geohash}, query: {affinity, affinity_rank, popularity, entity_artist_affinity, entity_artist_affinity_rank}}`. Over the central-Melbourne polygon the cells are **geohash precision 7** (about 150 m), roughly 70 to 420 cells depending on the artists. `affinity` is a rank within the response (1 for the best cell down to 0). Never use `filter.location.query=Melbourne`: live resolves it to "Melbourne, City of Knox", 1,170 cells across the metro. Busk Map always sends a WKT polygon (longitude first) for the city, and a point plus radius for a pitch.
+- **Entities by lookup.** `/search` and `/entities` send `types: [...]` (a list, no `type`/`subtype`), tags keyed **`tag_id`** (plus `value`), and `properties.external.lastfm = {id, listeners, scrobbles}`. Insights results send `type`/`subtype`, tags keyed `id`, and a top-level `external.lastfm = [{id, listeners, scrobbles}]`. Busk Map reads Last.fm listeners from either.
+- **Taste tags (`urn:tag` insights).** Rows `{tag_id, name, types, subtype, tag_value, popularity, query: {affinity}}`. Names can arrive padded (" indie"): the client trims them, and the mock pads one name to keep that tested.
+- **Trending.** Rows `{date, population_percentile, population_rank, population_rank_velocity, velocity_fold_change, population_percent_delta}`, newest first, no entity id (so one request per artist). `population_rank` is a **string**; `population_percentile` is a **0–1 fraction**. **Recent weeks are empty**: nothing from about mid-May 2026 on when checked, and the values found were flat. The client probes back a quarter at a time, up to a year, for the latest window with data, and caches it. The mock's series ends on 2026-05-13 to match.
+- **Compare (`/v2/analysis/compare`).** `results = {tags: [...], a: [...], b: [...], matchEntities: []}`. `a` and `b` list each group's tags as `{tag_id, name, type, subtype, entity_id, popularity, query: {count}}`, where `count` is a string: how many of the group's entities carry the tag. `tags` lists shared tags with a similarity `query.score` and the two groups' entities. There is **no per-group affinity**, and `filter.subtype` and `take` are ignored. Busk Map turns each music genre's count into a share of its group (0–1) and compares the shares.
+- **Tag search (`/v2/tags`).** `results.tags` rows are `{id, name, type, popularity, parents: [{type}], properties: {description, …}, tags}`: keyed **`id`**, unlike the insights tags.
+- **Rate limits** (response headers): 5 requests a second and 10,000 a month per key. Bursts of 4 still drew 429s, so the client starts at most 3 live requests a second and retries a 429 twice after about a second.
 
 ## The data
 

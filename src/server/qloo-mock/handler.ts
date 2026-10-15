@@ -9,16 +9,17 @@
  *   GET /v2/insights            filter.type = urn:entity:artist | urn:entity:place |
  *                               urn:heatmap | urn:demographics | urn:tag
  *   GET /v2/trending            signal.interests.entities, filter.type, filter.start_date, filter.end_date
- *   GET /v2/analysis/compare    a.signal.interests.entities, b.signal.interests.entities, filter.subtype
+ *   GET /v2/analysis/compare    a.signal.interests.entities, b.signal.interests.entities
  *   GET /v2/tags                filter.query (music genres only)
  *
  * Behaviour copied from the docs: the X-Api-Key header is required (401
  * otherwise), only GET exists (404 for other methods), parameters that are not
  * valid for a filter.type are silently ignored (per the Entity Type Parameter
- * Guide), and "no data" is a 200 with an empty list. Response shapes follow
- * the docs' examples; where the docs give no example (explainability, place
- * hours, compare), the shape is the mock's best reading of the parameter
- * descriptions and is marked UNVERIFIED in docs/qloo-mock.md.
+ * Guide), and "no data" is a 200 with an empty list. Response shapes match
+ * live hackathon API responses checked on 2026-10-15 (explainability
+ * aggregate, lowercase place hours past midnight, geohash-7 heatmap cells,
+ * string trending ranks, compare's per-group tag counts, `tag_id` on
+ * /search and /entities tags): see docs/qloo-mock.md.
  *
  * All data is deterministic: the same request always gets the same answer.
  */
@@ -47,7 +48,7 @@ import {
   type CatalogArtist,
   type Genre,
 } from "./catalog";
-import { MOCK_PLACES, PLACE_BY_ID, categoryTag, placeFit, type MockPlace } from "./places";
+import { DAYS, MOCK_PLACES, PLACE_BY_ID, categoryTag, placeFit, type MockPlace } from "./places";
 import { GENRE_DEMOGRAPHICS, MOCK_COVERAGE, cosine, density, liftAt, mixGenres, tasteAt, type GenreVector } from "./taste-field";
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
@@ -258,45 +259,79 @@ function explain(inputs: CatalogArtist[], target: GenreVector) {
     .sort((a, b) => b.score - a.score);
 }
 
-/** Top-level aggregate impact across top-N subsets. */
+/**
+ * Top-level aggregate (live shape): each input entity's average score over
+ * the top 3, 5, 10 and all results.
+ */
 function aggregateExplainability(inputs: CatalogArtist[], perResult: { entity_id: string; score: number }[][]) {
-  const average = (id: string, n: number) => {
-    const rows = perResult.slice(0, n);
-    if (rows.length === 0) return 0;
-    return r3(rows.reduce((s, row) => s + (row.find((r) => r.entity_id === id)?.score ?? 0), 0) / rows.length);
-  };
+  const effect = (n: number) =>
+    inputs.map((input) => {
+      const rows = perResult.slice(0, n);
+      const avg = rows.length === 0 ? 0 : rows.reduce((s, row) => s + (row.find((r) => r.entity_id === input.id)?.score ?? 0), 0) / rows.length;
+      return { entity_id: input.id, avg_score: r3(avg) };
+    });
   return {
-    "signal.interests.entities": inputs.map((input) => ({
-      entity_id: input.id,
-      average_impact: { top_3: average(input.id, 3), top_5: average(input.id, 5), top_10: average(input.id, 10), all: average(input.id, perResult.length) },
-    })),
+    "signal.interests.entities": {
+      effect_on_top3_recs: effect(3),
+      effect_on_top5_recs: effect(5),
+      effect_on_top10_recs: effect(10),
+      effect_on_all_recs: effect(perResult.length),
+    },
   };
 }
 
 // ---- Entity payloads -------------------------------------------------------
 
-function genreTags(genres: GenreVector) {
+/** Insights results tag with `id`; /search and /entities with `tag_id` and `value` (live). */
+function genreTags(genres: GenreVector, style: "insights" | "lookup") {
   return (Object.entries(genres) as [Genre, number][])
     .sort((a, b) => b[1] - a[1])
-    .map(([g]) => ({ id: genreTagId(g), name: GENRES[g], type: "urn:tag:genre:music" }));
+    .map(([g]) =>
+      style === "insights"
+        ? { id: genreTagId(g), name: GENRES[g], type: "urn:tag:genre:music" }
+        : { name: GENRES[g], tag_id: genreTagId(g), type: "urn:tag:genre:music", value: genreTagId(g) },
+    );
 }
 
-function artistPayload(artist: CatalogArtist, query?: Record<string, unknown>) {
+/** Invented Last.fm listener count, from the mock popularity. */
+const mockListeners = (artist: CatalogArtist) => Math.round(2_000 + artist.popularity ** 3 * 2_500_000 * (0.6 + 0.8 * unit(`listeners:${artist.id}`)));
+
+/**
+ * Live shapes differ by endpoint: /search and /entities send `types: [...]`
+ * and `properties.external` objects; insights results send `type`/`subtype`
+ * and a top-level `external` of lists.
+ */
+function artistPayload(artist: CatalogArtist, query?: Record<string, unknown>, style: "insights" | "lookup" = "insights") {
+  const listeners = mockListeners(artist);
   return {
     name: artist.name,
     entity_id: artist.id,
-    type: "urn:entity",
-    subtype: "urn:entity:artist",
+    ...(style === "insights" ? { type: "urn:entity", subtype: "urn:entity:artist" } : { types: ["urn:entity:artist"] }),
     properties: {
       short_description: "Musical artist (Qloo mock test entity)",
       akas: (artist.aka ?? []).map((value) => ({ value, languages: ["en"] })),
+      ...(style === "lookup" ? { external: { spotify: { id: artist.spotifyId }, lastfm: { id: encodeURIComponent(artist.name.toLowerCase()), listeners } } } : {}),
     },
     popularity: artist.popularity,
-    tags: genreTags(artist.genres),
+    tags: genreTags(artist.genres, style),
     ...(query ? { query } : {}),
     disambiguation: artist.local ? "Australian artist (mock)" : "Artist (mock)",
-    external: { spotify: [{ id: artist.spotifyId }] },
+    ...(style === "insights" ? { external: { spotify: [{ id: artist.spotifyId }], lastfm: [{ id: encodeURIComponent(artist.name.toLowerCase()), listeners }] } } : {}),
   };
+}
+
+/** Live hours: lowercase weekdays, "THH:MM:SS", `closed`, and closing past midnight as an earlier time. */
+function liveHours(hours: MockPlace["hours"]) {
+  const seconds = (t: string) => (/^T\d{2}:\d{2}$/.test(t) ? `${t}:00` : t);
+  return Object.fromEntries(
+    DAYS.map((day) => {
+      const ranges = hours[day] ?? [];
+      return [
+        day.toLowerCase(),
+        ranges.length > 0 ? ranges.map((r) => ({ opens: seconds(r.opens), closed: false, closes: seconds(r.closes) })) : [{ opens: null, closed: true, closes: null }],
+      ];
+    }),
+  );
 }
 
 function placePayload(place: MockPlace, query?: Record<string, unknown>) {
@@ -309,7 +344,7 @@ function placePayload(place: MockPlace, query?: Record<string, unknown>) {
     properties: {
       ...(place.address ? { address: `${place.address}, Melbourne VIC` } : {}),
       geocode: { name: "Melbourne", admin1_region: "Victoria", admin2_region: "Melbourne City", country_code: "AU" },
-      hours: place.hours,
+      hours: liveHours(place.hours),
       description: `${place.categoryLabel} (name and location from OpenStreetMap; popularity and audience are Qloo mock test data)`,
       ...(place.hoursFromOsm ? {} : { mock_hours: true }),
     },
@@ -370,7 +405,8 @@ function requireSignal(signals: Signals, params: Params) {
   if (sentAny && !hasMix(signals.mix)) throw new BadRequest("at least one valid signal or filter is required");
 }
 
-const HEATMAP_PRECISION = 6;
+/** Live heatmaps over a city-centre polygon come back at geohash precision 7 (about 150 m cells). */
+const HEATMAP_PRECISION = 7;
 
 let coverageLifts: { key: string; lifts: number[] } | null = null;
 
@@ -405,6 +441,8 @@ function heatmap(params: Params, key: string): Response {
       affinity: n <= 1 ? 1 : 1 - i / n,
       affinity_rank: percentile(c.lift),
       popularity: r3(Math.min(1, density(c.center) * 0.9 + 0.1 * unit(`pop:${c.geohash}`))),
+      entity_artist_affinity: n <= 1 ? 1 : 1 - i / n,
+      entity_artist_affinity_rank: percentile(c.lift),
     },
   }));
   const take = params.number("take");
@@ -417,7 +455,7 @@ function places(params: Params, key: string): Response {
   requireSignal(signals, params);
   const { area } = parseArea(params.get("filter.location"), params.get("filter.location.query"), params.number("filter.location.radius"), 15000);
   const weekday = params.get("filter.hours");
-  const day = weekday ? weekday[0].toUpperCase() + weekday.slice(1).toLowerCase() : null;
+  const day = weekday ? weekday[0].toUpperCase() + weekday.slice(1).toLowerCase() : null; // case-insensitive, as live
   const tagFilter = params.list("filter.tags");
   const popMin = params.number("filter.popularity.min");
   const popMax = params.number("filter.popularity.max");
@@ -570,8 +608,10 @@ function tags(params: Params, key: string): Response {
     {
       tags: page.map(({ g, affinity }) => ({
         tag_id: genreTagId(g),
-        name: GENRES[g],
+        // Live names can arrive padded (" indie"); the mock pads one so clients keep trimming.
+        name: g === "indie_rock" ? ` ${GENRES[g]}` : GENRES[g],
         types: ["urn:entity:artist"],
+        popularity: r3(0.5 + 0.5 * unit(`tagpop:${g}`)),
         subtype: "urn:tag:genre:music",
         tag_value: genreTagId(g),
         query: affinity === null ? {} : { affinity },
@@ -602,7 +642,7 @@ function search(params: Params, key: string): Response {
   const wantPlaces = types.length === 0 || types.includes("urn:entity:place");
   const q = normalizeName(query);
   const results = [
-    ...(wantArtists ? searchArtists(query).map((a) => artistPayload(a)) : []),
+    ...(wantArtists ? searchArtists(query).map((a) => artistPayload(a, undefined, "lookup")) : []),
     ...(wantPlaces ? MOCK_PLACES.filter((p) => normalizeName(p.name).includes(q)).map((p) => placePayload(p)) : []),
   ];
   const page = paginate(results, params, { max: 199 });
@@ -619,11 +659,11 @@ function entities(params: Params, key: string): Response {
       const place = PLACE_BY_ID.get(id.toUpperCase());
       if (place) return [placePayload(place)];
       const artist = isMockId(id) ? artistById(id) : null;
-      return artist ? [artistPayload(artist)] : [];
+      return artist ? [artistPayload(artist, undefined, "lookup")] : [];
     }),
     ...spotify.flatMap((sid): unknown[] => {
       const artist = CATALOG.find((a) => a.spotifyId === sid);
-      return artist ? [artistPayload(artist)] : [];
+      return artist ? [artistPayload(artist, undefined, "lookup")] : [];
     }),
   ];
   if (found.length === 0) return error(404, "No results");
@@ -634,7 +674,7 @@ function tagSearch(params: Params, key: string): Response {
   const q = normalizeName(params.get("filter.query") ?? "");
   const rows = (Object.keys(GENRES) as Genre[])
     .filter((g) => !q || normalizeName(GENRES[g]).includes(q) || g.includes(q.replace(/ /g, "_")))
-    .map((g) => ({ id: genreTagId(g), name: GENRES[g], type: "urn:tag:genre:music", parents: [{ id: "urn:entity:artist" }] }));
+    .map((g) => ({ id: genreTagId(g), name: GENRES[g], type: "urn:tag:genre:music", popularity: r3(0.5 + 0.5 * unit(`tagpop:${g}`)), parents: [{ type: "urn:entity:artist" }] }));
   return ok({ tags: paginate(rows, params) }, key);
 }
 
@@ -642,6 +682,11 @@ function tagSearch(params: Params, key: string): Response {
 
 const DAY_MS = 86_400_000;
 const isoDate = /^\d{4}-\d{2}-\d{2}$/;
+/**
+ * Like live Qloo (checked 2026-10-15), trending has no data for recent weeks:
+ * the mock's series ends on this date, and windows after it are empty.
+ */
+export const MOCK_TRENDING_LATEST = "2026-05-13";
 
 function trending(params: Params, key: string): Response {
   const type = params.get("filter.type");
@@ -657,7 +702,7 @@ function trending(params: Params, key: string): Response {
 
   // Weekly rows, newest first (docs: "ordered by date in descending order").
   const startMs = Date.parse(`${start}T00:00:00Z`);
-  const endMs = Date.parse(`${end}T00:00:00Z`);
+  const endMs = Math.min(Date.parse(`${end}T00:00:00Z`), Date.parse(`${MOCK_TRENDING_LATEST}T00:00:00Z`));
   const dates: number[] = [];
   for (let t = endMs; t >= startMs && dates.length < 260; t -= 7 * DAY_MS) dates.push(t);
 
@@ -679,10 +724,11 @@ function trending(params: Params, key: string): Response {
     const before = series(t - 7 * DAY_MS);
     const rank = Math.max(1, Math.round((100 - now) * 120));
     const previousRank = Math.max(1, Math.round((100 - before) * 120));
+    // Live: the percentile is a 0–1 fraction and the rank a string.
     return {
       date: new Date(t).toISOString().slice(0, 10),
-      population_percentile: r2(now),
-      population_rank: rank,
+      population_percentile: Math.round(now * 100) / 10_000,
+      population_rank: String(rank),
       population_rank_velocity: previousRank - rank,
       velocity_fold_change: r3(now / before),
       population_percent_delta: r2(((now - before) / before) * 100),
@@ -693,34 +739,43 @@ function trending(params: Params, key: string): Response {
 
 // ---- /v2/analysis/compare --------------------------------------------------------
 
+/**
+ * Live shape (checked 2026-10-15): `results.a` and `results.b` list the tags
+ * of each group's entities with `query.count` (a string: how many of the
+ * group's entities carry it), and `results.tags` the shared tags with a
+ * similarity `query.score`. `filter.subtype` and `take` are ignored. The mock
+ * tags an artist with every genre it leans on by at least 0.3.
+ */
 function compare(params: Params, key: string): Response {
   const groupA = params.list("a.signal.interests.entities").flatMap((id) => (artistById(id) ? [artistById(id)!] : []));
   const groupB = params.list("b.signal.interests.entities").flatMap((id) => (artistById(id) ? [artistById(id)!] : []));
   if (params.list("a.signal.interests.entities").length === 0 || params.list("b.signal.interests.entities").length === 0) {
     throw new BadRequest("a.signal.interests.entities and b.signal.interests.entities are required");
   }
-  const subtype = params.get("filter.subtype") ?? "urn:tag:genre";
-  if (!subtype.startsWith("urn:tag:genre") || groupA.length === 0 || groupB.length === 0) return ok([], key);
-  const mixA = mixGenres(groupA.map((e) => unitMix(e.genres)));
-  const mixB = mixGenres(groupB.map((e) => unitMix(e.genres)));
-  const rows = (Object.keys(GENRES) as Genre[])
-    .map((g) => {
-      const a = r3(cosine({ [g]: 1 }, mixA));
-      const b = r3(cosine({ [g]: 1 }, mixB));
-      return { g, a, b };
-    })
-    .filter((row) => row.a > 0 || row.b > 0)
-    .sort((x, y) => Math.max(y.a, y.b) - Math.max(x.a, x.b) || x.g.localeCompare(y.g));
-  return ok(
-    paginate(rows, params).map(({ g, a, b }) => ({
-      tag_id: genreTagId(g),
-      name: GENRES[g],
-      type: "urn:tag",
-      subtype: "urn:tag:genre:music",
-      query: { a: { affinity: a }, b: { affinity: b }, delta: r3(a - b) },
-    })),
-    key,
-  );
+  const counts = (group: CatalogArtist[]) => {
+    const out = new Map<Genre, number>();
+    for (const artist of group) for (const [g, w] of Object.entries(artist.genres) as [Genre, number][]) if (w >= 0.3) out.set(g, (out.get(g) ?? 0) + 1);
+    return out;
+  };
+  const tagRow = (g: Genre, query: Record<string, unknown>) => ({
+    tag_id: genreTagId(g),
+    name: GENRES[g],
+    type: "urn:tag",
+    subtype: "urn:tag:genre:music",
+    entity_id: mockId("tag", g),
+    popularity: r3(0.5 + 0.5 * unit(`tagpop:${g}`)),
+    query,
+  });
+  const a = counts(groupA);
+  const b = counts(groupB);
+  const list = (m: Map<Genre, number>) => [...m.entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0])).map(([g, n]) => tagRow(g, { count: String(n) }));
+  const ref = (group: CatalogArtist[]) => group.map((e) => ({ entity_id: e.id, name: e.name, subtype: "urn:entity:artist", disambiguation: e.name }));
+  const shared = [...a.keys()]
+    .filter((g) => b.has(g))
+    .map((g) => ({ g, score: r3(Math.min(a.get(g)! / groupA.length, b.get(g)! / groupB.length)) }))
+    .sort((x, y) => y.score - x.score || x.g.localeCompare(y.g))
+    .map(({ g, score }) => tagRow(g, { score, "a.signal.interests.entities": ref(groupA), "b.signal.interests.entities": ref(groupB) }));
+  return json({ duration: duration(key), results: { tags: shared, a: list(a), b: list(b), matchEntities: [] } });
 }
 
 // ---- Entry point ---------------------------------------------------------------

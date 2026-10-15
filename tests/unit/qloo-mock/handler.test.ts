@@ -70,11 +70,15 @@ describe("qloo mock: HTTP contract", () => {
   });
 });
 
+const MOCK_PLACES_HOURS = (places: { properties: { hours: Record<string, { opens: string | null; closed: boolean }[]> } }[]) => places.map((p) => p.properties.hours);
+
 describe("qloo mock: /search and /entities", () => {
   it("finds catalogue artists by name and aka, and answers 404 No results for unknown names", async () => {
     const exact = await call("/search", { query: "boy and bear", types: "urn:entity:artist" });
-    expect(exact.body.results[0]).toMatchObject({ name: "Boy & Bear", subtype: "urn:entity:artist", entity_id: expect.stringMatching(/^4D4F434B-/) });
-    expect(exact.body.results[0].tags[0]).toMatchObject({ type: "urn:tag:genre:music" });
+    // Live /search shape: `types` list, tags keyed `tag_id`, Last.fm listeners under properties.external.
+    expect(exact.body.results[0]).toMatchObject({ name: "Boy & Bear", types: ["urn:entity:artist"], entity_id: expect.stringMatching(/^4D4F434B-/) });
+    expect(exact.body.results[0].tags[0]).toMatchObject({ type: "urn:tag:genre:music", tag_id: expect.stringMatching(/^urn:tag:genre:music:/) });
+    expect(exact.body.results[0].properties.external.lastfm.listeners).toBeGreaterThan(0);
     expect(await call("/search", { query: "Totally Unknown Busker", types: "urn:entity:artist" })).toMatchObject({ status: 404, body: { message: "No results" } });
     // Short queries don't partially match half the catalogue.
     expect((await call("/search", { query: "the", types: "urn:entity:artist" })).status).toBe(404);
@@ -100,7 +104,7 @@ describe("qloo mock: taste field", () => {
     expect(cells.length).toBeGreaterThan(15);
     expect(cells[0].query.affinity).toBe(1);
     expect(cells.every((c, i) => i === 0 || c.query.affinity <= cells[i - 1].query.affinity)).toBe(true);
-    expect(cells.every((c) => c.location.geohash.length === 6 && c.query.popularity >= 0 && c.query.popularity <= 1)).toBe(true);
+    expect(cells.every((c) => c.location.geohash.length === 7 && c.query.popularity >= 0 && c.query.popularity <= 1)).toBe(true);
   });
 
   it("puts folk, soul and singer-songwriter crowds in clearly different places", async () => {
@@ -137,9 +141,17 @@ describe("qloo mock: places and artists", () => {
     const places = res.body.results.entities;
     expect(places.length).toBeGreaterThan(5);
     expect(places.every((p: { query: { distance: number } }) => p.query.distance <= 800)).toBe(true);
-    expect(places.every((p: { properties: { hours: Record<string, unknown[]> } }) => (p.properties.hours.Sunday ?? []).length > 0)).toBe(true);
+    // Live hours: lowercase days, "THH:MM:SS", a closed flag; filter.hours keeps places open that day.
+    type Hours = Record<string, { opens: string | null; closes: string | null; closed: boolean }[]>;
+    expect(places.every((p: { properties: { hours: Hours } }) => p.properties.hours.sunday.some((r) => !r.closed && /^T\d{2}:\d{2}:\d{2}$/.test(r.opens!)))).toBe(true);
+    const anyClosed = MOCK_PLACES_HOURS(places).some((h) => Object.values(h).some((day) => day[0].closed && day[0].opens === null));
+    expect(anyClosed).toBe(true);
     expect(places[0].query.explainability["signal.interests.entities"][0].entity_id).toMatch(/^4D4F434B-/);
-    expect(res.body.query.explainability["signal.interests.entities"]).toHaveLength(4);
+    // Live aggregate: effect_on_topN_recs lists of {entity_id, avg_score}.
+    const aggregate = res.body.query.explainability["signal.interests.entities"];
+    expect(Object.keys(aggregate)).toEqual(["effect_on_top3_recs", "effect_on_top5_recs", "effect_on_top10_recs", "effect_on_all_recs"]);
+    expect(aggregate.effect_on_top3_recs).toHaveLength(4);
+    expect(aggregate.effect_on_top3_recs[0]).toEqual({ entity_id: expect.stringMatching(/^4D4F434B-/), avg_score: expect.any(Number) });
     expect(places[0].properties.description).toContain("OpenStreetMap");
   });
 
@@ -192,9 +204,14 @@ describe("qloo mock: demographics, tags, trending, compare", () => {
   it("returns weekly trending rows, newest first, that differ by artist", async () => {
     const [a, b] = CATALOG;
     const series = async (id: string) =>
-      (await call("/v2/trending", { "signal.interests.entities": id, "filter.type": "urn:entity:artist", "filter.start_date": "2026-08-01", "filter.end_date": "2026-10-14" })).body.results.trending;
+      (await call("/v2/trending", { "signal.interests.entities": id, "filter.type": "urn:entity:artist", "filter.start_date": "2026-03-01", "filter.end_date": "2026-05-31" })).body.results.trending;
     const rowsA = await series(a.id);
-    expect(rowsA[0].date).toBe("2026-10-14");
+    // Like live, the series stops in mid-May 2026: later weeks are empty.
+    expect(rowsA[0].date).toBe("2026-05-13");
+    expect(typeof rowsA[0].population_rank).toBe("string");
+    expect(rowsA[0].population_percentile).toBeGreaterThan(0);
+    expect(rowsA[0].population_percentile).toBeLessThan(1);
+    expect((await call("/v2/trending", { "signal.interests.entities": a.id, "filter.type": "urn:entity:artist", "filter.start_date": "2026-07-01", "filter.end_date": "2026-10-14" })).body.results.trending).toEqual([]);
     expect(rowsA.every((r: { date: string }, i: number) => i === 0 || r.date < rowsA[i - 1].date)).toBe(true);
     expect(Object.keys(rowsA[0]).sort()).toEqual(["date", "population_percent_delta", "population_percentile", "population_rank", "population_rank_velocity", "velocity_fold_change"]);
     expect(rowsA).not.toEqual(await series(b.id));
@@ -204,13 +221,20 @@ describe("qloo mock: demographics, tags, trending, compare", () => {
   });
 
   it("compares two groups by genre", async () => {
-    const res = await call("/v2/analysis/compare", { "a.signal.interests.entities": await idsFor(FOLK), "b.signal.interests.entities": await idsFor(SOUL), "filter.subtype": "urn:tag:genre" });
-    const folk = res.body.results.find((r: { tag_id: string }) => r.tag_id === "urn:tag:genre:music:folk");
-    expect(folk.query.a.affinity).toBeGreaterThan(folk.query.b.affinity);
+    const res = await call("/v2/analysis/compare", { "a.signal.interests.entities": await idsFor(FOLK), "b.signal.interests.entities": await idsFor(SOUL) });
+    // Live shape: each group's tags with a string count of its entities carrying the tag, plus shared tags with a score.
+    type Row = { tag_id: string; subtype: string; query: { count?: string; score?: number } };
+    const count = (rows: Row[], id: string) => Number(rows.find((r) => r.tag_id === id)?.query.count ?? 0);
+    expect(count(res.body.results.a, "urn:tag:genre:music:folk")).toBeGreaterThan(count(res.body.results.b, "urn:tag:genre:music:folk"));
+    expect(res.body.results.a.every((r: Row) => r.subtype === "urn:tag:genre:music" && typeof r.query.count === "string")).toBe(true);
+    expect(res.body.results.tags.every((r: Row) => typeof r.query.score === "number")).toBe(true);
     expect((await call("/v2/analysis/compare", { "a.signal.interests.entities": CATALOG[0].id })).status).toBe(400);
   });
 
   it("searches genre tags", async () => {
-    expect((await call("/v2/tags", { "filter.query": "soul" })).body.results.tags.map((t: { id: string }) => t.id)).toEqual(["urn:tag:genre:music:soul", "urn:tag:genre:music:neo_soul"]);
+    const tags = (await call("/v2/tags", { "filter.query": "soul" })).body.results.tags;
+    expect(tags.map((t: { id: string }) => t.id)).toEqual(["urn:tag:genre:music:soul", "urn:tag:genre:music:neo_soul"]);
+    // Live /v2/tags rows: `id` (not tag_id), type, popularity and parents by type.
+    expect(tags[0]).toMatchObject({ type: "urn:tag:genre:music", popularity: expect.any(Number), parents: [{ type: "urn:entity:artist" }] });
   });
 });

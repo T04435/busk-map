@@ -1,9 +1,11 @@
-import { entitySchema, type Explanation, type QlooEntity, type QlooPlace, type RawEntity } from "./schema";
+import type { z } from "zod";
+import { entitySchema, type explainabilityAggregateSchema, type Explanation, type Impact, type QlooEntity, type QlooPlace, type RawEntity } from "./schema";
 
 /**
- * Pull "which input entity drove this result" out of `query.explainability`.
- * The exact shape is not documented in detail, so accept any list of objects
- * with an entity id and a 0–1 score, found anywhere under the field.
+ * Pull "which input entity drove this result" out of a result's
+ * `query.explainability`. Live shape (verified 2026-10-15):
+ * `{"signal.interests.entities": [{entity_id, score}]}`. Kept tolerant: any
+ * list of objects with an entity id and a 0–1 score, at any depth.
  */
 export function extractExplanations(value: unknown, depth = 0): Explanation[] {
   if (depth > 4 || value === null || typeof value !== "object") return [];
@@ -23,8 +25,9 @@ export function toEntity(raw: RawEntity): QlooEntity {
     id: raw.entity_id,
     name: raw.name,
     popularity: raw.popularity ?? null,
+    lastfmListeners: raw.properties?.external?.lastfm?.listeners ?? raw.external?.lastfm?.find((l) => l.listeners !== undefined)?.listeners ?? null,
     affinity: raw.query?.affinity ?? null,
-    tags: (raw.tags ?? []).map((t) => ({ id: t.id, name: t.name ?? t.id })),
+    tags: (raw.tags ?? []).flatMap((t) => (t.id ? [{ id: t.id, name: t.name || t.id }] : [])),
     explanation,
   };
 }
@@ -50,4 +53,27 @@ export function parseEntities(items: unknown[]): { entities: RawEntity[]; skippe
     if (parsed.success) entities.push(parsed.data);
   }
   return { entities, skipped: items.length - entities.length };
+}
+
+/**
+ * The top-level explainability aggregate (live shape:
+ * `{effect_on_top3_recs: [{entity_id, avg_score}], effect_on_top5_recs, effect_on_top10_recs, effect_on_all_recs}`)
+ * as one row per input entity.
+ */
+export function toImpact(aggregate: z.infer<typeof explainabilityAggregateSchema> | undefined): Impact[] {
+  const block = aggregate?.["signal.interests.entities"];
+  if (!block) return [];
+  const byId = new Map<string, Impact>();
+  const read = (rows: { entity_id: string; avg_score: number }[] | undefined, key: "top3" | "top5" | "top10" | "all") => {
+    for (const row of rows ?? []) {
+      const impact = byId.get(row.entity_id) ?? { entityId: row.entity_id, top3: null, top5: null, top10: null, all: null };
+      impact[key] = row.avg_score;
+      byId.set(row.entity_id, impact);
+    }
+  };
+  read(block.effect_on_top3_recs, "top3");
+  read(block.effect_on_top5_recs, "top5");
+  read(block.effect_on_top10_recs, "top10");
+  read(block.effect_on_all_recs, "all");
+  return [...byId.values()];
 }

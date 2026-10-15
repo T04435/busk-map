@@ -2,22 +2,25 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import type { z } from "zod";
 import { wktPoint, wktPolygon, type BBox, type LatLon } from "@/lib/geo";
+import { addDays } from "@/lib/slot";
 import { env, type QlooBackend } from "@/server/env";
 import { log } from "@/server/log";
 import { QLOO_MOCK_BASE_URL, qlooMockFetch } from "@/server/qloo-mock/fetch";
 import { AdapterError, fetchJson } from "../core";
-import { parseEntities, toEntity, toPlace } from "./normalize";
+import { parseEntities, toEntity, toImpact, toPlace } from "./normalize";
 import {
   compareResponseSchema,
   demographicsResponseSchema,
   entitiesResponseSchema,
   heatmapResponseSchema,
+  insightsEntitiesResponseSchema,
   searchResponseSchema,
   tagsResponseSchema,
   trendingResponseSchema,
   type CrowdProfile,
   type GenreContrast,
   type HeatCell,
+  type LocalArtists,
   type QlooEntity,
   type QlooPlace,
   type TasteTag,
@@ -31,6 +34,11 @@ import {
  * ('use cache: remote'); responses are trimmed before caching and never
  * written to the repository.
  *
+ * Rate limits (live response headers, 2026-10-15): 5 requests a second and
+ * 10,000 a month per key. Live calls are paced below the per-second limit
+ * (`pace`) and a 429 is retried after a second; caching keeps the monthly
+ * count down.
+ *
  * Qloo silently ignores invalid parameters, so an empty result is logged with
  * the parameter names we sent: that is usually the first sign of a bad one.
  *
@@ -39,7 +47,8 @@ import {
  * never be served as live data once the key arrives. In mock mode the same
  * code runs against an in-process fetch that implements Qloo's HTTP contract.
  */
-const TIMEOUT_MS = 8_000;
+/** Live calls take 1–7 s (urn:tag and large place lists are the slowest), so allow 15 s. */
+const TIMEOUT_MS = 15_000;
 export const MAX_TAKE = 50;
 
 type Params = Record<string, string | number | boolean | undefined>;
@@ -58,17 +67,55 @@ function target(backend: QlooBackend) {
   return { base, apiKey, fetcher: undefined };
 }
 
+/** Live requests started per rolling second. Qloo allows 5, but bursts of 4 still drew 429s when checked, and the key is shared by every instance. */
+export const LIVE_REQUESTS_PER_SECOND = 3;
+const RATE_RETRY_MS = 1_100;
+const RATE_RETRIES = 2;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const recentStarts: number[] = [];
+let paceQueue: Promise<void> = Promise.resolve();
+
+/** Wait for a free slot under the per-second limit. Calls are served in order. */
+export function pace(perSecond = LIVE_REQUESTS_PER_SECOND): Promise<void> {
+  const turn = paceQueue.then(async () => {
+    for (;;) {
+      const now = Date.now();
+      while (recentStarts.length > 0 && now - recentStarts[0] >= 1_000) recentStarts.shift();
+      if (recentStarts.length < perSecond) {
+        recentStarts.push(now);
+        return;
+      }
+      await sleep(1_000 - (now - recentStarts[0]) + 5);
+    }
+  });
+  paceQueue = turn;
+  return turn;
+}
+
 export async function qlooGet<S extends z.ZodType>(backend: QlooBackend, path: string, params: Params, schema: S): Promise<z.infer<S>> {
   const { base, apiKey, fetcher } = target(backend);
   if (!apiKey) throw new AdapterError("qloo", "missing_key", "Qloo key is not configured");
   const query = toSearch(params);
-  return fetchJson(`${base}${path}?${query}`, {
-    adapter: "qloo",
-    schema,
-    timeoutMs: TIMEOUT_MS,
-    fetcher,
-    init: { headers: { "X-Api-Key": apiKey, Accept: "application/json" } },
-  });
+  const once = () =>
+    fetchJson(`${base}${path}?${query}`, {
+      adapter: "qloo",
+      schema,
+      timeoutMs: TIMEOUT_MS,
+      fetcher,
+      init: { headers: { "X-Api-Key": apiKey, Accept: "application/json" } },
+    });
+  if (backend === "mock") return once();
+  for (let attempt = 0; ; attempt++) {
+    await pace();
+    try {
+      return await once();
+    } catch (error) {
+      if (!(error instanceof AdapterError && error.kind === "rate_limited") || attempt >= RATE_RETRIES) throw error;
+      log.warn("qloo rate limited; retrying", { path, attempt: attempt + 1 });
+      await sleep(RATE_RETRY_MS);
+    }
+  }
 }
 
 /** /search and /entities answer 404 "No results" when nothing matches (docs): that is not an outage. */
@@ -173,8 +220,12 @@ export async function places(
     .filter((p): p is QlooPlace => p !== null);
 }
 
-/** `urn:entity:artist` liked in the area by fans of these artists, with explanations. */
-export async function localArtists(backend: QlooBackend, entityIds: string[], area: BBox, take: number): Promise<QlooEntity[]> {
+/**
+ * `urn:entity:artist` liked in the area by fans of these artists, with
+ * explanations: per result, and the top-level aggregate (each input artist's
+ * average effect on the top 3, 5, 10 and all results).
+ */
+export async function localArtists(backend: QlooBackend, entityIds: string[], area: BBox, take: number): Promise<LocalArtists> {
   "use cache: remote";
   cacheLife("days");
   cacheTag("qloo", "qloo:artists");
@@ -182,11 +233,14 @@ export async function localArtists(backend: QlooBackend, entityIds: string[], ar
     "filter.type": "urn:entity:artist",
     "signal.location": wktPolygon(area),
     "signal.interests.entities": ids(entityIds),
-    "feature.explainability": true,
+    "feature.explainability": entityIds.length > 0 ? true : undefined,
     take: Math.min(take, MAX_TAKE),
   };
-  const body = await qlooGet(backend, "/v2/insights", params, entitiesResponseSchema);
-  return listEntities("/v2/insights", params, body.results).map(toEntity);
+  const body = await qlooGet(backend, "/v2/insights", params, insightsEntitiesResponseSchema);
+  return {
+    artists: listEntities("/v2/insights", params, body.results.entities).map(toEntity),
+    impact: toImpact(body.query?.explainability),
+  };
 }
 
 /** Score specific artists for the crowd around one point (`filter.results.entities`). */
@@ -209,9 +263,10 @@ export async function affinityAt(backend: QlooBackend, entityIds: string[], poin
 }
 
 /**
- * `/v2/trending` for one entity: weekly rows, newest first. The docs describe
- * a single entity's series and the rows carry no entity id, so callers ask
- * once per artist (see `trending`).
+ * `/v2/trending` for one entity: rows newest first. The rows carry no entity
+ * id, so callers ask once per artist (see `trending`). Live Qloo sends
+ * `population_percentile` as a 0–1 fraction and `population_rank` as a
+ * string; percentiles are returned here on a 0–100 scale.
  */
 export async function trendingFor(backend: QlooBackend, entityId: string, startDate: string, endDate: string): Promise<TrendRow | null> {
   "use cache: remote";
@@ -229,21 +284,47 @@ export async function trendingFor(backend: QlooBackend, entityId: string, startD
   const [latest] = [...rows].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
   if (!latest) return null;
   const oldest = rows.reduce((min, row) => ((row.date ?? "") < (min.date ?? "") ? row : min), latest);
-  const series = [...rows].sort((a, b) => (a.date ?? "").localeCompare(b.date ?? "")).flatMap((row) => (row.population_percentile === undefined ? [] : [row.population_percentile]));
+  const points = (fraction: number) => Math.round(fraction * 100 * 100) / 100;
+  const series = [...rows].sort((a, b) => (a.date ?? "").localeCompare(b.date ?? "")).flatMap((row) => (row.population_percentile === undefined ? [] : [points(row.population_percentile)]));
   return {
     entityId,
     percentDelta: latest.population_percent_delta ?? null,
     velocity: latest.population_rank_velocity ?? latest.velocity_fold_change ?? null,
-    percentile: latest.population_percentile ?? null,
+    percentile: latest.population_percentile === undefined ? null : points(latest.population_percentile),
     windowChange:
       latest.population_percentile !== undefined && oldest.population_percentile !== undefined && oldest !== latest
-        ? Math.round((latest.population_percentile - oldest.population_percentile) * 100) / 100
+        ? Math.round((points(latest.population_percentile) - points(oldest.population_percentile)) * 100) / 100
         : null,
     series,
   };
 }
 
-/** `/v2/trending` for up to five artists, one request each, in parallel. */
+/** Length of the trending window, and how far back to look for one with data. */
+export const TRENDING_WINDOW_DAYS = 42;
+export const TRENDING_PROBE_STEP_DAYS = 91;
+export const TRENDING_MAX_PROBES = 5;
+
+export type TrendWindow = { start: string; end: string };
+
+/**
+ * The latest trending window that has data. Live Qloo's trending is empty for
+ * recent weeks (July to October 2026 when checked), so probe back a quarter
+ * at a time, up to a year, with one artist. Cached for the day; each probe is
+ * itself a cached `trendingFor` call, so the probe artist's row is reused.
+ */
+export async function trendingWindow(backend: QlooBackend, probeEntityId: string, today: string): Promise<TrendWindow | null> {
+  "use cache: remote";
+  cacheLife("days");
+  cacheTag("qloo", "qloo:trending");
+  for (let probe = 0; probe < TRENDING_MAX_PROBES; probe++) {
+    const end = addDays(today, -1 - probe * TRENDING_PROBE_STEP_DAYS);
+    const start = addDays(end, -TRENDING_WINDOW_DAYS);
+    if (await trendingFor(backend, probeEntityId, start, end)) return { start, end };
+  }
+  return null;
+}
+
+/** `/v2/trending` for up to five artists, one request each (paced; see `qlooGet`). */
 export async function trending(backend: QlooBackend, entityIds: string[], startDate: string, endDate: string): Promise<TrendRow[]> {
   const settled = await Promise.allSettled(entityIds.slice(0, 5).map((id) => trendingFor(backend, id, startDate, endDate)));
   if (settled.length > 0 && settled.every((s) => s.status === "rejected")) throw (settled[0] as PromiseRejectedResult).reason;
@@ -290,10 +371,14 @@ export async function crowdTags(backend: QlooBackend, entityIds: string[], point
   return body.results.tags.map((tag) => ({ id: tag.tag_id ?? tag.id ?? "", name: tag.name, affinity: tag.query?.affinity ?? null })).filter((t) => t.id);
 }
 
+/** The music-genre tag subtype in /v2/analysis/compare groups. */
+export const GENRE_SUBTYPE = "urn:tag:genre:music";
+
 /**
- * `/v2/analysis/compare` by genre: how the performer's fans (a) differ from
- * the crowd the city already gets (b). The response shape is not documented
- * in detail; rows without both affinities are skipped.
+ * `/v2/analysis/compare`: how the performer's artists (a) differ from the
+ * crowd the city already gets (b), by music genre. Live Qloo lists each
+ * group's tags with a count of the group's entities carrying it; a genre's
+ * value per group is that count over the group's size (0–1).
  */
 export async function compareGenres(backend: QlooBackend, groupA: string[], groupB: string[]): Promise<GenreContrast[]> {
   "use cache: remote";
@@ -302,15 +387,25 @@ export async function compareGenres(backend: QlooBackend, groupA: string[], grou
   const params = {
     "a.signal.interests.entities": ids(groupA),
     "b.signal.interests.entities": ids(groupB),
-    "filter.type": "urn:entity:artist",
-    "filter.subtype": "urn:tag:genre",
-    take: 20,
   };
   const body = await qlooGet(backend, "/v2/analysis/compare", params, compareResponseSchema);
-  logIfEmpty("/v2/analysis/compare", params, body.results.length);
-  return body.results.flatMap((row) => {
-    const a = row.query?.a?.affinity;
-    const b = row.query?.b?.affinity;
-    return a === undefined || b === undefined ? [] : [{ id: row.tag_id ?? row.id ?? row.name, name: row.name, a, b }];
-  });
+  const share = (rows: typeof body.results.a, size: number) => {
+    const out = new Map<string, { name: string; value: number }>();
+    for (const row of rows) {
+      if (row.subtype !== GENRE_SUBTYPE || !row.name) continue;
+      const value = Math.min(1, (row.query?.count ?? 0) / Math.max(1, size));
+      const previous = out.get(row.tag_id);
+      if (!previous || value > previous.value) out.set(row.tag_id, { name: row.name, value });
+    }
+    return out;
+  };
+  const a = share(body.results.a, groupA.length);
+  const b = share(body.results.b, groupB.length);
+  logIfEmpty("/v2/analysis/compare", params, a.size + b.size);
+  return [...new Set([...a.keys(), ...b.keys()])].map((id) => ({
+    id,
+    name: (a.get(id) ?? b.get(id))!.name,
+    a: Math.round((a.get(id)?.value ?? 0) * 1000) / 1000,
+    b: Math.round((b.get(id)?.value ?? 0) * 1000) / 1000,
+  }));
 }

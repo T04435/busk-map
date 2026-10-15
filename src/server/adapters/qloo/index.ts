@@ -3,9 +3,10 @@ import type { BBox, LatLon } from "@/lib/geo";
 import { qlooBackend, type QlooBackend } from "@/server/env";
 import { runAdapter, type AdapterContext, type AdapterResult } from "../core";
 import * as client from "./client";
-import type { CrowdProfile, GenreContrast, HeatCell, QlooEntity, QlooPlace, TasteTag, TrendRow } from "./schema";
+import type { CrowdProfile, GenreContrast, HeatCell, LocalArtists, QlooEntity, QlooPlace, TasteTag, TrendRow } from "./schema";
 
-export type { CrowdProfile, Explanation, GenreContrast, HeatCell, QlooEntity, QlooPlace, TasteTag, TrendRow } from "./schema";
+export type { CrowdProfile, Explanation, GenreContrast, HeatCell, Impact, LocalArtists, QlooEntity, QlooPlace, TasteTag, TrendRow } from "./schema";
+export type { TrendWindow } from "./client";
 
 /**
  * Qloo tool functions (spec.md, Agent design). The same client code runs in
@@ -13,7 +14,7 @@ export type { CrowdProfile, Explanation, GenreContrast, HeatCell, QlooEntity, Ql
  * - live: https://hackathon.api.qloo.com, when QLOO_API_KEY is set;
  * - mock: the local mock of Qloo's HTTP contract (src/server/qloo-mock), when
  *   the key is missing, QLOO_MOCK=1, or in offline test mode. Results are then
- *   reported as "synthetic" and labelled "Qloo test data (key pending)".
+ *   reported as "synthetic" and labelled "Qloo test data (local mock)".
  * When Qloo fails, the fallback is empty data and the plan reports a clear
  * Qloo error (Qloo is required; architecture.md).
  */
@@ -97,9 +98,9 @@ export function busyPlaces(
   return run(context, [], (backend) => client.places(backend, entityIds, center, radiusM, weekday));
 }
 
-/** local_artists: what this crowd likes, with explainability. */
-export function localArtists(entityIds: string[], area: BBox, take: number, context: AdapterContext): Promise<AdapterResult<QlooEntity[]>> {
-  return run(context, [], (backend) => client.localArtists(backend, entityIds, area, take));
+/** local_artists: what this crowd likes, with explainability (per result and aggregate). */
+export function localArtists(entityIds: string[], area: BBox, take: number, context: AdapterContext): Promise<AdapterResult<LocalArtists>> {
+  return run<LocalArtists>(context, { artists: [], impact: [] }, (backend) => client.localArtists(backend, entityIds, area, take));
 }
 
 /** Per-pitch affinity of the performer's artists, for setlist ordering. */
@@ -110,6 +111,11 @@ export function artistAffinityAt(
   context: AdapterContext,
 ): Promise<AdapterResult<Record<string, number>>> {
   return run(context, {}, (backend) => client.affinityAt(backend, entityIds, point, radiusM));
+}
+
+/** The latest trending window with data (probing back from today), or null when Qloo has none in the last year. */
+export function trendingWindow(probeEntityId: string, today: string, context: AdapterContext): Promise<AdapterResult<client.TrendWindow | null>> {
+  return run<client.TrendWindow | null>(context, null, (backend) => client.trendingWindow(backend, probeEntityId, today));
 }
 
 /** rising: momentum for candidate artists, for "learn these". */

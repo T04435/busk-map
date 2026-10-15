@@ -18,7 +18,7 @@ test.describe("own act", () => {
     await expect(page.getByText("Your song").first()).toBeVisible();
   });
 
-  test("live search: artist chips, a picked song, Learn it links and the date picker", async ({ page }) => {
+  test("live search: artist chips, a picked song ranked by the act's artists, and the date picker", async ({ page }) => {
     await page.goto("/");
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill("Search Tester");
@@ -41,25 +41,23 @@ test.describe("own act", () => {
     await expect(chips.getByRole("listitem")).toHaveCount(2);
     await expect(chips.getByRole("listitem").nth(1)).toContainText("(typed)");
 
-    // Songs: cover, title, artist, album and length; Learn it opens external searches.
+    // Songs: versions by the act's artists come first (marked), then Spotify's order: cover, title, artist, album and length.
+    // These are songs the act already plays, so there is no Learn it menu here.
     const songBox = form.getByRole("combobox", { name: "Search songs on Spotify" });
     await songBox.pressSequentially("Gravy");
-    const song = form.getByRole("listbox", { name: "Song results" }).getByRole("option").first();
-    await expect(song).toContainText("Gravy (synthetic result 1)");
+    const options = form.getByRole("listbox", { name: "Song results" }).getByRole("option");
+    await expect(options.first()).toContainText("Paul Kelly · Synthetic Album");
+    await expect(options.first()).toContainText("By your artist");
+    const song = options.filter({ hasText: "Gravy (synthetic result 1)" });
     await expect(song).toContainText("Synthetic Artist 1 · Synthetic Album");
     await expect(song).toContainText("3:07");
-    await song.getByRole("button", { name: "Learn it: Gravy (synthetic result 1)" }).click();
-    const menu = page.getByRole("menu");
-    await expect(menu.getByRole("menuitem", { name: /Karaoke/ })).toHaveAttribute("href", /youtube\.com\/results\?search_query=Gravy.+karaoke/);
-    await expect(menu.getByRole("menuitem", { name: /Chords/ })).toHaveAttribute("href", /ultimate-guitar\.com\/search\.php/);
-    await expect(menu.getByRole("menuitem", { name: /Lyrics/ })).toHaveAttribute("href", /genius\.com\/search\?q=Gravy/);
-    for (const item of await menu.getByRole("menuitem").all()) await expect(item).toHaveAttribute("target", "_blank");
-    await page.keyboard.press("Escape");
-    await expect(menu).toHaveCount(0);
+    await expect(song).not.toContainText("By your artist");
+    await expect(form.getByRole("button", { name: /^Learn it/ })).toHaveCount(0);
     await song.click();
     const picked = form.getByRole("list", { name: "Songs you picked" });
     await expect(picked.getByRole("listitem")).toHaveCount(1);
     await expect(picked).toContainText("3:07");
+    await expect(picked.getByRole("button", { name: /^Learn it/ })).toHaveCount(0);
 
     // The plan date is today or later.
     const date = form.getByLabel("Date");
@@ -75,10 +73,20 @@ test.describe("own act", () => {
     expect(params.get("artists")).toMatch(/^Paul Kelly~[A-Za-z0-9]{22}\|Zzyzx Nobody\|Synthetic Artist 1$/);
     expect(params.get("songs")).toBe("Gravy (synthetic result 1)~Synthetic Artist 1~187s");
     await waitForPlan(page);
-    // Qloo matched the picked artist (by Spotify id first); the setlist shows lengths and Learn it.
+    // Qloo matched the picked artist (by Spotify id first); the setlist shows lengths. The act's own songs get no Learn it;
+    // only "Learn these" suggestions do (opening external searches).
     await expect(page.getByTestId("unmatched-artists")).toContainText("This plan uses the artists Qloo did match: Paul Kelly.");
     await expect(page.getByTestId("set-length")).toHaveText("Set length: 3:07 (1 song).");
-    await expect(page.getByRole("button", { name: "Learn it: Gravy (synthetic result 1)" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Learn it: Gravy (synthetic result 1)" })).toHaveCount(0);
+    const learn = page.getByRole("region", { name: "Learn these" }).getByRole("button", { name: /^Learn it: / }).first();
+    await learn.click();
+    const menu = page.getByRole("menu");
+    await expect(menu.getByRole("menuitem", { name: /Karaoke/ })).toHaveAttribute("href", /youtube\.com\/results\?search_query=.+karaoke/);
+    await expect(menu.getByRole("menuitem", { name: /Chords/ })).toHaveAttribute("href", /ultimate-guitar\.com\/search\.php/);
+    await expect(menu.getByRole("menuitem", { name: /Lyrics/ })).toHaveAttribute("href", /genius\.com\/search\?q=/);
+    for (const item of await menu.getByRole("menuitem").all()) await expect(item).toHaveAttribute("target", "_blank");
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
   });
 
   test("asks for an artist before planning", async ({ page }) => {
@@ -123,5 +131,7 @@ test.describe("artists Qloo can't match", () => {
     await expect(alert).toContainText("Qloo couldn't match Zzyzx Nobody and Qqq Unknown");
     await expect(alert).toContainText("taste is left out");
     await expect(page.getByText("Qloo couldn't match any of your artists, so the agent wasn't run")).toBeVisible();
+    // The plan shown isn't Claude's: said so once the run ends.
+    await expect(page.getByTestId("agent-fallback")).toContainText("template ones");
   });
 });

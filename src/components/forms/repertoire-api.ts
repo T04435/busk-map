@@ -33,8 +33,10 @@ export async function searchArtists(q: string, signal: AbortSignal): Promise<Sea
   return outcome(body, body.artists);
 }
 
-export async function searchTracks(q: string, signal: AbortSignal): Promise<SearchOutcome<TrackResult>> {
-  const body = await getJson({ type: "tracks", q }, signal);
+/** Song search. `artists` are the act's "sounds like" names: the server puts their versions first. */
+export async function searchTracks(q: string, signal: AbortSignal, artists: readonly string[] = []): Promise<SearchOutcome<TrackResult>> {
+  const names = artists.map((n) => n.replace(/\|/g, " ").trim()).filter(Boolean);
+  const body = await getJson({ type: "tracks", q, ...(names.length > 0 ? { artists: names.join("|") } : {}) }, signal);
   return outcome(body, body.tracks);
 }
 

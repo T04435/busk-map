@@ -1,13 +1,14 @@
 "use client";
 
 import { MusicIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { searchTracks, type TrackResult } from "@/components/forms/repertoire-api";
 import { useLiveSearch } from "@/components/forms/use-live-search";
-import { LearnItMenu } from "@/components/songs/learn-it-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { formatDuration, MIN_QUERY_CHARS } from "@/lib/live-search";
+import { isByActArtist, rankByActArtists, type ActArtist } from "@/lib/track-rank";
 
 const LABEL = "Search songs on Spotify";
 
@@ -23,15 +24,30 @@ export function SongCover({ image, className }: { image: string | null; classNam
   );
 }
 
-/** Keep clicks and keys on the Learn it menu from selecting the result row. */
-const stop = (e: React.SyntheticEvent) => e.stopPropagation();
-
-/** "Songs you can play": live Spotify song search. Picking a result adds it (cover, album and length kept). */
-export function SongSearch({ onAdd, isAdded }: { onAdd: (track: TrackResult) => void; isAdded: (track: TrackResult) => boolean }) {
+/**
+ * "Songs you can play": live Spotify song search. Picking a result adds it (cover, album and length kept).
+ * Songs by the act's "sounds like" artists (`artists`) come first, marked "By your artist".
+ */
+export function SongSearch({
+  onAdd,
+  isAdded,
+  artists,
+}: {
+  onAdd: (track: TrackResult) => void;
+  isAdded: (track: TrackResult) => boolean;
+  artists: readonly ActArtist[];
+}) {
   const [query, setQuery] = useState("");
-  const { state, update } = useLiveSearch<TrackResult>(searchTracks);
+  // The search function is read once (useLiveSearch), so it reads the current chips from a ref.
+  const artistsRef = useRef(artists);
+  useEffect(() => {
+    artistsRef.current = artists;
+  }, [artists]);
+  const [search] = useState(() => (q: string, signal: AbortSignal) => searchTracks(q, signal, artistsRef.current.map((a) => a.name)));
+  const { state, update } = useLiveSearch<TrackResult>(search);
   const typed = query.trim();
-  const results = state.status === "done" ? state.results : [];
+  // Ranked again here with Spotify ids, and for chips added after the search.
+  const results = state.status === "done" ? rankByActArtists(state.results, artists) : [];
   // Keyboard focus starts on the first result each time new results arrive.
   const [active, setActive] = useState<{ query: string; value: string } | null>(null);
   const activeValue = active && active.query === state.query && state.status === "done" ? active.value : results[0] ? `spotify:${results[0].id}` : "";
@@ -90,10 +106,8 @@ export function SongSearch({ onAdd, isAdded }: { onAdd: (track: TrackResult) => 
                       <span className="block truncate font-medium">{track.title}</span>
                       <span className="block truncate text-xs text-muted-foreground">{[artist, track.album].filter(Boolean).join(" · ")}</span>
                     </span>
+                    {isByActArtist(track, artists) && <Badge variant="secondary">By your artist</Badge>}
                     {track.durationMs !== null && <span className="text-xs text-muted-foreground tabular-nums">{formatDuration(track.durationMs)}</span>}
-                    <span onClick={stop} onPointerDown={stop} onKeyDown={stop}>
-                      <LearnItMenu title={track.title} artist={track.artists[0]?.name ?? ""} />
-                    </span>
                     <span className="sr-only">{added ? "Added" : "Add"}</span>
                   </CommandItem>
                 );

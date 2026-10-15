@@ -1,9 +1,17 @@
 import "server-only";
 import { providerStatus } from "@/server/env";
 import { runAdapter, settleWithLimit, type AdapterContext, type AdapterResult } from "../core";
-import { fetchArtistCatalogue, fetchReleaseCount, fetchReleaseYear, parseSpotifyArtistId, searchArtists, searchTracks } from "./client";
-import { syntheticArtistSearch, syntheticCatalogue, syntheticReleaseCount, syntheticReleaseYear, syntheticTrackSearch } from "./fixtures/synthetic";
+import { fetchArtistCatalogue, fetchReleaseCount, fetchReleaseYear, parseSpotifyArtistId, searchArtists, searchTracks, searchTracksByArtist } from "./client";
+import {
+  syntheticArtistSearch,
+  syntheticCatalogue,
+  syntheticReleaseCount,
+  syntheticReleaseYear,
+  syntheticScopedTrackSearch,
+  syntheticTrackSearch,
+} from "./fixtures/synthetic";
 import { trackKey } from "@/lib/text";
+import { mergeTrackLists, rankByActArtists, scopedArtistNames, MAX_SCOPED_ARTISTS } from "@/lib/track-rank";
 import type { CatalogueArtist, CatalogueTrack } from "./schema";
 
 export type { CatalogueArtist, CatalogueTrack } from "./schema";
@@ -21,8 +29,34 @@ const common = (context: AdapterContext) => ({
   configured: providerStatus().spotify,
 });
 
-export async function findTracks(query: string, market: string, context: AdapterContext): Promise<AdapterResult<CatalogueTrack[]>> {
-  return runAdapter({ ...common(context), fallback: [], synthetic: () => syntheticTrackSearch(query), live: () => searchTracks(query, market) });
+/**
+ * Song search for "Songs you can play". With the act's "sounds like" artists,
+ * it also runs one scoped search per artist (at most MAX_SCOPED_ARTISTS, in
+ * parallel) and puts tracks by those artists first, keeping Spotify's order
+ * within each group. A failed scoped search is skipped; the plain search decides
+ * success or fallback.
+ */
+export async function findTracks(
+  query: string,
+  market: string,
+  context: AdapterContext,
+  actArtists: readonly string[] = [],
+): Promise<AdapterResult<CatalogueTrack[]>> {
+  const names = scopedArtistNames(actArtists.map((name) => ({ name, spotifyId: null })));
+  const chips = names.map((name) => ({ name, spotifyId: null }));
+  const combine = (plain: CatalogueTrack[], scoped: CatalogueTrack[][]) => rankByActArtists(mergeTrackLists(plain, ...scoped), chips);
+  return runAdapter({
+    ...common(context),
+    fallback: [],
+    synthetic: () => combine(syntheticTrackSearch(query), names.map((name) => syntheticScopedTrackSearch(query, name))),
+    live: async () => {
+      const [plain, scoped] = await Promise.all([
+        searchTracks(query, market),
+        settleWithLimit(names, MAX_SCOPED_ARTISTS, (name) => searchTracksByArtist(query, name, market)),
+      ]);
+      return combine(plain, scoped.flatMap((s) => (s.status === "fulfilled" ? [s.value] : [])));
+    },
+  });
 }
 
 /**

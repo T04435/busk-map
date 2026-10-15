@@ -97,6 +97,20 @@ export async function searchTracks(query: string, market: string): Promise<Catal
 }
 
 /**
+ * The same song search scoped to one artist ("track:… artist:…"), so a
+ * "sounds like" artist's own versions show even when the plain search ranks
+ * them out of its first page. Five results; cached for a day like the plain search.
+ */
+export async function searchTracksByArtist(query: string, artist: string, market: string): Promise<CatalogueTrack[]> {
+  "use cache: remote";
+  cacheLife("days");
+  cacheTag("repertoire");
+  const params = new URLSearchParams({ q: `track:${query} artist:${artist}`, type: "track", limit: "5", market });
+  const body = await spotify(`/search?${params}`, searchSchema);
+  return (body.tracks?.items ?? []).filter((t): t is NonNullable<typeof t> => t !== null).map((t) => toTrack(t));
+}
+
+/**
  * First release year of one song: a track search by title and artist, keeping
  * results by that artist with the same song title, and taking the earliest
  * album year (so a remaster or a best-of doesn't make an old song look new).

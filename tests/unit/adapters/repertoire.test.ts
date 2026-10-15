@@ -66,6 +66,38 @@ describe("repertoire (Spotify)", () => {
     expect((search.init?.headers as Record<string, string>).Authorization).toBe("Bearer synthetic-token");
   });
 
+  it("puts the act's artists' versions first, with one capped scoped query per artist", async () => {
+    const { findTracks } = await fresh();
+    // SYNTHETIC: a plain search led by another act's version; scoped searches find Celia Cruz's own takes.
+    const raw = (id: string, name: string, artistId: string, artist: string) => ({ id, name, artists: [{ id: artistId, name: artist }], album: { name: "A", images: [] } });
+    const { calls } = mockFetch([
+      tokenRoute,
+      route(
+        (u) => u.pathname === "/v1/search" && u.searchParams.get("q") === "track:Quimbara artist:Celia Cruz",
+        () => json({ tracks: { items: [raw("c1", "Quimbara", "celia", "Celia Cruz"), raw("c2", "Quimbara - Live", "celia", "Celia Cruz")] } }),
+      ),
+      route((u) => u.pathname === "/v1/search" && (u.searchParams.get("q") ?? "").includes("Compay"), () => json({ error: "boom" }, 500)),
+      route((u) => u.pathname === "/v1/search" && (u.searchParams.get("q") ?? "").startsWith("track:"), () => json({ tracks: { items: [] } })),
+      route(
+        (u) => u.pathname === "/v1/search" && u.searchParams.get("q") === "Quimbara",
+        () => json({ tracks: { items: [raw("s1", "Quimbara - Live at Gran Teatro Nacional", "succar", "Tony Succar"), raw("c2", "Quimbara - Live", "celia", "Celia Cruz"), raw("x1", "Quimbara", "band", "Salsa Band")] } }),
+      ),
+    ]);
+    const result = await findTracks("Quimbara", "AU", LIVE, ["Celia Cruz", "Buena Vista Social Club", "Compay Segundo", "Omara Portuondo"]);
+    expect(result.mode).toBe("live");
+    // Celia Cruz first (plain-search order, then the scoped extras), then the rest in Spotify's order; a failed scoped query is skipped.
+    expect(result.data.map((t) => t.id)).toEqual(["c2", "c1", "s1", "x1"]);
+    const queries = calls.filter((c) => c.url.pathname === "/v1/search").map((c) => c.url.searchParams.get("q"));
+    expect(queries.filter((q) => q?.startsWith("track:"))).toHaveLength(3);
+    expect(queries).not.toContain("track:Quimbara artist:Omara Portuondo");
+    expect(calls.find((c) => c.url.searchParams.get("q") === "track:Quimbara artist:Celia Cruz")!.url.searchParams.get("limit")).toBe("5");
+
+    // Offline: the synthetic scoped result by a catalogue artist comes first.
+    const offline = await findTracks("Gravy", "AU", OFFLINE, ["Paul Kelly"]);
+    expect(offline.data[0]).toMatchObject({ title: "Gravy", artists: [{ name: "Paul Kelly", id: expect.stringMatching(/^[A-Za-z0-9]{22}$/) }] });
+    expect(offline.data).toHaveLength(4);
+  });
+
   it("answers an artist search without waiting on release counts", async () => {
     const { findArtists } = await fresh();
     const { calls } = mockFetch([

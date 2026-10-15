@@ -23,8 +23,16 @@ const ids = z
   .transform((s) => s.split("|").map((n) => n.trim()).filter(Boolean))
   .pipe(z.array(z.string().regex(/^[A-Za-z0-9-]{1,40}$/)).min(1).max(MAX_RELEASE_IDS));
 
+/** The act's "sounds like" artists for a song search: their versions come first (scoped queries are capped server-side). */
+const actArtists = z
+  .string()
+  .trim()
+  .max(10 * 81)
+  .transform((s) => s.split("|").map((n) => n.trim()).filter(Boolean))
+  .pipe(z.array(z.string().max(80)).max(10));
+
 const querySchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("tracks"), q: z.string().trim().min(2).max(100) }),
+  z.object({ type: z.literal("tracks"), q: z.string().trim().min(2).max(100), artists: actArtists.optional() }),
   z.object({ type: z.literal("artists"), q: z.string().trim().min(2).max(100) }),
   z.object({ type: z.literal("artist"), link: z.string().trim().min(10).max(300) }),
   z.object({ type: z.literal("listeners"), names }),
@@ -35,7 +43,8 @@ const json = (body: unknown, init: ResponseInit = {}) =>
   Response.json(body, { ...init, headers: { "Cache-Control": "no-store", ...init.headers } });
 
 /**
- * GET /api/repertoire?type=tracks&q=…     searches songs for the picker (cover, album, duration).
+ * GET /api/repertoire?type=tracks&q=…[&artists=A|B]  searches songs for the picker (cover, album, duration);
+ *                                         tracks by the act's artists come first (plus a scoped query for each of the first three).
  * GET /api/repertoire?type=artists&q=…    searches artists (photo; releases null, so the first answer is fast).
  * GET /api/repertoire?type=releases&ids=A|B  release counts per Spotify artist id, loaded after the artist results.
  * GET /api/repertoire?type=artist&link=…  loads a performer's own catalogue.
@@ -63,7 +72,7 @@ export async function GET(request: Request) {
   const query = parsed.data;
   switch (query.type) {
     case "tracks": {
-      const result = await findTracks(query.q, market, context);
+      const result = await findTracks(query.q, market, context, query.artists ?? []);
       return json({ mode: result.mode, reason: result.reason ?? null, tracks: result.data });
     }
     case "artist": {

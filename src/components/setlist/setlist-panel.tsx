@@ -50,16 +50,13 @@ export function SetlistPanel({ pitch, learnThese, ageLean = null }: { pitch: Pla
                     )}
                     <span className="block text-muted-foreground">{song.reason}</span>
                   </span>
-                  <span className="flex flex-col items-end gap-1">
-                    <span className="flex items-center gap-2">
-                      {song.durationMs !== null && (
-                        <span className="text-muted-foreground tabular-nums" aria-label={`Length ${formatDuration(song.durationMs)}`}>
-                          {formatDuration(song.durationMs)}
-                        </span>
-                      )}
-                      <span aria-label={`Song score ${song.score} out of 100`}>{song.score}</span>
-                    </span>
-                    {!song.own && <LearnItMenu title={song.title} artist={song.artist} />}
+                  <span className="flex items-start gap-2">
+                    {song.durationMs !== null && (
+                      <span className="text-muted-foreground tabular-nums" aria-label={`Length ${formatDuration(song.durationMs)}`}>
+                        {formatDuration(song.durationMs)}
+                      </span>
+                    )}
+                    <span aria-label={`Song score ${song.score} out of 100`}>{song.score}</span>
                   </span>
                 </li>
               ))}

@@ -150,7 +150,11 @@ export function PerformerForm({ defaultDate, today }: { defaultDate: string; tod
 
       <fieldset className="min-w-0 space-y-2">
         <legend className="text-sm font-medium">Songs you can play</legend>
-        <SongSearch onAdd={(track) => addSongs([toPicked(track, false)])} isAdded={(track) => picked.some((p) => p.key === track.id)} />
+        <SongSearch
+          onAdd={(track) => addSongs([toPicked(track, false)])}
+          isAdded={(track) => picked.some((p) => p.key === track.id)}
+          artists={artists}
+        />
         {picked.length > 0 && (
           <ul aria-label="Songs you picked" className="divide-y rounded-lg border text-sm">
             {picked.map((song) => (

@@ -16,6 +16,27 @@ export function syntheticTrackSearch(query: string): CatalogueTrack[] {
 }
 
 /**
+ * A scoped search ("track:… artist:…"): one made-up version of the song by that
+ * artist, with the mock's Spotify-shaped id when the artist is in its catalogue.
+ */
+export function syntheticScopedTrackSearch(query: string, artist: string): CatalogueTrack[] {
+  const known = CATALOG.find((a) => normalizeName(a.name) === normalizeName(artist));
+  const slug = normalizeName(`${artist} ${query}`).replace(/\s+/g, "-");
+  return [
+    {
+      id: `syn-scoped-${slug}`,
+      title: query,
+      artists: [{ id: known?.spotifyId ?? `syn-artist-${normalizeName(artist).replace(/\s+/g, "-")}`, name: known?.name ?? artist }],
+      album: "Synthetic Album",
+      image: null,
+      durationMs: 200_000,
+      url: null,
+      year: 1990,
+    },
+  ];
+}
+
+/**
  * Artists from the Qloo mock's catalogue whose name contains the query, with the
  * mock's Spotify-shaped ids, so offline plans resolve them through Qloo's
  * external-id lookup like live ones. Unknown queries get one made-up artist.

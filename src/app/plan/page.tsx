@@ -10,6 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { parsePlanParams, planSearchParams } from "@/lib/plan-url";
 import { localToday } from "@/lib/slot";
 import { baselineFor } from "@/server/agent/baseline";
+import { describeSlot } from "@/lib/slot";
+import { qlooMode } from "@/server/adapters/qloo";
 import { buildEnginePlan } from "@/server/agent/preload";
 import { CITIES } from "@/server/cities";
 import { adapterContextFor } from "@/server/request";
@@ -70,17 +72,30 @@ async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchPar
   }
   const faults = typeof params.faults === "string" ? params.faults : null;
   const adapters = adapterContextFor(faults);
-  // The plain-AI baseline starts as soon as the page is sent, alongside the agent run; the comparison panel picks it up.
-  after(() => baselineFor(parsed.request, adapters).then(() => undefined));
-  const plan = await buildEnginePlan(parsed.request, adapters);
+  // Agent-first: with the agent on (the default) nothing is computed here, so the page and the agent's stream start at once;
+  // the agent's run brings the plan, and the server starts the plain-AI baseline when the agent's data is in.
+  // With run=0 the engine's plan is built here and the baseline starts after the page is sent.
+  let plan = null;
+  if (!parsed.autoRun) {
+    after(() => baselineFor(parsed.request, adapters).then(() => undefined));
+    plan = await buildEnginePlan(parsed.request, adapters);
+  }
+  const city = CITIES[parsed.request.city];
   return (
     <PlanView
       // Keyed by the request (not the selected pitch): a new request remounts the view.
       // A changed tip log re-renders in place (PlanView adopts the new plan), so the log form keeps its message.
       key={planSearchParams(parsed.request).toString()}
       initialPlan={plan}
+      heading={{
+        cityName: city.name,
+        slotLabel: describeSlot(parsed.request.slot),
+        permit: parsed.request.permit,
+        performerName: parsed.request.performer.name,
+        qlooMode: qlooMode(adapters),
+      }}
       request={parsed.request}
-      center={CITIES[parsed.request.city].center}
+      center={city.center}
       autoRun={parsed.autoRun}
       exampleId={parsed.exampleId}
       faults={adapters.faults.length > 0 ? adapters.faults.join(",") : null}

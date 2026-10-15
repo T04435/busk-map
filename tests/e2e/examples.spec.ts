@@ -109,11 +109,22 @@ test.describe("live agent (mock model offline)", () => {
     await expect(page.getByText(/^Explanations: /)).toHaveCount(0);
     release();
 
+    // Each step: Claude's note before the call, the tool and the inputs it chose, the data source, and the data returned.
     const steps = page.getByRole("list", { name: "Agent steps" });
-    await expect(steps.getByText("Matching your artists to Qloo")).toBeVisible();
+    await expect(steps.getByText("Where the act's taste concentrates")).toBeVisible();
+    await expect(steps.getByText("I'll start with the taste map to see where this act's fans concentrate.")).toBeVisible();
     await expect(steps.getByText("Qloo /v2/insights · urn:heatmap")).toBeVisible();
-    await expect(steps.getByText("Scoring legal pitches")).toBeVisible();
+    await expect(steps.getByText("Scoring the pitch pool").first()).toBeVisible();
+    await expect(steps.getByTestId("agent-note-reasoning").first()).toContainText("Thinking (summary):");
+    const crowd = steps.locator('[data-tool="crowd_at"]');
+    await expect(crowd.first()).toContainText("radiusM: 400");
     await waitForPlan(page);
+    await crowd.first().getByRole("button", { name: "Data returned" }).click();
+    await expect(crowd.first().getByTestId("agent-step-data").getByRole("table").first()).toBeVisible();
+    await expect(crowd.first().getByTestId("agent-step-data").getByRole("columnheader", { name: "because" })).toBeVisible();
+    await expect(steps.locator('[data-tool="finish_plan"]')).toContainText("Accepted:");
+    await expect(page.getByTestId("agent-usage")).toContainText("model steps");
+    await expect(page.getByTestId("agent-vs-engine")).toBeVisible();
     await expect(page.getByTestId("plan-pending")).toHaveCount(0);
     await expect(page.getByText("Explanations: Claude")).toBeVisible();
     await expect(page.getByText(/^Mock explanation/).first()).toBeVisible();
@@ -127,7 +138,11 @@ test.describe("live agent (mock model offline)", () => {
     await expect(page.getByText("Explanations: Claude")).toBeVisible();
     await expect(page.getByRole("list", { name: "Agent steps" })).toHaveCount(0);
     await page.getByRole("button", { name: /^Agent steps \(replayed, \d+\)$/ }).click();
-    await expect(page.getByRole("list", { name: "Agent steps" }).getByText("Scoring legal pitches")).toBeVisible();
+    const replayedSteps = page.getByRole("list", { name: "Agent steps" });
+    await expect(replayedSteps.getByText("Scoring the pitch pool").first()).toBeVisible();
+    // The replay keeps each step's data.
+    await replayedSteps.locator('[data-tool="taste_map"]').getByRole("button", { name: "Data returned" }).click();
+    await expect(replayedSteps.locator('[data-tool="taste_map"]').getByTestId("agent-step-data").getByRole("columnheader", { name: "affinity" })).toBeVisible();
 
     // A re-run replays too, and keeps the plan on screen.
     await page.getByRole("button", { name: "Re-run the agent" }).click();

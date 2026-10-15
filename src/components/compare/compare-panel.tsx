@@ -10,12 +10,14 @@ export type BaselineState = { status: "loading" } | { status: "done"; baseline: 
 const UNAVAILABLE = "The plain-AI baseline is unavailable right now. Busk Map's plan doesn't depend on it.";
 
 /**
- * Fetch the plain-AI baseline for this plan. The server started it when the
- * page was requested, in parallel with the plan, so this is usually instant.
+ * Fetch the plain-AI baseline for this plan, once `enabled` (the plan is
+ * shown). The server starts it when the agent's data is in (or after the
+ * page, with run=0), so this is usually instant.
  */
-export function useBaseline(request: PlanRequest, faults: string | null): BaselineState {
+export function useBaseline(request: PlanRequest, faults: string | null, enabled = true): BaselineState {
   const [state, setState] = useState<BaselineState>({ status: "loading" });
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     fetch("/api/compare", {
       method: "POST",
@@ -37,7 +39,7 @@ export function useBaseline(request: PlanRequest, faults: string | null): Baseli
         if (!controller.signal.aborted) setState({ status: "unavailable", message: UNAVAILABLE });
       });
     return () => controller.abort();
-  }, [request, faults]);
+  }, [request, faults, enabled]);
   return state;
 }
 

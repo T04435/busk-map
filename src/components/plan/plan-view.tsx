@@ -20,7 +20,7 @@ import { planStreamEventSchema, type Plan, type PlanRequest } from "@/lib/plan-s
 import { weekSearchParams } from "@/lib/week-url";
 import { TipLogForm } from "@/components/tips/tip-log-form";
 import { useTipSync } from "@/components/tips/use-tip-sync";
-import { AgentSteps, applyStreamEvent, type AgentStep } from "./agent-steps";
+import { AgentSteps, applyStreamEvent, type AgentStep, type RunUsage } from "./agent-steps";
 import { CrowdPanel } from "./crowd-panel";
 import { DataSources } from "./data-sources";
 import { WeatherStrip } from "./weather-strip";
@@ -28,8 +28,13 @@ import { WeightsPanel } from "./weights-panel";
 
 type RunState = { status: "idle" | "running" | "done" } | { status: "error"; message: string };
 
+/** What the header needs before the plan exists (agent-first: the plan arrives with the agent's answer). */
+type Heading = Pick<Plan, "cityName" | "slotLabel" | "permit" | "performerName" | "qlooMode">;
+
 type Props = {
-  initialPlan: Plan;
+  /** The engine's plan (run=0), or null when the agent brings the plan. */
+  initialPlan: Plan | null;
+  heading: Heading;
   request: PlanRequest;
   center: { lat: number; lon: number };
   autoRun: boolean;
@@ -39,26 +44,29 @@ type Props = {
   faults: string | null;
 };
 
-/** If a live run hasn't ended by now, show the engine's plan anyway (the agent itself times out at 75 s). */
-const AGENT_WAIT_MS = 90_000;
+/** If a live run hasn't ended by now, show the engine's plan anyway (the agent itself times out at 90 s). */
+const AGENT_WAIT_MS = 110_000;
 const TEMPLATE_NOTE = "The reasons below are the template ones from the data, not Claude's.";
 
 const list = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
 
-export function PlanView({ initialPlan, request, center, autoRun, exampleId, faults }: Props) {
-  const [plan, setPlan] = useState(initialPlan);
+export function PlanView({ initialPlan, heading, request, center, autoRun, exampleId, faults }: Props) {
+  const [plan, setPlan] = useState<Plan | null>(initialPlan);
   // A refresh after logging takings brings a new engine plan for the same request: adopt it.
   const [shownInitial, setShownInitial] = useState(initialPlan);
   if (initialPlan !== shownInitial) {
     setShownInitial(initialPlan);
-    setPlan(initialPlan);
+    // Agent-first pages render no engine plan: keep the agent's.
+    if (initialPlan) setPlan(initialPlan);
   }
   const [steps, setSteps] = useState<AgentStep[]>([]);
   const [run, setRun] = useState<RunState>({ status: "idle" });
   /** A note from the server about the run, e.g. that it replays a cached run. */
   const [runNote, setRunNote] = useState<string | null>(null);
   // Agent-first: during a live run the plan stays hidden until the agent ends. Qloo down needs no wait: there is no plan to show.
-  const [revealed, setRevealed] = useState(!autoRun || initialPlan.qlooFailed);
+  const [revealed, setRevealed] = useState(!autoRun || initialPlan?.qlooFailed === true);
+  /** Run totals from the server (steps, tokens, time). */
+  const [usage, setUsage] = useState<RunUsage | null>(null);
   /** The run was replayed from the cache: its steps are collapsed. */
   const [replayed, setReplayed] = useState(false);
   /** Why the plan shown isn't Claude's (agent failed, timed out or fell back to templates). */
@@ -66,12 +74,14 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const selectedId = searchParams.get("pitch") ?? plan.pitches[0]?.id ?? null;
-  const selected = plan.pitches.find((p) => p.id === selectedId) ?? plan.pitches[0] ?? null;
+  const pitchList = plan?.pitches ?? [];
+  const selectedId = searchParams.get("pitch") ?? pitchList[0]?.id ?? null;
+  const selected = pitchList.find((p) => p.id === selectedId) ?? pitchList[0] ?? null;
   const started = useRef(false);
   useTipSync(request.performer.name, exampleId, request.history);
   // The plain-AI baseline (a control: agreement is a badge, never a score change).
-  const baseline = useBaseline(request, faults);
+  // Asked once the plan is shown: during the agent's run the server starts it after the agent's data is in.
+  const baseline = useBaseline(request, faults, revealed);
   const agreedWith = new Map(baseline.status === "done" ? baseline.baseline.bothAgree.map((a) => [a.pitchId, a.plainName]) : []);
 
   const select = useCallback(
@@ -83,16 +93,27 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
     [pathname, router, searchParams],
   );
 
+  /** No plan arrived (the agent failed before assembling one): load the engine's plan from the server (run=0). */
+  const showEnginePlan = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("run", "0");
+    router.replace(`${pathname}?${params}`, { scroll: false });
+  }, [pathname, router, searchParams]);
+  const hasPlan = useRef(initialPlan !== null);
+  hasPlan.current = plan !== null;
+
   const runAgent = useCallback(async () => {
     setRun({ status: "running" });
     setSteps([]);
     setRunNote(null);
     setReplayed(false);
-    // Whatever ends the run, the plan is shown: Claude's, or the engine's with a note.
+    setUsage(null);
+    // Whatever ends the run, a plan is shown: Claude's, or the engine's with a note.
     const fail = (message: string) => {
       setRun({ status: "error", message });
       setFallbackNote(TEMPLATE_NOTE);
       setRevealed(true);
+      if (!hasPlan.current) showEnginePlan();
     };
     try {
       const response = await fetch("/api/plan", {
@@ -122,6 +143,7 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
           setSteps((current) => applyStreamEvent(current, event));
           if (event.type === "status" && event.message !== "Planning started") setRunNote(event.message);
           if (event.type === "status" && event.replay) setReplayed(true);
+          if (event.type === "usage") setUsage(event);
           if (event.type === "plan") {
             setPlan(event.plan);
             setRun({ status: "done" });
@@ -138,7 +160,7 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
     } catch {
       fail("The planner is unavailable right now.");
     }
-  }, [faults, request]);
+  }, [faults, request, showEnginePlan]);
 
   useEffect(() => {
     if (autoRun && !started.current) {
@@ -147,6 +169,16 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
     }
   }, [autoRun, runAgent]);
 
+  // A refresh with a changed request (a new tip log entry changes its history) re-plans with the agent:
+  // agent-first pages get no engine plan from the server. The run key includes the history, so it's a new run.
+  const requestKey = JSON.stringify(request);
+  const lastRequestKey = useRef(requestKey);
+  useEffect(() => {
+    if (lastRequestKey.current === requestKey) return;
+    lastRequestKey.current = requestKey;
+    if (initialPlan === null && started.current) void runAgent();
+  }, [requestKey, initialPlan, runAgent]);
+
   // A live run that hangs past the agent's own timeout: show the engine's plan (Claude's replaces it if the run still ends).
   const waiting = run.status === "running" && !revealed;
   useEffect(() => {
@@ -154,30 +186,31 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
     const timer = setTimeout(() => {
       setFallbackNote(`The agent is taking too long, so this is the engine's plan. ${TEMPLATE_NOTE}`);
       setRevealed(true);
+      if (!hasPlan.current) showEnginePlan();
     }, AGENT_WAIT_MS);
     return () => clearTimeout(timer);
-  }, [waiting]);
-  // Before the run starts (first render, server and client alike) and while it runs, the plan is pending.
-  const pending = !revealed;
+  }, [waiting, showEnginePlan]);
+  // Before the run starts (first render, server and client alike) and while it runs, the plan is pending; so is a fallback plan still loading.
+  const pending = !revealed || plan === null;
 
-  const qlooDown = plan.qlooFailed || (run.status === "error" && run.message.startsWith("Qloo"));
-  const unmatched = qlooDown ? [] : plan.resolvedArtists.filter((a) => a.matched === null).map((a) => a.query);
-  const matched = plan.resolvedArtists.filter((a) => a.matched !== null).map((a) => a.matched!);
-  const tipPitches = plan.pitches.filter((p) => p.tip && p.tip.points > 0);
+  const qlooDown = plan?.qlooFailed === true || (run.status === "error" && run.message.startsWith("Qloo"));
+  const unmatched = qlooDown || !plan ? [] : plan.resolvedArtists.filter((a) => a.matched === null).map((a) => a.query);
+  const matched = (plan?.resolvedArtists ?? []).filter((a) => a.matched !== null).map((a) => a.matched!);
+  const tipPitches = pitchList.filter((p) => p.tip && p.tip.points > 0);
 
   return (
     <div className="space-y-6">
       <header className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          {plan.cityName} · {plan.slotLabel} · {plan.permit} permit
+          {heading.cityName} · {heading.slotLabel} · {heading.permit} permit
         </p>
-        <h1 className="text-3xl font-semibold tracking-tight">{plan.performerName}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{heading.performerName}</h1>
         <div className="flex flex-wrap gap-2">
-          <Badge variant={plan.qlooMode === "live" ? "outline" : "secondary"}>
-            {plan.qlooMode === "live" ? "Live Qloo data" : QLOO_TEST_LABEL}
+          <Badge variant={heading.qlooMode === "live" ? "outline" : "secondary"}>
+            {heading.qlooMode === "live" ? "Live Qloo data" : QLOO_TEST_LABEL}
           </Badge>
-          <Badge variant="outline">{plan.footfallLevel === "city-sensors" ? "Foot traffic: city sensors" : "Foot traffic: unavailable"}</Badge>
-          {!pending && <Badge variant="outline">{plan.explanations === "ai" ? "Explanations: Claude" : "Explanations: from the data"}</Badge>}
+          {plan && <Badge variant="outline">{plan.footfallLevel === "city-sensors" ? "Foot traffic: city sensors" : "Foot traffic: unavailable"}</Badge>}
+          {!pending && plan && <Badge variant="outline">{plan.explanations === "ai" ? "Explanations: Claude" : "Explanations: from the data"}</Badge>}
         </div>
         <p className="flex flex-wrap gap-x-4 text-sm">
           <Link
@@ -195,7 +228,7 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
         </p>
       </header>
 
-      {plan.qlooMode === "synthetic" && (
+      {heading.qlooMode === "synthetic" && (
         <Alert>
           <AlertTitle>{QLOO_TEST_LABEL}</AlertTitle>
           <AlertDescription>
@@ -247,6 +280,20 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
           </p>
         </div>
         {runNote && <p className="text-sm text-muted-foreground">{runNote}</p>}
+        {usage && (
+          <p className="text-sm text-muted-foreground" data-testid="agent-usage">
+            {usage.steps} model steps · {usage.inputTokens.toLocaleString("en-AU")} input and {usage.outputTokens.toLocaleString("en-AU")} output tokens
+            {usage.reasoningTokens ? ` (${usage.reasoningTokens.toLocaleString("en-AU")} thinking)` : ""} · {(usage.ms / 1000).toFixed(1)} s
+          </p>
+        )}
+        {!pending && plan?.agent && (
+          <p className="text-sm" data-testid="agent-vs-engine">
+            {plan.agent.differs
+              ? `Claude chose differently from the engine's own top 3 (${plan.agent.engineTop.map((p) => `${p.name} ${p.score}`).join(", ")}).`
+              : "Claude kept the engine's top 3."}
+            {plan.agent.added.length > 0 ? ` Added and scored by the engine: ${plan.agent.added.join(", ")}.` : ""}
+          </p>
+        )}
         {run.status === "error" && !qlooDown ? (
           <Alert variant="destructive">
             <AlertTitle>The agent could not finish</AlertTitle>
@@ -268,7 +315,7 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
             <CollapsibleTrigger asChild>
               <Button variant="link" size="sm" className="group h-auto px-0 text-muted-foreground">
                 <ChevronRightIcon aria-hidden className="transition-transform group-data-[state=open]:rotate-90" />
-                Agent steps (replayed, {steps.length})
+                Agent steps (replayed, {steps.filter((s) => s.tool).length})
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-2">
@@ -280,7 +327,7 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
         )}
       </section>
 
-      {pending ? (
+      {pending || !plan ? (
         <PendingPlan />
       ) : (
         <>

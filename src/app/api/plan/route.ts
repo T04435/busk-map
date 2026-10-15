@@ -1,18 +1,20 @@
 import { rejectBots } from "@/server/bot";
 import { planRequestSchema, type PlanStreamEvent } from "@/lib/plan-schema";
 import { QlooUnavailableError, runPlanAgent } from "@/server/agent/agent";
-import { PlanContext } from "@/server/agent/context";
+import { baselineFor } from "@/server/agent/baseline";
 import { LIMITS } from "@/server/agent/models";
-import { isExampleRequest } from "@/server/agent/preload";
-import { AgentRun, EXAMPLE_RUN_TTL_MS, hasSharedRun, RUN_TTL_MS, sharedRun } from "@/server/agent/runs";
+import { planKey, planStore } from "@/server/agent/plan-store";
+import { engineContext, exampleIdFor, isExampleRequest } from "@/server/agent/preload";
+import { AgentRun, EXAMPLE_RUN_TTL_MS, hasSharedRun, RUN_TTL_MS, sharedRunWithStore } from "@/server/agent/runs";
+import { agentRecord, comparisonStore, recordAgentRun } from "@/server/comparisons/store";
 import { CITIES } from "@/server/cities";
 import { testSwitches } from "@/server/env";
 import { log } from "@/server/log";
 import { planLimiter } from "@/server/rate-limit";
 import { adapterContextFor, clientIp, FAULTS_HEADER } from "@/server/request";
 
-/** Agent runs take 20–60 s; the agent itself times out at 75 s. */
-export const maxDuration = 90;
+/** Agent runs take 20–60 s; the agent itself times out at 90 s, then the engine's plan is assembled. */
+export const maxDuration = 120;
 
 function jsonError(status: number, code: string, message: string, headers: HeadersInit = {}) {
   return Response.json({ error: { code, message } }, { status, headers });
@@ -21,7 +23,9 @@ function jsonError(status: number, code: string, message: string, headers: Heade
 /**
  * POST /api/plan: run the planning agent and stream its steps as NDJSON
  * (one PlanStreamEvent per line), ending with a `plan` or an `error` event.
- * The same request joins a run in flight or replays a recent one.
+ * The same request joins a run in flight or replays a recent one (from this
+ * instance or the plan store). The agent starts first: nothing is computed
+ * before the stream opens.
  */
 export async function POST(request: Request) {
   const blocked = await rejectBots("/api/plan");
@@ -39,10 +43,14 @@ export async function POST(request: Request) {
   }
 
   const adapters = adapterContextFor(request.headers.get(FAULTS_HEADER));
-  const context = new PlanContext(parsed.data, adapters);
+  // The engine's shared context for this request: the agent's tools load the data once, and the baseline then reuses it.
+  const context = engineContext(parsed.data, adapters);
   const shareKey = JSON.stringify([parsed.data, adapters.offline, context.today]);
+  const storeKey = planKey(parsed.data, adapters.offline, context.today);
+  const store = planStore(adapters.offline);
+  const ttl = isExampleRequest(parsed.data, context.today) ? EXAMPLE_RUN_TTL_MS : RUN_TTL_MS;
   // Offline test mode spends nothing, and joining or replaying a shared run costs no model call: neither is rate limited.
-  const free = testSwitches().offline || (adapters.faults.length === 0 && hasSharedRun(shareKey));
+  const free = testSwitches().offline || (adapters.faults.length === 0 && (await hasSharedRun(shareKey, storeKey, ttl, store)));
   const limit = free ? { ok: true, retryAfterS: 0 } : planLimiter.check(clientIp(request.headers));
   if (!limit.ok) {
     return jsonError(429, "rate_limited", "Too many plans in a short time. Try again in a few minutes.", {
@@ -55,18 +63,28 @@ export async function POST(request: Request) {
   const start = async (run: AgentRun, signal: AbortSignal) => {
     run.push({ type: "status", message: "Planning started" });
     try {
-      const { plan, usage } = await runPlanAgent(
+      const { plan, usage, engineTop, agentTop } = await runPlanAgent(
         context,
         {
+          onNote: (e) => run.push({ type: "note", ...e }),
           onToolStart: (e) => run.push({ type: "tool-start", ...e }),
           onToolEnd: (e) => run.push({ type: "tool-end", ...e }),
         },
         signal,
       );
-      log.info("plan served", { requestId, usage, qloo: plan.qlooMode, explanations: plan.explanations });
+      log.info("plan served", { requestId, usage, qloo: plan.qlooMode, explanations: plan.explanations, differs: plan.agent?.differs ?? null });
       // Only Claude's plans are replayed: a plan whose reasons fell back to templates is retried on the next view.
       if (plan.explanations !== "ai") run.noReplay = true;
+      if (usage) run.push({ type: "usage", ...usage });
       run.push({ type: "plan", plan });
+      if (agentTop && adapters.faults.length === 0) {
+        // Engine-only top 3 vs Claude's, on the plan's comparison row (the baseline fills in the plain AI's picks).
+        const slot = `${parsed.data.slot.date} ${parsed.data.slot.startHour}-${parsed.data.slot.endHour}`;
+        const performerKey = exampleIdFor(parsed.data, context.today) ?? "custom";
+        void recordAgentRun(comparisonStore(adapters.offline), agentRecord(storeKey, performerKey, parsed.data.city, slot, engineTop, agentTop));
+      }
+      // The plain-AI baseline starts once the agent's data is loaded, so the two don't race for Qloo's rate limit.
+      void baselineFor(parsed.data, adapters, context.today);
     } catch (error) {
       if (error instanceof QlooUnavailableError) {
         run.push({ type: "error", code: "qloo_unavailable", message: "Qloo, our taste data source, is not responding. Please try again shortly." });
@@ -83,11 +101,10 @@ export async function POST(request: Request) {
   let reused = false;
   if (adapters.faults.length > 0) {
     run = new AgentRun();
-    void start(run, AbortSignal.any([request.signal, AbortSignal.timeout(LIMITS.agentTimeoutMs)])).finally(() => run.finish());
+    void start(run, AbortSignal.any([request.signal, AbortSignal.timeout(LIMITS.agentTimeoutMs + 20_000)])).finally(() => run.finish());
   } else {
-    const key = shareKey;
-    const ttl = isExampleRequest(parsed.data, context.today) ? EXAMPLE_RUN_TTL_MS : RUN_TTL_MS;
-    ({ run, reused } = sharedRun(key, ttl, (r) => start(r, AbortSignal.timeout(LIMITS.agentTimeoutMs))));
+    // The agent applies its own 90 s timeout; this outer one only stops a stuck assembly.
+    ({ run, reused } = await sharedRunWithStore(shareKey, storeKey, ttl, (r) => start(r, AbortSignal.timeout(LIMITS.agentTimeoutMs + 20_000)), store));
   }
 
   let unfollow = () => {};

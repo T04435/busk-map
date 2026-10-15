@@ -9,7 +9,7 @@ import { assemblePlan, type AiText } from "./assemble";
 import type { PlanContext } from "./context";
 import { createMockPlanner } from "./mock-model";
 import { LIMITS, MODELS } from "./models";
-import { createTools, TOOL_LABELS } from "./tools";
+import { createTools, TOOL_LABELS, TOOL_SOURCES } from "./tools";
 
 /** What the model may return. Words only; the engine owns numbers and places. */
 export const aiTextSchema = z.object({
@@ -60,7 +60,7 @@ export function buildPrompt(ctx: PlanContext): string {
 }
 
 export type AgentEvents = {
-  onToolStart?: (event: { id: string; tool: string; label: string }) => void;
+  onToolStart?: (event: { id: string; tool: string; label: string; source?: string }) => void;
   onToolEnd?: (event: { id: string; tool: string; ok: boolean; summary: string }) => void;
 };
 
@@ -106,7 +106,12 @@ export async function runPlanAgent(
       prompt: buildPrompt(ctx),
       abortSignal: abortSignal ?? AbortSignal.timeout(LIMITS.agentTimeoutMs),
       onToolExecutionStart: ({ toolCall }) => {
-        events.onToolStart?.({ id: toolCall.toolCallId, tool: toolCall.toolName, label: TOOL_LABELS[toolCall.toolName] ?? toolCall.toolName });
+        events.onToolStart?.({
+          id: toolCall.toolCallId,
+          tool: toolCall.toolName,
+          label: TOOL_LABELS[toolCall.toolName] ?? toolCall.toolName,
+          source: TOOL_SOURCES[toolCall.toolName],
+        });
       },
       onToolExecutionEnd: ({ toolCall, toolOutput }) => {
         const ok = toolOutput.type === "tool-result";

@@ -11,8 +11,9 @@ test.describe("API-down states", () => {
 
   test("Qloo down during an agent run: the stream ends with the Qloo error", async ({ page }) => {
     await page.goto("/plan?example=folk-duo&faults=qloo");
-    await page.getByRole("button", { name: "Plan with the agent (live)" }).click();
+    // The agent starts on load; its stream ends with the Qloo error, and a retry is offered.
     await expect(page.getByText("Qloo is unavailable")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Re-run the agent" })).toBeEnabled();
   });
 
   test("sensors, events and weather down: still plans, with less data, labelled", async ({ page }) => {

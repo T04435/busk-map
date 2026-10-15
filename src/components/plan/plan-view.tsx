@@ -50,6 +50,8 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
   }
   const [steps, setSteps] = useState<AgentStep[]>([]);
   const [run, setRun] = useState<RunState>({ status: "idle" });
+  /** A note from the server about the run, e.g. that it replays a cached run. */
+  const [runNote, setRunNote] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -62,7 +64,6 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
     (pitchId: string) => {
       const params = new URLSearchParams(searchParams.toString());
       params.set("pitch", pitchId);
-      params.delete("run");
       router.replace(`${pathname}?${params}`, { scroll: false });
     },
     [pathname, router, searchParams],
@@ -71,6 +72,7 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
   const runAgent = useCallback(async () => {
     setRun({ status: "running" });
     setSteps([]);
+    setRunNote(null);
     try {
       const response = await fetch("/api/plan", {
         method: "POST",
@@ -97,6 +99,7 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
           if (!parsed.success) continue;
           const event = parsed.data;
           setSteps((current) => applyStreamEvent(current, event));
+          if (event.type === "status" && event.message !== "Planning started") setRunNote(event.message);
           if (event.type === "plan") {
             setPlan(event.plan);
             setRun({ status: "done" });
@@ -190,18 +193,19 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
       <section aria-label="Agent" className="space-y-3">
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={() => void runAgent()} disabled={run.status === "running"}>
-            {run.status === "running" ? "Planning…" : run.status === "done" ? "Re-run the agent" : "Plan with the agent (live)"}
+            {run.status === "running" ? "Planning…" : run.status === "idle" ? "Plan with the agent (live)" : "Re-run the agent"}
           </Button>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground" data-testid="agent-status">
             {run.status === "idle"
               ? "Shown: the engine's plan from the data. The agent adds Claude's explanations."
               : run.status === "running"
-                ? "The agent is calling tools…"
+                ? "The agent is calling Qloo and the other sources. The plan below is the engine's until it finishes."
                 : run.status === "done"
                   ? "Updated with the agent's plan."
                   : null}
           </p>
         </div>
+        {runNote && <p className="text-sm text-muted-foreground">{runNote}</p>}
         {run.status === "error" && !qlooDown && (
           <Alert variant="destructive">
             <AlertTitle>The agent could not finish</AlertTitle>

@@ -3,7 +3,8 @@
  *   /plan?example=acoustic
  *   /plan?name=…&artists=A|B~<spotify id>&songs=Title~Artist|Own Song~Me~own|Song~Artist~215s&date=2026-10-17&from=18&to=21&permit=general
  * (artist ids and song lengths are optional; see lib/performer-url.ts)
- * Optional: w=taste,footfall,places,events,weather[,discovery]  pitch=<id>  run=1 (start the agent)
+ * Optional: w=taste,footfall,places,events,weather[,discovery]  pitch=<id>  run=0 (show the engine's plan only;
+ * by default the agent starts on load, and the server replays a recent run of the same request)
  * The personal tip bonus is not in the URL (takings are private): it comes from
  * this browser's tip cookie (see lib/tips.ts). Example performers default to their example sessions.
  */
@@ -56,7 +57,7 @@ export function parsePlanParams(params: Params, today: string, tipCookie?: strin
     request: parsed.data,
     exampleId: name ? null : (example?.id ?? null),
     pitchId: first(params.pitch) ?? null,
-    autoRun: first(params.run) === "1",
+    autoRun: first(params.run) !== "0",
   };
 }
 

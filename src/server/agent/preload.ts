@@ -52,7 +52,7 @@ async function cachedExamplePlan(requestJson: string, offline: boolean, day: str
   return plan;
 }
 
-function isExampleRequest(request: PlanRequest, day: string): boolean {
+export function isExampleRequest(request: PlanRequest, day: string): boolean {
   const json = JSON.stringify(request);
   return exampleRequests(day).some((example) => JSON.stringify(example) === json);
 }

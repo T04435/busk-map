@@ -1,10 +1,10 @@
 import type { PlanStreamEvent } from "@/lib/plan-schema";
 
-export type AgentStep = { id: string; tool: string; label: string; status: "running" | "done" | "failed"; summary?: string };
+export type AgentStep = { id: string; tool: string; label: string; source?: string; status: "running" | "done" | "failed"; summary?: string };
 
 /** Fold stream events into a list of steps. */
 export function applyStreamEvent(steps: AgentStep[], event: PlanStreamEvent): AgentStep[] {
-  if (event.type === "tool-start") return [...steps, { id: event.id, tool: event.tool, label: event.label, status: "running" }];
+  if (event.type === "tool-start") return [...steps, { id: event.id, tool: event.tool, label: event.label, source: event.source, status: "running" }];
   if (event.type === "tool-end") {
     return steps.map((s) => (s.id === event.id ? { ...s, status: event.ok ? "done" : "failed", summary: event.summary } : s));
   }
@@ -20,6 +20,7 @@ export function AgentSteps({ steps }: { steps: AgentStep[] }) {
           <span aria-hidden>{step.status === "running" ? "…" : step.status === "done" ? "✓" : "✗"}</span>
           <span className="font-medium">{step.label}</span>
           {step.summary && <span className="text-muted-foreground">{step.summary}</span>}
+          {step.source && <span className="basis-full pl-5 text-xs text-muted-foreground">{step.source}</span>}
           <span className="sr-only">{step.status}</span>
         </li>
       ))}

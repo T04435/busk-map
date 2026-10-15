@@ -23,7 +23,9 @@ for (const example of EXAMPLES) {
       await expect(pitches).toHaveCount(3);
       await expect(page.getByRole("region", { name: "Map of pitches and Qloo taste affinity" })).toBeVisible();
       await expect(page.getByRole("heading", { name: /^Setlist for / })).toBeVisible();
-      await expect(page.getByText("Explanations: from the data")).toBeVisible();
+      // The agent starts on load: its steps stream, then Claude's explanations replace the engine's (mock model offline).
+      await expect(page.getByRole("list", { name: "Agent steps" })).toBeVisible();
+      if (LOCAL) await expect(page.getByText("Explanations: Claude")).toBeVisible();
       // Every data source is credited.
       for (const credit of ["Taste data by Qloo", "Pedestrian counts: City of Melbourne Open Data", "Weather data by Open-Meteo.com"]) {
         await expect(page.getByRole("link", { name: credit })).toBeVisible();
@@ -69,6 +71,13 @@ test.describe("data-led plans", () => {
       await expect(page.getByRole("heading", { name: "Who this crowd likes" })).toBeVisible();
       await expect(page.getByText(/^Because your fans like /).first()).toBeVisible();
       await expect(page.getByLabel("Map legend")).toContainText("Taste map (Qloo heatmap");
+      // Why this crowd: every block names its Qloo evidence; fans vs the usual crowd; age lean.
+      const crowd = page.getByRole("region", { name: "Compared with the usual crowd" });
+      await expect(crowd.getByRole("heading", { name: "Your fans vs the usual crowd" })).toBeVisible();
+      await expect(crowd.getByText(/^Evidence: Qloo insights/)).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Who your fans are" })).toBeVisible();
+      // What to play: songs carry their year and era fit.
+      await expect(page.getByText(/from \d{4}: era fit \d+\/100 for a crowd leaning /).first()).toBeVisible();
     }
     expect(new Set(tops.map((t) => t.join("|"))).size).toBe(3);
     expect(new Set(tops.map((t) => t[0])).size).toBe(3);
@@ -78,16 +87,28 @@ test.describe("data-led plans", () => {
 test.describe("live agent (mock model offline)", () => {
   test.skip(!LOCAL, "Runs the agent; only against the local offline server to avoid spend");
 
-  test("streams the agent's steps and swaps in its explanations", async ({ page }) => {
+  test("runs the agent on load, streams each Qloo call and swaps in its explanations; a re-run replays", async ({ page }) => {
     await page.goto("/plan?example=acoustic");
     await waitForPlan(page);
-    await page.getByRole("button", { name: "Plan with the agent (live)" }).click();
     const steps = page.getByRole("list", { name: "Agent steps" });
     await expect(steps.getByText("Matching your artists to Qloo")).toBeVisible();
+    await expect(steps.getByText("Qloo /v2/insights · urn:heatmap")).toBeVisible();
     await expect(steps.getByText("Scoring legal pitches")).toBeVisible();
     await expect(page.getByText("Explanations: Claude")).toBeVisible();
     await expect(page.getByText(/^Mock explanation/).first()).toBeVisible();
-    await expect(page.getByRole("button", { name: "Re-run the agent" })).toBeEnabled();
+    const rerun = page.getByRole("button", { name: "Re-run the agent" });
+    await expect(rerun).toBeEnabled();
+    await rerun.click();
+    await expect(page.getByText(/^Replaying the agent's run from .* \(cached, no new model call\)$/)).toBeVisible();
+    await expect(page.getByText("Explanations: Claude")).toBeVisible();
+  });
+
+  test("run=0 shows the engine's plan only", async ({ page }) => {
+    await page.goto("/plan?example=folk-duo&run=0");
+    await waitForPlan(page);
+    await expect(page.getByText("Explanations: from the data")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Plan with the agent (live)" })).toBeEnabled();
+    await expect(page.getByRole("list", { name: "Agent steps" })).toHaveCount(0);
   });
 
   test("shows the plain-LLM comparison, clearly labelled", async ({ page }) => {

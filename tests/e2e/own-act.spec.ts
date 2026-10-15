@@ -122,7 +122,6 @@ test.describe("artists Qloo can't match", () => {
     const alert = page.getByTestId("unmatched-artists");
     await expect(alert).toContainText("Qloo couldn't match Zzyzx Nobody and Qqq Unknown");
     await expect(alert).toContainText("taste is left out");
-    await page.getByRole("button", { name: "Plan with the agent (live)" }).click();
     await expect(page.getByText("Qloo couldn't match any of your artists, so the agent wasn't run")).toBeVisible();
   });
 });

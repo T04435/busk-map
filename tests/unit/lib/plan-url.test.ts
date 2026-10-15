@@ -12,7 +12,10 @@ describe("plan URL state", () => {
     if (!parsed.ok) return;
     expect(parsed.exampleId).toBe("acoustic");
     expect(parsed.request.slot).toEqual({ date: "2026-10-17", startHour: 18, endHour: 21 });
-    expect(parsed.autoRun).toBe(false);
+    // The agent runs by default; run=0 turns it off.
+    expect(parsed.autoRun).toBe(true);
+    const off = parsePlanParams({ example: "acoustic", run: "0" }, today);
+    expect(off.ok && off.autoRun).toBe(false);
   });
 
   it("round-trips a custom performer, weights and the selected pitch", () => {

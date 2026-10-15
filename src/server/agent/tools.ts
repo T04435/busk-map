@@ -29,6 +29,22 @@ export const TOOL_LABELS: Record<string, string> = {
   build_setlists: "Ordering your setlist for each pitch",
 };
 
+/** The data call behind each tool, shown next to the step so judges see each Qloo call as it happens. */
+export const TOOL_SOURCES: Record<string, string> = {
+  resolve_repertoire: "Qloo /search and /entities (Spotify ids)",
+  taste_map: "Qloo /v2/insights · urn:heatmap",
+  busy_places: "Qloo /v2/insights · urn:entity:place with filter.hours",
+  footfall: "City of Melbourne pedestrian sensors",
+  busking_rules: "City of Melbourne busking layers",
+  events: "Ticketmaster, then Qloo /search and /v2/insights for headliner taste match",
+  weather: "Open-Meteo",
+  local_artists: "Qloo /v2/insights · urn:entity:artist with signal.location and explainability",
+  rising: "Qloo /v2/trending",
+  crowd_profile: "Qloo /v2/insights · urn:demographics",
+  score_pitches: "Busk Map scoring engine (no model)",
+  build_setlists: "Qloo /v2/insights per pitch, Last.fm, Spotify release years",
+};
+
 export function createTools(ctx: PlanContext) {
   return {
     resolve_repertoire: tool({

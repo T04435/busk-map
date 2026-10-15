@@ -196,10 +196,14 @@ export const planSchema = z.object({
         name: z.string(),
         affinity: z.number().nullable(),
         because: z.array(z.string()),
+        /** The same, with Qloo's explainability score for each (0–1): the evidence behind "because". */
+        explained: z.array(z.object({ name: z.string(), score: z.number() })).default([]),
         /** Percentile points gained over the trending window (Qloo trending), when known. */
         trend: z.number().nullable().default(null),
       }),
     ),
+    /** What the crowd at the busiest busking hotspot likes with no performer signal (Qloo insights): "the usual crowd". */
+    usualCrowd: z.object({ hotspot: z.string(), artists: z.array(z.object({ name: z.string(), affinity: z.number().nullable() })) }).nullable().default(null),
     /** Genres that characterise the crowd at the top pitch (Qloo urn:tag). */
     genres: z.array(z.object({ name: z.string(), affinity: z.number().nullable() })).default([]),
     /** How the performer's fans differ from the crowd the city centre already likes (Qloo compare). */

@@ -124,7 +124,7 @@ export function drivers(
  */
 export async function assemblePlan(context: PlanContext, ai: AiText | null): Promise<Plan> {
   const { request, city } = context;
-  const [top, ranked, cells, locals, learn, weather, artists, footfall, trends, contrast, profile, impact] = await Promise.all([
+  const [top, ranked, cells, locals, learn, weather, artists, footfall, trends, contrast, profile, impact, usual] = await Promise.all([
     context.topPitches(),
     context.ranked(),
     context.tasteCells(),
@@ -137,6 +137,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null): Pro
     context.contrast(),
     context.crowdProfile(),
     context.localImpact(),
+    context.entityIds().then((ids) => (ids.length > 0 ? context.hotspotCrowd() : null)),
   ]);
   const funnel = await context.funnel();
   const genres = top[0] ? await context.crowdGenres(top[0]) : [];
@@ -195,6 +196,10 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null): Pro
           .slice(0, 2)
           .map((e) => e.name ?? nameOf(e.entityId))
           .filter((n): n is string => n !== null),
+        explained: a.explanation.slice(0, 2).flatMap((e) => {
+          const name = e.name ?? nameOf(e.entityId);
+          return name === null ? [] : [{ name, score: Math.round(e.score * 100) / 100 }];
+        }),
         trend: trends.find((t) => t.entityId === a.id)?.windowChange ?? null,
       })),
       // Qloo genre names arrive in mixed case ("indie", "Alternative Rock"): shown in title case.
@@ -210,6 +215,8 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null): Pro
           }
         : null,
       drivers: drivers(locals.slice(0, 10), nameOf, impact),
+      usualCrowd:
+        usual && usual.artists.length > 0 ? { hotspot: usual.hotspot, artists: usual.artists.slice(0, 5).map((a) => ({ name: a.name, affinity: a.affinity })) } : null,
     },
     learnThese: learn.map((l) => ({ artist: l.artist, title: l.title, playcount: l.playcount, reason: l.reason, audienceGrowth: l.audienceGrowth })),
     ageLean: leadingAgeBand(profile?.age ?? null),

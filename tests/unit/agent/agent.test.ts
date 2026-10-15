@@ -268,3 +268,17 @@ describe("where to play: Qloo venue detail and event crowds", () => {
     expect(taste.get("syn-ev-2")).toEqual({ artist: "The Waifs", affinity: 1 });
   });
 });
+
+describe("why this crowd", () => {
+  it("carries Qloo's explainability scores and the usual crowd for the comparison", async () => {
+    mockFetch([]);
+    const { PlanContext, assemblePlan } = await load();
+    const plan = await assemblePlan(new PlanContext(request, OFFLINE, "2026-10-15"), null);
+    const first = plan.crowd.localArtists[0];
+    expect(first.explained.length).toBeGreaterThan(0);
+    expect(first.explained.map((e) => e.name)).toEqual(first.because);
+    expect(first.explained.every((e) => e.score > 0 && e.score <= 1)).toBe(true);
+    expect(plan.crowd.usualCrowd?.hotspot).toBeTruthy();
+    expect(plan.crowd.usualCrowd!.artists.length).toBeGreaterThan(0);
+  });
+});

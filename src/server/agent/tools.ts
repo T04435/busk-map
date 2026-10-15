@@ -161,7 +161,10 @@ export function createTools(ctx: PlanContext) {
           artists: artists.slice(0, 8).map((a) => ({
             name: a.name,
             affinity: r2(a.affinity),
-            because: a.explanation.slice(0, 2).map((e) => e.name ?? nameOf(e.entityId)).filter(Boolean),
+            because: a.explanation.slice(0, 2).flatMap((e) => {
+              const name = e.name ?? nameOf(e.entityId);
+              return name ? [{ name, explainability: r2(e.score) }] : [];
+            }),
           })),
         };
       },

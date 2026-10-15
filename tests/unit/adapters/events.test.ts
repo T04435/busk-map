@@ -60,4 +60,19 @@ describe("getEvents", () => {
     expect(result.mode).toBe("synthetic");
     expect(result.data.length).toBe(5);
   });
+
+  it("drops cancelled and postponed events: they draw no crowd", async () => {
+    const { toCrowdEvent } = await import("@/server/adapters/events/client");
+    const base = {
+      id: "e1",
+      name: "Gig",
+      dates: { start: { dateTime: "2026-10-17T08:00:00Z", localTime: "19:00:00" } },
+      _embedded: { venues: [{ id: "v1", name: "170 Russell", location: { latitude: "-37.81", longitude: "144.97" } }] },
+    };
+    expect(toCrowdEvent(base)).not.toBeNull();
+    expect(toCrowdEvent({ ...base, dates: { ...base.dates, status: { code: "postponed" } } })).toBeNull();
+    expect(toCrowdEvent({ ...base, dates: { ...base.dates, status: { code: "cancelled" } } })).toBeNull();
+    expect(toCrowdEvent({ ...base, name: "POSTPONED | Soen" })).toBeNull();
+    expect(toCrowdEvent({ ...base, name: "CANCELLED - Big Show" })).toBeNull();
+  });
 });

@@ -15,6 +15,9 @@ const TIMEOUT_MS = 6_000;
 /** When an event has no end time, assume this long (labelled as an estimate). */
 export const ASSUMED_EVENT_HOURS = 3;
 
+/** Ticketmaster status codes for events that won't happen when listed. */
+const NO_CROWD_STATUSES = new Set(["cancelled", "canceled", "postponed"]);
+
 const tmTime = (date: Date) => `${date.toISOString().slice(0, 19)}Z`;
 
 export function toCrowdEvent(raw: unknown): CrowdEvent | null {
@@ -24,6 +27,9 @@ export function toCrowdEvent(raw: unknown): CrowdEvent | null {
   const venue = event._embedded?.venues?.[0];
   const start = event.dates.start.dateTime;
   if (!venue?.location || !start) return null;
+  // A cancelled or postponed event draws no crowd. Ticketmaster flags it in the status, and often in the name too.
+  const statusCode = event.dates.status?.code?.toLowerCase() ?? "";
+  if (NO_CROWD_STATUSES.has(statusCode) || /^\s*(cancel+ed|postponed)\b/i.test(event.name)) return null;
   const endRaw = event.dates.end?.dateTime;
   const primary = event.classifications?.find((c) => c.primary) ?? event.classifications?.[0];
   const segment = primary?.segment?.name ?? null;

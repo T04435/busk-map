@@ -37,8 +37,6 @@ describe("repertoire (Spotify)", () => {
     const { calls } = mockFetch([
       tokenRoute,
       route((u) => u.pathname === "/v1/search", () => json(SYNTHETIC_RAW.search)),
-      route((u) => u.pathname === "/v1/artists/a1/albums", () => json(SYNTHETIC_RAW.albumsTotal.a1)),
-      route((u) => u.pathname === "/v1/artists/a2/albums", () => json({ error: { status: 500 } }, 500)),
     ]);
     const tracks = await findTracks("synthetic", "AU", LIVE);
     const artists = await findArtists("synthetic", "AU", LIVE);
@@ -53,19 +51,57 @@ describe("repertoire (Spotify)", () => {
         url: "https://open.spotify.com/track/t1",
       },
     ]);
-    // Photo (smallest at least 64 px), release count; a failed count is unknown, not a failed search.
+    // Photo (smallest at least 64 px); release counts are not fetched by the search.
     expect(artists.mode).toBe("live");
     expect(artists.data).toEqual([
-      { id: "a1", name: "Synthetic Artist", image: "https://i.scdn.co/image/syn-artist-160", releases: 27, url: "https://open.spotify.com/artist/a1" },
+      { id: "a1", name: "Synthetic Artist", image: "https://i.scdn.co/image/syn-artist-160", releases: null, url: "https://open.spotify.com/artist/a1" },
       { id: "a2", name: "Synthetic Two", image: null, releases: null, url: null },
     ]);
+    expect(calls.some((c) => c.url.pathname.endsWith("/albums"))).toBe(false);
     // One token for every call; search limit respects Spotify's cap of 10.
     expect(calls.filter((c) => c.url.host === "accounts.spotify.com")).toHaveLength(1);
     const search = calls.find((c) => c.url.pathname === "/v1/search")!;
     expect(search.url.searchParams.get("limit")).toBe("10");
     expect((search.init?.headers as Record<string, string>).Authorization).toBe("Bearer synthetic-token");
+  });
+
+  it("answers an artist search without waiting on release counts", async () => {
+    const { findArtists } = await fresh();
+    const { calls } = mockFetch([
+      tokenRoute,
+      route((u) => u.pathname === "/v1/search", () => json(SYNTHETIC_RAW.search)),
+      // A release-count call would hang forever; the search must not make or await it.
+      route((u) => u.pathname.endsWith("/albums"), () => new Promise<Response>(() => {})),
+    ]);
+    const result = await findArtists("synthetic", "AU", LIVE);
+    expect(result.mode).toBe("live");
+    expect(result.data.every((a) => a.releases === null)).toBe(true);
+    expect(calls.filter((c) => c.url.pathname.endsWith("/albums"))).toHaveLength(0);
+  });
+
+  it("loads release counts lazily per id, failures unknown", async () => {
+    const { findReleaseCounts, MAX_RELEASE_IDS } = await fresh();
+    const { calls } = mockFetch([
+      tokenRoute,
+      route((u) => u.pathname === "/v1/artists/a1/albums", () => json(SYNTHETIC_RAW.albumsTotal.a1)),
+      route((u) => u.pathname.endsWith("/albums"), () => json({ error: { status: 500 } }, 500)),
+    ]);
+    const result = await findReleaseCounts(["a1", "a2", "a1", " "], "AU", LIVE);
+    expect(result).toMatchObject({ mode: "live", data: { a1: 27 } });
+    expect(result.data).not.toHaveProperty("a2");
     const count = calls.find((c) => c.url.pathname === "/v1/artists/a1/albums")!;
     expect(Object.fromEntries(count.url.searchParams)).toEqual({ include_groups: "album,single", limit: "1", market: "AU" });
+
+    mockFetch([tokenRoute, route(() => true, () => json({}, 500))]);
+    expect(await findReleaseCounts(["x"], "AU", LIVE)).toMatchObject({ mode: "fallback", data: {} });
+
+    const many = mockFetch([tokenRoute, route(() => true, () => json({ total: 1 }))]);
+    await findReleaseCounts(Array.from({ length: 15 }, (_, i) => `id${i}`), "AU", LIVE);
+    expect(many.calls.filter((c) => c.url.pathname.endsWith("/albums"))).toHaveLength(MAX_RELEASE_IDS);
+
+    const offline = await findReleaseCounts(["syn-artist-1"], "AU", OFFLINE);
+    expect(offline.mode).toBe("synthetic");
+    expect(offline.data["syn-artist-1"]).toBeGreaterThan(0);
   });
 
   it("picks a cover near 64 px, else the only one", async () => {
@@ -113,7 +149,7 @@ describe("repertoire (Spotify)", () => {
   it("is synthetic offline", async () => {
     const { findTracks, findArtists, getArtistCatalogue } = await fresh();
     expect((await findTracks("x", "AU", OFFLINE)).mode).toBe("synthetic");
-    expect((await findArtists("zzq", "AU", OFFLINE)).data).toEqual([{ id: "syn-artist-1", name: "zzq (synthetic)", image: null, releases: 3, url: null }]);
+    expect((await findArtists("zzq", "AU", OFFLINE)).data).toEqual([{ id: "syn-artist-1", name: "zzq (synthetic)", image: null, releases: null, url: null }]);
     // Offline artists come from the Qloo mock's catalogue, with its Spotify-shaped ids.
     const paul = (await findArtists("paul ke", "AU", OFFLINE)).data;
     expect(paul[0]).toMatchObject({ name: "Paul Kelly", id: expect.stringMatching(/^[A-Za-z0-9]{22}$/) });

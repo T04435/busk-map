@@ -22,8 +22,15 @@ export function syntheticTrackSearch(query: string): CatalogueTrack[] {
 export function syntheticArtistSearch(query: string): CatalogueArtist[] {
   const q = normalizeName(query);
   const matches = q ? CATALOG.filter((a) => normalizeName(a.name).includes(q)).slice(0, 10) : [];
-  if (matches.length === 0) return [{ id: "syn-artist-1", name: `${query} (synthetic)`, image: null, releases: 3, url: null }];
-  return matches.map((a) => ({ id: a.spotifyId, name: a.name, image: null, releases: 4 + (a.name.length % 17), url: null }));
+  if (matches.length === 0) return [{ id: "syn-artist-1", name: `${query} (synthetic)`, image: null, releases: null, url: null }];
+  return matches.map((a) => ({ id: a.spotifyId, name: a.name, image: null, releases: null, url: null }));
+}
+
+/** Invented release count, stable per id. */
+export function syntheticReleaseCount(id: string): number {
+  let hash = 0;
+  for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return 3 + (hash % 40);
 }
 
 export function syntheticCatalogue(artistId: string): CatalogueTrack[] {

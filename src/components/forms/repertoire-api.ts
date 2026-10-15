@@ -52,3 +52,15 @@ export async function loadListeners(names: string[], signal: AbortSignal): Promi
   }
   return Object.fromEntries(names.filter((n) => listenerCache.has(n)).map((n) => [n, listenerCache.get(n) ?? null]));
 }
+
+/** Release counts per Spotify artist id, cached for this page's life. Failed lookups stay unknown and are retried later. */
+const releaseCache = createLookupCache<number>();
+
+export async function loadReleases(ids: string[], signal: AbortSignal): Promise<Record<string, number>> {
+  const missing = releaseCache.missing(ids).filter((id) => /^[A-Za-z0-9-]{1,40}$/.test(id));
+  if (missing.length > 0) {
+    const body = await getJson({ type: "releases", ids: missing.slice(0, 10).join("|") }, signal).catch(() => null);
+    if (body && body.mode !== "fallback") for (const [id, count] of Object.entries(body.releases ?? {})) releaseCache.set(id, count as number);
+  }
+  return Object.fromEntries(ids.filter((id) => releaseCache.has(id)).map((id) => [id, releaseCache.get(id) as number]));
+}

@@ -2,7 +2,7 @@
 
 import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { loadListeners, searchArtists, type ArtistResult } from "@/components/forms/repertoire-api";
+import { loadListeners, loadReleases, searchArtists, type ArtistResult } from "@/components/forms/repertoire-api";
 import { useLiveSearch } from "@/components/forms/use-live-search";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -42,17 +42,17 @@ type Props = {
 export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
   const { state, update, cancel } = useLiveSearch<ArtistResult>(searchArtists);
   const [listeners, setListeners] = useState<Record<string, number | null>>({});
+  const [releases, setReleases] = useState<Record<string, number>>({});
 
-  // Last.fm listener counts load after the results show, never blocking them.
+  // Release counts (Spotify) and listener counts (Last.fm) load after the results show, never blocking them.
   useEffect(() => {
     if (state.status !== "done" || state.results.length === 0) return;
     const controller = new AbortController();
-    loadListeners(
-      state.results.map((a) => a.name),
-      controller.signal,
-    ).then((counts) => {
-      if (!controller.signal.aborted) setListeners((current) => ({ ...current, ...counts }));
-    }, () => {});
+    const keep = <V,>(set: (update: (current: Record<string, V>) => Record<string, V>) => void) => (counts: Record<string, V>) => {
+      if (!controller.signal.aborted) set((current) => ({ ...current, ...counts }));
+    };
+    loadReleases(state.results.map((a) => a.id), controller.signal).then(keep(setReleases), () => {});
+    loadListeners(state.results.map((a) => a.name), controller.signal).then(keep(setListeners), () => {});
     return () => controller.abort();
   }, [state]);
 
@@ -165,8 +165,9 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
               <CommandGroup heading="Spotify">
                 {results.map((artist) => {
                   const count = listeners[artist.name];
+                  const released = releases[artist.id] ?? artist.releases;
                   const meta = [
-                    artist.releases !== null ? `${artist.releases} release${artist.releases === 1 ? "" : "s"}` : null,
+                    typeof released === "number" ? `${released} release${released === 1 ? "" : "s"}` : null,
                     typeof count === "number" ? `${formatCount(count)} Last.fm listeners` : null,
                   ].filter(Boolean);
                   return (

@@ -3,7 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import type { z } from "zod";
 import { songKey } from "@/lib/text";
 import { env } from "@/server/env";
-import { AdapterError, fetchJson, settleWithLimit } from "../core";
+import { AdapterError, fetchJson } from "../core";
 import {
   albumTracksSchema,
   albumsSchema,
@@ -93,7 +93,7 @@ export async function searchTracks(query: string, market: string): Promise<Catal
   return (body.tracks?.items ?? []).filter((t): t is NonNullable<typeof t> => t !== null).map((t) => toTrack(t));
 }
 
-/** Artist search without release counts (cached on its own). */
+/** Artist search. Release counts load separately (fetchReleaseCount), so a cold search answers fast. */
 export async function searchArtists(query: string, market: string): Promise<CatalogueArtist[]> {
   "use cache: remote";
   cacheLife("days");
@@ -113,16 +113,6 @@ export async function fetchReleaseCount(artistId: string, market: string): Promi
   const params = new URLSearchParams({ include_groups: "album,single", limit: "1", market });
   const body = await spotify(`/artists/${encodeURIComponent(artistId)}/albums?${params}`, albumsTotalSchema);
   return body.total;
-}
-
-/** Bound the release-count fan-out per search (Spotify rate limits per app). */
-const RELEASE_LOOKUPS_AT_ONCE = 4;
-
-/** Artist search with release counts. One count failing leaves that artist's count unknown. */
-export async function searchArtistsWithReleases(query: string, market: string): Promise<CatalogueArtist[]> {
-  const artists = await searchArtists(query, market);
-  const counts = await settleWithLimit(artists, RELEASE_LOOKUPS_AT_ONCE, (a) => fetchReleaseCount(a.id, market));
-  return artists.map((artist, i) => ({ ...artist, releases: counts[i].status === "fulfilled" ? counts[i].value : null }));
 }
 
 /** An artist's own songs: albums and singles, deduplicated by title. */

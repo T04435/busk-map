@@ -6,7 +6,9 @@ import { json, LIVE, mockFetch, OFFLINE, route } from "../../helpers";
 const slot = { date: "2026-10-17", startHour: 18, endHour: 21 };
 
 describe("getEvents", () => {
-  it("searches by geoPoint and radius around the slot, and normalises events", async () => {
+  it("fetches the city's whole window once by geoPoint and radius, then keeps the slot's events", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-16T12:00:00Z"));
     vi.stubEnv("TICKETMASTER_API_KEY", "synthetic-test-key");
     vi.resetModules();
     const { getEvents: fresh } = await import("@/server/adapters/events");
@@ -19,9 +21,10 @@ describe("getEvents", () => {
     expect(params.get("geoPoint")).toMatch(/^r1r0fsn..$/);
     expect(params.get("radius")).toBe("3");
     expect(params.has("city")).toBe(false);
-    // 6 pm Melbourne daylight time is 07:00 UTC; minus the 4 h look-back.
-    expect(params.get("startDateTime")).toBe("2026-10-17T03:00:00Z");
-    expect(params.get("endDateTime")).toBe("2026-10-17T10:00:00Z");
+    // One request covers yesterday (UTC) through the next 8 days, whatever the slot.
+    expect(params.get("startDateTime")).toBe("2026-10-15T00:00:00Z");
+    expect(params.get("endDateTime")).toBe("2026-10-24T00:00:00Z");
+    expect(params.get("page")).toBe("0");
 
     expect(result.data.map((e) => e.id)).toEqual(["syn-raw-1", "syn-raw-2"]);
     expect(result.data[0]).toMatchObject({
@@ -34,6 +37,22 @@ describe("getEvents", () => {
     });
     // Sports attractions are teams, not artists.
     expect(result.data[1]).toMatchObject({ endEstimated: false, artists: [], venue: { name: "Venue" } });
+
+    // A slot on another day gets none of these events, from the same kind of request.
+    const other = await fresh("melbourne", { date: "2026-10-20", startHour: 9, endHour: 11 }, LIVE);
+    expect(other.data).toEqual([]);
+    vi.useRealTimers();
+  });
+
+  it("retries once when Ticketmaster stalls or errors", async () => {
+    vi.stubEnv("TICKETMASTER_API_KEY", "synthetic-test-key");
+    vi.resetModules();
+    const { getEvents: fresh } = await import("@/server/adapters/events");
+    let n = 0;
+    mockFetch([route((u) => u.host === "app.ticketmaster.com", () => (n++ === 0 ? new Response("busy", { status: 503 }) : json(SYNTHETIC_RAW)))]);
+    const result = await fresh("melbourne", slot, LIVE);
+    expect(n).toBe(2);
+    expect(result.mode).toBe("live");
   });
 
   it("falls back to no events without a key", async () => {

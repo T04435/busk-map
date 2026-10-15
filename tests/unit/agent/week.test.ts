@@ -165,7 +165,9 @@ describe("week adapters (live, mocked fetch)", () => {
     expect(Object.keys((await getWeatherWeek("melbourne", "2026-10-15", 7, OFFLINE, "2026-10-15")).data)).toHaveLength(7);
   });
 
-  it("searches events across the whole week", async () => {
+  it("searches events across the whole week with the city's single daily request", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-14T13:00:00Z"));
     vi.stubEnv("TICKETMASTER_API_KEY", "synthetic-test-key");
     vi.resetModules();
     const { getEventsBetween } = await import("@/server/adapters/events");
@@ -173,7 +175,10 @@ describe("week adapters (live, mocked fetch)", () => {
     const { calls } = mockFetch([route(() => true, () => json({ page: { totalElements: 0 } }))]);
     const result = await getEventsBetween("melbourne", "2026-10-14T13:00:00.000Z", "2026-10-21T13:00:00.000Z", LIVE);
     expect(result).toMatchObject({ mode: "live", data: [] });
-    expect(calls[0].url.searchParams.get("startDateTime")).toBe("2026-10-14T13:00:00Z");
-    expect(calls[0].url.searchParams.get("endDateTime")).toBe("2026-10-21T13:00:00Z");
+    expect(calls).toHaveLength(1);
+    // Yesterday (UTC) through the next 8 days covers the whole week being planned.
+    expect(calls[0].url.searchParams.get("startDateTime")).toBe("2026-10-13T00:00:00Z");
+    expect(calls[0].url.searchParams.get("endDateTime")).toBe("2026-10-22T00:00:00Z");
+    vi.useRealTimers();
   });
 });

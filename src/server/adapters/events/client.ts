@@ -11,7 +11,10 @@ import { eventSchema, eventsResponseSchema, type CrowdEvent } from "./schema";
  * city filter leaks venues from other cities. Cache policy: 6 hours.
  */
 const BASE = "https://app.ticketmaster.com/discovery/v2/events.json";
-const TIMEOUT_MS = 6_000;
+const TIMEOUT_MS = 10_000;
+/** Ticketmaster pages hold up to 200 events; a week within 3 km of the CBD is usually under 100. */
+const PAGE_SIZE = 100;
+const MAX_PAGES = 3;
 /** When an event has no end time, assume this long (labelled as an estimate). */
 export const ASSUMED_EVENT_HOURS = 3;
 
@@ -49,13 +52,12 @@ export function toCrowdEvent(raw: unknown): CrowdEvent | null {
   };
 }
 
-/** Events within `radiusKm` of `center` that start between the two instants. */
-export async function fetchEvents(
-  center: LatLon,
-  radiusKm: number,
-  startIso: string,
-  endIso: string,
-): Promise<CrowdEvent[]> {
+/**
+ * Every event within `radiusKm` of `center` starting from `dayIso` (the start of a UTC day) for
+ * `days` days. One cached call per city per day serves every slot and week plan: Ticketmaster
+ * allows about 5 requests a second, and a request per slot got throttled into timeouts.
+ */
+export async function fetchCityEvents(center: LatLon, radiusKm: number, dayIso: string, days: number): Promise<CrowdEvent[]> {
   "use cache: remote";
   cacheLife({ stale: 300, revalidate: 21_600, expire: 86_400 });
   cacheTag("events");
@@ -63,21 +65,46 @@ export async function fetchEvents(
   const apiKey = env().TICKETMASTER_API_KEY;
   if (!apiKey) throw new AdapterError("events", "missing_key", "Ticketmaster key is not configured");
 
-  const params = new URLSearchParams({
-    apikey: apiKey,
-    geoPoint: geohashEncode(center, 9),
-    radius: String(radiusKm),
-    unit: "km",
-    startDateTime: tmTime(new Date(startIso)),
-    endDateTime: tmTime(new Date(endIso)),
-    size: "100",
-    sort: "date,asc",
-  });
-  const body = await fetchJson(`${BASE}?${params}`, { adapter: "events", schema: eventsResponseSchema, timeoutMs: TIMEOUT_MS });
-  const raw = body._embedded?.events ?? [];
-  const events = raw.map(toCrowdEvent).filter((e): e is CrowdEvent => e !== null);
-  if (events.length < raw.length) {
-    log.warn("ticketmaster events skipped", { skipped: raw.length - events.length, total: raw.length });
+  const start = new Date(dayIso);
+  const end = new Date(start.getTime() + days * 86_400_000);
+  const events: CrowdEvent[] = [];
+  let skipped = 0;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const params = new URLSearchParams({
+      apikey: apiKey,
+      geoPoint: geohashEncode(center, 9),
+      radius: String(radiusKm),
+      unit: "km",
+      startDateTime: tmTime(start),
+      endDateTime: tmTime(end),
+      size: String(PAGE_SIZE),
+      page: String(page),
+      sort: "date,asc",
+    });
+    const body = await fetchWithRetry(`${BASE}?${params}`);
+    const raw = body._embedded?.events ?? [];
+    for (const item of raw) {
+      const event = toCrowdEvent(item);
+      if (event) events.push(event);
+      else skipped++;
+    }
+    const totalPages = body.page?.totalPages ?? 1;
+    if (page + 1 >= totalPages || raw.length < PAGE_SIZE) break;
   }
+  if (skipped) log.warn("ticketmaster events skipped", { skipped, total: events.length + skipped });
   return events;
 }
+
+/** One retry after a timeout or a 5xx, half a second later. Ticketmaster is usually fast but occasionally stalls. */
+async function fetchWithRetry(url: string) {
+  const options = { adapter: "events" as const, schema: eventsResponseSchema, timeoutMs: TIMEOUT_MS };
+  try {
+    return await fetchJson(url, options);
+  } catch (error) {
+    const retryable = error instanceof AdapterError && (error.kind === "timeout" || (error.kind === "http" && (error.status ?? 0) >= 500));
+    if (!retryable) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    return fetchJson(url, options);
+  }
+}
+

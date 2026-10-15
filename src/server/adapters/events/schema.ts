@@ -41,7 +41,7 @@ export const eventSchema = z.object({
 
 export const eventsResponseSchema = z.object({
   _embedded: z.object({ events: z.array(z.unknown()) }).optional(),
-  page: z.object({ totalElements: z.number() }).optional(),
+  page: z.object({ totalElements: z.number(), totalPages: z.number().optional(), number: z.number().optional() }).optional(),
 });
 
 export type CrowdEvent = {

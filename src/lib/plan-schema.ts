@@ -255,3 +255,29 @@ export const planStreamEventSchema = z.discriminatedUnion("type", [
 ]);
 
 export type PlanStreamEvent = z.infer<typeof planStreamEventSchema>;
+
+/** The plain-AI baseline set against the plan (POST /api/compare). The baseline never changes a score. */
+export const baselineViewSchema = z.object({
+  model: z.string(),
+  setlist: z.array(z.string()),
+  /** Busk Map's top pitches the plain AI also named. */
+  bothAgree: z.array(z.object({ pitchId: z.string(), plainName: z.string() })),
+  /** Busk Map's top pitch ids the plain AI didn't name. */
+  onlyBuskMap: z.array(z.string()),
+  plain: z.array(
+    z.object({
+      name: z.string(),
+      why: z.string(),
+      usualSpot: z.string().nullable(),
+      status: z.enum(["ours", "scored", "not-legal", "no-data"]),
+      locatedBy: z.enum(["name", "coordinates"]).nullable(),
+      place: z.string().nullable(),
+      pitchId: z.string().nullable(),
+      pitchName: z.string().nullable(),
+      score: z.number().nullable(),
+      beatsOurs: z.boolean(),
+    }),
+  ),
+});
+
+export type BaselineView = z.infer<typeof baselineViewSchema>;

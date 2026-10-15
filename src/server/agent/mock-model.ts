@@ -81,9 +81,9 @@ export function createMockCompare() {
           type: "text",
           text: JSON.stringify({
             spots: [
-              { name: "Bourke Street Mall", why: "Mock plain-LLM answer (offline test mode): the busiest shopping strip in the city." },
-              { name: "Federation Square", why: "Mock plain-LLM answer: tourists and big crowds all day." },
-              { name: "Flinders Street Station", why: "Mock plain-LLM answer: thousands of commuters pass the steps." },
+              { name: "Bourke Street Mall", lat: -37.8137, lon: 144.9645, why: "Mock plain-LLM answer (offline test mode): the busiest shopping strip in the city." },
+              { name: "Federation Square", lat: null, lon: null, why: "Mock plain-LLM answer: tourists and big crowds all day." },
+              { name: "Flinders Street Station", lat: -37.8183, lon: 144.9671, why: "Mock plain-LLM answer: thousands of commuters pass the steps." },
             ],
             setlist: ["Wonderwall", "Hallelujah", "Riptide", "Shallow"],
           }),

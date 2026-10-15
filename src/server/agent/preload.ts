@@ -30,8 +30,27 @@ function memoKey(request: PlanRequest, adapters: AdapterContext, today: string) 
 /** A plan built while a source (other than a deliberate test fault) was down. */
 const degraded = (plan: Plan) => plan.dataStatus.some((s) => s.mode === "fallback" && s.reason !== "missing_key" && s.reason !== "fault_injected");
 
-async function assembleEnginePlan(request: PlanRequest, adapters: AdapterContext, day: string): Promise<Plan> {
+const contexts = new Map<string, { at: number; context: PlanContext }>();
+
+/**
+ * The engine's PlanContext for a request, shared within this instance: the
+ * plan and the plain-AI baseline comparison read the same data once.
+ */
+export function engineContext(request: PlanRequest, adapters: AdapterContext, today?: string): PlanContext {
+  const day = today ?? localToday(CITIES[request.city].timeZone);
+  const key = memoKey(request, adapters, day);
+  const hit = contexts.get(key);
+  // A plan built while a source was down is retried sooner (see buildEnginePlan); so is its context.
+  const ttl = memo.get(key)?.ttl ?? PLAN_MEMO_TTL_MS;
+  if (hit && Date.now() - hit.at < ttl) return hit.context;
   const context = new PlanContext(request, adapters, day);
+  contexts.set(key, { at: Date.now(), context });
+  if (contexts.size > MEMO_MAX) contexts.delete(contexts.keys().next().value!);
+  return context;
+}
+
+async function assembleEnginePlan(request: PlanRequest, adapters: AdapterContext, day: string, shared = true): Promise<Plan> {
+  const context = shared ? engineContext(request, adapters, day) : new PlanContext(request, adapters, day);
   await context.artists();
   return assemblePlan(context, null);
 }
@@ -46,10 +65,17 @@ async function assembleEnginePlan(request: PlanRequest, adapters: AdapterContext
 async function cachedExamplePlan(requestJson: string, offline: boolean, day: string): Promise<Plan> {
   "use cache: remote";
   cacheTag("example-plans");
-  const plan = await assembleEnginePlan(planRequestSchema.parse(JSON.parse(requestJson)), { offline, faults: [] }, day);
+  const plan = await assembleEnginePlan(planRequestSchema.parse(JSON.parse(requestJson)), { offline, faults: [] }, day, false);
   if (degraded(plan)) cacheLife({ stale: 30, revalidate: 60, expire: 120 });
   else cacheLife({ stale: 300, revalidate: PLAN_MEMO_TTL_MS / 1000, expire: 3600 });
   return plan;
+}
+
+/** The example this request is (as the landing page links it), or null for any other request. */
+export function exampleIdFor(request: PlanRequest, day: string): string | null {
+  const json = JSON.stringify(request);
+  const index = exampleRequests(day).findIndex((example) => JSON.stringify(example) === json);
+  return index === -1 ? null : EXAMPLES[index].id;
 }
 
 export function isExampleRequest(request: PlanRequest, day: string): boolean {

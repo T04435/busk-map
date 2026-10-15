@@ -4,7 +4,7 @@ import { ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ComparePanel } from "@/components/compare/compare-panel";
+import { ComparePanel, useBaseline } from "@/components/compare/compare-panel";
 import { LazyPlanMap } from "@/components/map/lazy-plan-map";
 import { MapLegend } from "@/components/map/map-legend";
 import { DiscoveryBadge, PitchCard } from "@/components/pitch-card/pitch-card";
@@ -59,6 +59,9 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
   const selected = plan.pitches.find((p) => p.id === selectedId) ?? plan.pitches[0] ?? null;
   const started = useRef(false);
   useTipSync(request.performer.name, exampleId, request.history);
+  // The plain-AI baseline (a control: agreement is a badge, never a score change).
+  const baseline = useBaseline(request, faults);
+  const agreedWith = new Map(baseline.status === "done" ? baseline.baseline.bothAgree.map((a) => [a.pitchId, a.plainName]) : []);
 
   const select = useCallback(
     (pitchId: string) => {
@@ -291,6 +294,11 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
                         {i + 1}. {pitch.name}
                       </span>
                       <DiscoveryBadge discovery={pitch.discovery} className="border-current bg-transparent text-current" />
+                      {agreedWith.has(pitch.id) && (
+                        <Badge variant="outline" className="border-current bg-transparent text-current" title={`The plain AI also named ${agreedWith.get(pitch.id)}`}>
+                          Both agree
+                        </Badge>
+                      )}
                     </span>
                     <span className="shrink-0">{pitch.score}/100</span>
                   </Button>
@@ -347,7 +355,7 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
         <WeightsPanel weights={plan.weights} />
       </div>
 
-      <ComparePanel request={request} pitches={plan.pitches} />
+      {!qlooDown && <ComparePanel state={baseline} pitches={plan.pitches} />}
 
       <DataSources status={plan.dataStatus} showAi={plan.explanations === "ai"} />
     </div>

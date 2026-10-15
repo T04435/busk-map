@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { parsePlanParams, planSearchParams } from "@/lib/plan-url";
 import { localToday } from "@/lib/slot";
+import { baselineFor } from "@/server/agent/baseline";
 import { buildEnginePlan } from "@/server/agent/preload";
 import { CITIES } from "@/server/cities";
 import { adapterContextFor } from "@/server/request";
@@ -69,6 +70,8 @@ async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchPar
   }
   const faults = typeof params.faults === "string" ? params.faults : null;
   const adapters = adapterContextFor(faults);
+  // The plain-AI baseline starts now, in parallel with the plan; the comparison panel picks it up.
+  void baselineFor(parsed.request, adapters);
   const plan = await buildEnginePlan(parsed.request, adapters);
   return (
     <PlanView

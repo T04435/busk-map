@@ -111,13 +111,21 @@ test.describe("live agent (mock model offline)", () => {
     await expect(page.getByRole("list", { name: "Agent steps" })).toHaveCount(0);
   });
 
-  test("shows the plain-LLM comparison, clearly labelled", async ({ page }) => {
+  test("always sets a plain-AI baseline beside the plan, in three buckets, without changing a score", async ({ page }) => {
     await page.goto("/plan?example=sax");
     await waitForPlan(page);
-    await page.getByRole("switch", { name: "What a plain LLM would suggest" }).click();
-    await expect(page.getByText("Plain LLM answer (unverified, no data)")).toBeVisible();
-    await expect(page.getByText(/Mock plain-LLM answer/).first()).toBeVisible();
+    const scores = await page.getByRole("region", { name: "Pitches", exact: true }).locator("button[data-pitch-name]").allTextContents();
+    await expect(page.getByRole("heading", { name: "Busk Map vs a plain AI" })).toBeVisible();
+    await expect(page.getByTestId("compare-verdict")).toContainText("picks");
     await expect(page.getByTestId("compare-verdict")).toContainText("usual busking spots");
-    await expect(page.getByRole("region", { name: "Busk Map answer" }).getByRole("listitem")).toHaveCount(3);
+    const onlyOurs = page.getByRole("region", { name: "Only Busk Map" });
+    await expect(onlyOurs.getByText(/^The council's busking layers don't rule it out/).first()).toBeVisible();
+    const onlyPlain = page.getByRole("region", { name: "Only plain AI" });
+    await expect(onlyPlain.getByText(/Mock plain-LLM answer/).first()).toBeVisible();
+    await expect(onlyPlain.getByText(/^(Scored by Busk Map|Not a legal pitch|No data for this spot)$/).first()).toBeVisible();
+    // The baseline is a control: the pitch scores are the same once it has arrived.
+    await page.getByRole("button", { name: "Re-run the agent" }).waitFor();
+    const after = await page.getByRole("region", { name: "Pitches", exact: true }).locator("button[data-pitch-name]").allTextContents();
+    expect(after.map((t) => t.match(/\d+\/100/)?.[0])).toEqual(scores.map((t) => t.match(/\d+\/100/)?.[0]));
   });
 });

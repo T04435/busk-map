@@ -18,18 +18,27 @@ import { LIMITS, MODELS } from "./models";
  * Cached per performer and slot.
  */
 export const plainAnswerSchema = z.object({
-  spots: z.array(z.object({ name: z.string().max(160), why: z.string().max(600) })).max(3),
+  spots: z
+    .array(
+      z.object({
+        name: z.string().max(160).describe("A real, nameable place: a square, street corner, laneway or forecourt."),
+        lat: z.number().nullable().describe("Approximate latitude, or null if unsure."),
+        lon: z.number().nullable().describe("Approximate longitude, or null if unsure."),
+        why: z.string().max(600),
+      }),
+    )
+    .max(3),
   setlist: z.array(z.string().max(160)).max(10),
 });
 
-export type PlainSpot = { name: string; why: string; usualSpot: string | null };
+export type PlainSpot = { name: string; why: string; usualSpot: string | null; lat: number | null; lon: number | null };
 
 export type CompareResult =
   | { text: string; spots: PlainSpot[]; setlist: string[]; model: string }
   | { text: null; reason: "unavailable" | "error" };
 
 /** Names a plain answer uses for Melbourne's well-known busking hotspots. */
-const HOTSPOT_ALIASES: [RegExp, string][] = [
+export const HOTSPOT_ALIASES: [RegExp, string][] = [
   [/bourke\s+st(reet)?(\s+mall)?/i, "Bourke Street Mall"],
   [/fed(eration)?\s+sq(uare)?/i, "Federation Square"],
   [/flinders\s+st(reet)?\s+station|flinders\s+st(reet)?\s+(steps|corner)|under the clocks/i, "Flinders Street Station"],
@@ -43,15 +52,23 @@ export function usualSpotMentioned(text: string): string | null {
   return HOTSPOT_ALIASES.find(([pattern]) => pattern.test(text))?.[1] ?? null;
 }
 
+/**
+ * The baseline question. It is the control for Busk Map, so it must be a fair
+ * one: the same performer, songs, city, day and slot, and an honest ask for
+ * the best answer a knowledgeable local could give without data.
+ */
 export function comparePrompt(request: Pick<PlanRequest, "city" | "slot" | "performer">): string {
-  const songs = request.performer.songs.map((s) => s.title).slice(0, 12).join(", ");
+  const songs = request.performer.songs.map((s) => `${s.title} (${s.artist})`).slice(0, 12).join("; ");
+  const city = CITIES[request.city].name;
   return [
-    `I'm a street performer in ${CITIES[request.city].name}. My music sounds like ${request.performer.artists.join(", ")}.`,
-    songs ? `Songs I can play: ${songs}.` : "",
-    `Where should I busk on ${describeSlot(request.slot)}, and what setlist should I play? Give three spots, each with one short reason (under 25 words), and a setlist of up to six songs.`,
-  ]
-    .filter(Boolean)
-    .join(" ");
+    `You are an experienced street performer who knows ${city} well. Give a fellow busker your honest best advice.`,
+    `The act: ${request.performer.name}. Their music sounds like ${request.performer.artists.join(", ")}.`,
+    songs ? `Songs they can play: ${songs}.` : "They haven't listed songs.",
+    `When: ${describeSlot(request.slot)}, in central ${city}.`,
+    "Recommend the three best spots to busk for this act at this time: real, specific places (a square, street corner, laneway or forecourt) where busking is allowed and the people passing then would enjoy this music.",
+    "For each, give its name, its approximate latitude and longitude (null if you aren't sure) and one short reason (under 25 words).",
+    "Then a setlist of up to six songs, from their list where possible, in the order to play them.",
+  ].join(" ");
 }
 
 async function cachedCompare(prompt: string, offline: boolean): Promise<z.infer<typeof plainAnswerSchema>> {
@@ -75,7 +92,7 @@ export async function plainLlmSuggestion(request: Pick<PlanRequest, "city" | "sl
   if (!offline && !providerStatus().aiGateway) return { text: null, reason: "unavailable" };
   try {
     const answer = await cachedCompare(comparePrompt(request), offline);
-    const spots = answer.spots.map((s) => ({ ...s, usualSpot: usualSpotMentioned(`${s.name} ${s.why}`) }));
+    const spots = answer.spots.map((s) => ({ name: s.name, why: s.why, lat: s.lat ?? null, lon: s.lon ?? null, usualSpot: usualSpotMentioned(`${s.name} ${s.why}`) }));
     const text = [...spots.map((s, i) => `${i + 1}. ${s.name}: ${s.why}`), answer.setlist.length ? `Setlist: ${answer.setlist.join(", ")}` : ""].filter(Boolean).join("\n");
     return { text, spots, setlist: answer.setlist, model: offline ? "mock" : MODELS.cheap };
   } catch (error) {

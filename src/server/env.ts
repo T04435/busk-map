@@ -37,6 +37,8 @@ export const envSchema = z.object({
   QLOO_MOCK: flag,
   /** Expose the mock over HTTP at /api/_mock/qloo (always on outside production). */
   QLOO_MOCK_ROUTE: flag,
+  /** Postgres (e.g. Neon) for the plain-AI baseline comparison stats. Optional: without it, comparisons aren't recorded. */
+  DATABASE_URL: optionalSecret,
   TICKETMASTER_API_KEY: optionalSecret,
   LASTFM_API_KEY: optionalSecret,
   SPOTIFY_CLIENT_ID: optionalSecret,

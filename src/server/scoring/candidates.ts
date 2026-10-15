@@ -102,12 +102,46 @@ export function buildCandidates(inputs: CandidateInputs): Candidate[] {
   return buildCandidatesWithFunnel(inputs).candidates;
 }
 
+/** Whether the council's layers rule a point out for this permit (a no-busking line or a restricted site nearby). */
+export function ruledOut(point: LatLon, sites: SiteInput[], zones: ZoneInput[], permit: PerformerPermit): boolean {
+  return (
+    nearLines(point, zones, "no-busking", NO_BUSKING_LINE_BUFFER_M) ||
+    sites.some((s) => RESTRICTED.has(s.permit) && !siteAllowsPerformer(s, permit) && distanceM(s, point) <= RESTRICTED_SITE_BUFFER_M)
+  );
+}
+
+/**
+ * A candidate at any point the council's layers don't rule out (general
+ * permit rules), for scoring a place named elsewhere, e.g. by the plain-AI
+ * baseline. Null when the point is ruled out.
+ */
+export function candidateAt(
+  point: LatLon & { id: string; name: string },
+  { sites, zones, hotspots, permit }: Pick<CandidateInputs, "sites" | "zones" | "hotspots" | "permit">,
+): Candidate | null {
+  if (ruledOut(point, sites, zones, permit)) return null;
+  const unamplified = nearLines(point, zones, "unamplified", UNAMPLIFIED_LINE_BUFFER_M);
+  return {
+    id: point.id,
+    name: point.name,
+    lat: point.lat,
+    lon: point.lon,
+    kind: "public-space",
+    origin: "fallback",
+    cell: null,
+    permit: "general",
+    rules: "General busking permit: most CBD footpaths and public spaces, subject to clearances.",
+    rulesUrl: null,
+    amplification: unamplified ? "unamplified-zone" : "allowed",
+    cautions: cautionsFor(null, permit, unamplified),
+    usualSpot: usualSpotAt(point, hotspots),
+  };
+}
+
 export function buildCandidatesWithFunnel({ sites, zones, sensors, spots, cells, hotspots, permit }: CandidateInputs): { candidates: Candidate[]; funnel: CandidateFunnel } {
   let considered = 0;
   let excluded = 0;
-  const restricted = sites.filter((s) => RESTRICTED.has(s.permit) && !siteAllowsPerformer(s, permit));
-  const blocked = (point: LatLon) =>
-    nearLines(point, zones, "no-busking", NO_BUSKING_LINE_BUFFER_M) || restricted.some((s) => distanceM(s, point) <= RESTRICTED_SITE_BUFFER_M);
+  const blocked = (point: LatLon) => ruledOut(point, sites, zones, permit);
   const candidates: Candidate[] = [];
   const add = (candidate: Omit<Candidate, "amplification" | "cautions" | "usualSpot">, site: SiteInput | null) => {
     if (candidates.some((c) => c.id === candidate.id)) return;

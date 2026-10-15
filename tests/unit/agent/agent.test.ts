@@ -179,3 +179,37 @@ describe("crowd drivers and Qloo extras", () => {
     expect(ctx.notes).toContain('Qloo has no trending data for the last year, so "learn these" is ranked by Qloo affinity and Last.fm listeners instead.');
   });
 });
+
+describe("setlist artists", () => {
+  const sax = planRequestSchema.parse({ ...request, slot: { date: "2026-10-16", startHour: 17, endHour: 20 }, performer: EXAMPLES[1].performer });
+
+  it("never calls a matched artist unmatched when Qloo leaves them out of a pitch's local scores (Stevie Wonder on live Qloo)", async () => {
+    mockFetch([]);
+    const { PlanContext } = await load();
+    const ctx = new PlanContext(sax, OFFLINE, "2026-10-15");
+    const [top] = await ctx.topPitches();
+    const setlist = await ctx.setlistFor(top);
+    const stevie = setlist.filter((s) => s.artist === "Stevie Wonder");
+    expect((await ctx.artists()).find((a) => a.query === "Stevie Wonder")?.entity).not.toBeNull();
+    expect(stevie).toHaveLength(2);
+    for (const song of stevie) {
+      expect(song.affinitySource).toBe("proxy");
+      expect(song.reason).not.toMatch(/No Qloo match/);
+      expect(song.reason).toMatch(/^Qloo has no local score for Stevie Wonder at this pitch/);
+    }
+    expect(setlist.filter((s) => s.artist !== "Stevie Wonder").every((s) => s.affinitySource === "qloo")).toBe(true);
+  });
+
+  it("resolves song artists the performer didn't list as 'sounds like', for the setlist only", async () => {
+    mockFetch([]);
+    const { PlanContext } = await load();
+    const songs = [...request.performer.songs, { title: "Lean On Me", artist: "Bill Withers", own: false }, { title: "Mine", artist: "Zzyzx Unknown Busker", own: false }];
+    const ctx = new PlanContext(planRequestSchema.parse({ ...request, performer: { ...request.performer, songs } }), OFFLINE, "2026-10-15");
+    const [top] = await ctx.topPitches();
+    const setlist = await ctx.setlistFor(top);
+    expect(setlist.find((s) => s.artist === "Bill Withers")).toMatchObject({ affinitySource: "qloo" });
+    expect(setlist.find((s) => s.artist === "Zzyzx Unknown Busker")?.reason).toMatch(/^No Qloo match for Zzyzx Unknown Busker/);
+    // Taste signals are still the "sounds like" artists only.
+    expect((await ctx.artists()).map((a) => a.query)).toEqual(request.performer.artists);
+  });
+});

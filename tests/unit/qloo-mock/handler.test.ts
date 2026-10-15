@@ -175,7 +175,9 @@ describe("qloo mock: places and artists", () => {
     const at = (lon: number, lat: number) => call("/v2/insights", { "filter.type": "urn:entity:artist", "filter.results.entities": ids, "signal.location": `POINT(${lon} ${lat})`, "signal.location.radius": "400" });
     const bennetts = (await at(144.9706, -37.8104)).body.results.entities;
     const docklands = (await at(144.94, -37.816)).body.results.entities;
-    expect(bennetts).toHaveLength(4);
+    // Like live Qloo, Stevie Wonder (flagged noLocalScore) is left out of location-signalled results.
+    expect(bennetts).toHaveLength(3);
+    expect(bennetts.map((r: { name: string }) => r.name)).not.toContain("Stevie Wonder");
     const score = (rows: { entity_id: string; query: { affinity: number } }[]) => rows.reduce((s, r) => s + r.query.affinity, 0);
     expect(score(bennetts)).toBeGreaterThan(score(docklands));
   });

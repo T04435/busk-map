@@ -27,7 +27,10 @@ export type SetlistEntry = {
   score: number;
   /** Local affinity (0–1) of the artist, relative to the performer's best. */
   affinity: number;
-  /** "qloo": from Qloo for this artist; "proxy": the performer's typical affinity (own songs, unresolved artists). */
+  /**
+   * "qloo": from Qloo for this artist at this pitch; "proxy": the performer's typical affinity
+   * (own songs, artists Qloo couldn't match, and matched artists Qloo has no local score for).
+   */
   affinitySource: "qloo" | "proxy";
   playcount: number | null;
   reason: string;
@@ -86,7 +89,10 @@ export function buildSetlist(
         ? `Crowd affinity for ${song.artist}: ${Math.round(affinity * 100)}/100`
         : song.own
           ? "Your own song: scored with your typical crowd affinity"
-          : `No Qloo match for ${song.artist}: scored with your typical crowd affinity`,
+          : song.artistEntityId
+            ? // Qloo matched the artist but left them out of this pitch's local scores (live Qloo does this for some artists).
+              `Qloo has no local score for ${song.artist} at this pitch: scored with your typical crowd affinity`
+            : `No Qloo match for ${song.artist}: scored with your typical crowd affinity`,
     ];
     if (playcount !== null) why.push(`${formatPlays(playcount)} Last.fm plays`);
     return {

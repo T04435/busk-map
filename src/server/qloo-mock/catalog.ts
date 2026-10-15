@@ -38,6 +38,13 @@ export type MockArtist = {
   local?: boolean;
   /** Extra names /search should match. */
   aka?: string[];
+  /**
+   * Live Qloo (checked 2026-10-16) leaves some well-known artists, Stevie
+   * Wonder among them, out of location-signalled insights even when they are
+   * asked for by id (`filter.results.entities` with `signal.location`). The
+   * mock does the same for artists flagged here.
+   */
+  noLocalScore?: boolean;
 };
 
 const a = (name: string, popularity: number, genres: MockArtist["genres"], extra: Partial<MockArtist> = {}): MockArtist => ({
@@ -97,7 +104,7 @@ export const ARTISTS: MockArtist[] = [
   a("Vika and Linda", 0.45, { soul: 0.8, blues: 0.6, folk: 0.3 }, { local: true, aka: ["Vika & Linda"] }),
   a("Tower of Power", 0.5, { funk: 1, soul: 0.7 }),
   // International soul, funk, jazz
-  a("Stevie Wonder", 0.95, { soul: 1, funk: 0.8, rnb: 0.6, pop: 0.4 }),
+  a("Stevie Wonder", 0.95, { soul: 1, funk: 0.8, rnb: 0.6, pop: 0.4 }, { noLocalScore: true }),
   a("Amy Winehouse", 0.93, { soul: 1, jazz: 0.6, rnb: 0.5 }),
   a("Kamasi Washington", 0.7, { jazz: 1, funk: 0.4, soul: 0.3 }),
   a("Erykah Badu", 0.8, { neo_soul: 1, rnb: 0.6, jazz: 0.3 }),

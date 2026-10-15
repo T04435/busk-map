@@ -526,6 +526,8 @@ function artists(params: Params, key: string): Response {
   const scored = pool
     .filter((artist) => {
       if (exclude.has(artist.id)) return false;
+      // Live Qloo leaves some artists out of location-signalled results (see MockArtist.noLocalScore).
+      if (area && artist.noLocalScore) return false;
       if (tagFilter.length && !tagFilter.some((g) => (artist.genres[g] ?? 0) >= 0.5)) return false;
       if (popMin !== null && artist.popularity < popMin) return false;
       return popMax === null || artist.popularity <= popMax;

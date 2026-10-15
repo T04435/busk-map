@@ -65,6 +65,13 @@ describe("buildSetlist", () => {
     expect(set[0].reason).toMatch(/No Qloo match for/);
   });
 
+  it("says a matched artist has no local score, rather than no match, when Qloo leaves them out at this pitch", () => {
+    const set = buildSetlist([song("1", "Superstition", "Stevie Wonder", "sw"), song("2", "Valerie", "Amy Winehouse", "aw")], { aw: 0.9 }, {});
+    const stevie = set.find((s) => s.artist === "Stevie Wonder")!;
+    expect(stevie.affinitySource).toBe("proxy");
+    expect(stevie.reason).toBe("Qloo has no local score for Stevie Wonder at this pitch: scored with your typical crowd affinity");
+  });
+
   it("handles zero affinities and zero plays, and repeats an artist when no one else is left", () => {
     const songs = [song("1", "A", "Solo", "s"), song("2", "B", "Solo", "s"), song("3", "C", "Solo", "s")];
     const set = buildSetlist(songs, { s: 0 }, { [trackKey("Solo", "A")]: 0 });

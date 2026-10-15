@@ -2,7 +2,7 @@ import "server-only";
 import type { BBox } from "@/lib/geo";
 import type { TrendRow } from "@/server/adapters/qloo";
 import { addDays, localToday, slotUtcRange, weekdayOf } from "@/lib/slot";
-import { trackKey } from "@/lib/text";
+import { nameKey, trackKey } from "@/lib/text";
 import type { PlanRequest } from "@/lib/plan-schema";
 import type { AdapterContext, AdapterName, AdapterResult } from "@/server/adapters/core";
 import { getEvents } from "@/server/adapters/events";
@@ -59,6 +59,7 @@ const OPTIONAL_QLOO: [prefix: string, feature: string][] = [
   ["hotspotCrowd", "the contrast with the usual crowd"],
   ["compare", "the contrast with the usual crowd"],
   ["affinity:", "the setlist order by local taste"],
+  ["songArtists", "the setlist order by local taste"],
 ];
 
 export function optionalQlooFeature(key: string): string | null {
@@ -345,18 +346,34 @@ export class PlanContext {
     return pickTopPitches(await this.ranked(), 3);
   }
 
-  repertoire = async (): Promise<RepertoireSong[]> => {
-    const artists = await this.artists();
-    const byName = new Map(artists.map((a) => [a.query.toLowerCase(), a.entity?.id ?? null]));
-    return this.request.performer.songs.map((song, i) => ({
-      id: `song-${i}`,
-      title: song.title,
-      artist: song.artist,
-      artistEntityId: byName.get(song.artist.toLowerCase()) ?? null,
-      own: song.own,
-      durationMs: song.durationMs ?? null,
-    }));
-  };
+  /**
+   * The performer's songs with each artist's Qloo entity. Artists the performer
+   * also listed under "sounds like" reuse that match; any other song artist is
+   * resolved here, for the setlist only (they don't change the taste signals).
+   */
+  repertoire = (): Promise<RepertoireSong[]> =>
+    this.once("repertoire", async () => {
+      const artists = await this.artists();
+      const byName = new Map<string, string | null>();
+      for (const a of artists) {
+        byName.set(nameKey(a.query), a.entity?.id ?? null);
+        if (a.entity && !byName.get(nameKey(a.entity.name))) byName.set(nameKey(a.entity.name), a.entity.id);
+      }
+      const songs = this.request.performer.songs;
+      const missing = [...new Map(songs.filter((s) => !s.own && !byName.has(nameKey(s.artist))).map((s) => [nameKey(s.artist), s.artist])).values()];
+      if (missing.length > 0 && !this.qlooFailed()) {
+        const extra = await this.track("songArtists", () => qloo.resolveArtists(missing, this.adapters));
+        for (const a of extra) byName.set(nameKey(a.query), a.entity?.id ?? null);
+      }
+      return songs.map((song, i) => ({
+        id: `song-${i}`,
+        title: song.title,
+        artist: song.artist,
+        artistEntityId: byName.get(nameKey(song.artist)) ?? null,
+        own: song.own,
+        durationMs: song.durationMs ?? null,
+      }));
+    });
 
   /** Setlist for one pitch: per-pitch crowd affinity plus Last.fm popularity. */
   setlistFor(pitch: { id: string; lat: number; lon: number }) {

@@ -34,7 +34,7 @@ for (const example of EXAMPLES) {
     test("selects a pitch from the keyboard and keeps it in the URL", async ({ page }) => {
       await page.goto(`/plan?example=${example.id}`);
       await waitForPlan(page);
-      const second = page.getByRole("region", { name: "Pitches", exact: true }).getByRole("button").nth(1);
+      const second = page.getByRole("region", { name: "Pitches", exact: true }).locator("button[data-pitch-name]").nth(1);
       const name = (await second.getAttribute("data-pitch-name"))!;
       await second.focus();
       await page.keyboard.press("Enter");
@@ -55,7 +55,7 @@ test.describe("data-led plans", () => {
     for (const example of EXAMPLES) {
       await page.goto(`/plan?example=${example.id}`);
       await waitForPlan(page);
-      const buttons = page.getByRole("region", { name: "Pitches", exact: true }).getByRole("button");
+      const buttons = page.getByRole("region", { name: "Pitches", exact: true }).locator("button[data-pitch-name]");
       await expect(buttons).toHaveCount(3);
       const names = await buttons.evaluateAll((els) => els.map((el) => el.getAttribute("data-pitch-name") ?? ""));
       tops.push(names);

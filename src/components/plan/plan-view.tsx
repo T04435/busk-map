@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -12,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { QLOO_TEST_LABEL } from "@/lib/sources";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { planStreamEventSchema, type Plan, type PlanRequest } from "@/lib/plan-schema";
 import { weekSearchParams } from "@/lib/week-url";
@@ -292,21 +294,28 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
               ))}
             </ol>
             {plan.others.length > 0 && (
-              <details className="text-sm">
-                <summary className="cursor-pointer text-muted-foreground">Other scored pitches ({plan.others.length})</summary>
-                <ul className="mt-2 space-y-1">
-                  {plan.others.map((p) => (
-                    <li key={p.id} className="flex justify-between gap-2">
-                      <span>
-                        {p.name}
-                        {p.discovery === "hidden-gem" ? " · hidden gem" : p.discovery === "usual" ? " · usual spot" : ""}
-                        {p.tipPoints ? ` · tips +${p.tipPoints}` : ""}
-                      </span>
-                      <span className="text-muted-foreground">{p.score}/100</span>
-                    </li>
-                  ))}
-                </ul>
-              </details>
+              <Collapsible className="text-sm">
+                <CollapsibleTrigger asChild>
+                  <Button variant="link" size="sm" className="group h-auto px-0 text-muted-foreground">
+                    <ChevronRightIcon aria-hidden className="transition-transform group-data-[state=open]:rotate-90" />
+                    Other scored pitches ({plan.others.length})
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <ul className="mt-2 space-y-1">
+                    {plan.others.map((p) => (
+                      <li key={p.id} className="flex justify-between gap-2">
+                        <span>
+                          {p.name}
+                          {p.discovery === "hidden-gem" ? " · hidden gem" : p.discovery === "usual" ? " · usual spot" : ""}
+                          {p.tipPoints ? ` · tips +${p.tipPoints}` : ""}
+                        </span>
+                        <span className="text-muted-foreground">{p.score}/100</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CollapsibleContent>
+              </Collapsible>
             )}
           </section>
         </div>

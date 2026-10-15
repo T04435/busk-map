@@ -91,5 +91,6 @@ export default function Home() {
 async function OwnActForm() {
   // The default date depends on today, so render it at request time.
   await connection();
-  return <PerformerForm defaultDate={nextWeekday("saturday", localToday("Australia/Melbourne"))} />;
+  const today = localToday("Australia/Melbourne");
+  return <PerformerForm defaultDate={nextWeekday("saturday", today)} today={today} />;
 }

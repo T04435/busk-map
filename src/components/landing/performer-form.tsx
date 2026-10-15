@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { DatePicker } from "@/components/forms/date-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,7 +33,8 @@ export function parseSongLines(text: string) {
 
 type Found = { id: string; title: string; artists: { name: string }[] };
 
-export function PerformerForm({ defaultDate }: { defaultDate: string }) {
+/** `today` is the city's local date: a plan is for today or later. */
+export function PerformerForm({ defaultDate, today }: { defaultDate: string; today: string }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [artists, setArtists] = useState("");
@@ -100,6 +102,10 @@ export function PerformerForm({ defaultDate }: { defaultDate: string }) {
         ...parsedSongs.filter((s) => !s.own).map((s) => s.artist),
       ]),
     ].slice(0, 10);
+    if (date < today) {
+      setError("Pick today or a later date.");
+      return;
+    }
     const result = planRequestSchema.safeParse({
       city: "melbourne",
       slot: { date, startHour: Number(from), endHour: Number(to) },
@@ -181,7 +187,7 @@ export function PerformerForm({ defaultDate }: { defaultDate: string }) {
       <div className="grid gap-4 sm:grid-cols-4">
         <div className="space-y-1">
           <Label htmlFor="date">Date</Label>
-          <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+          <DatePicker id="date" value={date} onChange={setDate} min={today} />
         </div>
         <div className="space-y-1">
           <Label htmlFor="from">From</Label>

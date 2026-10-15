@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState, useSyncExternalStore } from "react";
+import { DatePicker } from "@/components/forms/date-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -101,7 +102,7 @@ export function TipLogForm({ performerName, exampleId, slot, pitches, defaultPit
           </div>
           <div className="space-y-1">
             <Label htmlFor={`${ids}-date`}>Date</Label>
-            <Input id={`${ids}-date`} type="date" max={today ?? undefined} value={date} onChange={(e) => setDate(e.target.value)} required />
+            <DatePicker id={`${ids}-date`} value={date} onChange={setDate} max={today} />
           </div>
           <div className="space-y-1">
             <Label htmlFor={`${ids}-amount`}>Takings (A$)</Label>

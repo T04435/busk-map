@@ -1,4 +1,4 @@
-import { expect, LOCAL, test, waitForPlan } from "./fixtures";
+import { expect, isoDay, LOCAL, pickDate, test, waitForPlan } from "./fixtures";
 
 const ACT = "/plan?name=Tip%20Tester&artists=Paul%20Kelly&songs=Dumb%20Things~Paul%20Kelly&date=2026-10-24&from=18&to=21&permit=general";
 
@@ -19,19 +19,23 @@ test.describe("tip log", () => {
     await waitForPlan(page);
     await expect(page.getByTestId("tip-history")).toHaveCount(0);
     const form = page.getByRole("form", { name: "Log your takings" });
-    const pitches = page.getByRole("region", { name: "Pitches", exact: true }).getByRole("button");
+    const pitches = page.getByRole("region", { name: "Pitches", exact: true }).locator("button[data-pitch-name]");
     const first = (await pitches.nth(0).getAttribute("data-pitch-name"))!;
     const second = (await pitches.nth(1).getAttribute("data-pitch-name"))!;
 
     // Validation. The plan is for a later day, so the date defaults to today.
-    await expect(form.getByLabel("Date")).toHaveValue(new Date().toLocaleDateString("en-CA"));
+    const today = isoDay();
+    const date = form.getByLabel("Date");
+    await expect(date).toHaveAttribute("data-date", today);
     await form.getByRole("button", { name: "Log session" }).click();
     await expect(form.getByRole("alert")).toHaveText("Enter what you earned, in dollars (0 or more).");
-    await form.getByLabel("Date").fill("2099-01-01");
-    await form.getByLabel("Takings (A$)").fill("10");
-    await form.getByRole("button", { name: "Log session" }).click();
-    await expect(form.getByRole("alert")).toHaveText("That date is in the future: log a session after you've played it.");
-    await form.getByLabel("Date").fill(new Date().toLocaleDateString("en-CA"));
+    // The date picker only offers days up to today: takings are logged after playing.
+    await date.click();
+    const tomorrow = page.locator(`[role="gridcell"][data-day="${isoDay(1)}"]`);
+    if ((await tomorrow.count()) > 0) await expect(tomorrow.first()).toHaveAttribute("data-disabled", "true");
+    await page.keyboard.press("Escape");
+    await pickDate(page, date, isoDay(-1));
+    await pickDate(page, date, today);
 
     // A good night at the top pitch, a quiet one at the second.
     await form.getByLabel("Takings (A$)").fill("120");

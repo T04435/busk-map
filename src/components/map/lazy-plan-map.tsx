@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, type ComponentProps } from "react";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PlanMap as PlanMapType } from "./plan-map";
 
@@ -53,9 +54,9 @@ export function LazyPlanMap(props: ComponentProps<typeof PlanMapType>) {
   if (show) return <PlanMap {...props} />;
   return (
     <div ref={placeholder} className="flex h-full min-h-80 w-full items-center justify-center rounded-lg border bg-muted/40" role="region" aria-label={LABEL}>
-      <button type="button" className="rounded-md border bg-background px-3 py-1.5 text-sm underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" onClick={() => setShow(true)}>
+      <Button type="button" variant="outline" size="sm" onClick={() => setShow(true)}>
         Show the map
-      </button>
+      </Button>
     </div>
   );
 }

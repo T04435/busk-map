@@ -14,7 +14,7 @@ type ToolResult = { type: "tool-result"; toolName: string; output: { type: strin
 type Call = { toolName: string; input: unknown };
 type Move = { reasoning?: string; text: string; calls: Call[] };
 
-export type MockScenario = "investigate" | "bad-finish" | "never-finish" | "invented-numbers" | "fail";
+export type MockScenario = "investigate" | "lazy" | "bad-finish" | "never-finish" | "invented-numbers" | "fail";
 
 const usage = {
   inputTokens: { total: 100, noCache: 100, cacheRead: undefined, cacheWrite: undefined },
@@ -70,8 +70,10 @@ export function nextMove(results: ToolResult[], tools: string[], scenario: MockS
     return { text: "Looking at the taste map again.", calls: [{ toolName: "taste_map", input: { radiusM: 200 + 100 * results.length } }] };
   }
   if (onlyFinish || done("finish_plan").length > 0) return finish(results, scenario, rejections);
+  if (scenario === "lazy" && done("score_pitches").length) return finish(results, scenario, rejections);
   const rows = lastScores(results);
   const [first, second] = rows;
+  if (scenario === "lazy" && !done("score_pitches").length) return { text: "Scoring first.", calls: [{ toolName: "score_pitches", input: {} }] };
   if (!done("taste_map").length) return { text: "I'll start with the taste map to see where this act's fans concentrate.", calls: [{ toolName: "taste_map", input: {} }] };
   if (!done("score_pitches").length) {
     return { reasoning: "The taste map has a clear strongest area; the engine's pool will show which pitches sit in it.", text: "Scoring the engine's pool to see which pitches lead.", calls: [{ toolName: "score_pitches", input: {} }] };

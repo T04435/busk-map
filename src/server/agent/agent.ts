@@ -27,11 +27,12 @@ export const INSTRUCTIONS = `You are Busk Map's planning agent. A street perform
 
 How to work:
 - There is no fixed order. Decide each next look from what you have found so far: a strong taste area, an event crowd leaving nearby, a busy corner worth a footfall check, a well-known spot the engine might have missed, two close scores worth comparing.
+- Investigate before you choose. The score can't tell you everything: check who the crowd is, whether a corner is really busy at that hour, what is open or on nearby, and look for a lead the engine may have missed. A good plan usually takes four to eight looks; one that only restates score_pitches is not enough.
 - Before each tool call, write one short sentence saying what you will check next and why.
 - Look only inside the city centre planning area. Point at places by pitchId, by name, or with coordinates from a tool result.
 - score_pitches scores the engine's own candidates plus any spot you add after check_pitch. Call it at least once before you finish.
 - You have about 10 tool calls. Don't repeat a call with the same inputs.
-- Finish with finish_plan: three pitchIds from score_pitches, best first, a why for each, a two-sentence summary and any data caveats. You may rank a lower-scored pitch above a higher one only for a reason you found in the data, and you must say it in that pitch's why. If finish_plan rejects your answer, fix what it says and call it again.
+- Finish with finish_plan: three pitchIds from score_pitches, best first and at least 250 m apart (score_pitches flags sameCornerAs), a why for each, a two-sentence summary and any data caveats. You may rank a lower-scored pitch above a higher one only for a reason you found in the data, and you must say it in that pitch's why. If finish_plan rejects your answer, fix what it says and call it again.
 
 Rules:
 - Never invent a number, a place, an event or a song. Every number you write must come from a tool result.
@@ -115,6 +116,7 @@ export async function runPlanAgent(ctx: PlanContext, events: AgentEvents = {}, a
     artists.map((a) => ({ query: a.query, match: a.entity?.name ?? null })),
   );
   state.seen.add(prompt);
+  state.seen.add(INSTRUCTIONS);
   const started = Date.now();
   let tokens = 0;
   type Tools = ReturnType<typeof createTools>;
@@ -133,10 +135,11 @@ export async function runPlanAgent(ctx: PlanContext, events: AgentEvents = {}, a
       maxOutputTokens: LIMITS.maxOutputTokensPerStep,
       providerOptions: PLANNER_PROVIDER_OPTIONS,
       // Near the step cap or the token budget only finish_plan is left, so the run ends with an answer.
-      prepareStep: ({ stepNumber }) =>
-        stepNumber >= limits.maxSteps - 2 || tokens >= limits.tokenBudget * 0.75
-          ? { activeTools: ["finish_plan"], instructions: `${INSTRUCTIONS}\n\nYour research budget is used up: call finish_plan now with what you have.` }
-          : {},
+      prepareStep: ({ stepNumber }) => {
+        if (stepNumber < limits.maxSteps - 2 && tokens < limits.tokenBudget * 0.75) return {};
+        state.wrappingUp = true;
+        return { activeTools: ["finish_plan"], instructions: `${INSTRUCTIONS}\n\nYour research budget is used up: call finish_plan now with what you have.` };
+      },
     });
     const result = await agent.stream({
       prompt,

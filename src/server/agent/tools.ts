@@ -29,8 +29,8 @@ const r4 = (n: number) => Math.round(n * 10_000) / 10_000;
 
 /** At most this many places the agent may add to the engine's pool. */
 export const MAX_ADDED = 5;
-/** Final pitches closer than this are the same corner. */
-export const MIN_FINAL_SPACING_M = 150;
+/** Final pitches closer than this are the same corner: the engine's own top-3 spacing (pickTopPitches). */
+export const MIN_FINAL_SPACING_M = 250;
 /** How many finish_plan rejections before the run gives up on Claude's words. */
 export const MAX_FINISH_REJECTIONS = 2;
 /** Rows shown from score_pitches. */
@@ -94,6 +94,9 @@ export class AgentState {
   readonly seen = new NumberBag();
   answer: AgentAnswer | null = null;
   rejections = 0;
+  /** The investigation check rejects once at most, and never once only finish_plan is left. */
+  nudged = false;
+  wrappingUp = false;
   /** Set when the answer was accepted only after the numbers check failed MAX_FINISH_REJECTIONS times. */
   unverifiedNumbers: string[] = [];
   /** Calls per tool, for the trace. */
@@ -136,12 +139,30 @@ export class NumberBag {
 /** A point, labelled, for outputs. */
 const at = (r: Resolved) => ({ label: r.label, lat: r4(r.lat), lon: r4(r.lon), ...(r.pitchId ? { pitchId: r.pitchId } : {}) });
 
-function compactPitch(p: ScoredPitch, engineTop: Set<string>, added: Set<string>) {
+/**
+ * For each pitch too close to a better one, that better pitch's name: going
+ * down the ranking, a pitch is kept unless it is within MIN_FINAL_SPACING_M
+ * of one already kept (the engine's own spacing rule, applied to the pool).
+ */
+export function sameCorners(ranked: ScoredPitch[]): Map<string, string> {
+  const kept: ScoredPitch[] = [];
+  const out = new Map<string, string>();
+  for (const p of ranked) {
+    const near = kept.find((q) => distanceM(p, q) < MIN_FINAL_SPACING_M);
+    if (near) out.set(p.id, near.name);
+    else kept.push(p);
+  }
+  return out;
+}
+
+function compactPitch(p: ScoredPitch, engineTop: Set<string>, added: Set<string>, corners: Map<string, string>) {
+  const higher = corners.has(p.id) ? { name: corners.get(p.id)! } : null;
   return {
     pitchId: p.id,
     name: p.name,
     score: p.score,
     engineTop3: engineTop.has(p.id),
+    sameCornerAs: higher?.name ?? null,
     addedByYou: added.has(p.id),
     kind: p.kind,
     discovery: p.discovery,
@@ -157,7 +178,22 @@ function compactPitch(p: ScoredPitch, engineTop: Set<string>, added: Set<string>
   };
 }
 
+/** Tools that look at the data (not scoring or finishing): a plan needs some of these. */
+export const INVESTIGATION_TOOLS = ["taste_map", "crowd_at", "busy_places", "events_near", "footfall_at", "check_pitch", "compare_crowds"] as const;
+/** Distinct investigation tools before the first finish_plan is accepted. */
+export const MIN_INVESTIGATIONS = 3;
+
 export function createTools(ctx: PlanContext, state: AgentState) {
+  const tools = buildTools(ctx, state);
+  // Record each call (for the investigation check), whatever its result.
+  for (const [name, t] of Object.entries(tools) as [string, { execute?: (...args: never[]) => unknown }][]) {
+    const execute = t.execute;
+    if (execute) t.execute = ((...args: never[]) => (state.calls.push(name), execute(...args))) as typeof execute;
+  }
+  return tools;
+}
+
+function buildTools(ctx: PlanContext, state: AgentState) {
   const area = ctx.city.bbox;
   let placesCache: Promise<KnownPlace[]> | null = null;
   const places = () =>
@@ -375,9 +411,11 @@ export function createTools(ctx: PlanContext, state: AgentState) {
           summary:
             typical.level === "unavailable"
               ? "Sensor data unavailable"
-              : rows.length
-                ? `About ${rows[0].peopleThisHour ?? "no data"} people an hour at ${rows[0].sensor} on ${ctx.weekday}s at ${formatHour(h)} (estimate)`
-                : `No sensor within 600 m of ${point.label}`,
+              : rows.length === 0
+                ? `No sensor within 600 m of ${point.label}`
+                : rows[0].peopleThisHour === null
+                  ? `No count at ${rows[0].sensor} for ${ctx.weekday}s at ${formatHour(h)}`
+                  : `About ${rows[0].peopleThisHour} people an hour at ${rows[0].sensor} on ${ctx.weekday}s at ${formatHour(h)} (estimate)`,
           at: at(point),
           weekday: ctx.weekday,
           hour: h,
@@ -436,7 +474,7 @@ export function createTools(ctx: PlanContext, state: AgentState) {
     }),
 
     score_pitches: tool({
-      description: `Score the engine's candidate pool plus any spots you add (pitchIds from check_pitch, up to ${MAX_ADDED}), with the engine's fixed weights. Returns the best ${SCORE_ROWS} with factor values (0–1), marks the engine's own top 3, and the pool size. Final pitches must come from here.`,
+      description: `Score the engine's candidate pool plus any spots you add (pitchIds from check_pitch, up to ${MAX_ADDED}), with the engine's fixed weights. Returns the best ${SCORE_ROWS} with factor values (0–1), marks the engine's own top 3 and any pitch within ${MIN_FINAL_SPACING_M} m of a higher one (sameCornerAs), and the pool size. Final pitches must come from here.`,
       inputSchema: z.object({ add: z.array(z.string().max(80)).max(MAX_ADDED).optional().describe("pitchIds from check_pitch to add to the pool.") }),
       execute: async ({ add }) => {
         const unknown = (add ?? []).filter((id) => !state.checked.has(id) && !state.pool.has(id));
@@ -445,15 +483,19 @@ export function createTools(ctx: PlanContext, state: AgentState) {
         if (state.added.size > MAX_ADDED) throw new WhereError(`At most ${MAX_ADDED} added spots.`);
         const { ranked, engineTop } = await scorePool();
         const engineIds = new Set(engineTop.map((p) => p.id));
-        const shown = [...ranked.slice(0, SCORE_ROWS), ...ranked.filter((p) => state.added.has(p.id) && ranked.indexOf(p) >= SCORE_ROWS)];
+        // The best rows, plus every pitch the agent asked about (added, or already in the pool), wherever it ranks.
+        const asked = new Set([...state.added, ...(add ?? [])]);
+        const shown = [...ranked.slice(0, SCORE_ROWS), ...ranked.filter((p, i) => i >= SCORE_ROWS && asked.has(p.id))];
         const weather = await ctx.weather();
+        const corners = sameCorners(ranked);
         return seen({
           summary: ranked.length ? `${ranked.length} pitches scored; best ${ranked[0].name} ${ranked[0].score}/100; engine's top 3: ${engineTop.map((p) => p.name).join(", ")}` : "No legal pitch found",
           weights: ctx.weights,
           poolSize: ranked.length,
           added: [...state.added],
+          rankOf: Object.fromEntries([...asked].map((id) => [id, ranked.findIndex((p) => p.id === id) + 1])),
           slotWeather: weather ? weather.hours.map((h) => `${formatHour(h.hour)} ${h.temperatureC ?? "?"}°C rain ${h.precipitationProbability ?? "?"}% wind ${h.windKmh ?? "?"} km/h`).join("; ") : "no forecast",
-          pitches: shown.map((p) => compactPitch(p, engineIds, state.added)),
+          pitches: shown.map((p) => compactPitch(p, engineIds, state.added, corners)),
         });
       },
     }),
@@ -522,9 +564,16 @@ export function createTools(ctx: PlanContext, state: AgentState) {
 
     finish_plan: tool({
       description:
-        "Finish: the three pitches you recommend (pitchIds from score_pitches, best first) with a short evidence-based why for each, a two-sentence summary and data caveats. Rejected answers say why; fix and call again.",
+        `Finish: the three pitches you recommend (pitchIds from score_pitches, best first, at least ${MIN_FINAL_SPACING_M} m apart) with a short evidence-based why for each, a two-sentence summary and data caveats. Rejected answers say why; fix and call again.`,
       inputSchema: finishSchema,
       execute: async (answer) => {
+        const looked = new Set(state.calls.filter((c) => (INVESTIGATION_TOOLS as readonly string[]).includes(c)));
+        if (!state.nudged && !state.wrappingUp && looked.size < MIN_INVESTIGATIONS && state.pool.size > 0) {
+          state.nudged = true;
+          state.rejections++;
+          const message = `Investigate first: you have only used ${[...looked].join(", ") || "score_pitches"}. Check what the scores can't tell you about the pitches you're choosing between (the crowd, foot traffic at that hour, places or events nearby, or a spot the engine may have missed), then finish.`;
+          return { accepted: false, summary: `Rejected: ${message}`, problems: [message] };
+        }
         const problems = checkAnswer(answer, state);
         if (problems.length > 0 && !(problems.every((p) => p.kind === "numbers") && state.rejections >= MAX_FINISH_REJECTIONS)) {
           state.rejections++;

@@ -86,6 +86,14 @@ describe("Agent v2 tools", () => {
     expect(state.checked.size).toBe(0);
   });
 
+  it("flag each pitch within 250 m of a better kept one, as the engine spaces its picks", async () => {
+    const { sameCorners } = await load();
+    const p = (id: string, lat: number) => ({ id, name: id, lat, lon: 144.96 }) as never;
+    // a; b is 111 m from a; c is 222 m from a (but kept b doesn't count: b was dropped); d is 333 m away.
+    const corners = sameCorners([p("a", -37.81), p("b", -37.811), p("c", -37.812), p("d", -37.813)]);
+    expect(Object.fromEntries(corners)).toEqual({ b: "a", c: "a" });
+  });
+
   it("finish_plan is refused before anything is scored", async () => {
     const { ctx, createTools, AgentState } = await load();
     const state = new AgentState();
@@ -115,6 +123,16 @@ describe("Agent v2 runs (mock model)", () => {
     expect(finishes[0].summary).toMatch(/Not in the scored pool: made-up/);
     expect(plan.explanations).toBe("ai");
     expect(plan.pitches.map((p) => p.id)).not.toContain("made-up");
+  });
+
+  it("a final answer before any investigation is sent back once", async () => {
+    const { ctx, runPlanAgent, createMockPlanner } = await load();
+    const ends: { tool: string; ok: boolean; summary: string }[] = [];
+    const { plan } = await runPlanAgent(ctx, { onToolEnd: (e) => ends.push(e) }, undefined, { model: createMockPlanner("lazy") });
+    const finishes = ends.filter((e) => e.tool === "finish_plan");
+    expect(finishes.map((e) => e.ok)).toEqual([false, true]);
+    expect(finishes[0].summary).toMatch(/^Rejected: Investigate first/);
+    expect(plan.explanations).toBe("ai");
   });
 
   it("stops at the step cap and shows the engine's plan with a note", async () => {

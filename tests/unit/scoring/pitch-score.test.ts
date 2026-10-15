@@ -190,6 +190,13 @@ describe("factors", () => {
       slotEnd,
     );
     expect(none).toEqual({ value: 0, nearby: [] });
+
+    // An event crowd counts in proportion to how well its headliner's fans match the performer's taste (Qloo).
+    const matched = eventsFactor(here, [{ ...ev("leave", "2026-10-17T05:00:00Z", "2026-10-17T08:00:00Z"), tasteMatch: { artist: "Erykah Badu", affinity: 0.9 } }], slotStart, slotEnd);
+    expect(matched.value).toBeCloseTo(0.9 * (1 - 100 / 800));
+    expect(matched.nearby[0].tasteMatch).toEqual({ artist: "Erykah Badu", affinity: 0.9 });
+    const unknown = eventsFactor(here, [{ ...ev("leave", "2026-10-17T05:00:00Z", "2026-10-17T08:00:00Z"), tasteMatch: null }], slotStart, slotEnd);
+    expect(unknown.value).toBeCloseTo(1 - 100 / 800);
   });
 
   it("weather: rain, wind and cold", () => {

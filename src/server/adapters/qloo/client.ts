@@ -263,6 +263,26 @@ export async function affinityAt(backend: QlooBackend, entityIds: string[], poin
 }
 
 /**
+ * How well other artists suit the taste of the performer's artists: Qloo
+ * affinity of `resultIds` given `signalIds` (no location). Used to weigh an
+ * event's crowd by how close its headliner's fans are to the performer's.
+ */
+export async function affinityFor(backend: QlooBackend, resultIds: string[], signalIds: string[]): Promise<Record<string, number>> {
+  "use cache: remote";
+  cacheLife("days");
+  cacheTag("qloo", "qloo:affinity");
+  const params = {
+    "filter.type": "urn:entity:artist",
+    "filter.results.entities": ids(resultIds),
+    "signal.interests.entities": ids(signalIds),
+    take: Math.min(resultIds.length, MAX_TAKE),
+  };
+  const body = await qlooGet(backend, "/v2/insights", params, entitiesResponseSchema);
+  const entities = listEntities("/v2/insights", params, body.results);
+  return Object.fromEntries(entities.filter((e) => e.query?.affinity !== undefined).map((e) => [e.entity_id, e.query!.affinity as number]));
+}
+
+/**
  * `/v2/trending` for one entity: rows newest first. The rows carry no entity
  * id, so callers ask once per artist (see `trending`). Live Qloo sends
  * `population_percentile` as a 0–1 fraction and `population_rank` as a

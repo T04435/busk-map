@@ -49,6 +49,10 @@ export type PlaceInput = LatLon & {
   name: string;
   popularity: number | null;
   hours: Record<string, unknown> | null;
+  /** Venue detail from Qloo, for the pitch's reasons (not scored). */
+  liveMusic?: boolean | null;
+  goodFor?: string[];
+  keywords?: string[];
 };
 
 export type EventInput = {
@@ -61,6 +65,11 @@ export type EventInput = {
   /** UTC ISO. */
   end: string;
   endEstimated: boolean;
+  /**
+   * How close the event crowd's taste is to the performer's: Qloo affinity of
+   * the event's headliner given the performer's artists (0–1), when known.
+   */
+  tasteMatch?: { artist: string; affinity: number } | null;
 };
 
 export type WeatherHourInput = {

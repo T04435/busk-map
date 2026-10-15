@@ -174,6 +174,8 @@ export type NearbyEvent = EventInput & { distanceM: number; moment: "arriving" |
 /**
  * Event crowds passing during the slot: arriving in the hour before the start,
  * or leaving within 45 minutes of the end. Exits count fully, arrivals 70%.
+ * When Qloo knows how close the event crowd's taste is to the performer's
+ * (its headliner's affinity), the crowd counts in proportion to that match.
  */
 export function eventsFactor(
   point: LatLon,
@@ -193,7 +195,7 @@ export function eventsFactor(
     const arriving = overlaps(start - EVENT_ARRIVAL_MS, start);
     if (!leaving && !arriving) continue;
     const proximity = 1 - d / EVENTS_RADIUS_M;
-    best = Math.max(best, proximity * (leaving ? 1 : 0.7));
+    best = Math.max(best, proximity * (leaving ? 1 : 0.7) * (event.tasteMatch ? clamp01(event.tasteMatch.affinity) : 1));
     nearby.push({ ...event, distanceM: Math.round(d), moment: leaving ? "leaving" : "arriving" });
   }
   return { value: clamp01(best), nearby };

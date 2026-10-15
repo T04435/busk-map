@@ -43,6 +43,16 @@ export function toPlace(raw: RawEntity): QlooPlace | null {
     lon,
     address: raw.properties?.address ?? null,
     hours: raw.properties?.hours ?? null,
+    liveMusic: raw.properties?.live_music ?? null,
+    goodFor: [...(raw.properties?.good_for ?? [])]
+      .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0))
+      .flatMap((g) => (g.name ? [g.name] : []))
+      .slice(0, 3),
+    keywords: [...(raw.properties?.keywords ?? [])]
+      .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
+      .map((k) => k.name)
+      .filter(Boolean)
+      .slice(0, 3),
   };
 }
 

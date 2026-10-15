@@ -39,6 +39,8 @@ export const WIDEN_FACTOR = 2;
 /** Radius of "the crowd" at a pitch for genre analysis, and around the busiest hotspot for the contrast. */
 export const CROWD_RADIUS_M = 400;
 export const HOTSPOT_CROWD_TAKE = 10;
+/** Event headliners matched against the performer's taste per plan (one Qloo search each, cached). */
+export const EVENT_ARTISTS_MAX = 6;
 
 function widen(box: BBox, factor: number): BBox {
   const dLat = ((box.north - box.south) * (factor - 1)) / 2;
@@ -62,6 +64,8 @@ const OPTIONAL_QLOO: [prefix: string, feature: string][] = [
   ["compare", "the contrast with the usual crowd"],
   ["affinity:", "the setlist order by local taste"],
   ["songArtists", "the setlist order by local taste"],
+  ["eventArtists", "how well event crowds match your taste"],
+  ["eventTaste", "how well event crowds match your taste"],
 ];
 
 export function optionalQlooFeature(key: string): string | null {
@@ -246,6 +250,37 @@ export class PlanContext {
     return this.track("events", () => getEvents(this.request.city, this.request.slot, this.adapters));
   }
 
+  /**
+   * Event crowds matched to the performer's taste: each music event's
+   * headliners are resolved in Qloo, then scored against the performer's
+   * artists (Qloo affinity). Per event, the best-matching headliner.
+   */
+  eventTaste(): Promise<Map<string, { artist: string; affinity: number }>> {
+    return this.once("eventTasteByEvent", async () => {
+      const out = new Map<string, { artist: string; affinity: number }>();
+      const [events, ids] = await Promise.all([this.events(), this.entityIds()]);
+      const names = [...new Map(events.flatMap((e) => e.artists.map((a) => [nameKey(a.name), a.name] as const))).values()].slice(0, EVENT_ARTISTS_MAX);
+      if (names.length === 0 || ids.length === 0 || this.qlooFailed()) return out;
+      const resolved = await this.track("eventArtists", () => qloo.resolveArtists(names, this.adapters));
+      const idOf = new Map(resolved.flatMap((r) => (r.entity ? [[nameKey(r.query), r.entity] as const] : [])));
+      const own = new Set(ids);
+      const others = [...new Set([...idOf.values()].map((e) => e.id).filter((id) => !own.has(id)))];
+      const affinity = others.length > 0 ? await this.track("eventTaste", () => qloo.tasteMatch(others, ids, this.adapters)) : {};
+      for (const event of events) {
+        for (const artist of event.artists) {
+          const entity = idOf.get(nameKey(artist.name));
+          if (!entity) continue;
+          // A headliner the performer listed as "sounds like" is a perfect match.
+          const value = own.has(entity.id) ? 1 : affinity[entity.id];
+          if (value === undefined) continue;
+          const best = out.get(event.id);
+          if (!best || value > best.affinity) out.set(event.id, { artist: entity.name, affinity: Math.round(value * 1000) / 1000 });
+        }
+      }
+      return out;
+    });
+  }
+
   weather() {
     return this.track("weather", () => getWeather(this.request.city, this.request.slot, this.adapters, this.today));
   }
@@ -315,13 +350,15 @@ export class PlanContext {
   }
 
   async scoreInputs(): Promise<ScoreInputs> {
-    const [cells, footfall, places, events, weather] = await Promise.all([
+    const [cells, footfall, places, rawEvents, weather, eventTaste] = await Promise.all([
       this.tasteCells(),
       this.footfall(),
       this.places(),
       this.events(),
       this.weather(),
+      this.eventTaste(),
     ]);
+    const events = rawEvents.map((e) => ({ ...e, tasteMatch: eventTaste.get(e.id) ?? null }));
     const { start, end } = slotUtcRange(this.request.slot, this.city.timeZone);
     return {
       cells,

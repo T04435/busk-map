@@ -109,7 +109,18 @@ export const planPitchSchema = z.object({
   evidence: z.object({
     /** With footfallSource "nearby-sensors", avgHourly is the estimate and name the nearest sensor. */
     sensor: z.object({ name: z.string(), avgHourly: z.number() }).nullable(),
-    places: z.array(z.object({ name: z.string(), distanceM: z.number(), popularity: z.number().nullable(), open: z.enum(["open", "unknown"]) })),
+    places: z.array(
+      z.object({
+        name: z.string(),
+        distanceM: z.number(),
+        popularity: z.number().nullable(),
+        open: z.enum(["open", "unknown"]),
+        /** Venue detail from Qloo (live_music, good_for, review keywords). */
+        liveMusic: z.boolean().nullable().default(null),
+        goodFor: z.array(z.string()).default([]),
+        keywords: z.array(z.string()).default([]),
+      }),
+    ),
     events: z.array(
       z.object({
         name: z.string(),
@@ -118,6 +129,8 @@ export const planPitchSchema = z.object({
         localTime: z.string().nullable(),
         endEstimated: z.boolean(),
         url: z.string().nullable(),
+        /** How close the event crowd's taste is to yours: Qloo affinity of its headliner given your artists. */
+        tasteMatch: z.object({ artist: z.string(), affinity: z.number() }).nullable().default(null),
       }),
     ),
   }),

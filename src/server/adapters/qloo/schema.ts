@@ -41,6 +41,12 @@ export const entitySchema = z.object({
         .loose()
         .optional(),
       hours: z.record(z.string(), z.unknown()).nullish(),
+      /** Live places (2026-10-16): whether the venue has live music. */
+      live_music: z.boolean().nullish(),
+      /** Live places: what the venue is good for ("Pub", "Large Group"), with a weight. */
+      good_for: z.array(z.object({ name: name.optional(), weight: num.nullish() }).loose()).nullish(),
+      /** Live places: words from reviews with counts ("bands" 49, "live music" 23). */
+      keywords: z.array(z.object({ name, count: numeric.optional() }).loose()).nullish(),
       description: z.unknown().optional(),
       /** Live /search and /entities: other services' ids; Last.fm adds listener counts. */
       external: z
@@ -212,6 +218,12 @@ export type QlooPlace = QlooEntity & {
   address: string | null;
   /** Raw opening hours by day, when Qloo has them. */
   hours: Record<string, unknown> | null;
+  /** Live music at the venue (Qloo), when known. */
+  liveMusic: boolean | null;
+  /** What the venue is good for (Qloo), strongest first. */
+  goodFor: string[];
+  /** The most mentioned review keywords (Qloo), most mentioned first. */
+  keywords: string[];
 };
 
 export type HeatCell = {

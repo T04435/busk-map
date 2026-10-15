@@ -334,6 +334,17 @@ function liveHours(hours: MockPlace["hours"]) {
   );
 }
 
+const LIVE_MUSIC_CATEGORIES = new Set(["bar", "pub", "theatre", "arts_centre", "nightclub"]);
+const MOCK_KEYWORDS: Record<string, string[]> = {
+  bar: ["cocktails", "live music", "happy hour"],
+  pub: ["bands", "beer garden", "trivia"],
+  nightclub: ["dancing", "dj", "late night"],
+  theatre: ["shows", "musicals", "matinee"],
+  market: ["fresh produce", "street food", "buskers"],
+  cafe: ["coffee", "brunch", "outdoor seating"],
+  record_store: ["vinyl", "second-hand records", "staff picks"],
+};
+
 function placePayload(place: MockPlace, query?: Record<string, unknown>) {
   return {
     name: place.name,
@@ -345,6 +356,10 @@ function placePayload(place: MockPlace, query?: Record<string, unknown>) {
       ...(place.address ? { address: `${place.address}, Melbourne VIC` } : {}),
       geocode: { name: "Melbourne", admin1_region: "Victoria", admin2_region: "Melbourne City", country_code: "AU" },
       hours: liveHours(place.hours),
+      // Live shape (2026-10-16): live_music, good_for [{id, name, type, weight}], keywords [{name, count}]. Invented here.
+      live_music: LIVE_MUSIC_CATEGORIES.has(place.category),
+      good_for: [{ id: `urn:tag:genre:place:${place.category}`, name: place.categoryLabel, type: "urn:tag:genre:place", weight: 0.99 }],
+      keywords: (MOCK_KEYWORDS[place.category] ?? []).map((name, i) => ({ name, count: 40 - i * 9 })),
       description: `${place.categoryLabel} (name and location from OpenStreetMap; popularity and audience are Qloo mock test data)`,
       ...(place.hoursFromOsm ? {} : { mock_hours: true }),
     },

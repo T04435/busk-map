@@ -65,7 +65,14 @@ export function createTools(ctx: PlanContext) {
         const places = await ctx.places();
         return {
           summary: `${places.length} places open that day`,
-          top: places.slice(0, 8).map((p) => ({ name: p.name, popularity: r2(p.popularity), affinity: r2(p.affinity), tags: p.tags.slice(0, 2).map((t) => t.name) })),
+          top: places.slice(0, 8).map((p) => ({
+            name: p.name,
+            popularity: r2(p.popularity),
+            affinity: r2(p.affinity),
+            liveMusic: p.liveMusic,
+            goodFor: p.goodFor.slice(0, 2),
+            tags: p.tags.slice(0, 2).map((t) => t.name),
+          })),
         };
       },
     }),
@@ -109,13 +116,21 @@ export function createTools(ctx: PlanContext) {
     }),
 
     events: tool({
-      description: "Ticketed events near the centre around the slot (crowds arriving or leaving).",
+      description:
+        "Ticketed events near the centre around the slot (crowds arriving or leaving), with how close each music event's crowd is to the performer's taste (Qloo affinity of the headliner).",
       inputSchema: noInput,
       execute: async () => {
-        const events = await ctx.events();
+        const [events, taste] = await Promise.all([ctx.events(), ctx.eventTaste()]);
         return {
-          summary: `${events.length} events around the slot`,
-          events: events.slice(0, 8).map((e) => ({ name: e.name, venue: e.venue.name, localStart: e.localTime, segment: e.segment, endEstimated: e.endEstimated })),
+          summary: `${events.length} events around the slot${taste.size ? `; ${taste.size} matched to your taste in Qloo` : ""}`,
+          events: events.slice(0, 8).map((e) => ({
+            name: e.name,
+            venue: e.venue.name,
+            localStart: e.localTime,
+            segment: e.segment,
+            endEstimated: e.endEstimated,
+            crowdTasteMatch: taste.get(e.id) ?? null,
+          })),
         };
       },
     }),
@@ -197,8 +212,13 @@ export function createTools(ctx: PlanContext) {
             factors: { taste: r2(p.factors.taste), footfall: r2(p.factors.footfall), places: r2(p.factors.places), events: r2(p.factors.events), weatherPenalty: r2(p.factors.weatherPenalty), discovery: r2(p.factors.discovery) },
             footfallSource: p.footfallSource,
             sensor: p.evidence.sensor,
-            nearbyPlaces: p.evidence.places.slice(0, 3).map((pl) => pl.name),
-            events: p.evidence.events.map((e) => ({ name: e.name, moment: e.moment, endEstimated: e.endEstimated })),
+            nearbyPlaces: p.evidence.places.slice(0, 3).map((pl) => ({ name: pl.name, liveMusic: pl.liveMusic ?? null, goodFor: pl.goodFor?.slice(0, 2) ?? [], reviewKeywords: pl.keywords?.slice(0, 3) ?? [] })),
+            events: p.evidence.events.map((e) => ({
+              name: e.name,
+              moment: e.moment,
+              endEstimated: e.endEstimated,
+              crowdTasteMatch: e.tasteMatch ? { headliner: e.tasteMatch.artist, qlooAffinity: r2(e.tasteMatch.affinity) } : null,
+            })),
             cautions: p.cautions,
           })),
         };

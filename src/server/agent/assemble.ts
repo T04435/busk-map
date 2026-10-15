@@ -1,6 +1,7 @@
 import "server-only";
 import { formatHour, describeSlot } from "@/lib/slot";
 import { titleCase } from "@/lib/text";
+import { venueDetail } from "@/lib/venue";
 import { planSchema, type Plan, type PlanPitch } from "@/lib/plan-schema";
 import { leadingAgeBand, type ScoredPitch } from "@/server/scoring";
 import * as qloo from "@/server/adapters/qloo";
@@ -32,12 +33,16 @@ export function templateWhy(pitch: ScoredPitch, weekday: string, startHour: numb
   } else if (pitch.footfallSource === "qloo-popularity") {
     parts.push("No pedestrian sensor nearby, so busyness is estimated from Qloo's popularity for the area.");
   }
-  const places = pitch.evidence.places.slice(0, 2).map((p) => p.name);
-  if (places.length) parts.push(`Near ${places.join(" and ")}${pitch.evidence.places.every((p) => p.open === "open") ? ", open in your slot" : ""}.`);
+  const nearby = pitch.evidence.places.slice(0, 2);
+  if (nearby.length) {
+    const open = nearby.every((p) => p.open === "open") ? ", open in your slot" : "";
+    parts.push(`Near ${nearby.map((p) => `${p.name}${venueDetail(p) ? ` (${venueDetail(p)})` : ""}`).join(" and ")}${open}.`);
+  }
   const event = pitch.evidence.events[0];
   if (event) {
     const time = TIME_FORMAT.format(new Date(event.moment === "leaving" ? event.end : event.start));
-    parts.push(`${event.name} crowd ${event.moment === "leaving" ? "leaves" : "arrives"} around ${time}${event.endEstimated && event.moment === "leaving" ? " (estimated)" : ""}.`);
+    const match = event.tasteMatch ? ` Qloo rates ${event.tasteMatch.artist}'s fans ${Math.round(event.tasteMatch.affinity * 100)}/100 for your taste.` : "";
+    parts.push(`${event.name} crowd ${event.moment === "leaving" ? "leaves" : "arrives"} around ${time}${event.endEstimated && event.moment === "leaving" ? " (estimated)" : ""}.${match}`);
   }
   return parts.join(" ") || "Scored on the data available for this slot.";
 }
@@ -65,7 +70,15 @@ function toPlanPitch(pitch: ScoredPitch, why: string, whySource: PlanPitch["whyS
     tip: pitch.tip ? { points: Math.round(pitch.tip.bonus * 100), sessions: pitch.tip.sessions, perHour: pitch.tip.perHour, averagePerHour: pitch.tip.averagePerHour, lift: pitch.tip.lift } : null,
     evidence: {
       sensor: pitch.evidence.sensor ? { name: pitch.evidence.sensor.name, avgHourly: pitch.evidence.sensor.avgHourly } : null,
-      places: pitch.evidence.places.map((p) => ({ name: p.name, distanceM: p.distanceM, popularity: p.popularity, open: p.open })),
+      places: pitch.evidence.places.map((p) => ({
+        name: p.name,
+        distanceM: p.distanceM,
+        popularity: p.popularity,
+        open: p.open,
+        liveMusic: p.liveMusic ?? null,
+        goodFor: p.goodFor ?? [],
+        keywords: p.keywords ?? [],
+      })),
       events: pitch.evidence.events.map((e) => ({
         name: e.name,
         venue: e.venue.name,
@@ -73,6 +86,7 @@ function toPlanPitch(pitch: ScoredPitch, why: string, whySource: PlanPitch["whyS
         localTime: TIME_FORMAT.format(new Date(e.moment === "leaving" ? e.end : e.start)),
         endEstimated: e.endEstimated,
         url: e.url ?? null,
+        tasteMatch: e.tasteMatch ?? null,
       })),
     },
     setlist,

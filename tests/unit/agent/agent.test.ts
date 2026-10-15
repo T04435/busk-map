@@ -240,3 +240,31 @@ describe("what to play", () => {
     expect(plan.dataStatus.find((s) => s.adapter === "repertoire")).toMatchObject({ source: "spotify", mode: "synthetic" });
   });
 });
+
+describe("where to play: Qloo venue detail and event crowds", () => {
+  it("matches event headliners to the performer's taste and names venue detail in the reasons", async () => {
+    mockFetch([]);
+    const { PlanContext } = await load();
+    const ctx = new PlanContext(request, OFFLINE, "2026-10-15");
+    const taste = await ctx.eventTaste();
+    // The synthetic Saturday folk night (The Waifs) is matched in the Qloo mock; a pop arena show too.
+    expect(taste.get("syn-ev-2")).toMatchObject({ artist: "The Waifs" });
+    expect(taste.get("syn-ev-2")!.affinity).toBeGreaterThan(0);
+    expect(taste.has("syn-ev-1")).toBe(false); // sport: no headliner
+    const places = await ctx.places();
+    expect(places.some((p) => p.liveMusic === true && p.goodFor.length > 0 && p.keywords.length > 0)).toBe(true);
+
+    const { templateWhy } = await import("@/server/agent/assemble");
+    const ranked = await ctx.ranked();
+    const withVenue = ranked.find((p) => p.evidence.places.some((pl) => pl.liveMusic));
+    expect(withVenue && templateWhy(withVenue, "saturday", 18, 21)).toMatch(/\(live music/);
+  });
+
+  it("an event headliner the performer lists is a perfect match, and an unmatched headliner is left out", async () => {
+    mockFetch([]);
+    const { PlanContext } = await load();
+    const folk = planRequestSchema.parse({ ...request, performer: { ...request.performer, artists: ["The Waifs", "Paul Kelly"] } });
+    const taste = await new PlanContext(folk, OFFLINE, "2026-10-15").eventTaste();
+    expect(taste.get("syn-ev-2")).toEqual({ artist: "The Waifs", affinity: 1 });
+  });
+});

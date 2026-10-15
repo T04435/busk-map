@@ -113,6 +113,11 @@ export function artistAffinityAt(
   return run(context, {}, (backend) => client.affinityAt(backend, entityIds, point, radiusM));
 }
 
+/** Affinity of other artists (an event's headliners) with the taste of the performer's artists. */
+export function tasteMatch(resultIds: string[], signalIds: string[], context: AdapterContext): Promise<AdapterResult<Record<string, number>>> {
+  return run(context, {}, (backend) => client.affinityFor(backend, resultIds, signalIds));
+}
+
 /** The latest trending window with data (probing back from today), or null when Qloo has none in the last year. */
 export function trendingWindow(probeEntityId: string, today: string, context: AdapterContext): Promise<AdapterResult<client.TrendWindow | null>> {
   return run<client.TrendWindow | null>(context, null, (backend) => client.trendingWindow(backend, probeEntityId, today));

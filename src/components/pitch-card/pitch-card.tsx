@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EstimateLabel } from "@/components/plan/estimate-label";
 import type { PlanPitch } from "@/lib/plan-schema";
+import { venueDetail } from "@/lib/venue";
 
 const FACTOR_LABELS: Record<keyof PlanPitch["factors"], string> = {
   taste: "Taste affinity (Qloo)",
@@ -114,6 +115,7 @@ export function PitchCard({ pitch, rank }: { pitch: PlanPitch; rank: number }) {
                 {pitch.evidence.places.map((place) => (
                   <li key={place.name}>
                     {place.name}, {place.distanceM} m {place.open === "open" ? "(open in your slot)" : "(hours not confirmed)"}
+                    {venueDetail(place) && <span className="block text-muted-foreground">Qloo: {venueDetail(place)}</span>}
                   </li>
                 ))}
               </ul>
@@ -122,6 +124,11 @@ export function PitchCard({ pitch, rank }: { pitch: PlanPitch; rank: number }) {
               <p key={event.name} className="flex flex-wrap items-center gap-2">
                 {event.name} at {event.venue}: crowd {event.moment === "leaving" ? "leaves" : "arrives"} around {event.localTime}
                 {event.endEstimated && event.moment === "leaving" && <EstimateLabel>Estimated end</EstimateLabel>}
+                {event.tasteMatch && (
+                  <span className="text-muted-foreground" data-testid="event-taste-match">
+                    Qloo: {event.tasteMatch.artist}&apos;s fans match your taste {Math.round(event.tasteMatch.affinity * 100)}/100
+                  </span>
+                )}
                 {event.url && (
                   <a className="underline" href={event.url} target="_blank" rel="noreferrer">
                     Ticketmaster

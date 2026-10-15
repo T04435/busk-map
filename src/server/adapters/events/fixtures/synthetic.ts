@@ -1,4 +1,5 @@
 // SYNTHETIC FIXTURE: invented events for tests and offline mode. Not Ticketmaster data.
+// Performer names are real artists from the Qloo mock's catalogue, so offline plans can match event crowds to taste.
 import type { CrowdEvent } from "../schema";
 
 export function syntheticEvents(): CrowdEvent[] {
@@ -28,7 +29,7 @@ export function syntheticEvents(): CrowdEvent[] {
       endEstimated: false,
       segment: "Music",
       genre: "Folk",
-      artists: [{ id: "syn-att-1", name: "Synthetic Folk Band" }],
+      artists: [{ id: "syn-att-1", name: "The Waifs" }],
       status: "onsale",
     },
     {
@@ -42,7 +43,7 @@ export function syntheticEvents(): CrowdEvent[] {
       endEstimated: true,
       segment: "Music",
       genre: "Pop",
-      artists: [{ id: "syn-att-2", name: "Synthetic Pop Star" }],
+      artists: [{ id: "syn-att-2", name: "Taylor Swift" }],
       status: "onsale",
     },
     {
@@ -56,7 +57,7 @@ export function syntheticEvents(): CrowdEvent[] {
       endEstimated: false,
       segment: "Music",
       genre: "Jazz",
-      artists: [{ id: "syn-att-3", name: "Synthetic Trio" }],
+      artists: [{ id: "syn-att-3", name: "Snarky Puppy" }],
       status: "onsale",
     },
     {

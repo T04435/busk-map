@@ -27,6 +27,7 @@ export function toEntity(raw: RawEntity): QlooEntity {
     popularity: raw.popularity ?? null,
     lastfmListeners: raw.properties?.external?.lastfm?.listeners ?? raw.external?.lastfm?.find((l) => l.listeners !== undefined)?.listeners ?? null,
     affinity: raw.query?.affinity ?? null,
+    audienceGrowth: raw.query?.measurements?.audience_growth ?? null,
     tags: (raw.tags ?? []).flatMap((t) => (t.id ? [{ id: t.id, name: t.name || t.id }] : [])),
     explanation,
   };

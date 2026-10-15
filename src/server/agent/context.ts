@@ -1,6 +1,7 @@
 import "server-only";
 import type { BBox } from "@/lib/geo";
 import type { TrendRow } from "@/server/adapters/qloo";
+import { ageLabel } from "@/lib/age";
 import { addDays, localToday, slotUtcRange, weekdayOf } from "@/lib/slot";
 import { nameKey, trackKey } from "@/lib/text";
 import type { PlanRequest } from "@/lib/plan-schema";
@@ -9,6 +10,7 @@ import { getEvents } from "@/server/adapters/events";
 import { getFootfall } from "@/server/adapters/footfall";
 import { getPitches } from "@/server/adapters/pitches";
 import * as qloo from "@/server/adapters/qloo";
+import { findReleaseYears } from "@/server/adapters/repertoire";
 import { getSongs } from "@/server/adapters/songs";
 import { getWeather } from "@/server/adapters/weather";
 import { CITIES } from "@/server/cities";
@@ -205,15 +207,20 @@ export class PlanContext {
     return this.once("risingWithWindow", async () => {
       const locals = (await this.localArtists()).slice(0, 5);
       if (locals.length === 0) return [];
+      // "Learn these" ranks by Qloo's audience growth first; trends and the fallback only matter without it.
+      const growing = locals.some((a) => (a.audienceGrowth ?? 0) !== 0);
+      const fallback = (why: string) => {
+        if (!growing && !this.qlooFailed()) this.notes.push(`Qloo shows no audience growth for these artists and ${why}, so "learn these" is ranked by Qloo affinity and Last.fm listeners instead.`);
+      };
       const window = await this.track("trendWindow", () => qloo.trendingWindow(locals[0].id, this.today, this.adapters));
       if (!window) {
-        if (!this.qlooFailed()) this.notes.push("Qloo has no trending data for the last year, so \"learn these\" is ranked by Qloo affinity and Last.fm listeners instead.");
+        fallback("has no trending data for the last year");
         return [];
       }
       const rows = await this.track("rising", () => qloo.rising(locals.map((a) => a.id), window.start, window.end, this.adapters));
       const moving = rows.some((r) => (r.percentDelta ?? 0) !== 0 || (r.windowChange ?? 0) !== 0);
       if (!moving) {
-        this.notes.push(`Qloo's latest trending data (to ${window.end}) shows no movement for these artists, so "learn these" is ranked by Qloo affinity and Last.fm listeners instead.`);
+        fallback(`its latest trending data (to ${window.end}) shows no movement`);
         return [];
       }
       if (window.end < addDays(this.today, -TRENDING_STALE_DAYS)) this.notes.push(`Trends are from Qloo's latest trending data, which ends ${window.end}.`);
@@ -375,10 +382,17 @@ export class PlanContext {
       }));
     });
 
-  /** Setlist for one pitch: per-pitch crowd affinity plus Last.fm popularity. */
+  /** First release year of each song the performer picked (Spotify), for era matching. */
+  releaseYears() {
+    const songs = this.request.performer.songs.filter((s) => !s.own);
+    if (songs.length === 0) return Promise.resolve({} as Record<string, number>);
+    return this.track("years", () => findReleaseYears(songs, this.city.countryCode, this.adapters));
+  }
+
+  /** Setlist for one pitch: per-pitch crowd affinity, Last.fm popularity and era fit with the crowd's age lean. */
   setlistFor(pitch: { id: string; lat: number; lon: number }) {
     return this.once(`setlist:${pitch.id}`, async () => {
-      const [repertoire, songs] = await Promise.all([this.repertoire(), this.songs()]);
+      const [repertoire, songs, years, profile] = await Promise.all([this.repertoire(), this.songs(), this.releaseYears(), this.crowdProfile()]);
       const ids = [...new Set(repertoire.flatMap((s) => (s.artistEntityId ? [s.artistEntityId] : [])))];
       const affinity = ids.length
         ? await this.track(`affinity:${pitch.id}`, () => qloo.artistAffinityAt(ids, pitch, PITCH_CROWD_RADIUS_M, this.adapters))
@@ -387,7 +401,8 @@ export class PlanContext {
       for (const tracks of Object.values(songs)) for (const t of tracks) playcounts[trackKey(t.artist, t.title)] = t.playcount;
       // Last.fm may autocorrect the artist name; also key by the name we asked for.
       for (const [asked, tracks] of Object.entries(songs)) for (const t of tracks) playcounts[trackKey(asked, t.title)] ??= t.playcount;
-      return buildSetlist(repertoire, affinity, playcounts);
+      const currentYear = Number(this.today.slice(0, 4));
+      return buildSetlist(repertoire, affinity, playcounts, undefined, { years, ageLean: profile?.age ?? null, currentYear, ageLabel });
     });
   }
 
@@ -401,6 +416,7 @@ export class PlanContext {
         affinity: a.affinity,
         percentDelta: trendById.get(a.id)?.percentDelta ?? null,
         listeners: a.lastfmListeners,
+        audienceGrowth: a.audienceGrowth,
       })),
       songs,
       repertoire,

@@ -61,6 +61,8 @@ export const entitySchema = z.object({
     .object({
       affinity: num.optional(),
       explainability: z.unknown().optional(),
+      /** Live insights results (2026-10-16): `{audience_growth}`, 0 for every artist checked so far. */
+      measurements: z.object({ audience_growth: numeric.optional() }).loose().optional(),
     })
     .loose()
     .optional(),
@@ -197,6 +199,8 @@ export type QlooEntity = {
   /** Last.fm listeners, when Qloo's /search or /entities carry them. */
   lastfmListeners: number | null;
   affinity: number | null;
+  /** Qloo's audience_growth measurement (insights results), when sent. */
+  audienceGrowth: number | null;
   tags: { id: string; name: string }[];
   /** Input entities that drove this result (feature.explainability). */
   explanation: Explanation[];

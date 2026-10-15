@@ -324,7 +324,7 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
       {selected && !qlooDown && (
         <div className="grid gap-6 lg:grid-cols-2">
           <PitchCard pitch={selected} rank={plan.pitches.indexOf(selected) + 1} />
-          <SetlistPanel pitch={selected} learnThese={plan.learnThese} />
+          <SetlistPanel pitch={selected} learnThese={plan.learnThese} ageLean={plan.ageLean} />
         </div>
       )}
 

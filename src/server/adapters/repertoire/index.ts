@@ -1,8 +1,9 @@
 import "server-only";
 import { providerStatus } from "@/server/env";
 import { runAdapter, settleWithLimit, type AdapterContext, type AdapterResult } from "../core";
-import { fetchArtistCatalogue, fetchReleaseCount, parseSpotifyArtistId, searchArtists, searchTracks } from "./client";
-import { syntheticArtistSearch, syntheticCatalogue, syntheticReleaseCount, syntheticTrackSearch } from "./fixtures/synthetic";
+import { fetchArtistCatalogue, fetchReleaseCount, fetchReleaseYear, parseSpotifyArtistId, searchArtists, searchTracks } from "./client";
+import { syntheticArtistSearch, syntheticCatalogue, syntheticReleaseCount, syntheticReleaseYear, syntheticTrackSearch } from "./fixtures/synthetic";
+import { trackKey } from "@/lib/text";
 import type { CatalogueArtist, CatalogueTrack } from "./schema";
 
 export type { CatalogueArtist, CatalogueTrack } from "./schema";
@@ -67,5 +68,36 @@ export async function getArtistCatalogue(
     fallback: [],
     synthetic: () => syntheticCatalogue(id ?? "syn-performer"),
     live: async () => (id ? fetchArtistCatalogue(id, market) : []),
+  });
+}
+
+/** Songs per release-year lookup (one plan's setlist). */
+export const MAX_YEAR_SONGS = 24;
+const YEAR_LOOKUPS_AT_ONCE = 4;
+
+/**
+ * First release year per song (keyed by trackKey), for era matching in the
+ * setlist. Each song's year is cached on its own; songs Spotify doesn't have,
+ * or whose lookup fails, are left out (no era for them).
+ */
+export async function findReleaseYears(
+  songs: readonly { title: string; artist: string }[],
+  market: string,
+  context: AdapterContext,
+): Promise<AdapterResult<Record<string, number>>> {
+  const byKey = new Map<string, { title: string; artist: string }>();
+  for (const song of songs) if (!byKey.has(trackKey(song.artist, song.title))) byKey.set(trackKey(song.artist, song.title), song);
+  const unique = [...byKey.values()].slice(0, MAX_YEAR_SONGS);
+  return runAdapter({
+    ...common(context),
+    fallback: {},
+    synthetic: () => Object.fromEntries(unique.map((s) => [trackKey(s.artist, s.title), syntheticReleaseYear(s.title, s.artist)])),
+    live: async () => {
+      const settled = await settleWithLimit(unique, YEAR_LOOKUPS_AT_ONCE, (s) => fetchReleaseYear(s.title, s.artist, market));
+      if (unique.length > 0 && settled.every((s) => s.status === "rejected")) throw (settled[0] as PromiseRejectedResult).reason;
+      return Object.fromEntries(
+        settled.flatMap((s, i) => (s.status === "fulfilled" && s.value !== null ? [[trackKey(unique[i].artist, unique[i].title), s.value]] : [])),
+      );
+    },
   });
 }

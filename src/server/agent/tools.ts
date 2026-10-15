@@ -206,11 +206,17 @@ export function createTools(ctx: PlanContext) {
     }),
 
     build_setlists: tool({
-      description: "Order the performer's songs for each top pitch by local affinity, and suggest songs to learn.",
+      description:
+        "Order the performer's songs for each top pitch by the crowd's affinity for each artist at that pitch (Qloo), song popularity (Last.fm) and era fit (release year vs the crowd's age lean from Qloo demographics), and suggest songs to learn (Qloo audience growth).",
       inputSchema: noInput,
       execute: async () => {
         const top = await ctx.topPitches();
-        const setlists = await Promise.all(top.map(async (p) => ({ pitchId: p.id, first: (await ctx.setlistFor(p)).slice(0, 4).map((s) => `${s.title} (${s.artist})`) })));
+        const setlists = await Promise.all(
+          top.map(async (p) => ({
+            pitchId: p.id,
+            first: (await ctx.setlistFor(p)).slice(0, 4).map((s) => ({ song: `${s.title} (${s.artist}${s.year ? `, ${s.year}` : ""})`, why: s.reason })),
+          })),
+        );
         const learn = await ctx.learn();
         return {
           summary: `Setlists for ${setlists.length} pitches; ${learn.length} songs to learn`,

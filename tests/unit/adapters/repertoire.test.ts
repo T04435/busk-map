@@ -49,6 +49,7 @@ describe("repertoire (Spotify)", () => {
         image: "https://i.scdn.co/image/syn-64",
         durationMs: 215_000,
         url: "https://open.spotify.com/track/t1",
+        year: 1999,
       },
     ]);
     // Photo (smallest at least 64 px); release counts are not fetched by the search.
@@ -154,5 +155,52 @@ describe("repertoire (Spotify)", () => {
     const paul = (await findArtists("paul ke", "AU", OFFLINE)).data;
     expect(paul[0]).toMatchObject({ name: "Paul Kelly", id: expect.stringMatching(/^[A-Za-z0-9]{22}$/) });
     expect((await getArtistCatalogue("nope", "AU", OFFLINE)).data).toHaveLength(4);
+  });
+
+  it("reads release years from Spotify dates", async () => {
+    const { releaseYear } = await import("@/server/adapters/repertoire/schema");
+    expect(releaseYear("1972-10-24")).toBe(1972);
+    expect(releaseYear("1972-10")).toBe(1972);
+    expect(releaseYear("1972")).toBe(1972);
+    expect(releaseYear("0000")).toBeNull();
+    expect(releaseYear(undefined)).toBeNull();
+  });
+
+  it("finds each song's first release year: same artist and title, earliest album", async () => {
+    const { findReleaseYears } = await fresh();
+    const track = (name: string, artist: string, date: string | undefined) => ({ id: name + date, name, artists: [{ id: "x", name: artist }], album: { name: "A", images: [], ...(date ? { release_date: date } : {}) } });
+    const { calls } = mockFetch([
+      tokenRoute,
+      route(
+        (u) => u.pathname === "/v1/search" && (u.searchParams.get("q") ?? "").includes("Superstition"),
+        () => json({ tracks: { items: [track("Superstition - Remastered", "Stevie Wonder", "2000-01-01"), track("Superstition", "Stevie Wonder", "1972-10-24"), track("Superstition", "A Cover Band", "1965"), track("Superstition", "Stevie Wonder", undefined), null] } }),
+      ),
+      route((u) => u.pathname === "/v1/search" && (u.searchParams.get("q") ?? "").includes("Nobody"), () => json({ tracks: { items: [] } })),
+      route((u) => u.pathname === "/v1/search", () => json({ error: "boom" }, 500)),
+    ]);
+    const result = await findReleaseYears(
+      [
+        { title: "Superstition", artist: "Stevie Wonder" },
+        { title: "superstition", artist: "stevie wonder" },
+        { title: "Nobody", artist: "Someone" },
+        { title: "Broken", artist: "Errors" },
+      ],
+      "AU",
+      LIVE,
+    );
+    expect(result.mode).toBe("live");
+    expect(result.data).toEqual({ "stevie wonder|superstition": 1972 });
+    expect(calls.find((c) => c.url.searchParams.get("q") === "track:Superstition artist:Stevie Wonder")).toBeDefined();
+  });
+
+  it("falls back to no years when every lookup fails, and invents stable years offline", async () => {
+    const { findReleaseYears } = await fresh();
+    mockFetch([tokenRoute, route((u) => u.pathname === "/v1/search", () => json({ error: "boom" }, 500))]);
+    const failed = await findReleaseYears([{ title: "A", artist: "B" }], "AU", LIVE);
+    expect(failed).toMatchObject({ mode: "fallback", data: {} });
+    const offline = await findReleaseYears([{ title: "A", artist: "B" }], "AU", OFFLINE);
+    expect(offline.mode).toBe("synthetic");
+    expect(offline.data["b|a"]).toBeGreaterThanOrEqual(1965);
+    expect((await findReleaseYears([{ title: "A", artist: "B" }], "AU", OFFLINE)).data).toEqual(offline.data);
   });
 });

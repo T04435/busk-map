@@ -11,6 +11,7 @@ export function syntheticTrackSearch(query: string): CatalogueTrack[] {
     image: null,
     durationMs: 150_000 + n * 37_000,
     url: null,
+    year: 2000 + n,
   }));
 }
 
@@ -42,7 +43,15 @@ export function syntheticCatalogue(artistId: string): CatalogueTrack[] {
     image: null,
     durationMs: 200_000 + n * 11_000,
     url: null,
+    year: 2020 + n,
   }));
+}
+
+/** Invented first-release year, stable per song: 1965–2024. */
+export function syntheticReleaseYear(title: string, artist: string): number {
+  let hash = 0;
+  for (const ch of `${artist}|${title}`.toLowerCase()) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return 1965 + (hash % 60);
 }
 
 export const SYNTHETIC_RAW = {
@@ -57,6 +66,7 @@ export const SYNTHETIC_RAW = {
           duration_ms: 215_000,
           album: {
             name: "Synthetic Album",
+            release_date: "1999-05-01",
             images: [
               { url: "https://i.scdn.co/image/syn-640", width: 640, height: 640 },
               { url: "https://i.scdn.co/image/syn-300", width: 300, height: 300 },

@@ -2,6 +2,7 @@ import { LearnItMenu } from "@/components/songs/learn-it-menu";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDuration } from "@/lib/live-search";
+import { ageLabel } from "@/lib/age";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
 
 /** Total length of the songs with a known length, and how many those are. */
@@ -10,7 +11,7 @@ export function setLength(setlist: PlanPitch["setlist"]): { ms: number; timed: n
   return { ms: timed.reduce((sum, s) => sum + (s.durationMs ?? 0), 0), timed: timed.length };
 }
 
-export function SetlistPanel({ pitch, learnThese }: { pitch: PlanPitch; learnThese: Plan["learnThese"] }) {
+export function SetlistPanel({ pitch, learnThese, ageLean = null }: { pitch: PlanPitch; learnThese: Plan["learnThese"]; ageLean?: string | null }) {
   const length = setLength(pitch.setlist);
   const songs = (n: number) => `${n} song${n === 1 ? "" : "s"}`;
   return (
@@ -20,9 +21,11 @@ export function SetlistPanel({ pitch, learnThese }: { pitch: PlanPitch; learnThe
           <h2>Setlist for {pitch.name}</h2>
         </CardTitle>
         <CardDescription>
-          Your songs, ordered by how much this crowd likes each artist (Qloo) and how well-known the song is (Last.fm). Qloo has no
-          song-level data, so a song inherits its artist&apos;s affinity. The set opens with the best-known of the top three and never plays
-          the same artist twice in a row, so the order is not strictly by score.
+          Your songs, ordered by how much the crowd at this pitch likes each artist (Qloo), how well-known the song is (Last.fm) and how
+          well its release year (Spotify) suits the crowd&apos;s age
+          {ageLean ? ` (Qloo: your fans lean ${ageLabel(ageLean)})` : ""}. Qloo has no song-level data, so a song inherits its artist&apos;s
+          affinity. The set opens with the best-known of the top three and never plays the same artist twice in a row, so the order is not
+          strictly by score.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 text-sm">
@@ -35,7 +38,11 @@ export function SetlistPanel({ pitch, learnThese }: { pitch: PlanPitch; learnThe
                 <li key={song.songId} className="grid grid-cols-[2ch_1fr_auto] gap-x-3">
                   <span className="text-muted-foreground">{i + 1}</span>
                   <span>
-                    <span className="font-medium">{song.title}</span> <span className="text-muted-foreground">({song.artist})</span>
+                    <span className="font-medium">{song.title}</span>{" "}
+                    <span className="text-muted-foreground">
+                      ({song.artist}
+                      {song.year !== null ? `, ${song.year}` : ""})
+                    </span>
                     {song.own && (
                       <Badge variant="secondary" className="ml-2">
                         Your song
@@ -69,6 +76,10 @@ export function SetlistPanel({ pitch, learnThese }: { pitch: PlanPitch; learnThe
 
         <section aria-label="Learn these">
           <h3 className="font-medium">Learn these</h3>
+          <p className="text-muted-foreground">
+            Artists this crowd likes that you don&apos;t play yet, ranked by Qloo&apos;s audience growth, then trends, then affinity and
+            Last.fm listeners.
+          </p>
           {learnThese.length === 0 ? (
             <p className="text-muted-foreground">No suggestions for this crowd yet.</p>
           ) : (

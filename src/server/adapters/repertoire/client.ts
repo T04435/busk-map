@@ -1,7 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import type { z } from "zod";
-import { songKey } from "@/lib/text";
+import { nameKey, songKey } from "@/lib/text";
 import { env } from "@/server/env";
 import { AdapterError, fetchJson } from "../core";
 import {
@@ -9,6 +9,7 @@ import {
   albumsSchema,
   albumsTotalSchema,
   pickImage,
+  releaseYear,
   searchSchema,
   tokenSchema,
   type CatalogueArtist,
@@ -71,10 +72,11 @@ type RawTrack = {
   artists: { id: string; name: string }[];
   duration_ms?: number;
   external_urls?: { spotify?: string };
-  album?: { name: string; images?: RawImage[] };
+  album?: RawAlbum;
 };
+type RawAlbum = { name: string; images?: RawImage[]; release_date?: string };
 
-const toTrack = (t: RawTrack, album: { name: string; images?: RawImage[] } | null = t.album ?? null): CatalogueTrack => ({
+const toTrack = (t: RawTrack, album: RawAlbum | null = t.album ?? null): CatalogueTrack => ({
   id: t.id,
   title: t.name,
   artists: t.artists.map(({ id, name }) => ({ id, name })),
@@ -82,6 +84,7 @@ const toTrack = (t: RawTrack, album: { name: string; images?: RawImage[] } | nul
   image: pickImage(album?.images),
   durationMs: t.duration_ms ?? null,
   url: t.external_urls?.spotify ?? null,
+  year: releaseYear(album?.release_date),
 });
 
 export async function searchTracks(query: string, market: string): Promise<CatalogueTrack[]> {
@@ -91,6 +94,28 @@ export async function searchTracks(query: string, market: string): Promise<Catal
   const params = new URLSearchParams({ q: query, type: "track", limit: "10", market });
   const body = await spotify(`/search?${params}`, searchSchema);
   return (body.tracks?.items ?? []).filter((t): t is NonNullable<typeof t> => t !== null).map((t) => toTrack(t));
+}
+
+/**
+ * First release year of one song: a track search by title and artist, keeping
+ * results by that artist with the same song title, and taking the earliest
+ * album year (so a remaster or a best-of doesn't make an old song look new).
+ * Null when Spotify has no such song. Cached for a day.
+ */
+export async function fetchReleaseYear(title: string, artist: string, market: string): Promise<number | null> {
+  "use cache: remote";
+  cacheLife("days");
+  cacheTag("repertoire");
+  const params = new URLSearchParams({ q: `track:${title} artist:${artist}`, type: "track", limit: "10", market });
+  const body = await spotify(`/search?${params}`, searchSchema);
+  const years = (body.tracks?.items ?? [])
+    .filter((t): t is NonNullable<typeof t> => t !== null)
+    .filter((t) => songKey(t.name) === songKey(title) && t.artists.some((a) => nameKey(a.name) === nameKey(artist)))
+    .flatMap((t) => {
+      const year = releaseYear(t.album?.release_date);
+      return year === null ? [] : [year];
+    });
+  return years.length > 0 ? Math.min(...years) : null;
 }
 
 /** Artist search. Release counts load separately (fetchReleaseCount), so a cold search answers fast. */
@@ -121,7 +146,7 @@ export async function fetchArtistCatalogue(artistId: string, market: string): Pr
   cacheLife("days");
   cacheTag("repertoire");
 
-  const albums: { id: string; name: string; images?: RawImage[] }[] = [];
+  const albums: (RawAlbum & { id: string })[] = [];
   let path: string | null = `/artists/${encodeURIComponent(artistId)}/albums?${new URLSearchParams({
     include_groups: "album,single",
     limit: "10",

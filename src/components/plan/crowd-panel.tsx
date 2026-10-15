@@ -1,15 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ageLabel } from "@/lib/age";
 import type { Plan } from "@/lib/plan-schema";
-
-const AGE_LABEL: Record<string, string> = {
-  "24_and_younger": "24 and under",
-  "25_to_29": "25–29",
-  "30_to_34": "30–34",
-  "35_to_44": "35–44",
-  "45_to_54": "45–54",
-  "55_and_older": "55 and over",
-};
 
 const list = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
 
@@ -98,7 +90,7 @@ export function CrowdPanel({ crowd, resolved, topPitch }: { crowd: Plan["crowd"]
 
         {ages.length > 0 && (
           <p className="text-muted-foreground">
-            Your fans skew {list(ages.map((a) => AGE_LABEL[a.band] ?? a.band))} (Qloo demographics): pick songs and banter to suit.
+            Your fans skew {list(ages.map((a) => ageLabel(a.band)))} (Qloo demographics): pick songs and banter to suit.
           </p>
         )}
         {unmatched.length > 0 && <p className="text-muted-foreground">Qloo couldn&apos;t match: {unmatched.join(", ")}.</p>}

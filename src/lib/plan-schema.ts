@@ -134,6 +134,10 @@ export const planPitchSchema = z.object({
       reason: z.string(),
       /** Track length, when known (songs picked from Spotify search). */
       durationMs: z.number().nullable().default(null),
+      /** First release year (Spotify), when known. */
+      year: z.number().int().nullable().default(null),
+      /** 0–1 fit of the song's era with the crowd's age lean (Qloo demographics), when known. */
+      eraFit: z.number().min(0).max(1).nullable().default(null),
     }),
   ),
 });
@@ -201,8 +205,12 @@ export const planSchema = z.object({
       title: z.string().nullable(),
       playcount: z.number().nullable(),
       reason: z.string(),
+      /** Qloo's audience_growth for the artist with this crowd, when known. */
+      audienceGrowth: z.number().nullable().default(null),
     }),
   ),
+  /** The crowd's most over-represented age band (Qloo demographics), used for era matching. */
+  ageLean: z.string().nullable().default(null),
   weather: z
     .object({
       hours: z.array(z.object({ hour: z.number(), temperatureC: z.number().nullable(), precipitationProbability: z.number().nullable(), windKmh: z.number().nullable() })),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSetlist, learnThese } from "@/server/scoring";
+import { buildSetlist, eraFit, leadingAgeBand, learnThese } from "@/server/scoring";
 import type { RepertoireSong } from "@/server/scoring";
 import { trackKey } from "@/lib/text";
 
@@ -156,5 +156,70 @@ describe("learnThese", () => {
   it("falls back to a generic reason with no trend or affinity", () => {
     const result = learnThese([{ entityId: "a", name: "Band", affinity: null, percentDelta: null }], { Band: [{ title: "Song", playcount: 5 }] }, []);
     expect(result[0]).toMatchObject({ title: "Song", reason: "Liked by this crowd" });
+  });
+});
+
+describe("era matching", () => {
+  const young = { "24_and_younger": 0.6, "25_to_29": 0.3, "45_to_54": -0.5, "55_and_older": -0.4 };
+  const older = { "45_to_54": 0.5, "55_and_older": 0.4, "24_and_younger": -0.6 };
+
+  it("fits songs from the crowd's formative years best", () => {
+    // 21-year-olds in 2026 were 17 in 2022; 50-year-olds in 1993.
+    expect(eraFit(2022, { "24_and_younger": 1 }, 2026)).toBeCloseTo(1, 5);
+    expect(eraFit(1993, { "45_to_54": 1 }, 2026)).toBeCloseTo(1, 5);
+    expect(eraFit(1972, young, 2026)!).toBeLessThan(0.05);
+    expect(eraFit(1985, older, 2026)!).toBeGreaterThan(eraFit(2022, older, 2026)!);
+    expect(eraFit(2015, young, 2026)!).toBeGreaterThan(eraFit(1972, young, 2026)!);
+  });
+
+  it("has no fit without an over-represented, known age band", () => {
+    expect(eraFit(2000, { "24_and_younger": -0.2, "25_to_29": 0 }, 2026)).toBeNull();
+    expect(eraFit(2000, { unknown_band: 0.9 }, 2026)).toBeNull();
+    expect(leadingAgeBand(young)).toBe("24_and_younger");
+    expect(leadingAgeBand(older)).toBe("45_to_54");
+    expect(leadingAgeBand({ unknown_band: 1, "25_to_29": -0.1 })).toBeNull();
+    expect(leadingAgeBand(null)).toBeNull();
+  });
+
+  it("blends era fit into the song score and says why", () => {
+    const songs = [song("1", "Superstition", "Stevie Wonder", "sw"), song("2", "Valerie", "Amy Winehouse", "aw"), song("3", "Untimed", "Amy Winehouse", "aw")];
+    const affinity = { sw: 0.9, aw: 0.9 };
+    const years = { [trackKey("Stevie Wonder", "Superstition")]: 1972, [trackKey("Amy Winehouse", "Valerie")]: 2007 };
+    const label = (band: string) => (band === "24_and_younger" ? "24 and under" : band);
+    const set = buildSetlist(songs, affinity, {}, undefined, { years, ageLean: young, currentYear: 2026, ageLabel: label });
+    const valerie = set.find((s) => s.title === "Valerie")!;
+    const superstition = set.find((s) => s.title === "Superstition")!;
+    expect(valerie.score).toBeGreaterThan(superstition.score);
+    expect(valerie).toMatchObject({ year: 2007 });
+    expect(valerie.eraFit).toBeGreaterThan(0.3);
+    expect(valerie.reason).toMatch(/from 2007: era fit \d+\/100 for a crowd leaning 24 and under$/);
+    expect(set.find((s) => s.title === "Untimed")).toMatchObject({ year: null, eraFit: null, score: 100 });
+
+    // A year with no age lean: shown, not scored. No label function: the band id.
+    const noLean = buildSetlist(songs, affinity, {}, undefined, { years, ageLean: null, currentYear: 2026 });
+    expect(noLean.find((s) => s.title === "Superstition")).toMatchObject({ year: 1972, eraFit: null, score: 100 });
+    expect(noLean.find((s) => s.title === "Superstition")!.reason).toMatch(/; from 1972$/);
+    const unlabelled = buildSetlist(songs, affinity, {}, undefined, { years, ageLean: older, currentYear: 2026 });
+    expect(unlabelled.find((s) => s.title === "Valerie")!.reason).toMatch(/for a crowd leaning 45_to_54$/);
+    const noBand = buildSetlist(songs, affinity, {}, undefined, { years, ageLean: { mystery: 1 }, currentYear: 2026 });
+    expect(noBand.find((s) => s.title === "Valerie")!.eraFit).toBeNull();
+  });
+});
+
+describe("learnThese and Qloo audience growth", () => {
+  it("ranks by audience growth first and says so", () => {
+    const result = learnThese(
+      [
+        { entityId: "a", name: "Flat", affinity: 0.99, percentDelta: 4, audienceGrowth: 0 },
+        { entityId: "b", name: "Growing", affinity: 0.5, percentDelta: null, audienceGrowth: 0.12 },
+        { entityId: "c", name: "Shrinking", affinity: 0.9, percentDelta: null, audienceGrowth: -0.05 },
+      ],
+      {},
+      [],
+    );
+    expect(result.map((r) => r.artist)).toEqual(["Growing", "Flat", "Shrinking"]);
+    expect(result[0]).toMatchObject({ audienceGrowth: 0.12, reason: "Audience growing with this crowd (Qloo audience growth +0.12), affinity 50/100" });
+    expect(result[1].reason).toBe("Rising with this crowd (+4.0 pts), affinity 99/100");
+    expect(result[2].reason).toBe("Audience shrinking with this crowd (Qloo audience growth -0.05), affinity 90/100");
   });
 });

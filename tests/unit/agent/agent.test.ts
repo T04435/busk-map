@@ -45,7 +45,7 @@ describe("plan agent (offline, mock model)", () => {
     expect(plan.pitches.every((p) => p.setlist.length === request.performer.songs.length)).toBe(true);
     expect(plan.learnThese.length).toBeGreaterThan(0);
     expect(plan.tasteCells.length).toBeGreaterThan(0);
-    expect(plan.dataStatus.map((s) => s.adapter).sort()).toEqual(["events", "footfall", "pitches", "qloo", "songs", "weather"]);
+    expect(plan.dataStatus.map((s) => s.adapter).sort()).toEqual(["events", "footfall", "pitches", "qloo", "repertoire", "songs", "weather"]);
     expect(plan.dataStatus.every((s) => s.mode === "synthetic")).toBe(true);
   });
 
@@ -176,7 +176,7 @@ describe("crowd drivers and Qloo extras", () => {
     // A year after the mock's (and live Qloo's) latest trending week.
     const ctx = new PlanContext(request, OFFLINE, "2027-09-01");
     expect(await ctx.rising()).toEqual([]);
-    expect(ctx.notes).toContain('Qloo has no trending data for the last year, so "learn these" is ranked by Qloo affinity and Last.fm listeners instead.');
+    expect(ctx.notes).toContain('Qloo shows no audience growth for these artists and has no trending data for the last year, so "learn these" is ranked by Qloo affinity and Last.fm listeners instead.');
   });
 });
 
@@ -224,5 +224,19 @@ describe("genre names", () => {
     const names = [...plan.crowd.genres.map((g) => g.name), ...(plan.crowd.contrast?.more ?? []), ...(plan.crowd.contrast?.less ?? [])];
     expect(names.length).toBeGreaterThan(0);
     expect(names.every((n) => /^\p{Lu}/u.test(n))).toBe(true);
+  });
+});
+
+describe("what to play", () => {
+  it("dates each song and scores its era against the crowd's age lean", async () => {
+    mockFetch([]);
+    const { PlanContext, assemblePlan } = await load();
+    const plan = await assemblePlan(new PlanContext(request, OFFLINE, "2026-10-15"), null);
+    expect(plan.ageLean).not.toBeNull();
+    const setlist = plan.pitches[0].setlist;
+    expect(setlist.every((s) => s.year !== null && s.eraFit !== null)).toBe(true);
+    expect(setlist[0].reason).toMatch(/from \d{4}: era fit \d+\/100 for a crowd leaning /);
+    expect(plan.learnThese.every((l) => l.audienceGrowth === 0)).toBe(true);
+    expect(plan.dataStatus.find((s) => s.adapter === "repertoire")).toMatchObject({ source: "spotify", mode: "synthetic" });
   });
 });

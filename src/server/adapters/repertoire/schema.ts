@@ -23,7 +23,7 @@ const trackItem = z.object({
   artists: z.array(artistRef).min(1),
   duration_ms: z.number().int().nonnegative().optional(),
   external_urls: z.object({ spotify: z.url() }).partial().optional(),
-  album: z.object({ name: z.string(), images }).optional(),
+  album: z.object({ name: z.string(), images, release_date: z.string().optional() }).optional(),
 });
 
 export const searchSchema = z.object({
@@ -66,7 +66,16 @@ export type CatalogueTrack = {
   image: string | null;
   durationMs: number | null;
   url: string | null;
+  /** The album's release year ("1972" from "1972-10-24", "1972" or "1972-10"), when known. */
+  year: number | null;
 };
+
+/** Year from a Spotify release_date (YYYY, YYYY-MM or YYYY-MM-DD). */
+export function releaseYear(date: string | undefined): number | null {
+  const match = /^(\d{4})/.exec(date ?? "");
+  const year = match ? Number(match[1]) : null;
+  return year !== null && year >= 1900 && year <= 2100 ? year : null;
+}
 
 export type CatalogueArtist = {
   /** Spotify artist id. */

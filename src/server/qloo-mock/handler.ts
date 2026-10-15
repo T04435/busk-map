@@ -554,6 +554,8 @@ function artists(params: Params, key: string): Response {
   const entities = page.map((s, i) =>
     artistPayload(s.artist, {
       affinity: s.affinity,
+      // Live sends audience_growth on every artist result; it was 0 for every artist checked (2026-10-16).
+      measurements: { audience_growth: 0 },
       ...(explainability ? { explainability: { "signal.interests.entities": perResult[i] } } : {}),
     }),
   );

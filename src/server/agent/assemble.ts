@@ -2,7 +2,7 @@ import "server-only";
 import { formatHour, describeSlot } from "@/lib/slot";
 import { titleCase } from "@/lib/text";
 import { planSchema, type Plan, type PlanPitch } from "@/lib/plan-schema";
-import type { ScoredPitch } from "@/server/scoring";
+import { leadingAgeBand, type ScoredPitch } from "@/server/scoring";
 import * as qloo from "@/server/adapters/qloo";
 import type { PlanContext } from "./context";
 
@@ -197,7 +197,8 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null): Pro
         : null,
       drivers: drivers(locals.slice(0, 10), nameOf, impact),
     },
-    learnThese: learn.map((l) => ({ artist: l.artist, title: l.title, playcount: l.playcount, reason: l.reason })),
+    learnThese: learn.map((l) => ({ artist: l.artist, title: l.title, playcount: l.playcount, reason: l.reason, audienceGrowth: l.audienceGrowth })),
+    ageLean: leadingAgeBand(profile?.age ?? null),
     weather: weather
       ? { hours: weather.hours.map((h) => ({ hour: h.hour, temperatureC: h.temperatureC, precipitationProbability: h.precipitationProbability, windKmh: h.windKmh })) }
       : null,

@@ -16,7 +16,8 @@
     "check:fixtures": "node scripts/check-fixtures.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm check:fixtures && pnpm build",
     "predev": "node scripts/copy-maplibre-worker.mjs",
-    "prebuild": "node scripts/copy-maplibre-worker.mjs"
+    "prebuild": "node scripts/copy-maplibre-worker.mjs",
+    "db:migrate:dev": "node --env-file=.env.development.local scripts/migrate.mjs"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.141",

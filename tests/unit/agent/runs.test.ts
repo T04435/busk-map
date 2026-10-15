@@ -80,3 +80,16 @@ describe("shared agent runs", () => {
     expect(run.ok).toBe(true);
   });
 });
+
+describe("hasSharedRun", () => {
+  beforeEach(() => clearRunsForTests());
+  it("is true while a run is in flight or fresh, so replays aren't rate limited", async () => {
+    const { hasSharedRun } = await import("@/server/agent/runs");
+    expect(hasSharedRun("x")).toBe(false);
+    sharedRun("x", 1_000, async (run) => run.push(plan));
+    expect(hasSharedRun("x")).toBe(true);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(hasSharedRun("x")).toBe(true);
+    expect(hasSharedRun("x", Date.now() + 2_000)).toBe(false);
+  });
+});

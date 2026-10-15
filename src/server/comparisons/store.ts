@@ -1,6 +1,4 @@
 import "server-only";
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import { neon } from "@neondatabase/serverless";
 import type { ComparisonRecord } from "@/server/scoring";
 import { env } from "@/server/env";
@@ -84,36 +82,18 @@ export class NoComparisonStore implements ComparisonStore {
 
 type Sql = ReturnType<typeof neon>;
 
-/** The migration in migrations/001_baseline_comparisons.sql, split into statements. */
-export function migrationStatements(sql: string): string[] {
-  return sql
-    .split("\n")
-    .filter((line) => !line.trim().startsWith("--"))
-    .join("\n")
-    .split(";")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
-/** Postgres (Neon's serverless driver over HTTP, so it suits functions). The idempotent migration runs once per instance. */
+/**
+ * Postgres (Neon's serverless driver over HTTP, through the pooled
+ * DATABASE_URL, so it suits functions). The table comes from
+ * migrations/001_baseline_comparisons.sql, applied ahead of time over the
+ * direct connection (pnpm db:migrate:dev); a missing table makes recording
+ * fail softly (recordComparison) and stats unavailable.
+ */
 export class PostgresComparisonStore implements ComparisonStore {
   readonly kind = "postgres" as const;
-  private ready: Promise<void> | null = null;
   constructor(private readonly sql: Sql) {}
 
-  private migrate() {
-    this.ready ??= (async () => {
-      const file = readFileSync(path.join(process.cwd(), "migrations", "001_baseline_comparisons.sql"), "utf8");
-      for (const statement of migrationStatements(file)) await this.sql.query(statement);
-    })().catch((error) => {
-      this.ready = null;
-      throw error;
-    });
-    return this.ready;
-  }
-
   async record(record: ComparisonRecord) {
-    await this.migrate();
     const a = averages(record);
     await this.sql.query(
       "INSERT INTO baseline_comparisons (performer_key, city, slot, overlap, ours, plain, our_avg, plain_avg) VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8)",
@@ -122,7 +102,6 @@ export class PostgresComparisonStore implements ComparisonStore {
   }
 
   async stats(): Promise<ComparisonStats> {
-    await this.migrate();
     const rows = (await this.sql.query(
       `SELECT count(*)::int AS runs,
               coalesce(sum(jsonb_array_length(ours)), 0)::int AS picks,

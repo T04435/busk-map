@@ -54,8 +54,8 @@ describe("comparison store", () => {
     expect(comparisonStore(false).kind).toBe("postgres");
   });
 
-  it("Postgres: migrates once, inserts ids and scores only, and reads the aggregate", async () => {
-    const { PostgresComparisonStore, migrationStatements } = await load();
+  it("Postgres: no DDL at runtime, inserts ids and scores only, and reads the aggregate", async () => {
+    const { PostgresComparisonStore } = await load();
     const queries: { text: string; params?: unknown[] }[] = [];
     const sql = {
       query: vi.fn(async (text: string, params?: unknown[]): Promise<unknown[]> => {
@@ -67,18 +67,17 @@ describe("comparison store", () => {
     const store = new PostgresComparisonStore(sql as never);
     await store.record(record(1, [80, 70, 60], [50, null, 40]));
     await store.record(record(0, [60], []));
-    const migrations = queries.filter((q) => /CREATE/.test(q.text));
-    expect(migrations).toHaveLength(2); // table and index, once
+    // Migrations run ahead of time over the direct connection (scripts/migrate.mjs), never from the app.
+    expect(queries.filter((q) => /CREATE|ALTER|DROP/.test(q.text))).toHaveLength(0);
     const insert = queries.find((q) => q.text.startsWith("INSERT"))!;
     expect(insert.params).toEqual(["acoustic", "melbourne", "2026-10-17 18-21", 1, expect.any(String), expect.any(String), 70, 45]);
     expect(queries.filter((q) => q.text.startsWith("INSERT")).at(-1)!.params!.at(-1)).toBeNull();
     expect(await store.stats()).toEqual({ runs: 2, picks: 6, uniquePicks: 5, uniqueRate: 5 / 6, averageOverlap: 0.5, averageScoreDelta: 25, runsWithScoredPlainSpots: 1 });
     sql.query.mockImplementationOnce(async () => [{ runs: 0, picks: 0, unique_picks: 0, average_overlap: null, average_score_delta: null, runs_with_scored: 0 }]);
     expect((await store.stats()).uniqueRate).toBeNull();
-    expect(migrationStatements("-- c\nCREATE A;\n\nCREATE B;\n")).toEqual(["CREATE A", "CREATE B"]);
   });
 
-  it("a failing database never fails the caller, and the migration is retried", async () => {
+  it("a failing database (or a missing table) never fails the caller", async () => {
     const { PostgresComparisonStore, recordComparison } = await load();
     const { log } = await import("@/server/log");
     const warn = vi.spyOn(log, "warn").mockImplementation(() => {});

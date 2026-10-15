@@ -73,10 +73,20 @@ async function build(request: PlanRequest, adapters: AdapterContext, day: string
   };
 }
 
+function keyFor(request: PlanRequest, adapters: AdapterContext, today?: string) {
+  const day = today ?? localToday(CITIES[request.city].timeZone);
+  return { day, key: JSON.stringify([request, adapters.offline, [...adapters.faults].sort(), day]) };
+}
+
+/** Whether the baseline for this request is already started or done (asking again costs no model call). */
+export function hasBaseline(request: PlanRequest, adapters: AdapterContext, today?: string): boolean {
+  const hit = memo.get(keyFor(request, adapters, today).key);
+  return hit !== undefined && Date.now() - hit.at < TTL_MS;
+}
+
 /** The baseline comparison for a plan request: started once per request and day, then reused. */
 export function baselineFor(request: PlanRequest, adapters: AdapterContext, today?: string): Promise<BaselineResult> {
-  const day = today ?? localToday(CITIES[request.city].timeZone);
-  const key = JSON.stringify([request, adapters.offline, [...adapters.faults].sort(), day]);
+  const { day, key } = keyFor(request, adapters, today);
   const hit = memo.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.result;
   const result = build(request, adapters, day).catch((error): BaselineResult => {

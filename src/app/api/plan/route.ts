@@ -4,7 +4,7 @@ import { QlooUnavailableError, runPlanAgent } from "@/server/agent/agent";
 import { PlanContext } from "@/server/agent/context";
 import { LIMITS } from "@/server/agent/models";
 import { isExampleRequest } from "@/server/agent/preload";
-import { AgentRun, EXAMPLE_RUN_TTL_MS, RUN_TTL_MS, sharedRun } from "@/server/agent/runs";
+import { AgentRun, EXAMPLE_RUN_TTL_MS, hasSharedRun, RUN_TTL_MS, sharedRun } from "@/server/agent/runs";
 import { CITIES } from "@/server/cities";
 import { testSwitches } from "@/server/env";
 import { log } from "@/server/log";
@@ -26,14 +26,6 @@ function jsonError(status: number, code: string, message: string, headers: Heade
 export async function POST(request: Request) {
   const blocked = await rejectBots("/api/plan");
   if (blocked) return blocked;
-  // Offline test mode spends nothing, so it is not rate limited.
-  const limit = testSwitches().offline ? { ok: true, retryAfterS: 0 } : planLimiter.check(clientIp(request.headers));
-  if (!limit.ok) {
-    return jsonError(429, "rate_limited", "Too many plans in a short time. Try again in a few minutes.", {
-      "Retry-After": String(limit.retryAfterS),
-    });
-  }
-
   let body: unknown;
   try {
     body = await request.json();
@@ -48,6 +40,15 @@ export async function POST(request: Request) {
 
   const adapters = adapterContextFor(request.headers.get(FAULTS_HEADER));
   const context = new PlanContext(parsed.data, adapters);
+  const shareKey = JSON.stringify([parsed.data, adapters.offline, context.today]);
+  // Offline test mode spends nothing, and joining or replaying a shared run costs no model call: neither is rate limited.
+  const free = testSwitches().offline || (adapters.faults.length === 0 && hasSharedRun(shareKey));
+  const limit = free ? { ok: true, retryAfterS: 0 } : planLimiter.check(clientIp(request.headers));
+  if (!limit.ok) {
+    return jsonError(429, "rate_limited", "Too many plans in a short time. Try again in a few minutes.", {
+      "Retry-After": String(limit.retryAfterS),
+    });
+  }
   const requestId = crypto.randomUUID();
   const encoder = new TextEncoder();
 
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
     run = new AgentRun();
     void start(run, AbortSignal.any([request.signal, AbortSignal.timeout(LIMITS.agentTimeoutMs)])).finally(() => run.finish());
   } else {
-    const key = JSON.stringify([parsed.data, adapters.offline, context.today]);
+    const key = shareKey;
     const ttl = isExampleRequest(parsed.data, context.today) ? EXAMPLE_RUN_TTL_MS : RUN_TTL_MS;
     ({ run, reused } = sharedRun(key, ttl, (r) => start(r, AbortSignal.timeout(LIMITS.agentTimeoutMs))));
   }

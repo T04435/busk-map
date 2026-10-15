@@ -61,13 +61,21 @@ export class AgentRun {
 
 const runs = new Map<string, { run: AgentRun; ttl: number }>();
 
+const reusable = (entry: { run: AgentRun; ttl: number } | undefined, now: number) =>
+  entry !== undefined && (!entry.run.done || (entry.run.ok && now - entry.run.finishedAt! < entry.ttl));
+
+/** Whether a request with this key would join or replay a run (no new model call). */
+export function hasSharedRun(key: string, now = Date.now()): boolean {
+  return reusable(runs.get(key), now);
+}
+
 /**
  * The run for this key: an existing one (in flight, or finished and fresh), or
  * a new one started with `start`. `reused` says which.
  */
 export function sharedRun(key: string, ttl: number, start: (run: AgentRun) => Promise<void>, now = Date.now()): { run: AgentRun; reused: boolean } {
   const existing = runs.get(key);
-  if (existing && (!existing.run.done || (existing.run.ok && now - existing.run.finishedAt! < existing.ttl))) return { run: existing.run, reused: true };
+  if (existing && reusable(existing, now)) return { run: existing.run, reused: true };
   const run = new AgentRun();
   runs.set(key, { run, ttl });
   if (runs.size > MAX_RUNS) runs.delete(runs.keys().next().value!);

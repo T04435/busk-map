@@ -90,5 +90,6 @@ The tip log is stored in the performer's browser (localStorage). Plans read only
 
 Every plan runs a plain-AI baseline (Claude Haiku, no tools, no data) in parallel and sets it beside Busk Map's picks. Comparisons are recorded for the uniqueness stats at `GET /api/baseline-stats` only when `DATABASE_URL` points to Postgres (for example Neon from the Vercel Marketplace). Without it, recording is a no-op (one log line) and plans work as usual.
 
-- The table is created by `migrations/001_baseline_comparisons.sql`, which the app runs once per instance (idempotent). You can also run it yourself in the provider's SQL console.
+- The app reads the pooled `DATABASE_URL` at runtime and never runs DDL. The table comes from `migrations/001_baseline_comparisons.sql` (idempotent), applied over the direct `DATABASE_URL_UNPOOLED`: `pnpm db:migrate:dev` runs it against the Neon dev branch (from `.env.development.local`). Production (main) needs the same migration as a separate, approved step before comparisons are recorded there; until then, recording there fails softly with a log line.
+- Locally, `next dev` uses the dev branch (`.env.development.local` wins over `.env.local`). `next start` reads `.env.local`, which may point at main: run it with `DATABASE_URL=` in the shell to keep local runs out of the production database.
 - Rows hold no personal data: an example id or "custom", the city and slot, pitch ids, scores, the plain AI's pick statuses and the overlap.

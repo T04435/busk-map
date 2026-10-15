@@ -8,9 +8,11 @@ test.describe("tip log", () => {
     await waitForPlan(page);
     const history = page.getByTestId("tip-history");
     await expect(history).toContainText("Example data");
-    await expect(history).toContainText(/Federation Wharf \(\+\d\)/);
-    if (!LOCAL) return; // Live data may rank Federation Wharf anywhere.
-    await page.getByRole("region", { name: "Pitches", exact: true }).getByRole("button", { name: /Federation Wharf/ }).click();
+    // The example logs earn most at Albert Coates Lane and Centre Place (live and mock top-three pitches).
+    await expect(history).toContainText(/(Albert Coates Lane|Centre Place) \(\+\d\)/);
+    if (!LOCAL) return; // Live data may rank these pitches anywhere.
+    const boosted = /adds a small bonus to (.+?) \(\+\d\)/.exec((await history.textContent()) ?? "")![1];
+    await page.getByRole("region", { name: "Pitches", exact: true }).getByRole("button", { name: new RegExp(boosted) }).click();
     await expect(page.getByTestId("tip-bonus")).toContainText(/Your tip log: 3 sessions here/);
   });
 
@@ -70,6 +72,6 @@ test.describe("tip log", () => {
   test("an empty log says how to start", async ({ page }) => {
     await page.goto("/tips");
     await expect(page.getByText("No sessions logged in this browser yet.")).toBeVisible();
-    await expect(page.getByRole("region", { name: "Sessions for Soul and funk sax player" }).getByRole("listitem")).toHaveCount(7);
+    await expect(page.getByRole("region", { name: "Sessions for Soul and funk sax player" }).getByRole("listitem")).toHaveCount(9);
   });
 });

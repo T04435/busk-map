@@ -78,13 +78,26 @@ function toPlanPitch(pitch: ScoredPitch, why: string, whySource: PlanPitch["whyS
   };
 }
 
-/** Average explainability share of each input artist across the crowd's top picks. */
-export function drivers(locals: { explanation: { entityId: string; score: number }[] }[], nameOf: (id: string) => string | null) {
-  if (locals.length === 0) return [];
+/**
+ * Each input artist's share of the crowd's top picks. Qloo's top-level
+ * explainability aggregate (average score over the top 10 results) is used
+ * when present; otherwise the per-result scores are averaged here.
+ */
+export function drivers(
+  locals: { explanation: { entityId: string; score: number }[] }[],
+  nameOf: (id: string) => string | null,
+  impact: qloo.Impact[] = [],
+) {
+  const fromQloo = impact.flatMap((i) => {
+    const share = i.top10 ?? i.top5 ?? i.all ?? i.top3;
+    return share === null ? [] : [[i.entityId, share] as const];
+  });
+  if (fromQloo.length === 0 && locals.length === 0) return [];
   const totals = new Map<string, number>();
-  for (const local of locals) for (const e of local.explanation) totals.set(e.entityId, (totals.get(e.entityId) ?? 0) + e.score);
+  if (fromQloo.length > 0) for (const [id, share] of fromQloo) totals.set(id, share);
+  else for (const local of locals) for (const e of local.explanation) totals.set(e.entityId, (totals.get(e.entityId) ?? 0) + e.score / locals.length);
   return [...totals.entries()]
-    .map(([id, total]) => ({ name: nameOf(id), share: Math.round((total / locals.length) * 100) / 100 }))
+    .map(([id, share]) => ({ name: nameOf(id), share: Math.round(share * 100) / 100 }))
     .filter((d): d is { name: string; share: number } => d.name !== null && d.share > 0)
     .sort((a, b) => b.share - a.share);
 }
@@ -96,7 +109,7 @@ export function drivers(locals: { explanation: { entityId: string; score: number
  */
 export async function assemblePlan(context: PlanContext, ai: AiText | null): Promise<Plan> {
   const { request, city } = context;
-  const [top, ranked, cells, locals, learn, weather, artists, footfall, trends, contrast, profile] = await Promise.all([
+  const [top, ranked, cells, locals, learn, weather, artists, footfall, trends, contrast, profile, impact] = await Promise.all([
     context.topPitches(),
     context.ranked(),
     context.tasteCells(),
@@ -108,6 +121,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null): Pro
     context.rising(),
     context.contrast(),
     context.crowdProfile(),
+    context.localImpact(),
   ]);
   const funnel = await context.funnel();
   const genres = top[0] ? await context.crowdGenres(top[0]) : [];
@@ -176,7 +190,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null): Pro
             gender: Object.entries(profile.gender).map(([band, lean]) => ({ band, lean: Math.round(lean * 100) / 100 })),
           }
         : null,
-      drivers: drivers(locals.slice(0, 10), nameOf),
+      drivers: drivers(locals.slice(0, 10), nameOf, impact),
     },
     learnThese: learn.map((l) => ({ artist: l.artist, title: l.title, playcount: l.playcount, reason: l.reason })),
     weather: weather

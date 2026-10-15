@@ -55,7 +55,8 @@ describe("plan agent (offline, mock model)", () => {
     const plan = await assemblePlan(ctx, { summary: "Invented", pitches: [{ pitchId: "made-up", why: "Trust me" }], notes: ["x"] });
     expect(plan.explanations).toBe("template");
     expect(plan.summary).toMatch(/^Top pitch:/);
-    expect(plan.notes).toEqual([]);
+    // The model's notes are dropped; the engine's own note remains (the mock, like live Qloo, has no recent trending weeks).
+    expect(plan.notes).toEqual(["Trends are from Qloo's latest trending data, which ends 2026-04-15."]);
     expect(plan.pitches.every((p) => p.whySource === "template" && p.why.length > 0)).toBe(true);
   });
 
@@ -139,5 +140,42 @@ describe("artists Qloo can't match", () => {
     expect(plan.tasteCells).toEqual([]);
     expect(plan.explanations).toBe("template");
     expect(plan.notes.join(" ")).toMatch(/couldn't match any of your artists/);
+  });
+});
+
+describe("crowd drivers and Qloo extras", () => {
+  it("use Qloo's top-level explainability when present, else average the per-result scores", async () => {
+    const { drivers } = await import("@/server/agent/assemble");
+    const nameOf = (id: string) => ({ a: "Artist A", b: "Artist B" })[id] ?? null;
+    const locals = [{ explanation: [{ entityId: "a", score: 1 }] }, { explanation: [{ entityId: "a", score: 0.5 }, { entityId: "b", score: 0.5 }] }];
+    expect(drivers(locals, nameOf)).toEqual([{ name: "Artist A", share: 0.75 }, { name: "Artist B", share: 0.25 }]);
+    const impact = [
+      { entityId: "a", top3: 0.9, top5: 0.8, top10: 0.6, all: 0.5 },
+      { entityId: "b", top3: 0.1, top5: 0.2, top10: null, all: null },
+      { entityId: "x", top3: 0.5, top5: null, top10: null, all: null },
+      { entityId: "b", top3: null, top5: null, top10: null, all: null },
+    ];
+    expect(drivers(locals, nameOf, impact)).toEqual([{ name: "Artist A", share: 0.6 }, { name: "Artist B", share: 0.2 }]);
+    expect(drivers([], nameOf)).toEqual([]);
+  });
+
+  it("names the Qloo extras a plan can go without; the core calls are not among them", async () => {
+    const { optionalQlooFeature } = await import("@/server/agent/context");
+    expect(optionalQlooFeature("genres:-37.8100,144.9600")).toBe("the genres at the top pitch");
+    expect(optionalQlooFeature("affinity:spot:osm:city-square")).toBe("the setlist order by local taste");
+    expect(optionalQlooFeature("places:wide")).toBe("busy places nearby");
+    expect(optionalQlooFeature("compare")).toBe("the contrast with the usual crowd");
+    expect(optionalQlooFeature("artists")).toBeNull();
+    expect(optionalQlooFeature("taste")).toBeNull();
+    expect(optionalQlooFeature("taste:wide")).toBeNull();
+  });
+
+  it("says when Qloo has no trending data in the last year", async () => {
+    const { PlanContext } = await load();
+    mockFetch([]);
+    // A year after the mock's (and live Qloo's) latest trending week.
+    const ctx = new PlanContext(request, OFFLINE, "2027-09-01");
+    expect(await ctx.rising()).toEqual([]);
+    expect(ctx.notes).toContain('Qloo has no trending data for the last year, so "learn these" is ranked by Qloo affinity and Last.fm listeners instead.');
   });
 });

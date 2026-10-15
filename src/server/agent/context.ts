@@ -1,5 +1,6 @@
 import "server-only";
 import type { BBox } from "@/lib/geo";
+import type { TrendRow } from "@/server/adapters/qloo";
 import { addDays, localToday, slotUtcRange, weekdayOf } from "@/lib/slot";
 import { trackKey } from "@/lib/text";
 import type { PlanRequest } from "@/lib/plan-schema";
@@ -30,7 +31,8 @@ export const PLACES_RADIUS_M = 2000;
 /** Radius of "the crowd at this pitch" for per-pitch artist affinity. */
 export const PITCH_CROWD_RADIUS_M = 400;
 export const LOCAL_ARTISTS_TAKE = 20;
-export const TRENDING_WEEKS = 6;
+/** A trending window that ends longer ago than this is called out in the plan. */
+export const TRENDING_STALE_DAYS = 14;
 export const WIDEN_FACTOR = 2;
 /** Radius of "the crowd" at a pitch for genre analysis, and around the busiest hotspot for the contrast. */
 export const CROWD_RADIUS_M = 400;
@@ -40,6 +42,27 @@ function widen(box: BBox, factor: number): BBox {
   const dLat = ((box.north - box.south) * (factor - 1)) / 2;
   const dLon = ((box.east - box.west) * (factor - 1)) / 2;
   return { south: box.south - dLat, north: box.north + dLat, west: box.west - dLon, east: box.east + dLon };
+}
+
+/**
+ * Qloo calls the plan can do without. When one fails, the plan says so in a
+ * note and keeps Qloo's status; only the core calls (resolving the artists,
+ * the taste map) make a plan "Qloo unavailable".
+ */
+const OPTIONAL_QLOO: [prefix: string, feature: string][] = [
+  ["places", "busy places nearby"],
+  ["localArtists", "the crowd's favourite artists"],
+  ["trendWindow", "trends"],
+  ["rising", "trends"],
+  ["crowd", "the crowd's age and gender lean"],
+  ["genres:", "the genres at the top pitch"],
+  ["hotspotCrowd", "the contrast with the usual crowd"],
+  ["compare", "the contrast with the usual crowd"],
+  ["affinity:", "the setlist order by local taste"],
+];
+
+export function optionalQlooFeature(key: string): string | null {
+  return OPTIONAL_QLOO.find(([prefix]) => key === prefix || (prefix.endsWith(":") && key.startsWith(prefix)) || key === `${prefix}:wide`)?.[1] ?? null;
 }
 
 type Status = { adapter: AdapterName; source: string; mode: AdapterResult<unknown>["mode"]; reason?: string };
@@ -77,6 +100,13 @@ export class PlanContext {
   private track<T>(key: string, load: () => Promise<AdapterResult<T>>): Promise<T> {
     return this.once(key, async () => {
       const result = await load();
+      const extra = optionalQlooFeature(key);
+      if (result.adapter === "qloo" && result.mode === "fallback" && extra && !this.qlooFailed()) {
+        // A Qloo extra that failed (often a slow call timing out) leaves the rest of the plan intact: say so, don't call Qloo down.
+        const note = `Qloo didn't answer in time for ${extra}, so this plan goes without it.`;
+        if (!this.notes.includes(note)) this.notes.push(note);
+        return result.data;
+      }
       const previous = this.statuses.get(result.adapter);
       // Keep the worst status per adapter: fallback beats synthetic beats live.
       const rank = { live: 0, synthetic: 1, fallback: 2 } as const;
@@ -148,18 +178,46 @@ export class PlanContext {
     });
   }
 
-  async localArtists() {
+  /** What this city's crowd likes given the performer's artists, with Qloo's explainability. */
+  private async localCrowd(): Promise<qloo.LocalArtists> {
     const ids = await this.entityIds();
-    if (ids.length === 0) return [];
+    if (ids.length === 0) return { artists: [], impact: [] };
     return this.track("localArtists", () => qloo.localArtists(ids, this.city.bbox, LOCAL_ARTISTS_TAKE, this.adapters));
   }
 
-  async rising() {
-    const locals = (await this.localArtists()).slice(0, 5);
-    if (locals.length === 0) return [];
-    return this.track("rising", () =>
-      qloo.rising(locals.map((a) => a.id), addDays(this.today, -7 * TRENDING_WEEKS), addDays(this.today, -1), this.adapters),
-    );
+  async localArtists(): Promise<qloo.QlooEntity[]> {
+    return (await this.localCrowd()).artists;
+  }
+
+  /** Each input artist's average effect on the crowd's top picks (Qloo's top-level explainability). */
+  async localImpact(): Promise<qloo.Impact[]> {
+    return (await this.localCrowd()).impact;
+  }
+
+  /**
+   * Momentum of the crowd's top artists. Live Qloo trending has no data for
+   * recent weeks, so the window is the latest one with data (probed back a
+   * quarter at a time, up to a year). Rows with no movement at all count as
+   * no momentum data; "learn these" then ranks by affinity and Last.fm.
+   */
+  rising(): Promise<TrendRow[]> {
+    return this.once("risingWithWindow", async () => {
+      const locals = (await this.localArtists()).slice(0, 5);
+      if (locals.length === 0) return [];
+      const window = await this.track("trendWindow", () => qloo.trendingWindow(locals[0].id, this.today, this.adapters));
+      if (!window) {
+        if (!this.qlooFailed()) this.notes.push("Qloo has no trending data for the last year, so \"learn these\" is ranked by Qloo affinity and Last.fm listeners instead.");
+        return [];
+      }
+      const rows = await this.track("rising", () => qloo.rising(locals.map((a) => a.id), window.start, window.end, this.adapters));
+      const moving = rows.some((r) => (r.percentDelta ?? 0) !== 0 || (r.windowChange ?? 0) !== 0);
+      if (!moving) {
+        this.notes.push(`Qloo's latest trending data (to ${window.end}) shows no movement for these artists, so "learn these" is ranked by Qloo affinity and Last.fm listeners instead.`);
+        return [];
+      }
+      if (window.end < addDays(this.today, -TRENDING_STALE_DAYS)) this.notes.push(`Trends are from Qloo's latest trending data, which ends ${window.end}.`);
+      return rows;
+    });
   }
 
   async crowdProfile() {
@@ -229,7 +287,7 @@ export class PlanContext {
     const [hotspot] = USUAL_HOTSPOTS;
     const d = 0.004;
     const box = { south: hotspot.lat - d, north: hotspot.lat + d, west: hotspot.lon - d, east: hotspot.lon + d };
-    return this.track("hotspotCrowd", () => qloo.localArtists([], box, HOTSPOT_CROWD_TAKE, this.adapters)).then((artists) => ({ hotspot: hotspot.name, artists }));
+    return this.track("hotspotCrowd", () => qloo.localArtists([], box, HOTSPOT_CROWD_TAKE, this.adapters)).then(({ artists }) => ({ hotspot: hotspot.name, artists }));
   }
 
   /** How the performer's fans differ from the usual hotspot crowd, by genre (Qloo compare). */
@@ -325,6 +383,7 @@ export class PlanContext {
         name: a.name,
         affinity: a.affinity,
         percentDelta: trendById.get(a.id)?.percentDelta ?? null,
+        listeners: a.lastfmListeners,
       })),
       songs,
       repertoire,

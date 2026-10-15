@@ -282,3 +282,19 @@ describe("why this crowd", () => {
     expect(plan.crowd.usualCrowd!.artists.length).toBeGreaterThan(0);
   });
 });
+
+describe("long model answers", () => {
+  it("are clipped, not rejected", async () => {
+    mockFetch([]);
+    const { PlanContext, assemblePlan, aiTextSchema } = await load();
+    const ctx = new PlanContext(request, OFFLINE, "2026-10-15");
+    const [top] = await ctx.topPitches();
+    const long = "word ".repeat(110);
+    const ai = aiTextSchema.parse({ summary: long, pitches: [{ pitchId: top.id, why: long }], notes: [long] });
+    const plan = await assemblePlan(ctx, ai);
+    expect(plan.explanations).toBe("ai");
+    expect(plan.pitches[0].why.length).toBeLessThanOrEqual(500);
+    expect(plan.summary.length).toBeLessThanOrEqual(600);
+    expect(plan.notes.every((n) => n.length <= 240 || !n.startsWith("word"))).toBe(true);
+  });
+});

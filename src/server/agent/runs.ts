@@ -36,9 +36,12 @@ export class AgentRun {
     for (const f of this.followers) f.onEvent(event);
   }
 
+  /** Set when the run finished but shouldn't be replayed (e.g. the model failed and the reasons fell back to templates). */
+  noReplay = false;
+
   finish() {
     this.finishedAt = Date.now();
-    this.ok = this.events.some((e) => e.type === "plan") && !this.events.some((e) => e.type === "error");
+    this.ok = !this.noReplay && this.events.some((e) => e.type === "plan") && !this.events.some((e) => e.type === "error");
     for (const f of this.followers) f.onDone();
     this.followers.clear();
   }

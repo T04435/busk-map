@@ -93,3 +93,16 @@ describe("hasSharedRun", () => {
     expect(hasSharedRun("x", Date.now() + 2_000)).toBe(false);
   });
 });
+
+describe("runs that fell back", () => {
+  beforeEach(() => clearRunsForTests());
+  it("are not replayed", async () => {
+    const first = sharedRun("fallback", 60_000, async (run) => {
+      run.noReplay = true;
+      run.push(plan);
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(first.run.ok).toBe(false);
+    expect(sharedRun("fallback", 60_000, async (run) => run.push(plan)).reused).toBe(false);
+  });
+});

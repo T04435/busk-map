@@ -64,6 +64,8 @@ export async function POST(request: Request) {
         signal,
       );
       log.info("plan served", { requestId, usage, qloo: plan.qlooMode, explanations: plan.explanations });
+      // Only Claude's plans are replayed: a plan whose reasons fell back to templates is retried on the next view.
+      if (plan.explanations !== "ai") run.noReplay = true;
       run.push({ type: "plan", plan });
     } catch (error) {
       if (error instanceof QlooUnavailableError) {

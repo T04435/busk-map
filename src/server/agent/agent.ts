@@ -13,16 +13,16 @@ import { createTools, TOOL_LABELS, TOOL_SOURCES } from "./tools";
 
 /** What the model may return. Words only; the engine owns numbers and places. */
 export const aiTextSchema = z.object({
-  summary: z.string().max(600).describe("Two sentences for the performer: where to play and why, from the tool results only."),
+  summary: z.string().max(1500).describe("Two sentences for the performer: where to play and why, from the tool results only."),
   pitches: z
     .array(
       z.object({
         pitchId: z.string().describe("A pitchId exactly as returned by score_pitches."),
-        why: z.string().max(500).describe("Why this crowd: one or two sentences citing the evidence. Say 'estimated' for estimates."),
+        why: z.string().max(1200).describe("Why this crowd: one or two sentences citing the evidence. Say 'estimated' for estimates."),
       }),
     )
     .max(3),
-  notes: z.array(z.string().max(240)).max(5).describe("Data caveats, e.g. a widened search or a missing source."),
+  notes: z.array(z.string().max(600)).max(8).describe("Data caveats, e.g. a widened search or a missing source."),
 });
 
 export class QlooUnavailableError extends Error {

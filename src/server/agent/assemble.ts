@@ -143,7 +143,9 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null): Pro
   const genres = top[0] ? await context.crowdGenres(top[0]) : [];
 
   const qlooDown = context.qlooFailed();
-  const aiWhy = new Map((ai?.pitches ?? []).map((p) => [p.pitchId, p.why.trim()]));
+  const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
+  // The model is asked for short text; generous schema limits keep a long answer from failing the run, and it is clipped here.
+  const aiWhy = new Map((ai?.pitches ?? []).map((p) => [p.pitchId, clip(p.why.trim(), 500)]));
   const pitches = await Promise.all(
     (qlooDown ? [] : top).map(async (pitch) => {
       const fromAi = aiWhy.get(pitch.id);
@@ -167,13 +169,13 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null): Pro
     qlooMode: qloo.qlooMode(context.adapters),
     explanations: usedAi ? "ai" : "template",
     summary:
-      (usedAi && ai?.summary.trim()) ||
+      (usedAi && ai?.summary.trim() && clip(ai.summary.trim(), 600)) ||
       (qlooDown
         ? "Without Qloo's taste data Busk Map can't tell where your crowd is, so nothing is recommended."
         : pitches.length > 0
         ? `Top pitch: ${pitches[0].name} (score ${pitches[0].score}/100).`
         : "No pitch could be recommended for this slot with the data available."),
-    notes: [...context.notes, ...(usedAi ? (ai?.notes ?? []).slice(0, 3) : [])],
+    notes: [...context.notes, ...(usedAi ? (ai?.notes ?? []).slice(0, 3).map((n) => clip(n, 240)) : [])],
     weights: context.weights,
     pitches,
     others: (qlooDown ? [] : ranked)

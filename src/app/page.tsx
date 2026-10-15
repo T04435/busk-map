@@ -52,7 +52,7 @@ export default function Home() {
           {EXAMPLES.map((example, i) => (
             <span key={example.id}>
               {i > 0 && " · "}
-              <Link className="underline" href={`/week?example=${example.id}`}>
+              <Link className="underline" prefetch={false} href={`/week?example=${example.id}`}>
                 Week: {example.label}
               </Link>
             </span>

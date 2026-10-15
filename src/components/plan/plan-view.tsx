@@ -213,8 +213,10 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
           {!pending && plan && <Badge variant="outline">{plan.explanations === "ai" ? "Explanations: Claude" : "Explanations: from the data"}</Badge>}
         </div>
         <p className="flex flex-wrap gap-x-4 text-sm">
+          {/* No prefetch: prefetching /week builds a whole week plan, about 47 Qloo calls, on every plan view. */}
           <Link
             className="underline"
+            prefetch={false}
             href={`/week?${weekSearchParams(
               { city: request.city, permit: request.permit, performer: request.performer, startDate: request.slot.date, limits: { maxSessions: 5, maxPerDay: 1, unavailable: [] }, weights: request.weights },
               exampleId,

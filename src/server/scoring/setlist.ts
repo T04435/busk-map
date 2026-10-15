@@ -14,6 +14,8 @@ export type RepertoireSong = {
   artistEntityId: string | null;
   /** The performer's own song. */
   own: boolean;
+  /** Track length, when known. */
+  durationMs: number | null;
 };
 
 export type SetlistEntry = {
@@ -29,6 +31,7 @@ export type SetlistEntry = {
   affinitySource: "qloo" | "proxy";
   playcount: number | null;
   reason: string;
+  durationMs: number | null;
 };
 
 export const AFFINITY_WEIGHT = 0.6;
@@ -96,6 +99,7 @@ export function buildSetlist(
       affinitySource: source,
       playcount,
       reason: why.join("; "),
+      durationMs: song.durationMs,
     };
   });
 

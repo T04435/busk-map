@@ -44,6 +44,28 @@ describe("plan URL state", () => {
     expect(again.ok && again.request).toEqual(first.request);
   });
 
+  it("keeps picked artists' Spotify ids and song lengths, and still reads old links", () => {
+    const id = "4ttUZ6lATfcBEYc9I1Hm7S";
+    const parsed = parsePlanParams(
+      { name: "Jess", artists: `Paul Kelly~${id}|Typed Artist|Bad Id~nope`, songs: "Gravy~Paul Kelly~215s|Mine~Jess~own~180s|Odd~X~0s", date: "2026-10-18" },
+      today,
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.request.performer.artists).toEqual(["Paul Kelly", "Typed Artist", "Bad Id"]);
+    expect(parsed.request.performer.spotifyArtists).toEqual([{ name: "Paul Kelly", id }]);
+    expect(parsed.request.performer.songs).toEqual([
+      { title: "Gravy", artist: "Paul Kelly", own: false, durationMs: 215_000 },
+      { title: "Mine", artist: "Jess", own: true, durationMs: 180_000 },
+      { title: "Odd", artist: "X", own: false },
+    ]);
+    const params = planSearchParams(parsed.request);
+    expect(params.get("artists")).toBe(`Paul Kelly~${id}|Typed Artist|Bad Id`);
+    expect(params.get("songs")).toBe("Gravy~Paul Kelly~215s|Mine~Jess~own~180s|Odd~X");
+    const again = parsePlanParams(Object.fromEntries(params), today);
+    expect(again.ok && again.request).toEqual(parsed.request);
+  });
+
   it("rejects incomplete or invalid plans with a readable error", () => {
     expect(parsePlanParams({}, today)).toEqual({ ok: false, error: expect.stringMatching(/example/) });
     const bad = parsePlanParams({ name: "X", artists: "", date: "2026-10-18" }, today);

@@ -103,6 +103,10 @@ describe("qloo without a key", () => {
     expect((await qloo.crowdTags(ids, center, 400, 5, LIVE)).data).toHaveLength(5);
     expect((await qloo.compareGenres(ids, locals.data.map((a) => a.id), LIVE)).data.length).toBeGreaterThan(0);
     expect((await qloo.resolveSpotifyArtists(["not-a-known-id"], LIVE)).data).toEqual([]);
+    // The mock implements Qloo's external Spotify id lookup.
+    const { mockSpotifyId } = await import("@/server/qloo-mock/catalog");
+    const byId = await qloo.resolveArtists(["Missy"], LIVE, [{ name: "Missy", id: mockSpotifyId("Missy Higgins") }]);
+    expect(byId.data[0].entity?.name).toBe("Missy Higgins");
     expect(calls).toHaveLength(0);
   });
 
@@ -238,6 +242,28 @@ describe("qloo with a key", () => {
     const result = await qloo.resolveArtists(["ok", "none", "broken"], LIVE);
     expect(result.mode).toBe("live");
     expect(result.data.map((r) => r.entity?.id ?? null)).toEqual(["syn-raw-artist-1", null, null]);
+  });
+
+  it("resolves picked artists by Spotify id first, falling back to the name", async () => {
+    const qloo = await fresh();
+    const { calls } = mockFetch([
+      route((u) => u.pathname === "/entities" && u.searchParams.get("external.spotify.ids") === "SPOTIFYID0000000000001", () =>
+        json({ results: [{ entity_id: "syn-raw-by-id", name: "Synthetic Artist" }] }),
+      ),
+      route((u) => u.pathname === "/entities" && u.searchParams.get("external.spotify.ids") === "SPOTIFYID0000000000002", () =>
+        json({ code: 404, reason: "Not Found", message: "No results" }, 404),
+      ),
+      route((u) => u.pathname === "/entities", () => json({}, 500)),
+      route((u) => u.pathname === "/search", () => json(SYNTHETIC_RAW.search)),
+    ]);
+    const result = await qloo.resolveArtists(["Synthetic Artist", "Unknown To Qloo", "Broken Id", "Typed Only"], LIVE, [
+      { name: "synthetic artist", id: "SPOTIFYID0000000000001" },
+      { name: "Unknown To Qloo", id: "SPOTIFYID0000000000002" },
+      { name: "Broken Id", id: "SPOTIFYID0000000000003" },
+    ]);
+    expect(result.data.map((r) => r.entity?.id)).toEqual(["syn-raw-by-id", "syn-raw-artist-1", "syn-raw-artist-1", "syn-raw-artist-1"]);
+    // The id hit needs no name search; the other three fall back to it.
+    expect(calls.filter((c) => c.url.pathname === "/search").map((c) => c.url.searchParams.get("query")).sort()).toEqual(["Broken Id", "Typed Only", "Unknown To Qloo"]);
   });
 
   it("returns no demographics when Qloo has none", async () => {

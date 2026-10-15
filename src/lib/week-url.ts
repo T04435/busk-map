@@ -6,6 +6,7 @@
  */
 import { exampleHistory } from "./example-tips";
 import { findExample } from "./examples";
+import { artistsParam, parseArtistsParam, parseSongsParam, songsParam } from "./performer-url";
 import { historyFromCookie, performerKeyFor } from "./tips";
 import { parseWeightsParam, weightsParam } from "./weights-url";
 import { weekRequestSchema, type WeekRequest } from "./week-schema";
@@ -25,11 +26,8 @@ export function parseWeekParams(params: Params, today: string, tipCookie?: strin
   const performer = name
     ? {
         name,
-        artists: list(first(params.artists)),
-        songs: list(first(params.songs)).map((entry) => {
-          const [title, artist, flag] = entry.split("~");
-          return { title, artist, own: flag === "own" };
-        }),
+        ...parseArtistsParam(first(params.artists)),
+        songs: parseSongsParam(first(params.songs)),
       }
     : example?.performer;
   if (!performer) return { ok: false, error: "Pick an example performer or describe your own." };
@@ -65,9 +63,9 @@ export function weekSearchParams(request: WeekRequest, exampleId: string | null)
   if (exampleId) params.set("example", exampleId);
   else {
     params.set("name", request.performer.name);
-    params.set("artists", request.performer.artists.join("|"));
+    params.set("artists", artistsParam(request.performer));
     if (request.performer.songs.length) {
-      params.set("songs", request.performer.songs.map((s) => [s.title, s.artist, s.own ? "own" : ""].filter(Boolean).join("~")).join("|"));
+      params.set("songs", songsParam(request.performer.songs));
     }
   }
   params.set("permit", request.permit);

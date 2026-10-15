@@ -102,7 +102,7 @@ export class PlanContext {
   // ---- Data ---------------------------------------------------------------
 
   artists() {
-    return this.track("artists", () => qloo.resolveArtists(this.request.performer.artists, this.adapters));
+    return this.track("artists", () => qloo.resolveArtists(this.request.performer.artists, this.adapters, this.request.performer.spotifyArtists));
   }
 
   async entityIds(): Promise<string[]> {
@@ -296,6 +296,7 @@ export class PlanContext {
       artist: song.artist,
       artistEntityId: byName.get(song.artist.toLowerCase()) ?? null,
       own: song.own,
+      durationMs: song.durationMs ?? null,
     }));
   };
 

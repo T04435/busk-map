@@ -1,7 +1,8 @@
 /**
  * Plan state lives in the URL, so a plan can be shared by link:
  *   /plan?example=acoustic
- *   /plan?name=…&artists=A|B&songs=Title~Artist|Own Song~Me~own&date=2026-10-17&from=18&to=21&permit=general
+ *   /plan?name=…&artists=A|B~<spotify id>&songs=Title~Artist|Own Song~Me~own|Song~Artist~215s&date=2026-10-17&from=18&to=21&permit=general
+ * (artist ids and song lengths are optional; see lib/performer-url.ts)
  * Optional: w=taste,footfall,places,events,weather[,discovery]  pitch=<id>  run=1 (start the agent)
  * The personal tip bonus is not in the URL (takings are private): it comes from
  * this browser's tip cookie (see lib/tips.ts). Example performers default to their example sessions.
@@ -9,6 +10,7 @@
 import { exampleHistory } from "./example-tips";
 import { historyFromCookie, performerKeyFor } from "./tips";
 import { findExample } from "./examples";
+import { artistsParam, parseArtistsParam, parseSongsParam, songsParam } from "./performer-url";
 import { parseWeightsParam, weightsParam } from "./weights-url";
 import { planRequestSchema, type PlanRequest } from "./plan-schema";
 import { nextWeekday } from "./slot";
@@ -16,7 +18,6 @@ import { nextWeekday } from "./slot";
 type Params = Record<string, string | string[] | undefined>;
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
-const list = (value: string | undefined) => (value ? value.split("|").map((s) => s.trim()).filter(Boolean) : []);
 
 export type ParsedPlanUrl =
   | { ok: true; request: PlanRequest; exampleId: string | null; pitchId: string | null; autoRun: boolean }
@@ -28,11 +29,8 @@ export function parsePlanParams(params: Params, today: string, tipCookie?: strin
   const performer = name
     ? {
         name,
-        artists: list(first(params.artists)),
-        songs: list(first(params.songs)).map((entry) => {
-          const [title, artist, flag] = entry.split("~");
-          return { title, artist, own: flag === "own" };
-        }),
+        ...parseArtistsParam(first(params.artists)),
+        songs: parseSongsParam(first(params.songs)),
       }
     : example?.performer;
   if (!performer) return { ok: false, error: "Pick an example performer or describe your own." };
@@ -66,14 +64,14 @@ export function parsePlanParams(params: Params, today: string, tipCookie?: strin
 export function planSearchParams(request: PlanRequest, extra: Record<string, string> = {}): URLSearchParams {
   const params = new URLSearchParams({
     name: request.performer.name,
-    artists: request.performer.artists.join("|"),
+    artists: artistsParam(request.performer),
     date: request.slot.date,
     from: String(request.slot.startHour),
     to: String(request.slot.endHour),
     permit: request.permit,
   });
   if (request.performer.songs.length) {
-    params.set("songs", request.performer.songs.map((s) => [s.title, s.artist, s.own ? "own" : ""].filter(Boolean).join("~")).join("|"));
+    params.set("songs", songsParam(request.performer.songs));
   }
   const w = weightsParam(request.weights);
   if (w) params.set("w", w);

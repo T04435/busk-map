@@ -11,10 +11,15 @@ export const CITY_IDS = ["melbourne"] as const;
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 
+/** A Spotify id: 22 base-62 characters. */
+export const spotifyIdSchema = z.string().regex(/^[A-Za-z0-9]{22}$/);
+
 export const repertoireSongSchema = z.object({
   title: text(120),
   artist: text(80),
   own: z.boolean().default(false),
+  /** Track length from Spotify, when the song was picked from search. */
+  durationMs: z.number().int().positive().max(3_600_000).optional(),
 });
 
 export const weightsSchema = z
@@ -35,6 +40,8 @@ export const planRequestSchema = z.object({
   performer: z.object({
     name: text(80),
     artists: z.array(text(80)).min(1).max(10),
+    /** Spotify ids for artists picked from search: Qloo resolves these by id before trying the name. */
+    spotifyArtists: z.array(z.object({ name: text(80), id: spotifyIdSchema })).max(10).default([]),
     songs: z.array(repertoireSongSchema).max(60).default([]),
   }),
   weights: weightsSchema.optional(),
@@ -125,6 +132,8 @@ export const planPitchSchema = z.object({
       affinitySource: z.enum(["qloo", "proxy"]),
       playcount: z.number().nullable(),
       reason: z.string(),
+      /** Track length, when known (songs picked from Spotify search). */
+      durationMs: z.number().nullable().default(null),
     }),
   ),
 });

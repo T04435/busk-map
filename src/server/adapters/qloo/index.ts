@@ -40,18 +40,36 @@ export const MAX_ARTISTS = 10;
 
 export type ResolvedArtist = { query: string; entity: QlooEntity | null };
 
-/** resolve_repertoire: artist names to Qloo entities (null when Qloo has no match). */
-export function resolveArtists(names: string[], context: AdapterContext): Promise<AdapterResult<ResolvedArtist[]>> {
+/**
+ * resolve_repertoire: artist names to Qloo entities (null when Qloo has no match).
+ * Artists picked from Spotify search carry their Spotify id: Qloo's external-id
+ * lookup (`/entities?external.spotify.ids=`) is tried first, as it can't pick the
+ * wrong namesake; the name search is the fallback when the id finds nothing or fails.
+ */
+export function resolveArtists(
+  names: string[],
+  context: AdapterContext,
+  spotifyArtists: readonly { name: string; id: string }[] = [],
+): Promise<AdapterResult<ResolvedArtist[]>> {
   const byKey = new Map<string, string>();
   for (const name of names.map((n) => n.trim()).filter(Boolean)) {
     if (!byKey.has(name.toLowerCase())) byKey.set(name.toLowerCase(), name);
   }
   const unique = [...byKey.values()].slice(0, MAX_ARTISTS);
+  const spotifyIdOf = new Map(spotifyArtists.map((a) => [a.name.trim().toLowerCase(), a.id]));
   return run(
     context,
     unique.map((query) => ({ query, entity: null })),
     async (backend) => {
-      const settled = await Promise.allSettled(unique.map((name) => client.searchArtist(backend, name)));
+      const resolveOne = async (name: string): Promise<QlooEntity | null> => {
+        const spotifyId = spotifyIdOf.get(name.toLowerCase());
+        if (spotifyId) {
+          const [byId] = await client.entitiesBySpotifyIds(backend, [spotifyId]).catch(() => []);
+          if (byId) return byId;
+        }
+        return client.searchArtist(backend, name);
+      };
+      const settled = await Promise.allSettled(unique.map(resolveOne));
       if (unique.length > 0 && settled.every((s) => s.status === "rejected")) throw (settled[0] as PromiseRejectedResult).reason;
       return unique.map((query, i) => ({ query, entity: settled[i].status === "fulfilled" ? (settled[i] as PromiseFulfilledResult<QlooEntity | null>).value : null }));
     },

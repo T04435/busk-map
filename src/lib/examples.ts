@@ -26,6 +26,7 @@ export const EXAMPLES: ExamplePerformer[] = [
     performer: {
       name: "Acoustic singer-songwriter",
       artists: ["Paul Kelly", "Courtney Barnett", "Vance Joy", "Missy Higgins"],
+      spotifyArtists: [],
       songs: [
         { title: "How to Make Gravy", artist: "Paul Kelly", own: false },
         { title: "Dumb Things", artist: "Paul Kelly", own: false },
@@ -47,6 +48,7 @@ export const EXAMPLES: ExamplePerformer[] = [
     performer: {
       name: "Soul and funk sax player",
       artists: ["Stevie Wonder", "Amy Winehouse", "Hiatus Kaiyote", "Kamasi Washington"],
+      spotifyArtists: [],
       songs: [
         { title: "Superstition", artist: "Stevie Wonder", own: false },
         { title: "Isn't She Lovely", artist: "Stevie Wonder", own: false },
@@ -67,6 +69,7 @@ export const EXAMPLES: ExamplePerformer[] = [
     performer: {
       name: "Folk duo",
       artists: ["Angus & Julia Stone", "The Paper Kites", "Simon & Garfunkel", "Mumford & Sons"],
+      spotifyArtists: [],
       songs: [
         { title: "Big Jet Plane", artist: "Angus & Julia Stone", own: false },
         { title: "Bloom", artist: "The Paper Kites", own: false },

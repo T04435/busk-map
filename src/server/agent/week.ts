@@ -119,7 +119,7 @@ export async function buildWeekPlan(
   const weekEnd = zonedHourToUtc(addDays(dates[dates.length - 1], 1), 0, city.timeZone);
 
   // Qloo is required. Resolve first; stop if it is down.
-  const resolved = track(await qloo.resolveArtists(request.performer.artists, adapters));
+  const resolved = track(await qloo.resolveArtists(request.performer.artists, adapters, request.performer.spotifyArtists));
   if (statuses.get("qloo")?.mode === "fallback") throw new WeekQlooUnavailableError("Qloo is unavailable");
   const ids = resolved.flatMap((r) => (r.entity ? [r.entity.id] : []));
 

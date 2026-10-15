@@ -3,17 +3,23 @@ import { buildSetlist, learnThese } from "@/server/scoring";
 import type { RepertoireSong } from "@/server/scoring";
 import { trackKey } from "@/lib/text";
 
-const song = (id: string, title: string, artist: string, artistEntityId: string | null, own = false): RepertoireSong => ({
+const song = (id: string, title: string, artist: string, artistEntityId: string | null, own = false, durationMs: number | null = null): RepertoireSong => ({
   id,
   title,
   artist,
   artistEntityId,
   own,
+  durationMs,
 });
 
 describe("buildSetlist", () => {
   it("returns nothing for an empty repertoire", () => {
     expect(buildSetlist([], {}, {})).toEqual([]);
+  });
+
+  it("carries each song's length through", () => {
+    const list = buildSetlist([song("s1", "Timed", "A", null, false, 215_000), song("s2", "Untimed", "B", null)], {}, {});
+    expect(Object.fromEntries(list.map((s) => [s.title, s.durationMs]))).toEqual({ Timed: 215_000, Untimed: null });
   });
 
   it("blends crowd affinity with song popularity, opens with a recognisable song and avoids back-to-back artists", () => {

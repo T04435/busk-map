@@ -22,7 +22,7 @@ describe("comparison store", () => {
   it("aggregates the uniqueness rate and score delta (memory store)", async () => {
     const { MemoryComparisonStore } = await load();
     const store = new MemoryComparisonStore();
-    expect(await store.stats()).toEqual({ runs: 0, picks: 0, uniquePicks: 0, uniqueRate: null, averageOverlap: null, averageScoreDelta: null, runsWithScoredPlainSpots: 0 });
+    expect(await store.stats()).toEqual({ runs: 0, picks: 0, uniquePicks: 0, uniqueRate: null, averageOverlap: null, averageScoreDelta: null, runsWithScoredPlainSpots: 0, agentRuns: 0, agentDiffersRuns: 0, agentDiffersRate: null, agentPicks: 0, agentDifferentPicks: 0, averageAgentScoreDelta: null });
     await store.record(record(1, [80, 70, 60], [50, null, 40]));
     await store.record(record(0, [60, 60, 60], [null, null, null]));
     expect(await store.stats()).toEqual({
@@ -33,6 +33,7 @@ describe("comparison store", () => {
       averageOverlap: 0.5,
       averageScoreDelta: 70 - 45,
       runsWithScoredPlainSpots: 1,
+      agentRuns: 0, agentDiffersRuns: 0, agentDiffersRate: null, agentPicks: 0, agentDifferentPicks: 0, averageAgentScoreDelta: null,
     });
   });
 
@@ -63,6 +64,7 @@ describe("comparison store", () => {
     const sql = {
       query: vi.fn(async (text: string, params?: unknown[]): Promise<unknown[]> => {
         queries.push({ text, params });
+        if (text.startsWith("SELECT") && text.includes("agent_runs")) return [{ agent_runs: 4, agent_differs_runs: 1, agent_picks: 12, agent_different_picks: 2, average_agent_delta: -3.5 }];
         if (text.startsWith("SELECT")) return [{ runs: 2, picks: 6, unique_picks: 5, average_overlap: 0.5, average_score_delta: 25, runs_with_scored: 1 }];
         return [];
       }),
@@ -73,9 +75,24 @@ describe("comparison store", () => {
     // Migrations run ahead of time over the direct connection (scripts/migrate.mjs), never from the app.
     expect(queries.filter((q) => /CREATE|ALTER|DROP/.test(q.text))).toHaveLength(0);
     const insert = queries.find((q) => q.text.startsWith("INSERT"))!;
-    expect(insert.params).toEqual(["acoustic", "melbourne", "2026-10-17 18-21", 1, expect.any(String), expect.any(String), 70, 45]);
-    expect(queries.filter((q) => q.text.startsWith("INSERT")).at(-1)!.params!.at(-1)).toBeNull();
-    expect(await store.stats()).toEqual({ runs: 2, picks: 6, uniquePicks: 5, uniqueRate: 5 / 6, averageOverlap: 0.5, averageScoreDelta: 25, runsWithScoredPlainSpots: 1 });
+    expect(insert.params).toEqual(["acoustic", "melbourne", "2026-10-17 18-21", 1, expect.any(String), expect.any(String), 70, 45, null]);
+    // No plain spot scored: plain_avg is null.
+    expect(queries.filter((q) => q.text.startsWith("INSERT")).at(-1)!.params!.at(-2)).toBeNull();
+    expect(await store.stats()).toEqual({
+      runs: 2,
+      picks: 6,
+      uniquePicks: 5,
+      uniqueRate: 5 / 6,
+      averageOverlap: 0.5,
+      averageScoreDelta: 25,
+      runsWithScoredPlainSpots: 1,
+      agentRuns: 4,
+      agentDiffersRuns: 1,
+      agentDiffersRate: 0.25,
+      agentPicks: 12,
+      agentDifferentPicks: 2,
+      averageAgentScoreDelta: -3.5,
+    });
     sql.query.mockImplementationOnce(async () => [{ runs: 0, picks: 0, unique_picks: 0, average_overlap: null, average_score_delta: null, runs_with_scored: 0 }]);
     expect((await store.stats()).uniqueRate).toBeNull();
   });
@@ -92,5 +109,33 @@ describe("comparison store", () => {
     fail = false;
     await recordComparison(store, record(0, [1], []));
     expect(sql.query.mock.calls.some((c) => String(c[0]).startsWith("INSERT"))).toBe(true);
+  });
+
+  it("records Agent v2 against the engine on the plan's row, in either order with the baseline (memory store)", async () => {
+    const { MemoryComparisonStore, agentRecord } = await load();
+    const store = new MemoryComparisonStore();
+    const engine = [{ id: "a", score: 80 }, { id: "b", score: 70 }, { id: "c", score: 60 }];
+    // Same top 3 in another order: not "differs".
+    await store.recordAgent(agentRecord("k1", "acoustic", "melbourne", "s", engine, [engine[1], engine[0], engine[2]]));
+    // One pick outside the engine's top 3, scored lower by the engine.
+    await store.recordAgent(agentRecord("k2", "sax", "melbourne", "s", engine, [engine[0], engine[1], { id: "d", score: 51 }]));
+    // A repeat of k2 replaces it rather than counting twice.
+    await store.recordAgent(agentRecord("k2", "sax", "melbourne", "s", engine, [engine[0], engine[1], { id: "d", score: 51 }]));
+    await store.record(record(0, [80, 70, 60], [50]), "k2");
+    await store.record(record(1, [80, 70, 60], [50]), "k2");
+    const stats = await store.stats();
+    expect(stats).toMatchObject({ runs: 1, averageOverlap: 1, agentRuns: 2, agentDiffersRuns: 1, agentDiffersRate: 0.5, agentPicks: 6, agentDifferentPicks: 1 });
+    expect(stats.averageAgentScoreDelta).toBeCloseTo((0 + (67 - 70)) / 2);
+  });
+
+  it("Postgres: the agent part upserts on the run key, ids and scores only", async () => {
+    const { PostgresComparisonStore, agentRecord } = await load();
+    const queries: { text: string; params?: unknown[] }[] = [];
+    const sql = { query: vi.fn(async (text: string, params?: unknown[]): Promise<unknown[]> => (queries.push({ text, params }), [])) };
+    const store = new PostgresComparisonStore(sql as never);
+    await store.recordAgent(agentRecord("k", "custom", "melbourne", "s", [{ id: "a", score: 80 }], [{ id: "z", score: 50 }]));
+    expect(queries[0].text).toMatch(/ON CONFLICT \(run_key\) DO UPDATE SET agent/);
+    expect(queries[0].params).toEqual(["custom", "melbourne", "s", "k", expect.any(String), 50, 80, true]);
+    expect(JSON.parse(queries[0].params![4] as string)).toEqual({ engineTop: [{ pitchId: "a", score: 80 }], agentTop: [{ pitchId: "z", score: 50, inEngineTop: false }] });
   });
 });

@@ -85,12 +85,12 @@ describe("hasSharedRun", () => {
   beforeEach(() => clearRunsForTests());
   it("is true while a run is in flight or fresh, so replays aren't rate limited", async () => {
     const { hasSharedRun } = await import("@/server/agent/runs");
-    expect(hasSharedRun("x")).toBe(false);
+    expect(await hasSharedRun("x")).toBe(false);
     sharedRun("x", 1_000, async (run) => run.push(plan));
-    expect(hasSharedRun("x")).toBe(true);
+    expect(await hasSharedRun("x")).toBe(true);
     await new Promise((r) => setTimeout(r, 0));
-    expect(hasSharedRun("x")).toBe(true);
-    expect(hasSharedRun("x", Date.now() + 2_000)).toBe(false);
+    expect(await hasSharedRun("x")).toBe(true);
+    expect(await hasSharedRun("x", undefined, undefined, undefined, Date.now() + 2_000)).toBe(false);
   });
 });
 
@@ -104,5 +104,91 @@ describe("runs that fell back", () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(first.run.ok).toBe(false);
     expect(sharedRun("fallback", 60_000, async (run) => run.push(plan)).reused).toBe(false);
+  });
+});
+
+describe("runs in the plan store (another server instance)", () => {
+  beforeEach(() => clearRunsForTests());
+
+  it("a finished run is stored with its step data and replayed by an instance that never ran it", async () => {
+    const { MemoryPlanStore } = await import("@/server/agent/plan-store");
+    const { sharedRunWithStore } = await import("@/server/agent/runs");
+    const store = new MemoryPlanStore();
+    const withData: PlanStreamEvent = { type: "tool-end", id: "1", tool: "taste_map", ok: true, summary: "s", output: { cells: 3 } };
+    let starts = 0;
+    const start = async (run: AgentRun) => {
+      starts++;
+      run.push(step);
+      run.push(withData);
+      run.push(plan);
+    };
+    const first = await sharedRunWithStore("k", "hash", 60_000, start, store);
+    expect(first.reused).toBe(false);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(await store.get("run", "hash")).not.toBeNull();
+
+    clearRunsForTests(); // a fresh instance: nothing in memory
+    const second = await sharedRunWithStore("k", "hash", 60_000, start, store);
+    expect(second.reused).toBe(true);
+    expect(second.run.done).toBe(true);
+    const replayed: PlanStreamEvent[] = [];
+    second.run.follow((e) => replayed.push(e), () => {});
+    expect(replayed).toEqual([step, withData, plan]);
+    expect(starts).toBe(1);
+  });
+
+  it("failed or template runs are not stored; expired rows are not replayed", async () => {
+    const { MemoryPlanStore } = await import("@/server/agent/plan-store");
+    const { sharedRunWithStore, hasSharedRun } = await import("@/server/agent/runs");
+    const store = new MemoryPlanStore();
+    await sharedRunWithStore("f", "f", 60_000, async (run) => {
+      run.noReplay = true;
+      run.push(plan);
+    }, store);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(await store.get("run", "f")).toBeNull();
+
+    await store.put("run", "old", { events: [plan], startedAt: 0, finishedAt: 1 }, 60_000);
+    expect(await hasSharedRun("old-key", "old", 60_000, store)).toBe(false);
+    await store.put("run", "gone", { events: [plan], startedAt: Date.now(), finishedAt: Date.now() }, 1);
+    expect(await store.get("run", "gone", Date.now() + 10)).toBeNull();
+  });
+
+  it("a store that fails is a miss, never an error", async () => {
+    const { PostgresPlanStore, storeGet, storePut } = await import("@/server/agent/plan-store");
+    const sql = { query: async () => Promise.reject(new Error("down")) };
+    const store = new PostgresPlanStore(sql as never);
+    await expect(storeGet(store, "run", "k")).resolves.toBeNull();
+    await expect(storePut(store, "run", "k", {}, 1000)).resolves.toBeUndefined();
+  });
+
+  it("Postgres: reads fresh rows, deletes expired ones, upserts with an expiry", async () => {
+    const { PostgresPlanStore } = await import("@/server/agent/plan-store");
+    const queries: { text: string; params?: unknown[] }[] = [];
+    let fresh = true;
+    const sql = {
+      query: async (text: string, params?: unknown[]) => {
+        queries.push({ text, params });
+        return text.startsWith("SELECT") ? [{ value: { events: [] }, created_at: new Date(0).toISOString(), fresh }] : [];
+      },
+    };
+    const store = new PostgresPlanStore(sql as never);
+    expect(await store.get("baseline", "k")).toEqual({ value: { events: [] }, createdAt: 0 });
+    fresh = false;
+    expect(await store.get("baseline", "k")).toBeNull();
+    expect(queries.at(-1)!.text).toMatch(/^DELETE FROM plan_store/);
+    await store.put("run", "k", { a: 1 }, 5000);
+    expect(queries.at(-1)!.text).toMatch(/ON CONFLICT \(kind, plan_key\)/);
+    expect(queries.at(-1)!.params).toEqual(["run", "k", '{"a":1}', "5000"]);
+    expect(queries.some((q) => /CREATE|ALTER/.test(q.text))).toBe(false);
+  });
+
+  it("the plan key is a hash: the act's details are not in it", async () => {
+    const { planKey } = await import("@/server/agent/plan-store");
+    const { planRequestSchema } = await import("@/lib/plan-schema");
+    const request = planRequestSchema.parse({ city: "melbourne", slot: { date: "2026-10-17", startHour: 18, endHour: 21 }, performer: { name: "Mara", artists: ["Norah Jones"] } });
+    const key = planKey(request, false, "2026-10-16");
+    expect(key).toMatch(/^[0-9a-f]{40}$/);
+    expect(key).not.toBe(planKey(request, false, "2026-10-17"));
   });
 });

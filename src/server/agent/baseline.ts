@@ -3,13 +3,16 @@ import { localToday } from "@/lib/slot";
 import type { BaselineView, PlanRequest } from "@/lib/plan-schema";
 import type { AdapterContext } from "@/server/adapters/core";
 import { CITIES } from "@/server/cities";
-import { PUBLIC_SPOTS, USUAL_HOTSPOTS } from "@/server/data/spots";
+import { USUAL_HOTSPOTS } from "@/server/data/spots";
 import { comparisonStore, recordComparison } from "@/server/comparisons/store";
 import { log } from "@/server/log";
 import { processMap } from "@/server/memo";
-import { compareWithBaseline, comparisonRecord, type KnownPlace } from "@/server/scoring";
-import { HOTSPOT_ALIASES, plainLlmSuggestion } from "./compare";
-import { buildEnginePlan, engineContext, exampleIdFor } from "./preload";
+import { compareWithBaseline, comparisonRecord } from "@/server/scoring";
+import { plainLlmSuggestion } from "./compare";
+import { planKey, planStore, storeGet, storePut } from "./plan-store";
+import { buildEnginePlan, engineContext, exampleIdFor, isExampleRequest } from "./preload";
+import { EXAMPLE_RUN_TTL_MS, RUN_TTL_MS } from "./runs";
+import { knownPlaces } from "./where";
 
 /**
  * The plain-AI baseline for a plan: asked as soon as the plan page starts
@@ -21,16 +24,6 @@ export type BaselineResult = { status: "ok"; baseline: BaselineView } | { status
 const TTL_MS = 10 * 60_000;
 const MAX = 100;
 const memo = processMap<string, { at: number; result: Promise<BaselineResult> }>("baselines");
-
-function knownPlaces(sites: { name: string; lat: number; lon: number }[], sensors: { name: string; lat: number; lon: number }[]): KnownPlace[] {
-  const aliases = (name: string) => HOTSPOT_ALIASES.filter(([, target]) => target === name).map(([pattern]) => pattern);
-  return [
-    ...USUAL_HOTSPOTS.map((h) => ({ name: h.name, lat: h.lat, lon: h.lon, aliases: aliases(h.name) })),
-    ...PUBLIC_SPOTS.map((s) => ({ name: s.name, lat: s.lat, lon: s.lon })),
-    ...sites.map((s) => ({ name: s.name, lat: s.lat, lon: s.lon })),
-    ...sensors.map((s) => ({ name: s.name, lat: s.lat, lon: s.lon })),
-  ];
-}
 
 async function build(request: PlanRequest, adapters: AdapterContext, day: string): Promise<BaselineResult> {
   // The engine plan first, so every data call is cached before the comparison reads the context.
@@ -50,7 +43,7 @@ async function build(request: PlanRequest, adapters: AdapterContext, day: string
   // Recorded for the uniqueness stats (GET /api/baseline-stats): ids and scores only, never the act's name.
   const performerKey = exampleIdFor(request, day) ?? "custom";
   const slot = `${request.slot.date} ${request.slot.startHour}-${request.slot.endHour}`;
-  void recordComparison(comparisonStore(adapters.offline), comparisonRecord(comparison, top, performerKey, request.city, slot));
+  void recordComparison(comparisonStore(adapters.offline), comparisonRecord(comparison, top, performerKey, request.city, slot), planKey(request, adapters.offline, day));
   return {
     status: "ok",
     baseline: {
@@ -90,7 +83,18 @@ export function baselineFor(request: PlanRequest, adapters: AdapterContext, toda
   const { day, key } = keyFor(request, adapters, today);
   const hit = memo.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.result;
-  const result = build(request, adapters, day).catch((error): BaselineResult => {
+  // Shared across instances (plan-store.ts), like the agent's runs, for as long as a run is replayed. Test faults are never stored.
+  const store = planStore(adapters.offline);
+  const storeKey = planKey(request, adapters.offline, day);
+  const shared = adapters.faults.length === 0;
+  const ttl = isExampleRequest(request, day) ? EXAMPLE_RUN_TTL_MS : RUN_TTL_MS;
+  const result = (async (): Promise<BaselineResult> => {
+    const stored = shared ? await storeGet<BaselineResult>(store, "baseline", storeKey) : null;
+    if (stored?.value.status === "ok") return stored.value;
+    const built = await build(request, adapters, day);
+    if (shared && built.status === "ok") void storePut(store, "baseline", storeKey, built, ttl);
+    return built;
+  })().catch((error): BaselineResult => {
     log.error("baseline comparison failed", { error: error instanceof Error ? error.message : "unknown" });
     return { status: "error" };
   });

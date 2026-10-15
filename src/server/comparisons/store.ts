@@ -22,11 +22,52 @@ export type ComparisonStats = {
   /** Busk Map's average pick score minus the plain AI's scored spots' average, over runs where any plain spot could be scored. */
   averageScoreDelta: number | null;
   runsWithScoredPlainSpots: number;
+  /** Agent v2 against the engine alone: runs with Claude's accepted answer. */
+  agentRuns: number;
+  /** Runs where Claude's top 3 isn't the engine's top 3 (as a set). */
+  agentDiffersRuns: number;
+  /** agentDiffersRuns / agentRuns, 0–1 (null with no agent runs). */
+  agentDiffersRate: number | null;
+  /** Claude's picks outside the engine's top 3, over all Claude's picks. */
+  agentPicks: number;
+  agentDifferentPicks: number;
+  /** Claude's average pick score minus the engine's top-3 average (engine scores both), over agent runs. */
+  averageAgentScoreDelta: number | null;
 };
+
+/**
+ * One Agent v2 run, recorded next to the baseline row of the same plan
+ * (run key). Ids and engine scores only.
+ */
+export type AgentRecord = {
+  runKey: string;
+  performerKey: string;
+  city: string;
+  slot: string;
+  engineTop: { pitchId: string; score: number }[];
+  agentTop: { pitchId: string; score: number; inEngineTop: boolean }[];
+};
+
+export function agentRecord(runKey: string, performerKey: string, city: string, slot: string, engineTop: { id: string; score: number }[], agentTop: { id: string; score: number }[]): AgentRecord {
+  const engineIds = new Set(engineTop.map((p) => p.id));
+  return {
+    runKey,
+    performerKey,
+    city,
+    slot,
+    engineTop: engineTop.map((p) => ({ pitchId: p.id, score: p.score })),
+    agentTop: agentTop.map((p) => ({ pitchId: p.id, score: p.score, inEngineTop: engineIds.has(p.id) })),
+  };
+}
+
+const agentDiffers = (r: AgentRecord) => r.agentTop.some((p) => !p.inEngineTop) || r.agentTop.length !== r.engineTop.length;
 
 export interface ComparisonStore {
   readonly kind: "postgres" | "memory" | "none";
-  record(record: ComparisonRecord): Promise<void>;
+  /** A baseline comparison; with a run key, it fills that plan's row (upsert). */
+  record(record: ComparisonRecord, runKey?: string): Promise<void>;
+  /** Claude's top 3 against the engine's, on the plan's row. */
+  recordAgent(record: AgentRecord): Promise<void>;
   stats(): Promise<ComparisonStats | null>;
 }
 
@@ -37,7 +78,18 @@ const averages = (r: ComparisonRecord) => {
 };
 
 /** The aggregate, computed the same way as the SQL in PostgresComparisonStore. */
-export function statsOf(records: ComparisonRecord[]): ComparisonStats {
+export function statsOf(records: ComparisonRecord[], agents: AgentRecord[] = []): ComparisonStats {
+  const agentPicks = agents.reduce((n, r) => n + r.agentTop.length, 0);
+  const agentDifferentPicks = agents.reduce((n, r) => n + r.agentTop.filter((p) => !p.inEngineTop).length, 0);
+  const differs = agents.filter(agentDiffers).length;
+  const agentStats = {
+    agentRuns: agents.length,
+    agentDiffersRuns: differs,
+    agentDiffersRate: agents.length === 0 ? null : differs / agents.length,
+    agentPicks,
+    agentDifferentPicks,
+    averageAgentScoreDelta: mean(agents.map((r) => (mean(r.agentTop.map((p) => p.score)) ?? 0) - (mean(r.engineTop.map((p) => p.score)) ?? 0))),
+  };
   const picks = records.reduce((n, r) => n + r.ours.length, 0);
   const uniquePicks = records.reduce((n, r) => n + r.ours.filter((p) => !p.agreed).length, 0);
   const deltas = records.flatMap((r) => {
@@ -52,6 +104,7 @@ export function statsOf(records: ComparisonRecord[]): ComparisonStats {
     averageOverlap: mean(records.map((r) => r.overlap)),
     averageScoreDelta: mean(deltas),
     runsWithScoredPlainSpots: deltas.length,
+    ...agentStats,
   };
 }
 
@@ -59,11 +112,23 @@ export function statsOf(records: ComparisonRecord[]): ComparisonStats {
 export class MemoryComparisonStore implements ComparisonStore {
   readonly kind = "memory" as const;
   readonly records: ComparisonRecord[] = [];
-  async record(record: ComparisonRecord) {
-    this.records.push(record);
+  readonly agents: AgentRecord[] = [];
+  private readonly byRunKey = new Map<string, number>();
+  async record(record: ComparisonRecord, runKey?: string) {
+    const at = runKey === undefined ? undefined : this.byRunKey.get(runKey);
+    if (at !== undefined) this.records[at] = record;
+    else {
+      this.records.push(record);
+      if (runKey !== undefined) this.byRunKey.set(runKey, this.records.length - 1);
+    }
+  }
+  async recordAgent(record: AgentRecord) {
+    const at = this.agents.findIndex((a) => a.runKey === record.runKey);
+    if (at === -1) this.agents.push(record);
+    else this.agents[at] = record;
   }
   async stats() {
-    return statsOf(this.records);
+    return statsOf(this.records, this.agents);
   }
 }
 
@@ -75,6 +140,9 @@ export class NoComparisonStore implements ComparisonStore {
     if (this.warned) return;
     this.warned = true;
     log.info("baseline comparisons are not recorded: DATABASE_URL is not set");
+  }
+  async recordAgent() {
+    await this.record();
   }
   async stats() {
     return null;
@@ -94,11 +162,23 @@ export class PostgresComparisonStore implements ComparisonStore {
   readonly kind = "postgres" as const;
   constructor(private readonly sql: Sql) {}
 
-  async record(record: ComparisonRecord) {
+  async record(record: ComparisonRecord, runKey?: string) {
     const a = averages(record);
     await this.sql.query(
-      "INSERT INTO baseline_comparisons (performer_key, city, slot, overlap, ours, plain, our_avg, plain_avg) VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8)",
-      [record.performerKey, record.city, record.slot, record.overlap, JSON.stringify(record.ours), JSON.stringify(record.plain), a.ours, a.plain],
+      `INSERT INTO baseline_comparisons (performer_key, city, slot, overlap, ours, plain, our_avg, plain_avg, run_key) VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8, $9)
+       ON CONFLICT (run_key) DO UPDATE SET overlap = EXCLUDED.overlap, ours = EXCLUDED.ours, plain = EXCLUDED.plain, our_avg = EXCLUDED.our_avg, plain_avg = EXCLUDED.plain_avg,
+         performer_key = EXCLUDED.performer_key, city = EXCLUDED.city, slot = EXCLUDED.slot`,
+      [record.performerKey, record.city, record.slot, record.overlap, JSON.stringify(record.ours), JSON.stringify(record.plain), a.ours, a.plain, runKey ?? null],
+    );
+  }
+
+  async recordAgent(record: AgentRecord) {
+    const agentAvg = mean(record.agentTop.map((p) => p.score));
+    const engineAvg = mean(record.engineTop.map((p) => p.score));
+    await this.sql.query(
+      `INSERT INTO baseline_comparisons (performer_key, city, slot, run_key, agent, agent_avg, agent_engine_avg, agent_differs) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8)
+       ON CONFLICT (run_key) DO UPDATE SET agent = EXCLUDED.agent, agent_avg = EXCLUDED.agent_avg, agent_engine_avg = EXCLUDED.agent_engine_avg, agent_differs = EXCLUDED.agent_differs`,
+      [record.performerKey, record.city, record.slot, record.runKey, JSON.stringify({ engineTop: record.engineTop, agentTop: record.agentTop }), agentAvg, engineAvg, agentDiffers(record)],
     );
   }
 
@@ -110,9 +190,18 @@ export class PostgresComparisonStore implements ComparisonStore {
               avg(overlap)::float AS average_overlap,
               avg(our_avg - plain_avg) FILTER (WHERE plain_avg IS NOT NULL)::float AS average_score_delta,
               count(*) FILTER (WHERE plain_avg IS NOT NULL)::int AS runs_with_scored
-         FROM baseline_comparisons`,
+         FROM baseline_comparisons WHERE ours IS NOT NULL`,
     )) as { runs: number; picks: number; unique_picks: number; average_overlap: number | null; average_score_delta: number | null; runs_with_scored: number }[];
+    const agentRows = (await this.sql.query(
+      `SELECT count(*)::int AS agent_runs,
+              count(*) FILTER (WHERE agent_differs)::int AS agent_differs_runs,
+              coalesce(sum(jsonb_array_length(agent->'agentTop')), 0)::int AS agent_picks,
+              coalesce(sum((SELECT count(*) FROM jsonb_array_elements(agent->'agentTop') p WHERE NOT (p->>'inEngineTop')::boolean)), 0)::int AS agent_different_picks,
+              avg(agent_avg - agent_engine_avg)::float AS average_agent_delta
+         FROM baseline_comparisons WHERE agent IS NOT NULL`,
+    )) as { agent_runs: number; agent_differs_runs: number; agent_picks: number; agent_different_picks: number; average_agent_delta: number | null }[];
     const r = rows[0];
+    const g = agentRows[0] ?? { agent_runs: 0, agent_differs_runs: 0, agent_picks: 0, agent_different_picks: 0, average_agent_delta: null };
     return {
       runs: r.runs,
       picks: r.picks,
@@ -121,6 +210,12 @@ export class PostgresComparisonStore implements ComparisonStore {
       averageOverlap: r.average_overlap,
       averageScoreDelta: r.average_score_delta,
       runsWithScoredPlainSpots: r.runs_with_scored,
+      agentRuns: g.agent_runs,
+      agentDiffersRuns: g.agent_differs_runs,
+      agentDiffersRate: g.agent_runs === 0 ? null : g.agent_differs_runs / g.agent_runs,
+      agentPicks: g.agent_picks,
+      agentDifferentPicks: g.agent_different_picks,
+      averageAgentScoreDelta: g.average_agent_delta,
     };
   }
 }
@@ -140,11 +235,20 @@ export function comparisonStore(offline: boolean): ComparisonStore {
 }
 
 /** Record without ever failing the caller. */
-export async function recordComparison(target: ComparisonStore, record: ComparisonRecord): Promise<void> {
+export async function recordComparison(target: ComparisonStore, record: ComparisonRecord, runKey?: string): Promise<void> {
   try {
-    await target.record(record);
+    await target.record(record, runKey);
   } catch (error) {
     log.warn("baseline comparison not recorded", { store: target.kind, error: error instanceof Error ? error.message : "unknown" });
+  }
+}
+
+/** Record an agent run without ever failing the caller. */
+export async function recordAgentRun(target: ComparisonStore, record: AgentRecord): Promise<void> {
+  try {
+    await target.recordAgent(record);
+  } catch (error) {
+    log.warn("agent comparison not recorded", { store: target.kind, error: error instanceof Error ? error.message : "unknown" });
   }
 }
 

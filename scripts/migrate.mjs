@@ -40,4 +40,5 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
   console.log(`Applied ${file} (${list.length} statements)`);
 }
 const [{ count }] = await sql.query("SELECT count(*)::int AS count FROM baseline_comparisons");
-console.log(`baseline_comparisons rows: ${count}`);
+const [{ stored }] = await sql.query("SELECT count(*)::int AS stored FROM plan_store");
+console.log(`baseline_comparisons rows: ${count}; plan_store rows: ${stored}`);

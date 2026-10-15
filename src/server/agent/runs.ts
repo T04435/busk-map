@@ -1,6 +1,7 @@
 import "server-only";
 import type { PlanStreamEvent } from "@/lib/plan-schema";
 import { processMap } from "@/server/memo";
+import { storeGet, storePut, type PlanStore } from "./plan-store";
 
 /**
  * Agent runs, shared and replayed. The plan page starts the agent on every
@@ -14,8 +15,8 @@ import { processMap } from "@/server/memo";
  * going if its first viewer leaves, so the result can still be reused; the
  * agent's own timeout and step limit bound it.
  *
- * Memory only: one instance's runs. Cross-instance reuse of the examples is
- * left to the engine plan's remote cache (preload.ts).
+ * Finished runs are also stored by plan key (plan-store.ts: Neon, or memory
+ * offline), so another server instance replays them instead of paying again.
  */
 export const RUN_TTL_MS = 15 * 60_000;
 export const EXAMPLE_RUN_TTL_MS = 6 * 60 * 60_000;
@@ -25,7 +26,17 @@ type Follower = { onEvent: (event: PlanStreamEvent) => void; onDone: () => void 
 
 export class AgentRun {
   readonly events: PlanStreamEvent[] = [];
-  readonly startedAt = Date.now();
+  startedAt = Date.now();
+
+  /** A finished run rebuilt from the plan store, for replay. */
+  static replay(events: PlanStreamEvent[], startedAt: number, finishedAt: number): AgentRun {
+    const run = new AgentRun();
+    run.events.push(...events);
+    run.startedAt = startedAt;
+    run.finishedAt = finishedAt;
+    run.ok = true;
+    return run;
+  }
   finishedAt: number | null = null;
   /** True once finished with a plan and no error. */
   ok = false;
@@ -68,16 +79,24 @@ const runs = processMap<string, { run: AgentRun; ttl: number }>("agent-runs");
 const reusable = (entry: { run: AgentRun; ttl: number } | undefined, now: number) =>
   entry !== undefined && (!entry.run.done || (entry.run.ok && now - entry.run.finishedAt! < entry.ttl));
 
-/** Whether a request with this key would join or replay a run (no new model call). */
-export function hasSharedRun(key: string, now = Date.now()): boolean {
-  return reusable(runs.get(key), now);
+/** Whether a request with this key would join or replay a run (no new model call), in this instance or from the store. */
+export async function hasSharedRun(key: string, storeKey?: string, ttl?: number, store?: PlanStore, now = Date.now()): Promise<boolean> {
+  if (reusable(runs.get(key), now)) return true;
+  if (!store || !storeKey || ttl === undefined) return false;
+  return (await storedRun(key, storeKey, ttl, store, now)) !== null;
 }
 
 /**
  * The run for this key: an existing one (in flight, or finished and fresh), or
  * a new one started with `start`. `reused` says which.
  */
-export function sharedRun(key: string, ttl: number, start: (run: AgentRun) => Promise<void>, now = Date.now()): { run: AgentRun; reused: boolean } {
+export function sharedRun(
+  key: string,
+  ttl: number,
+  start: (run: AgentRun) => Promise<void>,
+  now = Date.now(),
+  onDone?: (run: AgentRun) => void,
+): { run: AgentRun; reused: boolean } {
   const existing = runs.get(key);
   if (existing && reusable(existing, now)) return { run: existing.run, reused: true };
   const run = new AgentRun();
@@ -88,8 +107,42 @@ export function sharedRun(key: string, ttl: number, start: (run: AgentRun) => Pr
     .finally(() => {
       run.finish();
       if (!run.ok) runs.delete(key);
+      onDone?.(run);
     });
   return { run, reused: false };
+}
+
+export type StoredRun = { events: PlanStreamEvent[]; startedAt: number; finishedAt: number };
+
+/** A finished run of this plan in the plan store (another instance's), put in memory for replay. */
+export async function storedRun(key: string, storeKey: string, ttl: number, store: PlanStore, now = Date.now()): Promise<AgentRun | null> {
+  if (reusable(runs.get(key), now)) return runs.get(key)!.run;
+  const hit = await storeGet<StoredRun>(store, "run", storeKey);
+  if (!hit || now - hit.value.finishedAt >= ttl) return null;
+  // Another viewer may have started or loaded the run while the store answered.
+  if (reusable(runs.get(key), now)) return runs.get(key)!.run;
+  const run = AgentRun.replay(hit.value.events, hit.value.startedAt, hit.value.finishedAt);
+  runs.set(key, { run, ttl });
+  return run;
+}
+
+/**
+ * The run for this plan: joined or replayed from this instance, replayed from
+ * the plan store, or started (and stored once it finishes with a plan).
+ */
+export async function sharedRunWithStore(
+  key: string,
+  storeKey: string,
+  ttl: number,
+  start: (run: AgentRun) => Promise<void>,
+  store: PlanStore,
+  now = Date.now(),
+): Promise<{ run: AgentRun; reused: boolean }> {
+  const found = await storedRun(key, storeKey, ttl, store, now);
+  if (found) return { run: found, reused: true };
+  return sharedRun(key, ttl, start, now, (run) => {
+    if (run.ok) void storePut(store, "run", storeKey, { events: run.events, startedAt: run.startedAt, finishedAt: run.finishedAt! } satisfies StoredRun, ttl);
+  });
 }
 
 export function clearRunsForTests() {

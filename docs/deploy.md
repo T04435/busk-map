@@ -27,26 +27,28 @@ The four routes that spend money or a third-party quota are protected:
 | `/api/plan` | POST | the live agent (Claude Sonnet) |
 | `/api/compare` | POST | the plain-LLM comparison (Claude Haiku) |
 | `/api/week` | POST | week explanations (Claude) |
-| `/api/repertoire` | GET | Spotify search |
+| `/api/repertoire` | GET | Spotify search (songs, artists with release counts) and Last.fm listener counts |
 
 - The browser side is `src/instrumentation-client.ts` (`initBotId`), the list of routes is `src/lib/botid-routes.ts`, and the server check is `src/server/bot.ts` (`checkBotId`). `next.config.ts` wraps the config in `withBotId` for the challenge proxy rewrites.
 - BotID runs only on Vercel builds (`VERCEL=1`). Locally, in `pnpm start` and in the e2e tests the browser sends no challenge and the server skips the check, so nothing changes there.
 - A bot gets a 403 `bot_detected`. If BotID itself fails, these routes fail closed with a 503, because they spend the AI budget.
 - `curl` against a protected route is rejected in production by design; test from the app's pages.
-- **Optional (Pro):** Project → Firewall → Rules → enable **Vercel BotID Deep Analysis**.
+- **Optional (Pro):** Project → Firewall → Rules → enable **Vercel BotID Deep Analysis**. Deep Analysis is billed per check, and live search makes a check per debounced keystroke, so check the pricing against expected search volume first.
 
 After the first deploy, check one live agent run from `/plan?example=acoustic` ("Plan with the agent (live)") and one song search on the landing page. A 403 or 503 there means the client and server lists are out of step; the function logs say "bot check failed" with the reason.
 
 ## 3. WAF rate-limit rule
 
-The app has a per-instance limiter (6 agent runs and 12 comparisons per IP per 10 minutes), but instances don't share it. Add this rule so the limit holds across the whole deployment. Hobby allows one rate-limit rule per project, so it covers all four routes.
+The app has a per-instance limiter (6 agent runs and 12 comparisons per IP per 10 minutes, 120 searches per IP per minute), but instances don't share it. Add this rule so the limit holds across the whole deployment. Hobby allows one rate-limit rule per project.
+
+Song and artist search now runs as you type (debounced 300 ms, from 3 characters, plus one Last.fm lookup per artist result list), so one performer filling the form can make 30 or more `/api/repertoire` calls in a minute. Keep `/api/repertoire` out of the 20-a-minute rule: it stays behind BotID and the app's own limiter, and the Spotify and Last.fm calls are cached.
 
 Project → **Firewall** → **Configure** → **+ New Rule**:
 
 | Field | Value |
 |---|---|
 | Name | `Busk Map: limit paid API routes` |
-| If | **Request Path** · **Matches expression** · `^/api/(plan\|compare\|week\|repertoire)$` |
+| If | **Request Path** · **Matches expression** · `^/api/(plan\|compare\|week)$` |
 | Then | **Rate Limit** |
 | Strategy | **Fixed Window** |
 | Time Window | **60s** |
@@ -56,12 +58,12 @@ Project → **Firewall** → **Configure** → **+ New Rule**:
 
 Then **Save Rule** → **Review Changes** → **Publish**.
 
-- 20 a minute is far above a real performer's use (one agent run, one comparison and a few song searches) and well below a script.
+- 20 a minute is far above a real performer's use (one agent run and one comparison) and well below a script.
 - Start with the **Log** action for a day if you want to see real traffic first, then switch to 429.
 - The app already explains a 429 ("Too many plans in a short time…").
 - Counters are per region, so the real ceiling is a little higher than 20 for traffic spread across regions.
 
-On Pro you can add a second, stricter rule for the agent alone: path `^/api/plan$`, Fixed Window **600s**, limit **10**, key IP.
+On Pro you can add a second, stricter rule for the agent alone: path `^/api/plan$`, Fixed Window **600s**, limit **10**, key IP; and a third for search: path `^/api/repertoire$`, Fixed Window **60s**, limit **120**, key IP.
 
 ## 4. Warm-up
 

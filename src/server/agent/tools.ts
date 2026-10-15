@@ -94,9 +94,12 @@ export class AgentState {
   readonly seen = new NumberBag();
   answer: AgentAnswer | null = null;
   rejections = 0;
-  /** The investigation check rejects once at most, and never once only finish_plan is left. */
-  nudged = false;
+  /** Set once score_pitches has run: compare_crowds and build_setlist need its pitchIds. */
+  scored = false;
+  /** Set near the step or token cap: score_pitches opens whatever the looks, so finish_plan gets a scored pool. */
   wrappingUp = false;
+  /** Investigation looks that returned data (GATE_TOOLS), in order: they open score_pitches. */
+  readonly looks: string[] = [];
   /** Set when the answer was accepted only after the numbers check failed MAX_FINISH_REJECTIONS times. */
   unverifiedNumbers: string[] = [];
   /** Calls per tool, for the trace. */
@@ -178,17 +181,44 @@ function compactPitch(p: ScoredPitch, engineTop: Set<string>, added: Set<string>
   };
 }
 
-/** Tools that look at the data (not scoring or finishing): a plan needs some of these. */
-export const INVESTIGATION_TOOLS = ["taste_map", "crowd_at", "busy_places", "events_near", "footfall_at", "check_pitch", "compare_crowds"] as const;
-/** Distinct investigation tools before the first finish_plan is accepted. */
-export const MIN_INVESTIGATIONS = 3;
+/** Investigation looks that count towards opening score_pitches. */
+export const GATE_TOOLS = ["taste_map", "crowd_at", "events_near", "footfall_at", "busy_places", "check_pitch"] as const;
+/** At least one look must be about the crowd itself: its taste, who it is, or an event crowd. */
+export const CROWD_TOOLS = ["taste_map", "crowd_at", "events_near"] as const;
+/** Looks before score_pitches opens. */
+export const MIN_LOOKS = 3;
+/** Tools closed until the pool is scored (or, for score_pitches, until the looks are in). */
+export const AFTER_SCORING = ["score_pitches", "compare_crowds", "build_setlist", "finish_plan"] as const;
+
+/** Whether score_pitches is open: enough looks, one of them about the crowd; or the run is wrapping up. */
+export function scoringOpen(state: Pick<AgentState, "looks" | "wrappingUp">): boolean {
+  if (state.wrappingUp) return true;
+  return state.looks.length >= MIN_LOOKS && state.looks.some((t) => (CROWD_TOOLS as readonly string[]).includes(t));
+}
+
+/** What is still missing before score_pitches opens, for the tool error the model sees. */
+export function gateMessage(state: Pick<AgentState, "looks">): string {
+  const need = Math.max(0, MIN_LOOKS - state.looks.length);
+  const crowd = state.looks.some((t) => (CROWD_TOOLS as readonly string[]).includes(t));
+  const missing = [
+    need > 0 ? `${need} more look${need === 1 ? "" : "s"} (taste_map, crowd_at, events_near, footfall_at, busy_places or check_pitch)` : null,
+    crowd ? null : "at least one of taste_map, crowd_at or events_near",
+  ].filter(Boolean);
+  return `score_pitches isn't open yet: investigate first and form your own shortlist. Still needed: ${missing.join(" and ")}. Looks so far: ${state.looks.join(", ") || "none"}.`;
+}
 
 export function createTools(ctx: PlanContext, state: AgentState) {
   const tools = buildTools(ctx, state);
-  // Record each call (for the investigation check), whatever its result.
+  // Record each call, and each investigation look that returned data (they open score_pitches).
   for (const [name, t] of Object.entries(tools) as [string, { execute?: (...args: never[]) => unknown }][]) {
     const execute = t.execute;
-    if (execute) t.execute = ((...args: never[]) => (state.calls.push(name), execute(...args))) as typeof execute;
+    if (!execute) continue;
+    t.execute = (async (...args: never[]) => {
+      state.calls.push(name);
+      const out = await execute(...args);
+      if ((GATE_TOOLS as readonly string[]).includes(name)) state.looks.push(name);
+      return out;
+    }) as typeof execute;
   }
   return tools;
 }
@@ -213,6 +243,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
     const additions = [...state.added].map((id) => scorePitch(state.checked.get(id)!, inputs, ctx.weights));
     const all = [...ranked, ...additions].sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
     for (const p of all) state.pool.set(p.id, p);
+    state.scored = true;
     return { ranked: all, engineTop: pickTopPitches(ranked, 3) };
   }
 
@@ -477,6 +508,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
       description: `Score the engine's candidate pool plus any spots you add (pitchIds from check_pitch, up to ${MAX_ADDED}), with the engine's fixed weights. Returns the best ${SCORE_ROWS} with factor values (0–1), marks the engine's own top 3 and any pitch within ${MIN_FINAL_SPACING_M} m of a higher one (sameCornerAs), and the pool size. Final pitches must come from here.`,
       inputSchema: z.object({ add: z.array(z.string().max(80)).max(MAX_ADDED).optional().describe("pitchIds from check_pitch to add to the pool.") }),
       execute: async ({ add }) => {
+        if (!scoringOpen(state)) throw new WhereError(gateMessage(state));
         const unknown = (add ?? []).filter((id) => !state.checked.has(id) && !state.pool.has(id));
         if (unknown.length) throw new WhereError(`Not checked: ${unknown.join(", ")}. Call check_pitch first and use the pitchId it returns.`);
         for (const id of add ?? []) if (state.checked.has(id)) state.added.add(id);
@@ -504,7 +536,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
       description: "Compare two scored pitches: the genres that characterise each crowd (Qloo), the act's artists' affinity at each, and the engine's factors side by side.",
       inputSchema: z.object({ a: z.string().max(80).describe("pitchId"), b: z.string().max(80).describe("pitchId") }),
       execute: async ({ a, b }) => {
-        if (state.pool.size === 0) await scorePool();
+        if (!state.scored) throw new WhereError("Call score_pitches first: compare pitchIds it returned.");
         const pa = state.pool.get(a);
         const pb = state.pool.get(b);
         if (!pa || !pb) throw new WhereError(`Unknown pitchId ${!pa ? a : b}: use ids from score_pitches.`);
@@ -538,7 +570,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
       description: "Order the act's own songs for one scored pitch: crowd affinity for each song's artist there (Qloo), popularity (Last.fm) and era fit with the fans' age lean.",
       inputSchema: z.object({ pitchId: z.string().max(80) }),
       execute: async ({ pitchId }) => {
-        if (state.pool.size === 0) await scorePool();
+        if (!state.scored) throw new WhereError("Call score_pitches first: build the setlist for a pitchId it returned.");
         const pitch = state.pool.get(pitchId);
         if (!pitch) throw new WhereError(`Unknown pitchId ${pitchId}: use ids from score_pitches.`);
         const setlist = await ctx.setlistFor(pitch);
@@ -567,13 +599,8 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         `Finish: the three pitches you recommend (pitchIds from score_pitches, best first, at least ${MIN_FINAL_SPACING_M} m apart) with a short evidence-based why for each, a two-sentence summary and data caveats. Rejected answers say why; fix and call again.`,
       inputSchema: finishSchema,
       execute: async (answer) => {
-        const looked = new Set(state.calls.filter((c) => (INVESTIGATION_TOOLS as readonly string[]).includes(c)));
-        if (!state.nudged && !state.wrappingUp && looked.size < MIN_INVESTIGATIONS && state.pool.size > 0) {
-          state.nudged = true;
-          state.rejections++;
-          const message = `Investigate first: you have only used ${[...looked].join(", ") || "score_pitches"}. Check what the scores can't tell you about the pitches you're choosing between (the crowd, foot traffic at that hour, places or events nearby, or a spot the engine may have missed), then finish.`;
-          return { accepted: false, summary: `Rejected: ${message}`, problems: [message] };
-        }
+        // A run cut short before score_pitches still finishes against a scored pool: the engine's.
+        if (!state.scored && state.wrappingUp) await scorePool();
         const problems = checkAnswer(answer, state);
         if (problems.length > 0 && !(problems.every((p) => p.kind === "numbers") && state.rejections >= MAX_FINISH_REJECTIONS)) {
           state.rejections++;
@@ -595,7 +622,12 @@ export function checkAnswer(answer: AgentAnswer, state: AgentState): Problem[] {
   if (state.pool.size === 0) return [{ kind: "pool", message: "Call score_pitches before finishing." }];
   const ids = answer.pitches.map((p) => p.pitchId);
   const unknown = ids.filter((id) => !state.pool.has(id));
-  if (unknown.length) problems.push({ kind: "pool", message: `Not in the scored pool: ${unknown.join(", ")}. Use pitchIds from score_pitches.` });
+  if (unknown.length) {
+    const best = [...state.pool.values()].sort((a, b) => b.score - a.score || a.id.localeCompare(b.id)).slice(0, SCORE_ROWS);
+    const listing = best.map((p) => `${p.id} (${p.name}, ${p.score})`).join("; ");
+    state.seen.add(listing);
+    problems.push({ kind: "pool", message: `Not in the scored pool: ${unknown.join(", ")}. Use pitchIds from score_pitches. Best scored: ${listing}.` });
+  }
   if (new Set(ids).size !== ids.length) problems.push({ kind: "count", message: "Each pitch only once." });
   const want = Math.min(3, state.pool.size);
   if (ids.length < want) problems.push({ kind: "count", message: `Recommend ${want} pitches.` });

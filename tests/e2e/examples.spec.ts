@@ -67,6 +67,12 @@ test.describe("data-led plans", () => {
       await expect(buttons).toHaveCount(3);
       const names = await buttons.evaluateAll((els) => els.map((el) => el.getAttribute("data-pitch-name") ?? ""));
       tops.push(names);
+      if (example.id === "acoustic") {
+        // The usual busking hotspots are always scored (the mock's layers rule out Bourke Street Mall): here they rank in the top 10.
+        await page.getByRole("button", { name: /^Other scored pitches/ }).click();
+        const scored = (await page.getByRole("button", { name: /^Other scored pitches/ }).locator("xpath=..").getByRole("listitem").allInnerTexts()).join("\n");
+        for (const hotspot of ["Federation Wharf", "Degraves Street", "Federation Square", "Flinders St / Elizabeth St corner"]) expect(scored).toContain(`${hotspot} · usual spot`);
+      }
       await expect(page.getByRole("region", { name: "Pitches", exact: true }).getByText("Hidden gem").first()).toBeVisible();
       await expect(page.getByTestId("plan-funnel")).toContainText("Qloo mapped your taste");
       await expect(page.getByRole("heading", { name: "Who this crowd likes" })).toBeVisible();
@@ -124,7 +130,13 @@ test.describe("live agent (mock model offline)", () => {
     await expect(crowd.first().getByTestId("agent-step-data").getByRole("columnheader", { name: "because" })).toBeVisible();
     await expect(steps.locator('[data-tool="finish_plan"]')).toContainText("Accepted:");
     await expect(page.getByTestId("agent-usage")).toContainText("model steps");
-    await expect(page.getByTestId("agent-vs-engine")).toBeVisible();
+    // Agent vs engine: the mock keeps the engine's top 3.
+    await expect(page.getByTestId("agent-vs-engine")).toContainText("Agent vs engine");
+    await expect(page.getByTestId("agent-vs-engine")).toContainText("Claude kept the engine's top 3.");
+    // Claude investigates first: score_pitches comes after three looks, one of them about the crowd.
+    const order = await steps.getByTestId("agent-step").evaluateAll((els) => els.map((el) => el.getAttribute("data-tool")).filter(Boolean));
+    expect(order.indexOf("score_pitches")).toBeGreaterThanOrEqual(3);
+    expect(order.slice(0, order.indexOf("score_pitches")).some((t) => ["taste_map", "crowd_at", "events_near"].includes(t!))).toBe(true);
     await expect(page.getByTestId("plan-pending")).toHaveCount(0);
     await expect(page.getByText("Explanations: Claude")).toBeVisible();
     await expect(page.getByText(/^Mock explanation/).first()).toBeVisible();

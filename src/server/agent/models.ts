@@ -26,7 +26,7 @@ export const PLANNER_PROVIDER_OPTIONS = {
 export const LIMITS = {
   /** Model steps (each may call several tools), including the finish_plan step. */
   maxSteps: 12,
-  /** Input plus output tokens over the whole run; past 75% only finish_plan is offered. */
+  /** Input plus output tokens over the whole run; past 75% (60% before anything is scored) the run wraps up: score_pitches if needed, then finish_plan. */
   tokenBudget: 200_000,
   /** Per step, thinking included. */
   maxOutputTokensPerStep: 4000,

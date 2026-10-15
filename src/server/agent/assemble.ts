@@ -5,6 +5,7 @@ import { venueDetail } from "@/lib/venue";
 import { planSchema, type Plan, type PlanPitch } from "@/lib/plan-schema";
 import { leadingAgeBand, type ScoredPitch } from "@/server/scoring";
 import * as qloo from "@/server/adapters/qloo";
+import { agentChanges } from "@/lib/agent-vs-engine";
 import type { PlanContext } from "./context";
 
 /** What the model contributes: words only. Numbers and places come from the engine. */
@@ -182,6 +183,13 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
   const nameOf = (entityId: string) => artists.find((r) => r.entity?.id === entityId)?.entity?.name ?? null;
   const maxAffinity = Math.max(0, ...cells.map((c) => c.affinity));
   const usedAi = pitches.some((p) => p.whySource === "ai");
+  // The engine's own order: its spaced top 3, then the rest of its pool by score (one rank per pitch).
+  const engineIds = new Set(engineTop.map((p) => p.id));
+  const engineOrder = [...engineTop, ...engineRanked.filter((p) => !engineIds.has(p.id))];
+  const changes = agentChanges(engineTop, top, engineOrder, (id) => {
+    const p = pitches.find((x) => x.id === id);
+    return p && p.whySource === "ai" ? p.why : null;
+  });
 
   const plan: Plan = {
     version: 1,
@@ -259,8 +267,9 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
       usedAi && valid
         ? {
             engineTop: engineTop.map((p) => ({ id: p.id, name: p.name, score: p.score })),
-            differs: top.some((p) => !engineTop.some((e) => e.id === p.id)),
+            differs: changes.length > 0 || top.length !== engineTop.length,
             added: top.filter((p) => p.origin === "agent").map((p) => p.name),
+            changes,
           }
         : null,
   };

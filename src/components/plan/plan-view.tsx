@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FRESH_HEADER, PLAN_ID_HEADER } from "@/lib/plan-id";
 import { planStreamEventSchema, type Plan, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
 import { weekSearchParams } from "@/lib/week-url";
+import { agentVsEngineLines } from "@/lib/agent-vs-engine";
 import { TipLogForm } from "@/components/tips/tip-log-form";
 import { useTipSync } from "@/components/tips/use-tip-sync";
 import { AgentSteps, applyStreamEvent, type AgentStep, type RunUsage } from "./agent-steps";
@@ -66,6 +67,28 @@ const replayState = (replay: Props["replay"]) => {
 /** If a live run hasn't ended by now, show the engine's plan anyway (the agent itself times out at 90 s). */
 const AGENT_WAIT_MS = 110_000;
 const TEMPLATE_NOTE = "The reasons below are the template ones from the data, not Claude's.";
+
+/** Agent vs engine: whether Claude kept the engine's top 3, or what it picked over what, and why. No design yet. */
+function AgentVsEngine({ agent }: { agent: NonNullable<Plan["agent"]> }) {
+  const lines = agentVsEngineLines(agent);
+  return (
+    <div className="space-y-1 text-sm" data-testid="agent-vs-engine">
+      <p className="font-medium">Agent vs engine</p>
+      {lines.length === 1 && agent.changes.length === 0 ? (
+        <p>{lines[0]}</p>
+      ) : (
+        <ul className="list-disc space-y-1 pl-5">
+          {lines.map((line) => (
+            <li key={line} data-testid="agent-vs-engine-change">
+              {line}
+            </li>
+          ))}
+        </ul>
+      )}
+      {agent.added.length > 0 && <p className="text-muted-foreground">Added by Claude and scored by the engine: {agent.added.join(", ")}.</p>}
+    </div>
+  );
+}
 
 const list = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
 
@@ -314,14 +337,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
             {usage.reasoningTokens ? ` (${usage.reasoningTokens.toLocaleString("en-AU")} thinking)` : ""} · {(usage.ms / 1000).toFixed(1)} s
           </p>
         )}
-        {!pending && plan?.agent && (
-          <p className="text-sm" data-testid="agent-vs-engine">
-            {plan.agent.differs
-              ? `Claude chose differently from the engine's own top 3 (${plan.agent.engineTop.map((p) => `${p.name} ${p.score}`).join(", ")}).`
-              : "Claude kept the engine's top 3."}
-            {plan.agent.added.length > 0 ? ` Added and scored by the engine: ${plan.agent.added.join(", ")}.` : ""}
-          </p>
-        )}
+        {!pending && plan?.agent && <AgentVsEngine agent={plan.agent} />}
         {run.status === "error" && !qlooDown ? (
           <Alert variant="destructive">
             <AlertTitle>The agent could not finish</AlertTitle>

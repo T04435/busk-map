@@ -37,7 +37,9 @@ describe("plan agent (offline, mock model)", () => {
     expect(tools[0]).toBe("taste_map");
     expect(tools).toEqual(expect.arrayContaining(["score_pitches", "crowd_at", "footfall_at", "check_pitch", "compare_crowds", "build_setlist", "finish_plan"]));
     // Inputs are Claude's choices, passed through to the step.
-    expect(started.find((s) => s.tool === "crowd_at")!.input).toMatchObject({ at: { pitchId: expect.any(String) }, radiusM: 400 });
+    expect(started.find((s) => s.tool === "crowd_at")!.input).toMatchObject({ at: { place: expect.any(String) }, radiusM: 400 });
+    // The agent investigates first: score_pitches comes after three looks, one of them about the crowd.
+    expect(tools.indexOf("score_pitches")).toBeGreaterThanOrEqual(3);
     expect(started.find((s) => s.tool === "check_pitch")!.input).toEqual({ spot: { place: "Federation Square" } });
     // Each step carries the data the tool returned, as the model saw it.
     expect(ended.every((e) => e.ok && e.summary.length > 0 && e.output !== undefined)).toBe(true);
@@ -52,7 +54,7 @@ describe("plan agent (offline, mock model)", () => {
     expect(plan.qlooMode).toBe("synthetic");
     expect(plan.pitches).toHaveLength(3);
     expect(plan.pitches[0].why).toMatch(/^Mock explanation/);
-    expect(plan.agent).toMatchObject({ engineTop: expect.any(Array), differs: expect.any(Boolean) });
+    expect(plan.agent).toMatchObject({ engineTop: expect.any(Array), differs: false, changes: [] });
     expect(engineTop).toHaveLength(3);
     expect(agentTop!.map((p) => p.id)).toEqual(plan.pitches.map((p) => p.id));
     expect(plan.pitches.every((p) => p.setlist.length === request.performer.songs.length)).toBe(true);

@@ -14,7 +14,7 @@ type ToolResult = { type: "tool-result"; toolName: string; output: { type: strin
 type Call = { toolName: string; input: unknown };
 type Move = { reasoning?: string; text: string; calls: Call[] };
 
-export type MockScenario = "investigate" | "lazy" | "bad-finish" | "never-finish" | "invented-numbers" | "fail";
+export type MockScenario = "investigate" | "lazy" | "bad-finish" | "never-finish" | "invented-numbers" | "rerank" | "fail";
 
 const usage = {
   inputTokens: { total: 100, noCache: 100, cacheRead: undefined, cacheWrite: undefined },
@@ -37,7 +37,11 @@ function lastScores(results: ToolResult[]): ScoreRow[] {
 function finish(results: ToolResult[], scenario: MockScenario, rejections: number): Move {
   const rows = lastScores(results);
   const picks = rows.filter((r) => r.engineTop3);
-  const chosen = (picks.length ? picks : rows).slice(0, 3);
+  let chosen = (picks.length ? picks : rows).slice(0, 3);
+  // "rerank": Claude puts the engine's #2 first, for a reason it found (the first sentence of its why).
+  if (scenario === "rerank" && chosen.length >= 2) chosen = [chosen[1], chosen[0], ...chosen.slice(2)];
+  const reason = (p: ScoreRow, i: number) =>
+    scenario === "rerank" && i === 0 ? `The crowd at ${p.name} fits this act better on the data gathered. Mock explanation: it scored ${p.score}/100.` : null;
   const invented = scenario === "invented-numbers";
   const badFirst = scenario === "bad-finish" && rejections === 0;
   return {
@@ -49,9 +53,11 @@ function finish(results: ToolResult[], scenario: MockScenario, rejections: numbe
           summary: "Mock planner summary (offline test mode).",
           pitches: badFirst
             ? [{ pitchId: "made-up", why: "Trust me." }, ...chosen.slice(1).map((p) => ({ pitchId: p.pitchId, why: `Mock explanation: ${p.name} scored ${p.score}/100.` }))]
-            : chosen.map((p) => ({
+            : chosen.map((p, i) => ({
                 pitchId: p.pitchId,
-                why: invented ? `Mock explanation: about 98765 people pass ${p.name}.` : `Mock explanation: ${p.name} scored ${p.score}/100 on the data gathered.`,
+                why: invented
+                  ? `Mock explanation: about 98765 people pass ${p.name}.`
+                  : (reason(p, i) ?? `Mock explanation: ${p.name} scored ${p.score}/100 on the data gathered.`),
               })),
           notes: ["Offline test mode: explanations come from a mock model."],
         },
@@ -60,38 +66,61 @@ function finish(results: ToolResult[], scenario: MockScenario, rejections: numbe
   };
 }
 
-/** The next move, from the tool results so far. */
+type TasteOut = { strongest?: { near: string | null }[] };
+type CheckOut = { pitchId?: string | null; inPool?: boolean };
+
+/**
+ * The next move, from the tool results so far and the tools offered. Like
+ * Claude, it investigates first (score_pitches isn't offered until three
+ * looks are in), checks a well-known spot for its shortlist, lets the engine
+ * score everything, then chooses.
+ */
 export function nextMove(results: ToolResult[], tools: string[], scenario: MockScenario): Move | null {
   const done = (name: string) => results.filter((r) => r.toolName === name);
+  const ok = (name: string) => done(name).filter((r) => r.output.type !== "error-text" && r.output.type !== "error-json");
+  const offered = (name: string) => tools.length === 0 || tools.includes(name);
   const rejections = done("finish_plan").filter((r) => (r.output.value as { accepted?: boolean })?.accepted === false).length;
-  const onlyFinish = tools.length === 1 && tools[0] === "finish_plan";
-  if (scenario === "never-finish") {
-    if (onlyFinish) return null;
-    return { text: "Looking at the taste map again.", calls: [{ toolName: "taste_map", input: { radiusM: 200 + 100 * results.length } }] };
+  const scored = ok("score_pitches").length > 0;
+  // Wrapping up (only score_pitches and finish_plan offered, or finish_plan alone).
+  if (!offered("taste_map")) {
+    if (scenario === "never-finish") return null;
+    if (!scored && offered("score_pitches")) return { text: "Out of research budget: scoring what I have.", calls: [{ toolName: "score_pitches", input: {} }] };
+    return finish(results, scenario, rejections);
   }
-  if (onlyFinish || done("finish_plan").length > 0) return finish(results, scenario, rejections);
-  if (scenario === "lazy" && done("score_pitches").length) return finish(results, scenario, rejections);
-  const rows = lastScores(results);
-  const [first, second] = rows;
-  if (scenario === "lazy" && !done("score_pitches").length) return { text: "Scoring first.", calls: [{ toolName: "score_pitches", input: {} }] };
+  if (scenario === "never-finish") return { text: "Looking at the taste map again.", calls: [{ toolName: "taste_map", input: { radiusM: 200 + 100 * results.length } }] };
+  if (done("finish_plan").length > 0) return finish(results, scenario, rejections);
+  // "lazy": scores as soon as score_pitches is offered, then finishes; until then, one plain look at a time.
+  if (scenario === "lazy") {
+    if (scored) return finish(results, scenario, rejections);
+    if (offered("score_pitches")) return { text: "Scoring now.", calls: [{ toolName: "score_pitches", input: {} }] };
+    const looks: Call[] = [
+      { toolName: "footfall_at", input: { at: { place: "Bourke Street Mall" } } },
+      { toolName: "busy_places", input: { near: { place: "Bourke Street Mall" } } },
+      { toolName: "check_pitch", input: { spot: { place: "Bourke Street Mall" } } },
+      { toolName: "crowd_at", input: { at: { place: "Bourke Street Mall" } } },
+    ];
+    return { text: "One more look.", calls: [looks[Math.min(results.length, looks.length - 1)]] };
+  }
   if (!done("taste_map").length) return { text: "I'll start with the taste map to see where this act's fans concentrate.", calls: [{ toolName: "taste_map", input: {} }] };
-  if (!done("score_pitches").length) {
-    return { reasoning: "The taste map has a clear strongest area; the engine's pool will show which pitches sit in it.", text: "Scoring the engine's pool to see which pitches lead.", calls: [{ toolName: "score_pitches", input: {} }] };
-  }
-  if (!done("crowd_at").length && first) {
+  const strongest = (done("taste_map")[0]?.output.value as TasteOut | undefined)?.strongest?.find((c) => c.near)?.near ?? "Federation Square";
+  if (!done("crowd_at").length) {
     return {
-      text: `Checking who the crowd is at ${first.name}, and how busy it gets at the start of the slot.`,
+      reasoning: `The taste map's strongest area is near ${strongest}; who is there, and how busy it is, decides whether it makes my shortlist.`,
+      text: `Checking who the crowd is near ${strongest}, and how busy it gets at the start of the slot.`,
       calls: [
-        { toolName: "crowd_at", input: { at: { pitchId: first.pitchId }, radiusM: 400 } },
-        { toolName: "footfall_at", input: { at: { pitchId: first.pitchId } } },
+        { toolName: "crowd_at", input: { at: { place: strongest }, radiusM: 400 } },
+        { toolName: "footfall_at", input: { at: { place: strongest } } },
       ],
     };
   }
-  if (!done("check_pitch").length) return { text: "Federation Square is a well-known spot; checking whether the rules allow it.", calls: [{ toolName: "check_pitch", input: { spot: { place: "Federation Square" } } }] };
-  const checked = done("check_pitch").at(-1)?.output.value as { pitchId?: string | null; inPool?: boolean } | undefined;
-  if (done("score_pitches").length === 1 && checked?.pitchId && !checked.inPool) {
-    return { text: "Adding Federation Square to the pool so the engine scores it.", calls: [{ toolName: "score_pitches", input: { add: [checked.pitchId] } }] };
+  if (!done("check_pitch").length) return { text: "Federation Square is a well-known spot; checking whether the rules allow it, for my shortlist.", calls: [{ toolName: "check_pitch", input: { spot: { place: "Federation Square" } } }] };
+  if (!scored && offered("score_pitches")) {
+    const checked = done("check_pitch").at(-1)?.output.value as CheckOut | undefined;
+    const add = checked?.pitchId && !checked.inPool ? [checked.pitchId] : [];
+    return { text: "Letting the engine score its pool and my shortlist.", calls: [{ toolName: "score_pitches", input: add.length ? { add } : {} }] };
   }
+  const rows = lastScores(results);
+  const [first, second] = rows;
   if (!done("compare_crowds").length && first && second) {
     return { text: `Comparing the crowds at ${first.name} and ${second.name}.`, calls: [{ toolName: "compare_crowds", input: { a: first.pitchId, b: second.pitchId } }] };
   }

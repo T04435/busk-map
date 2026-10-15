@@ -81,8 +81,8 @@ export const planPitchSchema = z.object({
   lat: z.number(),
   lon: z.number(),
   kind: z.enum(PITCH_KINDS),
-  /** Why it was a candidate: a top Qloo taste cell, a council site, or the no-taste fallback. */
-  origin: z.enum(["taste", "council", "fallback", "agent"]),
+  /** Why it was a candidate: a top Qloo taste cell, a council site, the no-taste fallback, Claude's check, or a well-known hotspot. */
+  origin: z.enum(["taste", "council", "fallback", "agent", "hotspot"]),
   /** Rank of the Qloo taste cell it came from (1 = the performer's strongest area). */
   cellRank: z.number().int().nullable(),
   discovery: discoverySchema,
@@ -154,6 +154,20 @@ export const planPitchSchema = z.object({
     }),
   ),
 });
+
+/** A pitch in the "Agent vs engine" line: its engine rank (null: added by Claude, outside the engine's own pool). */
+const rankedPitchSchema = z.object({ id: z.string(), name: z.string(), score: z.number(), engineRank: z.number().int().nullable() });
+
+/** One position where Claude's top 3 differs from the engine's. */
+export const agentChangeSchema = z.object({
+  position: z.number().int().min(1),
+  pick: rankedPitchSchema,
+  /** The engine's pick for that position; null when the engine had fewer pitches. */
+  over: rankedPitchSchema.nullable(),
+  reason: z.string(),
+});
+
+export type AgentChange = z.infer<typeof agentChangeSchema>;
 
 export const planSchema = z.object({
   version: z.literal(1),
@@ -239,12 +253,16 @@ export const planSchema = z.object({
   rulesUrl: z.string(),
   /** Whether Qloo (required) failed: the plan is then unusable and the UI shows an error. */
   qlooFailed: z.boolean(),
-  /** When Claude's answer was used: the engine's own top 3, whether Claude chose differently, and spots it added. */
+  /**
+   * When Claude's answer was used: the engine's own top 3, whether Claude's top 3 differs (set or order),
+   * spots it added, and each position where Claude's pick isn't the engine's (with the reason from its why).
+   */
   agent: z
     .object({
       engineTop: z.array(z.object({ id: z.string(), name: z.string(), score: z.number() })),
       differs: z.boolean(),
       added: z.array(z.string()),
+      changes: z.array(agentChangeSchema).default([]),
     })
     .nullable()
     .default(null),
@@ -263,7 +281,8 @@ export const planStreamEventSchema = z.discriminatedUnion("type", [
   /** `input`: the inputs Claude chose. */
   z.object({ type: z.literal("tool-start"), id: z.string(), tool: z.string(), label: z.string(), source: z.string().optional(), input: z.unknown().optional() }),
   /** `output`: the data the tool returned, exactly as the model saw it. */
-  z.object({ type: z.literal("tool-end"), id: z.string(), tool: z.string(), ok: z.boolean(), summary: z.string(), output: z.unknown().optional() }),
+  /** `pruned`: the raw output was removed under the retention rule (7 days); the summary stays. */
+  z.object({ type: z.literal("tool-end"), id: z.string(), tool: z.string(), ok: z.boolean(), summary: z.string(), output: z.unknown().optional(), pruned: z.boolean().optional() }),
   /** Run totals, sent before the plan. */
   z.object({
     type: z.literal("usage"),

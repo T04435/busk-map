@@ -22,7 +22,7 @@ describe("comparison store", () => {
   it("aggregates the uniqueness rate and score delta (memory store)", async () => {
     const { MemoryComparisonStore } = await load();
     const store = new MemoryComparisonStore();
-    expect(await store.stats()).toEqual({ runs: 0, picks: 0, uniquePicks: 0, uniqueRate: null, averageOverlap: null, averageScoreDelta: null, runsWithScoredPlainSpots: 0, agentRuns: 0, agentDiffersRuns: 0, agentDiffersRate: null, agentPicks: 0, agentDifferentPicks: 0, averageAgentScoreDelta: null });
+    expect(await store.stats()).toEqual({ runs: 0, picks: 0, uniquePicks: 0, uniqueRate: null, averageOverlap: null, averageScoreDelta: null, runsWithScoredPlainSpots: 0, agentRuns: 0, agentDiffersRuns: 0, agentDiffersRate: null, agentDifferentSetRuns: 0, averagePositionsChanged: null, agentPicks: 0, agentDifferentPicks: 0, averageAgentScoreDelta: null });
     await store.record(record(1, [80, 70, 60], [50, null, 40]));
     await store.record(record(0, [60, 60, 60], [null, null, null]));
     expect(await store.stats()).toEqual({
@@ -33,7 +33,7 @@ describe("comparison store", () => {
       averageOverlap: 0.5,
       averageScoreDelta: 70 - 45,
       runsWithScoredPlainSpots: 1,
-      agentRuns: 0, agentDiffersRuns: 0, agentDiffersRate: null, agentPicks: 0, agentDifferentPicks: 0, averageAgentScoreDelta: null,
+      agentRuns: 0, agentDiffersRuns: 0, agentDiffersRate: null, agentDifferentSetRuns: 0, averagePositionsChanged: null, agentPicks: 0, agentDifferentPicks: 0, averageAgentScoreDelta: null,
     });
   });
 
@@ -60,11 +60,20 @@ describe("comparison store", () => {
 
   it("Postgres: no DDL at runtime, inserts ids and scores only, and reads the aggregate", async () => {
     const { PostgresComparisonStore } = await load();
+    const top = (ids: string[], scores: number[], engine: string[]) => ids.map((pitchId, i) => ({ pitchId, score: scores[i], inEngineTop: engine.includes(pitchId) }));
+    const engineTop = [{ pitchId: "a", score: 80 }, { pitchId: "b", score: 70 }, { pitchId: "c", score: 60 }];
+    // Four runs: kept; reordered (2 positions); one swapped out (1 position); kept.
+    const agentRows = [
+      { agent: { engineTop, agentTop: top(["a", "b", "c"], [80, 70, 60], ["a", "b", "c"]) } },
+      { agent: { engineTop, agentTop: top(["b", "a", "c"], [70, 80, 60], ["a", "b", "c"]) } },
+      { agent: { engineTop, agentTop: top(["a", "b", "d"], [80, 70, 46], ["a", "b", "c"]) } },
+      { agent: { engineTop, agentTop: top(["a", "b", "c"], [80, 70, 60], ["a", "b", "c"]) } },
+    ];
     const queries: { text: string; params?: unknown[] }[] = [];
     const sql = {
       query: vi.fn(async (text: string, params?: unknown[]): Promise<unknown[]> => {
         queries.push({ text, params });
-        if (text.startsWith("SELECT") && text.includes("agent_runs")) return [{ agent_runs: 4, agent_differs_runs: 1, agent_picks: 12, agent_different_picks: 2, average_agent_delta: -3.5 }];
+        if (text.startsWith("SELECT agent FROM")) return agentRows;
         if (text.startsWith("SELECT")) return [{ runs: 2, picks: 6, unique_picks: 5, average_overlap: 0.5, average_score_delta: 25, runs_with_scored: 1 }];
         return [];
       }),
@@ -78,7 +87,9 @@ describe("comparison store", () => {
     expect(insert.params).toEqual(["acoustic", "melbourne", "2026-10-17 18-21", 1, expect.any(String), expect.any(String), 70, 45, null]);
     // No plain spot scored: plain_avg is null.
     expect(queries.filter((q) => q.text.startsWith("INSERT")).at(-1)!.params!.at(-2)).toBeNull();
-    expect(await store.stats()).toEqual({
+    const stats = await store.stats();
+    expect(stats.averageAgentScoreDelta).toBeCloseTo((0 + 0 - 14 / 3 + 0) / 4);
+    expect({ ...stats, averageAgentScoreDelta: 0 }).toEqual({
       runs: 2,
       picks: 6,
       uniquePicks: 5,
@@ -87,11 +98,13 @@ describe("comparison store", () => {
       averageScoreDelta: 25,
       runsWithScoredPlainSpots: 1,
       agentRuns: 4,
-      agentDiffersRuns: 1,
-      agentDiffersRate: 0.25,
+      agentDiffersRuns: 2,
+      agentDiffersRate: 0.5,
+      agentDifferentSetRuns: 1,
+      averagePositionsChanged: 0.75,
       agentPicks: 12,
-      agentDifferentPicks: 2,
-      averageAgentScoreDelta: -3.5,
+      agentDifferentPicks: 1,
+      averageAgentScoreDelta: 0,
     });
     sql.query.mockImplementationOnce(async () => [{ runs: 0, picks: 0, unique_picks: 0, average_overlap: null, average_score_delta: null, runs_with_scored: 0 }]);
     expect((await store.stats()).uniqueRate).toBeNull();
@@ -115,7 +128,7 @@ describe("comparison store", () => {
     const { MemoryComparisonStore, agentRecord } = await load();
     const store = new MemoryComparisonStore();
     const engine = [{ id: "a", score: 80 }, { id: "b", score: 70 }, { id: "c", score: 60 }];
-    // Same top 3 in another order: not "differs".
+    // Same top 3 in another order: differs (order), 2 positions changed, same set.
     await store.recordAgent(agentRecord("k1", "acoustic", "melbourne", "s", engine, [engine[1], engine[0], engine[2]]));
     // One pick outside the engine's top 3, scored lower by the engine.
     await store.recordAgent(agentRecord("k2", "sax", "melbourne", "s", engine, [engine[0], engine[1], { id: "d", score: 51 }]));
@@ -124,7 +137,7 @@ describe("comparison store", () => {
     await store.record(record(0, [80, 70, 60], [50]), "k2");
     await store.record(record(1, [80, 70, 60], [50]), "k2");
     const stats = await store.stats();
-    expect(stats).toMatchObject({ runs: 1, averageOverlap: 1, agentRuns: 2, agentDiffersRuns: 1, agentDiffersRate: 0.5, agentPicks: 6, agentDifferentPicks: 1 });
+    expect(stats).toMatchObject({ runs: 1, averageOverlap: 1, agentRuns: 2, agentDiffersRuns: 2, agentDiffersRate: 1, agentDifferentSetRuns: 1, averagePositionsChanged: 1.5, agentPicks: 6, agentDifferentPicks: 1 });
     expect(stats.averageAgentScoreDelta).toBeCloseTo((0 + (67 - 70)) / 2);
   });
 

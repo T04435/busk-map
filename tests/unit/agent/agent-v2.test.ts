@@ -57,6 +57,13 @@ describe("Agent v2 tools", () => {
     const checked = (await run(tools.check_pitch, { spot })) as { pitchId: string | null; legal: string; inPool: boolean };
     expect(checked.legal).toBe("not ruled out");
     expect(checked.inPool).toBe(false);
+    // score_pitches is closed until three looks are in, one of them about the crowd.
+    await expect(run(tools.score_pitches, {})).rejects.toThrow(/isn't open yet.*2 more looks.*taste_map, crowd_at or events_near/);
+    await run(tools.footfall_at, { at: spot });
+    await run(tools.busy_places, { near: spot });
+    await expect(run(tools.score_pitches, {})).rejects.toThrow(/Still needed: at least one of taste_map, crowd_at or events_near/);
+    await run(tools.taste_map, {});
+    expect(state.looks).toEqual(["check_pitch", "footfall_at", "busy_places", "taste_map"]);
     await expect(run(tools.score_pitches, { add: ["agent:never-checked"] })).rejects.toThrow(/check_pitch first/);
     const scored = (await run(tools.score_pitches, { add: [checked.pitchId] })) as { pitches: { pitchId: string }[]; added: string[]; poolSize: number };
     expect(scored.added).toEqual([checked.pitchId]);
@@ -125,14 +132,52 @@ describe("Agent v2 runs (mock model)", () => {
     expect(plan.pitches.map((p) => p.id)).not.toContain("made-up");
   });
 
-  it("a final answer before any investigation is sent back once", async () => {
-    const { ctx, runPlanAgent, createMockPlanner } = await load();
-    const ends: { tool: string; ok: boolean; summary: string }[] = [];
-    const { plan } = await runPlanAgent(ctx, { onToolEnd: (e) => ends.push(e) }, undefined, { model: createMockPlanner("lazy") });
-    const finishes = ends.filter((e) => e.tool === "finish_plan");
-    expect(finishes.map((e) => e.ok)).toEqual([false, true]);
-    expect(finishes[0].summary).toMatch(/^Rejected: Investigate first/);
+  it("score_pitches isn't offered, and errors, until three looks are in, one of them about the crowd", async () => {
+    const { ctx, runPlanAgent, createMockPlanner, gateMessage, scoringOpen } = await load();
+    const offered: string[][] = [];
+    const base = createMockPlanner("lazy");
+    const spy = new MockLanguageModelV4({
+      doStream: async (options) => {
+        offered.push((options.tools ?? []).map((t) => t.name));
+        return base.doStream(options);
+      },
+    });
+    const started: string[] = [];
+    const { plan } = await runPlanAgent(ctx, { onToolStart: (e) => started.push(e.tool) }, undefined, { model: spy });
+    // The lazy mock scores as soon as it can: after footfall_at, busy_places, check_pitch (no crowd look yet) and crowd_at.
+    expect(started.slice(0, 5)).toEqual(["footfall_at", "busy_places", "check_pitch", "crowd_at", "score_pitches"]);
+    for (const tools of offered.slice(0, 4)) {
+      expect(tools).not.toContain("score_pitches");
+      expect(tools).not.toContain("finish_plan");
+    }
+    expect(offered[4]).toContain("score_pitches");
     expect(plan.explanations).toBe("ai");
+    expect(scoringOpen({ looks: ["footfall_at", "busy_places", "check_pitch"], wrappingUp: false })).toBe(false);
+    expect(scoringOpen({ looks: ["events_near", "footfall_at", "footfall_at"], wrappingUp: false })).toBe(true);
+    expect(scoringOpen({ looks: [], wrappingUp: true })).toBe(true);
+    expect(gateMessage({ looks: ["taste_map"] })).toMatch(/2 more looks/);
+  });
+
+  it("a cap that forces the end before any scoring still finishes against a scored pool", async () => {
+    const { ctx, runPlanAgent, createMockPlanner } = await load();
+    const started: string[] = [];
+    // Two steps of looks, then the cap: score_pitches is opened for the wrap-up, then finish_plan.
+    const { plan, usage } = await runPlanAgent(ctx, { onToolStart: (e) => started.push(e.tool) }, undefined, { model: createMockPlanner(), limits: { maxSteps: 4 } });
+    expect(started).toEqual(["taste_map", "crowd_at", "footfall_at", "score_pitches", "finish_plan"]);
+    expect(usage!.stoppedBy).toBe("finished");
+    expect(plan.explanations).toBe("ai");
+  });
+
+  it("re-ranking against the engine is shown position by position, with the reason from the pick's why", async () => {
+    const { ctx, runPlanAgent, createMockPlanner } = await load();
+    const { plan, engineTop, agentTop } = await runPlanAgent(ctx, {}, undefined, { model: createMockPlanner("rerank") });
+    expect(plan.explanations).toBe("ai");
+    expect(agentTop!.map((p) => p.id)).toEqual([engineTop[1].id, engineTop[0].id, engineTop[2].id]);
+    expect(plan.agent!.differs).toBe(true);
+    expect(plan.agent!.changes).toEqual([
+      expect.objectContaining({ position: 1, pick: expect.objectContaining({ id: engineTop[1].id, engineRank: 2 }), over: expect.objectContaining({ id: engineTop[0].id, engineRank: 1 }), reason: expect.stringMatching(/^The crowd at .+ fits this act better on the data gathered\.$/) }),
+      expect.objectContaining({ position: 2, pick: expect.objectContaining({ id: engineTop[0].id, engineRank: 1 }), over: expect.objectContaining({ id: engineTop[1].id, engineRank: 2 }) }),
+    ]);
   });
 
   it("stops at the step cap and shows the engine's plan with a note", async () => {
@@ -147,11 +192,12 @@ describe("Agent v2 runs (mock model)", () => {
     expect(plan.pitches.map((p) => p.id)).toEqual((await ctx.topPitches()).map((p) => p.id));
   });
 
-  it("past 75% of the token budget only finish_plan is offered, so the run ends early with an answer", async () => {
+  it("near the token budget the run wraps up (scoring first if needed), so it ends early with an answer", async () => {
     const { ctx, runPlanAgent, createMockPlanner } = await load();
     const started: string[] = [];
-    // The mock spends 150 tokens a step: the budget is near after two steps.
-    const { usage, plan } = await runPlanAgent(ctx, { onToolStart: (e) => started.push(e.tool) }, undefined, { model: createMockPlanner(), limits: { tokenBudget: 400 } });
+    // The mock spends 150 tokens a step: unscored, the run wraps up at 60% (after two steps), scores, then finishes.
+    const { usage, plan } = await runPlanAgent(ctx, { onToolStart: (e) => started.push(e.tool) }, undefined, { model: createMockPlanner(), limits: { tokenBudget: 500 } });
+    expect(started).toEqual(["taste_map", "crowd_at", "footfall_at", "score_pitches", "finish_plan"]);
     expect(started.at(-1)).toBe("finish_plan");
     expect(started).not.toContain("compare_crowds");
     expect(usage!.stoppedBy).toBe("finished");

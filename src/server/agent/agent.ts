@@ -8,7 +8,7 @@ import { assemblePlan } from "./assemble";
 import type { PlanContext } from "./context";
 import { createMockPlanner } from "./mock-model";
 import { LIMITS, MODELS, PLANNER_PROVIDER_OPTIONS } from "./models";
-import { AgentState, createTools, finishSchema, TOOL_LABELS, TOOL_SOURCES } from "./tools";
+import { AFTER_SCORING, AgentState, createTools, finishSchema, scoringOpen, TOOL_LABELS, TOOL_SOURCES } from "./tools";
 
 export { finishSchema as aiTextSchema };
 
@@ -21,18 +21,22 @@ export class QlooUnavailableError extends Error {
 
 /**
  * Agent v2: the goal, the guardrails and the tools, but no fixed order.
- * Claude decides each next look from what it found; the engine scores.
+ * Claude investigates first and forms its own shortlist; score_pitches stays
+ * closed until it has (scoringOpen); then the engine scores everything and
+ * Claude chooses, ranking against the engine only for a reason in the data.
  */
 export const INSTRUCTIONS = `You are Busk Map's planning agent. A street performer wants the three best pitches for one time slot, and why each crowd fits. You investigate with tools. Busk Map's scoring engine is the calculator: it scores every pitch, and you choose among the pitches it has scored.
 
 How to work:
-- There is no fixed order. Decide each next look from what you have found so far: a strong taste area, an event crowd leaving nearby, a busy corner worth a footfall check, a well-known spot the engine might have missed, two close scores worth comparing.
-- Investigate before you choose. The score can't tell you everything: check who the crowd is, whether a corner is really busy at that hour, what is open or on nearby, and look for a lead the engine may have missed. A good plan usually takes four to eight looks; one that only restates score_pitches is not enough.
-- Before each tool call, write one short sentence saying what you will check next and why.
-- Look only inside the city centre planning area. Point at places by pitchId, by name, or with coordinates from a tool result.
-- score_pitches scores the engine's own candidates plus any spot you add after check_pitch. Call it at least once before you finish.
-- You have about 10 tool calls. Don't repeat a call with the same inputs.
-- Finish with finish_plan: three pitchIds from score_pitches, best first and at least 250 m apart (score_pitches flags sameCornerAs), a why for each, a two-sentence summary and any data caveats. You may rank a lower-scored pitch above a higher one only for a reason you found in the data, and you must say it in that pitch's why. If finish_plan rejects your answer, fix what it says and call it again.
+1. Investigate first. score_pitches stays closed until you have made at least 3 looks with taste_map, crowd_at, events_near, footfall_at, busy_places or check_pitch, and at least one of them is taste_map, crowd_at or events_near. There is no fixed order: decide each next look from what you have found (a strong taste area, an event crowd leaving nearby, a corner worth a footfall check at that hour, what is open nearby).
+2. Form your own shortlist from what you find. Run check_pitch on each promising spot that isn't already a pitch (a square, laneway or corner the data points to, or a well-known busking spot), so the engine can score it.
+3. Then call score_pitches and add the spots you checked. The engine scores its own pool and your additions with the same weights, and marks its own top 3.
+4. Choose. Set the engine's ranking against your shortlist, and look closer where they disagree or scores are close (compare_crowds, or another look).
+5. Finish with finish_plan: three pitchIds from score_pitches, best first and at least 250 m apart (score_pitches flags sameCornerAs), a why for each, a two-sentence summary and any data caveats. If finish_plan rejects your answer, fix what it says and call it again.
+
+Ranking against the engine: keep the engine's order unless the data shows something its score can't see, such as an event crowd leaving next to a pitch in the slot, a crowd that fits this act better, or the places nearby being closed. Rank a pitch above one the engine scored higher, or pick one outside the engine's top 3, only for a reason you found in a tool result, and make that reason the first sentence of that pitch's why. Never re-rank on a hunch.
+
+Before each tool call, write one short sentence saying what you will check next and why. Look only inside the city centre planning area. Point at places by pitchId, by name, or with coordinates from a tool result. You have about 10 tool calls. Don't repeat a call with the same inputs.
 
 Rules:
 - Never invent a number, a place, an event or a song. Every number you write must come from a tool result.
@@ -56,6 +60,12 @@ export function buildPrompt(ctx: PlanContext, matched: { query: string; match: s
     "Find the three best pitches for this act in this slot and explain why each crowd fits.",
   ].join("\n");
 }
+
+type ToolName = keyof ReturnType<typeof createTools>;
+/** The tools offered before score_pitches opens. */
+const INVESTIGATION_ONLY = (["taste_map", "crowd_at", "busy_places", "events_near", "footfall_at", "check_pitch", "learn_these"] as ToolName[]).filter(
+  (t) => !(AFTER_SCORING as readonly string[]).includes(t),
+);
 
 export type AgentEvents = {
   onNote?: (event: { kind: "reasoning" | "text"; text: string }) => void;
@@ -134,11 +144,20 @@ export async function runPlanAgent(ctx: PlanContext, events: AgentEvents = {}, a
       stopWhen: [finished, overBudget, outOfSteps],
       maxOutputTokens: LIMITS.maxOutputTokensPerStep,
       providerOptions: PLANNER_PROVIDER_OPTIONS,
-      // Near the step cap or the token budget only finish_plan is left, so the run ends with an answer.
+      // Until the looks are in, score_pitches (and what needs its pitchIds) isn't offered. Near the step cap or the
+      // token budget only finish_plan is left, after a last score_pitches if nothing was scored yet.
       prepareStep: ({ stepNumber }) => {
-        if (stepNumber < limits.maxSteps - 2 && tokens < limits.tokenBudget * 0.75) return {};
-        state.wrappingUp = true;
-        return { activeTools: ["finish_plan"], instructions: `${INSTRUCTIONS}\n\nYour research budget is used up: call finish_plan now with what you have.` };
+        // Unscored, wrapping up takes two steps (score, finish), so it starts earlier on tokens.
+        const wrap = stepNumber >= limits.maxSteps - 2 || tokens >= limits.tokenBudget * (state.scored ? 0.75 : 0.6);
+        if (wrap) {
+          state.wrappingUp = true;
+          if (!state.scored && stepNumber < limits.maxSteps - 1) {
+            return { activeTools: ["score_pitches", "finish_plan"], instructions: `${INSTRUCTIONS}\n\nYour research budget is used up: call score_pitches now (add any spots you checked), then finish_plan.` };
+          }
+          return { activeTools: ["finish_plan"], instructions: `${INSTRUCTIONS}\n\nYour research budget is used up: call finish_plan now with what you have.` };
+        }
+        if (!state.scored && !scoringOpen(state)) return { activeTools: INVESTIGATION_ONLY };
+        return {};
       },
     });
     const result = await agent.stream({

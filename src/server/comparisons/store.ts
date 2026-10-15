@@ -24,10 +24,14 @@ export type ComparisonStats = {
   runsWithScoredPlainSpots: number;
   /** Agent v2 against the engine alone: runs with Claude's accepted answer. */
   agentRuns: number;
-  /** Runs where Claude's top 3 isn't the engine's top 3 (as a set). */
+  /** Runs where Claude's top 3 isn't the engine's top 3: a different set or a different order (the divergence). */
   agentDiffersRuns: number;
-  /** agentDiffersRuns / agentRuns, 0–1 (null with no agent runs). */
+  /** agentDiffersRuns / agentRuns, 0–1 (null with no agent runs): the divergence rate. */
   agentDiffersRate: number | null;
+  /** Runs where Claude's set differs (a pick outside the engine's top 3); the rest of agentDiffersRuns only reorder. */
+  agentDifferentSetRuns: number;
+  /** Positions (of 3) where Claude's pick isn't the engine's pick there, averaged over agent runs. */
+  averagePositionsChanged: number | null;
   /** Claude's picks outside the engine's top 3, over all Claude's picks. */
   agentPicks: number;
   agentDifferentPicks: number;
@@ -60,7 +64,12 @@ export function agentRecord(runKey: string, performerKey: string, city: string, 
   };
 }
 
-const agentDiffers = (r: AgentRecord) => r.agentTop.some((p) => !p.inEngineTop) || r.agentTop.length !== r.engineTop.length;
+/** Positions where Claude's pick isn't the engine's pick at that position. */
+export const positionsChanged = (r: Pick<AgentRecord, "engineTop" | "agentTop">) =>
+  Math.max(r.agentTop.length, r.engineTop.length) - r.agentTop.filter((p, i) => r.engineTop[i]?.pitchId === p.pitchId).length;
+const differentSet = (r: AgentRecord) => r.agentTop.some((p) => !p.inEngineTop) || r.agentTop.length !== r.engineTop.length;
+/** The divergence: a different set or a different order. */
+export const agentDiffers = (r: AgentRecord) => positionsChanged(r) > 0;
 
 export interface ComparisonStore {
   readonly kind: "postgres" | "memory" | "none";
@@ -77,19 +86,30 @@ const averages = (r: ComparisonRecord) => {
   return { ours: mean(r.ours.map((p) => p.score)) ?? 0, plain: mean(scored) };
 };
 
+type AgentStats = Pick<
+  ComparisonStats,
+  "agentRuns" | "agentDiffersRuns" | "agentDiffersRate" | "agentDifferentSetRuns" | "averagePositionsChanged" | "agentPicks" | "agentDifferentPicks" | "averageAgentScoreDelta"
+>;
+
+/** Agent v2 against the engine, from the recorded top 3s (both stores compute it here). */
+export function agentStatsOf(agents: Pick<AgentRecord, "engineTop" | "agentTop">[]): AgentStats {
+  const records = agents.map((r) => ({ ...r, runKey: "", performerKey: "", city: "", slot: "" }));
+  const differs = records.filter(agentDiffers).length;
+  return {
+    agentRuns: records.length,
+    agentDiffersRuns: differs,
+    agentDiffersRate: records.length === 0 ? null : differs / records.length,
+    agentDifferentSetRuns: records.filter(differentSet).length,
+    averagePositionsChanged: mean(records.map(positionsChanged)),
+    agentPicks: records.reduce((n, r) => n + r.agentTop.length, 0),
+    agentDifferentPicks: records.reduce((n, r) => n + r.agentTop.filter((p) => !p.inEngineTop).length, 0),
+    averageAgentScoreDelta: mean(records.map((r) => (mean(r.agentTop.map((p) => p.score)) ?? 0) - (mean(r.engineTop.map((p) => p.score)) ?? 0))),
+  };
+}
+
 /** The aggregate, computed the same way as the SQL in PostgresComparisonStore. */
 export function statsOf(records: ComparisonRecord[], agents: AgentRecord[] = []): ComparisonStats {
-  const agentPicks = agents.reduce((n, r) => n + r.agentTop.length, 0);
-  const agentDifferentPicks = agents.reduce((n, r) => n + r.agentTop.filter((p) => !p.inEngineTop).length, 0);
-  const differs = agents.filter(agentDiffers).length;
-  const agentStats = {
-    agentRuns: agents.length,
-    agentDiffersRuns: differs,
-    agentDiffersRate: agents.length === 0 ? null : differs / agents.length,
-    agentPicks,
-    agentDifferentPicks,
-    averageAgentScoreDelta: mean(agents.map((r) => (mean(r.agentTop.map((p) => p.score)) ?? 0) - (mean(r.engineTop.map((p) => p.score)) ?? 0))),
-  };
+  const agentStats = agentStatsOf(agents);
   const picks = records.reduce((n, r) => n + r.ours.length, 0);
   const uniquePicks = records.reduce((n, r) => n + r.ours.filter((p) => !p.agreed).length, 0);
   const deltas = records.flatMap((r) => {
@@ -192,16 +212,9 @@ export class PostgresComparisonStore implements ComparisonStore {
               count(*) FILTER (WHERE plain_avg IS NOT NULL)::int AS runs_with_scored
          FROM baseline_comparisons WHERE ours IS NOT NULL`,
     )) as { runs: number; picks: number; unique_picks: number; average_overlap: number | null; average_score_delta: number | null; runs_with_scored: number }[];
-    const agentRows = (await this.sql.query(
-      `SELECT count(*)::int AS agent_runs,
-              count(*) FILTER (WHERE agent_differs)::int AS agent_differs_runs,
-              coalesce(sum(jsonb_array_length(agent->'agentTop')), 0)::int AS agent_picks,
-              coalesce(sum((SELECT count(*) FROM jsonb_array_elements(agent->'agentTop') p WHERE NOT (p->>'inEngineTop')::boolean)), 0)::int AS agent_different_picks,
-              avg(agent_avg - agent_engine_avg)::float AS average_agent_delta
-         FROM baseline_comparisons WHERE agent IS NOT NULL`,
-    )) as { agent_runs: number; agent_differs_runs: number; agent_picks: number; agent_different_picks: number; average_agent_delta: number | null }[];
+    // The agent part is computed from the recorded top 3s (ids and engine scores only; one row per plan).
+    const agentRows = (await this.sql.query(`SELECT agent FROM baseline_comparisons WHERE agent IS NOT NULL`)) as { agent: Pick<AgentRecord, "engineTop" | "agentTop"> }[];
     const r = rows[0];
-    const g = agentRows[0] ?? { agent_runs: 0, agent_differs_runs: 0, agent_picks: 0, agent_different_picks: 0, average_agent_delta: null };
     return {
       runs: r.runs,
       picks: r.picks,
@@ -210,12 +223,7 @@ export class PostgresComparisonStore implements ComparisonStore {
       averageOverlap: r.average_overlap,
       averageScoreDelta: r.average_score_delta,
       runsWithScoredPlainSpots: r.runs_with_scored,
-      agentRuns: g.agent_runs,
-      agentDiffersRuns: g.agent_differs_runs,
-      agentDiffersRate: g.agent_runs === 0 ? null : g.agent_differs_runs / g.agent_runs,
-      agentPicks: g.agent_picks,
-      agentDifferentPicks: g.agent_different_picks,
-      averageAgentScoreDelta: g.average_agent_delta,
+      ...agentStatsOf(agentRows.map((row) => row.agent)),
     };
   }
 }

@@ -129,6 +129,8 @@ export async function storedRun(key: string, storeKey: string, ttl: number, stor
 /**
  * The run for this plan: joined or replayed from this instance, replayed from
  * the plan store, or started (and stored once it finishes with a plan).
+ * `fresh` (developer path) always starts a new run, which then replaces the
+ * stored one.
  */
 export async function sharedRunWithStore(
   key: string,
@@ -137,8 +139,10 @@ export async function sharedRunWithStore(
   start: (run: AgentRun) => Promise<void>,
   store: PlanStore,
   now = Date.now(),
+  fresh = false,
 ): Promise<{ run: AgentRun; reused: boolean }> {
-  const found = await storedRun(key, storeKey, ttl, store, now);
+  if (fresh) runs.delete(key);
+  const found = fresh ? null : await storedRun(key, storeKey, ttl, store, now);
   if (found) return { run: found, reused: true };
   return sharedRun(key, ttl, start, now, (run) => {
     if (run.ok) void storePut(store, "run", storeKey, { events: run.events, startedAt: run.startedAt, finishedAt: run.finishedAt! } satisfies StoredRun, ttl);

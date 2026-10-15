@@ -191,4 +191,26 @@ describe("runs in the plan store (another server instance)", () => {
     expect(key).toMatch(/^[0-9a-f]{40}$/);
     expect(key).not.toBe(planKey(request, false, "2026-10-17"));
   });
+
+  it("fresh (developer path) starts a new run even when one is stored, and replaces it", async () => {
+    const { MemoryPlanStore } = await import("@/server/agent/plan-store");
+    const { sharedRunWithStore } = await import("@/server/agent/runs");
+    const store = new MemoryPlanStore();
+    let starts = 0;
+    const start = async (run: AgentRun) => {
+      starts++;
+      run.push({ type: "status", message: `run ${starts}` });
+      run.push(plan);
+    };
+    await sharedRunWithStore("fr", "fr", 60_000, start, store);
+    await new Promise((r) => setTimeout(r, 0));
+    expect((await sharedRunWithStore("fr", "fr", 60_000, start, store)).reused).toBe(true);
+    const fresh = await sharedRunWithStore("fr", "fr", 60_000, start, store, Date.now(), true);
+    expect(fresh.reused).toBe(false);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(starts).toBe(2);
+    clearRunsForTests();
+    const stored = await store.get<{ events: PlanStreamEvent[] }>("run", "fr");
+    expect(stored!.value.events[0]).toEqual({ type: "status", message: "run 2" });
+  });
 });

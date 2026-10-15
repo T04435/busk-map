@@ -35,7 +35,7 @@ The four routes that spend money or a third-party quota are protected:
 - `curl` against a protected route is rejected in production by design; test from the app's pages.
 - **Optional (Pro):** Project → Firewall → Rules → enable **Vercel BotID Deep Analysis**. Deep Analysis is billed per check, and live search makes a check per debounced keystroke, so check the pricing against expected search volume first.
 
-After the first deploy, check one live agent run from `/plan?example=acoustic` ("Plan with the agent (live)") and one song search on the landing page. A 403 or 503 there means the client and server lists are out of step; the function logs say "bot check failed" with the reason.
+After the first deploy, check one live agent run from `/plan?example=acoustic` (it redirects to the plan's short link, `/p/<id>`, and the agent starts on load), one plan from the landing form (`POST /api/plans`) and one song search on the landing page. A 403 or 503 there means the client and server lists are out of step; the function logs say "bot check failed" with the reason.
 
 ## 3. WAF rate-limit rule
 
@@ -90,6 +90,7 @@ The tip log is stored in the performer's browser (localStorage). Plans read only
 
 Every plan runs a plain-AI baseline (Claude Haiku, no tools, no data) in parallel and sets it beside Busk Map's picks. Comparisons are recorded for the uniqueness stats at `GET /api/baseline-stats` only when `DATABASE_URL` points to Postgres (for example Neon from the Vercel Marketplace). Without it, recording is a no-op (one log line) and plans work as usual.
 
-- The app reads the pooled `DATABASE_URL` at runtime and never runs DDL. The table comes from `migrations/001_baseline_comparisons.sql` (idempotent), applied over the direct `DATABASE_URL_UNPOOLED`: `pnpm db:migrate:dev` runs it against the Neon dev branch (from `.env.development.local`). Production (main) needs the same migration as a separate, approved step before comparisons are recorded there; until then, recording there fails softly with a log line.
+- The app reads the pooled `DATABASE_URL` at runtime and never runs DDL. The tables come from `migrations/*.sql` (idempotent: 001 baseline comparisons, 002 the agent's run store, 003 `plans` for the short links), applied over the direct `DATABASE_URL_UNPOOLED`: `pnpm db:migrate:dev` runs them against the Neon dev branch (from `.env.development.local`). Production (main) needs the same migrations as a separate, approved step; until then, recording fails softly with a log line, and without the `plans` table the long `/plan?…` URLs keep working (no short link is made).
+- Short links (`/p/<id>`): without `DATABASE_URL` they are kept in memory (one log line). That works on a single long-lived server; on Vercel the long `/plan?…` URL is kept instead.
 - Locally, `next dev` uses the dev branch (`.env.development.local` wins over `.env.local`). `next start` reads `.env.local`, which may point at main: run it with `DATABASE_URL=` in the shell to keep local runs out of the production database.
 - Rows hold no personal data: an example id or "custom", the city and slot, pitch ids, scores, the plain AI's pick statuses and the overlap.

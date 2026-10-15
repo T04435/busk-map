@@ -31,10 +31,11 @@ describe("rejectBots", () => {
     expect((await rejectBots("/api/week"))?.status).toBe(503);
   });
 
-  it("protects the four expensive routes, with the methods the app uses", async () => {
+  it("protects the expensive routes and plan-link creation, with the methods the app uses", async () => {
     const { BOTID_PROTECTED_ROUTES } = await import("@/lib/botid-routes");
     expect(BOTID_PROTECTED_ROUTES).toEqual([
       { path: "/api/plan", method: "POST" },
+      { path: "/api/plans", method: "POST" },
       { path: "/api/compare", method: "POST" },
       { path: "/api/week", method: "POST" },
       { path: "/api/repertoire", method: "GET" },

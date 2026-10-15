@@ -16,11 +16,13 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { planStreamEventSchema, type Plan, type PlanRequest } from "@/lib/plan-schema";
+import { FRESH_HEADER, PLAN_ID_HEADER } from "@/lib/plan-id";
+import { planStreamEventSchema, type Plan, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
 import { weekSearchParams } from "@/lib/week-url";
 import { TipLogForm } from "@/components/tips/tip-log-form";
 import { useTipSync } from "@/components/tips/use-tip-sync";
 import { AgentSteps, applyStreamEvent, type AgentStep, type RunUsage } from "./agent-steps";
+import { CopyLink } from "./copy-link";
 import { CrowdPanel } from "./crowd-panel";
 import { DataSources } from "./data-sources";
 import { WeatherStrip } from "./weather-strip";
@@ -42,6 +44,23 @@ type Props = {
   exampleId: string | null;
   /** Simulated outages to pass on to the agent (e2e only; the server ignores it in production). */
   faults: string | null;
+  /** The short link's id (/p/<id>): shows "Copy link", and the server keeps the finished run on it. */
+  shareId?: string | null;
+  /** A finished run stored on the short link: shown at once, as a replay, with no request to the agent. */
+  replay?: { events: PlanStreamEvent[]; note: string } | null;
+  /** Developer path (?fresh=1): ask for a new agent run, bypassing the stored one. */
+  fresh?: boolean;
+};
+
+const replayState = (replay: Props["replay"]) => {
+  if (!replay) return null;
+  const plan = replay.events.findLast((e) => e.type === "plan");
+  const usage = replay.events.findLast((e) => e.type === "usage");
+  return {
+    plan: plan?.type === "plan" ? plan.plan : null,
+    usage: usage?.type === "usage" ? usage : null,
+    steps: replay.events.reduce<AgentStep[]>((steps, event) => applyStreamEvent(steps, event), []),
+  };
 };
 
 /** If a live run hasn't ended by now, show the engine's plan anyway (the agent itself times out at 90 s). */
@@ -50,8 +69,10 @@ const TEMPLATE_NOTE = "The reasons below are the template ones from the data, no
 
 const list = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
 
-export function PlanView({ initialPlan, heading, request, center, autoRun, exampleId, faults }: Props) {
-  const [plan, setPlan] = useState<Plan | null>(initialPlan);
+export function PlanView({ initialPlan, heading, request, center, autoRun, exampleId, faults, shareId = null, replay = null, fresh = false }: Props) {
+  // A stored run starts the view finished: its plan, its steps (collapsed, as a replay) and its totals.
+  const [stored] = useState(() => replayState(replay));
+  const [plan, setPlan] = useState<Plan | null>(stored?.plan ?? initialPlan);
   // A refresh after logging takings brings a new engine plan for the same request: adopt it.
   const [shownInitial, setShownInitial] = useState(initialPlan);
   if (initialPlan !== shownInitial) {
@@ -59,16 +80,16 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     // Agent-first pages render no engine plan: keep the agent's.
     if (initialPlan) setPlan(initialPlan);
   }
-  const [steps, setSteps] = useState<AgentStep[]>([]);
-  const [run, setRun] = useState<RunState>({ status: "idle" });
+  const [steps, setSteps] = useState<AgentStep[]>(stored?.steps ?? []);
+  const [run, setRun] = useState<RunState>({ status: stored?.plan ? "done" : "idle" });
   /** A note from the server about the run, e.g. that it replays a cached run. */
-  const [runNote, setRunNote] = useState<string | null>(null);
+  const [runNote, setRunNote] = useState<string | null>(stored?.plan ? (replay?.note ?? null) : null);
   // Agent-first: during a live run the plan stays hidden until the agent ends. Qloo down needs no wait: there is no plan to show.
-  const [revealed, setRevealed] = useState(!autoRun || initialPlan?.qlooFailed === true);
+  const [revealed, setRevealed] = useState(Boolean(stored?.plan) || !autoRun || initialPlan?.qlooFailed === true);
   /** Run totals from the server (steps, tokens, time). */
-  const [usage, setUsage] = useState<RunUsage | null>(null);
+  const [usage, setUsage] = useState<RunUsage | null>(stored?.usage ?? null);
   /** The run was replayed from the cache: its steps are collapsed. */
-  const [replayed, setReplayed] = useState(false);
+  const [replayed, setReplayed] = useState(Boolean(stored?.plan));
   /** Why the plan shown isn't Claude's (agent failed, timed out or fell back to templates). */
   const [fallbackNote, setFallbackNote] = useState<string | null>(null);
   const router = useRouter();
@@ -77,7 +98,8 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   const pitchList = plan?.pitches ?? [];
   const selectedId = searchParams.get("pitch") ?? pitchList[0]?.id ?? null;
   const selected = pitchList.find((p) => p.id === selectedId) ?? pitchList[0] ?? null;
-  const started = useRef(false);
+  // A stored run counts as started: a changed request (a new tip log entry) then plans again.
+  const started = useRef(Boolean(stored?.plan));
   useTipSync(request.performer.name, exampleId, request.history);
   // The plain-AI baseline (a control: agreement is a badge, never a score change).
   // Asked once the plan is shown: during the agent's run the server starts it after the agent's data is in.
@@ -118,7 +140,12 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     try {
       const response = await fetch("/api/plan", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(faults ? { "x-buskmap-faults": faults } : {}) },
+        headers: {
+          "Content-Type": "application/json",
+          ...(faults ? { "x-buskmap-faults": faults } : {}),
+          ...(shareId ? { [PLAN_ID_HEADER]: shareId } : {}),
+          ...(fresh ? { [FRESH_HEADER]: "1" } : {}),
+        },
         body: JSON.stringify(request),
       });
       if (!response.ok || !response.body) {
@@ -160,7 +187,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     } catch {
       fail("The planner is unavailable right now.");
     }
-  }, [faults, request, showEnginePlan]);
+  }, [faults, fresh, request, shareId, showEnginePlan]);
 
   useEffect(() => {
     if (autoRun && !started.current) {
@@ -228,6 +255,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
             Tip log
           </Link>
         </p>
+        {shareId && <CopyLink id={shareId} />}
       </header>
 
       {heading.qlooMode === "synthetic" && (
@@ -263,15 +291,13 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
       )}
 
       <section aria-label="Agent" className="space-y-3">
+        {/* No re-run for buskers: a reload replays the stored run. Developers can add ?fresh=1 (outside production). */}
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => void runAgent()} disabled={pending || run.status === "running"}>
-            {pending || run.status === "running" ? "Planning…" : run.status === "idle" ? "Plan with the agent (live)" : "Re-run the agent"}
-          </Button>
           <p className="text-sm text-muted-foreground" data-testid="agent-status">
             {pending
               ? "The agent is researching with Qloo and the other sources. The plan appears when it finishes."
               : run.status === "idle"
-                ? "Shown: the engine's plan from the data. The agent adds Claude's explanations."
+                ? "Shown: the engine's plan from the data, without the agent."
                 : run.status === "running"
                   ? "The agent is running again. The plan below stays until it finishes."
                   : run.status === "done"

@@ -1,4 +1,5 @@
 import { rejectBots } from "@/server/bot";
+import { FRESH_HEADER, isPlanId, PLAN_ID_HEADER } from "@/lib/plan-id";
 import { planRequestSchema, type PlanStreamEvent } from "@/lib/plan-schema";
 import { QlooUnavailableError, runPlanAgent } from "@/server/agent/agent";
 import { baselineFor } from "@/server/agent/baseline";
@@ -10,6 +11,7 @@ import { agentRecord, comparisonStore, recordAgentRun } from "@/server/compariso
 import { CITIES } from "@/server/cities";
 import { testSwitches } from "@/server/env";
 import { log } from "@/server/log";
+import { freshRunsAllowed, saveRunSnapshot } from "@/server/plans";
 import { planLimiter } from "@/server/rate-limit";
 import { adapterContextFor, clientIp, FAULTS_HEADER } from "@/server/request";
 
@@ -26,6 +28,11 @@ function jsonError(status: number, code: string, message: string, headers: Heade
  * The same request joins a run in flight or replays a recent one (from this
  * instance or the plan store). The agent starts first: nothing is computed
  * before the stream opens.
+ *
+ * With the x-buskmap-plan header (a short link's id), the finished run is kept
+ * on that plan, so the link opens at once next time. With x-buskmap-fresh: 1
+ * (developer path, never in production builds) a new run starts even if one
+ * is stored; it is still rate limited.
  */
 export async function POST(request: Request) {
   const blocked = await rejectBots("/api/plan");
@@ -49,8 +56,11 @@ export async function POST(request: Request) {
   const storeKey = planKey(parsed.data, adapters.offline, context.today);
   const store = planStore(adapters.offline);
   const ttl = isExampleRequest(parsed.data, context.today) ? EXAMPLE_RUN_TTL_MS : RUN_TTL_MS;
+  const fresh = request.headers.get(FRESH_HEADER) === "1";
+  if (fresh && !freshRunsAllowed()) return jsonError(403, "fresh_not_allowed", "Fresh runs are for development only.");
+  const planId = request.headers.get(PLAN_ID_HEADER);
   // Offline test mode spends nothing, and joining or replaying a shared run costs no model call: neither is rate limited.
-  const free = testSwitches().offline || (adapters.faults.length === 0 && (await hasSharedRun(shareKey, storeKey, ttl, store)));
+  const free = testSwitches().offline || (adapters.faults.length === 0 && !fresh && (await hasSharedRun(shareKey, storeKey, ttl, store)));
   const limit = free ? { ok: true, retryAfterS: 0 } : planLimiter.check(clientIp(request.headers));
   if (!limit.ok) {
     return jsonError(429, "rate_limited", "Too many plans in a short time. Try again in a few minutes.", {
@@ -104,7 +114,15 @@ export async function POST(request: Request) {
     void start(run, AbortSignal.any([request.signal, AbortSignal.timeout(LIMITS.agentTimeoutMs + 20_000)])).finally(() => run.finish());
   } else {
     // The agent applies its own 90 s timeout; this outer one only stops a stuck assembly.
-    ({ run, reused } = await sharedRunWithStore(shareKey, storeKey, ttl, (r) => start(r, AbortSignal.timeout(LIMITS.agentTimeoutMs + 20_000)), store));
+    ({ run, reused } = await sharedRunWithStore(shareKey, storeKey, ttl, (r) => start(r, AbortSignal.timeout(LIMITS.agentTimeoutMs + 20_000)), store, Date.now(), fresh));
+    // Keep the finished run (new, joined or replayed) on the short link's plan.
+    if (isPlanId(planId)) {
+      const finished = run;
+      finished.follow(
+        () => {},
+        () => void saveRunSnapshot(planId, parsed.data, finished, storeKey, context.today, fresh),
+      );
+    }
   }
 
   let unfollow = () => {};

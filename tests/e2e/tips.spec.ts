@@ -1,6 +1,6 @@
-import { expect, isoDay, LOCAL, pickDate, test, waitForPlan } from "./fixtures";
+import { expect, isoDay, LOCAL, pickDate, SATURDAY, test, waitForPlan } from "./fixtures";
 
-const ACT = "/plan?name=Tip%20Tester&artists=Paul%20Kelly&songs=Dumb%20Things~Paul%20Kelly&date=2026-10-24&from=18&to=21&permit=general";
+const ACT = `/plan?name=Tip%20Tester&artists=Paul%20Kelly&songs=Dumb%20Things~Paul%20Kelly&date=${SATURDAY}&from=18&to=21&permit=general`;
 
 test.describe("tip log", () => {
   test("example plans show their example tip log, clearly labelled, and the bonus it adds", async ({ page }) => {

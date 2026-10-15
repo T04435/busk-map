@@ -5,6 +5,7 @@
  */
 export const BOTID_PROTECTED_ROUTES = [
   { path: "/api/plan", method: "POST" },
+  { path: "/api/plans", method: "POST" },
   { path: "/api/compare", method: "POST" },
   { path: "/api/week", method: "POST" },
   { path: "/api/repertoire", method: "GET" },

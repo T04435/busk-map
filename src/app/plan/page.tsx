@@ -1,20 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies } from "next/headers";
-import { after, connection } from "next/server";
+import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { TIP_COOKIE } from "@/lib/tips";
-import { PlanView } from "@/components/plan/plan-view";
+import { PlanScreen, PlanSkeleton } from "@/components/plan/plan-screen";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
-import { parsePlanParams, planSearchParams } from "@/lib/plan-url";
+import { parsePlanParams } from "@/lib/plan-url";
 import { localToday } from "@/lib/slot";
-import { baselineFor } from "@/server/agent/baseline";
-import { describeSlot } from "@/lib/slot";
-import { qlooMode } from "@/server/adapters/qloo";
-import { buildEnginePlan } from "@/server/agent/preload";
 import { CITIES } from "@/server/cities";
-import { adapterContextFor } from "@/server/request";
+import { longUrlTarget } from "@/server/plans";
+import { adapterContextFor, clientIp } from "@/server/request";
 
 export const metadata: Metadata = {
   title: "Plan · Busk Map",
@@ -36,16 +33,12 @@ export default function PlanPage({ searchParams }: PageProps<"/plan">) {
   );
 }
 
-function PlanSkeleton() {
-  return (
-    <div className="space-y-4" aria-busy="true" aria-label="Loading plan">
-      <Skeleton className="h-8 w-64" />
-      <Skeleton className="h-4 w-96 max-w-full" />
-      <Skeleton className="h-80 w-full" />
-    </div>
-  );
-}
-
+/**
+ * The long plan URL (/plan?name=…&artists=…, /plan?example=…): resolved to the
+ * plan's short id and redirected to /p/<id>. If no id can be made (rate limit,
+ * no durable store, a store error) the plan renders here as before. Runs with
+ * simulated outages (tests) stay here.
+ */
 async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchParams">) {
   const params = await searchParams;
   // Plans depend on today's date and live data: always render at request time.
@@ -58,47 +51,21 @@ async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchPar
       <>
         <h1 className="mb-4 text-3xl font-semibold tracking-tight">Plan</h1>
         <Alert variant="destructive">
-        <AlertTitle>We couldn&apos;t read this plan</AlertTitle>
-        <AlertDescription>
-          {parsed.error}{" "}
-          <Link className="underline" href="/">
-            Start again
-          </Link>
-          .
-        </AlertDescription>
-      </Alert>
+          <AlertTitle>We couldn&apos;t read this plan</AlertTitle>
+          <AlertDescription>
+            {parsed.error}{" "}
+            <Link className="underline" href="/">
+              Start again
+            </Link>
+            .
+          </AlertDescription>
+        </Alert>
       </>
     );
   }
   const faults = typeof params.faults === "string" ? params.faults : null;
   const adapters = adapterContextFor(faults);
-  // Agent-first: with the agent on (the default) nothing is computed here, so the page and the agent's stream start at once;
-  // the agent's run brings the plan, and the server starts the plain-AI baseline when the agent's data is in.
-  // With run=0 the engine's plan is built here and the baseline starts after the page is sent.
-  let plan = null;
-  if (!parsed.autoRun) {
-    after(() => baselineFor(parsed.request, adapters).then(() => undefined));
-    plan = await buildEnginePlan(parsed.request, adapters);
-  }
-  const city = CITIES[parsed.request.city];
-  return (
-    <PlanView
-      // Keyed by the request (not the selected pitch): a new request remounts the view.
-      // A changed tip log re-renders in place (PlanView adopts the new plan), so the log form keeps its message.
-      key={planSearchParams(parsed.request).toString()}
-      initialPlan={plan}
-      heading={{
-        cityName: city.name,
-        slotLabel: describeSlot(parsed.request.slot),
-        permit: parsed.request.permit,
-        performerName: parsed.request.performer.name,
-        qlooMode: qlooMode(adapters),
-      }}
-      request={parsed.request}
-      center={city.center}
-      autoRun={parsed.autoRun}
-      exampleId={parsed.exampleId}
-      faults={adapters.faults.length > 0 ? adapters.faults.join(",") : null}
-    />
-  );
+  const target = await longUrlTarget(parsed, params, adapters.faults, clientIp(await headers()));
+  if (target) redirect(target);
+  return <PlanScreen request={parsed.request} exampleId={parsed.exampleId} adapters={adapters} autoRun={parsed.autoRun} />;
 }

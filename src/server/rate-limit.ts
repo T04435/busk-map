@@ -28,3 +28,5 @@ export const planLimiter = createRateLimiter(6, 10 * 60_000);
 export const compareLimiter = createRateLimiter(12, 10 * 60_000);
 /** Live search (Spotify, Last.fm): 120 per minute per IP; the picker debounces typing. */
 export const repertoireLimiter = createRateLimiter(120, 60_000);
+/** New short plan links: 30 per 10 minutes per IP (reused links aren't counted). */
+export const planLinkLimiter = createRateLimiter(30, 10 * 60_000);

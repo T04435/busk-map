@@ -6,10 +6,11 @@ import { Warmup } from "@/components/landing/warmup";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { EXAMPLES } from "@/lib/examples";
-import { localToday, nextWeekday } from "@/lib/slot";
+import { localToday, nextWeekday, weekdayOf } from "@/lib/slot";
+import { loadStoredPlan } from "@/server/plans";
 import { SOURCES } from "@/lib/sources";
 
-export default function Home() {
+export default function Home({ searchParams }: PageProps<"/">) {
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 space-y-10 px-4 py-12">
       <Warmup />
@@ -74,7 +75,7 @@ export default function Home() {
           Or plan for your own act
         </h2>
         <Suspense>
-          <OwnActForm />
+          <OwnActForm searchParams={searchParams} />
         </Suspense>
       </section>
 
@@ -88,9 +89,21 @@ export default function Home() {
   );
 }
 
-async function OwnActForm() {
+/** `?again=<plan id>` (from a plan whose slot has passed): the form pre-filled with that act, on the next same weekday. */
+async function OwnActForm({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
+  const again = (await searchParams).again;
   // The default date depends on today, so render it at request time.
   await connection();
   const today = localToday("Australia/Melbourne");
-  return <PerformerForm defaultDate={nextWeekday("saturday", today)} today={today} />;
+  const stored = typeof again === "string" ? await loadStoredPlan(again).catch(() => null) : null;
+  if (!stored) return <PerformerForm defaultDate={nextWeekday("saturday", today)} today={today} />;
+  const { performer, permit, slot } = stored.request;
+  return (
+    <PerformerForm
+      key={stored.id}
+      defaultDate={nextWeekday(weekdayOf(slot.date), today)}
+      today={today}
+      prefill={{ performer, permit, startHour: slot.startHour, endHour: slot.endHour }}
+    />
+  );
 }

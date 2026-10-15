@@ -1,4 +1,4 @@
-import { expect, isoDay, LOCAL, pickDate, test, waitForPlan } from "./fixtures";
+import { expect, isoDay, LOCAL, pickDate, SATURDAY, SUNDAY, test, waitForPlan } from "./fixtures";
 
 test.describe("own act", () => {
   test.skip(!LOCAL, "Starts the agent automatically; local offline server only");
@@ -11,7 +11,7 @@ test.describe("own act", () => {
     await form.getByLabel("Song list").fill("How to Make Gravy - Paul Kelly\nScar - Missy Higgins\nMy Laneway Song - Jess (own)");
     await form.getByRole("button", { name: "Plan my set" }).click();
 
-    await expect(page).toHaveURL(/\/plan\?name=Jess/);
+    await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await expect(page.getByRole("heading", { level: 1, name: "Jess on guitar" })).toBeVisible();
     await waitForPlan(page);
     await expect(page.getByText("Explanations: Claude")).toBeVisible();
@@ -68,10 +68,9 @@ test.describe("own act", () => {
     await pickDate(page, date, day);
 
     await form.getByRole("button", { name: "Plan my set" }).click();
-    await expect(page).toHaveURL(new RegExp(`date=${day}`));
-    const params = new URL(page.url()).searchParams;
-    expect(params.get("artists")).toMatch(/^Paul Kelly~[A-Za-z0-9]{22}\|Zzyzx Nobody\|Synthetic Artist 1$/);
-    expect(params.get("songs")).toBe("Gravy (synthetic result 1)~Synthetic Artist 1~187s");
+    // The plan opens on its short link; the request (artists with Spotify ids, songs with lengths, the date) is stored behind it.
+    await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
+    await expect(page.getByText(new RegExp(`${day}, 6 pm–9 pm`))).toBeVisible();
     await waitForPlan(page);
     // Qloo matched the picked artist (by Spotify id first); the setlist shows lengths. The act's own songs get no Learn it;
     // only "Learn these" suggestions do (opening external searches).
@@ -99,9 +98,10 @@ test.describe("own act", () => {
   });
 
   test("a typed plan link (deep link) opens the same plan", async ({ page }) => {
-    await page.goto("/plan?name=Deep%20Link%20Duo&artists=Angus%20%26%20Julia%20Stone&songs=Big%20Jet%20Plane~Angus%20%26%20Julia%20Stone&date=2026-10-25&from=12&to=15&permit=general");
+    await page.goto(`/plan?name=Deep%20Link%20Duo&artists=Angus%20%26%20Julia%20Stone&songs=Big%20Jet%20Plane~Angus%20%26%20Julia%20Stone&date=${SUNDAY}&from=12&to=15&permit=general`);
+    await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await expect(page.getByRole("heading", { level: 1, name: "Deep Link Duo" })).toBeVisible();
-    await expect(page.getByText(/Sunday 2026-10-25, 12 pm–3 pm/)).toBeVisible();
+    await expect(page.getByText(`Sunday ${SUNDAY}, 12 pm–3 pm`, { exact: false })).toBeVisible();
     await waitForPlan(page);
   });
 
@@ -116,7 +116,7 @@ test.describe("artists Qloo can't match", () => {
   test.skip(!LOCAL, "Relies on the mock's catalogue");
 
   test("plans with the matched artists and names the unmatched one", async ({ page }) => {
-    await page.goto("/plan?name=Half%20Known&artists=Paul%20Kelly|Zzyzx%20Nobody&date=2026-10-24&from=18&to=21");
+    await page.goto(`/plan?name=Half%20Known&artists=Paul%20Kelly|Zzyzx%20Nobody&date=${SATURDAY}&from=18&to=21`);
     await waitForPlan(page);
     const alert = page.getByTestId("unmatched-artists");
     await expect(alert).toContainText("Qloo couldn't match Zzyzx Nobody");
@@ -125,7 +125,7 @@ test.describe("artists Qloo can't match", () => {
   });
 
   test("explains when no artist matched, and still ranks pitches on the other data", async ({ page }) => {
-    await page.goto("/plan?name=Nobody%20Knows&artists=Zzyzx%20Nobody|Qqq%20Unknown&date=2026-10-24&from=18&to=21");
+    await page.goto(`/plan?name=Nobody%20Knows&artists=Zzyzx%20Nobody|Qqq%20Unknown&date=${SATURDAY}&from=18&to=21`);
     await waitForPlan(page);
     const alert = page.getByTestId("unmatched-artists");
     await expect(alert).toContainText("Qloo couldn't match Zzyzx Nobody and Qqq Unknown");

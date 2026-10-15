@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { planRequestSchema } from "@/lib/plan-schema";
+import { planRequestSchema, type PlanRequest } from "@/lib/plan-schema";
 import { planSearchParams } from "@/lib/plan-url";
 import { weekSearchParams } from "@/lib/week-url";
 import { formatHour } from "@/lib/slot";
@@ -50,18 +50,36 @@ const toPicked = (track: TrackResult, own: boolean): PickedSong => ({
   own,
 });
 
+/** A stored plan's act, to plan again ("Plan again for a new date"): everything but the date. */
+export type FormPrefill = Pick<PlanRequest, "performer" | "permit"> & { startHour: number; endHour: number };
+
+const prefillArtists = (prefill: FormPrefill | undefined): PickedArtist[] =>
+  (prefill?.performer.artists ?? []).map((name) => ({ name, spotifyId: prefill?.performer.spotifyArtists.find((a) => a.name === name)?.id ?? null, image: null }));
+
+const prefillSongs = (prefill: FormPrefill | undefined): PickedSong[] =>
+  (prefill?.performer.songs ?? []).map((song, i) => ({
+    key: `again-${i}`,
+    title: song.title,
+    artist: song.artist,
+    album: null,
+    image: null,
+    durationMs: song.durationMs ?? null,
+    own: song.own,
+  }));
+
 /** `today` is the city's local date: a plan is for today or later. */
-export function PerformerForm({ defaultDate, today }: { defaultDate: string; today: string }) {
+export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: string; today: string; prefill?: FormPrefill }) {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [artists, setArtists] = useState<PickedArtist[]>([]);
+  const [name, setName] = useState(prefill?.performer.name ?? "");
+  const [artists, setArtists] = useState<PickedArtist[]>(() => prefillArtists(prefill));
   const [artistQuery, setArtistQuery] = useState("");
-  const [picked, setPicked] = useState<PickedSong[]>([]);
+  const [picked, setPicked] = useState<PickedSong[]>(() => prefillSongs(prefill));
   const [songs, setSongs] = useState("");
   const [date, setDate] = useState(defaultDate);
-  const [from, setFrom] = useState("18");
-  const [to, setTo] = useState("21");
-  const [permit, setPermit] = useState("general");
+  const [from, setFrom] = useState(String(prefill?.startHour ?? 18));
+  const [to, setTo] = useState(String(prefill?.endHour ?? 21));
+  const [permit, setPermit] = useState<string>(prefill?.permit ?? "general");
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchNote, setSearchNote] = useState<string | null>(null);
   const [spotifyLink, setSpotifyLink] = useState("");
@@ -93,6 +111,14 @@ export function PerformerForm({ defaultDate, today }: { defaultDate: string; tod
         ? "Offline test mode: these songs are made up, not from Spotify."
         : `Added ${Math.min(tracks.length, 20)} of your songs from Spotify. Remove any you don't play.`,
     );
+  }
+
+  /** The plan's short link (/p/<id>), or the long URL if no link could be made. */
+  async function openPlan(request: PlanRequest) {
+    setSubmitting(true);
+    const res = await fetch("/api/plans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) }).catch(() => null);
+    const body = res?.ok ? await res.json().catch(() => null) : null;
+    router.push(typeof body?.path === "string" ? body.path : `/plan?${planSearchParams(request, { run: "1" })}`);
   }
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -137,7 +163,7 @@ export function PerformerForm({ defaultDate, today }: { defaultDate: string; tod
       router.push(`/week?${weekSearchParams({ ...rest, startDate: slot.date, limits: { maxSessions: 5, maxPerDay: 1, unavailable: [] } }, null)}`);
       return;
     }
-    router.push(`/plan?${planSearchParams(result.data, { run: "1" })}`);
+    void openPlan(result.data);
   }
 
   return (
@@ -248,7 +274,7 @@ export function PerformerForm({ defaultDate, today }: { defaultDate: string; tod
         </p>
       )}
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" value="plan">
+        <Button type="submit" value="plan" disabled={submitting}>
           Plan my set
         </Button>
         <Button type="submit" value="week" variant="outline">

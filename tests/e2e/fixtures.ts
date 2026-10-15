@@ -39,3 +39,14 @@ export async function pickDate(page: import("@playwright/test").Page, trigger: i
   await cell.getByRole("button").click();
   await expect(trigger).toHaveAttribute("data-date", iso);
 }
+
+/** YYYY-MM-DD of the first `weekday` (0 = Sunday) at least a week from today: a slot that hasn't passed. */
+export function futureDay(weekday: number, from = new Date()): string {
+  const start = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 7);
+  const offset = (weekday - start.getDay() + 7) % 7;
+  return isoDay(7 + offset, from);
+}
+
+/** A Saturday and a Sunday at least a week ahead, for typed plan links. */
+export const SATURDAY = futureDay(6);
+export const SUNDAY = futureDay(0);

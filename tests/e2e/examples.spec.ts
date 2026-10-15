@@ -1,5 +1,5 @@
 import { EXAMPLES } from "../../src/lib/examples";
-import { agentSteps, expect, LOCAL, test, waitForPlan } from "./fixtures";
+import { agentSteps, expect, LOCAL, SATURDAY, test, waitForPlan } from "./fixtures";
 
 test.describe("landing", () => {
   test("shows the three example performers and the own-act form", async ({ page }) => {
@@ -15,7 +15,8 @@ for (const example of EXAMPLES) {
     test("opens instantly with three scored pitches, a map and a setlist", async ({ page }) => {
       await page.goto("/");
       await page.getByRole("link", { name: new RegExp(`^${example.label} `) }).click();
-      await expect(page).toHaveURL(new RegExp(`/plan\\?example=${example.id}`));
+      // Example cards link to /plan?example=…, which redirects to the plan's short link.
+      await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
       await expect(page.getByRole("heading", { level: 1, name: example.performer.name })).toBeVisible();
       await waitForPlan(page);
 
@@ -92,7 +93,7 @@ test.describe("live agent (mock model offline)", () => {
     page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
     page.on("pageerror", (e) => errors.push(e.message));
     // A request no other test or project shares, so the first load is a cold run.
-    const url = `/plan?name=Agent%20First%20${testInfo.project.name}&artists=Paul%20Kelly&songs=How%20to%20Make%20Gravy~Paul%20Kelly&date=2026-10-24&from=18&to=21`;
+    const url = `/plan?name=Agent%20First%20${testInfo.project.name}&artists=Paul%20Kelly&songs=How%20to%20Make%20Gravy~Paul%20Kelly&date=${SATURDAY}&from=18&to=21`;
     // Hold the agent's stream until the pending state has been checked.
     let release!: () => void;
     const held = new Promise<void>((resolve) => (release = resolve));
@@ -103,7 +104,6 @@ test.describe("live agent (mock model offline)", () => {
     await page.goto(url);
     await expect(page.getByTestId("plan-pending")).toBeVisible();
     await expect(page.getByTestId("agent-status")).toHaveText(/The plan appears when it finishes/);
-    await expect(page.getByRole("button", { name: "Planning…" })).toBeDisabled();
     await expect(page.getByRole("region", { name: "Pitches", exact: true })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: /^Setlist for / })).toHaveCount(0);
     await expect(page.getByText(/^Explanations: /)).toHaveCount(0);
@@ -144,10 +144,9 @@ test.describe("live agent (mock model offline)", () => {
     await replayedSteps.locator('[data-tool="taste_map"]').getByRole("button", { name: "Data returned" }).click();
     await expect(replayedSteps.locator('[data-tool="taste_map"]').getByTestId("agent-step-data").getByRole("columnheader", { name: "affinity" })).toBeVisible();
 
-    // A re-run replays too, and keeps the plan on screen.
-    await page.getByRole("button", { name: "Re-run the agent" }).click();
-    await expect(page.getByText("Explanations: Claude")).toBeVisible();
+    // Buskers get no re-run button: a reload replays.
     await expect(page.getByTestId("agent-status")).toHaveText("The agent's plan, replayed.");
+    await expect(page.getByRole("button", { name: /Re-run|Plan with the agent/ })).toHaveCount(0);
     expect(errors.filter((e) => /hydrat/i.test(e))).toEqual([]);
   });
 
@@ -155,7 +154,8 @@ test.describe("live agent (mock model offline)", () => {
     await page.goto("/plan?example=folk-duo&run=0");
     await waitForPlan(page);
     await expect(page.getByText("Explanations: from the data")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Plan with the agent (live)" })).toBeEnabled();
+    await expect(page.getByTestId("agent-status")).toHaveText("Shown: the engine's plan from the data, without the agent.");
+    await expect(page.getByRole("button", { name: /Re-run|Plan with the agent/ })).toHaveCount(0);
     await expect(page.getByRole("list", { name: "Agent steps" })).toHaveCount(0);
   });
 
@@ -172,7 +172,7 @@ test.describe("live agent (mock model offline)", () => {
     await expect(onlyPlain.getByText(/Mock plain-LLM answer/).first()).toBeVisible();
     await expect(onlyPlain.getByText(/^(Scored by Busk Map|Not a legal pitch|No data for this spot)$/).first()).toBeVisible();
     // The baseline is a control: the pitch scores are the same once it has arrived.
-    await page.getByRole("button", { name: "Re-run the agent" }).waitFor();
+    await expect(page.getByTestId("agent-status")).toHaveText(/^The agent's plan/);
     const after = await page.getByRole("region", { name: "Pitches", exact: true }).locator("button[data-pitch-name]").allTextContents();
     expect(after.map((t) => t.match(/\d+\/100/)?.[0])).toEqual(scores.map((t) => t.match(/\d+\/100/)?.[0]));
   });

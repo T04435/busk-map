@@ -32,6 +32,8 @@ export type SensorInput = LatLon & { id: number; name: string; avgHourly: number
 
 export type HeatCellInput = LatLon & {
   affinity: number;
+  /** The cell's geohash: its length gives the heatmap's resolution. */
+  geohash?: string | null;
   /** Qloo's popularity for the cell (0–1): the last-resort footfall proxy. */
   popularity?: number | null;
 };

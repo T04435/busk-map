@@ -124,7 +124,15 @@ export type RisingArtist = {
   affinity: number | null;
   /** Change in Qloo population percentile over the window. */
   percentDelta: number | null;
+  /** Last.fm listeners (from Qloo's entity data), when known. */
+  listeners?: number | null;
 };
+
+function formatListeners(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
+  return String(n);
+}
 
 export type LearnSuggestion = {
   artist: string;
@@ -139,7 +147,8 @@ export type LearnSuggestion = {
 
 /**
  * "Learn these": songs by artists rising with this crowd that the performer
- * doesn't already play. Rising first, then local affinity.
+ * doesn't already play. Rising first, then local affinity, then Last.fm
+ * listeners (the fallback order when Qloo has no trending data).
  */
 export function learnThese(
   artists: RisingArtist[],
@@ -150,15 +159,17 @@ export function learnThese(
   const playedArtists = new Set(repertoire.map((s) => nameKey(s.artist)));
   const delta = (a: RisingArtist) => a.percentDelta ?? Number.NEGATIVE_INFINITY;
   const affinity = (a: RisingArtist) => a.affinity ?? 0;
+  const listeners = (a: RisingArtist) => a.listeners ?? 0;
   const ranked = artists
     .filter((a) => !playedArtists.has(nameKey(a.name)))
-    .sort((a, b) => delta(b) - delta(a) || affinity(b) - affinity(a) || a.name.localeCompare(b.name));
+    .sort((a, b) => delta(b) - delta(a) || affinity(b) - affinity(a) || listeners(b) - listeners(a) || a.name.localeCompare(b.name));
   return ranked.slice(0, count).map((artist) => {
     // The artist isn't in the repertoire, so their top song is new to the performer.
     const track = topTracks[artist.name]?.[0] ?? null;
     const why: string[] = [];
     if (artist.percentDelta !== null) why.push(`${artist.percentDelta > 0 ? "Rising" : "Steady"} with this crowd (${artist.percentDelta > 0 ? "+" : ""}${artist.percentDelta.toFixed(1)} pts)`);
     if (artist.affinity !== null) why.push(`affinity ${Math.round(artist.affinity * 100)}/100`);
+    if (artist.listeners) why.push(`${formatListeners(artist.listeners)} Last.fm listeners`);
     return {
       artist: artist.name,
       entityId: artist.entityId,

@@ -123,6 +123,29 @@ describe("learnThese", () => {
     expect(result.map((r) => r.artist)).toEqual(["Some affinity", "No affinity"]);
   });
 
+  it("without trending data, ranks by affinity and then Last.fm listeners, and says so in the reason", () => {
+    const result = learnThese(
+      [
+        { entityId: "a", name: "Small", affinity: 0.7, percentDelta: null, listeners: 950 },
+        { entityId: "b", name: "Big", affinity: 0.7, percentDelta: null, listeners: 1_250_000 },
+        { entityId: "c", name: "Mid", affinity: 0.7, percentDelta: null, listeners: 48_400 },
+        { entityId: "d", name: "Unknown", affinity: 0.7, percentDelta: null, listeners: null },
+        { entityId: "e", name: "Closest", affinity: 0.9, percentDelta: null },
+      ],
+      {},
+      [],
+      5,
+    );
+    expect(result.map((r) => r.artist)).toEqual(["Closest", "Big", "Mid", "Small", "Unknown"]);
+    expect(result.map((r) => r.reason)).toEqual([
+      "affinity 90/100",
+      "affinity 70/100, 1.3M Last.fm listeners",
+      "affinity 70/100, 48k Last.fm listeners",
+      "affinity 70/100, 950 Last.fm listeners",
+      "affinity 70/100",
+    ]);
+  });
+
   it("falls back to a generic reason with no trend or affinity", () => {
     const result = learnThese([{ entityId: "a", name: "Band", affinity: null, percentDelta: null }], { Band: [{ title: "Song", playcount: 5 }] }, []);
     expect(result[0]).toMatchObject({ title: "Song", reason: "Liked by this crowd" });

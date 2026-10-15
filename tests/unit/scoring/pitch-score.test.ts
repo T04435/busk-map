@@ -13,6 +13,7 @@ import {
   rankPitches,
   scorePitch,
   tasteFactor,
+  isFineHeatmap,
   weatherPenalty,
   WEIGHT_LABELS,
 } from "@/server/scoring";
@@ -50,6 +51,37 @@ describe("openDuring", () => {
     expect(openDuring({ saturday: ["late"] }, "saturday", 18, 21)).toBe("unknown");
     expect(openDuring({ saturday: [42] }, "saturday", 18, 21)).toBe("unknown");
   });
+
+  // Synthetic hours in the live Qloo shape: lowercase days, "THH:MM:SS", a closed flag.
+  const live = (opens: string | null, closes: string | null, closed = false) => [{ opens, closes, closed }];
+
+  it("reads the live shape, including closing past midnight", () => {
+    const bar = { friday: live("T18:00:00", "T05:00:00"), saturday: live("T12:00:00", "T02:00:00"), sunday: live(null, null, true) };
+    // Saturday 12:00 to 02:00 (Sunday): open in the evening and late.
+    expect(openDuring(bar, "saturday", 18, 21)).toBe("open");
+    expect(openDuring(bar, "saturday", 22, 24)).toBe("open");
+    // Saturday morning before 12:00 is still Friday's night (18:00 to 05:00).
+    expect(openDuring(bar, "saturday", 3, 5)).toBe("open");
+    expect(openDuring(bar, "saturday", 6, 11)).toBe("closed");
+    // Sunday is closed, but Saturday's range runs to 02:00 Sunday.
+    expect(openDuring(bar, "sunday", 0, 1)).toBe("open");
+    expect(openDuring(bar, "sunday", 12, 15)).toBe("closed");
+    // Friday morning: Thursday has no hours, so only Friday's own range counts.
+    expect(openDuring(bar, "friday", 9, 12)).toBe("closed");
+  });
+
+  it("treats equal opening and closing times as open all day, and reads several ranges", () => {
+    expect(openDuring({ monday: live("T00:00:00", "T00:00:00") }, "monday", 3, 4)).toBe("open");
+    const split = { tuesday: [...live("T07:00:00", "T11:00:00"), ...live("T17:00:00", "T23:00:00")] };
+    expect(openDuring(split, "tuesday", 12, 15)).toBe("closed");
+    expect(openDuring(split, "tuesday", 18, 21)).toBe("open");
+    expect(openDuring({ wednesday: live("T09:00:00", "T17:00:00") }, "Wednesday", 16, 18)).toBe("open");
+  });
+
+  it("handles an unrecognised weekday name and a day with a bad range", () => {
+    expect(openDuring({ funday: live("T09:00:00", "T17:00:00") }, "funday", 10, 12)).toBe("open");
+    expect(openDuring({ monday: live("T09:00:00", null) }, "monday", 10, 12)).toBe("unknown");
+  });
 });
 
 describe("factors", () => {
@@ -64,6 +96,20 @@ describe("factors", () => {
     const city = [0.2, 0.4, 0.6, 1].map((affinity, i) => ({ ...offsetM(3000 * (i + 1)), affinity }));
     expect(tasteFactor(here, [{ ...here, affinity: 0.8 }, ...city])).toBeCloseTo(0.5);
     expect(tasteFactor(here, [{ ...here, affinity: 0.3 }, ...city])).toBe(0);
+  });
+
+  it("taste: reads a fine-grained (geohash-7) heatmap over a tighter radius", () => {
+    // A strong cell 500 m away counts for a geohash-6 map but not for a geohash-7 one.
+    const cells = (geohash: string) => [
+      { ...here, affinity: 0.2, geohash },
+      { ...offsetM(500), affinity: 1, geohash },
+      ...[0.1, 0.2, 0.3].map((affinity, i) => ({ ...offsetM(3000 * (i + 1)), affinity, geohash })),
+    ];
+    expect(tasteFactor(here, cells("r1r0fs"))).toBeGreaterThan(0);
+    expect(tasteFactor(here, cells("r1r0fs1"))).toBe(0);
+    expect(isFineHeatmap(cells("r1r0fs1"))).toBe(true);
+    expect(isFineHeatmap(cells("r1r0fs"))).toBe(false);
+    expect(isFineHeatmap([{ geohash: null }, {}])).toBe(false);
   });
 
   it("footfall: the nearest sensor, else nearby sensors, else Qloo popularity", () => {

@@ -106,6 +106,21 @@ describe("buildCandidates", () => {
   });
 });
 
+describe("fine-grained heatmaps", () => {
+  it("snap spots to a geohash-7 cell over a tighter radius", () => {
+    const spots: SpotInput[] = [
+      { id: "near", name: "Near", kind: "square", lat: -37.8118, lon: 144.96 },
+      { id: "mid", name: "Mid", kind: "square", lat: -37.8135, lon: 144.96 },
+    ];
+    const cells = (geohash: string) => [0.9, 0.1, 0.2, 0.3].map((affinity, i) => ({ lat: -37.81 - i * 0.05, lon: 144.96, affinity, geohash }));
+    const ids = (geohash: string) =>
+      buildCandidatesWithFunnel({ zones: [], hotspots: [], sites: [], sensors: [], spots, cells: cells(geohash), permit: "general" }).candidates.map((c) => c.id);
+    // "Mid" is about 390 m from the best cell: inside the geohash-6 snap radius, outside the geohash-7 one.
+    expect(ids("r1r0fs")).toEqual(["spot:near", "spot:mid"]);
+    expect(ids("r1r0fs1")).toEqual(["spot:near"]);
+  });
+});
+
 describe("topCells and usualSpotAt", () => {
   it("takes the best share of cells, at least four, ranked", () => {
     const cells = Array.from({ length: 20 }, (_, i) => ({ lat: -37.8 - i * 0.001, lon: 144.96, affinity: i / 20 }));

@@ -1,4 +1,5 @@
 import { distanceM, distanceToLineM, type LatLon } from "@/lib/geo";
+import { isFineHeatmap } from "./pitch-score";
 import type { Candidate, HeatCellInput, HotspotInput, PerformerPermit, SensorInput, SiteInput, SpotInput, ZoneInput } from "./types";
 
 /**
@@ -26,6 +27,8 @@ export const TOP_CELL_SHARE = 0.3;
 export const MIN_TOP_CELLS = 4;
 /** How far from a cell's centre a spot may be to stand for it (a geohash-6 cell is about 600 × 1,000 m). */
 export const SNAP_RADIUS_M = 550;
+/** ...and from a fine-grained (geohash-7, about 150 m) cell. */
+export const FINE_SNAP_RADIUS_M = 250;
 export const MAX_SPOTS_PER_CELL = 3;
 export const USUAL_SPOT_RADIUS_M = 180;
 
@@ -145,12 +148,13 @@ export function buildCandidatesWithFunnel({ sites, zones, sensors, spots, cells,
   }
 
   const top = topCells(cells);
+  const snapRadius = isFineHeatmap(cells) ? FINE_SNAP_RADIUS_M : SNAP_RADIUS_M;
   for (const cell of top) {
     const ref = { lat: cell.lat, lon: cell.lon, affinity: cell.affinity, rank: cell.rank };
     const near = <T extends LatLon>(items: T[]) =>
       items
         .map((item) => ({ item, d: distanceM(cell, item) }))
-        .filter((x) => x.d <= SNAP_RADIUS_M)
+        .filter((x) => x.d <= snapRadius)
         .sort((a, b) => a.d - b.d)
         .map((x) => x.item);
     for (const spot of near(spots).slice(0, MAX_SPOTS_PER_CELL)) fromSpot(spot, "taste", ref);

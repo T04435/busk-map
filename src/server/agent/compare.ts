@@ -24,7 +24,7 @@ export const plainAnswerSchema = z.object({
         name: z.string().max(160).describe("A real, nameable place: a square, street corner, laneway or forecourt."),
         lat: z.number().nullable().describe("Approximate latitude, or null if unsure."),
         lon: z.number().nullable().describe("Approximate longitude, or null if unsure."),
-        why: z.string().max(600),
+        why: z.string().max(1200).describe("One short reason, under 25 words."),
       }),
     )
     .max(3),
@@ -92,7 +92,7 @@ export async function plainLlmSuggestion(request: Pick<PlanRequest, "city" | "sl
   if (!offline && !providerStatus().aiGateway) return { text: null, reason: "unavailable" };
   try {
     const answer = await cachedCompare(comparePrompt(request), offline);
-    const spots = answer.spots.map((s) => ({ name: s.name, why: s.why, lat: s.lat ?? null, lon: s.lon ?? null, usualSpot: usualSpotMentioned(`${s.name} ${s.why}`) }));
+    const spots = answer.spots.map((s) => ({ name: s.name, why: s.why.length > 300 ? `${s.why.slice(0, 297)}…` : s.why, lat: s.lat ?? null, lon: s.lon ?? null, usualSpot: usualSpotMentioned(`${s.name} ${s.why}`) }));
     const text = [...spots.map((s, i) => `${i + 1}. ${s.name}: ${s.why}`), answer.setlist.length ? `Setlist: ${answer.setlist.join(", ")}` : ""].filter(Boolean).join("\n");
     return { text, spots, setlist: answer.setlist, model: offline ? "mock" : MODELS.cheap };
   } catch (error) {

@@ -17,6 +17,6 @@ export const LIMITS = {
   maxSteps: 8,
   maxOutputTokensPerStep: 1200,
   agentTimeoutMs: 75_000,
-  compareMaxOutputTokens: 1000,
+  compareMaxOutputTokens: 1600,
   compareTimeoutMs: 30_000,
 } as const;

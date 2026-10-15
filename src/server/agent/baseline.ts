@@ -6,6 +6,7 @@ import { CITIES } from "@/server/cities";
 import { PUBLIC_SPOTS, USUAL_HOTSPOTS } from "@/server/data/spots";
 import { comparisonStore, recordComparison } from "@/server/comparisons/store";
 import { log } from "@/server/log";
+import { processMap } from "@/server/memo";
 import { compareWithBaseline, comparisonRecord, type KnownPlace } from "@/server/scoring";
 import { HOTSPOT_ALIASES, plainLlmSuggestion } from "./compare";
 import { buildEnginePlan, engineContext, exampleIdFor } from "./preload";
@@ -19,7 +20,7 @@ export type BaselineResult = { status: "ok"; baseline: BaselineView } | { status
 
 const TTL_MS = 10 * 60_000;
 const MAX = 100;
-const memo = new Map<string, { at: number; result: Promise<BaselineResult> }>();
+const memo = processMap<string, { at: number; result: Promise<BaselineResult> }>("baselines");
 
 function knownPlaces(sites: { name: string; lat: number; lon: number }[], sensors: { name: string; lat: number; lon: number }[]): KnownPlace[] {
   const aliases = (name: string) => HOTSPOT_ALIASES.filter(([, target]) => target === name).map(([pattern]) => pattern);

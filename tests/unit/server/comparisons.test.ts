@@ -3,7 +3,10 @@ import type { ComparisonRecord } from "@/server/scoring";
 
 async function load() {
   vi.resetModules();
-  return import("@/server/comparisons/store");
+  const store = await import("@/server/comparisons/store");
+  // Stores live on globalThis (one per process): start each test clean.
+  store.resetComparisonStoresForTests();
+  return store;
 }
 
 const record = (overlap: number, ours: number[], plain: (number | null)[], performerKey = "acoustic"): ComparisonRecord => ({

@@ -6,6 +6,7 @@ import { planRequestSchema, type Plan, type PlanRequest } from "@/lib/plan-schem
 import { localToday, nextWeekday } from "@/lib/slot";
 import type { AdapterContext } from "@/server/adapters/core";
 import { CITIES } from "@/server/cities";
+import { processMap } from "@/server/memo";
 import { assemblePlan } from "./assemble";
 import { PlanContext } from "./context";
 
@@ -21,7 +22,7 @@ export const PLAN_MEMO_TTL_MS = 10 * 60_000;
 /** A plan built while a source was down is kept briefly, so a flaky source doesn't slow every view, then retried. */
 export const DEGRADED_PLAN_TTL_MS = 60_000;
 const MEMO_MAX = 100;
-const memo = new Map<string, { at: number; ttl: number; plan: Promise<Plan> }>();
+const memo = processMap<string, { at: number; ttl: number; plan: Promise<Plan> }>("engine-plans");
 
 function memoKey(request: PlanRequest, adapters: AdapterContext, today: string) {
   return JSON.stringify([request, adapters.offline, [...adapters.faults].sort(), today]);
@@ -30,7 +31,7 @@ function memoKey(request: PlanRequest, adapters: AdapterContext, today: string) 
 /** A plan built while a source (other than a deliberate test fault) was down. */
 const degraded = (plan: Plan) => plan.dataStatus.some((s) => s.mode === "fallback" && s.reason !== "missing_key" && s.reason !== "fault_injected");
 
-const contexts = new Map<string, { at: number; context: PlanContext }>();
+const contexts = processMap<string, { at: number; context: PlanContext }>("engine-contexts");
 
 /**
  * The engine's PlanContext for a request, shared within this instance: the

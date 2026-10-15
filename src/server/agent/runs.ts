@@ -1,5 +1,6 @@
 import "server-only";
 import type { PlanStreamEvent } from "@/lib/plan-schema";
+import { processMap } from "@/server/memo";
 
 /**
  * Agent runs, shared and replayed. The plan page starts the agent on every
@@ -59,7 +60,7 @@ export class AgentRun {
   }
 }
 
-const runs = new Map<string, { run: AgentRun; ttl: number }>();
+const runs = processMap<string, { run: AgentRun; ttl: number }>("agent-runs");
 
 const reusable = (entry: { run: AgentRun; ttl: number } | undefined, now: number) =>
   entry !== undefined && (!entry.run.done || (entry.run.ok && now - entry.run.finishedAt! < entry.ttl));

@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import type { ComparisonRecord } from "@/server/scoring";
 import { env } from "@/server/env";
 import { log } from "@/server/log";
+import { processMap } from "@/server/memo";
 
 /**
  * Where plain-AI baseline comparisons are recorded, for the uniqueness stats
@@ -124,17 +125,19 @@ export class PostgresComparisonStore implements ComparisonStore {
   }
 }
 
-let store: ComparisonStore | null = null;
+const stores = processMap<"db" | "memory", ComparisonStore>("comparison-stores");
 
-/** Offline (tests): memory. With DATABASE_URL: Postgres. Otherwise: none. */
+/** Offline (tests): memory. With DATABASE_URL (pooled): Postgres. Otherwise: none. One of each per process. */
 export function comparisonStore(offline: boolean): ComparisonStore {
-  if (offline) return (memoryStore ??= new MemoryComparisonStore());
-  if (store) return store;
-  const url = env().DATABASE_URL;
-  store = url ? new PostgresComparisonStore(neon(url)) : new NoComparisonStore();
+  const kind = offline ? "memory" : "db";
+  let store = stores.get(kind);
+  if (!store) {
+    const url = env().DATABASE_URL;
+    store = offline ? new MemoryComparisonStore() : url ? new PostgresComparisonStore(neon(url)) : new NoComparisonStore();
+    stores.set(kind, store);
+  }
   return store;
 }
-let memoryStore: MemoryComparisonStore | null = null;
 
 /** Record without ever failing the caller. */
 export async function recordComparison(target: ComparisonStore, record: ComparisonRecord): Promise<void> {
@@ -146,6 +149,5 @@ export async function recordComparison(target: ComparisonStore, record: Comparis
 }
 
 export function resetComparisonStoresForTests() {
-  store = null;
-  memoryStore = null;
+  stores.clear();
 }

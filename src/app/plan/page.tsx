@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { connection } from "next/server";
+import { after, connection } from "next/server";
 import { Suspense } from "react";
 import { TIP_COOKIE } from "@/lib/tips";
 import { PlanView } from "@/components/plan/plan-view";
@@ -70,8 +70,8 @@ async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchPar
   }
   const faults = typeof params.faults === "string" ? params.faults : null;
   const adapters = adapterContextFor(faults);
-  // The plain-AI baseline starts now, in parallel with the plan; the comparison panel picks it up.
-  void baselineFor(parsed.request, adapters);
+  // The plain-AI baseline starts as soon as the page is sent, alongside the agent run; the comparison panel picks it up.
+  after(() => baselineFor(parsed.request, adapters).then(() => undefined));
   const plan = await buildEnginePlan(parsed.request, adapters);
   return (
     <PlanView

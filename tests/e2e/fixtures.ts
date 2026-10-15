@@ -10,6 +10,19 @@ export async function waitForPlan(page: import("@playwright/test").Page) {
   await expect(page.getByRole("region", { name: "Pitches", exact: true })).toBeVisible();
 }
 
+/**
+ * The agent's steps list. A run replayed from the cache (e.g. the other project already ran this example)
+ * shows its steps collapsed: open them first.
+ */
+export async function agentSteps(page: import("@playwright/test").Page) {
+  const list = page.getByRole("list", { name: "Agent steps" });
+  const replayed = page.getByRole("button", { name: /^Agent steps \(replayed, \d+\)$/ });
+  await expect(list.or(replayed).first()).toBeVisible();
+  if (await replayed.isVisible()) await replayed.click();
+  await expect(list).toBeVisible();
+  return list;
+}
+
 /** YYYY-MM-DD for today plus `days`, in the browser's (test machine's) time zone. */
 export function isoDay(days = 0, from = new Date()): string {
   const d = new Date(from.getFullYear(), from.getMonth(), from.getDate() + days);

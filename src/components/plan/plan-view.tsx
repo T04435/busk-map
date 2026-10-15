@@ -15,6 +15,7 @@ import { QLOO_TEST_LABEL } from "@/lib/sources";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { planStreamEventSchema, type Plan, type PlanRequest } from "@/lib/plan-schema";
 import { weekSearchParams } from "@/lib/week-url";
 import { TipLogForm } from "@/components/tips/tip-log-form";
@@ -38,6 +39,10 @@ type Props = {
   faults: string | null;
 };
 
+/** If a live run hasn't ended by now, show the engine's plan anyway (the agent itself times out at 75 s). */
+const AGENT_WAIT_MS = 90_000;
+const TEMPLATE_NOTE = "The reasons below are the template ones from the data, not Claude's.";
+
 const list = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
 
 export function PlanView({ initialPlan, request, center, autoRun, exampleId, faults }: Props) {
@@ -52,6 +57,12 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
   const [run, setRun] = useState<RunState>({ status: "idle" });
   /** A note from the server about the run, e.g. that it replays a cached run. */
   const [runNote, setRunNote] = useState<string | null>(null);
+  // Agent-first: during a live run the plan stays hidden until the agent ends. Qloo down needs no wait: there is no plan to show.
+  const [revealed, setRevealed] = useState(!autoRun || initialPlan.qlooFailed);
+  /** The run was replayed from the cache: its steps are collapsed. */
+  const [replayed, setReplayed] = useState(false);
+  /** Why the plan shown isn't Claude's (agent failed, timed out or fell back to templates). */
+  const [fallbackNote, setFallbackNote] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -76,6 +87,13 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
     setRun({ status: "running" });
     setSteps([]);
     setRunNote(null);
+    setReplayed(false);
+    // Whatever ends the run, the plan is shown: Claude's, or the engine's with a note.
+    const fail = (message: string) => {
+      setRun({ status: "error", message });
+      setFallbackNote(TEMPLATE_NOTE);
+      setRevealed(true);
+    };
     try {
       const response = await fetch("/api/plan", {
         method: "POST",
@@ -84,7 +102,7 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
       });
       if (!response.ok || !response.body) {
         const body = await response.json().catch(() => null);
-        setRun({ status: "error", message: body?.error?.message ?? "The planner is unavailable right now." });
+        fail(body?.error?.message ?? "The planner is unavailable right now.");
         return;
       }
       const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
@@ -103,19 +121,22 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
           const event = parsed.data;
           setSteps((current) => applyStreamEvent(current, event));
           if (event.type === "status" && event.message !== "Planning started") setRunNote(event.message);
+          if (event.type === "status" && event.replay) setReplayed(true);
           if (event.type === "plan") {
             setPlan(event.plan);
             setRun({ status: "done" });
+            setFallbackNote(event.plan.explanations === "ai" ? null : `The agent couldn't add Claude's explanations. ${TEMPLATE_NOTE}`);
+            setRevealed(true);
             finished = true;
           } else if (event.type === "error") {
-            setRun({ status: "error", message: event.message });
+            fail(event.message);
             finished = true;
           }
         }
       }
-      if (!finished) setRun({ status: "error", message: "The planner stopped before finishing. Please try again." });
+      if (!finished) fail("The planner stopped before finishing. Please try again.");
     } catch {
-      setRun({ status: "error", message: "The planner is unavailable right now." });
+      fail("The planner is unavailable right now.");
     }
   }, [faults, request]);
 
@@ -125,6 +146,19 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
       void runAgent();
     }
   }, [autoRun, runAgent]);
+
+  // A live run that hangs past the agent's own timeout: show the engine's plan (Claude's replaces it if the run still ends).
+  const waiting = run.status === "running" && !revealed;
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setTimeout(() => {
+      setFallbackNote(`The agent is taking too long, so this is the engine's plan. ${TEMPLATE_NOTE}`);
+      setRevealed(true);
+    }, AGENT_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, [waiting]);
+  // Before the run starts (first render, server and client alike) and while it runs, the plan is pending.
+  const pending = !revealed;
 
   const qlooDown = plan.qlooFailed || (run.status === "error" && run.message.startsWith("Qloo"));
   const unmatched = qlooDown ? [] : plan.resolvedArtists.filter((a) => a.matched === null).map((a) => a.query);
@@ -143,7 +177,7 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
             {plan.qlooMode === "live" ? "Live Qloo data" : QLOO_TEST_LABEL}
           </Badge>
           <Badge variant="outline">{plan.footfallLevel === "city-sensors" ? "Foot traffic: city sensors" : "Foot traffic: unavailable"}</Badge>
-          <Badge variant="outline">{plan.explanations === "ai" ? "Explanations: Claude" : "Explanations: from the data"}</Badge>
+          {!pending && <Badge variant="outline">{plan.explanations === "ai" ? "Explanations: Claude" : "Explanations: from the data"}</Badge>}
         </div>
         <p className="flex flex-wrap gap-x-4 text-sm">
           <Link
@@ -172,7 +206,7 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
         </Alert>
       )}
 
-      {unmatched.length > 0 && (
+      {!pending && unmatched.length > 0 && (
         <Alert data-testid="unmatched-artists">
           <AlertTitle>
             Qloo couldn&apos;t match {list(unmatched)}
@@ -195,169 +229,228 @@ export function PlanView({ initialPlan, request, center, autoRun, exampleId, fau
 
       <section aria-label="Agent" className="space-y-3">
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => void runAgent()} disabled={run.status === "running"}>
-            {run.status === "running" ? "Planning…" : run.status === "idle" ? "Plan with the agent (live)" : "Re-run the agent"}
+          <Button onClick={() => void runAgent()} disabled={pending || run.status === "running"}>
+            {pending || run.status === "running" ? "Planning…" : run.status === "idle" ? "Plan with the agent (live)" : "Re-run the agent"}
           </Button>
           <p className="text-sm text-muted-foreground" data-testid="agent-status">
-            {run.status === "idle"
-              ? "Shown: the engine's plan from the data. The agent adds Claude's explanations."
-              : run.status === "running"
-                ? "The agent is calling Qloo and the other sources. The plan below is the engine's until it finishes."
-                : run.status === "done"
-                  ? "Updated with the agent's plan."
-                  : null}
+            {pending
+              ? "The agent is researching with Qloo and the other sources. The plan appears when it finishes."
+              : run.status === "idle"
+                ? "Shown: the engine's plan from the data. The agent adds Claude's explanations."
+                : run.status === "running"
+                  ? "The agent is running again. The plan below stays until it finishes."
+                  : run.status === "done"
+                    ? replayed
+                      ? "The agent's plan, replayed."
+                      : "The agent's plan."
+                    : null}
           </p>
         </div>
         {runNote && <p className="text-sm text-muted-foreground">{runNote}</p>}
-        {run.status === "error" && !qlooDown && (
+        {run.status === "error" && !qlooDown ? (
           <Alert variant="destructive">
             <AlertTitle>The agent could not finish</AlertTitle>
-            <AlertDescription>{run.message} The plan below is still based on the data.</AlertDescription>
+            <AlertDescription>
+              {run.message} The plan below is the engine&apos;s, from the data. {TEMPLATE_NOTE}
+            </AlertDescription>
           </Alert>
+        ) : (
+          fallbackNote &&
+          !qlooDown && (
+            <Alert data-testid="agent-fallback">
+              <AlertTitle>Shown: the engine&apos;s plan</AlertTitle>
+              <AlertDescription>{fallbackNote}</AlertDescription>
+            </Alert>
+          )
         )}
-        <AgentSteps steps={steps} />
+        {replayed && steps.length > 0 ? (
+          <Collapsible className="text-sm">
+            <CollapsibleTrigger asChild>
+              <Button variant="link" size="sm" className="group h-auto px-0 text-muted-foreground">
+                <ChevronRightIcon aria-hidden className="transition-transform group-data-[state=open]:rotate-90" />
+                Agent steps (replayed, {steps.length})
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2">
+              <AgentSteps steps={steps} />
+            </CollapsibleContent>
+          </Collapsible>
+        ) : (
+          <AgentSteps steps={steps} />
+        )}
       </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <h2>Plan</h2>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p>{plan.summary}</p>
-          {plan.funnel && plan.funnel.topCells > 0 && (
-            <p className="text-muted-foreground" data-testid="plan-funnel">
-              How this plan was found: Qloo mapped your taste over {plan.funnel.cells} areas of the city. Your top {plan.funnel.topCells} areas gave{" "}
-              {plan.funnel.considered} public spaces, footpaths and council sites; the council&apos;s busking rules ruled out {plan.funnel.excluded},
-              and {plan.funnel.candidates} were scored on foot traffic, nearby places, events and weather for your slot.
-            </p>
-          )}
-          {plan.notes.length > 0 && (
-            <ul className="list-disc pl-5 text-muted-foreground">
-              {plan.notes.map((note) => (
-                <li key={note}>{note}</li>
-              ))}
-            </ul>
-          )}
-          {plan.tipHistory && (
-            <p className="flex flex-wrap items-center gap-2 text-muted-foreground" data-testid="tip-history">
-              {plan.tipHistory.source !== "yours" && <Badge variant="secondary">Example data</Badge>}
-              <span>
-                Your tip log ({plan.tipHistory.sessions} sessions, average ${Math.round(plan.tipHistory.perHour)}/h)
-                {tipPitches.length > 0
-                  ? ` adds a small bonus to ${list(tipPitches.map((p) => `${p.name} (+${p.tip!.points})`))}, where you earned more than your average.`
-                  : " doesn't change these pitches: none of them earned you more than your average yet."}{" "}
-                <Link className="underline" href="/tips">
-                  How it works
-                </Link>
-              </span>
-            </p>
-          )}
-          <WeatherStrip weather={plan.weather} />
-        </CardContent>
-      </Card>
-
-      {qlooDown ? null : plan.pitches.length === 0 ? (
-        <Alert>
-          <AlertTitle>No pitch to recommend</AlertTitle>
-          <AlertDescription>
-            The busking rules or the data for this slot left no candidate pitches.{" "}
-            <a className="underline" href={plan.rulesUrl} target="_blank" rel="noreferrer">
-              Read the council&apos;s busking rules
-            </a>
-            .
-          </AlertDescription>
-        </Alert>
+      {pending ? (
+        <PendingPlan />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-          <div className="space-y-2">
-            <div className="h-[22rem] sm:h-[28rem]">
-              <LazyPlanMap plan={plan} center={center} selectedId={selected?.id ?? null} onSelect={select} />
-            </div>
-            <MapLegend testData={plan.qlooMode === "synthetic"} />
-          </div>
-          <section aria-label="Pitches" className="space-y-2">
-            <h2 className="text-lg font-semibold">Top pitches</h2>
-            <ol className="space-y-2">
-              {plan.pitches.map((pitch, i) => (
-                <li key={pitch.id}>
-                  <Button
-                    variant={pitch.id === selected?.id ? "default" : "outline"}
-                    className="h-auto w-full justify-between whitespace-normal text-left"
-                    aria-pressed={pitch.id === selected?.id}
-                    data-pitch-name={pitch.name}
-                    onClick={() => select(pitch.id)}
-                  >
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span>
-                        {i + 1}. {pitch.name}
-                      </span>
-                      <DiscoveryBadge discovery={pitch.discovery} className="border-current bg-transparent text-current" />
-                      {agreedWith.has(pitch.id) && (
-                        <Badge variant="outline" className="border-current bg-transparent text-current" title={`The plain AI also named ${agreedWith.get(pitch.id)}`}>
-                          Both agree
-                        </Badge>
-                      )}
-                    </span>
-                    <span className="shrink-0">{pitch.score}/100</span>
-                  </Button>
-                </li>
-              ))}
-            </ol>
-            {plan.others.length > 0 && (
-              <Collapsible className="text-sm">
-                <CollapsibleTrigger asChild>
-                  <Button variant="link" size="sm" className="group h-auto px-0 text-muted-foreground">
-                    <ChevronRightIcon aria-hidden className="transition-transform group-data-[state=open]:rotate-90" />
-                    Other scored pitches ({plan.others.length})
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <ul className="mt-2 space-y-1">
-                    {plan.others.map((p) => (
-                      <li key={p.id} className="flex justify-between gap-2">
-                        <span>
-                          {p.name}
-                          {p.discovery === "hidden-gem" ? " · hidden gem" : p.discovery === "usual" ? " · usual spot" : ""}
-                          {p.tipPoints ? ` · tips +${p.tipPoints}` : ""}
-                        </span>
-                        <span className="text-muted-foreground">{p.score}/100</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CollapsibleContent>
-              </Collapsible>
+        <>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <h2>Plan</h2>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <p>{plan.summary}</p>
+            {plan.funnel && plan.funnel.topCells > 0 && (
+              <p className="text-muted-foreground" data-testid="plan-funnel">
+                How this plan was found: Qloo mapped your taste over {plan.funnel.cells} areas of the city. Your top {plan.funnel.topCells} areas gave{" "}
+                {plan.funnel.considered} public spaces, footpaths and council sites; the council&apos;s busking rules ruled out {plan.funnel.excluded},
+                and {plan.funnel.candidates} were scored on foot traffic, nearby places, events and weather for your slot.
+              </p>
             )}
-          </section>
-        </div>
-      )}
+            {plan.notes.length > 0 && (
+              <ul className="list-disc pl-5 text-muted-foreground">
+                {plan.notes.map((note) => (
+                  <li key={note}>{note}</li>
+                ))}
+              </ul>
+            )}
+            {plan.tipHistory && (
+              <p className="flex flex-wrap items-center gap-2 text-muted-foreground" data-testid="tip-history">
+                {plan.tipHistory.source !== "yours" && <Badge variant="secondary">Example data</Badge>}
+                <span>
+                  Your tip log ({plan.tipHistory.sessions} sessions, average ${Math.round(plan.tipHistory.perHour)}/h)
+                  {tipPitches.length > 0
+                    ? ` adds a small bonus to ${list(tipPitches.map((p) => `${p.name} (+${p.tip!.points})`))}, where you earned more than your average.`
+                    : " doesn't change these pitches: none of them earned you more than your average yet."}{" "}
+                  <Link className="underline" href="/tips">
+                    How it works
+                  </Link>
+                </span>
+              </p>
+            )}
+            <WeatherStrip weather={plan.weather} />
+          </CardContent>
+        </Card>
 
-      {selected && !qlooDown && (
+        {qlooDown ? null : plan.pitches.length === 0 ? (
+          <Alert>
+            <AlertTitle>No pitch to recommend</AlertTitle>
+            <AlertDescription>
+              The busking rules or the data for this slot left no candidate pitches.{" "}
+              <a className="underline" href={plan.rulesUrl} target="_blank" rel="noreferrer">
+                Read the council&apos;s busking rules
+              </a>
+              .
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            <div className="space-y-2">
+              <div className="h-[22rem] sm:h-[28rem]">
+                <LazyPlanMap plan={plan} center={center} selectedId={selected?.id ?? null} onSelect={select} />
+              </div>
+              <MapLegend testData={plan.qlooMode === "synthetic"} />
+            </div>
+            <section aria-label="Pitches" className="space-y-2">
+              <h2 className="text-lg font-semibold">Top pitches</h2>
+              <ol className="space-y-2">
+                {plan.pitches.map((pitch, i) => (
+                  <li key={pitch.id}>
+                    <Button
+                      variant={pitch.id === selected?.id ? "default" : "outline"}
+                      className="h-auto w-full justify-between whitespace-normal text-left"
+                      aria-pressed={pitch.id === selected?.id}
+                      data-pitch-name={pitch.name}
+                      onClick={() => select(pitch.id)}
+                    >
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span>
+                          {i + 1}. {pitch.name}
+                        </span>
+                        <DiscoveryBadge discovery={pitch.discovery} className="border-current bg-transparent text-current" />
+                        {agreedWith.has(pitch.id) && (
+                          <Badge variant="outline" className="border-current bg-transparent text-current" title={`The plain AI also named ${agreedWith.get(pitch.id)}`}>
+                            Both agree
+                          </Badge>
+                        )}
+                      </span>
+                      <span className="shrink-0">{pitch.score}/100</span>
+                    </Button>
+                  </li>
+                ))}
+              </ol>
+              {plan.others.length > 0 && (
+                <Collapsible className="text-sm">
+                  <CollapsibleTrigger asChild>
+                    <Button variant="link" size="sm" className="group h-auto px-0 text-muted-foreground">
+                      <ChevronRightIcon aria-hidden className="transition-transform group-data-[state=open]:rotate-90" />
+                      Other scored pitches ({plan.others.length})
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <ul className="mt-2 space-y-1">
+                      {plan.others.map((p) => (
+                        <li key={p.id} className="flex justify-between gap-2">
+                          <span>
+                            {p.name}
+                            {p.discovery === "hidden-gem" ? " · hidden gem" : p.discovery === "usual" ? " · usual spot" : ""}
+                            {p.tipPoints ? ` · tips +${p.tipPoints}` : ""}
+                          </span>
+                          <span className="text-muted-foreground">{p.score}/100</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+            </section>
+          </div>
+        )}
+
+        {selected && !qlooDown && (
+          <div className="grid gap-6 lg:grid-cols-2">
+            <PitchCard pitch={selected} rank={plan.pitches.indexOf(selected) + 1} />
+            <SetlistPanel pitch={selected} learnThese={plan.learnThese} ageLean={plan.ageLean} />
+          </div>
+        )}
+
+        {!qlooDown && plan.pitches.length > 0 && (
+          <TipLogForm
+            performerName={request.performer.name}
+            exampleId={exampleId}
+            slot={request.slot}
+            pitches={[...plan.pitches, ...plan.others].map((p) => ({ id: p.id, name: p.name }))}
+            defaultPitchId={selected?.id ?? null}
+          />
+        )}
+
         <div className="grid gap-6 lg:grid-cols-2">
-          <PitchCard pitch={selected} rank={plan.pitches.indexOf(selected) + 1} />
-          <SetlistPanel pitch={selected} learnThese={plan.learnThese} ageLean={plan.ageLean} />
+          <CrowdPanel crowd={plan.crowd} resolved={plan.resolvedArtists} topPitch={plan.pitches[0]?.name ?? null} />
+          <WeightsPanel weights={plan.weights} />
         </div>
-      )}
 
-      {!qlooDown && plan.pitches.length > 0 && (
-        <TipLogForm
-          performerName={request.performer.name}
-          exampleId={exampleId}
-          slot={request.slot}
-          pitches={[...plan.pitches, ...plan.others].map((p) => ({ id: p.id, name: p.name }))}
-          defaultPitchId={selected?.id ?? null}
-        />
-      )}
+        {!qlooDown && <ComparePanel state={baseline} pitches={plan.pitches} />}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <CrowdPanel crowd={plan.crowd} resolved={plan.resolvedArtists} topPitch={plan.pitches[0]?.name ?? null} />
-        <WeightsPanel weights={plan.weights} />
+        <DataSources status={plan.dataStatus} showAi={plan.explanations === "ai"} />
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Where the plan, map, pitches, crowd, setlist and comparison will go while the agent works. */
+function PendingPlan() {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-label="Plan pending" data-testid="plan-pending">
+      <p className="text-sm text-muted-foreground">The plan, map, crowd, setlist and comparison appear here when the agent finishes.</p>
+      <Skeleton className="h-32 w-full" />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <Skeleton className="h-[22rem] w-full sm:h-[28rem]" />
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
       </div>
-
-      {!qlooDown && <ComparePanel state={baseline} pitches={plan.pitches} />}
-
-      <DataSources status={plan.dataStatus} showAi={plan.explanations === "ai"} />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+      <Skeleton className="h-48 w-full" />
     </div>
   );
 }

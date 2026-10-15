@@ -247,7 +247,8 @@ export type DataStatus = z.infer<typeof dataStatusSchema>;
 
 /** Events streamed from /api/plan, one JSON object per line. */
 export const planStreamEventSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("status"), message: z.string() }),
+  // `replay`: the run already finished and is being replayed from the cache (no new model call).
+  z.object({ type: z.literal("status"), message: z.string(), replay: z.boolean().optional() }),
   z.object({ type: z.literal("tool-start"), id: z.string(), tool: z.string(), label: z.string(), source: z.string().optional() }),
   z.object({ type: z.literal("tool-end"), id: z.string(), tool: z.string(), ok: z.boolean(), summary: z.string() }),
   z.object({ type: z.literal("plan"), plan: planSchema }),

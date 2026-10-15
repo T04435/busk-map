@@ -1,5 +1,5 @@
 import { EXAMPLES } from "../../src/lib/examples";
-import { expect, LOCAL, test, waitForPlan } from "./fixtures";
+import { agentSteps, expect, LOCAL, test, waitForPlan } from "./fixtures";
 
 test.describe("landing", () => {
   test("shows the three example performers and the own-act form", async ({ page }) => {
@@ -23,8 +23,8 @@ for (const example of EXAMPLES) {
       await expect(pitches).toHaveCount(3);
       await expect(page.getByRole("region", { name: "Map of pitches and Qloo taste affinity" })).toBeVisible();
       await expect(page.getByRole("heading", { name: /^Setlist for / })).toBeVisible();
-      // The agent starts on load: its steps stream, then Claude's explanations replace the engine's (mock model offline).
-      await expect(page.getByRole("list", { name: "Agent steps" })).toBeVisible();
+      // The agent starts on load and the plan appears when it ends, with Claude's explanations (mock model offline).
+      await agentSteps(page);
       if (LOCAL) await expect(page.getByText("Explanations: Claude")).toBeVisible();
       // Every data source is credited.
       for (const credit of ["Taste data by Qloo", "Pedestrian counts: City of Melbourne Open Data", "Weather data by Open-Meteo.com"]) {
@@ -87,20 +87,53 @@ test.describe("data-led plans", () => {
 test.describe("live agent (mock model offline)", () => {
   test.skip(!LOCAL, "Runs the agent; only against the local offline server to avoid spend");
 
-  test("runs the agent on load, streams each Qloo call and swaps in its explanations; a re-run replays", async ({ page }) => {
-    await page.goto("/plan?example=acoustic");
-    await waitForPlan(page);
+  test("agent-first: steps stream while the plan waits, Claude's plan appears at the end; a reload replays it at once", async ({ page }, testInfo) => {
+    const errors: string[] = [];
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(e.message));
+    // A request no other test or project shares, so the first load is a cold run.
+    const url = `/plan?name=Agent%20First%20${testInfo.project.name}&artists=Paul%20Kelly&songs=How%20to%20Make%20Gravy~Paul%20Kelly&date=2026-10-24&from=18&to=21`;
+    // Hold the agent's stream until the pending state has been checked.
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route("**/api/plan", async (route) => {
+      await held;
+      await route.continue();
+    });
+    await page.goto(url);
+    await expect(page.getByTestId("plan-pending")).toBeVisible();
+    await expect(page.getByTestId("agent-status")).toHaveText(/The plan appears when it finishes/);
+    await expect(page.getByRole("button", { name: "Planning…" })).toBeDisabled();
+    await expect(page.getByRole("region", { name: "Pitches", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: /^Setlist for / })).toHaveCount(0);
+    await expect(page.getByText(/^Explanations: /)).toHaveCount(0);
+    release();
+
     const steps = page.getByRole("list", { name: "Agent steps" });
     await expect(steps.getByText("Matching your artists to Qloo")).toBeVisible();
     await expect(steps.getByText("Qloo /v2/insights · urn:heatmap")).toBeVisible();
     await expect(steps.getByText("Scoring legal pitches")).toBeVisible();
+    await waitForPlan(page);
+    await expect(page.getByTestId("plan-pending")).toHaveCount(0);
     await expect(page.getByText("Explanations: Claude")).toBeVisible();
     await expect(page.getByText(/^Mock explanation/).first()).toBeVisible();
-    const rerun = page.getByRole("button", { name: "Re-run the agent" });
-    await expect(rerun).toBeEnabled();
-    await rerun.click();
+    await expect(page.getByTestId("agent-fallback")).toHaveCount(0);
+
+    // A reload replays the finished run: the plan at once, the steps collapsed and marked as replayed.
+    await page.unroute("**/api/plan");
+    await page.reload();
+    await waitForPlan(page);
     await expect(page.getByText(/^Replaying the agent's run from .* \(cached, no new model call\)$/)).toBeVisible();
     await expect(page.getByText("Explanations: Claude")).toBeVisible();
+    await expect(page.getByRole("list", { name: "Agent steps" })).toHaveCount(0);
+    await page.getByRole("button", { name: /^Agent steps \(replayed, \d+\)$/ }).click();
+    await expect(page.getByRole("list", { name: "Agent steps" }).getByText("Scoring legal pitches")).toBeVisible();
+
+    // A re-run replays too, and keeps the plan on screen.
+    await page.getByRole("button", { name: "Re-run the agent" }).click();
+    await expect(page.getByText("Explanations: Claude")).toBeVisible();
+    await expect(page.getByTestId("agent-status")).toHaveText("The agent's plan, replayed.");
+    expect(errors.filter((e) => /hydrat/i.test(e))).toEqual([]);
   });
 
   test("run=0 shows the engine's plan only", async ({ page }) => {

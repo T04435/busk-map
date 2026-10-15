@@ -96,7 +96,11 @@ export async function POST(request: Request) {
       const send = (event: PlanStreamEvent) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
       if (reused) {
         const at = new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", timeZone: CITIES[parsed.data.city].timeZone }).format(run.startedAt);
-        send({ type: "status", message: run.done ? `Replaying the agent's run from ${at} (cached, no new model call)` : "Joining the agent's run in progress" });
+        send(
+          run.done
+            ? { type: "status", message: `Replaying the agent's run from ${at} (cached, no new model call)`, replay: true }
+            : { type: "status", message: "Joining the agent's run in progress" },
+        );
       }
       unfollow = run.follow(send, () => controller.close());
     },

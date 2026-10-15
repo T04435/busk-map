@@ -1,8 +1,18 @@
+import { LearnItMenu } from "@/components/songs/learn-it-menu";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDuration } from "@/lib/live-search";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
 
+/** Total length of the songs with a known length, and how many those are. */
+export function setLength(setlist: PlanPitch["setlist"]): { ms: number; timed: number } {
+  const timed = setlist.filter((s) => s.durationMs !== null);
+  return { ms: timed.reduce((sum, s) => sum + (s.durationMs ?? 0), 0), timed: timed.length };
+}
+
 export function SetlistPanel({ pitch, learnThese }: { pitch: PlanPitch; learnThese: Plan["learnThese"] }) {
+  const length = setLength(pitch.setlist);
+  const songs = (n: number) => `${n} song${n === 1 ? "" : "s"}`;
   return (
     <Card>
       <CardHeader>
@@ -19,23 +29,42 @@ export function SetlistPanel({ pitch, learnThese }: { pitch: PlanPitch; learnThe
         {pitch.setlist.length === 0 ? (
           <p className="text-muted-foreground">Add songs you can play to get a setlist.</p>
         ) : (
-          <ol className="space-y-2">
-            {pitch.setlist.map((song, i) => (
-              <li key={song.songId} className="grid grid-cols-[2ch_1fr_auto] gap-x-3">
-                <span className="text-muted-foreground">{i + 1}</span>
-                <span>
-                  <span className="font-medium">{song.title}</span> <span className="text-muted-foreground">({song.artist})</span>
-                  {song.own && (
-                    <Badge variant="secondary" className="ml-2">
-                      Your song
-                    </Badge>
-                  )}
-                  <span className="block text-muted-foreground">{song.reason}</span>
-                </span>
-                <span aria-label={`Song score ${song.score} out of 100`}>{song.score}</span>
-              </li>
-            ))}
-          </ol>
+          <>
+            <ol className="space-y-2">
+              {pitch.setlist.map((song, i) => (
+                <li key={song.songId} className="grid grid-cols-[2ch_1fr_auto] gap-x-3">
+                  <span className="text-muted-foreground">{i + 1}</span>
+                  <span>
+                    <span className="font-medium">{song.title}</span> <span className="text-muted-foreground">({song.artist})</span>
+                    {song.own && (
+                      <Badge variant="secondary" className="ml-2">
+                        Your song
+                      </Badge>
+                    )}
+                    <span className="block text-muted-foreground">{song.reason}</span>
+                  </span>
+                  <span className="flex flex-col items-end gap-1">
+                    <span className="flex items-center gap-2">
+                      {song.durationMs !== null && (
+                        <span className="text-muted-foreground tabular-nums" aria-label={`Length ${formatDuration(song.durationMs)}`}>
+                          {formatDuration(song.durationMs)}
+                        </span>
+                      )}
+                      <span aria-label={`Song score ${song.score} out of 100`}>{song.score}</span>
+                    </span>
+                    {!song.own && <LearnItMenu title={song.title} artist={song.artist} />}
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <p data-testid="set-length" className="text-muted-foreground">
+              {length.timed === 0
+                ? `${songs(pitch.setlist.length)}. Song lengths show for songs picked from Spotify search.`
+                : length.timed === pitch.setlist.length
+                  ? `Set length: ${formatDuration(length.ms)} (${songs(pitch.setlist.length)}).`
+                  : `Set length: at least ${formatDuration(length.ms)} (${length.timed} of ${songs(pitch.setlist.length)} have a known length).`}
+            </p>
+          </>
         )}
 
         <section aria-label="Learn these">
@@ -45,9 +74,12 @@ export function SetlistPanel({ pitch, learnThese }: { pitch: PlanPitch; learnThe
           ) : (
             <ul className="space-y-1">
               {learnThese.map((s) => (
-                <li key={s.artist}>
-                  <span className="font-medium">{s.title ?? "Any song"}</span> by {s.artist}
-                  <span className="block text-muted-foreground">{s.reason}</span>
+                <li key={s.artist} className="flex items-start justify-between gap-2">
+                  <span>
+                    <span className="font-medium">{s.title ?? "Any song"}</span> by {s.artist}
+                    <span className="block text-muted-foreground">{s.reason}</span>
+                  </span>
+                  {s.title && <LearnItMenu title={s.title} artist={s.artist} />}
                 </li>
               ))}
             </ul>

@@ -1,8 +1,11 @@
 "use client";
 
+import { XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { DatePicker } from "@/components/forms/date-picker";
+import type { TrackResult } from "@/components/forms/repertoire-api";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +15,9 @@ import { planRequestSchema } from "@/lib/plan-schema";
 import { planSearchParams } from "@/lib/plan-url";
 import { weekSearchParams } from "@/lib/week-url";
 import { formatHour } from "@/lib/slot";
+import { formatDuration } from "@/lib/live-search";
+import { ArtistPicker, typedArtists, type PickedArtist } from "./artist-picker";
+import { SongCover, SongSearch } from "./song-search";
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 // "|" and "~" separate values in the plan URL.
@@ -31,56 +37,57 @@ export function parseSongLines(text: string) {
     });
 }
 
-type Found = { id: string; title: string; artists: { name: string }[] };
+/** A song picked from Spotify (search or "Load my songs"), with what the search showed. */
+type PickedSong = { key: string; title: string; artist: string; album: string | null; image: string | null; durationMs: number | null; own: boolean };
+
+const toPicked = (track: TrackResult, own: boolean): PickedSong => ({
+  key: track.id,
+  title: clean(track.title),
+  artist: clean(track.artists[0]?.name ?? "") || "Unknown artist",
+  album: track.album,
+  image: track.image,
+  durationMs: track.durationMs,
+  own,
+});
 
 /** `today` is the city's local date: a plan is for today or later. */
 export function PerformerForm({ defaultDate, today }: { defaultDate: string; today: string }) {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [artists, setArtists] = useState("");
+  const [artists, setArtists] = useState<PickedArtist[]>([]);
+  const [artistQuery, setArtistQuery] = useState("");
+  const [picked, setPicked] = useState<PickedSong[]>([]);
   const [songs, setSongs] = useState("");
   const [date, setDate] = useState(defaultDate);
   const [from, setFrom] = useState("18");
   const [to, setTo] = useState("21");
   const [permit, setPermit] = useState("general");
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [found, setFound] = useState<Found[]>([]);
   const [searchNote, setSearchNote] = useState<string | null>(null);
   const [spotifyLink, setSpotifyLink] = useState("");
 
-  async function search() {
-    setSearchNote("Searching…");
-    const res = await fetch(`/api/repertoire?${new URLSearchParams({ type: "tracks", q: query })}`).catch(() => null);
-    const body = res?.ok ? await res.json() : null;
-    setFound(body?.tracks ?? []);
-    setSearchNote(
-      !body || body.mode === "fallback"
-        ? "Song search is unavailable; type your songs below instead."
-        : body.mode === "synthetic"
-          ? "Offline test mode: these songs are made up, not from Spotify."
-          : body.tracks.length
-            ? null
-            : "No songs found.",
-    );
+  function addSongs(next: PickedSong[]) {
+    setPicked((current) => [...current, ...next.filter((song) => !current.some((c) => c.key === song.key))].slice(0, 60));
   }
 
   async function loadOwnSongs() {
     setSearchNote("Loading your songs from Spotify…");
     const res = await fetch(`/api/repertoire?${new URLSearchParams({ type: "artist", link: spotifyLink })}`).catch(() => null);
     const body = res?.ok ? await res.json() : null;
-    const tracks: Found[] = body?.tracks ?? [];
+    const tracks: TrackResult[] = body?.tracks ?? [];
     if (!tracks.length) {
       setSearchNote(
-        body?.reason === "not_found"
-          ? "Spotify has no artist at that link. Open it in Spotify to check it, then copy the artist's share link again."
-          : body?.mode === "fallback"
-            ? "Spotify isn't answering right now. Try again in a minute, or type your songs below."
-            : "Couldn't load songs from that link. Paste an open.spotify.com/artist/… link, or type your songs.",
+        res?.status === 429
+          ? "Too many searches in a short time. Wait a moment and try again."
+          : body?.reason === "not_found"
+            ? "Spotify has no artist at that link. Open it in Spotify to check it, then copy the artist's share link again."
+            : body?.mode === "fallback"
+              ? "Spotify isn't answering right now. Try again in a minute, or type your songs below."
+              : "Couldn't load songs from that link. Paste an open.spotify.com/artist/… link, or type your songs.",
       );
       return;
     }
-    setSongs((current) => [current.trim(), ...tracks.slice(0, 20).map((t) => `${t.title} - ${t.artists[0]?.name ?? ""} (own)`)].filter(Boolean).join("\n"));
+    addSongs(tracks.slice(0, 20).map((t) => toPicked(t, true)));
     setSearchNote(
       body?.mode === "synthetic"
         ? "Offline test mode: these songs are made up, not from Spotify."
@@ -88,20 +95,21 @@ export function PerformerForm({ defaultDate, today }: { defaultDate: string; tod
     );
   }
 
-  function addSong(track: Found) {
-    setSongs((current) => [current.trim(), `${track.title} - ${track.artists[0]?.name ?? ""}`].filter(Boolean).join("\n"));
-  }
-
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const target = (event.nativeEvent as SubmitEvent).submitter?.getAttribute("value") === "week" ? "week" : "plan";
-    const parsedSongs = parseSongLines(songs);
+    const parsedSongs = [
+      ...picked.map((p) => ({ title: p.title, artist: p.artist, own: p.own, ...(p.durationMs ? { durationMs: p.durationMs } : {}) })),
+      ...parseSongLines(songs),
+    ];
+    const chosen = [...artists];
+    for (const typed of typedArtists(artistQuery)) {
+      if (!chosen.some((a) => a.name.toLowerCase() === typed.toLowerCase())) chosen.push({ name: typed, spotifyId: null, image: null });
+    }
     const artistList = [
-      ...new Set([
-        ...artists.split(/[,\n]/).map(clean).filter(Boolean),
-        ...parsedSongs.filter((s) => !s.own).map((s) => s.artist),
-      ]),
+      ...new Set([...chosen.map((a) => a.name), ...parsedSongs.filter((s) => !s.own).map((s) => s.artist)]),
     ].slice(0, 10);
+    const spotifyArtists = chosen.flatMap((a) => (a.spotifyId && artistList.includes(a.name) ? [{ name: a.name, id: a.spotifyId }] : []));
     if (date < today) {
       setError("Pick today or a later date.");
       return;
@@ -110,7 +118,7 @@ export function PerformerForm({ defaultDate, today }: { defaultDate: string; tod
       city: "melbourne",
       slot: { date, startHour: Number(from), endHour: Number(to) },
       permit,
-      performer: { name: clean(name) || "My act", artists: artistList, songs: parsedSongs },
+      performer: { name: clean(name) || "My act", artists: artistList, spotifyArtists, songs: parsedSongs },
     });
     if (!result.success) {
       const fields = result.error.issues.map((i) => i.path.join("."));
@@ -138,28 +146,24 @@ export function PerformerForm({ defaultDate, today }: { defaultDate: string; tod
         <Label htmlFor="name">Act name</Label>
         <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Jess on acoustic guitar" maxLength={80} />
       </div>
-      <div className="space-y-1">
-        <Label htmlFor="artists">Artists you sound like</Label>
-        <Input id="artists" value={artists} onChange={(e) => setArtists(e.target.value)} placeholder="Paul Kelly, Courtney Barnett" />
-      </div>
+      <ArtistPicker value={artists} onChange={setArtists} query={artistQuery} onQueryChange={setArtistQuery} />
 
-      <fieldset className="space-y-2">
+      <fieldset className="min-w-0 space-y-2">
         <legend className="text-sm font-medium">Songs you can play</legend>
-        <div className="flex gap-2">
-          <Input aria-label="Search songs on Spotify" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search songs" />
-          <Button type="button" variant="outline" onClick={() => void search()} disabled={query.trim().length < 2}>
-            Search
-          </Button>
-        </div>
-        {found.length > 0 && (
-          <ul className="space-y-1 text-sm">
-            {found.map((t) => (
-              <li key={t.id} className="flex items-center justify-between gap-2">
-                <span>
-                  {t.title} <span className="text-muted-foreground">({t.artists.map((a) => a.name).join(", ")})</span>
+        <SongSearch onAdd={(track) => addSongs([toPicked(track, false)])} isAdded={(track) => picked.some((p) => p.key === track.id)} />
+        {picked.length > 0 && (
+          <ul aria-label="Songs you picked" className="divide-y rounded-lg border text-sm">
+            {picked.map((song) => (
+              <li key={song.key} className="flex items-center gap-2 px-2 py-1.5">
+                <SongCover image={song.image} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{song.title}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{[song.artist, song.album].filter(Boolean).join(" · ")}</span>
                 </span>
-                <Button type="button" size="sm" variant="outline" onClick={() => addSong(t)}>
-                  Add
+                {song.own && <Badge variant="secondary">Your song</Badge>}
+                {song.durationMs !== null && <span className="text-xs text-muted-foreground tabular-nums">{formatDuration(song.durationMs)}</span>}
+                <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${song.title}`} onClick={() => setPicked((current) => current.filter((p) => p !== song))}>
+                  <XIcon aria-hidden />
                 </Button>
               </li>
             ))}
@@ -172,14 +176,14 @@ export function PerformerForm({ defaultDate, today }: { defaultDate: string; tod
           </Button>
         </div>
         {searchNote && <p className="text-sm text-muted-foreground" aria-live="polite">{searchNote}</p>}
-        <Label htmlFor="songs" className="sr-only">
-          Song list
+        <Label htmlFor="songs" className="text-sm font-normal text-muted-foreground">
+          Song list: type songs Spotify doesn&apos;t have
         </Label>
         <Textarea
           id="songs"
           value={songs}
           onChange={(e) => setSongs(e.target.value)}
-          rows={6}
+          rows={4}
           placeholder={"One per line: Title - Artist\nHow to Make Gravy - Paul Kelly\nMy Song - Me (own)"}
         />
       </fieldset>

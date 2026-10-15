@@ -1,4 +1,4 @@
-import { expect, LOCAL, test, waitForPlan } from "./fixtures";
+import { expect, isoDay, LOCAL, pickDate, test, waitForPlan } from "./fixtures";
 
 test.describe("own act", () => {
   test.skip(!LOCAL, "Starts the agent automatically; local offline server only");
@@ -16,6 +16,69 @@ test.describe("own act", () => {
     await waitForPlan(page);
     await expect(page.getByText("Explanations: Claude")).toBeVisible();
     await expect(page.getByText("Your song").first()).toBeVisible();
+  });
+
+  test("live search: artist chips, a picked song, Learn it links and the date picker", async ({ page }) => {
+    await page.goto("/");
+    const form = page.getByRole("form", { name: "Plan for your own act" });
+    await form.getByLabel("Act name").fill("Search Tester");
+
+    // Artists: nothing below 3 characters, then live results with photo fallbacks, releases and lazy Last.fm listeners.
+    const artistBox = form.getByRole("combobox", { name: "Artists you sound like" });
+    await artistBox.pressSequentially("Pa");
+    await expect(form.getByText("Type 3 or more letters to search Spotify.")).toBeVisible();
+    await artistBox.pressSequentially("u");
+    const paul = form.getByRole("listbox", { name: "Artist results" }).getByRole("option", { name: /Paul Kelly/ });
+    await expect(paul).toContainText(/\d+ releases/);
+    await expect(paul).toContainText(/Last\.fm listeners/);
+    await paul.click();
+    const chips = form.getByRole("list", { name: "Artists you picked" });
+    await expect(chips.getByRole("listitem")).toHaveText([/Paul Kelly/]);
+    await expect(artistBox).toHaveValue("");
+    // Free text still works, as a typed chip.
+    await artistBox.fill("Zzyzx Nobody");
+    await form.getByRole("option", { name: "Add “Zzyzx Nobody” as typed" }).click();
+    await expect(chips.getByRole("listitem")).toHaveCount(2);
+    await expect(chips.getByRole("listitem").nth(1)).toContainText("(typed)");
+
+    // Songs: cover, title, artist, album and length; Learn it opens external searches.
+    const songBox = form.getByRole("combobox", { name: "Search songs on Spotify" });
+    await songBox.pressSequentially("Gravy");
+    const song = form.getByRole("listbox", { name: "Song results" }).getByRole("option").first();
+    await expect(song).toContainText("Gravy (synthetic result 1)");
+    await expect(song).toContainText("Synthetic Artist 1 · Synthetic Album");
+    await expect(song).toContainText("3:07");
+    await song.getByRole("button", { name: "Learn it: Gravy (synthetic result 1)" }).click();
+    const menu = page.getByRole("menu");
+    await expect(menu.getByRole("menuitem", { name: /Karaoke/ })).toHaveAttribute("href", /youtube\.com\/results\?search_query=Gravy.+karaoke/);
+    await expect(menu.getByRole("menuitem", { name: /Chords/ })).toHaveAttribute("href", /ultimate-guitar\.com\/search\.php/);
+    await expect(menu.getByRole("menuitem", { name: /Lyrics/ })).toHaveAttribute("href", /genius\.com\/search\?q=Gravy/);
+    for (const item of await menu.getByRole("menuitem").all()) await expect(item).toHaveAttribute("target", "_blank");
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await song.click();
+    const picked = form.getByRole("list", { name: "Songs you picked" });
+    await expect(picked.getByRole("listitem")).toHaveCount(1);
+    await expect(picked).toContainText("3:07");
+
+    // The plan date is today or later.
+    const date = form.getByLabel("Date");
+    await date.click();
+    await expect(page.locator(`[role="gridcell"][data-day="${isoDay(-2)}"]`).first()).toHaveAttribute("data-disabled", "true");
+    await page.keyboard.press("Escape");
+    const day = isoDay(9);
+    await pickDate(page, date, day);
+
+    await form.getByRole("button", { name: "Plan my set" }).click();
+    await expect(page).toHaveURL(new RegExp(`date=${day}`));
+    const params = new URL(page.url()).searchParams;
+    expect(params.get("artists")).toMatch(/^Paul Kelly~[A-Za-z0-9]{22}\|Zzyzx Nobody\|Synthetic Artist 1$/);
+    expect(params.get("songs")).toBe("Gravy (synthetic result 1)~Synthetic Artist 1~187s");
+    await waitForPlan(page);
+    // Qloo matched the picked artist (by Spotify id first); the setlist shows lengths and Learn it.
+    await expect(page.getByTestId("unmatched-artists")).toContainText("This plan uses the artists Qloo did match: Paul Kelly.");
+    await expect(page.getByTestId("set-length")).toHaveText("Set length: 3:07 (1 song).");
+    await expect(page.getByRole("button", { name: "Learn it: Gravy (synthetic result 1)" })).toBeVisible();
   });
 
   test("asks for an artist before planning", async ({ page }) => {

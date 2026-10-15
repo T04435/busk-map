@@ -11,7 +11,9 @@ import type { Candidate, HeatCellInput, HotspotInput, PerformerPermit, SensorInp
  *    pedestrian sensor (a footpath with measured foot traffic).
  * 3. Add the council's designated sites open to the performer's permit: one
  *    input among others, not the driver.
- * 4. Filter by legality: drop anything near a no-busking line or a site the
+ * 4. Add the well-known busking hotspots (USUAL_HOTSPOTS) to every list, so
+ *    the score decides whether a usual spot beats the taste-led ones.
+ * 5. Filter by legality: drop anything near a no-busking line or a site the
  *    performer can't use, flag unamplified zones, attach permit cautions.
  *
  * Busk Map never claims a pitch is legal: these are places the City of
@@ -62,10 +64,24 @@ function cautionsFor(site: SiteInput | null, permit: PerformerPermit, unamplifie
   return cautions;
 }
 
-/** The well-known hotspot a point sits at, if any. */
+/** The well-known hotspot a point sits at (the nearest one in range), if any. */
 export function usualSpotAt(point: LatLon, hotspots: HotspotInput[]): string | null {
-  return hotspots.find((h) => distanceM(point, h) <= (h.radiusM ?? USUAL_SPOT_RADIUS_M))?.name ?? null;
+  let best: { name: string; d: number } | null = null;
+  for (const h of hotspots) {
+    const d = distanceM(point, h);
+    if (d <= (h.radiusM ?? USUAL_SPOT_RADIUS_M) && (!best || d < best.d)) best = { name: h.name, d };
+  }
+  return best?.name ?? null;
 }
+
+/** A hotspot stands at the public spot within this distance, if any (so its pitch id is the spot's). */
+export const HOTSPOT_SPOT_MATCH_M = 60;
+
+const slug = (name: string) =>
+  name
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 
 /** The performer's strongest cells, best first. */
 export function topCells(cells: HeatCellInput[], share = TOP_CELL_SHARE): (HeatCellInput & { rank: number })[] {
@@ -173,11 +189,24 @@ export function buildCandidatesWithFunnel({ sites, zones, sensors, spots, cells,
     add({ id: `footpath:${sensor.id}`, name: `Footpath near ${sensor.name}`, lat: sensor.lat, lon: sensor.lon, kind: "footpath", origin, cell, ...general }, null);
 
   const funnel = (top: number) => ({ candidates, funnel: { cells: cells.length, topCells: top, considered, excluded, candidates: candidates.length } });
+  /**
+   * Every hotspot, through the same legality filter and spacing: at its public
+   * spot when one is that close (same id as the spot), else at its own point.
+   * Added after the taste-led spots, so a spot already in the list keeps its cell.
+   */
+  const addHotspots = () => {
+    for (const hotspot of hotspots) {
+      const spot = spots.find((s) => distanceM(s, hotspot) <= HOTSPOT_SPOT_MATCH_M);
+      if (spot) fromSpot(spot, "hotspot", null);
+      else add({ id: `hotspot:${slug(hotspot.name)}`, name: hotspot.name, lat: hotspot.lat, lon: hotspot.lon, kind: "public-space", origin: "hotspot", cell: null, ...general }, null);
+    }
+  };
 
   if (cells.length === 0) {
     // No taste data: every public spot and sensor footpath competes on the other factors.
     for (const spot of spots) fromSpot(spot, "fallback", null);
     for (const sensor of sensors) fromSensor(sensor, "fallback", null);
+    addHotspots();
     return funnel(0);
   }
 
@@ -195,5 +224,6 @@ export function buildCandidatesWithFunnel({ sites, zones, sensors, spots, cells,
     const [sensor] = near(sensors);
     if (sensor) fromSensor(sensor, "taste", ref);
   }
+  addHotspots();
   return funnel(top.length);
 }

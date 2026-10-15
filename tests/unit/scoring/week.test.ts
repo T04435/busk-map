@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_WEIGHTS, isUnavailable, scoreWeek, selectSessions, typicalForSlot, WEEK_SLOTS } from "@/server/scoring";
+import { DEFAULT_WEIGHTS, isUnavailable, MAX_SESSIONS_PER_PITCH, scoreWeek, selectSessions, typicalForSlot, WEEK_SLOTS } from "@/server/scoring";
 import type { Candidate, TypicalSensor, WeekCell, WeekDay } from "@/server/scoring";
 
 const here = { lat: -37.815, lon: 144.965 };
@@ -59,7 +59,7 @@ describe("selectSessions", () => {
     weekday: "x",
     startHour,
     endHour: startHour + 3,
-    best: score === null ? null : ({ score } as WeekCell["best"]),
+    best: score === null ? null : ({ id: `p-${date}-${startHour}`, score } as WeekCell["best"]),
   });
   const grid = [
     cell("2026-10-17", 19, 90),
@@ -81,6 +81,33 @@ describe("selectSessions", () => {
       "2026-10-17@19",
       "2026-10-17@16",
     ]);
+  });
+
+  it("caps a week at 2 sessions per pitch: a slot whose best pitch is capped takes its next best", () => {
+    const pitch = (id: string, score: number) => ({ id, score }) as NonNullable<WeekCell["best"]>;
+    const slot = (date: string, options: NonNullable<WeekCell["best"]>[]): WeekCell => ({ date, weekday: "x", startHour: 19, endHour: 22, best: options[0], options });
+    // Federation Wharf is every night's best; Degraves St the runner-up.
+    const week = ["2026-10-17", "2026-10-18", "2026-10-19", "2026-10-20"].map((date, i) => slot(date, [pitch("wharf", 90 - i), pitch("degraves", 80 - i)]));
+    const chosen = selectSessions(week, { maxSessions: 4, maxPerDay: 1, unavailable: [] });
+    expect(MAX_SESSIONS_PER_PITCH).toBe(2);
+    expect(chosen.map((c) => `${c.date}:${c.best.id}`)).toEqual(["2026-10-17:wharf", "2026-10-18:wharf", "2026-10-19:degraves", "2026-10-20:degraves"]);
+    const perPitch = chosen.reduce<Record<string, number>>((n, c) => ({ ...n, [c.best.id]: (n[c.best.id] ?? 0) + 1 }), {});
+    expect(perPitch).toEqual({ wharf: 2, degraves: 2 });
+    // A different cap can be passed.
+    expect(selectSessions(week, { maxSessions: 4, maxPerDay: 1, maxPerPitch: 1, unavailable: [] }).map((c) => c.best.id)).toEqual(["wharf", "degraves"]);
+  });
+
+  it("scoreWeek keeps each slot's best pitches as stand-ins", () => {
+    const grid = scoreWeek(
+      [
+        { id: "a", name: "A", lat: -37.81, lon: 144.96, kind: "public-space", origin: "hotspot", cell: null, permit: "general", rules: "", rulesUrl: null, amplification: "allowed", cautions: [], usualSpot: "A" },
+        { id: "b", name: "B", lat: -37.815, lon: 144.965, kind: "public-space", origin: "taste", cell: null, permit: "general", rules: "", rulesUrl: null, amplification: "allowed", cautions: [], usualSpot: null },
+      ],
+      { days: [{ date: "2026-10-17", weekday: "saturday", slots: [{ startHour: 10, endHour: 13, startMs: 0, endMs: 1 }] }], cells: [], sensors: [], places: [], events: [], weather: {} },
+      DEFAULT_WEIGHTS,
+    );
+    expect(grid[0].options!.map((p) => p.id).sort()).toEqual(["a", "b"]);
+    expect(grid[0].best).toBe(grid[0].options![0]);
   });
 
   it("skips unavailable times", () => {

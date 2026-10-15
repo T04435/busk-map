@@ -87,7 +87,7 @@ export type Candidate = LatLon & {
    */
   kind: "designated" | "public-space" | "footpath";
   /** Why it is a candidate: a top Qloo taste cell, a council site, the no-taste fallback, or a spot the agent checked and added. */
-  origin: "taste" | "council" | "fallback" | "agent";
+  origin: "taste" | "council" | "fallback" | "agent" | "hotspot";
   /** The taste cell it was snapped from (origin "taste"). */
   cell: { lat: number; lon: number; affinity: number; rank: number } | null;
   /** The well-known hotspot it sits at, or null when it is off the usual circuit. */

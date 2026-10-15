@@ -165,6 +165,8 @@ export async function buildWeekPlan(
   const isPast = (c: WeekCell) => startMs(c.date, c.startHour) <= now.getTime();
   const chosen = selectSessions(grid.filter((c) => !isPast(c)), request.limits);
   const chosenKeys = new Set(chosen.map((c) => sessionKey(c.date, c.startHour)));
+  // A chosen slot shows the pitch chosen for it (the next best when its best pitch reached the per-pitch cap).
+  const chosenPitch = new Map(chosen.map((c) => [sessionKey(c.date, c.startHour), c.best]));
 
   // Typical foot traffic per weekday (all sensors, 10 am to 10 pm), relative to the busiest day.
   const busyness = new Map<string, { share: number; peakHour: number | null }>();
@@ -268,7 +270,7 @@ export async function buildWeekPlan(
       };
     }),
     slots: WEEK_SLOTS.map((s) => ({ ...s, label: `${formatHour(s.startHour)}–${formatHour(s.endHour)}` })),
-    grid: grid.map((c) => ({
+    grid: grid.map((cell) => ({ ...cell, best: chosenPitch.get(sessionKey(cell.date, cell.startHour)) ?? cell.best })).map((c) => ({
       date: c.date,
       startHour: c.startHour,
       endHour: c.endHour,

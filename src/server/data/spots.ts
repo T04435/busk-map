@@ -80,12 +80,17 @@ export const PUBLIC_SPOTS: PublicSpot[] = [
 /**
  * Melbourne's well-known busking hotspots: where buskers already go and where
  * a plain search or a tourist guide would send you. A pitch close to one
- * (scoring's USUAL_SPOT_RADIUS_M) is a "usual spot". Busk Map's own list.
+ * (scoring's USUAL_SPOT_RADIUS_M; the nearest one names it) is a "usual spot".
+ * Every hotspot is also a candidate in every plan (through the same legality
+ * filter), so the score decides whether it makes the top 3. Busk Map's own list.
  */
 export const USUAL_HOTSPOTS: (LatLon & { name: string; radiusM?: number })[] = [
   { name: "Bourke Street Mall", lat: -37.81372, lon: 144.96454 },
   { name: "Federation Square", lat: -37.81777, lon: 144.96931 },
+  { name: "Federation Wharf", lat: -37.81879, lon: 144.96934, radiusM: 100 },
   { name: "Flinders Street Station", lat: -37.8178, lon: 144.96705 },
+  { name: "Degraves Street", lat: -37.81744, lon: 144.96583, radiusM: 100 },
+  { name: "Flinders St / Elizabeth St corner", lat: -37.81805, lon: 144.96465, radiusM: 120 },
   { name: "Southbank Promenade at Southgate", lat: -37.82015, lon: 144.9661 },
   { name: "State Library Victoria", lat: -37.80985, lon: 144.9646 },
   { name: "Queen Victoria Market", lat: -37.8075, lon: 144.9572, radiusM: 300 },

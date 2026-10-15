@@ -50,7 +50,14 @@ export type WeekCell = {
   endHour: number;
   /** The best pitch for this slot, or null when no candidate scores. */
   best: ScoredPitch | null;
+  /** The slot's best pitches, best first (best is the first): the next one stands in when a pitch reaches its cap. */
+  options?: ScoredPitch[];
 };
+
+/** At most this many sessions at one pitch in a week. */
+export const MAX_SESSIONS_PER_PITCH = 2;
+/** Pitches kept per slot as stand-ins for a capped pitch. */
+export const WEEK_OPTIONS_PER_SLOT = 6;
 
 /** Average typical footfall over the slot's hours; null when the sensor has no data then. */
 export function typicalForSlot(sensor: TypicalSensor, weekday: string, startHour: number, endHour: number): number | null {
@@ -90,7 +97,8 @@ export function scoreWeek(candidates: Candidate[], inputs: WeekInputs, weights: 
         },
         weights,
       );
-      cells.push({ date: day.date, weekday: day.weekday, startHour: slot.startHour, endHour: slot.endHour, best: pickTopPitches(ranked, 1)[0] ?? null });
+      const options = pickTopPitches(ranked, WEEK_OPTIONS_PER_SLOT, 0);
+      cells.push({ date: day.date, weekday: day.weekday, startHour: slot.startHour, endHour: slot.endHour, best: options[0] ?? null, options });
     }
   }
   return cells;
@@ -103,6 +111,8 @@ export type WeekLimits = {
   maxSessions: number;
   /** At most this many sessions on one day. */
   maxPerDay: number;
+  /** At most this many sessions at one pitch (default MAX_SESSIONS_PER_PITCH). */
+  maxPerPitch?: number;
   /** Times the performer can't play. A slot that overlaps any of them is skipped. */
   unavailable: Unavailable[];
 };
@@ -111,20 +121,32 @@ export function isUnavailable(cell: Pick<WeekCell, "date" | "startHour" | "endHo
   return unavailable.some((u) => u.date === cell.date && u.startHour < cell.endHour && u.endHour > cell.startHour);
 }
 
-/** Pick the best sessions, greedily, within the limits. Ties go to the earlier slot. */
+/**
+ * Pick the best sessions, greedily, within the limits: each slot at most once,
+ * at most `maxPerDay` a day and `maxPerPitch` at one pitch. A slot whose best
+ * pitch is capped can still be chosen with its next-best pitch. Ties go to the
+ * earlier slot, then the slot's better option.
+ */
 export function selectSessions(grid: WeekCell[], limits: WeekLimits): (WeekCell & { best: ScoredPitch })[] {
+  const maxPerPitch = limits.maxPerPitch ?? MAX_SESSIONS_PER_PITCH;
   const perDay = new Map<string, number>();
+  const perPitch = new Map<string, number>();
+  const taken = new Set<WeekCell>();
   const chosen: (WeekCell & { best: ScoredPitch })[] = [];
-  const ordered = grid
-    .filter((c): c is WeekCell & { best: ScoredPitch } => c.best !== null && c.best.score > 0)
+  const pairs = grid
     .filter((c) => !isUnavailable(c, limits.unavailable))
-    .sort((a, b) => b.best.score - a.best.score || a.date.localeCompare(b.date) || a.startHour - b.startHour);
-  for (const cell of ordered) {
+    .flatMap((cell) => (cell.options ?? (cell.best ? [cell.best] : [])).map((pitch, rank) => ({ cell, pitch, rank })))
+    .filter(({ pitch }) => pitch.score > 0)
+    .sort((a, b) => b.pitch.score - a.pitch.score || a.cell.date.localeCompare(b.cell.date) || a.cell.startHour - b.cell.startHour || a.rank - b.rank);
+  for (const { cell, pitch } of pairs) {
     if (chosen.length >= limits.maxSessions) break;
-    const used = perDay.get(cell.date) ?? 0;
-    if (used >= limits.maxPerDay) continue;
-    perDay.set(cell.date, used + 1);
-    chosen.push(cell);
+    if (taken.has(cell)) continue;
+    if ((perDay.get(cell.date) ?? 0) >= limits.maxPerDay) continue;
+    if ((perPitch.get(pitch.id) ?? 0) >= maxPerPitch) continue;
+    taken.add(cell);
+    perDay.set(cell.date, (perDay.get(cell.date) ?? 0) + 1);
+    perPitch.set(pitch.id, (perPitch.get(pitch.id) ?? 0) + 1);
+    chosen.push({ ...cell, best: pitch });
   }
   return chosen;
 }

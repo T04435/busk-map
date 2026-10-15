@@ -9,6 +9,9 @@ test.describe("week planner", () => {
     const sessions = page.getByRole("list", { name: "Top sessions" }).getByRole("listitem");
     await expect(sessions.first()).toBeVisible();
     expect(await sessions.count()).toBeLessThanOrEqual(5);
+    // At most 2 sessions at one pitch in a week.
+    const pitches = (await sessions.allInnerTexts()).map((t) => t.split("\n")[0].split(" · ").at(-1)!.trim());
+    for (const name of new Set(pitches)) expect(pitches.filter((p) => p === name).length).toBeLessThanOrEqual(2);
     await expect(page.getByRole("table")).toBeVisible();
     await expect(page.getByRole("table").getByRole("row")).toHaveCount(5); // header + 4 slots
 

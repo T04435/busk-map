@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildCandidates, buildCandidatesWithFunnel, nearLines, siteAllowsPerformer, topCells, usualSpotAt } from "@/server/scoring";
 import type { HeatCellInput, HotspotInput, SensorInput, SiteInput, SpotInput, ZoneInput } from "@/server/scoring";
+import { USUAL_HOTSPOTS } from "@/server/data/spots";
 
 const site = (over: Partial<SiteInput>): SiteInput => ({
   id: "s",
@@ -96,6 +97,40 @@ describe("buildCandidates", () => {
     // Four top cells (the minimum), so the weak cell near sensor 9 counts too. The plaza twin is too close to the plaza.
     expect(funnel).toEqual({ cells: 5, topCells: 4, considered: 6, excluded: 1, candidates: 4 });
     expect(candidates.map((c) => c.id)).not.toContain("spot:far");
+  });
+
+  it("adds every well-known hotspot to the list, through the same legality filter; the score decides", () => {
+    const sites = [site({ id: "restricted", permit: "no-busking", lat: -37.83, lon: 144.95 })];
+    const cells: HeatCellInput[] = [1, 0.9, 0.8, 0.7].map((affinity, i) => ({ lat: -37.80 - i * 0.001, lon: 144.99, affinity }));
+    const spots: SpotInput[] = [
+      { id: "far-taste", name: "Taste square", kind: "square", lat: -37.8001, lon: 144.9901 },
+      { id: "mall", name: "The Mall", kind: "pedestrian-street", lat: -37.8137, lon: 144.9645 },
+    ];
+    const hotspots: HotspotInput[] = [
+      // At a public spot: the spot's own id, so links and caches line up.
+      { name: "The Mall", lat: -37.81372, lon: 144.96454 },
+      // No spot there: its own candidate.
+      { name: "Wharf corner", lat: -37.8188, lon: 144.9693 },
+      // Ruled out by a restricted site: dropped like any other candidate.
+      { name: "Banned plaza", lat: -37.8301, lon: 144.9501 },
+    ];
+    const { candidates, funnel } = buildCandidatesWithFunnel({ sites, zones, sensors: [], spots, cells, hotspots, permit: "general" });
+    expect(candidates.map((c) => [c.id, c.origin, c.usualSpot])).toEqual([
+      ["spot:far-taste", "taste", null],
+      ["spot:mall", "hotspot", "The Mall"],
+      ["hotspot:wharf-corner", "hotspot", "Wharf corner"],
+    ]);
+    expect(funnel).toMatchObject({ excluded: 1, candidates: 3 });
+    // With no taste data too.
+    const fallback = buildCandidates({ sites, zones, sensors: [], spots: [], cells: [], hotspots, permit: "general" });
+    expect(fallback.map((c) => c.id)).toEqual(["hotspot:the-mall", "hotspot:wharf-corner"]);
+  });
+
+  it("the real hotspot list includes the usual circuit, and each hotspot names the nearest one", () => {
+    const names = USUAL_HOTSPOTS.map((h) => h.name);
+    expect(names).toEqual(expect.arrayContaining(["Federation Wharf", "Degraves Street", "Flinders Street Station", "Flinders St / Elizabeth St corner", "Bourke Street Mall", "Federation Square"]));
+    // Federation Wharf is within Federation Square's radius, but is its own hotspot.
+    for (const h of USUAL_HOTSPOTS) expect(usualSpotAt(h, USUAL_HOTSPOTS)).toBe(h.name);
   });
 
   it("falls back to every spot and sensor when there is no taste data", () => {

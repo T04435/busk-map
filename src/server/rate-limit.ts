@@ -26,3 +26,5 @@ export function createRateLimiter(limit: number, windowMs: number) {
 export const planLimiter = createRateLimiter(6, 10 * 60_000);
 /** Plain-LLM comparisons: 12 per 10 minutes per IP (cached, cheap model). */
 export const compareLimiter = createRateLimiter(12, 10 * 60_000);
+/** Live search (Spotify, Last.fm): 120 per minute per IP; the picker debounces typing. */
+export const repertoireLimiter = createRateLimiter(120, 60_000);

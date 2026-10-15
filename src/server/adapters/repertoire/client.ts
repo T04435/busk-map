@@ -3,10 +3,12 @@ import { cacheLife, cacheTag } from "next/cache";
 import type { z } from "zod";
 import { songKey } from "@/lib/text";
 import { env } from "@/server/env";
-import { AdapterError, fetchJson } from "../core";
+import { AdapterError, fetchJson, settleWithLimit } from "../core";
 import {
   albumTracksSchema,
   albumsSchema,
+  albumsTotalSchema,
+  pickImage,
   searchSchema,
   tokenSchema,
   type CatalogueArtist,
@@ -62,13 +64,23 @@ async function spotify<S extends z.ZodType>(path: string, schema: S): Promise<z.
   });
 }
 
-type RawTrack = { id: string; name: string; artists: { id: string; name: string }[]; external_urls?: { spotify?: string }; album?: { name: string } };
+type RawImage = { url: string; width?: number | null };
+type RawTrack = {
+  id: string;
+  name: string;
+  artists: { id: string; name: string }[];
+  duration_ms?: number;
+  external_urls?: { spotify?: string };
+  album?: { name: string; images?: RawImage[] };
+};
 
-const toTrack = (t: RawTrack, album: string | null = t.album?.name ?? null): CatalogueTrack => ({
+const toTrack = (t: RawTrack, album: { name: string; images?: RawImage[] } | null = t.album ?? null): CatalogueTrack => ({
   id: t.id,
   title: t.name,
   artists: t.artists.map(({ id, name }) => ({ id, name })),
-  album,
+  album: album?.name ?? null,
+  image: pickImage(album?.images),
+  durationMs: t.duration_ms ?? null,
   url: t.external_urls?.spotify ?? null,
 });
 
@@ -81,6 +93,7 @@ export async function searchTracks(query: string, market: string): Promise<Catal
   return (body.tracks?.items ?? []).filter((t): t is NonNullable<typeof t> => t !== null).map((t) => toTrack(t));
 }
 
+/** Artist search without release counts (cached on its own). */
 export async function searchArtists(query: string, market: string): Promise<CatalogueArtist[]> {
   "use cache: remote";
   cacheLife("days");
@@ -89,7 +102,27 @@ export async function searchArtists(query: string, market: string): Promise<Cata
   const body = await spotify(`/search?${params}`, searchSchema);
   return (body.artists?.items ?? [])
     .filter((a): a is NonNullable<typeof a> => a !== null)
-    .map((a) => ({ id: a.id, name: a.name, url: a.external_urls?.spotify ?? null }));
+    .map((a) => ({ id: a.id, name: a.name, image: pickImage(a.images), releases: null, url: a.external_urls?.spotify ?? null }));
+}
+
+/** Albums and singles by an artist: the `total` of a one-item albums page. Throws on failure, so failures are not cached. */
+export async function fetchReleaseCount(artistId: string, market: string): Promise<number> {
+  "use cache: remote";
+  cacheLife("days");
+  cacheTag("repertoire");
+  const params = new URLSearchParams({ include_groups: "album,single", limit: "1", market });
+  const body = await spotify(`/artists/${encodeURIComponent(artistId)}/albums?${params}`, albumsTotalSchema);
+  return body.total;
+}
+
+/** Bound the release-count fan-out per search (Spotify rate limits per app). */
+const RELEASE_LOOKUPS_AT_ONCE = 4;
+
+/** Artist search with release counts. One count failing leaves that artist's count unknown. */
+export async function searchArtistsWithReleases(query: string, market: string): Promise<CatalogueArtist[]> {
+  const artists = await searchArtists(query, market);
+  const counts = await settleWithLimit(artists, RELEASE_LOOKUPS_AT_ONCE, (a) => fetchReleaseCount(a.id, market));
+  return artists.map((artist, i) => ({ ...artist, releases: counts[i].status === "fulfilled" ? counts[i].value : null }));
 }
 
 /** An artist's own songs: albums and singles, deduplicated by title. */
@@ -98,7 +131,7 @@ export async function fetchArtistCatalogue(artistId: string, market: string): Pr
   cacheLife("days");
   cacheTag("repertoire");
 
-  const albums: { id: string; name: string }[] = [];
+  const albums: { id: string; name: string; images?: RawImage[] }[] = [];
   let path: string | null = `/artists/${encodeURIComponent(artistId)}/albums?${new URLSearchParams({
     include_groups: "album,single",
     limit: "10",
@@ -113,7 +146,7 @@ export async function fetchArtistCatalogue(artistId: string, market: string): Pr
   const trackLists = await Promise.all(
     albums.slice(0, MAX_ALBUMS).map(async (album) => {
       const body = await spotify(`/albums/${encodeURIComponent(album.id)}/tracks?limit=50&market=${market}`, albumTracksSchema);
-      return body.items.map((t) => toTrack(t, album.name));
+      return body.items.map((t) => toTrack(t, album));
     }),
   );
 

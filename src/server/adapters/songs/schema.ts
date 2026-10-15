@@ -22,6 +22,15 @@ export const trackSchema = z.object({
   artist: z.object({ name: z.string() }),
 });
 
+/** Last.fm artist.getInfo, read only for the listener count. */
+export const artistInfoSchema = z.union([
+  z.object({ artist: z.object({ name: z.string(), stats: z.object({ listeners: count }) }) }),
+  z.object({ error: z.number(), message: z.string() }),
+]);
+
+/** Last.fm listeners keyed by the artist name we asked for; null when Last.fm doesn't know the artist. */
+export type ListenersData = Record<string, number | null>;
+
 export type TopTrack = {
   title: string;
   artist: string;

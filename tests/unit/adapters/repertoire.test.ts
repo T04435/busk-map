@@ -34,18 +34,46 @@ describe("repertoire (Spotify)", () => {
 
   it("searches tracks and artists with a client-credentials token", async () => {
     const { findTracks, findArtists } = await fresh();
-    const { calls } = mockFetch([tokenRoute, route((u) => u.pathname === "/v1/search", () => json(SYNTHETIC_RAW.search))]);
+    const { calls } = mockFetch([
+      tokenRoute,
+      route((u) => u.pathname === "/v1/search", () => json(SYNTHETIC_RAW.search)),
+      route((u) => u.pathname === "/v1/artists/a1/albums", () => json(SYNTHETIC_RAW.albumsTotal.a1)),
+      route((u) => u.pathname === "/v1/artists/a2/albums", () => json({ error: { status: 500 } }, 500)),
+    ]);
     const tracks = await findTracks("synthetic", "AU", LIVE);
     const artists = await findArtists("synthetic", "AU", LIVE);
     expect(tracks.data).toEqual([
-      { id: "t1", title: "Synthetic Track", artists: [{ id: "a1", name: "Synthetic Artist" }], album: "Synthetic Album", url: "https://open.spotify.com/track/t1" },
+      {
+        id: "t1",
+        title: "Synthetic Track",
+        artists: [{ id: "a1", name: "Synthetic Artist" }],
+        album: "Synthetic Album",
+        image: "https://i.scdn.co/image/syn-64",
+        durationMs: 215_000,
+        url: "https://open.spotify.com/track/t1",
+      },
     ]);
-    expect(artists.data).toEqual([{ id: "a1", name: "Synthetic Artist", url: "https://open.spotify.com/artist/a1" }]);
-    // One token for both calls; search limit respects Spotify's cap of 10.
+    // Photo (smallest at least 64 px), release count; a failed count is unknown, not a failed search.
+    expect(artists.mode).toBe("live");
+    expect(artists.data).toEqual([
+      { id: "a1", name: "Synthetic Artist", image: "https://i.scdn.co/image/syn-artist-160", releases: 27, url: "https://open.spotify.com/artist/a1" },
+      { id: "a2", name: "Synthetic Two", image: null, releases: null, url: null },
+    ]);
+    // One token for every call; search limit respects Spotify's cap of 10.
     expect(calls.filter((c) => c.url.host === "accounts.spotify.com")).toHaveLength(1);
     const search = calls.find((c) => c.url.pathname === "/v1/search")!;
     expect(search.url.searchParams.get("limit")).toBe("10");
     expect((search.init?.headers as Record<string, string>).Authorization).toBe("Bearer synthetic-token");
+    const count = calls.find((c) => c.url.pathname === "/v1/artists/a1/albums")!;
+    expect(Object.fromEntries(count.url.searchParams)).toEqual({ include_groups: "album,single", limit: "1", market: "AU" });
+  });
+
+  it("picks a cover near 64 px, else the only one", async () => {
+    const { pickImage } = await import("@/server/adapters/repertoire/schema");
+    expect(pickImage(undefined)).toBeNull();
+    expect(pickImage([])).toBeNull();
+    expect(pickImage([{ url: "https://x.test/a", width: null }])).toBe("https://x.test/a");
+    expect(pickImage([{ url: "https://x.test/big", width: 640 }, { url: "https://x.test/small", width: 32 }])).toBe("https://x.test/big");
   });
 
   it("loads an artist's catalogue across pages and deduplicates titles", async () => {
@@ -59,7 +87,8 @@ describe("repertoire (Spotify)", () => {
     const result = await getArtistCatalogue("https://open.spotify.com/artist/0SNWoGaDlrCompmg9rXeNq", "AU", LIVE);
     expect(result.mode).toBe("live");
     expect(result.data.map((t) => t.title)).toEqual(["Synthetic Original", "Second Song", "Third Song"]);
-    expect(result.data[0].album).toBe("Synthetic LP");
+    expect(result.data[0]).toMatchObject({ album: "Synthetic LP", image: "https://i.scdn.co/image/syn-lp", durationMs: 181_000 });
+    expect(result.data[1].durationMs).toBeNull();
     expect(calls.some((c) => c.url.pathname.includes("top-tracks"))).toBe(false);
   });
 
@@ -84,7 +113,10 @@ describe("repertoire (Spotify)", () => {
   it("is synthetic offline", async () => {
     const { findTracks, findArtists, getArtistCatalogue } = await fresh();
     expect((await findTracks("x", "AU", OFFLINE)).mode).toBe("synthetic");
-    expect((await findArtists("x", "AU", OFFLINE)).data).toHaveLength(1);
+    expect((await findArtists("zzq", "AU", OFFLINE)).data).toEqual([{ id: "syn-artist-1", name: "zzq (synthetic)", image: null, releases: 3, url: null }]);
+    // Offline artists come from the Qloo mock's catalogue, with its Spotify-shaped ids.
+    const paul = (await findArtists("paul ke", "AU", OFFLINE)).data;
+    expect(paul[0]).toMatchObject({ name: "Paul Kelly", id: expect.stringMatching(/^[A-Za-z0-9]{22}$/) });
     expect((await getArtistCatalogue("nope", "AU", OFFLINE)).data).toHaveLength(4);
   });
 });

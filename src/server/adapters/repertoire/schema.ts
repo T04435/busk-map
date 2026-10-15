@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-/** Spotify Web API with app (client credentials) access: search, artist albums, album tracks. */
+/**
+ * Spotify Web API with app (client credentials) access: search, artist albums, album tracks.
+ * Apps created after the 2024–2026 Web API changes get no followers, popularity or
+ * preview_url, so nothing here reads them.
+ */
 
 export const tokenSchema = z.object({
   access_token: z.string().min(1),
@@ -9,12 +13,17 @@ export const tokenSchema = z.object({
 
 const artistRef = z.object({ id: z.string(), name: z.string() });
 
+/** Spotify sends images largest first; width and height can be null. */
+export const imageSchema = z.object({ url: z.url(), width: z.number().nullable().optional(), height: z.number().nullable().optional() });
+const images = z.array(imageSchema).optional();
+
 const trackItem = z.object({
   id: z.string(),
   name: z.string(),
   artists: z.array(artistRef).min(1),
+  duration_ms: z.number().int().nonnegative().optional(),
   external_urls: z.object({ spotify: z.url() }).partial().optional(),
-  album: z.object({ name: z.string() }).optional(),
+  album: z.object({ name: z.string(), images }).optional(),
 });
 
 export const searchSchema = z.object({
@@ -26,6 +35,7 @@ export const searchSchema = z.object({
           .object({
             id: z.string(),
             name: z.string(),
+            images,
             external_urls: z.object({ spotify: z.url() }).partial().optional(),
           })
           .nullable(),
@@ -35,9 +45,12 @@ export const searchSchema = z.object({
 });
 
 export const albumsSchema = z.object({
-  items: z.array(z.object({ id: z.string(), name: z.string(), album_type: z.string(), release_date: z.string().optional() })),
+  items: z.array(z.object({ id: z.string(), name: z.string(), album_type: z.string(), release_date: z.string().optional(), images })),
   next: z.string().nullable(),
 });
+
+/** One page of an artist's albums, read only for `total` (the release count). */
+export const albumsTotalSchema = z.object({ total: z.number().int().nonnegative() });
 
 export const albumTracksSchema = z.object({
   items: z.array(trackItem.omit({ album: true })),
@@ -49,7 +62,26 @@ export type CatalogueTrack = {
   title: string;
   artists: { id: string; name: string }[];
   album: string | null;
+  /** Album cover, about 64 px when Spotify has that size. */
+  image: string | null;
+  durationMs: number | null;
   url: string | null;
 };
 
-export type CatalogueArtist = { id: string; name: string; url: string | null };
+export type CatalogueArtist = {
+  /** Spotify artist id. */
+  id: string;
+  name: string;
+  /** Artist photo, about 64 px when Spotify has that size. */
+  image: string | null;
+  /** Albums and singles on Spotify, when known. */
+  releases: number | null;
+  url: string | null;
+};
+
+/** The smallest image at least `minWidth` wide (Spotify lists largest first), else the largest. */
+export function pickImage(list: z.infer<typeof imageSchema>[] | undefined, minWidth = 64): string | null {
+  if (!list?.length) return null;
+  const wide = list.filter((i) => (i.width ?? 0) >= minWidth).sort((a, b) => (a.width ?? 0) - (b.width ?? 0));
+  return (wide[0] ?? list[0]).url;
+}

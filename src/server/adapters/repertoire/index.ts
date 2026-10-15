@@ -1,7 +1,7 @@
 import "server-only";
 import { providerStatus } from "@/server/env";
 import { runAdapter, type AdapterContext, type AdapterResult } from "../core";
-import { fetchArtistCatalogue, parseSpotifyArtistId, searchArtists, searchTracks } from "./client";
+import { fetchArtistCatalogue, parseSpotifyArtistId, searchArtistsWithReleases, searchTracks } from "./client";
 import { syntheticArtistSearch, syntheticCatalogue, syntheticTrackSearch } from "./fixtures/synthetic";
 import type { CatalogueArtist, CatalogueTrack } from "./schema";
 
@@ -24,8 +24,14 @@ export async function findTracks(query: string, market: string, context: Adapter
   return runAdapter({ ...common(context), fallback: [], synthetic: () => syntheticTrackSearch(query), live: () => searchTracks(query, market) });
 }
 
+/** Artists for the "sounds like" picker: photo, name and release count (albums and singles). */
 export async function findArtists(query: string, market: string, context: AdapterContext): Promise<AdapterResult<CatalogueArtist[]>> {
-  return runAdapter({ ...common(context), fallback: [], synthetic: () => syntheticArtistSearch(query), live: () => searchArtists(query, market) });
+  return runAdapter({
+    ...common(context),
+    fallback: [],
+    synthetic: () => syntheticArtistSearch(query),
+    live: () => searchArtistsWithReleases(query, market),
+  });
 }
 
 /** A performer's own songs from their Spotify artist link. */

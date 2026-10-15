@@ -58,6 +58,48 @@ describe("getSongs (Last.fm)", () => {
   });
 });
 
+describe("getListeners (Last.fm)", () => {
+  beforeEach(() => vi.stubEnv("LASTFM_API_KEY", "synthetic-test-key"));
+
+  it("reads artist.getInfo listeners, null for unknown artists, skipping failed lookups", async () => {
+    const { getListeners } = await freshSongs();
+    const { calls } = mockFetch([
+      route((u) => u.searchParams.get("artist") === "Synthetic Artist", () => json(SONGS_RAW.info)),
+      route((u) => u.searchParams.get("artist") === "Synthetic Two", () => json(SONGS_RAW.infoNumeric)),
+      route((u) => u.searchParams.get("artist") === "Nobody", () => json(SONGS_RAW.notFound)),
+      route((u) => u.searchParams.get("artist") === "Odd", () => json(SONGS_RAW.infoBad)),
+    ]);
+    const result = await getListeners(["Synthetic Artist", "Synthetic Two", "Nobody", "Odd", " ", "Synthetic Artist"], LIVE);
+    expect(result).toMatchObject({ mode: "live", data: { "Synthetic Artist": 123456, "Synthetic Two": 42, Nobody: null } });
+    expect(result.data).not.toHaveProperty("Odd");
+    expect(calls).toHaveLength(4);
+    expect(calls[0].url.searchParams.get("method")).toBe("artist.getinfo");
+    expect(calls[0].url.searchParams.get("autocorrect")).toBe("1");
+  });
+
+  it("falls back when every lookup fails or the key is missing, and is synthetic offline", async () => {
+    const { getListeners } = await freshSongs();
+    mockFetch([route(() => true, () => json(SONGS_RAW.badKey))]);
+    expect(await getListeners(["A", "B"], LIVE)).toMatchObject({ mode: "fallback", reason: "http", data: {} });
+
+    vi.stubEnv("LASTFM_API_KEY", "");
+    const again = await freshSongs();
+    expect(await again.getListeners(["A"], LIVE)).toMatchObject({ mode: "fallback", reason: "missing_key", data: {} });
+
+    const offline = await again.getListeners(["A", "A", "B"], OFFLINE);
+    expect(offline.mode).toBe("synthetic");
+    expect(Object.keys(offline.data)).toEqual(["A", "B"]);
+    expect(offline.data.A).toBe((await again.getListeners(["A"], OFFLINE)).data.A);
+  });
+
+  it("caps one lookup at ten artists", async () => {
+    const { getListeners, MAX_LISTENER_ARTISTS } = await freshSongs();
+    const { calls } = mockFetch([route(() => true, () => json(SONGS_RAW.info))]);
+    await getListeners(Array.from({ length: 15 }, (_, i) => `Artist ${i}`), LIVE);
+    expect(calls).toHaveLength(MAX_LISTENER_ARTISTS);
+  });
+});
+
 describe("getWeather (Open-Meteo)", () => {
   const slot = { date: "2026-10-17", startHour: 18, endHour: 21 };
 

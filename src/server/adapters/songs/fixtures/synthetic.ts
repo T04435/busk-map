@@ -11,6 +11,13 @@ export function syntheticTopTracks(artist: string): TopTrack[] {
   }));
 }
 
+/** Invented listener counts, stable per name. */
+export function syntheticListeners(artist: string): number {
+  let hash = 0;
+  for (const ch of artist) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return 10_000 + (hash % 900_000);
+}
+
 export const SYNTHETIC_RAW = {
   ok: {
     toptracks: {
@@ -25,6 +32,9 @@ export const SYNTHETIC_RAW = {
   single: {
     toptracks: { track: { name: "Only Song", playcount: "5", listeners: "2", artist: { name: "Synthetic Solo" } } },
   },
+  info: { artist: { name: "Synthetic Artist", stats: { listeners: "123456", playcount: "999" } } },
+  infoNumeric: { artist: { name: "Synthetic Two", stats: { listeners: 42 } } },
+  infoBad: { artist: { name: "Synthetic Bad", stats: {} } },
   notFound: { error: 6, message: "The artist you supplied could not be found" },
   badKey: { error: 10, message: "Invalid API key" },
 };

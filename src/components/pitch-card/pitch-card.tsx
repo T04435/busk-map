@@ -120,8 +120,9 @@ export function PitchCard({ pitch, rank }: { pitch: PlanPitch; rank: number }) {
                 ))}
               </ul>
             )}
-            {pitch.evidence.events.map((event) => (
-              <p key={event.name} className="flex flex-wrap items-center gap-2">
+            {pitch.evidence.events.map((event, i) => (
+              // The same show can run twice in a slot (e.g. 6 pm and 8:30 pm sessions): the name alone isn't a unique key.
+              <p key={`${event.name}-${event.localTime}-${i}`} className="flex flex-wrap items-center gap-2">
                 {event.name} at {event.venue}: crowd {event.moment === "leaving" ? "leaves" : "arrives"} around {event.localTime}
                 {event.endEstimated && event.moment === "leaving" && <EstimateLabel>Estimated end</EstimateLabel>}
                 {event.tasteMatch && (

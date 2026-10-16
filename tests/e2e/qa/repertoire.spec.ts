@@ -156,7 +156,6 @@ test.describe("QA Repertoire page: keyboard", () => {
   test.skip(!LOCAL, "Writes a Repertoire");
 
   test("add with Enter, remove with the keyboard, and the status line says what happened", async ({ page }) => {
-    test.fail(true, "B-016: focus falls to <body> after Remove");
     await page.goto("/repertoire");
     const field = page.getByPlaceholder(/Title - Artist/i).first();
     await field.focus();
@@ -175,7 +174,6 @@ test.describe("QA Repertoire page: keyboard", () => {
   });
 
   test("removing a song that isn't the last one keeps focus in the list (B-016)", async ({ page }) => {
-    test.fail(true, "B-016: focus falls to <body> after Remove");
     await page.goto("/repertoire");
     const field = page.getByPlaceholder(/Title - Artist/i).first();
     for (const song of ["Riptide - Vance Joy", "Scar - Missy Higgins", "Dumb Things - Paul Kelly"]) {

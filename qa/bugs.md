@@ -19,7 +19,8 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-013 | Low | Fresh-run limit message gives the retry time in Melbourne time with no zone | Fixed (4b6237b), verified by QA |
 | B-014 | Low | docs/qloo-data-map.md still calls the week-prefetch comment "about 47 Qloo calls" | Fixed (b88e174), verified by QA |
 | B-015 | Medium | /brain: the sticky trace panel hides the focused node while tabbing (WCAG 2.2 AA 2.4.11) | Fixed (2b26dc5), verified by QA |
-| B-016 | Low | /repertoire: after Remove, keyboard focus falls to <body> | Open |
+| B-016 | Low | /repertoire: after Remove, keyboard focus falls to <body> | Fixed (1b00ab4), verified by QA |
+| B-017 | Low | /week loading state: `aria-label` on a role-less div (axe serious, aria-prohibited-attr) | Open |
 
 ---
 
@@ -124,3 +125,11 @@ DEV found and fixed it (8afd14d): at 390 px the landing's "Your Spotify artist l
 - **Expected:** focus stays in context: the next song's Remove button, the previous one, or the list heading when it's the last song (WCAG 2.4.3 focus order). The status line already says "Removed Scar.".
 - **Actual:** the removed row's button goes away and `document.activeElement` is `<body>`, for any song, not just the last one. Keyboard and screen-reader users have to Tab again from the top of the page. "Move to Songs you can sing" removes its own button the same way, so it likely has the same problem (not separately tested).
 - **Regression test:** the 2 specs in `tests/e2e/qa/repertoire.spec.ts` are marked `test.fail` until it's fixed.
+
+### B-017 · Low · /week loading state: `aria-label` on a role-less div
+- **Found:** Repertoire R2 retest (dev/core 8e4cd0d), with axe run straight after navigation. It's there since b4035c2 (15 Oct, the first week planner), not from R2; QA's earlier scans always waited for the loaded week.
+- **Steps:** open `/week?example=folk-duo` and run axe before "Top sessions" renders (offline it shows for a moment; on a cold live run, for seconds).
+- **Expected:** the loading state is announced, and axe passes.
+- **Actual:** `src/app/week/page.tsx:35` renders `<div aria-busy="true" aria-label="Loading week">`. axe flags `aria-prohibited-attr` (serious): a `div` with no role can't carry `aria-label`, so screen readers don't announce "Loading week". The same pattern is on two spans in `week-view.tsx` (line 177 "Score N out of 100", line 230 "…: already started"). axe didn't flag those in the loaded state QA scanned, but they're likely ignored by screen readers too.
+- **Suggestion:** give the loading wrapper `role="status"` (with the label, or visible sr-only text), and give the spans visible sr-only text instead of `aria-label`. This touches ARIA only, so it doesn't change the frozen Week design.
+- No spec: the loading state is too brief offline for a stable test. The reproduction script was run by hand (2 of 3 example weeks caught loading).

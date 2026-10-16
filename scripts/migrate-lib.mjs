@@ -24,14 +24,38 @@ export const checksum = (content) => createHash("sha256").update(content).digest
  * Where may we run? Returns { action: "run" | "skip" | "refuse", reason }.
  * - production runs ONLY inside the Vercel production build (VERCEL_ENV=production and VERCEL=1);
  * - production without VERCEL=1 is refused (a manual run must never reach prod);
- * - `--if-production` (the vercel-build hook) skips everywhere else, exit 0;
+ * - `--if-production` (the vercel-build hook) also runs in a Vercel PREVIEW build, but only when its database is a Neon
+ *   preview branch: the endpoint in DATABASE_URL_UNPOOLED is not main's (MAIN_ENDPOINT, or MIGRATE_MAIN_ENDPOINT).
+ *   A preview that points at main, or whose endpoint can't be read, skips. Everything else skips, exit 0;
  * - anything else (local, dev branch) runs.
  */
+/** busk-map-db's main (production) branch endpoint. Not a secret: the endpoint id carries no credentials. */
+export const MAIN_ENDPOINT = "ep-lingering-fog-a77eaxtl";
+
+/** The Neon endpoint id (ep-…) of a connection string, without the pooler suffix; null when it can't be read. Never logs the URL. */
+export function endpointOf(url) {
+  if (!url) return null;
+  try {
+    const host = new URL(url).hostname;
+    const match = /^(ep-[a-z0-9-]+?)(?:-pooler)?\./.exec(host);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
 export function gate(env, flags = []) {
   const production = env.VERCEL_ENV === "production";
   if (production) {
     if (env.VERCEL === "1") return { action: "run", reason: "Vercel production build" };
     return { action: "refuse", reason: "VERCEL_ENV=production without VERCEL=1: production migrations run only inside the Vercel production build." };
+  }
+  if (flags.includes("--if-production") && env.VERCEL_ENV === "preview" && env.VERCEL === "1") {
+    const main = env.MIGRATE_MAIN_ENDPOINT || MAIN_ENDPOINT;
+    const endpoint = endpointOf(env.DATABASE_URL_UNPOOLED);
+    if (!endpoint) return { action: "skip", reason: "preview build: can't read the database endpoint, skipping migrations" };
+    if (endpoint === main) return { action: "skip", reason: "preview build points at the main (production) branch, skipping migrations" };
+    return { action: "run", reason: `Vercel preview build on Neon preview branch endpoint ${endpoint}` };
   }
   if (flags.includes("--if-production")) {
     return { action: "skip", reason: `not a production build (VERCEL_ENV=${env.VERCEL_ENV || "unset"}), skipping migrations` };

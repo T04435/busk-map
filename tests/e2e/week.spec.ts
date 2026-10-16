@@ -1,4 +1,4 @@
-import { expect, LOCAL, test } from "./fixtures";
+import { EXPLANATIONS_LABEL, expect, LOCAL, test } from "./fixtures";
 
 test.describe("week planner", () => {
   test("an example's week: top sessions, the grid and the calendar export", async ({ page, request }) => {
@@ -58,7 +58,7 @@ test.describe("week planner", () => {
     test("explains the week with the model", async ({ page }) => {
       await page.goto("/week?example=acoustic");
       await page.getByRole("button", { name: "Explain my week (live)" }).click();
-      await expect(page.getByText("Explanations: Claude")).toBeVisible();
+      await expect(page.getByText(EXPLANATIONS_LABEL)).toBeVisible();
       await expect(page.getByText(/^Mock explanation for /).first()).toBeVisible();
     });
 

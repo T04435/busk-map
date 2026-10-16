@@ -260,7 +260,13 @@ export async function runPlanAgent(ctx: PlanContext, events: AgentEvents = {}, a
         : "The agent didn't give an answer the engine could accept, so this is the engine's plan with reasons generated from the data.",
     );
   }
-  const plan = await assemblePlan(ctx, state.answer, { pool: [...state.pool.values()], agentNotes: notes, unverifiedNumbers: state.unverifiedNumbers, toolResults });
+  const plan = await assemblePlan(ctx, state.answer, {
+    pool: [...state.pool.values()],
+    agentNotes: notes,
+    unverifiedNumbers: state.unverifiedNumbers,
+    toolResults,
+    model: offline && !options.model ? "mock" : "claude",
+  });
   return {
     plan,
     usage,

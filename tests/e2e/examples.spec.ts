@@ -1,5 +1,5 @@
 import { EXAMPLES } from "../../src/lib/examples";
-import { agentSteps, expect, LOCAL, SATURDAY, test, waitForPlan } from "./fixtures";
+import { agentSteps, CLAUDE_CREDIT, EXPLANATIONS_LABEL, expect, LOCAL, SATURDAY, test, waitForPlan } from "./fixtures";
 
 test.describe("landing", () => {
   test("shows the three example performers and the own-act form", async ({ page }) => {
@@ -26,7 +26,12 @@ for (const example of EXAMPLES) {
       await expect(page.getByRole("heading", { name: /^Setlist for / })).toBeVisible();
       // The agent starts on load and the plan appears when it ends, with Claude's explanations (mock model offline).
       await agentSteps(page);
-      if (LOCAL) await expect(page.getByText("Explanations: Claude")).toBeVisible();
+      if (LOCAL) {
+        // The mock model wrote these: no Claude chip and no Claude credit (B-007).
+        await expect(page.getByText(EXPLANATIONS_LABEL)).toBeVisible();
+        await expect(page.getByText("Explanations: Claude")).toHaveCount(0);
+        await expect(page.getByRole("link", { name: CLAUDE_CREDIT })).toHaveCount(0);
+      }
       // Every data source is credited.
       for (const credit of ["Taste data by Qloo", "Pedestrian counts: City of Melbourne Open Data", "Weather data by Open-Meteo.com"]) {
         await expect(page.getByRole("link", { name: credit })).toBeVisible();
@@ -139,7 +144,7 @@ test.describe("live agent (mock model offline)", () => {
     expect(order.indexOf("score_pitches")).toBeGreaterThanOrEqual(3);
     expect(order.slice(0, order.indexOf("score_pitches")).some((t) => ["taste_map", "crowd_at", "events_near"].includes(t!))).toBe(true);
     await expect(page.getByTestId("plan-pending")).toHaveCount(0);
-    await expect(page.getByText("Explanations: Claude")).toBeVisible();
+    await expect(page.getByText(EXPLANATIONS_LABEL)).toBeVisible();
     await expect(page.getByText(/^Mock explanation/).first()).toBeVisible();
     await expect(page.getByTestId("agent-fallback")).toHaveCount(0);
 
@@ -148,7 +153,7 @@ test.describe("live agent (mock model offline)", () => {
     await page.reload();
     await waitForPlan(page);
     await expect(page.getByText(/^Replaying the agent's run from .* \(cached, no new model call\)$/)).toBeVisible();
-    await expect(page.getByText("Explanations: Claude")).toBeVisible();
+    await expect(page.getByText(EXPLANATIONS_LABEL)).toBeVisible();
     await expect(page.getByRole("list", { name: "Agent steps" })).toHaveCount(0);
     await page.getByRole("button", { name: /^Agent steps \(replayed, \d+\)$/ }).click();
     const replayedSteps = page.getByRole("list", { name: "Agent steps" });

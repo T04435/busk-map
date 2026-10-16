@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { TIP_COOKIE } from "@/lib/tips";
 import { WeekView } from "@/components/week/week-view";
 import { DataSources } from "@/components/plan/data-sources";
+import { creditsClaude } from "@/lib/sources";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { localToday } from "@/lib/slot";
@@ -87,7 +88,7 @@ async function WeekContent({ searchParams }: Pick<PageProps<"/week">, "searchPar
       <WeekView
         key={`${weekSearchParams(parsed.request, parsed.exampleId)}#${JSON.stringify(parsed.request.history ?? null)}`}
         initialPlan={plan} request={parsed.request} exampleId={parsed.exampleId} faults={adapters.faults.length ? adapters.faults.join(",") : null} />
-      <DataSources status={plan.dataStatus} showAi={plan.explanations === "ai"} />
+      <DataSources status={plan.dataStatus} showAi={creditsClaude(plan)} />
     </div>
   );
 }

@@ -128,6 +128,8 @@ export type AssembleOptions = {
   unverifiedNumbers?: string[];
   /** The agent run's finished tool calls (tool-end, before any pruning): the research totals of an agent plan. */
   toolResults?: ToolResult[];
+  /** Which model wrote `ai`'s text: the offline mock model or Claude (the default). */
+  model?: "claude" | "mock";
 };
 
 /**
@@ -218,6 +220,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     permit: request.permit,
     qlooMode: qloo.qlooMode(context.adapters),
     explanations: usedAi ? "ai" : "template",
+    explanationsModel: usedAi ? (options.model ?? "claude") : null,
     summary:
       (usedAi && ai?.summary.trim() && traceable(ai.summary) && clip(ai.summary.trim(), 600)) ||
       (qlooDown

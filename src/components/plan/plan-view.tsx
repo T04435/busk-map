@@ -11,7 +11,7 @@ import { DiscoveryBadge, PitchCard } from "@/components/pitch-card/pitch-card";
 import { SetlistPanel } from "@/components/setlist/setlist-panel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { QLOO_TEST_LABEL } from "@/lib/sources";
+import { creditsClaude, explanationsLabel, QLOO_TEST_LABEL } from "@/lib/sources";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -260,7 +260,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
             {heading.qlooMode === "live" ? "Live Qloo data" : QLOO_TEST_LABEL}
           </Badge>
           {plan && <Badge variant="outline">{plan.footfallLevel === "city-sensors" ? "Foot traffic: city sensors" : "Foot traffic: unavailable"}</Badge>}
-          {!pending && plan && <Badge variant="outline">{plan.explanations === "ai" ? "Explanations: Claude" : "Explanations: from the data"}</Badge>}
+          {!pending && plan && <Badge variant="outline">{explanationsLabel(plan)}</Badge>}
         </div>
         <p className="flex flex-wrap gap-x-4 text-sm">
           {/* No prefetch: prefetching /week builds a whole week plan, about 47 Qloo calls, on every plan view. */}
@@ -516,7 +516,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
 
         {!qlooDown && <ComparePanel state={baseline} pitches={plan.pitches} />}
 
-        <DataSources status={plan.dataStatus} showAi={plan.explanations === "ai"} />
+        <DataSources status={plan.dataStatus} showAi={creditsClaude(plan)} />
         </>
       )}
     </div>

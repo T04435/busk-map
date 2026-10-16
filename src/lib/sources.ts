@@ -18,6 +18,20 @@ export type SourceId =
 /** How every Qloo-derived number is labelled when the local mock answers (no key, QLOO_MOCK=1, or tests). */
 export const QLOO_TEST_LABEL = "Qloo test data (local mock)";
 
+/** Which model wrote a plan's explanations: Claude, or the offline mock model (tests, BUSKMAP_OFFLINE). */
+export type ExplanationsModel = "claude" | "mock";
+
+/** The header chip for a plan's or week's explanations. Plans stored before explanationsModel existed count as Claude. */
+export function explanationsLabel(plan: { explanations: "ai" | "template"; explanationsModel?: ExplanationsModel | null }): string {
+  if (plan.explanations !== "ai") return "Explanations: from the data";
+  return plan.explanationsModel === "mock" ? "Explanations: test model (offline)" : "Explanations: Claude";
+}
+
+/** Whether to credit Claude in Data sources: only when Claude wrote the explanations. */
+export function creditsClaude(plan: { explanations: "ai" | "template"; explanationsModel?: ExplanationsModel | null }): boolean {
+  return plan.explanations === "ai" && plan.explanationsModel !== "mock";
+}
+
 export type SourceInfo = {
   id: SourceId;
   name: string;

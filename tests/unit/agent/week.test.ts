@@ -66,6 +66,7 @@ describe("week planner (offline)", () => {
     const { buildWeekPlan } = await load();
     const plan = await buildWeekPlan(request, OFFLINE, "2026-10-15", true, now);
     expect(plan.explanations).toBe("ai");
+    expect(plan.explanationsModel).toBe("mock");
     expect(plan.sessions.every((s) => s.whySource === "ai" && s.why === `Mock explanation for ${s.key}.`)).toBe(true);
     expect(plan.summary).toBe("Mock week summary (offline test mode).");
   });

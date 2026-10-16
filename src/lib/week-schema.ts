@@ -102,6 +102,8 @@ export const weekPlanSchema = z.object({
   sessions: z.array(weekSessionSchema).max(5),
   limits: z.object({ maxSessions: z.number().int(), maxPerDay: z.number().int(), unavailable: z.array(unavailableSchema) }),
   explanations: z.enum(["ai", "template"]),
+  /** Which model wrote the "ai" explanations: Claude, or the offline mock model. Null for template text and older plans. */
+  explanationsModel: z.enum(["claude", "mock"]).nullable().default(null),
   summary: z.string(),
   notes: z.array(z.string()),
   qlooMode: z.enum(["live", "synthetic"]),

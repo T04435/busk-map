@@ -288,6 +288,7 @@ export async function buildWeekPlan(
     sessions,
     limits: request.limits,
     explanations: usedAi ? "ai" : "template",
+    explanationsModel: usedAi ? (adapters.offline ? "mock" : "claude") : null,
     summary:
       (usedAi && ai?.summary.trim()) ||
       (sessions.length > 0 ? `Best session: ${sessions[0].label} at ${sessions[0].pitch.name} (${sessions[0].score}/100).` : "No session could be recommended this week with the data available."),

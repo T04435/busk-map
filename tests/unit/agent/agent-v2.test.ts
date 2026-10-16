@@ -129,7 +129,16 @@ describe("Agent v2 runs (mock model)", () => {
     expect(finishes.map((e) => e.ok)).toEqual([false, true]);
     expect(finishes[0].summary).toMatch(/Not in the scored pool: made-up/);
     expect(plan.explanations).toBe("ai");
+    // A model passed in counts as Claude's (production passes none).
+    expect(plan.explanationsModel).toBe("claude");
     expect(plan.pitches.map((p) => p.id)).not.toContain("made-up");
+  });
+
+  it("offline, the plan says the mock model wrote the explanations (B-007)", async () => {
+    const { ctx, runPlanAgent } = await load();
+    const { plan } = await runPlanAgent(ctx);
+    expect(plan.explanations).toBe("ai");
+    expect(plan.explanationsModel).toBe("mock");
   });
 
   it("score_pitches isn't offered, and errors, until three looks are in, one of them about the crowd", async () => {

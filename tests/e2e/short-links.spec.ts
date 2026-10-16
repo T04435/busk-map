@@ -1,4 +1,4 @@
-import { expect, LOCAL, SATURDAY, test, waitForPlan } from "./fixtures";
+import { EXPLANATIONS_LABEL, expect, LOCAL, SATURDAY, test, waitForPlan } from "./fixtures";
 
 const SHORT = /\/p\/([0-9A-Za-z]{9})$/;
 const idOf = (url: string) => SHORT.exec(new URL(url).pathname)?.[1] ?? null;
@@ -41,7 +41,7 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     await expect(page).toHaveURL(SHORT);
     const id = idOf(page.url());
     await waitForPlan(page);
-    await expect(page.getByText("Explanations: Claude")).toBeVisible();
+    await expect(page.getByText(EXPLANATIONS_LABEL)).toBeVisible();
     // No re-run for buskers.
     await expect(page.getByRole("button", { name: /Re-run|Plan with the agent/ })).toHaveCount(0);
 

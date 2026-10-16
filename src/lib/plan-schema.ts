@@ -180,6 +180,8 @@ export const planSchema = z.object({
   permit: z.enum(PERMITS),
   qlooMode: z.enum(["live", "synthetic"]),
   explanations: z.enum(["ai", "template"]),
+  /** Which model wrote the "ai" explanations: Claude, or the offline mock model. Null for template text and older plans. */
+  explanationsModel: z.enum(["claude", "mock"]).nullable().default(null),
   summary: z.string(),
   notes: z.array(z.string()),
   weights: z.object({ taste: z.number(), footfall: z.number(), places: z.number(), events: z.number(), weather: z.number(), discovery: z.number() }),

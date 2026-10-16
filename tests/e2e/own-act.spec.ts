@@ -1,4 +1,4 @@
-import { expect, isoDay, LOCAL, pickDate, SATURDAY, SUNDAY, test, waitForPlan } from "./fixtures";
+import { EXPLANATIONS_LABEL, expect, isoDay, LOCAL, pickDate, SATURDAY, SUNDAY, test, waitForPlan } from "./fixtures";
 
 test.describe("own act", () => {
   test.skip(!LOCAL, "Starts the agent automatically; local offline server only");
@@ -14,7 +14,7 @@ test.describe("own act", () => {
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await expect(page.getByRole("heading", { level: 1, name: "Jess on guitar" })).toBeVisible();
     await waitForPlan(page);
-    await expect(page.getByText("Explanations: Claude")).toBeVisible();
+    await expect(page.getByText(EXPLANATIONS_LABEL)).toBeVisible();
     await expect(page.getByText("Your song").first()).toBeVisible();
   });
 

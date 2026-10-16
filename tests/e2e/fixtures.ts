@@ -3,6 +3,11 @@ import { test as base, expect } from "@playwright/test";
 /** Fault injection and offline fixtures exist only on the local test server. */
 export const LOCAL = !process.env.PLAYWRIGHT_BASE_URL;
 
+/** The explanations chip: the local offline server's mock model says so; a deploy's Claude says Claude (B-007). */
+export const EXPLANATIONS_LABEL = LOCAL ? "Explanations: test model (offline)" : "Explanations: Claude";
+/** The Data sources credit for Claude, shown only when Claude wrote the explanations. */
+export const CLAUDE_CREDIT = "Plan explanations written by Claude (Anthropic) via Vercel AI Gateway";
+
 export const test = base;
 export { expect };
 

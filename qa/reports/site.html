@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Site-wide · review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f1ea;--card:#fff;--fg:#17191c;--muted:#5d6168;--line:#d9d4c8;--ok:#1d7a3a;--okbg:#e2f3e7;--bad:#b3141b;--badbg:#fbe3e4;--warn:#8a5a00;--warnbg:#fdf0d3;--held:#4b4f86;--heldbg:#e7e7f6;--accent:#c2410c}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#111416;--card:#1a1e21;--fg:#eceae4;--muted:#a3a8ad;--line:#2d3337;--ok:#6fd38f;--okbg:#14301e;--bad:#ff8c8f;--badbg:#3a1416;--warn:#f2c160;--warnbg:#33280f;--held:#b9b9f0;--heldbg:#25253d;--accent:#ff7a3d}}
+:root[data-theme="dark"]{--bg:#111416;--card:#1a1e21;--fg:#eceae4;--muted:#a3a8ad;--line:#2d3337;--ok:#6fd38f;--okbg:#14301e;--bad:#ff8c8f;--badbg:#3a1416;--warn:#f2c160;--warnbg:#33280f;--held:#b9b9f0;--heldbg:#25253d;--accent:#ff7a3d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.wrap{max-width:1600px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:24px;margin:0} .ver{font-weight:800;margin:6px 0 2px} .chg{color:var(--muted);margin:0 0 12px}
+.strip{display:flex;flex-wrap:wrap;gap:8px;align-items:center;position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0;border-bottom:1px solid var(--line)}
+.stat{padding:6px 12px;border:1px solid var(--line);background:var(--card);font-weight:800}
+.stat.ok{color:var(--ok)} .stat.bad{color:var(--bad)} .stat.warn{color:var(--warn)} .stat.held{color:var(--held)}
+.filter{font:inherit;padding:6px 12px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer;min-height:40px} .filter[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.row{display:grid;grid-template-columns:150px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,.55fr) minmax(0,1.3fr);gap:12px;background:var(--card);border:1px solid var(--line);margin:12px 0;padding:12px;scroll-margin-top:70px}
+.row:target{outline:3px solid var(--accent)}
+.id a{display:inline-block;font-size:22px;font-weight:800;color:var(--fg);text-decoration:none;border:2px solid var(--fg);padding:0 8px} .id span{display:block;margin-top:6px;font-weight:600}
+figure{margin:0;min-width:0} figcaption{font-size:12px;color:var(--muted);margin-bottom:4px}
+img{display:block;max-width:100%;height:auto;max-height:520px;object-fit:contain;object-position:top left;border:1px solid var(--line);background:#fff}
+.box img{max-height:none}
+dl{margin:0;display:grid;gap:6px} dt{font-size:12px;color:var(--muted)} dd{margin:0} .call{font-weight:800;color:var(--accent)}
+.chip{font-weight:800;padding:1px 8px} .chip.ok{background:var(--okbg);color:var(--ok)} .chip.bad{background:var(--badbg);color:var(--bad)} .chip.warn{background:var(--warnbg);color:var(--warn)} .chip.held{background:var(--heldbg);color:var(--held)}
+.ph{border:2px dashed var(--muted);color:var(--muted);padding:24px 8px;text-align:center;font-weight:800}
+body.action .row[data-action="false"]{display:none}
+.box{background:var(--card);border:1px solid var(--line);padding:12px 16px;margin-top:20px;overflow-x:auto} .box h2{font-size:16px;margin:0 0 6px}
+table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top}
+@media (max-width:1100px){.row{grid-template-columns:1fr 1fr} .id{grid-column:1/-1} dl{grid-column:1/-1}}
+@media (max-width:600px){.row{grid-template-columns:1fr}}
+</style></head>
+<body><div class="wrap">
+<h1>Site-wide · review</h1>
+<p class="ver">v1 · design/honeycomb ＠ 7b1521e · 17 Oct 2026 · route every page (/, /busks, /week, /brain, /tips, /brand, /p/…, 404)</p>
+<p class="chg">First version: header, phone nav, footer, logos, Qloo links, /terms, field focus on 8 routes (534 field states), the user&#x27;s calls F07-F15.</p>
+<div class="strip" role="group" aria-label="Summary"><span class="stat ok">4 Present</span><span class="stat warn">2 Different</span><span class="stat bad">4 Missing</span><span class="stat bad">1 Broken</span><button class="filter" type="button" aria-pressed="false" id="flt">Needs action only</button></div>
+<p class="chg">Deck: BRAND&#x27;s landing crops (L01 header, L26 phone nav, L25 footer); the user&#x27;s calls override them. Build: QA&#x27;s own export, 8 routes, day and night. The row id is the ticket.</p>
+<article class="row" id="S01" data-action="true">
+<div class="id"><a href="#S01">S01</a><span>Header (from 721 px)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/site/deck/S01.jpg"><img loading="lazy" src="../screens/honeycomb/site/deck/S01.jpg" alt="S01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/site/build/header-busks-1440-day.jpg"><img loading="lazy" src="../screens/honeycomb/site/build/header-busks-1440-day.jpg" alt="S01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/site/build/header-busks-390-day.jpg"><img loading="lazy" src="../screens/honeycomb/site/build/header-busks-390-day.jpg" alt="S01 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>built</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Lockup, Busks · Week · Brain · Tips; the current page is marked (aria-current) on every route; skip link to #main on every page.</dd></div>
+<div><dt>User's call</dt><dd class="call">F12: the wordmark is the only logo (no lockup).</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="S02" data-action="false">
+<div class="id"><a href="#S02">S02</a><span>Bottom nav (up to 720 px)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/site/deck/S02.jpg"><img loading="lazy" src="../screens/honeycomb/site/deck/S02.jpg" alt="S02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/site/build/header-brain-1440-day.jpg"><img loading="lazy" src="../screens/honeycomb/site/build/header-brain-1440-day.jpg" alt="S02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/site/build/mobilenav-busks-day.jpg"><img loading="lazy" src="../screens/honeycomb/site/build/mobilenav-busks-day.jpg" alt="S02 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>built</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Same four items with the current one marked; only one “Main” nav is visible at each width.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="S03" data-action="true">
+<div class="id"><a href="#S03">S03</a><span>Footer</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/site/deck/S03.jpg"><img loading="lazy" src="../screens/honeycomb/site/deck/S03.jpg" alt="S03 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/site/build/footer-busks-1440-day.jpg"><img loading="lazy" src="../screens/honeycomb/site/build/footer-busks-1440-day.jpg" alt="S03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/site/build/footer-busks-390-day.jpg"><img loading="lazy" src="../screens/honeycomb/site/build/footer-busks-390-day.jpg" alt="S03 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> As the board on every route (lockup, Taste data by Qloo · MIT, Open source repo text, Built by, the legal line).</dd></div>
+<div><dt>User's call</dt><dd class="call">F11: left the wordmark and the Qloo logo; centre Privacy · Brain · Brand; right GitHub and Built by.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="S04" data-action="true">
+<div class="id"><a href="#S04">S04</a><span>One logo (F12)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Not in the deck</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/site/build/header-home-1440-day.jpg"><img loading="lazy" src="../screens/honeycomb/site/build/header-home-1440-day.jpg" alt="S04 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/site/build/footer-home-390-day.jpg"><img loading="lazy" src="../screens/honeycomb/site/build/footer-home-390-day.jpg" alt="S04 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Three Busk Map logo designs in use: the lockup in every header and footer, and the mark on / (by SVG viewBox).</dd></div>
+<div><dt>User's call</dt><dd class="call">F12: the busk-map wordmark (dark and light) is the ONLY logo.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="S05" data-action="true">
+<div class="id"><a href="#S05">S05</a><span>Qloo logo links (F09)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Not in the deck</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/site/build/footer-brain-1440-day.jpg"><img loading="lazy" src="../screens/honeycomb/site/build/footer-brain-1440-day.jpg" alt="S05 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip bad">Missing</span> No Qloo logo on any of the 9 routes is a link.</dd></div>
+<div><dt>User's call</dt><dd class="call">F09: every Qloo logo links to qloo.com in a new tab (rel=&quot;noopener noreferrer&quot;).</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="S06" data-action="true">
+<div class="id"><a href="#S06">S06</a><span>/terms and the legal line (F10)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Not in the deck</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/site/build/footer-tips-1440-day.jpg"><img loading="lazy" src="../screens/honeycomb/site/build/footer-tips-1440-day.jpg" alt="S06 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip bad">Missing</span> /terms is 404; the legal line is still in every footer.</dd></div>
+<div><dt>User's call</dt><dd class="call">F10: the legal line moves to /terms, linked from the footer.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="S07" data-action="true">
+<div class="id"><a href="#S07">S07</a><span>GitHub (F07)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Not in the deck</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/site/build/footer-week-1440-day.jpg"><img loading="lazy" src="../screens/honeycomb/site/build/footer-week-1440-day.jpg" alt="S07 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip bad">Missing</span> Still the “OPEN SOURCE github.com/T04435/busk-map” text link.</dd></div>
+<div><dt>User's call</dt><dd class="call">F07: a GitHub icon in a honeycomb cell, linked.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="S08" data-action="true">
+<div class="id"><a href="#S08">S08</a><span>Built by + mark (F08)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Not in the deck</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/site/build/footer-plan-1440-day.jpg"><img loading="lazy" src="../screens/honeycomb/site/build/footer-plan-1440-day.jpg" alt="S08 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip bad">Missing</span> “Built by T04435 (solo), with Claude, …” text; no pixel mark.</dd></div>
+<div><dt>User's call</dt><dd class="call">F08: “Built by T04435” plus the pixel mark (an SVG of the Claude Code critter, not the Claude logo), each linked.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="S09" data-action="true">
+<div class="id"><a href="#S09">S09</a><span>Field focus and borders (F13, F14)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Not in the deck</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/site/build/header-tips-1440-night.jpg"><img loading="lazy" src="../screens/honeycomb/site/build/header-tips-1440-night.jpg" alt="S09 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip bad">Broken</span> 514 of 534 field states fail on 8 routes: every focused field shows two ring layers. Cause: globals.css:352-355 sets :focus-visible { box-shadow: var(--focus-ring) } for everything, and --focus-ring (globals.css:200-214) is two shadows, a 2 px paper gap plus a 4 px ring. The Spotify searches on /busks are also a box in a box.</dd></div>
+<div><dt>User's call</dt><dd class="call">F13, F14: one border and one ring, shadcn&#x27;s own pattern.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="S10" data-action="true">
+<div class="id"><a href="#S10">S10</a><span>shadcn primitives (F15)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Not in the deck</div></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> The global :focus-visible rule overrides every primitive&#x27;s own focus state, and a separate --focus-ring/.bm-poster system replaces shadcn&#x27;s ring utilities. That is the global-CSS-over-primitive-states pattern F15 rules out.</dd></div>
+<div><dt>User's call</dt><dd class="call">F15: shadcn/ui primitives styled through tokens and variants; no global CSS overriding their states.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="S11" data-action="false">
+<div class="id"><a href="#S11">S11</a><span>Night theme of header, nav and footer</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Not in the deck</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/site/build/footer-busks-1440-night.jpg"><img loading="lazy" src="../screens/honeycomb/site/build/footer-busks-1440-night.jpg" alt="S11 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/site/build/footer-busks-390-night.jpg"><img loading="lazy" src="../screens/honeycomb/site/build/footer-busks-390-night.jpg" alt="S11 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>built</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Header and nav unchanged (already night); footer switches to night where it sits on paper.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article>
+<section class="box" id="fields"><h2>Field focus on every page (F13, F14)</h2><table><tr><th>Route</th><th>Field states</th><th>Fail</th><th>Two or more rings when focused</th><th>No ring on the element</th></tr>
+<tr><td>/busks</td><td>76</td><td>76</td><td>56</td><td>20 (radio items; the card shows the focus, see Busks B-041)</td></tr>
+<tr><td>/tips</td><td>40</td><td>40</td><td>40</td><td>0</td></tr><tr><td>/week</td><td>124</td><td>124</td><td>124</td><td>0</td></tr>
+<tr><td>/</td><td>28</td><td>24</td><td>24</td><td>0</td></tr><tr><td>/brain</td><td>152</td><td>152</td><td>152</td><td>0</td></tr>
+<tr><td>/p/… (plan)</td><td>60</td><td>44</td><td>37</td><td>7</td></tr><tr><td>/brand</td><td>46</td><td>46</td><td>38</td><td>8</td></tr>
+<tr><td>404</td><td>8</td><td>8</td><td>8</td><td>0</td></tr><tr><th>Total</th><th>534</th><th>514</th><th></th><th></th></tr></table>
+<p>States = each field × day/night × 390/1440. Tool: <code>qa/tools/field-strip.mjs</code> (per-page strips are in each page's report, e.g. Busks · review).</p></section><section class="box" id="checks"><h2>Site checks (qa/tools/site-checks.mjs) at 7b1521e</h2><ul><li>F09 Qloo links: fail on all 9 routes (no link).</li><li>F10: /terms 404; the legal line in every footer.</li><li>F12: lockup on every route, mark on /.</li><li>F07, F08, F11: footer unchanged.</li><li>Active nav item and skip link: pass on all 8 routes.</li></ul></section><section class="box" id="audit"><h2>Impeccable audit (site-wide)</h2><ol><li><b>P1 · Focus is drawn twice everywhere</b> (S09): one global rule, so one fix. It also hides shadcn's ring utilities (S10, F15).</li><li><b>P2 · Three logos</b> (S04, F12).</li><li><b>P2 · The legal line is footer fine print on every page</b> (S06, F10): it belongs on /terms, linked.</li><li><b>P3 · Qloo's logo is a dead image</b> where the user expects a link (S05, F09).</li><li>Landmarks: one “Main” nav visible at each width; skip link everywhere; header nav marks the current page. No change needed.</li></ol></section>
+<section class="box"><h2>Versions</h2><ul><li><b>v1</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: First version: header, phone nav, footer, logos, Qloo links, /terms, field focus on 8 routes (534 field states), the user&#x27;s calls F07-F15.</li></ul></section>
+</div>
+<script>
+const f=document.getElementById('flt');f.addEventListener('click',()=>{const on=!document.body.classList.contains('action');document.body.classList.toggle('action',on);f.setAttribute('aria-pressed',String(on));});
+</script></body></html>

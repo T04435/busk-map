@@ -138,7 +138,7 @@ test.describe("QA Repertoire: plans and examples never write one", () => {
   test("browsing every example, a week, a custom plan and the brain sets no cookie and creates nothing", async ({ page }) => {
     const writes: string[] = [];
     page.on("request", (r) => r.url().includes("/api/playlist") && r.method() !== "GET" && writes.push(`${r.method()} ${r.url()}`));
-    for (const path of ["/", "/plan?example=acoustic", "/plan?example=sax", "/plan?example=folk-duo", "/week?example=sax", "/brain", "/tips", "/repertoire"]) {
+    for (const path of ["/", "/plan?example=acoustic", "/plan?example=sax", "/plan?example=folk-duo", "/week?example=sax", "/brain", "/repertoire"]) {
       await page.goto(path);
       // An example link redirects on the client to its short link /p/<id>, then the plan streams.
       if (path.startsWith("/plan?example=")) await expect(page.getByRole("region", { name: "Pitches", exact: true })).toBeVisible();

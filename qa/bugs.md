@@ -38,6 +38,7 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-032 | Low | Honeycomb landing L13: act cards: filled orange initials hex reading "SA" (board: outline, "SX"); action is a plain dark row, not the orange underlined link; Plays lists differ from the board | Open (design/honeycomb) |
 | B-033 | Low | Honeycomb landing L17: research funnel labels under the hexes, dashes instead of ▸ chevrons, boxed in a card | Open (design/honeycomb) |
 | B-034 | Low | Honeycomb landing L20: setlist panel marked built but Learn these is a tan panel (board: bordered box, orange top rule, mono title); set-length line sans; rows 1–4 not 01–04; heading names the pitch; no Copy | Open (design/honeycomb) |
+| B-035 | High | design/honeycomb 4b9bff1 doesn't build from a clean export: setlist-panel.tsx imports components/setlist/copy-set-button, which was never committed (untracked in DEV's worktree) | Open (design/honeycomb) |
 
 ---
 
@@ -176,4 +177,9 @@ Checked part by part against BRAND's 29-part inventory (`design-handoff/inventor
 - B-030 and B-031: no filter chips and no per-run folds in the tree.
 - Regression spec: `tests/e2e/qa/learn-feed.spec.ts`. The QA suite passes 225 of 225 at Wednesday 12:00, Friday 21:30 and Saturday 00:15.
 - DEV's Postgres smoke log is now committed: `docs/smoke/learn-db-373ea1c.log`, 39 of 39.
+
+### B-035 · High · design/honeycomb HEAD doesn't build (found 16 Oct)
+- **How found:** `git archive HEAD` of design/honeycomb (6bc169e, on top of DEV's 4b9bff1), then `next build` fails with "Module not found: Can't resolve '@/components/setlist/copy-set-button'" (src/components/setlist/setlist-panel.tsx:2).
+- **Cause:** the file exists only as an untracked file in DEV's worktree. Anything that builds from git (a deploy, CI, another checkout) breaks.
+- **Also checked:** bbd1111 (the evening-slot port) builds, and QA's honeycomb suite passes there 153 of 153 at Wednesday 12:00, Friday 21:30 and Saturday 00:15.
 

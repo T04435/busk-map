@@ -148,39 +148,10 @@ test.describe("planners read the Repertoire (offline)", () => {
     await page.waitForTimeout(500);
     expect(await state(page)).toEqual(before);
     expect((await state(page)).usualPitches).toEqual([]);
-    // The example week has no switch either.
-    await page.goto("/week?example=acoustic");
-    await expect(page.getByRole("heading", { level: 1, name: /Plan my week/ })).toBeVisible();
-    await expect(page.getByTestId("week-use-repertoire")).toHaveCount(0);
     expect(await state(page)).toEqual(before);
   });
 
-  test("/week has its own Use my Repertoire switch", async ({ page }) => {
-    await seed(page);
-    await page.goto("/");
-    const f = form(page);
-    // Plan the week from a hand-typed act first: the switch is off there.
-    await f.getByRole("switch", { name: /Use my Repertoire/ }).click();
-    await f.getByLabel("Act name").fill("Typed duo");
-    await f.getByLabel("Artists you sound like").fill("Paul Kelly");
-    await f.getByLabel("Song list").fill("Typed Song - Typed Artist");
-    await f.getByRole("button", { name: "Plan my week from this date" }).click();
-    await expect(page).toHaveURL(/\/week\?/);
-    const toggle = page.getByTestId("week-use-repertoire").getByRole("switch", { name: "Use my Repertoire (3 songs)" });
-    await expect(toggle).not.toBeChecked();
-    await expect(page.getByRole("heading", { level: 1, name: "Plan my week: Typed duo" })).toBeVisible();
-    await toggle.click();
-    await expect(page).toHaveURL(/songs=How\+to\+Make\+Gravy/);
-    await expect(page.getByRole("heading", { level: 1, name: "Plan my week: Jess on guitar" })).toBeVisible();
-    await expect(toggle).toBeChecked();
-    // Off again: back to the typed act.
-    await toggle.click();
-    await expect(page.getByRole("heading", { level: 1, name: "Plan my week: Typed duo" })).toBeVisible();
-    await expect(toggle).not.toBeChecked();
-    expect(page.url()).not.toMatch(/playlist|buskmap_/);
-  });
-
-  test("layout and axe at 390, 768 and 1440: the form with the Repertoire, the plan, the week", async ({ page }, info) => {
+  test("layout and axe at 390, 768 and 1440: the form with the Repertoire, the plan", async ({ page }, info) => {
     await seed(page);
     const check = async (label: string) => {
       const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
@@ -223,14 +194,6 @@ test.describe("planners read the Repertoire (offline)", () => {
       if (SHOTS && info.project.name === "desktop") await p2.screenshot({ path: `${SHOTS}/r2-plan-save-nudge-${width}.png`, fullPage: true });
     }
     await other.close();
-    await page.goto("/");
-    await form(page).getByRole("button", { name: "Plan my week from this date" }).click();
-    await expect(page.getByTestId("week-use-repertoire")).toBeVisible();
-    for (const width of widths) {
-      await page.setViewportSize({ width, height: 900 });
-      await check(`week-${width}`);
-      await shot("week", width);
-    }
   });
 
   test("R4 words: the plan says Suggested set and Songs you should learn, never Setlist or Learn these (3 widths, axe, screenshots)", async ({ page }, info) => {

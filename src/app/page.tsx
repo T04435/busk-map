@@ -56,17 +56,6 @@ export default function Home({ searchParams }: PageProps<"/">) {
           ))}
         </ul>
         <p className="text-sm text-muted-foreground">
-          Or plan a whole week:{" "}
-          {EXAMPLES.map((example, i) => (
-            <span key={example.id}>
-              {i > 0 && " · "}
-              <Link className="underline" prefetch={false} href={`/week?example=${example.id}`}>
-                Week: {example.label}
-              </Link>
-            </span>
-          ))}
-        </p>
-        <p className="text-sm text-muted-foreground">
           Keep the songs you can sing in your{" "}
           <Link className="underline" href="/repertoire">
             {PLAYLIST_COPY.name}
@@ -102,6 +91,11 @@ export default function Home({ searchParams }: PageProps<"/">) {
       </section>
 
       <footer className="space-y-1 text-xs text-muted-foreground">
+        <p>
+          <Link className="underline" href="/brain">
+            Brain
+          </Link>
+        </p>
         <p>Data: {[SOURCES.qloo, SOURCES["melbourne-pedestrian"], SOURCES["melbourne-busking"], SOURCES.ticketmaster, SOURCES.lastfm, SOURCES["open-meteo"], SOURCES.spotify, SOURCES.osm].map((s) => s.name).join(" · ")}</p>
         <p>
           Busk Map never confirms a pitch is legal; check your permit conditions. Built for the Qloo Agentic Hackathon. MIT licence.

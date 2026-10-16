@@ -1,6 +1,5 @@
 import type { LatLon } from "@/lib/geo";
 import { pickTopPitches, rankPitches, type ScoredPitch } from "./pitch-score";
-import type { TipHistory } from "./tips";
 import type { Candidate, EventInput, HeatCellInput, PlaceInput, WeatherHourInput, Weights } from "./types";
 
 /**
@@ -40,7 +39,6 @@ export type WeekInputs = {
   /** Forecast hours keyed by date; missing dates mean no forecast. */
   weather: Record<string, (WeatherHourInput & { hour: number })[]>;
   /** The performer's logged takings, for the personal bonus. */
-  history?: TipHistory | null;
 };
 
 export type WeekCell = {
@@ -93,7 +91,6 @@ export function scoreWeek(candidates: Candidate[], inputs: WeekInputs, weights: 
           slotStartMs: slot.startMs,
           slotEndMs: slot.endMs,
           footfallReference,
-          history: inputs.history,
         },
         weights,
       );

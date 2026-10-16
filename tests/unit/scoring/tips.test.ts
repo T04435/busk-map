@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TIP_BONUS_MAX, TIP_FULL_SESSIONS, tipBonus, type TipHistory } from "@/server/scoring";
+import { TIP_BONUS_MAX, TIP_FULL_SESSIONS, tipBonus, type TipHistory } from "@/server/scoring/tips";
 
 const history = (pitches: TipHistory["pitches"], perHour = 30, sessions = 6): TipHistory => ({ source: "yours", sessions, perHour, pitches });
 

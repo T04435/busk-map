@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { planRequestSchema, type Plan, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
 import { parsePlanParams } from "@/lib/plan-url";
-import { encodeTipCookie, type TipHistory } from "@/lib/tips";
 
 async function load() {
   vi.resetModules();
@@ -17,7 +16,7 @@ const NOW = new Date("2026-10-16T02:00:00Z"); // 1 pm in Melbourne, 16 Oct
 const DAY = "2026-10-16";
 const NOWL = { today: DAY, hour: 13 };
 
-const habana = (extra: Partial<PlanRequest> = {}): PlanRequest =>
+const habana = (extra: Record<string, unknown> = {}): PlanRequest =>
   planRequestSchema.parse({
     city: "melbourne",
     slot: { date: "2026-10-17", startHour: 18, endHour: 21 },
@@ -31,21 +30,22 @@ const habana = (extra: Partial<PlanRequest> = {}): PlanRequest =>
     ...extra,
   });
 
-const history: TipHistory = { source: "yours", sessions: 3, perHour: 40, pitches: [{ id: "p1", sessions: 2, perHour: 55 }] };
+// A tip history as an old stored request or a stale client may still send it: accepted and ignored.
+const history = { source: "yours", sessions: 3, perHour: 40, pitches: [{ id: "p1", sessions: 2, perHour: 55 }] };
 
 const planEvent = (explanations: "ai" | "template" = "ai"): PlanStreamEvent => ({ type: "plan", plan: { explanations, pitches: [] } as unknown as Plan });
 const step: PlanStreamEvent = { type: "tool-start", id: "1", tool: "taste_map", label: "Mapping" };
 const finishedRun = (explanations: "ai" | "template" = "ai") => ({ events: [step, planEvent(explanations)], startedAt: 1, finishedAt: 2, ok: true });
 
 describe("plan request hashing", () => {
-  it("is canonical: key order doesn't matter, the tip history is never part of it", async () => {
+  it("is canonical: key order doesn't matter, a legacy tip history is never part of it", async () => {
     const { canonicalJson, requestHash, storedRequestOf } = await load();
     expect(canonicalJson({ b: 1, a: { d: [3, { z: 1, y: 2 }], c: 2 } })).toBe('{"a":{"c":2,"d":[3,{"y":2,"z":1}]},"b":1}');
     const a = habana();
     const reordered = JSON.parse(JSON.stringify({ slot: a.slot, performer: a.performer, permit: a.permit, city: a.city }));
     expect(requestHash(storedRequestOf(a), null)).toBe(requestHash(reordered, null));
-    expect(storedRequestOf({ ...a, history })).not.toHaveProperty("history");
-    expect(requestHash(storedRequestOf({ ...a, history }), null)).toBe(requestHash(storedRequestOf(a), null));
+    expect(storedRequestOf(habana({ history }))).not.toHaveProperty("history");
+    expect(requestHash(storedRequestOf(habana({ history })), null)).toBe(requestHash(storedRequestOf(a), null));
     expect(requestHash(storedRequestOf(a), "acoustic")).not.toBe(requestHash(storedRequestOf(a), null));
   });
 });
@@ -235,16 +235,15 @@ describe("resolving links", () => {
 });
 
 describe("opening a stored plan", () => {
-  it("adds the viewer's own tip history, and shows the stored run only when it was made with the same history", async () => {
+  it("ignores a legacy tip cookie and history, and shows the stored run", async () => {
     vi.stubEnv("DATABASE_URL", "");
     vi.stubEnv("VERCEL", "");
     const { resolvePlanLink, loadStoredPlan, viewerRequest, saveRunSnapshot, snapshotFor, snapshotEvents, planKey } = await load();
     const { id } = (await resolvePlanLink(habana(), null, "ip", NOW)) as { id: string };
     const stored = (await loadStoredPlan(id))!;
     const request = viewerRequest(stored, null)!;
-    expect(request.history).toBeUndefined();
-    const cookie = encodeTipCookie({ "act:habana street trio": history });
-    expect(viewerRequest(stored, cookie)!.history).toMatchObject({ sessions: 3 });
+    expect(request).not.toHaveProperty("history");
+    expect(viewerRequest({ ...stored, request: { ...stored.request, history } as never }, "x")).toEqual(request);
 
     const runKey = planKey(request, false, DAY);
     expect(await saveRunSnapshot(id, request, finishedRun(), runKey, DAY, false)).toBe(true);
@@ -252,8 +251,6 @@ describe("opening a stored plan", () => {
     const snapshot = snapshotFor(withRun, request, false)!;
     expect(snapshot.events).toEqual([step]);
     expect(snapshotEvents(snapshot).map((e) => e.type)).toEqual(["tool-start", "plan"]);
-    // A viewer with their own tip log gets a new run (the bonus changes the plan), not the stored one.
-    expect(snapshotFor(withRun, viewerRequest(withRun, cookie)!, false)).toBeNull();
   });
 
   it("keeps only Claude's finished runs, on the plan they were made for", async () => {

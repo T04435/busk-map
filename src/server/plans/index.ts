@@ -1,11 +1,9 @@
 import "server-only";
-import { exampleHistory } from "@/lib/example-tips";
 import { isPlanId, planPath } from "@/lib/plan-id";
 import { planRequestSchema, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
 import type { ParsedPlanUrl } from "@/lib/plan-url";
 import { serverNow } from "@/server/clock";
 import { localToday, slotUtcRange, type Slot } from "@/lib/slot";
-import { historyFromCookie, performerKeyFor } from "@/lib/tips";
 import { planKey } from "@/server/agent/plan-store";
 import { withFinalTotals } from "@/server/agent/runs";
 import { CITIES } from "@/server/cities";
@@ -73,15 +71,13 @@ export async function loadStoredPlan(id: string): Promise<StoredPlan | null> {
   return shortPlanStore(testSwitches().offline).get(id);
 }
 
-/** The stored request with this viewer's tip history (from their cookie), validated again. */
-export function viewerRequest(stored: StoredPlan, tipCookie: string | null): PlanRequest | null {
-  const name = stored.request.performer?.name;
-  const history = historyFromCookie(tipCookie, performerKeyFor(name ?? "", stored.exampleId)) ?? (stored.exampleId ? exampleHistory(stored.exampleId) : undefined);
-  const parsed = planRequestSchema.safeParse({ ...stored.request, history });
+/** The stored request, validated again. The cookie argument is a leftover of the removed tip log and is ignored. */
+export function viewerRequest(stored: StoredPlan, _tipCookie?: string | null): PlanRequest | null {
+  const parsed = planRequestSchema.safeParse(stored.request);
   return parsed.success ? parsed.data : null;
 }
 
-/** The stored run, if it was made for this request as the viewer sees it (same tip history). */
+/** The stored run, if it was made for this request as the viewer sees it. */
 export function snapshotFor(stored: StoredPlan, request: PlanRequest, offline: boolean): PlanSnapshot | null {
   const s = stored.snapshot;
   return s && planKey(request, offline, s.runDay) === s.runKey ? s : null;
@@ -105,7 +101,7 @@ export function freshRunsAllowed(): boolean {
 
 /**
  * Keep a finished run on its plan, so the link shows it at once. Only for the
- * request the plan was made for (any tip history: the run key records it).
+ * request the plan was made for.
  * Never throws.
  */
 export async function saveRunSnapshot(

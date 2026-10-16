@@ -120,20 +120,11 @@ describe("example tip data", () => {
     expect(exampleHistory(null)).toBeUndefined();
   });
 
-  it("is the default history for example plans and weeks, and a cookie overrides it", () => {
+  it("is no longer put on plan or week requests", () => {
     const plan = parsePlanParams({ example: "acoustic" }, { today: "2026-10-15", hour: 12 });
-    expect(plan.ok && plan.request.history).toEqual(exampleHistory("acoustic"));
-    const own = summarizeTips([entry({ performerKey: "example:acoustic" }), entry({ performerKey: "example:acoustic", pitchId: "b" })])!;
-    const cookie = encodeTipCookie({ "example:acoustic": own });
-    const fromCookie = parsePlanParams({ example: "acoustic" }, { today: "2026-10-15", hour: 12 }, cookie);
-    expect(fromCookie.ok && fromCookie.request.history).toEqual(own);
-    // Own acts have no history without a cookie.
-    const act = parsePlanParams({ name: "Jess", artists: "Paul Kelly" }, { today: "2026-10-15", hour: 12 });
-    expect(act.ok && act.request.history).toBeUndefined();
+    expect(plan.ok && plan.request).not.toHaveProperty("history");
     const week = parseWeekParams({ example: "sax" }, "2026-10-15");
-    expect(week.ok && week.request.history).toEqual(exampleHistory("sax"));
-    const actWeek = parseWeekParams({ name: "Jess", artists: "Paul Kelly" }, "2026-10-15", encodeTipCookie({ "act:jess": own }));
-    expect(actWeek.ok && actWeek.request.history).toEqual(own);
+    expect(week.ok && week.request).not.toHaveProperty("history");
   });
 });
 

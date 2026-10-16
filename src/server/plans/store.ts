@@ -25,7 +25,7 @@ export type PlanSnapshot = {
   /** The run's stream events, the plan event left out (it is `plan`). */
   events: PlanStreamEvent[];
   explanations: Plan["explanations"];
-  /** The plan-store key of the run (request with the tip history, test mode and day): a viewer whose history differs gets a new run. */
+  /** The plan-store key of the run (request, test mode and day). */
   runKey: string;
   /** The Melbourne day the run's key was made for. */
   runDay: string;
@@ -62,7 +62,7 @@ export function canonicalJson(value: unknown): string {
   );
 }
 
-/** The request as stored: everything but the tip-log history (takings are private). */
+/** The request as stored. The schema has no tip history any more (an old stored one is dropped on parse), so hashes of existing links are unchanged. */
 export function storedRequestOf(request: PlanRequest): StoredPlanRequest {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { history, ...rest } = request;

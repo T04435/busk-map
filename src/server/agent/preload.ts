@@ -1,5 +1,4 @@
 import "server-only";
-import { exampleHistory } from "@/lib/example-tips";
 import { EXAMPLES } from "@/lib/examples";
 import { planRequestSchema, type Plan, type PlanRequest } from "@/lib/plan-schema";
 import { nextSlotDate } from "@/lib/slot";
@@ -83,14 +82,13 @@ export async function buildEnginePlan(request: PlanRequest, adapters: AdapterCon
   return plan;
 }
 
-/** The example requests as the landing page links them (next matching weekday, with their example tip log). */
+/** The example requests as the landing page links them (next matching weekday). */
 export function exampleRequests(now: { today: string; hour: number }): PlanRequest[] {
   return EXAMPLES.map((example) =>
     planRequestSchema.parse({
       city: "melbourne",
       slot: { date: nextSlotDate(example.weekday, example.startHour, example.endHour, now.today, now.hour), startHour: example.startHour, endHour: example.endHour },
       performer: example.performer,
-      history: exampleHistory(example.id),
     }),
   );
 }

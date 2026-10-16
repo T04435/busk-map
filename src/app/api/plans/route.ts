@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return Response.json({ error: { code: "invalid_request", message: "Invalid plan request." } }, { status: 400 });
   }
-  // The form only sends custom acts; the tip history (if any) is never stored.
+  // The form only sends custom acts.
   const link = await resolvePlanLink(parsed.data, null, clientIp(request.headers));
   if (link.id === null) {
     return Response.json({ id: null, reason: link.reason }, { status: link.reason === "rate_limited" ? 429 : 200, headers: { "Cache-Control": "no-store" } });

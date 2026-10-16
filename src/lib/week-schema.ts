@@ -1,7 +1,6 @@
 /** Shared, client-safe schemas for the week planner. */
 import { z } from "zod";
 import { CITY_IDS, dataStatusSchema, PERMITS, planRequestSchema, weightsSchema } from "./plan-schema";
-import { tipHistorySchema } from "./tips";
 
 const isoDate = z.iso.date();
 
@@ -24,8 +23,8 @@ export const weekRequestSchema = z.object({
     })
     .prefault({}),
   weights: weightsSchema.optional(),
-  /** Summary of the performer's tip log (from this browser), for the personal bonus. */
-  history: tipHistorySchema.optional(),
+  /** REMOVAL STUB (Tips removed): an old stored or client request may still carry a tip history. It is accepted and dropped. */
+  history: z.unknown().optional().transform((): undefined => undefined).optional(),
 });
 
 export type WeekRequest = z.infer<typeof weekRequestSchema>;

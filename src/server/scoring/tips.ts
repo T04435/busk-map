@@ -1,3 +1,4 @@
+// REMOVAL STUB: nothing in scoring uses this any more. It stays only until the Tips UI is deleted in the next commit.
 /**
  * Personal results: a small bonus for pitches where this performer has
  * earned more than their own average. Pure: the history is a summary the

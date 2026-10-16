@@ -4,7 +4,6 @@
  */
 import { z } from "zod";
 import { slotSchema } from "./slot";
-import { tipHistorySchema } from "./tips";
 import { researchTotalsSchema } from "./research-totals";
 
 export const PERMITS = ["general", "premium", "circle-act"] as const;
@@ -46,8 +45,8 @@ export const planRequestSchema = z.object({
     songs: z.array(repertoireSongSchema).max(60).default([]),
   }),
   weights: weightsSchema.optional(),
-  /** Summary of the performer's tip log (from this browser), for the personal bonus. */
-  history: tipHistorySchema.optional(),
+  /** REMOVAL STUB (Tips removed): an old stored or client request may still carry a tip history. It is accepted and dropped. */
+  history: z.unknown().optional().transform((): undefined => undefined).optional(),
 });
 
 export type PlanRequest = z.infer<typeof planRequestSchema>;

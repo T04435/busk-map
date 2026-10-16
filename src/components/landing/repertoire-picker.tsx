@@ -177,9 +177,9 @@ export function RepertoirePicker({
           : body?.reason === "not_found"
             ? "Spotify has no artist at that link. Open it in Spotify to check it, then copy the artist's share link again."
             : body?.reason === "missing_key"
-              ? "Loading songs from a Spotify profile isn't available here. Search for your songs above instead."
+              ? "Adding songs from a Spotify profile isn't available here. Search for your songs above."
               : body?.mode === "fallback"
-              ? "Spotify isn't answering right now. Try again in a minute, or search for your songs above."
+                ? "Spotify isn't answering right now. Try again in a minute, or search for your songs above."
               : "Couldn't load songs from that link. Paste an open.spotify.com/artist/… link, or search for your songs above.",
       );
       return;

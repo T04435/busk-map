@@ -1,0 +1,36 @@
+import AxeBuilder from "@axe-core/playwright";
+import { expect, LOCAL, test } from "./fixtures";
+
+const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
+const SEARCHES = ["Search Spotify, e.g. Paul Kelly", "Search songs, e.g. Riptide"];
+
+test.describe("accessibility", () => {
+  test("landing has no critical axe violations (B-004)", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByPlaceholder(SEARCHES[0])).toBeVisible();
+    const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+    const critical = violations.filter((v) => v.impact === "critical").map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
+    expect(critical).toEqual([]);
+  });
+
+  test("the search comboboxes say whether their list is shown and point at it only while it is (B-004)", async ({ page }) => {
+    test.skip(!LOCAL, "Searches the offline catalogue");
+    await page.goto("/");
+    for (const placeholder of SEARCHES) {
+      const input = page.getByPlaceholder(placeholder);
+      await expect(input).toHaveAttribute("role", "combobox");
+      await expect(input).toHaveAttribute("aria-expanded", "false");
+      await expect(input).not.toHaveAttribute("aria-controls", /./);
+
+      await input.fill("Buena Vista");
+      await expect(input).toHaveAttribute("aria-expanded", "true");
+      const controls = await input.getAttribute("aria-controls");
+      expect(controls).toBeTruthy();
+      await expect(page.locator(`[id="${controls}"]`)).toHaveAttribute("role", "listbox");
+
+      await input.fill("");
+      await expect(input).toHaveAttribute("aria-expanded", "false");
+      await expect(input).not.toHaveAttribute("aria-controls", /./);
+    }
+  });
+});

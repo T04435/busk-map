@@ -65,14 +65,44 @@ function CommandDialog({
   )
 }
 
+/**
+ * cmdk always renders its input with aria-expanded="true" and aria-controls pointing at its list, even when the
+ * list isn't rendered (an inline combobox, not a popover). With `expanded`, the input says whether the list is
+ * shown and references the list only while it is. cmdk's own attributes can't be overridden by props, and React
+ * doesn't rewrite them while they don't change, so they are corrected after each render.
+ */
+function useComboboxAria(expanded: boolean | undefined) {
+  const ref = React.useRef<HTMLInputElement>(null)
+  const listId = React.useRef<string | null>(null)
+  React.useLayoutEffect(() => {
+    const input = ref.current
+    if (!input || expanded === undefined) return
+    listId.current ??= input.getAttribute("aria-controls")
+    input.setAttribute("aria-expanded", String(expanded))
+    if (expanded && listId.current) {
+      input.setAttribute("aria-controls", listId.current)
+    } else {
+      input.removeAttribute("aria-controls")
+      input.removeAttribute("aria-activedescendant")
+    }
+  })
+  return ref
+}
+
 function CommandInput({
   className,
+  expanded,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: React.ComponentProps<typeof CommandPrimitive.Input> & {
+  /** Whether the CommandList is rendered (for an inline list shown only while there is a query). */
+  expanded?: boolean
+}) {
+  const ref = useComboboxAria(expanded)
   return (
     <div data-slot="command-input-wrapper" className="p-1 pb-0">
       <InputGroup className="h-8! rounded-lg! border-input/30 bg-input/30 shadow-none! *:data-[slot=input-group-addon]:pl-2!">
         <CommandPrimitive.Input
+          ref={ref}
           data-slot="command-input"
           className={cn(
             "w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",

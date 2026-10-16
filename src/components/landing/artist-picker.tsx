@@ -129,6 +129,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
         onValueChange={(value) => setActive({ query: state.query, value })}
       >
         <CommandInput
+          expanded={Boolean(typed)}
           value={query}
           onValueChange={setQuery}
           placeholder={full ? `Up to ${MAX_PICKED_ARTISTS} artists` : "Search Spotify, e.g. Paul Kelly"}

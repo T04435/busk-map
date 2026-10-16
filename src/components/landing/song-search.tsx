@@ -62,6 +62,7 @@ export function SongSearch({
       onValueChange={(value) => setActive({ query: state.query, value })}
     >
       <CommandInput
+        expanded={Boolean(typed)}
         value={query}
         onValueChange={(text) => {
           setQuery(text);

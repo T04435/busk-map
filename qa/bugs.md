@@ -12,9 +12,11 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-006 | Low | Select values are blank in the server HTML until hydration | Fixed (54d3217), verified by QA |
 | B-007 | Low | Offline: "Explanations: Claude" chip and credit while the mock model wrote them | Fixed (270c877), verified by QA; other offline Claude text in B-010 |
 | B-008 | Low | e2e guard is skipped whenever `PLAYWRIGHT_BASE_URL` is set, even to a localhost live server | Fixed (70eb77e), verified by QA; residual hosts in B-009 |
-| B-009 | Low | e2e guard treats this machine's other addresses (0.0.0.0, 127.0.0.2, LAN IP, .local) as a deploy | Open |
-| B-010 | Low | Offline: steps, Agent vs engine and pitch cards still say Claude wrote them | Open |
-| B-011 | Low | Landing search comboboxes say `aria-expanded="true"` in the server HTML until hydration | Open |
+| B-009 | Low | e2e guard treats this machine's other addresses (0.0.0.0, 127.0.0.2, LAN IP, .local) as a deploy | Fixed (e42ab30), verified by QA |
+| B-010 | Low | Offline: steps, Agent vs engine and pitch cards still say Claude wrote them | Fixed (222cf92), verified by QA |
+| B-011 | Low | Landing search comboboxes say `aria-expanded="true"` in the server HTML until hydration | Fixed (868c371), verified by QA |
+| B-012 | Low | Flaky e2e: example-card test reads the plan stream body after navigating | Open |
+| B-013 | Low | Fresh-run limit message gives the retry time in Melbourne time with no zone | Open |
 
 ---
 
@@ -82,3 +84,16 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 - **Steps:** `curl /` and look at the two `role="combobox"` inputs.
 - **Expected:** `aria-expanded="false"` from the first paint.
 - **Actual:** both inputs have `aria-expanded="true"` until hydration. After hydration, axe finds 0 violations on `/`. Only screen-reader users who arrive before the JavaScript loads are affected.
+
+### B-012 · Low · Flaky e2e: example-card test reads the plan stream after navigating
+- **Found:** fix round 3 (dev/core at 7126c07), full offline e2e with `CI=1` (1 retry).
+- **Test:** `tests/e2e/short-links.spec.ts:7` "an example card is inputs only…" (DEV's). It failed once on mobile, then passed on retry: "response.text: Protocol error (Network.getResponseBody): No data found for resource with given identifier".
+- **Cause (likely):** the spec reads the `/api/plan` response body after `page.goto("/")` for the second click and after the page has moved on. Chrome drops the body of a streamed response from a page it has left. This is test-only; the app is fine.
+- **Suggestion:** read the stream with `request.post` (as the totals test does), or collect the body via `response.body()` before navigating.
+
+### B-013 · Low · Fresh-run limit message gives the retry time in Melbourne time with no zone
+- **Found:** code read of `freshRunGate` (`src/server/rate-limit.ts`, e83a94c). Not testable offline, because offline mode is exempt from the limit.
+- **Steps:** live, start a 6th fresh plan within an hour from one IP, from outside Melbourne (for example a judge in New York).
+- **Expected:** the retry time in the viewer's time zone, or labelled with its zone.
+- **Actual:** "…or try again at 3:15 pm." The time is formatted with the plan city's time zone (Australia/Melbourne) and no zone label, so a New York judge reads the wrong hour.
+- **Also:** no e2e covers the throttled page, because offline is exempt. Suggest a fault switch (for example `faults=fresh-limit`, honoured only with BUSKMAP_ALLOW_FAULTS) so the 429 UI can be tested offline.

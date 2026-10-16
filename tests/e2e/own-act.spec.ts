@@ -1,4 +1,4 @@
-import { EXPLANATIONS_LABEL, expect, isoDay, LOCAL, openDetails, pickDate, SATURDAY, SUNDAY, test, waitForPlan } from "./fixtures";
+import { addTypedSong, EXPLANATIONS_LABEL, expect, isoDay, LOCAL, openDetails, pickDate, SATURDAY, SUNDAY, test, waitForPlan } from "./fixtures";
 import { serverDay } from "./clock";
 
 test.describe("own act", () => {
@@ -9,7 +9,8 @@ test.describe("own act", () => {
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill("Jess on guitar");
     await form.getByLabel("Artists you sound like").fill("Paul Kelly, Missy Higgins");
-    await form.getByLabel("Song list").fill("How to Make Gravy - Paul Kelly\nScar - Missy Higgins\nMy Laneway Song - Jess (own)");
+    for (const song of ["How to Make Gravy - Paul Kelly", "Scar - Missy Higgins", "My Laneway Song - Jess (own)"]) await addTypedSong(form, song);
+    await expect(form.getByRole("list", { name: "Songs you picked" }).getByRole("listitem")).toHaveCount(3);
     await form.getByRole("button", { name: "Plan my busk" }).click();
 
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
@@ -17,6 +18,28 @@ test.describe("own act", () => {
     await waitForPlan(page);
     await expect(page.getByText(EXPLANATIONS_LABEL)).toBeVisible();
     await expect((await openDetails(page)).getByText("Your song").first()).toBeVisible();
+  });
+
+  test("F25/F26: no song textarea and no Load my songs button; the artist link loads on Enter or blur, once per value", async ({ page }) => {
+    await page.goto("/busks");
+    const form = page.getByRole("form", { name: "Plan for your own act" });
+    await expect(form.getByLabel("Song list")).toHaveCount(0);
+    await expect(form.getByRole("button", { name: "Load my songs" })).toHaveCount(0);
+    const calls: string[] = [];
+    page.on("request", (r) => r.url().includes("/api/repertoire?") && r.url().includes("type=artist") && calls.push(r.url()));
+    const link = form.getByLabel("Your Spotify artist link");
+    await link.fill("https://open.spotify.com/artist/4gzpq5DPGxSnKTe4SA8HAU");
+    await link.press("Enter"); // does not submit the form
+    await expect(page).toHaveURL(/\/busks/);
+    await expect(form.getByRole("list", { name: "Songs you picked" })).toBeVisible();
+    await link.blur(); // same value: no second load
+    await link.focus();
+    await link.blur();
+    expect(calls).toHaveLength(1);
+    // A bad value shows an error under the field.
+    await link.fill("nope");
+    await link.blur();
+    await expect(form.getByText(/Paste your artist link/)).toBeVisible();
   });
 
   test("live search: artist chips, a picked song ranked by the act's artists, and the date picker", async ({ page }) => {

@@ -1,14 +1,13 @@
 "use client";
 
-import { XIcon } from "lucide-react";
-import { useId, useState, type Dispatch, type SetStateAction } from "react";
+import { Loader2Icon, XIcon } from "lucide-react";
+import { useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { TrackResult } from "@/components/forms/repertoire-api";
 import { FormMessage } from "@/components/honeycomb/form-message";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { formatDuration } from "@/lib/live-search";
 import { type PickedArtist } from "./artist-picker";
 import { SongCover, SongSearch } from "./song-search";
@@ -56,33 +55,30 @@ export function PickedSongs({ songs, onRemove }: { songs: PickedSong[]; onRemove
 }
 
 /**
- * "Songs you can play": search Spotify and pick, load your own songs from your Spotify artist link, or type the ones
- * Spotify doesn't have, one per line. The picks sit in a list with their lengths. Songs by the artists you sound like
- * come first in the search.
+ * "Songs you can play": search Spotify and pick, load your own songs from your Spotify artist link (on Enter, or when you leave
+ * the field), or add one the search doesn't have as the search's last row ("Add “…” as typed"). The picks sit in a list with
+ * their lengths. Songs by the artists you sound like come first in the search.
  */
 export function RepertoirePicker({
   artists,
   picked,
   setPicked,
-  typed,
-  onTypedChange,
-  invalid,
   errorId,
   error,
 }: {
   artists: PickedArtist[];
   picked: PickedSong[];
   setPicked: Dispatch<SetStateAction<PickedSong[]>>;
-  /** The "Title - Artist" lines typed by hand. */
-  typed: string;
-  onTypedChange: (text: string) => void;
-  invalid?: boolean;
   errorId?: string;
   /** The field's error, shown under the list. */
   error?: string | null;
 }) {
   const [spotifyLink, setSpotifyLink] = useState("");
   const [searchNote, setSearchNote] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  // The value last sent: the same link is never loaded twice (Enter, then blur).
+  const tried = useRef("");
   const linkId = useId();
 
   function addSongs(next: PickedSong[]) {
@@ -90,19 +86,29 @@ export function RepertoirePicker({
   }
 
   async function loadOwnSongs() {
-    setSearchNote("Loading your songs from Spotify…");
-    const res = await fetch(`/api/repertoire?${new URLSearchParams({ type: "artist", link: spotifyLink })}`).catch(() => null);
-    const body = res?.ok ? await res.json() : null;
+    const link = spotifyLink.trim();
+    if (!link || link === tried.current || loading) return;
+    tried.current = link;
+    setSearchNote(null);
+    if (link.length < 10) {
+      setLinkError("Paste your artist link from Spotify: open.spotify.com/artist/…");
+      return;
+    }
+    setLinkError(null);
+    setLoading(true);
+    const res = await fetch(`/api/repertoire?${new URLSearchParams({ type: "artist", link })}`).catch(() => null);
+    const body = res?.ok ? await res.json().catch(() => null) : null;
+    setLoading(false);
     const tracks: TrackResult[] = body?.tracks ?? [];
     if (!tracks.length) {
-      setSearchNote(
+      setLinkError(
         res?.status === 429
           ? "Too many searches in a short time. Wait a moment and try again."
           : body?.reason === "not_found"
             ? "Spotify has no artist at that link. Open it in Spotify to check it, then copy the artist's share link again."
             : body?.mode === "fallback"
-              ? "Spotify isn't answering right now. Try again in a minute, or type your songs below."
-              : "Couldn't load songs from that link. Paste an open.spotify.com/artist/… link, or type your songs.",
+              ? "Spotify isn't answering right now. Try again in a minute, or search for your songs above."
+              : "Couldn't load songs from that link. Paste an open.spotify.com/artist/… link, or search for your songs above.",
       );
       return;
     }
@@ -114,35 +120,56 @@ export function RepertoirePicker({
     );
   }
 
+  /** A song typed by hand: kept in the same shape as a picked one (no album, cover or length), so the plan request is the same. */
+  function addTyped(song: { title: string; artist: string; own: boolean }) {
+    const key = `typed:${song.title.toLowerCase()}|${song.artist.toLowerCase()}`;
+    addSongs([{ key, title: song.title, artist: song.artist, album: null, image: null, durationMs: null, own: song.own }]);
+  }
+
   return (
     <fieldset className="m-0 flex min-w-0 flex-col gap-3.5 border-0 p-0" aria-describedby={error ? errorId : undefined}>
       <legend className="mb-1 p-0 text-label font-bold">Songs you can play</legend>
-      <SongSearch onAdd={(track) => addSongs([toPicked(track, false)])} isAdded={(track) => picked.some((p) => p.key === track.id)} artists={artists} />
+      <SongSearch onAdd={(track) => addSongs([toPicked(track, false)])} isAdded={(track) => picked.some((p) => p.key === track.id)} artists={artists} onAddTyped={addTyped} />
       <PickedSongs songs={picked} onRemove={(song) => setPicked((current) => current.filter((p) => p !== song))} />
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-        <div className="flex-1 space-y-1">
-          <Label htmlFor={linkId} className="sr-only">
-            Your Spotify artist link
-          </Label>
-          <Input id={linkId} value={spotifyLink} onChange={(e) => setSpotifyLink(e.target.value)} placeholder="Your Spotify artist link (optional)" />
-        </div>
-        <Button type="button" variant="outline" className="self-start sm:self-auto" onClick={() => void loadOwnSongs()} disabled={spotifyLink.trim().length < 10}>
-          Load my songs
-        </Button>
-      </div>
-      <div aria-live="polite">{searchNote && <FormMessage>{searchNote}</FormMessage>}</div>
       <div className="space-y-1">
-        <Label htmlFor="songs" className="font-normal! text-muted-foreground">
-          Song list: type songs Spotify doesn&apos;t have
+        <Label htmlFor={linkId} className="sr-only">
+          Your Spotify artist link
         </Label>
-        <Textarea
-          id="songs"
-          value={typed}
-          onChange={(e) => onTypedChange(e.target.value)}
-          rows={4}
-          aria-invalid={invalid || undefined}
-          placeholder={"One per line: Title - Artist\nHow to Make Gravy - Paul Kelly\nMy Song - Me (own)"}
+        <Input
+          id={linkId}
+          value={spotifyLink}
+          onChange={(e) => {
+            setSpotifyLink(e.target.value);
+            setLinkError(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void loadOwnSongs();
+            }
+          }}
+          onBlur={() => void loadOwnSongs()}
+          aria-busy={loading}
+          aria-invalid={linkError ? true : undefined}
+          aria-describedby={linkError ? `${linkId}-err` : undefined}
+          placeholder="Your Spotify artist link (optional)"
         />
+        <div aria-live="polite">
+          {loading ? (
+            <FormMessage>
+              <Loader2Icon aria-hidden className="inline size-4 animate-spin motion-reduce:animate-none" /> Loading your songs…
+            </FormMessage>
+          ) : searchNote ? (
+            <FormMessage>{searchNote}</FormMessage>
+          ) : spotifyLink.trim() && !linkError ? (
+            <FormMessage>Press Enter to load your songs.</FormMessage>
+          ) : null}
+        </div>
+        {linkError ? (
+          <FormMessage tone="error" id={`${linkId}-err`} alert={false}>
+            {linkError}
+          </FormMessage>
+        ) : null}
       </div>
       {error ? (
         <FormMessage tone="error" id={errorId} alert={false}>

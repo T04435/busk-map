@@ -76,3 +76,10 @@ export function futureDay(weekday: number, from = new Date()): string {
 /** A Saturday and a Sunday at least a week ahead, for typed plan links. */
 export const SATURDAY = futureDay(6);
 export const SUNDAY = futureDay(0);
+
+/** F25: a song Spotify doesn't have is typed in the song search and added with its last row, "Add “…” as typed". */
+export async function addTypedSong(form: import("@playwright/test").Locator, text: string) {
+  const box = form.getByPlaceholder("Search songs, e.g. Riptide");
+  await box.fill(text);
+  await form.getByRole("option", { name: /as typed/ }).click();
+}

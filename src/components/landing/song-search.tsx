@@ -25,14 +25,26 @@ export function SongCover({ image, className, size = 32 }: { image: string | nul
  * "Songs you can play": live Spotify song search. Picking a result adds it (cover, album and length kept).
  * Songs by the act's "sounds like" artists (`artists`) come first, marked "By your artist".
  */
+/** What was typed as a song: "Title - Artist", with "(own)" at the end for your own song. No " - " means a title only. */
+export function parseTypedSong(text: string): { title: string; artist: string; own: boolean } {
+  const own = /\(own\)\s*$/i.test(text);
+  const body = text.replace(/\(own\)\s*$/i, "").trim();
+  const [title, ...rest] = body.split(/\s+[-–]\s+/);
+  const clean = (s: string) => s.replace(/[|~]/g, " ").trim();
+  return { title: clean(title), artist: clean(rest.join(" - ")) || "Unknown artist", own };
+}
+
 export function SongSearch({
   onAdd,
   isAdded,
   artists,
+  onAddTyped,
 }: {
   onAdd: (track: TrackResult) => void;
   isAdded: (track: TrackResult) => boolean;
   artists: readonly ActArtist[];
+  /** A song typed by hand, for the ones Spotify doesn't have: the last row of the list (F25). */
+  onAddTyped?: (song: { title: string; artist: string; own: boolean }) => void;
 }) {
   const [query, setQuery] = useState("");
   // The search function is read once (useLiveSearch), so it reads the current chips from a ref.
@@ -47,14 +59,14 @@ export function SongSearch({
   const results = state.status === "done" ? rankByActArtists(state.results, artists) : [];
   // Keyboard focus starts on the first result each time new results arrive.
   const [active, setActive] = useState<{ query: string; value: string } | null>(null);
-  const activeValue = active && active.query === state.query && state.status === "done" ? active.value : results[0] ? `spotify:${results[0].id}` : "";
+  const activeValue = active && active.query === state.query && state.status === "done" ? active.value : results[0] ? `spotify:${results[0].id}` : "typed";
 
   return (
     <Command
       shouldFilter={false}
       loop
       label={LABEL}
-      className="h-auto border"
+      className="h-auto gap-1 overflow-visible border-0 bg-transparent p-0"
       value={activeValue}
       onValueChange={(value) => setActive({ query: state.query, value })}
     >
@@ -75,7 +87,7 @@ export function SongSearch({
         placeholder="Search songs, e.g. Riptide"
       />
       {typed && (
-        <CommandList label="Song results" className="max-h-80">
+        <CommandList label="Song results" className="max-h-80 border-2 border-rule bg-popover p-1">
           {state.status === "idle" && <p className="px-3 py-2 text-sm text-muted-foreground">Type {MIN_QUERY_CHARS} or more letters to search Spotify.</p>}
           {state.status === "loading" && (
             <p role="status" className="px-3 py-2 text-sm text-muted-foreground">
@@ -89,7 +101,7 @@ export function SongSearch({
           )}
           {state.status === "done" && results.length === 0 && (
             <p role="status" className="px-3 py-2 text-sm text-muted-foreground">
-              No songs on Spotify match “{state.query}”. Type it in the song list below instead.
+              No songs on Spotify match “{state.query}”. Add it as typed below.
             </p>
           )}
           {results.length > 0 && (
@@ -113,6 +125,23 @@ export function SongSearch({
             </CommandGroup>
           )}
           {state.status === "done" && state.note && <p className="px-3 py-1 text-xs text-muted-foreground">{state.note}</p>}
+          {onAddTyped && (
+            <CommandGroup heading="Not on Spotify?">
+              <CommandItem
+                value="typed"
+                onSelect={() => {
+                  onAddTyped(parseTypedSong(typed));
+                  setQuery("");
+                  update("");
+                }}
+              >
+                <span className="min-w-0 flex-1 truncate">
+                  Add “{typed}” as typed
+                  <span className="block truncate text-xs text-muted-foreground">Write it as “Title - Artist”. Add (own) for your own song.</span>
+                </span>
+              </CommandItem>
+            </CommandGroup>
+          )}
         </CommandList>
       )}
     </Command>

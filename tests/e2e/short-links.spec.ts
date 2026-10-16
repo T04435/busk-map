@@ -1,4 +1,4 @@
-import { agentSteps, EXPLANATIONS_LABEL, expect, LOCAL, openDetails, SATURDAY, test, waitForPlan } from "./fixtures";
+import { addTypedSong, agentSteps, EXPLANATIONS_LABEL, expect, LOCAL, openDetails, SATURDAY, test, waitForPlan } from "./fixtures";
 
 const SHORT = /\/p\/([0-9A-Za-z]{9})$/;
 const idOf = (url: string) => SHORT.exec(new URL(url).pathname)?.[1] ?? null;
@@ -63,7 +63,7 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill(name);
     await form.getByLabel("Artists you sound like").fill("Paul Kelly");
-    await form.getByLabel("Song list").fill("Dumb Things - Paul Kelly");
+    await addTypedSong(form, "Dumb Things - Paul Kelly");
     await form.getByRole("button", { name: "Plan my busk" }).click();
     await expect(page).toHaveURL(SHORT);
     const id = idOf(page.url());

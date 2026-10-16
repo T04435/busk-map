@@ -81,7 +81,6 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
   const [artists, setArtists] = useState<PickedArtist[]>(() => prefillArtists(prefill));
   const [artistQuery, setArtistQuery] = useState("");
   const [picked, setPicked] = useState<PickedSong[]>(() => prefillSongs(prefill));
-  const [songs, setSongs] = useState("");
   const [slot, setSlot] = useState({ date: defaultDate, from: String(prefill?.startHour ?? 18), to: String(prefill?.endHour ?? 21) });
   const [permit, setPermit] = useState<string>(prefill?.permit ?? "general");
   const [submitting, setSubmitting] = useState(false);
@@ -100,7 +99,6 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
     const target = (event.nativeEvent as SubmitEvent).submitter?.getAttribute("value") === "week" ? "week" : "plan";
     const parsedSongs = [
       ...picked.map((p) => ({ title: p.title, artist: p.artist, own: p.own, ...(p.durationMs ? { durationMs: p.durationMs } : {}) })),
-      ...parseSongLines(songs),
     ];
     const chosen = [...artists];
     for (const typed of typedArtists(artistQuery)) {
@@ -164,9 +162,6 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
         artists={artists}
         picked={picked}
         setPicked={setPicked}
-        typed={songs}
-        onTypedChange={setSongs}
-        invalid={hasError("songs")}
         errorId="err-songs"
         error={hasError("songs") ? error!.message : null}
       />

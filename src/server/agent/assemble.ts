@@ -1,5 +1,5 @@
 import "server-only";
-import { formatHour, describeSlot } from "@/lib/slot";
+import { formatHour, describeSlot, fixedSlotOf } from "@/lib/slot";
 import { titleCase } from "@/lib/text";
 import { venueDetail } from "@/lib/venue";
 import { planSchema, type Plan, type PlanPitch } from "@/lib/plan-schema";
@@ -181,7 +181,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
   const pitches = await Promise.all(
     (qlooDown ? [] : top).map(async (pitch) => {
       const fromAi = aiWhy.get(pitch.id);
-      const why = fromAi || templateWhy(pitch, context.weekday, request.slot.startHour, request.slot.endHour);
+      const why = fromAi || templateWhy(pitch, context.weekday, fixedSlotOf(request.slot).startHour, fixedSlotOf(request.slot).endHour);
       return toPlanPitch(pitch, why, fromAi ? "ai" : "template", await context.setlistFor(pitch));
     }),
   );
@@ -213,7 +213,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     version: 1,
     city: request.city,
     cityName: city.name,
-    slot: request.slot,
+    slot: fixedSlotOf(request.slot),
     slotLabel: describeSlot(request.slot),
     performerName: request.performer.name,
     permit: request.permit,

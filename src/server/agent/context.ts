@@ -2,7 +2,7 @@ import "server-only";
 import type { BBox } from "@/lib/geo";
 import type { TrendRow } from "@/server/adapters/qloo";
 import { ageLabel } from "@/lib/age";
-import { addDays, slotUtcRange, weekdayOf } from "@/lib/slot";
+import { addDays, fixedSlotOf, slotUtcRange, weekdayOf } from "@/lib/slot";
 import { nameKey, trackKey } from "@/lib/text";
 import type { PlanRequest } from "@/lib/plan-schema";
 import type { AdapterContext, AdapterName, AdapterResult } from "@/server/adapters/core";
@@ -251,7 +251,7 @@ export class PlanContext {
   }
 
   footfall() {
-    return this.track("footfall", () => getFootfall(this.request.city, this.request.slot, this.adapters, this.today));
+    return this.track("footfall", () => getFootfall(this.request.city, fixedSlotOf(this.request.slot), this.adapters, this.today));
   }
 
   pitchData() {
@@ -259,7 +259,7 @@ export class PlanContext {
   }
 
   events() {
-    return this.track("events", () => getEvents(this.request.city, this.request.slot, this.adapters));
+    return this.track("events", () => getEvents(this.request.city, fixedSlotOf(this.request.slot), this.adapters));
   }
 
   /**
@@ -294,7 +294,7 @@ export class PlanContext {
   }
 
   weather() {
-    return this.track("weather", () => getWeather(this.request.city, this.request.slot, this.adapters, this.today));
+    return this.track("weather", () => getWeather(this.request.city, fixedSlotOf(this.request.slot), this.adapters, this.today));
   }
 
   /** Last.fm top tracks for the repertoire's artists and the rising artists. */
@@ -371,7 +371,7 @@ export class PlanContext {
       this.eventTaste(),
     ]);
     const events = rawEvents.map((e) => ({ ...e, tasteMatch: eventTaste.get(e.id) ?? null }));
-    const { start, end } = slotUtcRange(this.request.slot, this.city.timeZone);
+    const { start, end } = slotUtcRange(fixedSlotOf(this.request.slot), this.city.timeZone);
     return {
       cells,
       sensors: footfall.sensors,
@@ -379,8 +379,8 @@ export class PlanContext {
       events,
       weather: weather?.hours ?? null,
       weekday: this.weekday,
-      startHour: this.request.slot.startHour,
-      endHour: this.request.slot.endHour,
+      startHour: fixedSlotOf(this.request.slot).startHour,
+      endHour: fixedSlotOf(this.request.slot).endHour,
       slotStartMs: start.getTime(),
       slotEndMs: end.getTime(),
     };

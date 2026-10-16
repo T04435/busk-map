@@ -3,7 +3,7 @@ import { isPlanId, planPath } from "@/lib/plan-id";
 import { planRequestSchema, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
 import type { ParsedPlanUrl } from "@/lib/plan-url";
 import { serverNow } from "@/server/clock";
-import { localToday, slotUtcRange, type Slot } from "@/lib/slot";
+import { isAnyTime, localToday, slotUtcRange, zonedHourToUtc, type RequestSlot } from "@/lib/slot";
 import { planKey } from "@/server/agent/plan-store";
 import { withFinalTotals } from "@/server/agent/runs";
 import { CITIES } from "@/server/cities";
@@ -90,8 +90,10 @@ export function snapshotEvents(s: PlanSnapshot): PlanStreamEvent[] {
 }
 
 /** Whether the slot has ended (city time). */
-export function slotPassed(slot: Slot, timeZone: string, now = serverNow().getTime()): boolean {
-  return slotUtcRange(slot, timeZone).end.getTime() <= now;
+export function slotPassed(slot: RequestSlot, timeZone: string, now = serverNow().getTime()): boolean {
+  // Any time: the date's last window ends at 10 pm (S2 refines this for today).
+  const range = isAnyTime(slot) ? { end: zonedHourToUtc(slot.date, 22, timeZone) } : slotUtcRange(slot, timeZone);
+  return range.end.getTime() <= now;
 }
 
 /** The developer path `?fresh=1` (a new agent run, bypassing the stored one): never in production builds. */

@@ -1,6 +1,6 @@
 import "server-only";
 import { ToolLoopAgent, type LanguageModel, type StopCondition } from "ai";
-import { describeSlot } from "@/lib/slot";
+import { describeSlot, fixedSlotOf } from "@/lib/slot";
 import type { Plan } from "@/lib/plan-schema";
 import { fromToolOutputs, type ResearchTotals, type ToolResult } from "@/lib/research-totals";
 import { withQlooUsage } from "@/server/adapters/qloo/usage";
@@ -57,7 +57,7 @@ export function buildPrompt(ctx: PlanContext, matched: { query: string; match: s
     `Performer: ${request.performer.name}.`,
     `Sounds like: ${request.performer.artists.join(", ")}. Qloo matched: ${found.map((m) => m.match).join(", ") || "none"}${missing.length ? `; no match for ${missing.join(", ")}` : ""}.`,
     songs ? `Can play: ${songs}.` : "No song list given.",
-    `City: ${ctx.city.name}. Slot: ${describeSlot(request.slot)} (${ctx.weekday}, hours ${request.slot.startHour} to ${request.slot.endHour}). Permit: ${request.permit}.`,
+    `City: ${ctx.city.name}. Slot: ${describeSlot(request.slot)} (${ctx.weekday}, hours ${fixedSlotOf(request.slot).startHour} to ${fixedSlotOf(request.slot).endHour}). Permit: ${request.permit}.`,
     `Planning area: latitude ${box.south} to ${box.north}, longitude ${box.west} to ${box.east}.`,
     "Find the three best pitches for this act in this slot and explain why each crowd fits.",
   ].join("\n");

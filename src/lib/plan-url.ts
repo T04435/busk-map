@@ -7,10 +7,10 @@
  * by default the agent starts on load, and the server replays a recent run of the same request)
  */
 import { findExample } from "./examples";
-import { artistsParam, parseArtistsParam, parseSongsParam, songsParam } from "./performer-url";
+import { artistsParam, fillParam, parseArtistsParam, parseFillParam, parseSongsParam, songsParam } from "./performer-url";
 import { parseWeightsParam, weightsParam } from "./weights-url";
 import { planRequestSchema, type PlanRequest } from "./plan-schema";
-import { nextSlotDate } from "./slot";
+import { isAnyTime, nextSlotDate } from "./slot";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -31,6 +31,7 @@ export function parsePlanParams(params: Params, now: LocalNow): ParsedPlanUrl {
         name,
         ...parseArtistsParam(first(params.artists)),
         songs: parseSongsParam(first(params.songs)),
+        ...parseFillParam(first(params.fill), first(params.skip)),
       }
     : example?.performer;
   if (!performer) return { ok: false, error: "Pick an example performer or describe your own." };
@@ -41,9 +42,11 @@ export function parsePlanParams(params: Params, now: LocalNow): ParsedPlanUrl {
   // 5-8 pm example opens next Friday, not the slot that has just passed).
   const date = first(params.date) ?? nextSlotDate(example?.weekday ?? "saturday", startHour, endHour, now.today, now.hour);
 
+  // time=any: any time on the date (from and to are ignored). Examples keep their fixed slots (D8).
+  const anyTime = !example || name ? first(params.time) === "any" : false;
   const parsed = planRequestSchema.safeParse({
     city: first(params.city) ?? "melbourne",
-    slot: { date, startHour, endHour },
+    slot: anyTime ? { date, any: true } : { date, startHour, endHour },
     permit: first(params.permit) ?? "general",
     performer,
     weights: parseWeightsParam(first(params.w)),
@@ -67,10 +70,14 @@ export function planSearchParams(request: PlanRequest, extra: Record<string, str
     name: request.performer.name,
     artists: artistsParam(request.performer),
     date: request.slot.date,
-    from: String(request.slot.startHour),
-    to: String(request.slot.endHour),
     permit: request.permit,
   });
+  if (isAnyTime(request.slot)) params.set("time", "any");
+  else {
+    params.set("from", String(request.slot.startHour));
+    params.set("to", String(request.slot.endHour));
+  }
+  for (const [key, value] of fillParam(request.performer)) params.set(key, value);
   if (request.performer.songs.length) {
     params.set("songs", songsParam(request.performer.songs));
   }

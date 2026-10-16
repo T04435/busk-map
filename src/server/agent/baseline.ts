@@ -1,4 +1,5 @@
 import "server-only";
+import { isAnyTime } from "@/lib/slot";
 import type { BaselineView, PlanRequest } from "@/lib/plan-schema";
 import type { AdapterContext } from "@/server/adapters/core";
 import { CITIES } from "@/server/cities";
@@ -42,7 +43,7 @@ async function build(request: PlanRequest, adapters: AdapterContext, day: string
   });
   // Recorded for the uniqueness stats (GET /api/baseline-stats): ids and scores only, never the act's name.
   const performerKey = presetIdFor(request) ?? "custom";
-  const slot = `${request.slot.date} ${request.slot.startHour}-${request.slot.endHour}`;
+  const slot = isAnyTime(request.slot) ? `${request.slot.date} any` : `${request.slot.date} ${request.slot.startHour}-${request.slot.endHour}`;
   void recordComparison(comparisonStore(adapters.offline), comparisonRecord(comparison, top, performerKey, request.city, slot), planKey(request, adapters.offline, day));
   return {
     status: "ok",

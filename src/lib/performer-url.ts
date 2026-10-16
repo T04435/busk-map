@@ -49,3 +49,19 @@ export function songsParam(songs: Song[]): string {
     .map((s) => [s.title, s.artist, s.own ? "own" : "", s.durationMs ? `${Math.round(s.durationMs / 1000)}s` : ""].filter(Boolean).join("~"))
     .join("|");
 }
+
+/** `fill=<1-8>` and `skip=Title~Artist|…`: the suggested-fill count and the songs left out of it. Absent means off. */
+export function parseFillParam(fill: string | undefined, skip: string | undefined): Pick<Performer, "fillSuggested" | "skipSongs"> {
+  const count = fill !== undefined && /^[1-8]$/.test(fill) ? Number(fill) : undefined;
+  if (count === undefined) return {};
+  const skipSongs = parseSongsParam(skip).map(({ title, artist }) => ({ title, artist }));
+  return { fillSuggested: count, ...(skipSongs.length ? { skipSongs } : {}) };
+}
+
+/** The fill and skip params for a performer; empty when the fill is off, so old links stay unchanged. */
+export function fillParam(performer: Pick<Performer, "fillSuggested" | "skipSongs">): [string, string][] {
+  if (!performer.fillSuggested) return [];
+  const out: [string, string][] = [["fill", String(performer.fillSuggested)]];
+  if (performer.skipSongs?.length) out.push(["skip", songsParam(performer.skipSongs.map((s) => ({ ...s, own: false })))]);
+  return out;
+}

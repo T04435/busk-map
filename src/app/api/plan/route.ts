@@ -1,3 +1,5 @@
+import { issuePaths } from "@/lib/form-errors";
+import { isAnyTime } from "@/lib/slot";
 import { rejectBots } from "@/server/bot";
 import { FRESH_HEADER, isPlanId, PLAN_ID_HEADER } from "@/lib/plan-id";
 import { planRequestSchema, type PlanStreamEvent } from "@/lib/plan-schema";
@@ -53,7 +55,7 @@ export async function POST(request: Request) {
   }
   const parsed = planRequestSchema.safeParse(body);
   if (!parsed.success) {
-    const fields = [...new Set(parsed.error.issues.map((i) => i.path.join(".") || "(body)"))];
+    const fields = [...new Set(issuePaths(parsed.error.issues))];
     return jsonError(400, "invalid_request", `Check these fields: ${fields.join(", ")}`);
   }
 
@@ -112,7 +114,7 @@ export async function POST(request: Request) {
       run.push({ type: "plan", plan });
       if (agentTop && adapters.faults.length === 0) {
         // Engine-only top 3 vs Claude's, on the plan's comparison row (the baseline fills in the plain AI's picks).
-        const slot = `${parsed.data.slot.date} ${parsed.data.slot.startHour}-${parsed.data.slot.endHour}`;
+        const slot = isAnyTime(parsed.data.slot) ? `${parsed.data.slot.date} any` : `${parsed.data.slot.date} ${parsed.data.slot.startHour}-${parsed.data.slot.endHour}`;
         const performerKey = presetId ?? "custom";
         void recordAgentRun(comparisonStore(adapters.offline), agentRecord(storeKey, performerKey, parsed.data.city, slot, engineTop, agentTop));
       }

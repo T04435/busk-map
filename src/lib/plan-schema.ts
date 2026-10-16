@@ -3,7 +3,7 @@
  * The server validates every request and the final plan against these.
  */
 import { z } from "zod";
-import { slotSchema } from "./slot";
+import { requestSlotSchema, slotSchema } from "./slot";
 import { researchTotalsSchema } from "./research-totals";
 
 export const PERMITS = ["general", "premium", "circle-act"] as const;
@@ -35,7 +35,7 @@ export const weightsSchema = z
 
 export const planRequestSchema = z.object({
   city: z.enum(CITY_IDS),
-  slot: slotSchema,
+  slot: requestSlotSchema,
   permit: z.enum(PERMITS).default("general"),
   performer: z.object({
     name: text(80),
@@ -43,6 +43,13 @@ export const planRequestSchema = z.object({
     /** Spotify ids for artists picked from search: Qloo resolves these by id before trying the name. */
     spotifyArtists: z.array(z.object({ name: text(80), id: spotifyIdSchema })).max(10).default([]),
     songs: z.array(repertoireSongSchema).max(60).default([]),
+    /**
+     * How many suggested songs to add (D4). OPTIONAL and never defaulted: a default would add a key to every
+     * parsed old request and change its requestHash, planKey and saved-run checks.
+     */
+    fillSuggested: z.number().int().min(1).max(8).optional(),
+    /** Songs removed for this busk, so the fill leaves them out (D6). Optional, never defaulted. */
+    skipSongs: z.array(z.object({ title: text(120), artist: text(80) })).max(60).optional(),
   }),
   weights: weightsSchema.optional(),
 });

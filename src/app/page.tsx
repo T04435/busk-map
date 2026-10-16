@@ -8,7 +8,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Separator } from "@/components/ui/separator";
 import { EXAMPLES } from "@/lib/examples";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
-import { nextSlotDate, weekdayOf } from "@/lib/slot";
+import { fixedSlotOf, nextSlotDate, weekdayOf } from "@/lib/slot";
 import { loadStoredPlan } from "@/server/plans";
 import { playlistViewForCookie } from "@/server/playlist/read";
 import { SOURCES } from "@/lib/sources";
@@ -121,7 +121,8 @@ async function OwnActForm({ searchParams }: Pick<PageProps<"/">, "searchParams">
   // This device's Repertoire (its cookie), if any: the form pre-fills from it unless ?again names an act.
   const repertoire = await playlistViewForCookie((await headers()).get("cookie"));
   if (!stored) return <PerformerForm defaultDate={nextSlotDate("saturday", 18, 21, today, hour)} today={today} repertoire={repertoire} />;
-  const { performer, permit, slot } = stored.request;
+  const { performer, permit } = stored.request;
+  const slot = fixedSlotOf(stored.request.slot);
   return (
     <PerformerForm
       key={stored.id}

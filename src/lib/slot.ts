@@ -34,6 +34,32 @@ export const slotSchema = z
 
 export type Slot = z.infer<typeof slotSchema>;
 
+/** "Any time": a date with no hours; Busk Map picks each pitch's window (plan-inputs-architecture.md D1). */
+export const anyTimeSlotSchema = z.object({ date: isoDate, any: z.literal(true) });
+export type AnyTimeSlot = z.infer<typeof anyTimeSlotSchema>;
+
+/**
+ * A request's slot: fixed hours or any time. The fixed shape is tried first, so a body with hours (even with
+ * `any: true`) parses as fixed. Old stored requests parse to exactly the same object as before.
+ */
+export const requestSlotSchema = z.union([slotSchema, anyTimeSlotSchema]);
+export type RequestSlot = Slot | AnyTimeSlot;
+
+export function isAnyTime(slot: RequestSlot): slot is AnyTimeSlot {
+  return "any" in slot && slot.any === true && !("startHour" in slot);
+}
+
+/** The hours any-time stands in as until the engine picks windows (S2): the default 6-9 pm slot. */
+export const ANY_TIME_STAND_IN = { startHour: 18, endHour: 21 } as const;
+
+/**
+ * A fixed slot for code that only works with hours. Any time maps to ANY_TIME_STAND_IN: an S1 guard so nothing
+ * crashes; the real any-time behaviour is S2.
+ */
+export function fixedSlotOf(slot: RequestSlot): Slot {
+  return isAnyTime(slot) ? { date: slot.date, ...ANY_TIME_STAND_IN } : (slot as Slot);
+}
+
 const DAY_MS = 86_400_000;
 
 function dateToUtcMs(date: string): number {
@@ -149,7 +175,8 @@ export function formatHour(hour: number): string {
   return `${twelve} ${suffix}`;
 }
 
-export function describeSlot(slot: Slot): string {
+export function describeSlot(slot: RequestSlot): string {
   const day = weekdayOf(slot.date);
+  if (isAnyTime(slot)) return `${day[0].toUpperCase()}${day.slice(1)} ${slot.date}, any time`;
   return `${day[0].toUpperCase()}${day.slice(1)} ${slot.date}, ${formatHour(slot.startHour)}–${formatHour(slot.endHour)}`;
 }

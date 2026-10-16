@@ -2,7 +2,7 @@ import "server-only";
 import { tool } from "ai";
 import { z } from "zod";
 import { distanceM, type LatLon } from "@/lib/geo";
-import { formatHour } from "@/lib/slot";
+import { fixedSlotOf, formatHour } from "@/lib/slot";
 import { nameKey } from "@/lib/text";
 import * as qloo from "@/server/adapters/qloo";
 import { getTypicalFootfall } from "@/server/adapters/footfall";
@@ -317,7 +317,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         const point = await where(near);
         const radius = snapRadius(radiusM, 400);
         const snapped = snapPoint(point);
-        const hour = openAt ?? ctx.request.slot.startHour;
+        const hour = openAt ?? fixedSlotOf(ctx.request.slot).startHour;
         const entityIds = await ids();
         const found = await ctx.trackQloo(`agent:places:${snapped.lat},${snapped.lon},${radius}`, () =>
           qloo.busyPlaces(entityIds, snapped, radius, ctx.weekday, ctx.adapters),
@@ -354,8 +354,8 @@ function buildTools(ctx: PlanContext, state: AgentState) {
       execute: async ({ near, radiusM, fromHour, toHour }) => {
         const point = await where(near);
         const radius = snapRadius(radiusM, 800);
-        const from = fromHour ?? Math.max(0, ctx.request.slot.startHour - 1);
-        const to = toHour ?? ctx.request.slot.endHour;
+        const from = fromHour ?? Math.max(0, fixedSlotOf(ctx.request.slot).startHour - 1);
+        const to = toHour ?? fixedSlotOf(ctx.request.slot).endHour;
         const [events, taste] = await Promise.all([ctx.events(), ctx.eventTaste()]);
         const hourOf = (iso: string) => Number(new Intl.DateTimeFormat("en-AU", { hour: "numeric", hour12: false, timeZone: ctx.city.timeZone }).format(new Date(iso))) % 24;
         const time = (iso: string) => new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", timeZone: ctx.city.timeZone }).format(new Date(iso));
@@ -392,7 +392,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
       }),
       execute: async ({ at: w, hour }) => {
         const point = await where(w);
-        const h = hour ?? ctx.request.slot.startHour;
+        const h = hour ?? fixedSlotOf(ctx.request.slot).startHour;
         const [typical, slot] = await Promise.all([
           ctx.trackFootfallTypical(() => getTypicalFootfall(ctx.request.city, 0, 24, ctx.adapters, ctx.today)),
           ctx.footfall(),

@@ -153,3 +153,37 @@ export function describeSlot(slot: Slot): string {
   const day = weekdayOf(slot.date);
   return `${day[0].toUpperCase()}${day.slice(1)} ${slot.date}, ${formatHour(slot.startHour)}–${formatHour(slot.endHour)}`;
 }
+
+const PERMIT_NAME: Record<string, string> = { general: "General permit", premium: "Premium permit", "circle-act": "Circle act" };
+const SHORT_DAY = new Intl.DateTimeFormat("en-AU", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+
+/** The permit as the app names it: "General permit", "Premium permit", "Circle act". */
+export function permitName(permit: string): string {
+  return PERMIT_NAME[permit] ?? permit;
+}
+
+/** "Sun 19 Oct": the slot's day, short (no year, no ISO). */
+export function shortDay(date: string): string {
+  return SHORT_DAY.format(new Date(dateToUtcMs(date))).replace(/,/g, "");
+}
+
+/** "12–3 pm", or "6 pm–12 am" when the slot crosses noon or midnight. */
+export function shortHours(startHour: number, endHour: number): string {
+  const a = formatHour(startHour);
+  const b = formatHour(endHour);
+  const [an, as] = a.split(" ");
+  const [bn, bs] = b.split(" ");
+  return as === bs ? `${an}–${bn} ${bs}` : `${a}–${b}`;
+}
+
+/** The plan page's eyebrow: "Sun 19 Oct · 12–3 pm · General permit". No city (F20). */
+export function slotEyebrow(slot: Slot, permit: string): string {
+  return `${shortDay(slot.date)} · ${shortHours(slot.startHour, slot.endHour)} · ${permitName(permit)}`;
+}
+
+/** "on Friday night", "on Sunday afternoon": the day and a word for the hours (the no-legal-pitch title). */
+export function nightWord(slot: Slot): string {
+  const day = weekdayOf(slot.date);
+  const part = slot.startHour >= 17 || slot.startHour < 4 ? "night" : slot.startHour >= 12 ? "afternoon" : "morning";
+  return `on ${day[0].toUpperCase()}${day.slice(1)} ${part}`;
+}

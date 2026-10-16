@@ -167,7 +167,7 @@ const STATES: { name: string; open: (page: Page) => Promise<void> }[] = [
   { name: "replay", open: async (p) => { await p.goto("/plan?example=folk-duo"); await waitForPlan(p); await p.reload(); await waitForPlan(p); } },
   { name: "qloo down", open: async (p) => { await p.goto("/plan?example=acoustic&faults=qloo"); await expect(p.getByText("Qloo is unavailable")).toBeVisible(); } },
   { name: "no artist matched", open: async (p) => { await p.goto(`/plan?name=Nobody%20Knows&artists=Zzyzx%20Nobody|Qqq%20Unknown&date=${SATURDAY}&from=18&to=21`); await waitForPlan(p); } },
-  { name: "no legal pitch", open: async (p) => { await p.goto("/plan?example=sax&faults=pitches,footfall"); await expect(p.getByText("No pitch to recommend")).toBeVisible(); } },
+  { name: "no legal pitch", open: async (p) => { await p.goto("/plan?example=sax&faults=pitches,footfall"); await expect(p.getByRole("heading", { name: /^No legal pitch for/i })).toBeVisible(); } },
   { name: "source down", open: async (p) => { await p.goto("/plan?example=acoustic&faults=footfall,events,weather"); await waitForPlan(p); } },
   { name: "slot passed", open: async (p) => { await p.goto("/plan?name=Past%20Slot%20Duo&artists=Paul%20Kelly&date=2026-10-03&from=12&to=15&permit=premium"); await expect(p.getByTestId("slot-passed")).toBeVisible(); } },
   { name: "run limit", open: async (p) => { await p.goto("/plan?example=sax&faults=fresh-limit"); await expect(p.getByTestId("fresh-limit")).toBeVisible(); } },

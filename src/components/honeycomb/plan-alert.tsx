@@ -5,7 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { QLOO_TEST_LABEL } from "@/lib/sources";
 
-export type PlanAlertKind = "limit" | "qloo-down" | "agent-error" | "fallback" | "no-pitch" | "test-data" | "bad-link";
+export type PlanAlertKind = "limit" | "qloo-down" | "agent-error" | "fallback" | "test-data" | "bad-link";
 
 /**
  * Every plan-level alert the page shows, with its copy, so the states never drift. Titles and bodies are the app's own
@@ -15,7 +15,6 @@ export function PlanAlert({
   kind,
   message,
   note,
-  rulesHref,
   testId,
   children,
 }: {
@@ -23,7 +22,6 @@ export function PlanAlert({
   /** The server's or parser's own sentence (limit, bad-link, agent-error). */
   message?: string;
   note?: string;
-  rulesHref?: string;
   testId?: string;
   children?: ReactNode;
 }) {
@@ -62,19 +60,6 @@ export function PlanAlert({
         <Alert variant="estimate" data-testid={testId ?? "agent-fallback"}>
           <AlertTitle>Shown: the engine&apos;s plan</AlertTitle>
           <AlertDescription>{note ?? message}</AlertDescription>
-        </Alert>
-      );
-    case "no-pitch":
-      return (
-        <Alert variant="warning" data-testid={testId ?? "no-pitch"}>
-          <AlertTitle>No pitch to recommend</AlertTitle>
-          <AlertDescription>
-            The busking rules or the data for this slot left no candidate pitches.{" "}
-            <a href={rulesHref} target="_blank" rel="noreferrer" className="inline-flex min-h-tap items-center">
-              Read the council&apos;s busking rules
-            </a>
-            .
-          </AlertDescription>
         </Alert>
       );
     case "test-data":

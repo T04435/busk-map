@@ -23,13 +23,14 @@ import { FRESH_HEADER, PLAN_ID_HEADER } from "@/lib/plan-id";
 import { planStreamEventSchema, type Plan, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
 import type { ResearchTotals } from "@/lib/research-totals";
 import { rememberPlan } from "@/lib/recent-plans";
-import { formatHour } from "@/lib/slot";
+import { formatHour, nightWord } from "@/lib/slot";
 import { weekSearchParams } from "@/lib/week-url";
 import { useTipSync } from "@/components/tips/use-tip-sync";
 import { AgentStepStream, applyStreamEvent, type AgentStep, type FeedPhase, type RunUsage } from "./agent-steps";
 import { AgentVsEngine } from "./agent-vs-engine";
 import { CopyLink } from "./copy-link";
 import { DataSources, statusText } from "./data-sources";
+import { NoPitchPanel } from "./no-pitch-panel";
 import { PitchSheet } from "./pitch-sheet";
 import { WeatherStrip } from "./weather-strip";
 
@@ -445,7 +446,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
           )}
 
           {plan.pitches.length === 0 ? (
-            <PlanAlert kind="no-pitch" rulesHref={plan.rulesUrl} />
+            <NoPitchPanel permit={request.permit} when={nightWord(request.slot)} againHref={shareId ? `/busks?again=${shareId}` : "/busks"} rulesHref={plan.rulesUrl} />
           ) : (
             <>
               {wide && plan.agent && <AgentVsEngine agent={plan.agent} model={model} />}

@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/honeycomb/page-header";
 import { PerformerForm } from "@/components/landing/performer-form";
 import { Warmup } from "@/components/landing/warmup";
 import { EXAMPLES } from "@/lib/examples";
+import { PERMITS } from "@/lib/plan-schema";
 import { nextSlotDate, weekdayOf } from "@/lib/slot";
 import { loadStoredPlan } from "@/server/plans";
 import { serverLocalNow } from "@/server/clock";
@@ -42,7 +43,10 @@ export default function BusksPage({ searchParams }: PageProps<"/busks">) {
 
 /** `?again=<plan id>` (from a plan whose slot has passed): the form pre-filled with that act, on the next same weekday. */
 async function OwnAct({ searchParams }: Pick<PageProps<"/busks">, "searchParams">) {
-  const again = (await searchParams).again;
+  const query = await searchParams;
+  const again = query.again;
+  /** `?permit=general` with `again`: plan the same act on another permit (the no-legal-pitch way out). */
+  const permitParam = PERMITS.find((p) => p === query.permit);
   // The default date depends on today, so render it at request time.
   await connection();
   const { today, hour } = serverLocalNow("Australia/Melbourne");
@@ -66,7 +70,8 @@ async function OwnAct({ searchParams }: Pick<PageProps<"/busks">, "searchParams"
       </>
     );
   }
-  const { performer, permit, slot } = stored.request;
+  const { performer, slot } = stored.request;
+  const permit = permitParam ?? stored.request.permit;
   return (
     <>
       <Banner tone="info">

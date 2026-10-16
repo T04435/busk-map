@@ -29,7 +29,7 @@ test.describe("API-down states", () => {
 
   test("busking rules down: no recommendation, with a link to the council's rules", async ({ page }) => {
     await page.goto("/plan?example=sax&faults=pitches,footfall");
-    await expect(page.getByText("No pitch to recommend")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^No legal pitch for/i })).toBeVisible();
     await expect(page.getByRole("link", { name: "Read the council's busking rules" })).toBeVisible();
   });
 

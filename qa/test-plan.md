@@ -13,7 +13,7 @@ QA verifies independently of DEV's tests. QA reports facts; the user decides sco
 | Static + unit + build | `pnpm check` | typecheck, lint, vitest with coverage, fixture provenance, build |
 | Offline e2e (DEV's suite) | `CI=1 PORT=<free port> pnpm exec playwright test --reporter=list` | `CI=1` turns `reuseExistingServer` off, so the run fails instead of reusing a server it didn't start. DEV's global setup also aborts unless `GET /api/health` reports `offline: true` (B-001). |
 | QA e2e | `CI=1 PORT=<free port> pnpm exec playwright test tests/e2e/qa/` | The QA money specs assert offline mode, memory stores and no `live` data source. |
-| Manual walk | `BUSKMAP_OFFLINE=1 PORT=3110 pnpm start --port 3110` after a build | Desktop 1440×900 and phone (Pixel 7 / 375×812). Stop the server when done. |
+| Manual walk | `NEXT_DIST_DIR=.next-qa pnpm build`, then `NEXT_DIST_DIR=.next-qa BUSKMAP_OFFLINE=1 BUSKMAP_ALLOW_FAULTS=1 PORT=3110 pnpm start --port 3110` (own build dir, so DEV's builds can't break it) | Desktop 1440×900 and phone (Pixel 7 / 375×812). Stop the server when done. |
 | Live check (manual) | the user's or a QA live server, **max 5 cold agent runs per round** | Each run logged in the round report with time and estimated cost (~$0.10–0.15). Prefer cached examples and replays (free). |
 
 Never: copy env files, print secrets, point anything at production, enter credentials, push, deploy, or leave a server running.

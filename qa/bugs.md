@@ -11,6 +11,7 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-005 | Low | Artist and song search inputs show no focus ring | Open |
 | B-006 | Low | Select values are blank in the server HTML until hydration | Open |
 | B-007 | Low | Offline: "Explanations: Claude" chip and credit while the mock model wrote them | Open |
+| B-008 | Low | e2e guard is skipped whenever `PLAYWRIGHT_BASE_URL` is set, even to a localhost live server | Open |
 
 ---
 
@@ -52,3 +53,10 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 - **Steps:** any plan on the offline server.
 - **Expected:** the header chip and the "Data sources" credit say the explanations are mock or test output (as the Qloo and Spotify labels do).
 - **Actual:** the chip says "Explanations: Claude" and the credit says "Plan explanations written by Claude (Anthropic) via Vercel AI Gateway". The plan text itself does say "Mock planner summary (offline test mode)". Offline only, but this is the case the learning "never leave a test-mode server running" warns about.
+
+### B-008 · Low · e2e guard is skipped whenever `PLAYWRIGHT_BASE_URL` is set
+- **Found:** retest of e3b85fb ("try to make it leak"), by reading `tests/e2e/global-setup.ts`. Not run, because running it would spend money.
+- **Steps:** `PLAYWRIGHT_BASE_URL=http://localhost:3200 pnpm test:e2e` while the user's live dev server runs on 3200.
+- **Expected:** a localhost base URL is checked like the reused-server case (`/api/health` must report `offline: true`), or needs an explicit opt-in.
+- **Actual:** global setup only warns and returns. `LOCAL` is false, so the mock and fault specs skip, but the example, own-act and short-link specs run against the live server and can start real agent runs on uncached plans. It takes a deliberate env var, so the severity is Low. Suggest: apply the health check whenever the base URL host is localhost/127.0.0.1, or require `BUSKMAP_E2E_LIVE=1` to run against a non-offline target.
+- **Everything else tried held:** `/api/health` is dynamic, not prerendered, so a server started without `BUSKMAP_ALLOW_FAULTS` from a faults-on build reported `faults: false`. A live server can't inherit `offline: true` from an offline build. A server without the route (older build, production) gives 404, and the run aborts. `VERCEL_ENV=production` forces `offline: false`, and the run aborts. Guard verified to abort against live :3200 (see B-001).

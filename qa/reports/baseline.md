@@ -1,6 +1,6 @@
 # QA baseline: 16 Oct 2026
 
-**Verdict: PASS with defects.** The gates are green and no automated path spends money. 7 defects: 1 High (already fixed and verified), 2 Medium, 4 Low. Nothing blocks a judge path.
+**Verdict: PASS with defects.** The gates are green and no automated path spends money. 8 defects: 1 High (already fixed and verified), 2 Medium, 5 Low. Nothing blocks a judge path. Retest of DEV's batch (ac034e8..ff827fc) in §10.
 
 **Build under test:** `dev/core`, moving during the audit. Gates ran on 36ee2ba plus DEV's uncommitted work. The walk ran on the build from about 13:32, between 7650e20 and e3b85fb. QA specs ran on e3b85fb/0511718. Local Node is v25.2.1, against `engines: 24.x` (Vercel uses 24).
 
@@ -59,7 +59,7 @@ Environment note, not an app defect: twice during the walk, DEV's `next build` r
 
 - **axe-core 4.14** (WCAG 2.0/2.1/2.2 A+AA) on `/`, two example plans, the week, tips and both not-found pages, desktop and Pixel 7: **0 violations everywhere except `/`**, which has 1 critical (**B-004**).
 - **Keyboard:** Tab through `/` (57 stops) and the example plans (88 stops). Logical order; pitch pins and list are reachable; every stop has a visible ring except the two search inputs (**B-005**).
-- **Lighthouse mobile:** not run. It isn't installed, and QA doesn't add packages. Needs DEV to add it (with `@axe-core/playwright`) or approval to run it. Target is ≥ 90 for performance and a11y.
+- **Lighthouse mobile:** not run. It isn't installed, and QA doesn't add packages. DEV has since added `@axe-core/playwright` (6147385), so the axe scan can become a QA spec next round; Lighthouse still needs DEV or approval. Target is ≥ 90 for performance and a11y.
 
 ## 6. Honesty and Qloo terms
 
@@ -89,4 +89,19 @@ No live runs. QA tried to start a live `next start` on 3110 (dev-branch DB, one 
 
 ## 9. Defects
 
-See `qa/bugs.md`. High 1 (B-001, fixed and verified); Medium 2 (B-002, B-004); Low 4 (B-003, B-005, B-006, B-007).
+See `qa/bugs.md`. High 1 (B-001, fixed and verified); Medium 2 (B-002, B-004); Low 5 (B-003, B-005, B-006, B-007, B-008).
+
+## 10. Retest: DEV batch ac034e8..ff827fc (16 Oct, HQ priority)
+
+Gates on 0511718 + b4f5500: `pnpm check` passes (342 unit tests, 42 files, fixtures OK). Offline e2e **114/114** (DEV 94 + QA 20, with B-003 failing as expected), rerun on ff827fc with the new `.next-e2e` build dir: 114/114.
+
+| Commit | What | Result |
+|---|---|---|
+| 0511718 retention reverted | The prune route, cron, `CRON_SECRET`, `vercel.json` (it held only the cron) and the "Raw data removed" state are gone | **Pass.** `grep` finds no prune, `CRON_SECRET` or "Raw data removed" in src, docs or README; `GET /api/cron/prune` returns 404. A reopened short link (sax example) replays "Agent steps (replayed, 8)", and all 8 "Data returned" panels open with their tables (for example `taste_map` signals, area, cells and the strongest-cells table). README and docs/deploy.md say plans keep full step data, stored privately server-side. Old busks in Neon replaying their full research needs a live/Neon check: not done (0 live runs) |
+| e3b85fb e2e cost guard ("try to make it leak") | `/api/health` plus global setup | **Pass, with one gap (B-008 Low).** Aborts against the live :3200. `/api/health` is dynamic (absent from the prerender manifest) and reads the runtime env: an offline server without faults reported `faults: false` from a faults-on build. A missing route (404) or `VERCEL_ENV=production` aborts too. Gap: any `PLAYWRIGHT_BASE_URL`, even localhost, skips the check |
+| b85f489 not-found, error, global-error | | **Pass.** Unknown URL: 404 "No pitch here" with home and example links. `/plan?example=acoustic&faults=render` shows "Something went wrong … Reference: 1294910398", Try again, Go home; no stack, file path or message; Go home lands on `/`. The page returns HTTP 200 (streamed render), which is normal for streamed pages and invisible to judges. `global-error.tsx` couldn't be forced from the browser: not exercised |
+| 5603aa0 era fit in words | | **Pass.** Setlist reasons read "from 2012: a good era fit for a crowd leaning 30–34", "… a fair era fit …"; no era score |
+| 7650e20 week test-data label | | **Pass (offline half).** "Qloo test data (local mock)" shows on `/week?example=sax` offline. The live half (no label with a key) needs a live or deploy check |
+| 6147385, ff827fc (landed during the retest) | `@axe-core/playwright`; `NEXT_DIST_DIR` | e2e now builds into `.next-e2e`, which fixes the shared-`.next` problem from §3. QA builds go to `.next-qa` from now on |
+
+Open defects after the retest: High 0 open (1 fixed), Medium 2, Low 5.

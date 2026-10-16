@@ -155,7 +155,8 @@ test.describe("landing, as the deck draws it", () => {
     await expect(get.getByRole("heading", { name: /^Suggested set for / })).toBeVisible();
     await expect(get.getByRole("heading", { name: "Songs you should learn" })).toHaveText("Songs you should learn");
     await expect(get.locator('section[aria-label="Suggested set"] ol').first().locator("li").nth(3)).toContainText("04");
-    expect(await get.getByRole("region", { name: "Songs you should learn" }).evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("4px");
+    // A ruled sub-section of the set (2 px rule), not a nested card with an orange tab (impeccable live, user accept).
+    expect(await get.getByRole("region", { name: "Songs you should learn" }).evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("2px");
     await expect(get.getByRole("region", { name: "Songs you should learn" })).toContainText("Edge of Town");
     await expect(get.getByRole("region", { name: "Songs you should learn" })).toContainText("Dinosaurs");
   });

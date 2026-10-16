@@ -34,11 +34,13 @@ export default defineConfig({
   webServer: externalBaseUrl
     ? undefined
     : {
+        // Own build directory, so an e2e build never overwrites the .next under another running server.
         command: `pnpm build && pnpm start --port ${port}`,
         port,
         timeout: 240_000,
         reuseExistingServer: !process.env.CI,
         env: {
+          NEXT_DIST_DIR: process.env.NEXT_DIST_DIR || ".next-e2e",
           BUSKMAP_ALLOW_FAULTS: "1",
           // Deterministic and free: synthetic fixtures for every provider, mock AI.
           BUSKMAP_OFFLINE: "1",

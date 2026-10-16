@@ -1,3 +1,6 @@
+import { z } from "zod";
+import { spotifyArtistInputSchema } from "./playlist-schema";
+
 /**
  * Repertoire research (hackathons/qloo-2026/repertoire-research-spec.md, approved 17 Oct): one Spotify artist link starts a
  * streamed run of nine steps. Client-safe: the step keys, the tool names the stream uses, each step's output shape (the
@@ -131,3 +134,17 @@ export function actGenresOf(snapshot: ResearchSnapshot | null | undefined): { id
   const tags = snapshot?.steps.genres?.output?.tags ?? [];
   return tags.filter((t) => t.id && t.name).slice(0, MAX_ACT_GENRES).map((t) => ({ id: t.id, name: t.name }));
 }
+
+// --- POST /api/playlist/research ---
+
+/**
+ * The request: `link` (open.spotify.com/artist/<id>, a spotify:artist: URI or a bare id) starts a full run; it is refused
+ * as `up_to_date` when the saved research is for the same link, unless `refresh` (the "Refresh my research" button).
+ * `mode: "more"` ("Find more songs to learn") needs no link: it builds on the saved snapshot.
+ */
+export const researchRequestSchema = z.object({
+  link: spotifyArtistInputSchema.optional(),
+  mode: z.enum(["full", "more"]).default("full"),
+  refresh: z.boolean().default(false),
+});
+export type ResearchRequest = z.infer<typeof researchRequestSchema>;

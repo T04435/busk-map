@@ -47,6 +47,7 @@ describe("rejectBots", () => {
       { path: "/api/playlist/songs/*", method: "DELETE" },
       { path: "/api/playlist/learn/suggestions", method: "POST" },
       { path: "/api/playlist/learn", method: "POST" },
+      { path: "/api/playlist/research", method: "POST" },
       { path: "/api/playlist/learn/suggestions/*", method: "PATCH" },
     ]);
   });

@@ -19,5 +19,7 @@ export const BOTID_PROTECTED_ROUTES = [
   { path: "/api/playlist/learn/suggestions", method: "POST" },
   // A learn run spends model money, so BotID matters most here (docs §1.1). The status changes are writes.
   { path: "/api/playlist/learn", method: "POST" },
+  // Repertoire research: a learn run with a Spotify link (one summary model call).
+  { path: "/api/playlist/research", method: "POST" },
   { path: "/api/playlist/learn/suggestions/*", method: "PATCH" },
 ] as const;

@@ -17,8 +17,10 @@ export type PlanLink = { id: string } | { id: null; reason: "rate_limited" | "no
 
 /**
  * The short id for a plan request: the one made today for the same request,
- * or a new one. New ids are limited per IP (reused ones are free). Never
- * throws: without an id the caller keeps the long /plan?… URL.
+ * or a new one. An example preset always gets a new id: every click is its own
+ * fresh agent run, never another click's plan. New ids are limited per IP
+ * (reused ones are free). Never throws: without an id the caller keeps the
+ * long /plan?… URL.
  */
 export async function resolvePlanLink(request: PlanRequest, exampleId: string | null, ip: string, now = new Date()): Promise<PlanLink> {
   const offline = testSwitches().offline;
@@ -26,7 +28,7 @@ export async function resolvePlanLink(request: PlanRequest, exampleId: string | 
   if (!linksDurable(store)) return { id: null, reason: "not_durable" };
   const day = localToday(CITIES[request.city].timeZone, now);
   try {
-    const found = await findPlanId(store, request, exampleId, day);
+    const found = exampleId ? null : await findPlanId(store, request, exampleId, day);
     if (found) return { id: found };
     // Offline test mode creates rows in memory only: not limited (the e2e tests share one IP).
     if (!offline && !planLinkLimiter.check(ip).ok) return { id: null, reason: "rate_limited" };

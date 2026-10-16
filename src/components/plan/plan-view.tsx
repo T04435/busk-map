@@ -267,6 +267,12 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
           </Badge>
           {plan && <Badge variant="outline">{plan.footfallLevel === "city-sensors" ? "Foot traffic: city sensors" : "Foot traffic: unavailable"}</Badge>}
           {!pending && plan && <Badge variant="outline">{explanationsLabel(plan)}</Badge>}
+          {/* A stored run reopened from its link says so at the top, not only in the collapsed steps. */}
+          {replayed && (
+            <Badge variant="secondary" data-testid="replay-label">
+              Replay of an earlier run (no new model call)
+            </Badge>
+          )}
         </div>
         <p className="flex flex-wrap gap-x-4 text-sm">
           {/* No prefetch: prefetching /week builds a whole week plan, about 47 Qloo calls, on every plan view. */}

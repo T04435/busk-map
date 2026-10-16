@@ -165,6 +165,20 @@ describe("resolving links", () => {
     expect((await resolvePlanLink(habana({ permit: "premium" }), null, "10.0.0.2", NOW)).id).not.toBeNull();
   });
 
+  it("an example preset gets a new id on every click (no dedupe for presets)", async () => {
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("VERCEL", "");
+    const { resolvePlanLink } = await load();
+    const parsed = parsePlanParams({ example: "acoustic" }, DAY, null);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.exampleId).toBe("acoustic");
+    const one = await resolvePlanLink(parsed.request, parsed.exampleId, "10.0.0.9", NOW);
+    const two = await resolvePlanLink(parsed.request, parsed.exampleId, "10.0.0.9", NOW);
+    expect(one.id).toMatch(/^[0-9A-Za-z]{9}$/);
+    expect(two.id).toMatch(/^[0-9A-Za-z]{9}$/);
+    expect(two.id).not.toBe(one.id);
+  });
+
   it("keeps the long URL when links wouldn't last, or the store fails", async () => {
     vi.stubEnv("DATABASE_URL", "");
     vi.stubEnv("VERCEL", "1");

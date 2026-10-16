@@ -36,7 +36,8 @@ export default function Home({ searchParams }: PageProps<"/">) {
         <ul className="grid gap-4 sm:grid-cols-3">
           {EXAMPLES.map((example) => (
             <li key={example.id}>
-              <Link href={`/plan?example=${example.id}`} className="block h-full rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+              {/* No prefetch: each click makes a new plan link and starts a fresh agent run (presets are inputs only). */}
+              <Link prefetch={false} href={`/plan?example=${example.id}`} className="block h-full rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
                 <Card className="h-full transition-colors hover:bg-muted">
                   <CardHeader>
                     <CardTitle>{example.label}</CardTitle>

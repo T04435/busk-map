@@ -5,14 +5,14 @@ import { QlooUnavailableError, runPlanAgent } from "@/server/agent/agent";
 import { baselineFor } from "@/server/agent/baseline";
 import { LIMITS } from "@/server/agent/models";
 import { planKey, planStore } from "@/server/agent/plan-store";
-import { engineContext, exampleIdFor, isExampleRequest } from "@/server/agent/preload";
-import { AgentRun, EXAMPLE_RUN_TTL_MS, hasSharedRun, RUN_TTL_MS, sharedRunWithStore } from "@/server/agent/runs";
+import { engineContext, presetIdFor } from "@/server/agent/preload";
+import { AgentRun, hasSharedRun, RUN_TTL_MS, sharedRun, sharedRunWithStore } from "@/server/agent/runs";
 import { agentRecord, comparisonStore, recordAgentRun } from "@/server/comparisons/store";
 import { CITIES } from "@/server/cities";
 import { testSwitches } from "@/server/env";
 import { log } from "@/server/log";
 import { freshRunsAllowed, saveRunSnapshot } from "@/server/plans";
-import { planLimiter } from "@/server/rate-limit";
+import { freshRunGate } from "@/server/rate-limit";
 import { adapterContextFor, clientIp, FAULTS_HEADER } from "@/server/request";
 
 /** Agent runs take 20–60 s; the agent itself times out at 90 s, then the engine's plan is assembled. */
@@ -26,8 +26,13 @@ function jsonError(status: number, code: string, message: string, headers: Heade
  * POST /api/plan: run the planning agent and stream its steps as NDJSON
  * (one PlanStreamEvent per line), ending with a `plan` or an `error` event.
  * The same request joins a run in flight or replays a recent one (from this
- * instance or the plan store). The agent starts first: nothing is computed
- * before the stream opens.
+ * instance or the plan store). Example presets are inputs only: they never
+ * reuse another click's run, only their own short link's run in flight, so
+ * every click is a fresh agent run. The agent starts first: nothing is
+ * computed before the stream opens.
+ *
+ * Fresh runs are limited to 5 an hour per IP (per instance; replays and
+ * joined runs are free).
  *
  * With the x-buskmap-plan header (a short link's id), the finished run is kept
  * on that plan, so the link opens at once next time. With x-buskmap-fresh: 1
@@ -52,21 +57,21 @@ export async function POST(request: Request) {
   const adapters = adapterContextFor(request.headers.get(FAULTS_HEADER));
   // The engine's shared context for this request: the agent's tools load the data once, and the baseline then reuses it.
   const context = engineContext(parsed.data, adapters);
-  const shareKey = JSON.stringify([parsed.data, adapters.offline, context.today]);
   const storeKey = planKey(parsed.data, adapters.offline, context.today);
   const store = planStore(adapters.offline);
-  const ttl = isExampleRequest(parsed.data, context.today) ? EXAMPLE_RUN_TTL_MS : RUN_TTL_MS;
+  const ttl = RUN_TTL_MS;
   const fresh = request.headers.get(FRESH_HEADER) === "1";
   if (fresh && !freshRunsAllowed()) return jsonError(403, "fresh_not_allowed", "Fresh runs are for development only.");
   const planId = request.headers.get(PLAN_ID_HEADER);
-  // Offline test mode spends nothing, and joining or replaying a shared run costs no model call: neither is rate limited.
-  const free = testSwitches().offline || (adapters.faults.length === 0 && !fresh && (await hasSharedRun(shareKey, storeKey, ttl, store)));
-  const limit = free ? { ok: true, retryAfterS: 0 } : planLimiter.check(clientIp(request.headers));
-  if (!limit.ok) {
-    return jsonError(429, "rate_limited", "Too many plans in a short time. Try again in a few minutes.", {
-      "Retry-After": String(limit.retryAfterS),
-    });
-  }
+  const presetId = presetIdFor(parsed.data);
+  // A preset shares a run only with its own short link (a reload while it runs); without a link, never.
+  const shareKey = presetId
+    ? JSON.stringify(["preset", isPlanId(planId) ? planId : crypto.randomUUID(), adapters.offline])
+    : JSON.stringify([parsed.data, adapters.offline, context.today]);
+  // Joining or replaying a run costs no model call: not counted. Presets never replay from the plan store.
+  const reused = adapters.faults.length === 0 && !fresh && (await hasSharedRun(shareKey, presetId ? undefined : storeKey, ttl, presetId ? undefined : store));
+  const gate = freshRunGate({ reused, offline: testSwitches().offline, ip: clientIp(request.headers), timeZone: CITIES[parsed.data.city].timeZone });
+  if (!gate.ok) return jsonError(429, "rate_limited", gate.message, { "Retry-After": String(gate.retryAfterS) });
   const requestId = crypto.randomUUID();
   const encoder = new TextEncoder();
 
@@ -93,7 +98,7 @@ export async function POST(request: Request) {
       if (agentTop && adapters.faults.length === 0) {
         // Engine-only top 3 vs Claude's, on the plan's comparison row (the baseline fills in the plain AI's picks).
         const slot = `${parsed.data.slot.date} ${parsed.data.slot.startHour}-${parsed.data.slot.endHour}`;
-        const performerKey = exampleIdFor(parsed.data, context.today) ?? "custom";
+        const performerKey = presetId ?? "custom";
         void recordAgentRun(comparisonStore(adapters.offline), agentRecord(storeKey, performerKey, parsed.data.city, slot, engineTop, agentTop));
       }
       // The plain-AI baseline starts once the agent's data is loaded, so the two don't race for Qloo's rate limit.
@@ -111,13 +116,15 @@ export async function POST(request: Request) {
   // Runs with simulated outages (tests) are never shared. Shared runs keep going if this viewer leaves,
   // so a reload replays the result instead of paying for another model run (see agent/runs.ts).
   let run: AgentRun;
-  let reused = false;
+  let joined = false;
   if (adapters.faults.length > 0) {
     run = new AgentRun();
     void start(run, AbortSignal.any([request.signal, AbortSignal.timeout(LIMITS.agentTimeoutMs + 20_000)])).finally(() => run.finish());
   } else {
     // The agent applies its own 90 s timeout; this outer one only stops a stuck assembly.
-    ({ run, reused } = await sharedRunWithStore(shareKey, storeKey, ttl, (r) => start(r, AbortSignal.timeout(LIMITS.agentTimeoutMs + 20_000)), store, Date.now(), fresh));
+    const begin = (r: AgentRun) => start(r, AbortSignal.timeout(LIMITS.agentTimeoutMs + 20_000));
+    // Presets: in memory only, keyed by their link, never stored by request.
+    ({ run, reused: joined } = presetId ? sharedRun(shareKey, ttl, begin) : await sharedRunWithStore(shareKey, storeKey, ttl, begin, store, Date.now(), fresh));
     // Keep the finished run (new, joined or replayed) on the short link's plan.
     if (isPlanId(planId)) {
       const finished = run;
@@ -132,7 +139,7 @@ export async function POST(request: Request) {
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       const send = (event: PlanStreamEvent) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
-      if (reused) {
+      if (joined) {
         const at = new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", timeZone: CITIES[parsed.data.city].timeZone }).format(run.startedAt);
         send(
           run.done

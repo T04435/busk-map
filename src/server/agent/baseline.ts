@@ -10,8 +10,8 @@ import { processMap } from "@/server/memo";
 import { compareWithBaseline, comparisonRecord } from "@/server/scoring";
 import { plainLlmSuggestion } from "./compare";
 import { planKey, planStore, storeGet, storePut } from "./plan-store";
-import { buildEnginePlan, engineContext, exampleIdFor, isExampleRequest } from "./preload";
-import { EXAMPLE_RUN_TTL_MS, RUN_TTL_MS } from "./runs";
+import { buildEnginePlan, engineContext, presetIdFor } from "./preload";
+import { RUN_TTL_MS } from "./runs";
 import { knownPlaces } from "./where";
 
 /**
@@ -41,7 +41,7 @@ async function build(request: PlanRequest, adapters: AdapterContext, day: string
     weights: ctx.weights,
   });
   // Recorded for the uniqueness stats (GET /api/baseline-stats): ids and scores only, never the act's name.
-  const performerKey = exampleIdFor(request, day) ?? "custom";
+  const performerKey = presetIdFor(request) ?? "custom";
   const slot = `${request.slot.date} ${request.slot.startHour}-${request.slot.endHour}`;
   void recordComparison(comparisonStore(adapters.offline), comparisonRecord(comparison, top, performerKey, request.city, slot), planKey(request, adapters.offline, day));
   return {
@@ -88,7 +88,7 @@ export function baselineFor(request: PlanRequest, adapters: AdapterContext, toda
   const store = planStore(adapters.offline);
   const storeKey = planKey(request, adapters.offline, day);
   const shared = adapters.faults.length === 0;
-  const ttl = isExampleRequest(request, day) ? EXAMPLE_RUN_TTL_MS : RUN_TTL_MS;
+  const ttl = RUN_TTL_MS;
   const result = (async (): Promise<BaselineResult> => {
     const stored = shared ? await storeGet<BaselineResult>(store, "baseline", storeKey) : null;
     if (stored?.value.status === "ok") return stored.value;

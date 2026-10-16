@@ -8,9 +8,9 @@ import { storeGet, storePut, type PlanStore } from "./plan-store";
  * load, so the same request (an example, a shared link, a reload) must not
  * pay for a second model run:
  * - a run in flight is joined: a new viewer gets the steps so far, then the rest live;
- * - a finished run is replayed from its recorded events for a while: the
- *   examples for EXAMPLE_RUN_TTL_MS (they stay fast all day), others for
- *   RUN_TTL_MS.
+ * - a finished run is replayed from its recorded events for RUN_TTL_MS.
+ * Example presets are inputs only and never share or replay a run by request
+ * (api/plan keys them by their short link instead).
  * Failed runs (an error event, or no plan) are dropped at once. A run keeps
  * going if its first viewer leaves, so the result can still be reused; the
  * agent's own timeout and step limit bound it.
@@ -19,7 +19,6 @@ import { storeGet, storePut, type PlanStore } from "./plan-store";
  * offline), so another server instance replays them instead of paying again.
  */
 export const RUN_TTL_MS = 15 * 60_000;
-export const EXAMPLE_RUN_TTL_MS = 6 * 60 * 60_000;
 const MAX_RUNS = 50;
 
 /** The events with a totals event right before the plan (runs stored before totals events existed get one from the plan). */

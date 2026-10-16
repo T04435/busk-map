@@ -4,15 +4,33 @@ const SHORT = /\/p\/([0-9A-Za-z]{9})$/;
 const idOf = (url: string) => SHORT.exec(new URL(url).pathname)?.[1] ?? null;
 
 test.describe("short plan links", () => {
-  test("an example card opens its plan on a short link, the same id each time", async ({ page }) => {
-    await page.goto("/");
-    await page.getByRole("link", { name: /^Soul and funk sax player / }).click();
-    await expect(page).toHaveURL(SHORT);
-    const id = idOf(page.url());
-    await waitForPlan(page);
-    await page.goto("/plan?example=sax");
-    await expect(page).toHaveURL(SHORT);
-    expect(idOf(page.url())).toBe(id);
+  test("an example card is inputs only: every click is a new short link and a fresh agent run", async ({ page }) => {
+    test.skip(!LOCAL, "Starts agent runs; local offline server only");
+    /** Click the sax card and read the agent's stream for that page: the run it started. */
+    const click = async () => {
+      await page.goto("/");
+      const streamed = page.waitForResponse((r) => r.url().endsWith("/api/plan") && r.request().method() === "POST");
+      await page.getByRole("link", { name: /^Soul and funk sax player / }).click();
+      await expect(page).toHaveURL(SHORT);
+      const events = (await (await streamed).text())
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => JSON.parse(line) as { type: string; replay?: boolean; message?: string });
+      await waitForPlan(page);
+      return { id: idOf(page.url()), events };
+    };
+    const first = await click();
+    const second = await click();
+    expect(first.id).toBeTruthy();
+    expect(second.id).not.toBe(first.id);
+    for (const { events } of [first, second]) {
+      // A new run: "Planning started" with no replay or join, then the steps streamed, then the plan. No stored plan.
+      expect(events[0]).toEqual({ type: "status", message: "Planning started" });
+      expect(events.some((e) => e.type === "status" && (e.replay || /Replaying|Joining/.test(e.message ?? "")))).toBe(false);
+      expect(events.filter((e) => e.type === "tool-start").length).toBeGreaterThan(2);
+      expect(events.at(-1)?.type).toBe("plan");
+    }
+    await expect(page.getByTestId("replay-label")).toHaveCount(0);
   });
 
   test("an unknown or malformed id shows a not-found state with a link home", async ({ page }) => {

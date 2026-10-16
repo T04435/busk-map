@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-/** Ask the server to prepare the example plans while the visitor reads the landing page. */
+/** Ask the server to fetch the example presets' data while the visitor reads the landing page (no plan is pre-built). */
 export function Warmup() {
   useEffect(() => {
     const id = window.setTimeout(() => {

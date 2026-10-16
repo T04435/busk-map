@@ -1,5 +1,4 @@
 import "server-only";
-import { cacheLife, cacheTag } from "next/cache";
 import { exampleHistory } from "@/lib/example-tips";
 import { EXAMPLES } from "@/lib/examples";
 import { planRequestSchema, type Plan, type PlanRequest } from "@/lib/plan-schema";
@@ -14,9 +13,9 @@ import { PlanContext } from "./context";
  * The engine's plan without the model: instant, free, and shown first. The
  * live agent (POST /api/plan) then adds Claude's explanations.
  *
- * Plans are memoised in this server instance for a few minutes, so the
- * examples (and any shared link) open instantly after the first view. The
- * adapters below are cached for longer ('use cache: remote').
+ * Plans are memoised in this server instance for a few minutes (the
+ * baseline and run=0 reuse them). The adapters below are cached for longer
+ * ('use cache: remote'). No example plan is cached: presets are inputs only.
  */
 export const PLAN_MEMO_TTL_MS = 10 * 60_000;
 /** A plan built while a source was down is kept briefly, so a flaky source doesn't slow every view, then retried. */
@@ -50,38 +49,19 @@ export function engineContext(request: PlanRequest, adapters: AdapterContext, to
   return context;
 }
 
-async function assembleEnginePlan(request: PlanRequest, adapters: AdapterContext, day: string, shared = true): Promise<Plan> {
-  const context = shared ? engineContext(request, adapters, day) : new PlanContext(request, adapters, day);
+async function assembleEnginePlan(request: PlanRequest, adapters: AdapterContext, day: string): Promise<Plan> {
+  const context = engineContext(request, adapters, day);
   await context.artists();
   return assemblePlan(context, null);
 }
 
 /**
- * The example plans, in the shared remote cache: on Vercel the warm-up
- * (POST /api/warm) and the plan page can run on different instances, so the
- * in-memory memo alone would often miss. Only the examples are cached here:
- * their requests are fixed and hold no personal data (their tip log is the
- * example data). Plans with a failed source are kept briefly, then retried.
+ * The example preset this request's performer is (as the landing page fills it in), or null. Presets are inputs
+ * only: a click on one always starts a fresh agent run, never a stored or cached plan (api/plan).
  */
-async function cachedExamplePlan(requestJson: string, offline: boolean, day: string): Promise<Plan> {
-  "use cache: remote";
-  cacheTag("example-plans");
-  const plan = await assembleEnginePlan(planRequestSchema.parse(JSON.parse(requestJson)), { offline, faults: [] }, day, false);
-  if (degraded(plan)) cacheLife({ stale: 30, revalidate: 60, expire: 120 });
-  else cacheLife({ stale: 300, revalidate: PLAN_MEMO_TTL_MS / 1000, expire: 3600 });
-  return plan;
-}
-
-/** The example this request is (as the landing page links it), or null for any other request. */
-export function exampleIdFor(request: PlanRequest, day: string): string | null {
-  const json = JSON.stringify(request);
-  const index = exampleRequests(day).findIndex((example) => JSON.stringify(example) === json);
-  return index === -1 ? null : EXAMPLES[index].id;
-}
-
-export function isExampleRequest(request: PlanRequest, day: string): boolean {
-  const json = JSON.stringify(request);
-  return exampleRequests(day).some((example) => JSON.stringify(example) === json);
+export function presetIdFor(request: Pick<PlanRequest, "performer">): string | null {
+  const json = JSON.stringify(request.performer);
+  return EXAMPLES.find((example) => JSON.stringify(planRequestSchema.shape.performer.parse(example.performer)) === json)?.id ?? null;
 }
 
 export async function buildEnginePlan(request: PlanRequest, adapters: AdapterContext, today?: string): Promise<Plan> {
@@ -89,10 +69,7 @@ export async function buildEnginePlan(request: PlanRequest, adapters: AdapterCon
   const key = memoKey(request, adapters, day);
   const hit = memo.get(key);
   if (hit && Date.now() - hit.at < hit.ttl) return hit.plan;
-  const plan =
-    adapters.faults.length === 0 && isExampleRequest(request, day)
-      ? cachedExamplePlan(JSON.stringify(request), adapters.offline, day)
-      : assembleEnginePlan(request, adapters, day);
+  const plan = assembleEnginePlan(request, adapters, day);
   const entry = { at: Date.now(), ttl: PLAN_MEMO_TTL_MS, plan };
   memo.set(key, entry);
   // A failed build must not stick.
@@ -117,7 +94,11 @@ export function exampleRequests(today: string): PlanRequest[] {
   );
 }
 
-/** Build the example plans in the background, so a judge's first click is instant. No model calls. */
+/**
+ * Fetch the examples' data in the background (Qloo, sensors, rules, events, weather), so the agent's first run on a
+ * preset doesn't wait on cold sources. No model calls, and no plan is served from it: a preset click always starts
+ * a fresh agent run. The data-level caches it fills are what keep Qloo quota and latency sane.
+ */
 export async function warmExamples(adapters: AdapterContext): Promise<{ plans: number; ms: number }> {
   const started = Date.now();
   const today = localToday(CITIES.melbourne.timeZone);

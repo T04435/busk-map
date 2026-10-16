@@ -1,5 +1,5 @@
 /**
- * Warm the example plans when a self-hosted server starts (`next start`), so
+ * Warm the example presets' data caches (no plans) when a self-hosted server starts (`next start`), so
  * the first judge never waits on cold data sources. On Vercel the landing
  * page does the same through POST /api/warm.
  */

@@ -204,7 +204,8 @@ export async function findPlanId(store: ShortPlanStore, request: PlanRequest, ex
 
 /**
  * A new id for this request (or the one a concurrent request just made).
- * Collisions are retried with a new id.
+ * Collisions are retried with a new id. An example preset gets a new id every
+ * time: its hash carries the id, so (request_hash, day) never dedupes it.
  */
 export async function createPlanId(
   store: ShortPlanStore,
@@ -217,7 +218,8 @@ export async function createPlanId(
   const hash = requestHash(stored, exampleId);
   for (let attempt = 0; attempt < 5; attempt++) {
     const id = makeId();
-    const result = await store.insert({ id, request: stored, requestHash: hash, exampleId, day });
+    const rowHash = exampleId ? `${hash}:${id}` : hash;
+    const result = await store.insert({ id, request: stored, requestHash: rowHash, exampleId, day });
     if (result === "ok") return id;
     if (result === "duplicate-request") {
       const existing = await store.findByRequest(hash, day);

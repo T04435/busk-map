@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { EXAMPLES } from "@/lib/examples";
-import { planRequestSchema, type Plan } from "@/lib/plan-schema";
+import { planRequestSchema, type Plan, type PlanRequest } from "@/lib/plan-schema";
 import { nextWeekday } from "@/lib/slot";
 import { mockFetch, OFFLINE } from "../../helpers";
 
@@ -73,5 +73,16 @@ describe("example tip logs (offline)", () => {
       const strong = new Set(["spot:osm:albert-coates-lane", "spot:osm:city-square", "spot:osm:centre-place", "spot:osm:cohen-place-plaza", "spot:osm:federation-wharf"]);
       expect(withTips.pitches.filter((p) => !strong.has(p.id)).every((p) => !p.tip || p.tip.points === 0)).toBe(true);
     }
+  });
+});
+
+describe("example presets (inputs only)", () => {
+  it("recognises a preset by its performer, whatever the slot", async () => {
+    const { exampleRequests, presetIdFor } = await import("@/server/agent/preload");
+    const requests = exampleRequests(TODAY);
+    expect(requests.map((r) => presetIdFor(r))).toEqual(["acoustic", "sax", "folk-duo"]);
+    const otherSlot: PlanRequest = { ...requests[0], slot: { ...requests[0].slot, startHour: 12, endHour: 14 } };
+    expect(presetIdFor(otherSlot)).toBe("acoustic");
+    expect(presetIdFor({ ...requests[0], performer: { ...requests[0].performer, name: "Someone else" } })).toBeNull();
   });
 });

@@ -160,6 +160,8 @@ test.describe("live agent (mock model offline)", () => {
     await page.reload();
     await waitForPlan(page);
     await expect(page.getByText(/^Replaying the agent's run from .* \(cached, no new model call\)$/)).toBeVisible();
+    // Labelled as a replay at the top, not only in the collapsed steps.
+    await expect(page.getByTestId("replay-label")).toHaveText("Replay of an earlier run (no new model call)");
     await expect(page.getByText(EXPLANATIONS_LABEL)).toBeVisible();
     await expect(page.getByRole("list", { name: "Agent steps" })).toHaveCount(0);
     await page.getByRole("button", { name: /^Agent steps \(replayed, \d+\)$/ }).click();

@@ -36,11 +36,11 @@ The four routes that spend money or a third-party quota are protected:
 - `curl` against a protected route is rejected in production by design; test from the app's pages.
 - **Optional (Pro):** Project → Firewall → Rules → enable **Vercel BotID Deep Analysis**. Deep Analysis is billed per check, and live search makes a check per debounced keystroke, so check the pricing against expected search volume first.
 
-After the first deploy, check one live agent run from `/plan?example=acoustic` (it redirects to the plan's short link, `/p/<id>`, and the agent starts on load), one plan from the landing form (`POST /api/plans`) and one song search on the landing page. A 403 or 503 there means the client and server lists are out of step; the function logs say "bot check failed" with the reason.
+After the first deploy, check one live agent run from `/plan?example=acoustic` (it redirects to a new short link, `/p/<id>`, and a fresh agent run starts on load: example presets are inputs only), one plan from the landing form (`POST /api/plans`) and one song search on the landing page. A 403 or 503 there means the client and server lists are out of step; the function logs say "bot check failed" with the reason.
 
 ## 3. WAF rate-limit rule
 
-The app has a per-instance limiter (6 agent runs and 12 comparisons per IP per 10 minutes, 120 searches per IP per minute), but instances don't share it. Add this rule so the limit holds across the whole deployment. Hobby allows one rate-limit rule per project.
+The app has a per-instance limiter (5 fresh agent runs per IP per hour, where replays and joined runs don't count; 6 week plans and 12 comparisons per IP per 10 minutes; 120 searches per IP per minute), but instances don't share it. Add this rule so the limit holds across the whole deployment. Hobby allows one rate-limit rule per project.
 
 Song and artist search now runs as you type (debounced 300 ms, from 3 characters, plus one Last.fm lookup per artist result list), so one performer filling the form can make 30 or more `/api/repertoire` calls in a minute. Keep `/api/repertoire` out of the 20-a-minute rule: it stays behind BotID and the app's own limiter, and the Spotify and Last.fm calls are cached.
 
@@ -61,15 +61,15 @@ Then **Save Rule** → **Review Changes** → **Publish**.
 
 - 20 a minute is far above a real performer's use (one agent run and one comparison) and well below a script.
 - Start with the **Log** action for a day if you want to see real traffic first, then switch to 429.
-- The app already explains a 429 ("Too many plans in a short time…").
+- The app already explains its own 429 for fresh runs ("You've started 5 plans this hour. Open one of your earlier plans, or try again at HH:MM."). A WAF 429 shows the generic planner error.
 - Counters are per region, so the real ceiling is a little higher than 20 for traffic spread across regions.
 
-On Pro you can add a second, stricter rule for the agent alone: path `^/api/plan$`, Fixed Window **600s**, limit **10**, key IP; and a third for search: path `^/api/repertoire$`, Fixed Window **60s**, limit **120**, key IP.
+Matching rule for fresh agent runs (Pro, or instead of the rule above on Hobby): path `^/api/plan$`, Fixed Window **3600s**, limit **15**, key IP. The WAF can't tell a fresh run from a replay or a reopened short link (all are `POST /api/plan`), so it sits above the app's 5 fresh runs an hour; the app's limiter is the precise one, per instance, and the AI Gateway budget cap stays the hard ceiling. On Pro you can also add and a third for search: path `^/api/repertoire$`, Fixed Window **60s**, limit **120**, key IP.
 
 ## 4. Warm-up
 
-- The landing page calls `POST /api/warm` 300 ms after it loads. That builds the three example plans (no model calls) and stores them in the shared remote cache (`"use cache: remote"` in `src/server/agent/preload.ts`), so the first click on an example is fast on whichever instance serves it.
-- Healthy example plans are cached for 10 minutes (stale after 5, gone after an hour); a plan built while a source was down is kept for one minute, then rebuilt.
+- The landing page calls `POST /api/warm` 300 ms after it loads. That fetches the three example presets' data (Qloo, sensors, rules, events, weather; no model calls) into the data-level caches (`"use cache: remote"` in the adapters), so the agent's first run on a preset doesn't wait on cold sources.
+- No example plan is pre-built or cached: the presets are inputs only, and every click on one starts a fresh agent run on a new short link. Only the data each tool fetches is cached, per call.
 - After a deploy, open the landing page once (or `curl -X POST https://<domain>/api/warm`, which is not BotID-protected and costs nothing) to warm the new deployment.
 - No cron is configured. If cold starts are a problem, a Vercel cron calling `/api/warm` every 10 minutes would fix it, but Hobby crons run at most once a day, so it needs Pro. Ask before adding one.
 
@@ -85,7 +85,7 @@ On Pro you can add a second, stricter rule for the agent alone: path `^/api/plan
 
 ## Privacy notes for the tip log
 
-The tip log is stored in the performer's browser (localStorage). Plans read only a summary of it (takings per hour per pitch, at most 15 pitches for the 6 most recent performers) from a first-party cookie, `buskmap_tips`, so it is sent to Busk Map's own server with page requests but never stored there and never put in a URL. Example plans' remote cache entries hold only the built-in example data.
+The tip log is stored in the performer's browser (localStorage). Plans read only a summary of it (takings per hour per pitch, at most 15 pitches for the 6 most recent performers) from a first-party cookie, `buskmap_tips`, so it is sent to Busk Map's own server with page requests but never stored there and never put in a URL. The examples' remote data cache entries hold only data fetched for the built-in example inputs.
 
 ## Plain-AI baseline stats (optional database)
 
@@ -98,4 +98,4 @@ Every plan runs a plain-AI baseline (Claude Haiku, no tools, no data) in paralle
 
 ## Stored step data
 
-Plans keep their full step data. A finished run stores its steps, and each step holds the data the tool returned (much of it derived from Qloo), in the `plans` rows and the `plan_store` runs. It is stored privately server-side and never committed to the repository. The `plan_store` replay cache keeps its own expiry (6 h for example plans, 15 min for other runs); the `plans` rows behind short links persist.
+Plans keep their full step data. A finished run stores its steps, and each step holds the data the tool returned (much of it derived from Qloo), in the `plans` rows and the `plan_store` runs. It is stored privately server-side and never committed to the repository. The `plan_store` replay cache keeps its own expiry (15 min; example presets are never stored there, every click is a fresh run); the `plans` rows behind short links persist.

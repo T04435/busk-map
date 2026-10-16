@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatInput, scalar, type AgentStep } from "@/lib/agent-steps";
+import { modelName, type ExplanationsModel } from "@/lib/sources";
 
 /**
  * The agent's steps as they stream (and as a replay shows them): for each
@@ -77,7 +78,8 @@ export function StepData({ value }: { value: unknown }) {
 
 const STATUS: Record<AgentStep["status"], string> = { running: "running", done: "done", failed: "failed", notes: "note" };
 
-export function AgentSteps({ steps }: { steps: AgentStep[] }) {
+/** `model` names who wrote each note: Claude, or the test model offline (B-010). */
+export function AgentSteps({ steps, model = null }: { steps: AgentStep[]; model?: ExplanationsModel | null }) {
   if (steps.length === 0) return null;
   const numbers = new Map<string, number>();
   for (const step of steps) if (step.tool) numbers.set(step.id, numbers.size + 1);
@@ -92,7 +94,7 @@ export function AgentSteps({ steps }: { steps: AgentStep[] }) {
           </div>
           {step.notes.map((note, i) => (
             <p key={i} className="whitespace-pre-line text-muted-foreground" data-testid={`agent-note-${note.kind}`}>
-              <span className="font-medium">{note.kind === "reasoning" ? "Thinking (summary): " : "Claude: "}</span>
+              <span className="font-medium">{note.kind === "reasoning" ? "Thinking (summary): " : `${modelName(model, "label")}: `}</span>
               {note.text}
             </p>
           ))}

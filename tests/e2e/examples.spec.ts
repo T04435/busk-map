@@ -1,5 +1,5 @@
 import { EXAMPLES } from "../../src/lib/examples";
-import { agentSteps, CLAUDE_CREDIT, EXPLANATIONS_LABEL, expect, LOCAL, SATURDAY, test, waitForPlan } from "./fixtures";
+import { AGENT_KEPT_TOP3, agentSteps, CLAUDE_CREDIT, EXPLAINED_BY, EXPLANATIONS_LABEL, expect, LOCAL, MODEL_NOTE_PREFIX, SATURDAY, test, waitForPlan } from "./fixtures";
 
 test.describe("landing", () => {
   test("shows the three example performers and the own-act form", async ({ page }) => {
@@ -25,12 +25,18 @@ for (const example of EXAMPLES) {
       await expect(page.getByRole("region", { name: "Map of pitches and Qloo taste affinity" })).toBeVisible();
       await expect(page.getByRole("heading", { name: /^Setlist for / })).toBeVisible();
       // The agent starts on load and the plan appears when it ends, with Claude's explanations (mock model offline).
-      await agentSteps(page);
+      const steps = await agentSteps(page);
       if (LOCAL) {
         // The mock model wrote these: no Claude chip and no Claude credit (B-007).
         await expect(page.getByText(EXPLANATIONS_LABEL)).toBeVisible();
         await expect(page.getByText("Explanations: Claude")).toHaveCount(0);
         await expect(page.getByRole("link", { name: CLAUDE_CREDIT })).toHaveCount(0);
+        // Nor do the steps, Agent vs engine, the pitch card or the plain-AI panel (B-010).
+        await expect(page.getByText(EXPLAINED_BY)).toBeVisible();
+        await expect(page.getByTestId("agent-vs-engine")).toContainText(AGENT_KEPT_TOP3);
+        await expect(page.getByText(/sent to the test model \(offline\) with no tools/)).toBeVisible();
+        await expect(steps.getByTestId("agent-note-text").first()).toContainText(MODEL_NOTE_PREFIX);
+        await expect(page.getByText(/Claude/)).toHaveCount(0);
       }
       // Every data source is credited.
       for (const credit of ["Taste data by Qloo", "Pedestrian counts: City of Melbourne Open Data", "Weather data by Open-Meteo.com"]) {
@@ -138,7 +144,8 @@ test.describe("live agent (mock model offline)", () => {
     await expect(page.getByTestId("agent-usage")).toContainText("model steps");
     // Agent vs engine: the mock keeps the engine's top 3.
     await expect(page.getByTestId("agent-vs-engine")).toContainText("Agent vs engine");
-    await expect(page.getByTestId("agent-vs-engine")).toContainText("Claude kept the engine's top 3.");
+    await expect(page.getByTestId("agent-vs-engine")).toContainText(AGENT_KEPT_TOP3);
+    await expect(steps.getByTestId("agent-note-text").first()).toContainText(MODEL_NOTE_PREFIX);
     // Claude investigates first: score_pitches comes after three looks, one of them about the crowd.
     const order = await steps.getByTestId("agent-step").evaluateAll((els) => els.map((el) => el.getAttribute("data-tool")).filter(Boolean));
     expect(order.indexOf("score_pitches")).toBeGreaterThanOrEqual(3);

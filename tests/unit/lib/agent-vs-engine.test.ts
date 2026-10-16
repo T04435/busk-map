@@ -37,6 +37,14 @@ describe("Agent vs engine", () => {
     expect(agentVsEngineLines({ changes })[0]).toBe("#1: Claude picked B (engine #2, score 66) over A (engine #1, score 70).");
   });
 
+  it("names the test model, not Claude, when the mock model ran (B-010)", () => {
+    expect(agentVsEngineLines({ changes: [] }, "mock")).toEqual(["The test model kept the engine's top 3."]);
+    expect(agentVsEngineLines({ changes: [] }, "claude")).toEqual(["Claude kept the engine's top 3."]);
+    const changes = agentChanges(engineTop, [p("a", 70), p("b", 66), p("added", 55)], engineOrder, () => null);
+    expect(agentVsEngineLines({ changes }, "mock")).toEqual(["#3: The test model picked ADDED (added by the test model, score 55) over C (engine #3, score 64)."]);
+    expect(agentVsEngineLines({ changes }, "mock").join(" ")).not.toContain("Claude");
+  });
+
   it("takes the first sentence (abbreviations stay whole) and reads it after 'because'", () => {
     expect(firstSentence("It is 3.5 km away. Second.")).toBe("It is 3.5 km away.");
     expect(firstSentence("No full stop here")).toBe("No full stop here");

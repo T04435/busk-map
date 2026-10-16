@@ -27,6 +27,21 @@ export function explanationsLabel(plan: { explanations: "ai" | "template"; expla
   return plan.explanationsModel === "mock" ? "Explanations: test model (offline)" : "Explanations: Claude";
 }
 
+/**
+ * The model's name in running text (B-010): "Claude", or "the test model" when the offline mock model wrote it.
+ * `start` capitalises it for the start of a sentence; `label` is the short form before a note ("Test model: …").
+ * Null or missing (template text, older plans) counts as Claude, like explanationsLabel.
+ */
+export function modelName(model: ExplanationsModel | null | undefined, form: "inline" | "start" | "label" = "inline"): string {
+  if (model !== "mock") return "Claude";
+  return form === "inline" ? "the test model" : form === "start" ? "The test model" : "Test model";
+}
+
+/** The pitch card badge for AI-written explanations. */
+export function explainedByLabel(model: ExplanationsModel | null | undefined): string {
+  return model === "mock" ? `Explained by ${modelName(model)} (offline)` : `Explained by ${modelName(model)}`;
+}
+
 /** Whether to credit Claude in Data sources: only when Claude wrote the explanations. */
 export function creditsClaude(plan: { explanations: "ai" | "template"; explanationsModel?: ExplanationsModel | null }): boolean {
   return plan.explanations === "ai" && plan.explanationsModel !== "mock";

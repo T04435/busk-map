@@ -11,7 +11,7 @@ import { DiscoveryBadge, PitchCard } from "@/components/pitch-card/pitch-card";
 import { SetlistPanel } from "@/components/setlist/setlist-panel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { creditsClaude, explanationsLabel, QLOO_TEST_LABEL } from "@/lib/sources";
+import { creditsClaude, explanationsLabel, modelName, QLOO_TEST_LABEL, type ExplanationsModel } from "@/lib/sources";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +32,10 @@ import { WeightsPanel } from "./weights-panel";
 type RunState = { status: "idle" | "running" | "done" } | { status: "error"; message: string };
 
 /** What the header needs before the plan exists (agent-first: the plan arrives with the agent's answer). */
-type Heading = Pick<Plan, "cityName" | "slotLabel" | "permit" | "performerName" | "qlooMode">;
+type Heading = Pick<Plan, "cityName" | "slotLabel" | "permit" | "performerName" | "qlooMode"> & {
+  /** The model the agent runs on here: "mock" on the offline server. Names it in steps and notes until the plan says (B-010). */
+  model: ExplanationsModel;
+};
 
 type Props = {
   /** The engine's plan (run=0), or null when the agent brings the plan. */
@@ -66,11 +69,11 @@ const replayState = (replay: Props["replay"]) => {
 
 /** If a live run hasn't ended by now, show the engine's plan anyway (the agent itself times out at 90 s). */
 const AGENT_WAIT_MS = 110_000;
-const TEMPLATE_NOTE = "The reasons below are the template ones from the data, not Claude's.";
+const templateNote = (model: ExplanationsModel | null) => `The reasons below are the template ones from the data, not ${modelName(model)}'s.`;
 
-/** Agent vs engine: whether Claude kept the engine's top 3, or what it picked over what, and why. No design yet. */
-function AgentVsEngine({ agent }: { agent: NonNullable<Plan["agent"]> }) {
-  const lines = agentVsEngineLines(agent);
+/** Agent vs engine: whether the model kept the engine's top 3, or what it picked over what, and why. No design yet. */
+function AgentVsEngine({ agent, model }: { agent: NonNullable<Plan["agent"]>; model: ExplanationsModel | null }) {
+  const lines = agentVsEngineLines(agent, model);
   return (
     <div className="space-y-1 text-sm" data-testid="agent-vs-engine">
       <p className="font-medium">Agent vs engine</p>
@@ -85,7 +88,7 @@ function AgentVsEngine({ agent }: { agent: NonNullable<Plan["agent"]> }) {
           ))}
         </ul>
       )}
-      {agent.added.length > 0 && <p className="text-muted-foreground">Added by Claude and scored by the engine: {agent.added.join(", ")}.</p>}
+      {agent.added.length > 0 && <p className="text-muted-foreground">Added by {modelName(model)} and scored by the engine: {agent.added.join(", ")}.</p>}
     </div>
   );
 }
@@ -156,7 +159,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     // Whatever ends the run, a plan is shown: Claude's, or the engine's with a note.
     const fail = (message: string) => {
       setRun({ status: "error", message });
-      setFallbackNote(TEMPLATE_NOTE);
+      setFallbackNote(templateNote(heading.model));
       setRevealed(true);
       if (!hasPlan.current) showEnginePlan();
     };
@@ -197,7 +200,8 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
           if (event.type === "plan") {
             setPlan(event.plan);
             setRun({ status: "done" });
-            setFallbackNote(event.plan.explanations === "ai" ? null : `The agent couldn't add Claude's explanations. ${TEMPLATE_NOTE}`);
+            const by = event.plan.explanationsModel ?? heading.model;
+            setFallbackNote(event.plan.explanations === "ai" ? null : `The agent couldn't add ${modelName(by)}'s explanations. ${templateNote(by)}`);
             setRevealed(true);
             finished = true;
           } else if (event.type === "error") {
@@ -210,7 +214,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     } catch {
       fail("The planner is unavailable right now.");
     }
-  }, [faults, fresh, request, shareId, showEnginePlan]);
+  }, [faults, fresh, heading.model, request, shareId, showEnginePlan]);
 
   useEffect(() => {
     if (autoRun && !started.current) {
@@ -234,15 +238,17 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   useEffect(() => {
     if (!waiting) return;
     const timer = setTimeout(() => {
-      setFallbackNote(`The agent is taking too long, so this is the engine's plan. ${TEMPLATE_NOTE}`);
+      setFallbackNote(`The agent is taking too long, so this is the engine's plan. ${templateNote(heading.model)}`);
       setRevealed(true);
       if (!hasPlan.current) showEnginePlan();
     }, AGENT_WAIT_MS);
     return () => clearTimeout(timer);
-  }, [waiting, showEnginePlan]);
+  }, [waiting, showEnginePlan, heading.model]);
   // Before the run starts (first render, server and client alike) and while it runs, the plan is pending; so is a fallback plan still loading.
   const pending = !revealed || plan === null;
 
+  // Who wrote the notes and explanations: the plan says once it exists; until then, the model this server runs (B-010).
+  const model = plan?.explanationsModel ?? heading.model;
   const qlooDown = plan?.qlooFailed === true || (run.status === "error" && run.message.startsWith("Qloo"));
   const unmatched = qlooDown || !plan ? [] : plan.resolvedArtists.filter((a) => a.matched === null).map((a) => a.query);
   const matched = (plan?.resolvedArtists ?? []).filter((a) => a.matched !== null).map((a) => a.matched!);
@@ -337,12 +343,12 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
             {usage.reasoningTokens ? ` (${usage.reasoningTokens.toLocaleString("en-AU")} thinking)` : ""} · {(usage.ms / 1000).toFixed(1)} s
           </p>
         )}
-        {!pending && plan?.agent && <AgentVsEngine agent={plan.agent} />}
+        {!pending && plan?.agent && <AgentVsEngine agent={plan.agent} model={model} />}
         {run.status === "error" && !qlooDown ? (
           <Alert variant="destructive">
             <AlertTitle>The agent could not finish</AlertTitle>
             <AlertDescription>
-              {run.message} The plan below is the engine&apos;s, from the data. {TEMPLATE_NOTE}
+              {run.message} The plan below is the engine&apos;s, from the data. {templateNote(model)}
             </AlertDescription>
           </Alert>
         ) : (
@@ -363,11 +369,11 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-2">
-              <AgentSteps steps={steps} />
+              <AgentSteps steps={steps} model={model} />
             </CollapsibleContent>
           </Collapsible>
         ) : (
-          <AgentSteps steps={steps} />
+          <AgentSteps steps={steps} model={model} />
         )}
       </section>
 
@@ -494,7 +500,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
 
         {selected && !qlooDown && (
           <div className="grid gap-6 lg:grid-cols-2">
-            <PitchCard pitch={selected} rank={plan.pitches.indexOf(selected) + 1} />
+            <PitchCard pitch={selected} rank={plan.pitches.indexOf(selected) + 1} model={model} />
             <SetlistPanel pitch={selected} learnThese={plan.learnThese} ageLean={plan.ageLean} />
           </div>
         )}
@@ -514,7 +520,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
           <WeightsPanel weights={plan.weights} />
         </div>
 
-        {!qlooDown && <ComparePanel state={baseline} pitches={plan.pitches} />}
+        {!qlooDown && <ComparePanel state={baseline} pitches={plan.pitches} model={heading.model} />}
 
         <DataSources status={plan.dataStatus} showAi={creditsClaude(plan)} />
         </>

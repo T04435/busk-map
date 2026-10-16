@@ -74,6 +74,8 @@ export async function PlanScreen({ request, exampleId, adapters, autoRun, shareI
         permit: request.permit,
         performerName: request.performer.name,
         qlooMode: qlooMode(adapters),
+        // The agent runs the mock model offline (B-010).
+        model: adapters.offline ? "mock" : "claude",
       }}
       request={request}
       center={city.center}

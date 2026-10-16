@@ -5,6 +5,7 @@
  * page formats them (agentVsEngineLines).
  */
 import type { AgentChange } from "./plan-schema";
+import { modelName, type ExplanationsModel } from "./sources";
 
 type Pick = { id: string; name: string; score: number };
 
@@ -43,14 +44,16 @@ export function agentChanges(engineTop: Pick[], agentTop: Pick[], engineOrder: P
   });
 }
 
-const where = (p: AgentChange["pick"]) => (p.engineRank === null ? `added by Claude, score ${p.score}` : `engine #${p.engineRank}, score ${p.score}`);
-
-/** The line's text: one sentence when Claude kept the engine's top 3, else one line per changed position. */
-export function agentVsEngineLines(agent: { changes: AgentChange[] }): string[] {
-  if (agent.changes.length === 0) return ["Claude kept the engine's top 3."];
+/**
+ * The line's text: one sentence when the model kept the engine's top 3, else one line per changed position.
+ * `model` names who did it: Claude, or the test model offline (B-010).
+ */
+export function agentVsEngineLines(agent: { changes: AgentChange[] }, model?: ExplanationsModel | null): string[] {
+  const where = (p: AgentChange["pick"]) => (p.engineRank === null ? `added by ${modelName(model)}, score ${p.score}` : `engine #${p.engineRank}, score ${p.score}`);
+  if (agent.changes.length === 0) return [`${modelName(model, "start")} kept the engine's top 3.`];
   return agent.changes.map(
     (c) =>
-      `#${c.position}: Claude picked ${c.pick.name} (${where(c.pick)})` +
+      `#${c.position}: ${modelName(model, "start")} picked ${c.pick.name} (${where(c.pick)})` +
       (c.over ? ` over ${c.over.name} (${where(c.over)})` : "") +
       (c.reason ? ` because ${becauseClause(c.reason)}.` : "."),
   );

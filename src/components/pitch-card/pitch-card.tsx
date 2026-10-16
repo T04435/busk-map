@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EstimateLabel } from "@/components/plan/estimate-label";
 import type { PlanPitch } from "@/lib/plan-schema";
+import { explainedByLabel, type ExplanationsModel } from "@/lib/sources";
 import { venueDetail } from "@/lib/venue";
 
 const FACTOR_LABELS: Record<keyof PlanPitch["factors"], string> = {
@@ -34,7 +35,8 @@ export function DiscoveryBadge({ discovery, className }: { discovery: PlanPitch[
   return null;
 }
 
-export function PitchCard({ pitch, rank }: { pitch: PlanPitch; rank: number }) {
+/** `model`: who wrote an "ai" why, Claude or the test model offline (B-010). */
+export function PitchCard({ pitch, rank, model = null }: { pitch: PlanPitch; rank: number; model?: ExplanationsModel | null }) {
   return (
     <Card>
       <CardHeader>
@@ -47,7 +49,7 @@ export function PitchCard({ pitch, rank }: { pitch: PlanPitch; rank: number }) {
           <DiscoveryBadge discovery={pitch.discovery} />
           <Badge variant="secondary">{KIND_LABEL[pitch.kind]}</Badge>
           {pitch.amplification === "unamplified-zone" && <Badge variant="outline">Unamplified only</Badge>}
-          <Badge variant="outline">{pitch.whySource === "ai" ? "Explained by Claude" : "Explanation from the data"}</Badge>
+          <Badge variant="outline">{pitch.whySource === "ai" ? explainedByLabel(model) : "Explanation from the data"}</Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4 text-sm">

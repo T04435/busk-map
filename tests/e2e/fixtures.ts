@@ -7,6 +7,10 @@ export const LOCAL = !process.env.PLAYWRIGHT_BASE_URL;
 export const EXPLANATIONS_LABEL = LOCAL ? "Explanations: test model (offline)" : "Explanations: Claude";
 /** The Data sources credit for Claude, shown only when Claude wrote the explanations. */
 export const CLAUDE_CREDIT = "Plan explanations written by Claude (Anthropic) via Vercel AI Gateway";
+/** Who the page says wrote the notes, picks and whys (B-010): the test model on the local offline server, Claude on a deploy. */
+export const MODEL_NOTE_PREFIX = LOCAL ? "Test model:" : "Claude:";
+export const AGENT_KEPT_TOP3 = `${LOCAL ? "The test model" : "Claude"} kept the engine's top 3.`;
+export const EXPLAINED_BY = LOCAL ? "Explained by the test model (offline)" : "Explained by Claude";
 
 export const test = base;
 export { expect };

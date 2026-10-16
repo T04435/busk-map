@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { baselineViewSchema, type BaselineView, type PlanPitch, type PlanRequest } from "@/lib/plan-schema";
+import { modelName, type ExplanationsModel } from "@/lib/sources";
 
 export type BaselineState = { status: "loading" } | { status: "done"; baseline: BaselineView } | { status: "unavailable"; message: string };
 
@@ -72,7 +73,9 @@ function evidenceLines(pitch: Pitch): string[] {
  * plain AI (with Busk Map's own score for the spot where it can score it).
  * Agreement is a badge only: the baseline never changes a score.
  */
-export function ComparePanel({ state, pitches }: { state: BaselineState; pitches: Pitch[] }) {
+/** `model`: the model this server runs; offline the plain AI is the test model, not Claude Haiku (B-010). */
+export function ComparePanel({ state, pitches, model = null }: { state: BaselineState; pitches: Pitch[]; model?: ExplanationsModel | null }) {
+  const mock = state.status === "done" ? state.baseline.model === "mock" : model === "mock";
   return (
     <Card>
       <CardHeader>
@@ -80,7 +83,7 @@ export function ComparePanel({ state, pitches }: { state: BaselineState; pitches
           <h2>Busk Map vs a plain AI</h2>
         </CardTitle>
         <CardDescription>
-          The same question (your act, songs, city, day and slot) sent to Claude Haiku with no tools and no data: no Qloo, no sensors, no rules.
+          The same question (your act, songs, city, day and slot) sent to {mock ? `${modelName("mock")} (offline)` : "Claude Haiku"} with no tools and no data: no Qloo, no sensors, no rules.
           It runs alongside every plan as a control and never changes a score.
         </CardDescription>
       </CardHeader>

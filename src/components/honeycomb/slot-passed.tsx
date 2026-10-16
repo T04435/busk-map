@@ -20,8 +20,8 @@ export function SlotPassed({ slotLabel, againHref, alone = false }: { slotLabel:
         <h2 className="m-0 font-display text-[28px] leading-none font-extrabold uppercase">This slot has passed</h2>
         <p className="m-0">
           {alone
-            ? `This plan was for ${slotLabel}. There's no stored research for this busk. Plan again with the same act for a new date.`
-            : `This plan was for ${slotLabel}. Foot traffic, events and weather were for that day. It is shown as it was.`}
+            ? "There's no stored research for this busk. Plan again with the same act for a new date."
+            : "This busk was for a time that's gone, so it's shown as it was. Plan again with the same act for a new date."}
         </p>
         <div>
           <Button asChild variant="outline">

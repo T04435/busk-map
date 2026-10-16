@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/honeycomb/page-header";
 import { SlotPassed } from "@/components/honeycomb/slot-passed";
 import { PlanScreen, PlanSkeleton } from "@/components/plan/plan-screen";
-import { describeSlot } from "@/lib/slot";
+import { shortDay, shortHours, slotEyebrow } from "@/lib/slot";
 import { TIP_COOKIE } from "@/lib/tips";
 import { CITIES } from "@/server/cities";
 import { freshRunsAllowed, loadStoredPlan, slotPassed, snapshotEvents, snapshotFor, viewerRequest } from "@/server/plans";
@@ -55,12 +55,12 @@ async function ShortPlan({ params, searchParams }: Pick<PageProps<"/p/[id]">, "p
   const snapshot = fresh || engineOnly || testFaults.length > 0 ? null : snapshotFor(stored, request, adapters.offline);
   const passed = slotPassed(request.slot, city.timeZone);
   const againHref = `/busks?again=${stored.id}`;
-  const slotLabel = describeSlot(request.slot);
+  const slotLabel = `${shortDay(request.slot.date)} · ${shortHours(request.slot.startHour, request.slot.endHour)}`;
 
   if (passed && !snapshot) {
     return (
       <div className="space-y-6">
-        <PageHeader meta={`${city.name} · ${slotLabel} · ${request.permit} permit`} title={request.performer.name} />
+        <PageHeader meta={`Shared busk · ${slotEyebrow(request.slot, request.permit)}`} title={request.performer.name} />
         <SlotPassed slotLabel={slotLabel} againHref={againHref} alone />
       </div>
     );

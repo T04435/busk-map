@@ -126,7 +126,7 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     await expect(page).toHaveURL(SHORT);
     const note = page.getByTestId("slot-passed");
     await expect(note).toContainText("This slot has passed");
-    await expect(note).toContainText("Saturday 2026-10-03, 12 pm–3 pm");
+    await expect(note).toContainText("Sat 3 Oct · 12–3 pm");
     expect(agentCalls).toEqual([]);
     await note.getByRole("link", { name: "Plan again for a new date" }).click();
     await expect(page).toHaveURL(/\/busks\?again=[0-9A-Za-z]{9}$/);

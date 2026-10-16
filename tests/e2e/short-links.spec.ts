@@ -130,5 +130,37 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     expect(Object.keys(totals ?? {}).sort()).toEqual(["crowds", "events", "places", "rules", "scored", "sensors", "songs", "taste"]);
     for (const value of Object.values(totals!)) expect(Number.isInteger(value) && value >= 0).toBe(true);
     expect(totals!.scored).toBeGreaterThan(0);
+
+    // Live: a totals event after every tool-end, never decreasing, and the last one (right before the plan) is the plan's.
+    const types = events.map((e) => e.type);
+    types.forEach((t, i) => t === "tool-end" && expect(types[i + 1]).toBe("totals"));
+    const running = events.filter((e): e is { type: "totals"; totals: Record<string, number> } => e.type === "totals").map((e) => e.totals);
+    expect(running.length).toBeGreaterThan(1);
+    for (let i = 1; i < running.length; i++) for (const k of Object.keys(totals!)) expect(running[i][k]).toBeGreaterThanOrEqual(running[i - 1][k]);
+    expect(types.at(-2)).toBe("totals");
+    expect(running.at(-1)).toEqual(totals);
+
+    // A replay of the same request re-emits the totals and ends on the same numbers.
+    const again = (await (await request.post("/api/plan", { data: body })).text())
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as { type: string; replay?: boolean; totals?: Record<string, number>; plan?: { researchTotals?: Record<string, number> } });
+    expect(again.some((e) => e.type === "status" && e.replay)).toBe(true);
+    expect(again.filter((e) => e.type === "totals").map((e) => e.totals)).toEqual(running);
+    expect(again.find((e) => e.type === "plan")?.plan?.researchTotals).toEqual(totals);
+  });
+
+  test("an engine-only plan emits one totals event before the plan (mock mode)", async ({ request }) => {
+    // Qloo matches no artist: the agent isn't run, the engine's plan is served.
+    const body = { city: "melbourne", slot: { date: SATURDAY, startHour: 18, endHour: 21 }, performer: { name: "Engine Only", artists: ["Zzqx Nobody Matches"] } };
+    const events = (await (await request.post("/api/plan", { data: body })).text())
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as { type: string; totals?: Record<string, number>; plan?: { researchTotals?: Record<string, number> } });
+    const totals = events.filter((e) => e.type === "totals");
+    expect(events.some((e) => e.type === "tool-end")).toBe(false);
+    expect(totals).toHaveLength(1);
+    expect(events.map((e) => e.type).at(-2)).toBe("totals");
+    expect(totals[0].totals).toEqual(events.find((e) => e.type === "plan")?.plan?.researchTotals);
   });
 });

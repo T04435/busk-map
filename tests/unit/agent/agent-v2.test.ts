@@ -261,4 +261,23 @@ describe("Agent v2 runs (mock model)", () => {
     const engineOnly = await buildEnginePlan(request, OFFLINE, "2026-10-15");
     expect(engineOnly.researchTotals).toEqual(fallback.researchTotals);
   });
+
+  it("running totals after each tool-end never decrease, and the last one is the plan's stored totals", async () => {
+    const { ctx, runPlanAgent, createMockPlanner } = await load();
+    const seen: string[] = [];
+    const totals: Record<string, number>[] = [];
+    const { plan } = await runPlanAgent(
+      ctx,
+      { onToolEnd: () => seen.push("end"), onTotals: (t) => (seen.push("totals"), totals.push(t)) },
+      undefined,
+      { model: createMockPlanner() },
+    );
+    expect(plan.explanations).toBe("ai");
+    // One totals event right after each tool-end.
+    expect(seen.length).toBeGreaterThan(4);
+    expect(seen).toEqual(seen.map((_, i) => (i % 2 === 0 ? "end" : "totals")));
+    for (let i = 1; i < totals.length; i++) for (const k of Object.keys(totals[i])) expect(totals[i][k]).toBeGreaterThanOrEqual(totals[i - 1][k]);
+    expect(totals.at(-1)).toEqual(plan.researchTotals);
+    expect(totals[0]).not.toEqual(totals.at(-1));
+  });
 });

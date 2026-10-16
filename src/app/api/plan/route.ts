@@ -79,6 +79,7 @@ export async function POST(request: Request) {
           onNote: (e) => run.push({ type: "note", ...e }),
           onToolStart: (e) => run.push({ type: "tool-start", ...e }),
           onToolEnd: (e) => run.push({ type: "tool-end", ...e }),
+          onTotals: (totals) => run.push({ type: "totals", totals }),
         },
         signal,
       );
@@ -86,6 +87,8 @@ export async function POST(request: Request) {
       // Only Claude's plans are replayed: a plan whose reasons fell back to templates is retried on the next view.
       if (plan.explanations !== "ai") run.noReplay = true;
       if (usage) run.push({ type: "usage", ...usage });
+      // The plan's own totals last (an engine-only plan's only totals event), so the stream ends on the stored numbers.
+      if (plan.researchTotals) run.push({ type: "totals", totals: plan.researchTotals });
       run.push({ type: "plan", plan });
       if (agentTop && adapters.faults.length === 0) {
         // Engine-only top 3 vs Claude's, on the plan's comparison row (the baseline fills in the plain AI's picks).

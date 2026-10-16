@@ -22,6 +22,16 @@ export const RUN_TTL_MS = 15 * 60_000;
 export const EXAMPLE_RUN_TTL_MS = 6 * 60 * 60_000;
 const MAX_RUNS = 50;
 
+/** The events with a totals event right before the plan (runs stored before totals events existed get one from the plan). */
+export function withFinalTotals(events: PlanStreamEvent[]): PlanStreamEvent[] {
+  const at = events.findIndex((e) => e.type === "plan");
+  const planEvent = at < 0 ? undefined : events[at];
+  // Stored data is read defensively: a malformed plan event gets no totals.
+  const totals = planEvent?.type === "plan" ? planEvent.plan?.researchTotals : undefined;
+  if (!totals || events[at - 1]?.type === "totals") return events;
+  return [...events.slice(0, at), { type: "totals", totals }, ...events.slice(at)];
+}
+
 type Follower = { onEvent: (event: PlanStreamEvent) => void; onDone: () => void };
 
 export class AgentRun {
@@ -31,7 +41,7 @@ export class AgentRun {
   /** A finished run rebuilt from the plan store, for replay. */
   static replay(events: PlanStreamEvent[], startedAt: number, finishedAt: number): AgentRun {
     const run = new AgentRun();
-    run.events.push(...events);
+    run.events.push(...withFinalTotals(events));
     run.startedAt = startedAt;
     run.finishedAt = finishedAt;
     run.ok = true;

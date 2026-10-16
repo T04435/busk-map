@@ -300,6 +300,11 @@ export const planStreamEventSchema = z.discriminatedUnion("type", [
     ms: z.number().int(),
     stoppedBy: z.string(),
   }),
+  /**
+   * Running research totals (the ResearchFunnel): sent after each tool-end, counted over the finished tool calls so far
+   * (lib/research-totals.ts), and once more before the plan with the plan's own researchTotals.
+   */
+  z.object({ type: z.literal("totals"), totals: researchTotalsSchema }),
   z.object({ type: z.literal("plan"), plan: planSchema }),
   z.object({ type: z.literal("error"), code: z.string(), message: z.string() }),
 ]);

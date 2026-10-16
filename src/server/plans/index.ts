@@ -6,6 +6,7 @@ import type { ParsedPlanUrl } from "@/lib/plan-url";
 import { localToday, slotUtcRange, type Slot } from "@/lib/slot";
 import { historyFromCookie, performerKeyFor } from "@/lib/tips";
 import { planKey } from "@/server/agent/plan-store";
+import { withFinalTotals } from "@/server/agent/runs";
 import { CITIES } from "@/server/cities";
 import { testSwitches } from "@/server/env";
 import { log } from "@/server/log";
@@ -98,7 +99,8 @@ export function snapshotFor(stored: StoredPlan, request: PlanRequest, offline: b
 
 /** The snapshot's events as a replay stream (the plan event last). */
 export function snapshotEvents(s: PlanSnapshot): PlanStreamEvent[] {
-  return [...s.events, { type: "plan", plan: s.plan }];
+  // A snapshot stored before the totals events still ends on the plan's totals, when the plan has them.
+  return withFinalTotals([...s.events, { type: "plan", plan: s.plan }]);
 }
 
 /** Whether the slot has ended (city time). */

@@ -169,4 +169,23 @@ describe("retention: strip raw step data after 7 days", () => {
     expect(queries[0]).toMatch(/^UPDATE plans SET steps = /);
     expect(queries[0]).not.toMatch(/\bplan\s*=/);
   });
+
+  it("replays end on the plan's totals: stored totals events are kept, older runs and snapshots get one before the plan", async () => {
+    const { snapshotEvents } = await load();
+    const { withFinalTotals } = await import("@/server/agent/runs");
+    const researchTotals = { taste: 51, crowds: 2, places: 3, events: 2, sensors: 2, rules: 24, scored: 22, songs: 3 };
+    const plan = { pitches: [], researchTotals } as unknown as Plan;
+    const live: PlanStreamEvent[] = [events[2], events[3], { type: "totals", totals: { ...researchTotals, scored: 0, rules: 0 } }, { type: "totals", totals: researchTotals }];
+    // New runs: unchanged, every totals event replayed.
+    expect(withFinalTotals([...live, { type: "plan", plan }])).toEqual([...live, { type: "plan", plan }]);
+    // Runs stored before totals events existed: one final totals event before the plan.
+    const old = withFinalTotals([...events, { type: "plan", plan }]);
+    expect(old.slice(-2)).toEqual([{ type: "totals", totals: researchTotals }, { type: "plan", plan }]);
+    const snap = { plan, events, explanations: "ai" as const, runKey: "k", runDay: "d", startedAt: 1, finishedAt: 2 };
+    expect(snapshotEvents(snap).slice(-2)).toEqual([{ type: "totals", totals: researchTotals }, { type: "plan", plan }]);
+    expect(snapshotEvents({ ...snap, events: live }).filter((e) => e.type === "totals")).toHaveLength(2);
+    // A plan stored before research totals: nothing invented.
+    const bare = { pitches: [] } as unknown as Plan;
+    expect(withFinalTotals([...events, { type: "plan", plan: bare }]).some((e) => e.type === "totals")).toBe(false);
+  });
 });

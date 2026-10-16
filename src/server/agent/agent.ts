@@ -2,7 +2,7 @@ import "server-only";
 import { ToolLoopAgent, type LanguageModel, type StopCondition } from "ai";
 import { describeSlot } from "@/lib/slot";
 import type { Plan } from "@/lib/plan-schema";
-import type { ToolResult } from "@/lib/research-totals";
+import { fromToolOutputs, type ResearchTotals, type ToolResult } from "@/lib/research-totals";
 import { providerStatus } from "@/server/env";
 import { log } from "@/server/log";
 import { assemblePlan } from "./assemble";
@@ -72,6 +72,8 @@ export type AgentEvents = {
   onNote?: (event: { kind: "reasoning" | "text"; text: string }) => void;
   onToolStart?: (event: { id: string; tool: string; label: string; source?: string; input: unknown }) => void;
   onToolEnd?: (event: { id: string; tool: string; ok: boolean; summary: string; output: unknown }) => void;
+  /** Running research totals over the finished tool calls so far, after each tool-end. */
+  onTotals?: (totals: ResearchTotals) => void;
 };
 
 export type Usage = {
@@ -212,12 +214,14 @@ export async function runPlanAgent(ctx: PlanContext, events: AgentEvents = {}, a
           const ok = part.toolName !== "finish_plan" || output?.accepted === true;
           toolResults.push({ tool: part.toolName, ok, output: part.output });
           events.onToolEnd?.({ id: part.toolCallId, tool: part.toolName, ok, summary: typeof output?.summary === "string" ? output.summary : "Done", output: part.output });
+          events.onTotals?.(fromToolOutputs(toolResults));
           break;
         }
         case "tool-error": {
           const message = part.error instanceof Error ? part.error.message : String(part.error);
           toolResults.push({ tool: part.toolName, ok: false });
           events.onToolEnd?.({ id: part.toolCallId, tool: part.toolName, ok: false, summary: message.slice(0, 300), output: { error: message.slice(0, 600) } });
+          events.onTotals?.(fromToolOutputs(toolResults));
           break;
         }
         case "finish-step":

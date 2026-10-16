@@ -54,7 +54,8 @@ test.describe("QA decided rules", () => {
     expect(scoreAt, `tool order: ${tools.join(", ")}`).toBeGreaterThanOrEqual(3);
 
     await page.goto("/plan?example=acoustic");
-    await expect(page.getByText("Agent vs engine")).toBeVisible();
+    // Honeycomb S3: "Agent vs engine" is now only a small mono label above the plan's verdict sentence.
+    await expect(page.getByText("Agent vs engine", { exact: true })).toBeVisible();
   });
 
   for (const example of ["acoustic", "sax", "folk-duo"]) {
@@ -80,7 +81,8 @@ test.describe("QA judge paths", () => {
     for (const credit of ["Taste data by Qloo", "© OpenStreetMap contributors", "Ticketmaster", "Open-Meteo", "Last.fm"]) {
       await expect(page.getByText(credit).first()).toBeVisible();
     }
-    await expect(page.getByText("Busk Map never confirms a pitch is legal").first()).toBeVisible();
+    // In the plan's pitch list, not just the site footer (which carries the same caution).
+    await expect(page.getByRole("region", { name: "Pitches", exact: true }).getByText(/^Busk Map never confirms a pitch is legal/)).toBeVisible();
   });
 
   test("J-5: an unknown URL is a real 404 with a way home", async ({ page }) => {
@@ -107,7 +109,7 @@ test.describe("QA regressions for fixed defects", () => {
     await form.getByLabel("Act name").fill("QA Synthetic Pick");
     await form.getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Qa Nobody Band");
     await page.getByRole("option", { name: /Qa Nobody Band \(synthetic\)/ }).click();
-    await form.getByRole("button", { name: "Plan my set" }).click();
+    await form.getByRole("button", { name: "Plan my busk" }).click();
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/, { timeout: 10_000 });
   });
 
@@ -121,6 +123,7 @@ test.describe("QA regressions for fixed defects", () => {
   test("B-002: a higher-scored pitch left out of the top 3 says why", async ({ page }) => {
     await page.goto("/plan?example=acoustic");
     await expect(page.getByRole("region", { name: "Pitches", exact: true })).toBeVisible();
-    await expect(page.getByText(/250 m/).first()).toBeVisible();
+    // Honeycomb S3: the other-pitches list became map dots; the rule is stated under the pitch list.
+    await expect(page.getByTestId("others-note")).toContainText("The top 3 are kept 250 m apart.");
   });
 });

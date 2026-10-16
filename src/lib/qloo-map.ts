@@ -450,7 +450,7 @@ export const features: readonly Feature[] = [
 /** Planned, not built (docs/qloo-data-map.md §3). Only items with built: false. */
 export const next: readonly NextItem[] = [
   { id: "genre-signals", label: "Taste from genres as well as artists, for the taste map", built: false },
-  { id: "genre-search", label: "Searching Qloo’s genre list directly (/v2/tags)", built: false },
+  { id: "genre-search", label: "Searching Qloo’s genre list directly", built: false },
   { id: "nearest-locality", label: "A nearest-neighbourhood retry when a city area comes back empty", built: false },
 ];
 

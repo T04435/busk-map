@@ -39,7 +39,7 @@ test.describe("landing, as the deck draws it", () => {
     await expect(cards).toHaveCount(3);
     await expect(cards.nth(0)).toContainText("Saturday · 6–9 pm");
     await expect(cards.nth(0)).toContainText("Sounds like Paul Kelly, Courtney Barnett, Vance Joy");
-    await expect(cards.nth(0)).toContainText("Plays How to Make Gravy, Dumb Things, Depreston");
+    await expect(cards.nth(0)).toContainText("Plays How to Make Gravy, Depreston, Riptide");
     await expect(cards.nth(1)).toContainText("Friday · 5–8 pm");
     await expect(cards.nth(2)).toContainText("Sunday · 12–3 pm");
     await expect(cards.nth(2)).toContainText("Plays Big Jet Plane, Bloom, The Boxer");

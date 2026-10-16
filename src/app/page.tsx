@@ -142,6 +142,7 @@ export default function Home() {
                 {/* No prefetch (ExampleActCard): each click makes a new plan link and starts a fresh agent run (presets are inputs only). */}
                 <ExampleActCard
                   name={example.label}
+                  monogram={example.monogram}
                   when={exampleWhen(example)}
                   soundsLike={example.performer.artists.slice(0, 3).join(", ")}
                   plays={examplePlays(example)}

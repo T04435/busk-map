@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MAX_SONGS } from "@/server/playlist/config";
-import { MemoryPlaylistStore, PostgresPlaylistStore, toPlaylistView, type PlaylistStore } from "@/server/playlist/store";
+import { MemoryPlaylistStore, PostgresPlaylistStore, sweepExpiredLazily, toPlaylistView, type PlaylistStore } from "@/server/playlist/store";
 import { hashToken, newToken } from "@/server/playlist/token";
 
 const song = (n: number | string, extra: object = {}) => ({ title: `Song ${n}`, artist: "Artist", own: false, source: "typed" as const, ...extra });
@@ -198,6 +198,23 @@ describe("PostgresPlaylistStore SQL shape", () => {
     expect(f.calls[0].text).toMatch(/DELETE FROM playlists WHERE id = \$1/);
     expect(await f.store.sweepExpired()).toBe(2);
     expect(f.calls[1].text).toMatch(/DELETE FROM playlists WHERE last_seen_at </);
+  });
+
+  it("sweeps expired Repertoires lazily: on a read, at most once an hour, never throwing", async () => {
+    const store = new MemoryPlaylistStore();
+    const old = await store.create(hashToken(newToken()));
+    const t0 = Date.now() + 1000 * DAY; // far enough ahead that this process has not swept within the hour
+    expect(await sweepExpiredLazily(store, t0 + 400 * DAY)).toBe(1);
+    expect(await store.get(old.id)).toBeNull();
+    // A second call inside the hour does nothing, even with another expired row.
+    const another = await store.create(hashToken(newToken()));
+    expect(await sweepExpiredLazily(store, t0 + 400 * DAY + 60_000)).toBe(0);
+    expect(await store.get(another.id)).not.toBeNull();
+    expect(await sweepExpiredLazily(store, t0 + 400 * DAY + 2 * 60 * 60_000)).toBe(1); // an hour on, the next read sweeps again
+    // A failing store is swallowed and retried next time.
+    const broken = { sweepExpired: async () => { throw new Error("db down"); } } as unknown as PlaylistStore;
+    expect(await sweepExpiredLazily(broken, t0 + 800 * DAY)).toBe(0);
+    expect(await sweepExpiredLazily(store, t0 + 800 * DAY + 1)).toBe(0);
   });
 
   it("creates storing only the hash", async () => {

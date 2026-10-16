@@ -62,6 +62,24 @@ export interface PlaylistStore {
 const MONTH_MS = 30 * 24 * 60 * 60_000;
 const expiryCutoff = (now: number) => now - PLAYLIST_EXPIRY_MONTHS * MONTH_MS;
 
+const sweeps = processMap<"last", number>("playlist-expiry-sweeps");
+
+/**
+ * The expiry sweep, lazily: at most once an hour per server process (the same cadence as the last-seen touch), whoever
+ * reads first. Called from the Learn list read as well as from create, so a quiet site still cleans up. Never throws.
+ */
+export async function sweepExpiredLazily(store: PlaylistStore, now = Date.now()): Promise<number> {
+  const last = sweeps.get("last");
+  if (last !== undefined && now - last < TOUCH_INTERVAL_MS) return 0;
+  sweeps.set("last", now);
+  try {
+    return await store.sweepExpired(now);
+  } catch {
+    sweeps.delete("last");
+    return 0;
+  }
+}
+
 export function toSongView(song: StoredSong): PlaylistSongView {
   const { songKey: _key, addedAt, ...rest } = song; // eslint-disable-line @typescript-eslint/no-unused-vars
   return { ...rest, addedAt: new Date(addedAt).toISOString() };

@@ -5,6 +5,7 @@ import { LearnRun, registerLearnRun } from "@/server/learn/runs";
 import { learnStore } from "@/server/learn/store";
 import { testSwitches } from "@/server/env";
 import { log } from "@/server/log";
+import { sweepExpiredLazily } from "@/server/playlist/store";
 import { ensureExisting, isResponse, json, readSession } from "@/server/playlist/api";
 import { LEARN_MAX_PENDING, LEARN_MIN_SONGS, LEARN_WINDOW_MINUTES } from "@/server/playlist/config";
 import { learnRunGate } from "@/server/rate-limit";
@@ -23,6 +24,8 @@ export async function GET(request: Request) {
   if (isResponse(session)) return session;
   if (!session.playlist) return json(emptyLearnList());
   try {
+    // Expired Repertoires go on a read too, not only on create (at most once an hour per process).
+    await sweepExpiredLazily(session.store);
     return json(await learnListView(learnStore(testSwitches().offline, session.store), session.playlist.id, Date.now(), limitsExempt()));
   } catch {
     return json({ error: { code: "unavailable", message: PLAYLIST_COPY.learn.errors.unavailable } }, { status: 503 });

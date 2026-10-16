@@ -154,6 +154,54 @@ try {
   }
   check("a second running run is refused by learn_runs_one_running", second !== null);
   await sql.query("DELETE FROM learn_runs WHERE playlist_id = $1 AND number = 9", [playlistId]);
+
+  // 9. Step pruning: steps are kept for the last 5 runs (by number) and 30 days. The rows are backdated on the dev branch,
+  //    which also frees the hourly allowance. Run D's start and finish prune.
+  await sql.query("UPDATE learn_runs SET started_at = started_at - interval '2 hours', finished_at = finished_at - interval '2 hours' WHERE playlist_id = $1", [playlistId]);
+  for (const n of [11, 12, 13, 14, 15]) {
+    await sql.query(
+      `INSERT INTO learn_runs (playlist_id, number, status, model, inputs, steps, started_at, finished_at) VALUES ($1, $2, 'done', 'mock', '{}'::jsonb, '[]'::jsonb, now() - interval '2 hours', now() - interval '2 hours')`,
+      [playlistId, n],
+    );
+  }
+  // Number 21 is within the last 5 by number, so only its age (40 days) can prune it.
+  await sql.query(
+    `INSERT INTO learn_runs (playlist_id, number, status, model, inputs, steps, started_at, finished_at) VALUES ($1, 21, 'done', 'mock', '{}'::jsonb, '[]'::jsonb, now() - interval '40 days', now() - interval '40 days')`,
+    [playlistId],
+  );
+  const d = await call("POST", "/api/playlist/learn", {});
+  const dEnd = ndjson(d).at(-1);
+  check("run D (after backdating) streams to an ok end and is numbered 22", d.status === 200 && dEnd.type === "end" && dEnd.ok === true, `${d.status}`);
+  const withSteps = (await sql.query("SELECT number FROM learn_runs WHERE playlist_id = $1 AND steps IS NOT NULL ORDER BY number", [playlistId])).map((r) => r.number);
+  check("step pruning keeps only the last 5 runs: 2, 3, 11, 12 lose their steps", withSteps.every((n) => n >= 13) && !withSteps.includes(2) && !withSteps.includes(11), `steps kept on ${withSteps.join(",")}`);
+  check("step pruning drops steps older than 30 days even inside the last 5 (run 21)", !withSteps.includes(21), `steps kept on ${withSteps.join(",")}`);
+  check("the newest runs keep their steps (13, 14, 15, 22)", [13, 14, 15, 22].every((n) => withSteps.includes(n)), `steps kept on ${withSteps.join(",")}`);
+  const [{ n: rowsKept }] = await sql.query("SELECT count(*)::int AS n FROM learn_runs WHERE playlist_id = $1 AND number IN (2, 3, 11, 12, 21)", [playlistId]);
+  check("pruned runs keep their rows (only steps go)", rowsKept === 5, `${rowsKept}`);
+  const pruned = await call("GET", `/api/playlist/learn/runs/${runA.runId}/events`);
+  const prunedEvents = ndjson(pruned);
+  check("replay of a pruned run still works: stepsKept false, no step events, the end and its suggestions", pruned.status === 200 && prunedEvents[0]?.stepsKept === false && !prunedEvents.some((e) => e.type === "tool-start" || e.type === "tool-end" || e.type === "note") && prunedEvents.at(-1)?.type === "end", `${pruned.status}, ${prunedEvents.length} events`);
+
+  // 10. The 400-suggestion cap: past it the OLDEST dismissed rows go and their keys move to dismissed_keys.
+  await sql.query(
+    `INSERT INTO learn_suggestions (playlist_id, song_key, title, artist, song_source, reason, evidence, status, dismissed_at)
+     SELECT $1::uuid, 'smoke cap ' || g || '|smoke', 'Smoke ' || g, 'Smoke', 'plan', 'cap test', '{}'::jsonb, 'dismissed', now() - (g || ' minutes')::interval
+       FROM generate_series(1, 405) g`,
+    [playlistId],
+  );
+  const [{ n: beforeCap }] = await sql.query("SELECT count(*)::int AS n FROM learn_suggestions WHERE playlist_id = $1", [playlistId]);
+  const e = await call("POST", "/api/playlist/learn", {});
+  const eEnd = ndjson(e).at(-1);
+  check("run E streams to an ok end", e.status === 200 && eEnd.type === "end" && eEnd.ok === true, `${e.status}, ${eEnd.newCount} new`);
+  const [{ n: afterCap }] = await sql.query("SELECT count(*)::int AS n FROM learn_suggestions WHERE playlist_id = $1", [playlistId]);
+  const [{ keys: movedKeys }] = await sql.query("SELECT dismissed_keys AS keys FROM playlists WHERE id = $1", [playlistId]);
+  check("the cap holds: 400 suggestions after the run", afterCap === 400, `${beforeCap} before, ${eEnd.newCount} new, ${afterCap} after`);
+  check("the dropped rows' keys moved to dismissed_keys (one each, none lost)", movedKeys.length === beforeCap + eEnd.newCount - 400, `${movedKeys.length} keys`);
+  const [{ n: stillThere }] = await sql.query("SELECT count(*)::int AS n FROM learn_suggestions WHERE playlist_id = $1 AND song_key = ANY ($2::text[])", [playlistId, movedKeys]);
+  check("no moved key is still a suggestion row", stillThere === 0);
+  check("the oldest dismissed went first (the highest minute offsets)", movedKeys.includes("smoke cap 405|smoke") && !movedKeys.includes("smoke cap 1|smoke"));
+  const [{ n: keptLearned }] = await sql.query("SELECT count(*)::int AS n FROM learn_suggestions WHERE playlist_id = $1 AND status IN ('learned', 'pending')", [playlistId]);
+  check("pending and learned rows are never trimmed", keptLearned >= 1, `${keptLearned}`);
 } finally {
   // Cleanup: the forget route first (it exercises the cascade), then a sweep by id.
   if (cookie) {
@@ -173,7 +221,7 @@ try {
     check("forget cascades: no playlists, songs, runs or suggestions left", before.p + before.s + before.r + before.g === 0, JSON.stringify(before));
     if (before.p + before.s + before.r + before.g > 0) await sql.query("DELETE FROM playlists WHERE id = $1", [playlistId]);
     const after = await left();
-    console.log(`cleanup: rows left for the smoke Repertoire: ${after.p + after.s + after.r + after.g}`);
+    check("cleanup leaves 0 rows for the smoke Repertoire", after.p + after.s + after.r + after.g === 0, JSON.stringify(after));
   }
 }
 console.log(failures === 0 ? "\nAll checks passed." : `\n${failures} check(s) FAILED.`);

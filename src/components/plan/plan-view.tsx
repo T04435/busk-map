@@ -20,7 +20,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FRESH_HEADER, PLAN_ID_HEADER } from "@/lib/plan-id";
 import { planStreamEventSchema, type Plan, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
-import { weekSearchParams } from "@/lib/week-url";
 import { agentVsEngineLines } from "@/lib/agent-vs-engine";
 import { AgentSteps, applyStreamEvent, type AgentStep, type RunUsage } from "./agent-steps";
 import { CopyLink } from "./copy-link";
@@ -281,17 +280,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
           )}
         </div>
         <p className="flex flex-wrap gap-x-4 text-sm">
-          {/* No prefetch: prefetching /week builds a whole week plan on every plan view, about N+2 Qloo calls (one artist lookup per act artist, one heatmap, one places; docs/qloo-data-map.md). */}
-          <Link
-            className="underline"
-            prefetch={false}
-            href={`/week?${weekSearchParams(
-              { city: request.city, permit: request.permit, performer: request.performer, startDate: request.slot.date, limits: { maxSessions: 5, maxPerDay: 1, unavailable: [] }, weights: request.weights },
-              exampleId,
-            )}`}
-          >
-            Plan my week instead
-          </Link>
           <Link className="underline" href="/repertoire">
             {PLAYLIST_COPY.link}
           </Link>

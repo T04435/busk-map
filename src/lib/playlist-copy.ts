@@ -50,7 +50,7 @@ export const PLAYLIST_COPY = {
   forgotten: "Your Repertoire was deleted.",
   loading: "Loading your Repertoire…",
 
-  // On the busk form, the week page and the plan (S2)
+  // On the busk form and the plan (S2)
   mineWithCount: (n: number) => `${USE_MINE} (${n} ${n === 1 ? "song" : "songs"})`,
   fromRepertoire: "From your Repertoire",
   editedHint: "Changes below are for this busk only until you save them.",
@@ -62,7 +62,6 @@ export const PLAYLIST_COPY = {
   addedToLearn: "Added to Songs you should learn.",
   addedFromPlans: "Added from plans",
   adding: "Adding…",
-  weekToggleHint: "Plan the week with your Repertoire's songs and artists.",
 
   // Friendly errors
   errors: {

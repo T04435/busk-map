@@ -19,7 +19,6 @@ import { planSearchParams } from "@/lib/plan-url";
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import type { PlaylistView } from "@/lib/playlist-schema";
 import { draftOf, repertoireDraft, sameDraft } from "@/lib/repertoire-prefill";
-import { weekSearchParams } from "@/lib/week-url";
 import { formatHour } from "@/lib/slot";
 import { formatDuration } from "@/lib/live-search";
 import { ArtistPicker, typedArtists, type PickedArtist } from "./artist-picker";
@@ -210,7 +209,6 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const target = (event.nativeEvent as SubmitEvent).submitter?.getAttribute("value") === "week" ? "week" : "plan";
     const { parsedSongs, chosen } = currentFields();
     const artistList = [
       ...new Set([...chosen.map((a) => a.name), ...parsedSongs.filter((s) => !s.own).map((s) => s.artist)]),
@@ -232,11 +230,6 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
       return;
     }
     setError(null);
-    if (target === "week") {
-      const { slot, ...rest } = result.data;
-      router.push(`/week?${weekSearchParams({ ...rest, startDate: slot.date, limits: { maxSessions: 5, maxPerDay: 1, unavailable: [] } }, null)}`);
-      return;
-    }
     void openPlan(result.data);
   }
 
@@ -386,9 +379,6 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
       <div className="flex flex-wrap gap-2">
         <Button type="submit" value="plan" disabled={submitting}>
           Plan my set
-        </Button>
-        <Button type="submit" value="week" variant="outline">
-          Plan my week from this date
         </Button>
       </div>
     </form>

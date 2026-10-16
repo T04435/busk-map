@@ -12,10 +12,6 @@ test.describe("server HTML (B-006)", () => {
   test("the landing selects show their default labels before hydration", async ({ request }) => {
     expect(await selectValues(request, "/")).toEqual(["6 pm", "9 pm", "General"]);
   });
-
-  test("the week limits show their values before hydration", async ({ request }) => {
-    expect(await selectValues(request, "/week?example=folk-duo")).toEqual(["5", "1"]);
-  });
 });
 
 test.describe("server HTML (B-011)", () => {

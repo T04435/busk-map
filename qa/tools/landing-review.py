@@ -1,30 +1,39 @@
 """The living landing report: qa/reports/landing.html on design/honeycomb. Update in place each recheck; bump VERSION.
 Run from the worktree root: python3 -I qa/tools/landing-review.py qa/reports/landing.html qa/tools/landing-parts.py
 To update: re-capture build crops into qa/screens/honeycomb/recheck/build/, edit P in landing-parts.py (status, finding), USER / DEV / DEFECTS here, then bump VERSION, COMMIT, DATE, CHANGES and add a HISTORY line."""
-import html, sys, importlib.util
+import html, re, sys, importlib.util
 spec = importlib.util.spec_from_file_location("rc", sys.argv[2]); rc = importlib.util.module_from_spec(spec)
 # Reuse the 29 parts from the QA-03 generator without running it.
 src = open(sys.argv[2]).read(); P = eval(src[src.index("P = [") + 4: src.index("]\nCOL") + 1])
 
-VERSION = "v4"
+VERSION = "v4.1"
 COMMIT = "7b1521e"
-DATE = "16 Oct 2026"
-CHANGES = "L03, L07, L11, L17, L20, L23 now match (user calls applied; B-019, B-033, B-034 fixed). L04 and L25 now match. L18 changed to the live map: still Different (declared). L24 Different: credit line, a question for the user. L13 kept as built (B-032 accepted). B-035 fixed (builds from an export). 25 Present, 3 Different, 1 Held."
+DATE = "17 Oct 2026"
+CHANGES = "Added the user's calls F01–F15 (17 Oct): on L14, L16, L18, L05, L24, L21–L23 (order), L01 and L25, plus a new Site-wide section (F07–F15). No recheck yet: QA status is still v4 at 7b1521e; DEV is building."
 HISTORY = [
-  ("v4", COMMIT, DATE, CHANGES),
+  ("v4.1", COMMIT, DATE, CHANGES),
+  ("v4", "7b1521e", "16 Oct 2026", "L03, L07, L11, L17, L20, L23 match (user calls; B-019, B-033, B-034 fixed); L04, L25 match; L18 live map and L24 credit line Different (declared); L13 kept (B-032 accepted); B-035 fixed. 25 Present, 3 Different, 1 Held."),
   ("v3", "91b220e", "16 Oct 2026", "Folded QA-01 and QA-03 into this page; added the user's calls (L03, L07, L11, L13, L17, L18, L20, L23)."),
   ("v2", "91b220e", "16 Oct 2026", "QA-03 recheck against BRAND's 29 parts: 20 Present, 6 Different, 1 Missing, 2 Held; B-032..B-034. (honeycomb-landing-recheck.html)"),
   ("v1", "69a6cad", "17 Oct 2026", "QA-01 first audit, 21 items mapped to parts by the inventory README; B-018..B-026. (honeycomb-landing-audit.html)"),
 ]
 USER = {
-  "L03": "Remove the small texts on both sides.",
-  "L24": "Open question: keep the “Data: Qloo · …” credit line?", "L14": "Open question: keep the “Example data” badge?", "L16": "Open question: keep the “Example data” badge?",
-  "L07": "Remove all the small texts.",
-  "L11": "Add the video slot.",
+  "L03": "Remove the small texts on both sides. (done in v4)",
+  "L07": "Remove all the small texts. (done in v4)",
+  "L11": "Add the video slot. (done in v4)",
   "L13": "Keep as built (B-032 accepted).",
-  "L17": "Fix to the deck.", "L18": "Fix to the deck.", "L20": "Fix to the deck.",
-  "L23": "Add the brand teaser.",
-  "L05": "Held.",
+  "L17": "Fix to the deck. (done in v4)",
+  "L18": "Fix to the deck. Then F02: add “Full details →” per pitch row; keep the zoom buttons; remove “test data” from the legend. F03: the legend becomes one line at the bottom of the map, with tooltips for the details. F05: only the orange honeycomb cells, no dark cells; zoom out a little so the map itself shows.",
+  "L20": "Fix to the deck. (done in v4)",
+  "L23": "Add the brand teaser. (done in v4) F06: order is Beyond buskers → Brain → Brand.",
+  "L05": "Held. F05: if the hero uses the same map, only the orange cells, no dark cells.",
+  "L14": "F01: Remove the “Example data” badge.",
+  "L16": "F01: Remove the “Example data” badge.",
+  "L24": "F04: Remove the “Data: Qloo · …” credit line.",
+  "L21": "F06: Beyond buskers comes first, then the Brain teaser, then the Brand teaser (replaces v67).",
+  "L22": "F06: the Brain teaser moves after Beyond buskers, before the Brand teaser.",
+  "L01": "F12: the busk-map wordmark (dark and light) is the only logo; no lockup or mark.",
+  "L25": "F07–F11 and F12: see the Site-wide rows (GitHub cell, Built by + mark, Qloo logo links, /terms, three-part layout, wordmark only).",
 }
 DEFECTS = {
   "L03": "B-021 glow fixed", "L04": "B-025 fixed", "L05": "B-021 (zone, event, river) held", "L08": "B-018 fixed",
@@ -55,7 +64,7 @@ for pid, name, deck, build, status, dc, find, lost, defect in P:
     if pid == "L26": b1440 = '<div class="ph soft">Phone only</div>'
     b390 = img(f"{BUILD}{build.format(w='390')}.jpg", f"{pid} build at 390") if build else '<div class="ph">Not in the build</div>'
     call = USER.get(pid, "")
-    action = call.startswith("Open question") or status in ("Different", "Missing", "Broken")
+    action = call.startswith("Open question") or bool(re.search(r"\bF\d\d", call)) or status in ("Different", "Missing", "Broken")
     rows.append(f'''<article class="row" id="{pid}" data-action="{str(action).lower()}">
 <div class="id"><a href="#{pid}">{pid}</a><span>{html.escape(name)}</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption>{img(BOARD + pid + ".jpg", pid + " deck crop")}</figure>
@@ -68,6 +77,28 @@ for pid, name, deck, build, status, dc, find, lost, defect in P:
 <div><dt>Defect</dt><dd>{html.escape(DEFECTS.get(pid, "—"))}</dd></div>
 <div><dt>Last checked</dt><dd><code>{COMMIT}</code></dd></div>
 </dl></article>''')
+SITE = [  # row id, user's call, user's screenshot (or None), how QA checks it
+  ("F07", "Footer: a GitHub icon with a link, in a honeycomb cell, instead of the “OPEN SOURCE github.com/…” text.", "02-footer-github.png", "Link target and name; icon in a hex cell; no repo text."),
+  ("F08", "Footer: “Built by T04435” plus the pixel mark (the Claude Code critter recreated as an SVG, not the Claude logo), each linked. Replaces the “@…” text.", "03-built-by-mark.png", "Both links resolve; the mark is an inline SVG; no Claude logo."),
+  ("F09", "Every Qloo logo links to qloo.com in a new tab (rel=\"noopener noreferrer\").", None, "Every Qloo wordmark on every route: href, target=_blank, rel."),
+  ("F10", "The legal line moves out of the footer into a Terms page (/terms), linked from the footer.", "07-legal-line.png", "/terms returns 200 and holds the legal line; the footer links to it and no longer shows the line."),
+  ("F11", "Footer layout: left the wordmark and the Qloo logo; centre Privacy · Brain · Brand; right GitHub and Built by.", None, "Order at 1440; stacks cleanly at 390; nothing clipped."),
+  ("F12", "The busk-map wordmark (dark and light) is the ONLY logo in the app. Remove the lockup and the mark. (Favicon and app icon: a separate question.)", "04-wordmark-only-one.png", "Every route: only the wordmark asset renders as a logo."),
+  ("F13", "Search inputs (Artists you sound like, song search): a normal input with only the search icon, shadcn InputGroup, one border, one focus ring.", "05-search-input-cooked.png", "Field strip: each field focused and unfocused, 390 and 1440, day and night; exactly one border and one ring."),
+  ("F14", "Every input's focus: one ring, shadcn's own pattern (no white gap plus orange over the border).", "06-input-focus.png", "Same field strip, every input, select, picker and button."),
+  ("F15", "Use shadcn/ui primitives styled through tokens and variants; no hand-built replacements; no global CSS overriding their states.", None, "Code check: components/ui primitives used; no global selectors on their states."),
+]
+FEED = "../screens/honeycomb/feedback/"
+site = "".join(f'''<article class="row site" id="{fid}" data-action="true">
+<div class="id"><a href="#{fid}">{fid}</a><span>Site-wide</span></div>
+<figure class="deck"><figcaption>User's screenshot</figcaption>{img(FEED + shot, fid + " user screenshot") if shot else '<div class="ph soft">No screenshot</div>'}</figure>
+<dl>
+<div><dt>User's call</dt><dd class="call">{html.escape(call)}</dd></div>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Not checked yet</span> {html.escape(how)}</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd>—</dd></div>
+</dl></article>''' for fid, call, shot, how in SITE)
 counts = {s: sum(1 for p in P if p[4] == s) for s in COL}
 hist = "".join(f"<li><b>{v}</b> · design/honeycomb ＠ <code>{c}</code> · {d}: {html.escape(t)}</li>" for v, c, d, t in HISTORY)
 page = f'''<!doctype html>
@@ -96,9 +127,11 @@ dl{{margin:0;display:grid;gap:6px}} dt{{font-size:12px;color:var(--muted)}} dd{{
 .chip{{font-weight:800;padding:1px 8px}} .chip.ok{{background:var(--okbg);color:var(--ok)}} .chip.bad{{background:var(--badbg);color:var(--bad)}} .chip.warn{{background:var(--warnbg);color:var(--warn)}} .chip.held{{background:var(--heldbg);color:var(--held)}}
 .ph{{border:2px dashed var(--bad);color:var(--bad);padding:24px 8px;text-align:center;font-weight:800}} .ph.soft{{border-color:var(--muted);color:var(--muted)}}
 body.action .row[data-action="false"]{{display:none}}
+.row.site{{grid-template-columns:150px minmax(0,1fr) minmax(0,2fr)}} .sect{{font-size:18px;margin:28px 0 4px}}
 .box{{background:var(--card);border:1px solid var(--line);padding:12px 16px;margin-top:20px}} .box h2{{font-size:16px;margin:0 0 6px}}
 @media (max-width:1100px){{.row{{grid-template-columns:1fr 1fr}} .id{{grid-column:1/-1}} dl{{grid-column:1/-1}}}}
-@media (max-width:600px){{.row{{grid-template-columns:1fr}}}}
+@media (max-width:1100px){{.row.site{{grid-template-columns:1fr 1fr}}}}
+@media (max-width:600px){{.row,.row.site{{grid-template-columns:1fr}}}}
 </style></head>
 <body><div class="wrap">
 <h1>Landing · review</h1>
@@ -110,6 +143,9 @@ body.action .row[data-action="false"]{{display:none}}
 </div>
 <p class="chg">One row per part of BRAND's inventory (L01–L29). The row id is the ticket: “L07 remove…” means row L07 here. Not a part: B-026, the “For judges” link (held for the user).</p>
 {"".join(rows)}
+<h2 class="sect" id="site-wide">Site-wide (F07–F15)</h2>
+<p class="chg">The user's calls that aren't one landing part. Row id = ticket, e.g. “F13”.</p>
+{site}
 <section class="box"><h2>Versions</h2><ul>{hist}</ul></section>
 </div>
 <script>

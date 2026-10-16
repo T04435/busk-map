@@ -24,20 +24,22 @@ dl{margin:0;display:grid;gap:6px} dt{font-size:12px;color:var(--muted)} dd{margi
 .chip{font-weight:800;padding:1px 8px} .chip.ok{background:var(--okbg);color:var(--ok)} .chip.bad{background:var(--badbg);color:var(--bad)} .chip.warn{background:var(--warnbg);color:var(--warn)} .chip.held{background:var(--heldbg);color:var(--held)}
 .ph{border:2px dashed var(--bad);color:var(--bad);padding:24px 8px;text-align:center;font-weight:800} .ph.soft{border-color:var(--muted);color:var(--muted)}
 body.action .row[data-action="false"]{display:none}
+.row.site{grid-template-columns:150px minmax(0,1fr) minmax(0,2fr)} .sect{font-size:18px;margin:28px 0 4px}
 .box{background:var(--card);border:1px solid var(--line);padding:12px 16px;margin-top:20px} .box h2{font-size:16px;margin:0 0 6px}
 @media (max-width:1100px){.row{grid-template-columns:1fr 1fr} .id{grid-column:1/-1} dl{grid-column:1/-1}}
-@media (max-width:600px){.row{grid-template-columns:1fr}}
+@media (max-width:1100px){.row.site{grid-template-columns:1fr 1fr}}
+@media (max-width:600px){.row,.row.site{grid-template-columns:1fr}}
 </style></head>
 <body><div class="wrap">
 <h1>Landing · review</h1>
-<p class="ver">v4 · design/honeycomb ＠ 7b1521e · 16 Oct 2026</p>
-<p class="chg">L03, L07, L11, L17, L20, L23 now match (user calls applied; B-019, B-033, B-034 fixed). L04 and L25 now match. L18 changed to the live map: still Different (declared). L24 Different: credit line, a question for the user. L13 kept as built (B-032 accepted). B-035 fixed (builds from an export). 25 Present, 3 Different, 1 Held.</p>
+<p class="ver">v4.1 · design/honeycomb ＠ 7b1521e · 17 Oct 2026</p>
+<p class="chg">Added the user&#x27;s calls F01–F15 (17 Oct): on L14, L16, L18, L05, L24, L21–L23 (order), L01 and L25, plus a new Site-wide section (F07–F15). No recheck yet: QA status is still v4 at 7b1521e; DEV is building.</p>
 <div class="strip" role="group" aria-label="Summary">
 <span class="stat ok">25 Present</span><span class="stat warn">3 Different</span><span class="stat bad">0 Missing</span><span class="stat bad">0 Broken</span><span class="stat held">1 Held</span>
 <button class="filter" type="button" aria-pressed="false" id="flt">Needs action only</button>
 </div>
 <p class="chg">One row per part of BRAND's inventory (L01–L29). The row id is the ticket: “L07 remove…” means row L07 here. Not a part: B-026, the “For judges” link (held for the user).</p>
-<article class="row" id="L01" data-action="false">
+<article class="row" id="L01" data-action="true">
 <div class="id"><a href="#L01">L01</a><span>Header</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L01.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L01.jpg" alt="L01 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L01-1440.jpg" alt="L01 build at 1440"></a></figure>
@@ -45,7 +47,7 @@ body.action .row[data-action="false"]{display:none}
 <dl>
 <div><dt>DEV status</dt><dd>deviation: nav says Brain, not Setlist (HQ default)</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Busks · Week · Brain · Tips, none active. Brain, not Setlist, is HQ default 2 (DEV lists it as a deviation).</dd></div>
-<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>User's call</dt><dd class="call">F12: the busk-map wordmark (dark and light) is the only logo; no lockup or mark.</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L02" data-action="false">
@@ -67,7 +69,7 @@ body.action .row[data-action="false"]{display:none}
 <dl>
 <div><dt>DEV status</dt><dd>changed: small texts removed (user call)</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Glowing cells as the board; the small texts beside them are gone (user call).</dd></div>
-<div><dt>User's call</dt><dd class="call">Remove the small texts on both sides.</dd></div>
+<div><dt>User's call</dt><dd class="call">Remove the small texts on both sides. (done in v4)</dd></div>
 <div><dt>Defect</dt><dd>B-021 glow fixed</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L04" data-action="false">
@@ -81,7 +83,7 @@ body.action .row[data-action="false"]{display:none}
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>B-025 fixed</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
-</dl></article><article class="row" id="L05" data-action="false">
+</dl></article><article class="row" id="L05" data-action="true">
 <div class="id"><a href="#L05">L05</a><span>Hero taste map</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L05.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L05.jpg" alt="L05 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L05-1440.jpg" alt="L05 build at 1440"></a></figure>
@@ -89,7 +91,7 @@ body.action .row[data-action="false"]{display:none}
 <dl>
 <div><dt>DEV status</dt><dd>held</dd></div>
 <div><dt>QA status</dt><dd><span class="chip held">Held</span> Pins 1 and 3 plus a hidden-gem diamond. Zone, event and river held for the user. Also unlike the board: a full rectangular grid (board: an irregular blob with gaps) and plain numbered pins (board: target rings with number badges).</dd></div>
-<div><dt>User's call</dt><dd class="call">Held.</dd></div>
+<div><dt>User's call</dt><dd class="call">Held. F05: if the hero uses the same map, only the orange cells, no dark cells.</dd></div>
 <div><dt>Defect</dt><dd>B-021 (zone, event, river) held</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L06" data-action="false">
@@ -111,7 +113,7 @@ body.action .row[data-action="false"]{display:none}
 <dl>
 <div><dt>DEV status</dt><dd>changed: all captions removed (user call). Asks: keep the two “Example data” badges (L14, L16)?</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Caption removed by the user&#x27;s call (the board has one). Nothing else under the map.</dd></div>
-<div><dt>User's call</dt><dd class="call">Remove all the small texts.</dd></div>
+<div><dt>User's call</dt><dd class="call">Remove all the small texts. (done in v4)</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L08" data-action="false">
@@ -155,7 +157,7 @@ body.action .row[data-action="false"]{display:none}
 <dl>
 <div><dt>DEV status</dt><dd>changed: placeholder slot, no controls, no autoplay</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Placeholder slot as the board: orange hex, “[Demo video · 60–90 s]” and the line. No media element, no autoplay, no controls.</dd></div>
-<div><dt>User's call</dt><dd class="call">Add the video slot.</dd></div>
+<div><dt>User's call</dt><dd class="call">Add the video slot. (done in v4)</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L12" data-action="false">
@@ -188,7 +190,7 @@ body.action .row[data-action="false"]{display:none}
 <dl>
 <div><dt>DEV status</dt><dd>built. Asks: keep the “Example data” badge?</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> “guesswork” in signal text; Example data badge (HQ correction).</dd></div>
-<div><dt>User's call</dt><dd class="call">Open question: keep the “Example data” badge?</dd></div>
+<div><dt>User's call</dt><dd class="call">F01: Remove the “Example data” badge.</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L15" data-action="false">
@@ -210,7 +212,7 @@ body.action .row[data-action="false"]{display:none}
 <dl>
 <div><dt>DEV status</dt><dd>built. Asks: keep the “Example data” badge?</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Plus an Example data badge.</dd></div>
-<div><dt>User's call</dt><dd class="call">Open question: keep the “Example data” badge?</dd></div>
+<div><dt>User's call</dt><dd class="call">F01: Remove the “Example data” badge.</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L17" data-action="false">
@@ -221,7 +223,7 @@ body.action .row[data-action="false"]{display:none}
 <dl>
 <div><dt>DEV status</dt><dd>changed to match the deck</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Funnel as the board: labels beside each hex, ▸ chevrons, not boxed, one row at 1440.</dd></div>
-<div><dt>User's call</dt><dd class="call">Fix to the deck.</dd></div>
+<div><dt>User's call</dt><dd class="call">Fix to the deck. (done in v4)</dd></div>
 <div><dt>Defect</dt><dd>B-020 fixed · B-033 fixed</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L18" data-action="true">
@@ -232,7 +234,7 @@ body.action .row[data-action="false"]{display:none}
 <dl>
 <div><dt>DEV status</dt><dd>changed to the live PlanMap with example data. Remaining: no zone, river or event (L05); no “Full details →”; legend says “test data” and “Browse other pitches (2)”</dd></div>
 <div><dt>QA status</dt><dd><span class="chip warn">Different</span> Live PlanMap with example data; pins and list select each other both ways; loads lazily. Still unlike the board: no zone, river or event (held, L05), no “Full details →”; the map adds zoom buttons, “Browse other pitches (2)” and a legend reading “test data”.</dd></div>
-<div><dt>User's call</dt><dd class="call">Fix to the deck.</dd></div>
+<div><dt>User's call</dt><dd class="call">Fix to the deck. Then F02: add “Full details →” per pitch row; keep the zoom buttons; remove “test data” from the legend. F03: the legend becomes one line at the bottom of the map, with tooltips for the details. F05: only the orange honeycomb cells, no dark cells; zoom out a little so the map itself shows.</dd></div>
 <div><dt>Defect</dt><dd>B-020 fixed (declared deviation)</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L19" data-action="false">
@@ -254,10 +256,10 @@ body.action .row[data-action="false"]{display:none}
 <dl>
 <div><dt>DEV status</dt><dd>changed: Copy, rows 01–04, mono set length, bordered Learn these. Remaining: heading in mono (per notes)</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> “Setlist for this pitch”, Copy, rows 01–04, mono set length, bordered Learn these with the orange rule. Minor: the fan-age line joins the intro paragraph.</dd></div>
-<div><dt>User's call</dt><dd class="call">Fix to the deck.</dd></div>
+<div><dt>User's call</dt><dd class="call">Fix to the deck. (done in v4)</dd></div>
 <div><dt>Defect</dt><dd>B-020 fixed · B-034 fixed (B-035 build fix fe89b0e)</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
-</dl></article><article class="row" id="L21" data-action="false">
+</dl></article><article class="row" id="L21" data-action="true">
 <div class="id"><a href="#L21">L21</a><span>Beyond buskers</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L21.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L21.jpg" alt="L21 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L21-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L21-1440.jpg" alt="L21 build at 1440"></a></figure>
@@ -265,10 +267,10 @@ body.action .row[data-action="false"]{display:none}
 <dl>
 <div><dt>DEV status</dt><dd>built</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> “Busk Map already reads…” per HQ default 16.</dd></div>
-<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>User's call</dt><dd class="call">F06: Beyond buskers comes first, then the Brain teaser, then the Brand teaser (replaces v67).</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
-</dl></article><article class="row" id="L22" data-action="false">
+</dl></article><article class="row" id="L22" data-action="true">
 <div class="id"><a href="#L22">L22</a><span>Brain teaser</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L22.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L22.jpg" alt="L22 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L22-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L22-1440.jpg" alt="L22 build at 1440"></a></figure>
@@ -276,10 +278,10 @@ body.action .row[data-action="false"]{display:none}
 <dl>
 <div><dt>DEV status</dt><dd>built</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> 11 · 24–33 · 0 as a mono line, purple button, hex wiring sketch; 4th number gone. B-024 fixed. (dev/core&#x27;s R4 makes it 12 kinds: update when merged.)</dd></div>
-<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>User's call</dt><dd class="call">F06: the Brain teaser moves after Beyond buskers, before the Brand teaser.</dd></div>
 <div><dt>Defect</dt><dd>B-024 fixed</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
-</dl></article><article class="row" id="L23" data-action="false">
+</dl></article><article class="row" id="L23" data-action="true">
 <div class="id"><a href="#L23">L23</a><span>Brand teaser</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L23.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L23.jpg" alt="L23 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L23-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L23-1440.jpg" alt="L23 build at 1440"></a></figure>
@@ -287,7 +289,7 @@ body.action .row[data-action="false"]{display:none}
 <dl>
 <div><dt>DEV status</dt><dd>changed: brand teaser added</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Brand teaser as the board: “Honeycomb”, line, 90 · 3 · 9, “See the brand →” (the page&#x27;s only /brand link) and the specimen card.</dd></div>
-<div><dt>User's call</dt><dd class="call">Add the brand teaser.</dd></div>
+<div><dt>User's call</dt><dd class="call">Add the brand teaser. (done in v4) F06: order is Beyond buskers → Brain → Brand.</dd></div>
 <div><dt>Defect</dt><dd>B-019 fixed</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L24" data-action="true">
@@ -298,10 +300,10 @@ body.action .row[data-action="false"]{display:none}
 <dl>
 <div><dt>DEV status</dt><dd>deviation: “Data: Qloo · …” credit line kept (question for the user)</dd></div>
 <div><dt>QA status</dt><dd><span class="chip warn">Different</span> As the board, plus a “Data: Qloo · …” credit line under the CTA (DEV&#x27;s question for the user).</dd></div>
-<div><dt>User's call</dt><dd class="call">Open question: keep the “Data: Qloo · …” credit line?</dd></div>
+<div><dt>User's call</dt><dd class="call">F04: Remove the “Data: Qloo · …” credit line.</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
-</dl></article><article class="row" id="L25" data-action="false">
+</dl></article><article class="row" id="L25" data-action="true">
 <div class="id"><a href="#L25">L25</a><span>Footer</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L25.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L25.jpg" alt="L25 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L25-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L25-1440.jpg" alt="L25 build at 1440"></a></figure>
@@ -309,7 +311,7 @@ body.action .row[data-action="false"]{display:none}
 <dl>
 <div><dt>DEV status</dt><dd>changed: repo link in signal text</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> No Brand link; on the night band; the repo link in signal text as the board.</dd></div>
-<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>User's call</dt><dd class="call">F07–F11 and F12: see the Site-wide rows (GitHub cell, Built by + mark, Qloo logo links, /terms, three-part layout, wordmark only).</dd></div>
 <div><dt>Defect</dt><dd>B-023 fixed</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L26" data-action="false">
@@ -357,7 +359,91 @@ body.action .row[data-action="false"]{display:none}
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article>
-<section class="box"><h2>Versions</h2><ul><li><b>v4</b> · design/honeycomb ＠ <code>7b1521e</code> · 16 Oct 2026: L03, L07, L11, L17, L20, L23 now match (user calls applied; B-019, B-033, B-034 fixed). L04 and L25 now match. L18 changed to the live map: still Different (declared). L24 Different: credit line, a question for the user. L13 kept as built (B-032 accepted). B-035 fixed (builds from an export). 25 Present, 3 Different, 1 Held.</li><li><b>v3</b> · design/honeycomb ＠ <code>91b220e</code> · 16 Oct 2026: Folded QA-01 and QA-03 into this page; added the user&#x27;s calls (L03, L07, L11, L13, L17, L18, L20, L23).</li><li><b>v2</b> · design/honeycomb ＠ <code>91b220e</code> · 16 Oct 2026: QA-03 recheck against BRAND&#x27;s 29 parts: 20 Present, 6 Different, 1 Missing, 2 Held; B-032..B-034. (honeycomb-landing-recheck.html)</li><li><b>v1</b> · design/honeycomb ＠ <code>69a6cad</code> · 17 Oct 2026: QA-01 first audit, 21 items mapped to parts by the inventory README; B-018..B-026. (honeycomb-landing-audit.html)</li></ul></section>
+<h2 class="sect" id="site-wide">Site-wide (F07–F15)</h2>
+<p class="chg">The user's calls that aren't one landing part. Row id = ticket, e.g. “F13”.</p>
+<article class="row site" id="F07" data-action="true">
+<div class="id"><a href="#F07">F07</a><span>Site-wide</span></div>
+<figure class="deck"><figcaption>User's screenshot</figcaption><a href="../screens/honeycomb/feedback/02-footer-github.png"><img loading="lazy" src="../screens/honeycomb/feedback/02-footer-github.png" alt="F07 user screenshot"></a></figure>
+<dl>
+<div><dt>User's call</dt><dd class="call">Footer: a GitHub icon with a link, in a honeycomb cell, instead of the “OPEN SOURCE github.com/…” text.</dd></div>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Not checked yet</span> Link target and name; icon in a hex cell; no repo text.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd>—</dd></div>
+</dl></article><article class="row site" id="F08" data-action="true">
+<div class="id"><a href="#F08">F08</a><span>Site-wide</span></div>
+<figure class="deck"><figcaption>User's screenshot</figcaption><a href="../screens/honeycomb/feedback/03-built-by-mark.png"><img loading="lazy" src="../screens/honeycomb/feedback/03-built-by-mark.png" alt="F08 user screenshot"></a></figure>
+<dl>
+<div><dt>User's call</dt><dd class="call">Footer: “Built by T04435” plus the pixel mark (the Claude Code critter recreated as an SVG, not the Claude logo), each linked. Replaces the “@…” text.</dd></div>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Not checked yet</span> Both links resolve; the mark is an inline SVG; no Claude logo.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd>—</dd></div>
+</dl></article><article class="row site" id="F09" data-action="true">
+<div class="id"><a href="#F09">F09</a><span>Site-wide</span></div>
+<figure class="deck"><figcaption>User's screenshot</figcaption><div class="ph soft">No screenshot</div></figure>
+<dl>
+<div><dt>User's call</dt><dd class="call">Every Qloo logo links to qloo.com in a new tab (rel=&quot;noopener noreferrer&quot;).</dd></div>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Not checked yet</span> Every Qloo wordmark on every route: href, target=_blank, rel.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd>—</dd></div>
+</dl></article><article class="row site" id="F10" data-action="true">
+<div class="id"><a href="#F10">F10</a><span>Site-wide</span></div>
+<figure class="deck"><figcaption>User's screenshot</figcaption><a href="../screens/honeycomb/feedback/07-legal-line.png"><img loading="lazy" src="../screens/honeycomb/feedback/07-legal-line.png" alt="F10 user screenshot"></a></figure>
+<dl>
+<div><dt>User's call</dt><dd class="call">The legal line moves out of the footer into a Terms page (/terms), linked from the footer.</dd></div>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Not checked yet</span> /terms returns 200 and holds the legal line; the footer links to it and no longer shows the line.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd>—</dd></div>
+</dl></article><article class="row site" id="F11" data-action="true">
+<div class="id"><a href="#F11">F11</a><span>Site-wide</span></div>
+<figure class="deck"><figcaption>User's screenshot</figcaption><div class="ph soft">No screenshot</div></figure>
+<dl>
+<div><dt>User's call</dt><dd class="call">Footer layout: left the wordmark and the Qloo logo; centre Privacy · Brain · Brand; right GitHub and Built by.</dd></div>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Not checked yet</span> Order at 1440; stacks cleanly at 390; nothing clipped.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd>—</dd></div>
+</dl></article><article class="row site" id="F12" data-action="true">
+<div class="id"><a href="#F12">F12</a><span>Site-wide</span></div>
+<figure class="deck"><figcaption>User's screenshot</figcaption><a href="../screens/honeycomb/feedback/04-wordmark-only-one.png"><img loading="lazy" src="../screens/honeycomb/feedback/04-wordmark-only-one.png" alt="F12 user screenshot"></a></figure>
+<dl>
+<div><dt>User's call</dt><dd class="call">The busk-map wordmark (dark and light) is the ONLY logo in the app. Remove the lockup and the mark. (Favicon and app icon: a separate question.)</dd></div>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Not checked yet</span> Every route: only the wordmark asset renders as a logo.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd>—</dd></div>
+</dl></article><article class="row site" id="F13" data-action="true">
+<div class="id"><a href="#F13">F13</a><span>Site-wide</span></div>
+<figure class="deck"><figcaption>User's screenshot</figcaption><a href="../screens/honeycomb/feedback/05-search-input-cooked.png"><img loading="lazy" src="../screens/honeycomb/feedback/05-search-input-cooked.png" alt="F13 user screenshot"></a></figure>
+<dl>
+<div><dt>User's call</dt><dd class="call">Search inputs (Artists you sound like, song search): a normal input with only the search icon, shadcn InputGroup, one border, one focus ring.</dd></div>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Not checked yet</span> Field strip: each field focused and unfocused, 390 and 1440, day and night; exactly one border and one ring.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd>—</dd></div>
+</dl></article><article class="row site" id="F14" data-action="true">
+<div class="id"><a href="#F14">F14</a><span>Site-wide</span></div>
+<figure class="deck"><figcaption>User's screenshot</figcaption><a href="../screens/honeycomb/feedback/06-input-focus.png"><img loading="lazy" src="../screens/honeycomb/feedback/06-input-focus.png" alt="F14 user screenshot"></a></figure>
+<dl>
+<div><dt>User's call</dt><dd class="call">Every input&#x27;s focus: one ring, shadcn&#x27;s own pattern (no white gap plus orange over the border).</dd></div>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Not checked yet</span> Same field strip, every input, select, picker and button.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd>—</dd></div>
+</dl></article><article class="row site" id="F15" data-action="true">
+<div class="id"><a href="#F15">F15</a><span>Site-wide</span></div>
+<figure class="deck"><figcaption>User's screenshot</figcaption><div class="ph soft">No screenshot</div></figure>
+<dl>
+<div><dt>User's call</dt><dd class="call">Use shadcn/ui primitives styled through tokens and variants; no hand-built replacements; no global CSS overriding their states.</dd></div>
+<div><dt>DEV status</dt><dd>building</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Not checked yet</span> Code check: components/ui primitives used; no global selectors on their states.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd>—</dd></div>
+</dl></article>
+<section class="box"><h2>Versions</h2><ul><li><b>v4.1</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: Added the user&#x27;s calls F01–F15 (17 Oct): on L14, L16, L18, L05, L24, L21–L23 (order), L01 and L25, plus a new Site-wide section (F07–F15). No recheck yet: QA status is still v4 at 7b1521e; DEV is building.</li><li><b>v4</b> · design/honeycomb ＠ <code>7b1521e</code> · 16 Oct 2026: L03, L07, L11, L17, L20, L23 match (user calls; B-019, B-033, B-034 fixed); L04, L25 match; L18 live map and L24 credit line Different (declared); L13 kept (B-032 accepted); B-035 fixed. 25 Present, 3 Different, 1 Held.</li><li><b>v3</b> · design/honeycomb ＠ <code>91b220e</code> · 16 Oct 2026: Folded QA-01 and QA-03 into this page; added the user&#x27;s calls (L03, L07, L11, L13, L17, L18, L20, L23).</li><li><b>v2</b> · design/honeycomb ＠ <code>91b220e</code> · 16 Oct 2026: QA-03 recheck against BRAND&#x27;s 29 parts: 20 Present, 6 Different, 1 Missing, 2 Held; B-032..B-034. (honeycomb-landing-recheck.html)</li><li><b>v1</b> · design/honeycomb ＠ <code>69a6cad</code> · 17 Oct 2026: QA-01 first audit, 21 items mapped to parts by the inventory README; B-018..B-026. (honeycomb-landing-audit.html)</li></ul></section>
 </div>
 <script>
 const f=document.getElementById('flt');f.addEventListener('click',()=>{const on=!document.body.classList.contains('action');document.body.classList.toggle('action',on);f.setAttribute('aria-pressed',String(on));});

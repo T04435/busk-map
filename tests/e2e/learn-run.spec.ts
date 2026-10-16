@@ -251,10 +251,10 @@ test.describe("Songs to learn: refusals and states (offline)", () => {
     await expect(section(page).getByTestId("learn-end")).toHaveAttribute("data-state", "fallback");
     await expect(section(page).getByTestId("learn-end")).toContainText("come from the data alone");
     await page.unroute("**/api/playlist/learn");
-    await canned(page, stream({ ok: true, mode: "agent", newCount: 0, skippedCount: 7, code: "nothing_new", message: "No new songs this time: everything we found was suggested before (7 songs left out)." }));
+    await canned(page, stream({ ok: true, mode: "agent", newCount: 0, skippedCount: 7, code: "nothing_new", message: "Nothing new this time (7 left out). Try again after a new busk, or after you've learned a few songs." }));
     await findButton(page).click();
     await expect(section(page).getByTestId("learn-end")).toHaveAttribute("data-state", "nothing-new");
-    await expect(section(page).getByTestId("learn-end")).toContainText("No new songs this time");
+    await expect(section(page).getByTestId("learn-end")).toContainText("Nothing new this time (7 left out)");
     await page.unroute("**/api/playlist/learn");
     await page.route("**/api/playlist/learn", (route) => (route.request().method() === "POST" ? route.abort() : route.continue()));
     await findButton(page).click();

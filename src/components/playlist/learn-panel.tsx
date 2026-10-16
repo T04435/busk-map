@@ -96,7 +96,6 @@ function EndNotice({ end }: { end: LearnEnd }) {
   if (end.newCount === 0) {
     return (
       <Alert role="status" data-testid="learn-end" data-state="nothing-new">
-        <AlertTitle>{COPY.nothingNewTitle}</AlertTitle>
         <AlertDescription>{end.message}</AlertDescription>
       </Alert>
     );

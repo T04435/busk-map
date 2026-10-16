@@ -1,5 +1,5 @@
 import "server-only";
-import { skippedOf, ZERO_LEARN_TOTALS, type LearnStreamEvent, type LearnSuggestionEvent } from "@/lib/learn-schema";
+import { skippedOf, ZERO_LEARN_TOTALS, type LearnStreamEvent, type LearnSuggestionEvent, type LearnTotals } from "@/lib/learn-schema";
 import type { LearnSuggestionView } from "@/lib/playlist-schema";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import type { RunRecord } from "./types";
@@ -29,7 +29,7 @@ export function suggestionEvent(runId: string, s: LearnSuggestionView): LearnSug
 }
 
 /** How a finished run ended, as the `end` event says it (live and on replay alike). */
-export function endOf(record: Pick<RunRecord, "status" | "endCode" | "model" | "newCount" | "skippedCount" | "id">): Extract<LearnStreamEvent, { type: "end" }> {
+export function endOf(record: Pick<RunRecord, "status" | "endCode" | "model" | "newCount" | "skippedCount" | "id"> & { totals?: Pick<LearnTotals, "songsChecked"> | null }): Extract<LearnStreamEvent, { type: "end" }> {
   const ok = record.status !== "failed";
   const mode = !ok ? "none" : record.status === "fallback" ? "fallback" : record.model === "mock" ? "mock" : "agent";
   const code = (record.endCode ?? null) as Extract<LearnStreamEvent, { type: "end" }>["code"];
@@ -41,7 +41,7 @@ export function endOf(record: Pick<RunRecord, "status" | "endCode" | "model" | "
     newCount: record.newCount,
     skippedCount: record.skippedCount,
     code,
-    message: PLAYLIST_COPY.learn.end({ ok, mode, code, newCount: record.newCount, skippedCount: record.skippedCount }),
+    message: PLAYLIST_COPY.learn.end({ ok, mode, code, newCount: record.newCount, skippedCount: record.skippedCount, songsChecked: record.totals?.songsChecked }),
   };
 }
 

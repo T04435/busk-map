@@ -80,7 +80,7 @@ export async function executeLearnRun(args: {
     const nothingSaved = result.picks.length > 0 && saved.length === 0;
     const status: "failed" | "done" | "fallback" = nothingSaved ? "done" : result.status;
     const endCode = nothingSaved ? "nothing_new" : result.endCode;
-    const finished = { ...record, status, endCode, newCount: saved.length, skippedCount: skippedOf(totals), model: record.model };
+    const finished = { ...record, status, endCode, newCount: saved.length, skippedCount: skippedOf(totals), model: record.model, totals };
     for (const s of saved) run.push(suggestionEvent(record.id, s));
     run.push({ type: "totals", totals });
     if (result.usage) run.push({ type: "usage", ...result.usage });

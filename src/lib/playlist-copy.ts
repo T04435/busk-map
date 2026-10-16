@@ -83,7 +83,7 @@ export const PLAYLIST_COPY = {
   // Songs to learn: a learn run's words (docs §7). Errors first; the page copy follows.
   learn: {
     /** The status line at the end of a run (docs §7.2 `end.message`), the same live and on replay. */
-    end: (e: { ok: boolean; mode: "agent" | "fallback" | "mock" | "none"; code: string | null; newCount: number; skippedCount: number }): string => {
+    end: (e: { ok: boolean; mode: "agent" | "fallback" | "mock" | "none"; code: string | null; newCount: number; skippedCount: number; songsChecked?: number }): string => {
       const songs = (n: number) => `${n} ${n === 1 ? "song" : "songs"}`;
       if (!e.ok) {
         if (e.code === "qloo_unavailable") return "Suggestions need Qloo's taste data, and Qloo isn't answering right now. Try again in a little while.";
@@ -91,7 +91,11 @@ export const PLAYLIST_COPY = {
         if (e.code === "timeout") return "The run ran out of time before it found songs. Try again.";
         return "The run stopped before it found songs. Try again in a little while.";
       }
-      if (e.code === "nothing_new" || e.newCount === 0) return `No new songs this time: everything we found was suggested before${e.skippedCount ? ` (${songs(e.skippedCount)} left out)` : ""}.`;
+      if (e.code === "nothing_new" || e.newCount === 0) {
+        // B-029: "everything was suggested before" only when songs were checked; with none checked, say that instead.
+        if (e.songsChecked === 0) return `Couldn't find songs to check this time. ${PLAYLIST_COPY.learn.nothingNewHint}`;
+        return `Nothing new this time${e.skippedCount ? ` (${e.skippedCount} left out)` : ""}. ${PLAYLIST_COPY.learn.nothingNewHint}`;
+      }
       const left = e.skippedCount ? ` Left out ${songs(e.skippedCount)} you already know or had in earlier runs.` : "";
       if (e.mode === "fallback") {
         const why = e.code === "timeout" ? "The AI ran out of time" : e.code === "stopped" ? "The AI reached its step limit" : "The AI was unavailable";
@@ -125,6 +129,11 @@ export const PLAYLIST_COPY = {
     fallbackTitle: "Picked from the data alone",
     errorTitle: "The run didn't finish",
     nothingNewTitle: "Nothing new this time",
+    nothingNewHint: "Try again after a new busk, or after you've learned a few songs.",
+    /** After a Qloo outage or any run that didn't finish (sketch §1 error row). */
+    songsSafe: "Your songs are safe.",
+    /** Only for runs the limit doesn't count (Qloo down, no match). */
+    notCounted: "This run didn't count towards your limit.",
     retry: "Try again",
     runHeading: (n: number) => `Run ${n}`,
     stepsHeading: "Steps",

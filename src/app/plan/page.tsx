@@ -11,7 +11,7 @@ import { parsePlanParams } from "@/lib/plan-url";
 import { localToday } from "@/lib/slot";
 import { CITIES } from "@/server/cities";
 import { longUrlTarget } from "@/server/plans";
-import { adapterContextFor, clientIp } from "@/server/request";
+import { adapterContextFor, clientIp, renderFaultRequested } from "@/server/request";
 
 export const metadata: Metadata = {
   title: "Plan · Busk Map",
@@ -64,6 +64,7 @@ async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchPar
     );
   }
   const faults = typeof params.faults === "string" ? params.faults : null;
+  if (renderFaultRequested(faults)) throw new Error("Simulated render fault (test)");
   const adapters = adapterContextFor(faults);
   const target = await longUrlTarget(parsed, params, adapters.faults, clientIp(await headers()));
   if (target) redirect(target);

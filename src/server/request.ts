@@ -20,3 +20,12 @@ export function adapterContextFor(faults: string | null | undefined): AdapterCon
 export function clientIp(headers: Headers): string {
   return headers.get("x-real-ip") ?? headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 }
+
+/**
+ * `faults=render` makes a page throw while rendering, to exercise error.tsx (e2e). Same gate as the
+ * provider outages: only when fault injection is allowed, never in production.
+ */
+export function renderFaultRequested(faults: string | null | undefined): boolean {
+  if (!testSwitches().allowFaults || !faults) return false;
+  return faults.split(",").some((s) => s.trim() === "render");
+}

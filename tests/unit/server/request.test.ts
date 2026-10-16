@@ -34,6 +34,21 @@ describe("request helpers", () => {
     expect(adapterContextFor("qloo")).toEqual({ offline: false, faults: [] });
   });
 
+  it("honours the render fault only when faults are allowed, and never in production", async () => {
+    let { renderFaultRequested } = await freshRequest();
+    expect(renderFaultRequested("render")).toBe(false);
+
+    vi.stubEnv("BUSKMAP_ALLOW_FAULTS", "1");
+    ({ renderFaultRequested } = await freshRequest());
+    expect(renderFaultRequested("qloo, render")).toBe(true);
+    expect(renderFaultRequested("qloo")).toBe(false);
+    expect(renderFaultRequested(null)).toBe(false);
+
+    vi.stubEnv("VERCEL_ENV", "production");
+    ({ renderFaultRequested } = await freshRequest());
+    expect(renderFaultRequested("render")).toBe(false);
+  });
+
   it("reads the client IP from proxy headers", async () => {
     const { clientIp } = await freshRequest();
     expect(clientIp(new Headers({ "x-forwarded-for": "1.2.3.4, 5.6.7.8" }))).toBe("1.2.3.4");

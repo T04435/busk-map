@@ -376,6 +376,10 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
         spotifyArtists,
         songs: parsedSongs,
         ...(fill ? { fillSuggested: fill, ...(removedSongs.length ? { skipSongs: removedSongs.slice(0, 60) } : {}) } : {}),
+        // Your own artist leads the taste signal, only when Qloo matched it (never a default: it would change the plan's hash).
+        ...(rep?.qlooArtistId && rep.spotifyProfile?.name
+          ? { ownArtist: { qlooId: rep.qlooArtistId, name: rep.spotifyProfile.name, ...(rep.spotifyArtistId ? { spotifyId: rep.spotifyArtistId } : {}) } }
+          : {}),
       },
     };
     const result = planRequestSchema.safeParse(input);

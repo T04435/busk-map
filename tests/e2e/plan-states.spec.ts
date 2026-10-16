@@ -100,9 +100,9 @@ test.describe("the plan map draws the taste cells even with no tiles (offline)",
     await page.route(/openfreemap\.org/, (route) => route.abort());
     await page.goto("/plan?example=acoustic");
     await waitForPlan(page);
-    const map = page.getByRole("region", { name: "Map of pitches and Qloo taste affinity" });
-    await map.scrollIntoViewIfNeeded();
-    await expect.poll(async () => Number((await map.getAttribute("data-taste-cells")) ?? 0), { timeout: 20_000 }).toBeGreaterThan(0);
+    await page.locator('[data-slot="map-frame"]').scrollIntoViewIfNeeded();
+    const cells = page.locator("[data-taste-cells]");
+    await expect.poll(async () => ((await cells.count()) ? Number(await cells.first().getAttribute("data-taste-cells")) : -1), { timeout: 20_000 }).toBeGreaterThan(0);
     await expect(page.getByLabel("Map legend")).toContainText("Taste match");
     await expect(page.locator("button[data-pitch-id]")).toHaveCount(3);
   });
@@ -110,9 +110,9 @@ test.describe("the plan map draws the taste cells even with no tiles (offline)",
   test("no matched artist: no taste cells, no taste in the legend", async ({ page }) => {
     await page.goto(`/plan?name=Nobody%20Knows&artists=Zzyzx%20Nobody|Qqq%20Unknown&date=${SATURDAY}&from=18&to=21`);
     await waitForPlan(page);
-    const map = page.getByRole("region", { name: "Map of pitches and Qloo taste affinity" });
-    await map.scrollIntoViewIfNeeded();
-    await expect.poll(async () => await map.getAttribute("data-taste-cells"), { timeout: 20_000 }).toBe("0");
+    await page.locator('[data-slot="map-frame"]').scrollIntoViewIfNeeded();
+    const cells = page.locator("[data-taste-cells]");
+    await expect.poll(async () => ((await cells.count()) ? await cells.first().getAttribute("data-taste-cells") : null), { timeout: 20_000 }).toBe("0");
     await expect(page.getByLabel("Map legend")).not.toContainText("Taste match");
   });
 });

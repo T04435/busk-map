@@ -389,7 +389,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
       collapsed={!wide && !pending && !qlooDown}
       showRaw={showRaw}
       onShowRawChange={setShowRaw}
-      subtitle={!wide && !live && !qlooDown ? "Each check Claude ran for the busk above, and what it found." : undefined}
+      subtitle={!wide && !live && !qlooDown ? `Each check ${modelName(model)} ran for the busk above, and what it found.` : undefined}
       footer={live ? <DataSources status={[]} showAi={false} soFar={sourcesTouched(steps.map((s) => s.tool))} /> : dataSources}
     />
   ) : null;

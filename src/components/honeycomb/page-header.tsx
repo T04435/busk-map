@@ -25,7 +25,7 @@ export function PageHeader({
   title: ReactNode;
   subtitle?: ReactNode;
   badges?: { label: ReactNode; tone?: BadgeTone; testId?: string }[];
-  links?: { label: ReactNode; href: string }[];
+  links?: { label: ReactNode; href: string; prefetch?: boolean }[];
   end?: ReactNode;
   className?: string;
 }) {
@@ -56,7 +56,7 @@ export function PageHeader({
       {links?.length ? (
         <div className="flex flex-wrap gap-x-4 gap-y-2">
           {links.map((l, i) => (
-            <Link key={i} className="font-bold underline underline-offset-3 hover:decoration-2" href={l.href}>
+            <Link key={i} className="font-bold underline underline-offset-3 hover:decoration-2" href={l.href} prefetch={l.prefetch}>
               {l.label}
             </Link>
           ))}

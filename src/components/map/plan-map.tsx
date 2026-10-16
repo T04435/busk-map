@@ -1,26 +1,28 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getVersion, LngLatBounds, Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
+import { PercentCell } from "@/components/honeycomb/percent-cell";
+import { Button } from "@/components/ui/button";
 import { geohashBounds } from "@/lib/geo";
 import type { Plan } from "@/lib/plan-schema";
 
 /**
- * MapLibre map with OpenFreeMap tiles: the taste grid as a GeoJSON layer and
- * the top pitches as focusable pins. Colours come from the theme's CSS
- * variables, so the design pass can restyle it without touching this file.
- * The pitch list next to the map is the keyboard-first alternative.
+ * MapLibre map with OpenFreeMap tiles. The taste grid is a layer of pointy-top honeycomb cells in the five-step taste ramp
+ * (read from the theme's CSS variables, repainted when the theme changes). The top pitches are focusable hexagon pins; every
+ * other scored pitch is a quiet dot (also a button, so it is keyboard reachable) that opens a summary: name, score and, when it
+ * was left out by the 250 m spacing rule, the pick it is too close to. The pitch list beside the map is the keyboard-first
+ * alternative for the top three. No events or no-busking zones are drawn: the plan carries no coordinates for them.
  */
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
 // Copied into public/ by scripts/copy-maplibre-worker.mjs (predev, prebuild).
 setWorkerUrl(`/vendor/maplibre-gl-worker-${getVersion()}.mjs`);
 
-/**
- * Resolve a CSS variable to an rgb() colour MapLibre understands (it parses
- * neither oklch nor lab), by painting one pixel and reading it back.
- */
+/** Resolve a CSS variable to an rgb() colour MapLibre understands (it parses neither oklch nor lab), by painting one pixel. */
 function themeColor(variable: string, fallback: string): string {
   if (typeof window === "undefined") return fallback;
   const value = getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
@@ -35,12 +37,39 @@ function themeColor(variable: string, fallback: string): string {
   return `rgb(${r}, ${g}, ${b})`;
 }
 
+const RAMP_FALLBACK = ["#fbe3d2", "#f9b98e", "#f28644", "#dd6322", "#7f2d0c"];
+const rampColors = () => [1, 2, 3, 4, 5].map((n, i) => themeColor(`--taste-${n}`, RAMP_FALLBACK[i]));
+/** Affinity (0–1) to the ramp step, as the legend's five cells. */
+const fillExpression = (colors: string[]) => ["step", ["get", "affinity"], colors[0], 0.26, colors[1], 0.48, colors[2], 0.68, colors[3], 0.88, colors[4]] as never;
+
+const HEX_PTS = "50,2 97,26 97,74 50,98 3,74 3,26";
+
+/** A pointy-top hexagon around a cell centre, as wide as the geohash cell it replaces. */
+function hexagon(lat: number, lon: number, halfWidthDeg: number) {
+  const r = halfWidthDeg / (Math.sqrt(3) / 2);
+  const k = Math.cos((lat * Math.PI) / 180);
+  const ring = Array.from({ length: 7 }, (_, i) => {
+    const a = (Math.PI / 180) * (60 * (i % 6) - 90);
+    return [lon + r * Math.cos(a), lat + r * Math.sin(a) * k];
+  });
+  return [ring];
+}
+
 type Props = {
   plan: Pick<Plan, "tasteCells" | "pitches" | "others">;
   center: { lat: number; lon: number };
   selectedId: string | null;
   onSelect: (pitchId: string) => void;
 };
+
+const SVG = (inner: string) => `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true" focusable="false" style="position:absolute;inset:0;overflow:visible">${inner}</svg>`;
+
+function topPin(rank: number, gem: boolean): string {
+  const shape = gem
+    ? SVG(`<polygon points="50,4 96,50 50,96 4,50" style="fill:var(--honey);stroke:var(--bluestone);stroke-width:5"/><circle cx="50" cy="50" r="9" style="fill:var(--bluestone)"/>`)
+    : SVG(`<polygon points="${HEX_PTS}" style="fill:var(--bluestone);stroke:var(--primary);stroke-width:7"/><polygon points="50,30 70,41 70,63 50,74 30,63 30,41" style="fill:var(--background)"/>`);
+  return `${shape}<span style="position:absolute;right:-6px;top:-8px;min-width:20px;height:22px;padding:0 4px;display:grid;place-items:center;background:var(--primary);color:var(--primary-foreground);border:2px solid var(--fill-rule);font:800 14px/1 var(--font-display)" aria-hidden="true">${rank}</span>`;
+}
 
 export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
   const container = useRef<HTMLDivElement>(null);
@@ -49,10 +78,27 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
   const onSelectRef = useRef(onSelect);
   const frame = useRef<LngLatBounds | null>(null);
   const interacted = useRef(false);
+  const [dotId, setDotId] = useState<string | null>(null);
+  const dotRef = useRef<string | null>(null);
+  const nextRef = useRef<HTMLButtonElement>(null);
+  const browseRef = useRef<HTMLButtonElement>(null);
+  const restoreFocus = useRef(false);
+  const [themeTick, setThemeTick] = useState(0);
 
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+
+  /** Room at the bottom when the legend floats over the map (from 768 px up), so framed pins never sit under it. */
+  const legendPad = useCallback(() => {
+    const legend = container.current?.closest('[data-slot="map-frame"]')?.querySelector<HTMLElement>('[data-slot="map-legend"]');
+    if (!legend || getComputedStyle(legend).position !== "absolute") return 0;
+    return legend.offsetHeight + 24;
+  }, []);
+  const fit = useCallback(
+    (instance: MapLibreMap, bounds: LngLatBounds) => instance.fitBounds(bounds, { padding: { top: 60, left: 60, right: 60, bottom: 60 + legendPad() }, maxZoom: 15, duration: 0 }),
+    [legendPad],
+  );
 
   // Create the map once.
   useEffect(() => {
@@ -72,12 +118,9 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
       attrib?.classList.remove("maplibregl-compact-show");
       attrib?.removeAttribute("open");
     });
-    // The container can change size after the map is created (layout, fonts,
-    // the viewport): keep the canvas filling it.
     const observer = new ResizeObserver(() => {
       instance.resize();
-      // Keep the top pitches framed until the visitor moves the map themselves.
-      if (frame.current && !interacted.current) instance.fitBounds(frame.current, { padding: 70, maxZoom: 15, duration: 0 });
+      if (frame.current && !interacted.current) fit(instance, frame.current);
     });
     for (const event of ["dragstart", "wheel", "touchstart"] as const) instance.on(event, () => (interacted.current = true));
     observer.observe(container.current);
@@ -86,131 +129,191 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
       instance.remove();
       map.current = null;
     };
-  }, [center.lat, center.lon]);
+  }, [center.lat, center.lon, fit]);
 
-  // Taste grid layer: Qloo heatmap cells drawn as their geohash rectangles,
-  // shaded by affinity relative to the performer's best cell.
+  // Repaint the taste ramp when the theme changes (system setting or a theme attribute).
+  useEffect(() => {
+    const bump = () => setThemeTick((n) => n + 1);
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    mq.addEventListener("change", bump);
+    const mo = new MutationObserver(bump);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
+    return () => {
+      mq.removeEventListener("change", bump);
+      mo.disconnect();
+    };
+  }, []);
+
+  // Taste grid: Qloo heatmap cells as honeycomb cells, stepped by affinity relative to the performer's best cell.
   useEffect(() => {
     const instance = map.current;
     if (!instance) return;
     const data = {
       type: "FeatureCollection" as const,
       features: plan.tasteCells.map((c) => {
-        if (c.geohash) {
-          const b = geohashBounds(c.geohash);
-          return {
-            type: "Feature" as const,
-            properties: { affinity: c.affinity },
-            geometry: { type: "Polygon" as const, coordinates: [[[b.west, b.south], [b.east, b.south], [b.east, b.north], [b.west, b.north], [b.west, b.south]]] },
-          };
-        }
-        const d = 0.0015;
-        return {
-          type: "Feature" as const,
-          properties: { affinity: c.affinity },
-          geometry: { type: "Polygon" as const, coordinates: [[[c.lon - d, c.lat - d], [c.lon + d, c.lat - d], [c.lon + d, c.lat + d], [c.lon - d, c.lat + d], [c.lon - d, c.lat - d]]] },
-        };
+        const half = c.geohash ? (geohashBounds(c.geohash).east - geohashBounds(c.geohash).west) / 2 : 0.0015;
+        return { type: "Feature" as const, properties: { affinity: c.affinity }, geometry: { type: "Polygon" as const, coordinates: hexagon(c.lat, c.lon, half) } };
       }),
     };
     const apply = () => {
+      const colors = rampColors();
       const source = instance.getSource("taste") as GeoJSONSource | undefined;
       if (source) {
         source.setData(data);
+        instance.setPaintProperty("taste", "fill-color", fillExpression(colors));
         return;
       }
-      const color = themeColor("--foreground", "#111111");
       instance.addSource("taste", { type: "geojson", data });
-      instance.addLayer({
-        id: "taste",
-        type: "fill",
-        source: "taste",
-        paint: {
-          "fill-color": color,
-          // Weak cells fade out so the strong areas read at a glance.
-          "fill-opacity": ["interpolate", ["linear"], ["get", "affinity"], 0, 0, 0.5, 0.04, 1, 0.42],
-        },
-      });
-      instance.addLayer({
-        id: "taste-outline",
-        type: "line",
-        source: "taste",
-        paint: { "line-color": color, "line-opacity": 0.12, "line-width": 1 },
-      });
+      instance.addLayer({ id: "taste", type: "fill", source: "taste", paint: { "fill-color": fillExpression(colors), "fill-opacity": 0.85 } });
+      instance.addLayer({ id: "taste-outline", type: "line", source: "taste", paint: { "line-color": themeColor("--rule", "#141c21"), "line-opacity": 0.25, "line-width": 1 } });
     };
     if (instance.isStyleLoaded()) apply();
     else instance.once("load", apply);
-  }, [plan.tasteCells]);
+  }, [plan.tasteCells, themeTick]);
 
-  // Pitch pins: real buttons, so they are reachable by keyboard and screen readers.
+  // Pins: real buttons, so they are reachable by keyboard and screen readers. The 48px button is the hit area; the shape inside grows when selected.
   useEffect(() => {
     const instance = map.current;
     if (!instance) return;
     for (const marker of markers.current) marker.remove();
     markers.current = [];
-    const pins = [
-      ...plan.pitches.map((p, i) => ({ id: p.id, name: p.name, score: p.score, lat: p.lat, lon: p.lon, rank: i + 1, discovery: p.discovery })),
-      ...plan.others.slice(0, 15).map((p) => ({ ...p, rank: null as number | null })),
-    ];
-    for (const pin of pins) {
-      if (pin.rank === null) {
-        // Other scored pitches are context only: a decorative dot (the "Other scored pitches"
-        // list beside the map names them). Only the top pitches are selectable pins.
-        const dot = document.createElement("span");
-        dot.setAttribute("aria-hidden", "true");
-        dot.dataset.pitchId = pin.id;
-        dot.className = "pointer-events-none block size-3 rounded-full border border-background bg-muted-foreground/70";
-        markers.current.push(new Marker({ element: dot }).setLngLat([pin.lon, pin.lat]).addTo(instance));
-        continue;
-      }
+    // Dots first, so the top pins sit above them. They are drawn for the mouse and are hidden from assistive tech: the "Browse other
+    // pitches" control is the one keyboard and screen reader way in (dozens of close-together buttons would overlap each other).
+    for (const o of plan.others.slice(0, 40)) {
+      const el = document.createElement("span");
+      el.dataset.otherId = o.id;
+      el.setAttribute("data-testid", "other-dot");
+      el.setAttribute("aria-hidden", "true");
+      el.className = "group relative z-0 block size-6 cursor-pointer";
+      el.innerHTML = `<span class="absolute top-1/2 left-1/2 block h-[17px] w-[15px] -translate-x-1/2 -translate-y-1/2 transition-transform group-hover:scale-125 group-data-[open=true]:scale-150" style="background:var(--usual-spot);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)"></span>`;
+      el.addEventListener("click", () => {
+        setDotId((cur) => (cur === o.id ? null : o.id));
+      });
+      markers.current.push(new Marker({ element: el }).setLngLat([o.lon, o.lat]).addTo(instance));
+    }
+    plan.pitches.forEach((p, i) => {
+      const rank = i + 1;
       const el = document.createElement("button");
       el.type = "button";
-      el.dataset.pitchId = pin.id;
-      const gem = pin.discovery === "hidden-gem" ? ", hidden gem" : pin.discovery === "usual" ? ", usual spot" : "";
-      el.setAttribute("aria-label", `Pitch ${pin.rank}: ${pin.name}, score ${pin.score}${gem}`);
-      const diamond = pin.discovery === "hidden-gem";
-      if (diamond) {
-        // Rotate a child, never the marker itself: MapLibre positions the marker with its transform.
-        const shape = document.createElement("span");
-        shape.setAttribute("aria-hidden", "true");
-        shape.className = "absolute inset-0.5 rotate-45 rounded-sm border-2 border-background bg-primary shadow";
-        el.appendChild(shape);
-      }
-      const label = document.createElement("span");
-      label.className = "relative";
-      label.textContent = String(pin.rank);
-      el.appendChild(label);
-      el.className = `z-10 flex size-7 items-center justify-center text-xs font-semibold text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring ${diamond ? "" : "rounded-full border-2 border-background bg-primary shadow"}`;
-      el.addEventListener("click", () => onSelectRef.current(pin.id));
-      markers.current.push(new Marker({ element: el }).setLngLat([pin.lon, pin.lat]).addTo(instance));
-    }
-    // Frame the top pitches, with room around them.
+      el.dataset.pitchId = p.id;
+      const gem = p.discovery === "hidden-gem";
+      const tag = gem ? ", hidden gem" : p.discovery === "usual" ? ", usual pitch" : "";
+      el.setAttribute("aria-label", `Pitch ${rank}: ${p.name}, score ${p.score}${tag}`);
+      el.className = "group relative z-10 block size-12 cursor-pointer";
+      el.innerHTML = `<span data-shape class="absolute top-1/2 left-1/2 block size-8 -translate-x-1/2 -translate-y-1/2 transition-transform group-aria-pressed:scale-125">${topPin(rank, gem)}</span>`;
+      el.addEventListener("click", () => {
+        setDotId(null);
+        onSelectRef.current(p.id);
+      });
+      markers.current.push(new Marker({ element: el }).setLngLat([p.lon, p.lat]).addTo(instance));
+    });
     if (plan.pitches.length > 0) {
       const bounds = new LngLatBounds();
       for (const p of plan.pitches) bounds.extend([p.lon, p.lat]);
       frame.current = bounds;
       interacted.current = false;
-      instance.fitBounds(bounds, { padding: 70, maxZoom: 15, duration: 0 });
+      fit(instance, bounds);
     }
-  }, [plan.pitches, plan.others]);
+  }, [plan.pitches, plan.others, fit]);
 
-  // Selection: highlight and fly to the pitch.
+  // Selection: mark the pin pressed (it grows) and pan to it when it is out of view.
   useEffect(() => {
     const instance = map.current;
     for (const marker of markers.current) {
       const el = marker.getElement();
-      if (el.tagName !== "BUTTON") continue;
-      const selected = el.dataset.pitchId === selectedId;
-      el.setAttribute("aria-pressed", String(selected));
-      el.classList.toggle("ring-2", selected);
-      el.classList.toggle("ring-ring", selected);
+      if (!el.dataset.pitchId) continue;
+      el.setAttribute("aria-pressed", String(el.dataset.pitchId === selectedId));
     }
-    // Only pan when the selected pin is out of view: the first view is framed on the top pitches.
-    const target = [...plan.pitches, ...plan.others].find((p) => p.id === selectedId);
-    if (instance && target && !instance.getBounds().contains([target.lon, target.lat])) {
-      instance.easeTo({ center: [target.lon, target.lat], duration: 600 });
-    }
-  }, [selectedId, plan.pitches, plan.others]);
+    const target = plan.pitches.find((p) => p.id === selectedId);
+    if (instance && target && !instance.getBounds().contains([target.lon, target.lat])) instance.easeTo({ center: [target.lon, target.lat], duration: 600 });
+  }, [selectedId, plan.pitches]);
 
-  return <div ref={container} className="h-full min-h-80 w-full overflow-hidden rounded-lg border" role="region" aria-label="Map of pitches and Qloo taste affinity" />;
+  // The open dot grows; a dot chosen from the keyboard control is panned into view.
+  useEffect(() => {
+    dotRef.current = dotId;
+    for (const marker of markers.current) {
+      const el = marker.getElement();
+      if (el.dataset.otherId) el.dataset.open = String(el.dataset.otherId === dotId);
+    }
+    const target = plan.others.find((o) => o.id === dotId);
+    const instance = map.current;
+    if (instance && target && !instance.getBounds().contains([target.lon, target.lat])) instance.easeTo({ center: [target.lon, target.lat], duration: 400 });
+    if (dotId) nextRef.current?.focus();
+    else if (restoreFocus.current) {
+      restoreFocus.current = false;
+      browseRef.current?.focus();
+    }
+  }, [dotId, plan.others]);
+
+  const closeSummary = useCallback(() => {
+    restoreFocus.current = true;
+    setDotId(null);
+  }, []);
+  const others = plan.others.slice(0, 40);
+  const step = (by: number) => {
+    const i = others.findIndex((o) => o.id === dotRef.current);
+    setDotId(others[(i + by + others.length) % others.length].id);
+  };
+  const dot = plan.others.find((o) => o.id === dotId) ?? null;
+
+  return (
+    <div className="relative h-full min-h-80 w-full overflow-hidden border-2 border-rule bg-muted" onKeyDown={(e) => e.key === "Escape" && dotRef.current && closeSummary()}>
+      <div ref={container} className="size-full" role="region" aria-label="Map of pitches and Qloo taste affinity" />
+      {others.length > 0 && !dot ? (
+        <Button
+          ref={browseRef}
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-haspopup="dialog"
+          aria-expanded="false"
+          data-testid="browse-others"
+          className="absolute top-3 left-3 z-10 bg-popover shadow-sm"
+          onClick={() => setDotId(others[0].id)}
+        >
+          Browse other pitches ({others.length})
+        </Button>
+      ) : null}
+      {dot ? (
+        <div
+          role="dialog"
+          aria-label={`${dot.name}, summary`}
+          data-testid="other-pitch-popover"
+          className="absolute top-3 left-3 z-20 w-[min(19rem,calc(100%-4rem))] space-y-2 border-2 border-rule bg-popover p-3 text-sm shadow-md"
+        >
+          <div className="flex items-start gap-2">
+            <b className="min-w-0 flex-1 text-base leading-5">{dot.name}</b>
+            <PercentCell value={dot.score} size={40} label="Score" />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <DiscoveryBadge discovery={dot.discovery} />
+            {dot.tipPoints ? <span className="font-mono text-xs">Your tips +{dot.tipPoints}</span> : null}
+          </div>
+          {dot.tooCloseTo ? (
+            <p className="m-0" data-testid="too-close">
+              <b>Too close to {dot.tooCloseTo.name}</b>: scored higher, but it&apos;s within 250 m, so the plan kept its picks apart.
+            </p>
+          ) : (
+            <p className="m-0 text-muted-foreground">Scored, but not in the top three.</p>
+          )}
+          <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
+            <span className="font-mono text-xs text-muted-foreground">
+              {others.findIndex((o) => o.id === dot.id) + 1} of {others.length}
+            </span>
+            <span className="flex gap-1">
+              <Button type="button" variant="outline" size="icon-sm" aria-label="Previous pitch" onClick={() => step(-1)}>
+                <ChevronLeft aria-hidden="true" />
+              </Button>
+              <Button ref={nextRef} type="button" variant="outline" size="icon-sm" aria-label="Next pitch" onClick={() => step(1)}>
+                <ChevronRight aria-hidden="true" />
+              </Button>
+              <Button type="button" variant="ghost" size="icon-sm" aria-label="Close summary" onClick={closeSummary}>
+                <X aria-hidden="true" />
+              </Button>
+            </span>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }
-

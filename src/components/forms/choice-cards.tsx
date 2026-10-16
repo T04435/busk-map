@@ -56,11 +56,11 @@ export function ChoiceCard({ value, title, description, end, className }: { valu
       htmlFor={id}
       data-slot="choice-card"
       className={cn(
-        "relative grid min-h-16 cursor-pointer grid-cols-[auto_1fr_auto] items-center gap-3 border-2 border-input bg-card px-4 py-3 transition-[border-color,box-shadow] duration-(--duration-fast) hover:border-foreground has-[[data-state=checked]]:border-rule has-[[data-state=checked]]:shadow-[4px_4px_0_var(--primary)] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring has-[:focus-visible]:outline-solid has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-disabled motion-reduce:transition-none",
+        "relative grid min-h-16 cursor-pointer grid-cols-[auto_1fr_auto] items-center gap-3 border-2 border-input bg-card px-4 py-3 transition-[border-color,box-shadow] duration-(--duration-fast) hover:border-foreground has-[[data-state=checked]]:border-rule has-[[data-state=checked]]:shadow-[4px_4px_0_var(--primary)] has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-disabled motion-reduce:transition-none",
         className
       )}
     >
-      <RadioGroupItem id={id} value={value} aria-labelledby={titleId} aria-describedby={description ? descId : undefined} className="focus-visible:shadow-none" />
+      <RadioGroupItem id={id} value={value} aria-labelledby={titleId} aria-describedby={description ? descId : undefined} />
       <span className="min-w-0">
         <span id={titleId} className="block text-base leading-[22px] font-bold">
           {title}

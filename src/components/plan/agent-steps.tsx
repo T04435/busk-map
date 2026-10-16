@@ -30,7 +30,7 @@ function RowsTable({ rows }: { rows: Record<string, unknown>[] }) {
   const columns = [...new Set(rows.flatMap((r) => Object.keys(r)))];
   // The frame scrolls sideways on its own, so it takes focus: a keyboard user can scroll it.
   return (
-    <div tabIndex={0} role="region" aria-label="Returned data, scrolls sideways" className="overflow-x-auto focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+    <div tabIndex={0} role="region" aria-label="Returned data, scrolls sideways" className="overflow-x-auto">
       <table className="w-full border-collapse font-mono text-xs tabular-nums">
         <thead>
           <tr className="border-b-2 border-rule">
@@ -57,7 +57,7 @@ function RowsTable({ rows }: { rows: Record<string, unknown>[] }) {
   );
 }
 
-const Json = ({ value }: { value: unknown }) => <pre tabIndex={0} aria-label="Returned data as JSON" className="m-0 overflow-x-auto bg-muted p-3 font-mono text-xs whitespace-pre-wrap focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">{JSON.stringify(value, null, 2)}</pre>;
+const Json = ({ value }: { value: unknown }) => <pre tabIndex={0} aria-label="Returned data as JSON" className="m-0 overflow-x-auto bg-muted p-3 font-mono text-xs whitespace-pre-wrap">{JSON.stringify(value, null, 2)}</pre>;
 
 /** The data a tool returned, as it is: scalars in a key/value table, lists of rows as tables, anything else as JSON. */
 export function StepData({ value, view = "table" }: { value: unknown; view?: "table" | "json" }) {
@@ -277,7 +277,7 @@ export function AgentStepStream({
                   type="button"
                   aria-pressed={rawView === k}
                   onClick={() => setRawView(k)}
-                  className="min-h-9 border-[1.5px] border-rule px-3 aria-pressed:bg-foreground aria-pressed:text-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  className="min-h-9 border-[1.5px] border-rule px-3 aria-pressed:bg-foreground aria-pressed:text-background"
                 >
                   {k === "table" ? "Table" : "JSON"}
                 </button>

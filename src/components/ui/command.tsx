@@ -14,6 +14,7 @@ import {
 import {
   InputGroup,
   InputGroupAddon,
+  InputGroupInput,
 } from "@/components/ui/input-group"
 import { SearchIcon, CheckIcon } from "lucide-react"
 
@@ -87,22 +88,21 @@ function CommandInput({
   /** Whether the CommandList is rendered (for an inline list shown only while there is a query). */
   expanded?: boolean
 }) {
+  // A normal search field: shadcn's InputGroup, the search icon as its addon and an InputGroupInput. The group draws the one
+  // border and the one focus ring; the input inside draws neither.
   return (
-    <div data-slot="command-input-wrapper" className="p-1 pb-0">
-      <InputGroup className="h-control! rounded-none! border-2 border-input bg-card *:data-[slot=input-group-addon]:pl-3! has-[[data-slot=command-input]:focus-visible]:focus-ring">
+    <div data-slot="command-input-wrapper">
+      <InputGroup className="has-[>[data-align=inline-start]]:[&>input]:pl-10">
+        <InputGroupAddon className="pointer-events-none absolute inset-y-0 left-0 z-10 pl-3">
+          <SearchIcon aria-hidden="true" className="size-4 shrink-0" />
+        </InputGroupAddon>
         <CommandPrimitive.Input {...props} asChild>
-          <input
-            data-slot="command-input"
-            className={cn(
-              "w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
-              className
-            )}
+          <InputGroupInput
+            data-slot="input-group-control"
+            className={cn("text-base", className)}
             {...comboboxAria(expanded)}
           />
         </CommandPrimitive.Input>
-        <InputGroupAddon>
-          <SearchIcon className="size-4 shrink-0 opacity-50" />
-        </InputGroupAddon>
       </InputGroup>
     </div>
   )

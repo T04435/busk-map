@@ -6,6 +6,7 @@ import { FormMessage } from "@/components/honeycomb/form-message";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { examplesForKey } from "@/lib/example-tips";
@@ -180,11 +181,13 @@ export function TipLogForm() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor={`${ids}-amount`}>Takings</Label>
-              <div className="relative">
-                <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono text-base font-bold text-muted-foreground">
-                  A$
-                </span>
-                <Input
+              <InputGroup className="has-[>[data-align=inline-start]]:[&>input]:pl-12">
+                <InputGroupAddon className="pointer-events-none absolute inset-y-0 left-0 z-10 pl-3">
+                  <span aria-hidden="true" className="font-mono text-base font-bold">
+                    A$
+                  </span>
+                </InputGroupAddon>
+                <InputGroupInput
                   id={`${ids}-amount`}
                   type="text"
                   inputMode="decimal"
@@ -192,10 +195,10 @@ export function TipLogForm() {
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="85"
-                  className="pl-11 font-mono tabular-nums"
+                  className="font-mono tabular-nums"
                   aria-invalid={status?.ok === false && status.message.startsWith("Takings") ? true : undefined}
                 />
-              </div>
+              </InputGroup>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor={`${ids}-from`}>From</Label>

@@ -197,21 +197,19 @@
   --shadow-sm: 2px 2px 0 #141c21;
   --shadow-md: 4px 4px 0 #141c21;
   --shadow-lg: 6px 6px 0 #141c21;
-  --focus-ring: 0 0 0 2px #f2eee6, 0 0 0 4px #141c21;
+  --focus-ring: 0 0 0 2px var(--ring);
 }
 .dark,
 [data-theme="dark"] {
   --shadow-sm: 2px 2px 0 #05080a;
   --shadow-md: 4px 4px 0 #ff6a2b;
   --shadow-lg: 6px 6px 0 #ff6a2b;
-  --focus-ring: 0 0 0 2px #0f1416, 0 0 0 4px #ff6a2b;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not(.light) {
     --shadow-sm: 2px 2px 0 #05080a;
     --shadow-md: 4px 4px 0 #ff6a2b;
     --shadow-lg: 6px 6px 0 #ff6a2b;
-    --focus-ring: 0 0 0 2px #0f1416, 0 0 0 4px #ff6a2b;
   }
 }
 
@@ -297,7 +295,6 @@
 
 /* Strokes, focus, opacity */
 @utility border-rule-2 { border-width: var(--stroke-rule); border-color: var(--rule); }
-@utility focus-ring { box-shadow: var(--focus-ring); }
 @utility opacity-taste { opacity: 0.85; }
 @utility opacity-disabled { opacity: 0.5; }
 
@@ -340,19 +337,21 @@ html { scroll-padding-bottom: var(--bottom-nav); }
 }
 @media (prefers-reduced-motion: reduce) { .bm-skeleton { animation: none; } }
 
-/* Poster buttons (an offset block shadow): the shadow comes from --poster-shadow so the focus ring can sit with it. A plain
-   shadow utility would replace the base layer's :focus-visible ring (B-018), so this rule is unlayered and wins. */
-.bm-poster { box-shadow: var(--poster-shadow); }
-.bm-poster:focus-visible { box-shadow: var(--focus-ring), var(--poster-shadow); }
 
 @layer base {
   * {
     @apply border-border;
   }
-  /* Full strength, never /50. Components that draw their own ring override this. */
-  :focus-visible {
+  /* Focus. shadcn components own their focus-visible styles in their own classes (utilities layer, so they win over this): fields
+     turn their border to --ring and add one 2px ring, buttons, toggles, switches and radios one 2px ring (ring-2 ring-ring, no offset). This rule is only
+     the fallback for plain elements (links, bare buttons, scrollable regions, tooltip triggers): one 2px ring (--focus-ring),
+     never a second one; it never touches fields (inputs are not in the list). */
+  :where(a, button, summary, [tabindex]):not([tabindex="-1"]):focus-visible {
     outline: none;
     box-shadow: var(--focus-ring);
+  }
+  @media (forced-colors: active) {
+    :where(a, button, summary, [tabindex]):not([tabindex="-1"]):focus-visible { outline: 2px solid CanvasText; }
   }
   body {
     @apply bg-background text-foreground;

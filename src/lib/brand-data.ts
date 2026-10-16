@@ -599,8 +599,8 @@ export const SHADOWS: ScaleRow[] = [
   },
   {
     "name": "focus-ring",
-    "value": "0 0 0 2px #f2eee6, 0 0 0 4px #141c21",
-    "use": "Keyboard focus: a 2px ground-coloured gap, then 2px of solid `ring`. A box-shadow, so it follows any shape."
+    "value": "2px solid ring",
+    "use": "Keyboard focus: one 2px ring in `ring`, from each shadcn component's own focus-visible style. Fields also turn their border to `ring`; buttons keep a 2px gap. Never a second ring."
   }
 ];
 

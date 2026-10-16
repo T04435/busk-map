@@ -21,7 +21,7 @@ describe("CommandInput server HTML (B-011)", () => {
     expect(tag).not.toContain("aria-controls");
     expect(tag).not.toContain("aria-activedescendant");
     // The rest of cmdk's input and ours still apply.
-    expect(tag).toContain('data-slot="command-input"');
+    expect(tag).toContain('data-slot="input-group-control"');
     expect(tag).toContain('placeholder="Search"');
     expect(tag).toContain("cmdk-input");
   });

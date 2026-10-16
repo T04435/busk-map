@@ -134,7 +134,7 @@ export function BrainMap() {
         data-trace={stateOf(id)}
         onClick={() => pick(id)}
         className={cn(
-          "group flex min-h-12 w-full items-center gap-3 border-[1.5px] px-3 py-2 text-left text-sm transition-colors outline-none hover:border-qloo focus-visible:focus-ring motion-reduce:transition-none",
+          "group flex min-h-12 w-full items-center gap-3 border-[1.5px] px-3 py-2 text-left text-sm transition-colors hover:border-qloo motion-reduce:transition-none",
           feature ? "min-h-[52px]" : "",
           secondary && stateOf(id) === "none" && "border-dashed border-input",
           {

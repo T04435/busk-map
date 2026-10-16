@@ -3,6 +3,7 @@
 import { CheckIcon, CopyIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 /** The legacy copy path, for browsers without the async clipboard (or when it is refused). */
 function copyWithSelection(text: string): boolean {
@@ -60,13 +61,13 @@ export function CopySetButton({ text }: { text: string }) {
         {state === "copied" ? "Copied" : "Copy"}
       </Button>
       {state === "manual" && (
-        <textarea
+        <Textarea
           ref={area}
           readOnly
           rows={5}
           value={text}
           aria-label="The set as text"
-          className="w-72 max-w-full border-2 border-input bg-card p-2 font-mono text-xs"
+          className="min-h-0 w-72 max-w-full p-2 font-mono text-xs"
           onFocus={(event) => event.currentTarget.select()}
         />
       )}

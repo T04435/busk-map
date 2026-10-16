@@ -50,7 +50,7 @@ export function PitchRow({
           aria-pressed={Boolean(selected)}
           data-pitch-name={name}
           onClick={onSelect}
-          className="flex min-h-tap w-full items-center gap-3 p-3 text-left hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+          className="flex min-h-tap w-full items-center gap-3 p-3 text-left hover:bg-secondary focus-visible:outline-offset-[-4px]"
         >
           {main}
         </button>
@@ -67,7 +67,7 @@ export function PitchRow({
               onClick={onDetails}
               data-testid="pitch-details-open"
               data-pitch-id={pitchId}
-              className="inline-flex min-h-tap items-center gap-1 px-1 font-bold underline underline-offset-3 hover:decoration-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="inline-flex min-h-tap items-center gap-1 px-1 font-bold underline underline-offset-3 hover:decoration-2"
             >
               Full details <span className="sr-only">for {name}</span>
               <ArrowRight aria-hidden="true" className="size-3.5" />

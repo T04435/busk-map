@@ -27,7 +27,7 @@ export function Fold({
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((v) => !v)}
-        className="flex min-h-tap w-full cursor-pointer items-center justify-between gap-3 px-4 text-left font-bold select-none focus-visible:outline-none"
+        className="flex min-h-tap w-full cursor-pointer items-center justify-between gap-3 px-4 text-left font-bold select-none focus-visible:outline-offset-[-4px]"
       >
         <span>
           {label}

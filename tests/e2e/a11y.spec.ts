@@ -18,6 +18,8 @@ test.describe("accessibility", () => {
     ["landing", "/", (p: Page) => expect(p.getByRole("heading", { level: 1, name: "Busk Map" })).toBeVisible()],
     ["/busks", "/busks", (p: Page) => expect(p.getByPlaceholder(SEARCHES[0])).toBeVisible()],
     ["/brand", "/brand", (p: Page) => expect(p.getByRole("heading", { level: 1, name: /Honeycomb/ })).toBeVisible()],
+    ["/terms", "/terms", (p: Page) => expect(p.getByRole("heading", { level: 1, name: /promises/i })).toBeVisible()],
+    ["/privacy", "/privacy", (p: Page) => expect(p.getByRole("heading", { level: 1, name: /keeps/i })).toBeVisible()],
   ] as const) {
     for (const scheme of ["light", "dark"] as const) {
       test(`${name} has no axe violations at any impact (${scheme})`, async ({ page }) => {
@@ -58,33 +60,36 @@ test.describe("accessibility", () => {
   test("the poster buttons keep a visible focus ring next to their offset shadow (B-018)", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1, name: "Busk Map" })).toBeVisible();
-    // Both sit on a dark band, so the ring is the night one: a 2px ink gap, then a 4px signal-orange ring (#ff6a2b).
+    // Both sit on a dark band, so the ring is the night one: a 3px signal-orange (#ff6a2b) outline, 10px out.
     for (const cta of [page.getByRole("link", { name: "Plan a busk" }).first(), page.getByRole("link", { name: "Plan a busk" }).last()]) {
       const shadow = () => cta.evaluate((el) => getComputedStyle(el).boxShadow);
+      const outline = () => cta.evaluate((el) => `${getComputedStyle(el).outlineStyle} ${getComputedStyle(el).outlineWidth} ${getComputedStyle(el).outlineColor}`);
       const before = await shadow();
       expect(before).toMatch(/6px 6px 0px/);
-      expect(before).not.toMatch(/rgb\(255, 106, 43\) 0px 0px 0px 4px/);
+      expect(await outline()).toMatch(/^none/);
       await expect(async () => {
         await cta.focus();
         await page.keyboard.press("Tab");
         await page.keyboard.press("Shift+Tab");
         await expect(cta).toBeFocused({ timeout: 500 });
       }).toPass();
-      const after = await shadow();
-      expect(after).toMatch(/rgb\(255, 106, 43\) 0px 0px 0px 4px/);
-      expect(after).toMatch(/6px 6px 0px/); // the poster shadow stays
+      // One ring, an outline (not a second box-shadow layer), and the poster shadow stays as it was.
+      expect(await outline()).toBe("solid 3px rgb(255, 106, 43)"); // an outline 10px out, never a ring box-shadow
+      expect(await shadow()).toBe(before);
     }
   });
 
-  test("the search inputs show a focus ring when tabbed to (B-005)", async ({ page }) => {
+  // F13/F14: one border and one focus ring per field. The ring is a single 2px box-shadow layer; no global rule stacks a second.
+  const visibleLayers = (shadow: string) => shadow.split(/,(?![^(]*\))/).map((s) => s.trim()).filter((s) => s !== "none" && !/rgba\(0, 0, 0, 0\)/.test(s) && /\d/.test(s));
+
+  test("a focused InputGroup search and a focused Input each show exactly one ring (F13, F14, B-005)", async ({ page }) => {
     await page.goto("/busks");
+    // The search field: the group carries the one border and the one ring; the input inside carries neither.
     for (const placeholder of SEARCHES) {
       const input = page.getByPlaceholder(placeholder);
       const group = input.locator("xpath=ancestor::*[@data-slot='input-group'][1]");
-      const ring = () => group.evaluate((el) => getComputedStyle(el).boxShadow);
-      expect(await ring()).not.toMatch(/ 4px/);
-      // The server HTML already says aria-expanded="false" (B-011), so it no longer marks hydration: retry the
-      // keyboard round trip until the hydrated input keeps focus.
+      const read = (loc: typeof group) => loc.evaluate((el) => ({ shadow: getComputedStyle(el).boxShadow, outline: getComputedStyle(el).outlineStyle, border: getComputedStyle(el).borderTopWidth }));
+      expect(visibleLayers((await read(group)).shadow)).toEqual([]);
       await expect(input).toHaveAttribute("aria-expanded", "false");
       await expect(async () => {
         await input.focus();
@@ -92,8 +97,27 @@ test.describe("accessibility", () => {
         await page.keyboard.press("Shift+Tab");
         await expect(input).toBeFocused({ timeout: 500 });
       }).toPass();
-      // Honeycomb's full-strength focus ring (--focus-ring): a 2px paper gap, then a 4px ink (night: orange) ring.
-      await expect.poll(ring).toMatch(/ 4px/);
+      await expect.poll(async () => visibleLayers((await read(group)).shadow).length).toBe(1);
+      const g = await read(group);
+      expect(visibleLayers(g.shadow)[0]).toMatch(/ 0px 0px 0px 2px/); // 2px ring, no gap layer
+      expect(g.border).toBe("2px");
+      const inner = await read(input);
+      expect(visibleLayers(inner.shadow)).toEqual([]);
+      expect(inner.outline).toBe("none");
+      expect(inner.border).toBe("0px");
     }
+    // A plain Input: its own border plus one ring.
+    const name = page.getByLabel("Act name");
+    await expect(async () => {
+      await name.focus();
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Shift+Tab");
+      await expect(name).toBeFocused({ timeout: 500 });
+    }).toPass();
+    const field = await name.evaluate((el) => ({ shadow: getComputedStyle(el).boxShadow, outline: getComputedStyle(el).outlineStyle, border: getComputedStyle(el).borderTopWidth }));
+    expect(visibleLayers(field.shadow)).toHaveLength(1);
+    expect(field.shadow).toMatch(/ 0px 0px 0px 2px/);
+    expect(field.outline).toBe("none");
+    expect(field.border).toBe("2px");
   });
 });

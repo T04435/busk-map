@@ -115,7 +115,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
         shouldFilter={false}
         loop
         label={LABEL}
-        className="h-auto border"
+        className="h-auto gap-1 overflow-visible border-0 bg-transparent p-0"
         value={activeValue}
         onValueChange={(value) => setActive({ query: state.query, value })}
       >
@@ -134,7 +134,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
           }}
         />
         {typed && (
-          <CommandList label="Artist results">
+          <CommandList label="Artist results" className="border-2 border-rule bg-popover p-1">
             {state.status === "idle" && typed.length < MIN_QUERY_CHARS && (
               <p className="px-3 py-2 text-sm text-muted-foreground">Type {MIN_QUERY_CHARS} or more letters to search Spotify.</p>
             )}

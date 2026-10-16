@@ -29,13 +29,14 @@ export async function getWeather(
     source: "open-meteo",
     context,
     fallback: null,
-    synthetic: () => syntheticWeather(slot.date, hours),
+    synthetic: () => ({ ...syntheticWeather(slot.date, hours), around: syntheticWeather(slot.date, [slot.startHour - 2, slot.startHour - 1, slot.endHour, slot.endHour + 1].filter((h) => h >= 0 && h < 24)).hours }),
     live: async () => {
       if (slot.date < addDays(today, -1) || slot.date > addDays(today, FORECAST_DAYS - 1)) {
         throw new AdapterError("weather", "not_found", "The slot is outside the forecast range");
       }
       const all = await fetchHourlyForecast(city.center, slot.date, city.timeZone);
-      return { date: slot.date, hours: all.filter((h) => hours.includes(h.hour)) };
+      const near = (h: WeatherHour) => !hours.includes(h.hour) && h.hour >= Math.max(0, slot.startHour - 2) && h.hour < Math.min(24, slot.endHour + 2);
+      return { date: slot.date, hours: all.filter((h) => hours.includes(h.hour)), around: all.filter(near) };
     },
   });
 }

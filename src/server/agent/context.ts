@@ -7,7 +7,7 @@ import { nameKey, trackKey } from "@/lib/text";
 import type { PlanRequest } from "@/lib/plan-schema";
 import type { AdapterContext, AdapterName, AdapterResult } from "@/server/adapters/core";
 import { getEvents } from "@/server/adapters/events";
-import { getFootfall } from "@/server/adapters/footfall";
+import { getFootfall, getTypicalFootfall } from "@/server/adapters/footfall";
 import { getPitches } from "@/server/adapters/pitches";
 import * as qloo from "@/server/adapters/qloo";
 import { findReleaseYears } from "@/server/adapters/repertoire";
@@ -129,6 +129,27 @@ export class PlanContext {
   /** An extra Qloo call (the agent's own looks), tracked and memoised like the engine's. Keys start with "agent:". */
   trackQloo<T>(key: `agent:${string}`, load: () => Promise<AdapterResult<T>>): Promise<T> {
     return this.track(key, load);
+  }
+
+  /**
+   * The slot weekday's 24-hour foot traffic at each sensor, for the details sheet's sparkline (display only: never scored, and its
+   * failure never marks the sensors down). Empty when the typical counts are unavailable.
+   */
+  hourlyProfiles(): Promise<Map<number, (number | null)[]>> {
+    return this.once("footfallDay", async () => {
+      try {
+        const typical = await getTypicalFootfall(this.request.city, 0, 24, this.adapters, this.today);
+        const out = new Map<number, (number | null)[]>();
+        if (typical.data.level !== "city-sensors") return out;
+        for (const sensor of typical.data.sensors) {
+          const day = sensor.byWeekdayHour[this.weekday];
+          if (day) out.set(sensor.id, Array.from({ length: 24 }, (_, h) => (day[h] === undefined ? null : Math.round(day[h]))));
+        }
+        return out;
+      } catch {
+        return new Map<number, (number | null)[]>();
+      }
+    });
   }
 
   /** Typical foot traffic by weekday and hour (for the agent's footfall_at), loaded once. */

@@ -109,7 +109,7 @@ export const planPitchSchema = z.object({
   tip: tipBonusSchema.nullable().default(null),
   evidence: z.object({
     /** With footfallSource "nearby-sensors", avgHourly is the estimate and name the nearest sensor. */
-    sensor: z.object({ name: z.string(), avgHourly: z.number() }).nullable(),
+    sensor: z.object({ name: z.string(), avgHourly: z.number(), /** The slot weekday's 24-hour counts at that sensor (typical, an estimate), for the sheet's sparkline. Null when not available. */ hourly: z.array(z.number().nullable()).length(24).nullable().default(null) }).nullable(),
     places: z.array(
       z.object({
         name: z.string(),
@@ -207,6 +207,8 @@ export const planSchema = z.object({
     .object({ cells: z.number().int(), topCells: z.number().int(), considered: z.number().int(), excluded: z.number().int(), candidates: z.number().int() })
     .nullable()
     .default(null),
+  /** Where the council's rules allow no busking, as honeycomb cell centres (F16): drawn hatched. Empty when the rules data is unavailable. */
+  zones: z.array(z.object({ lat: z.number(), lon: z.number() })).default([]),
   /** Qloo heatmap cells, affinity relative to the best cell; geohash for drawing the cell. */
   tasteCells: z.array(z.object({ lat: z.number(), lon: z.number(), affinity: z.number().min(0).max(1), geohash: z.string().nullable() })),
   crowd: z.object({
@@ -250,6 +252,8 @@ export const planSchema = z.object({
   weather: z
     .object({
       hours: z.array(z.object({ hour: z.number(), temperatureC: z.number().nullable(), precipitationProbability: z.number().nullable(), windKmh: z.number().nullable() })),
+      /** The hours just before and after the slot, for the strip only (never scored). */
+      around: z.array(z.object({ hour: z.number(), temperatureC: z.number().nullable(), precipitationProbability: z.number().nullable(), windKmh: z.number().nullable() })).default([]),
     })
     .nullable(),
   resolvedArtists: z.array(z.object({ query: z.string(), matched: z.string().nullable() })),

@@ -6,6 +6,13 @@ test.describe("week planner", () => {
     await page.getByRole("link", { name: "Week: Soul and funk sax player" }).click();
     await expect(page).toHaveURL(/\/week\?example=sax/);
     await expect(page.getByRole("heading", { level: 1, name: /Plan my week/ })).toBeVisible();
+    // Same rule as the plan page: the mock Qloo label shows only with synthetic data (local offline server);
+    // a deploy with the key says Live, never "test data".
+    if (LOCAL) await expect(page.getByText("Qloo test data (local mock)").first()).toBeVisible();
+    else {
+      await expect(page.getByText("Live Qloo data").first()).toBeVisible();
+      await expect(page.getByText(/Qloo test data/)).toHaveCount(0);
+    }
     const sessions = page.getByRole("list", { name: "Top sessions" }).getByRole("listitem");
     await expect(sessions.first()).toBeVisible();
     expect(await sessions.count()).toBeLessThanOrEqual(5);

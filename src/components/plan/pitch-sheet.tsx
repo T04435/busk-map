@@ -1,38 +1,66 @@
 "use client";
 
-import { PitchCard } from "@/components/pitch-card/pitch-card";
+import { useRef, useSyncExternalStore } from "react";
+import { ScoreBreakdown } from "@/components/pitch-card/pitch-card";
 import { SetlistPanel } from "@/components/setlist/setlist-panel";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
+import { shortHours } from "@/lib/slot";
 import type { ExplanationsModel } from "@/lib/sources";
 import { CrowdPanel } from "./crowd-panel";
+import { PitchDetails } from "./pitch-details";
 import { WeightsPanel } from "./weights-panel";
 
+/** Below 720px the sheet rises from the bottom with a grab handle; from 720px it comes in from the right, 720px wide (board B54). */
+const PHONE = "(max-width: 719px)";
+function usePhone(): boolean {
+  return useSyncExternalStore(
+    (notify) => {
+      const mq = window.matchMedia(PHONE);
+      mq.addEventListener("change", notify);
+      return () => mq.removeEventListener("change", notify);
+    },
+    () => window.matchMedia(PHONE).matches,
+    () => false,
+  );
+}
+
 /**
- * "Full details" for one pitch, in a right-hand sheet (full screen on phones): the pitch card, the suggested set, the crowd and
- * the weights. Radix traps focus inside, closes on Escape and returns focus to what opened it. The page keeps `?pitch=<id>` in
- * the URL while it is open (the deep link) and clears it on close.
+ * "Full details" for one pitch, in a sheet: the pitch (head, why this crowd, foot traffic by hour, the facts), the setlist with
+ * Copy, the crowd, and how the score adds up. Radix traps focus inside, closes on Escape and returns focus to what opened it.
+ * The page keeps `?pitch=<id>` in the URL while it is open (the deep link) and clears it on close.
  */
 export function PitchSheet({
   plan,
   pitch,
   model,
-  when,
   onClose,
   returnFocus,
 }: {
   plan: Plan;
   pitch: PlanPitch | null;
   model: ExplanationsModel | null;
-  when: string;
+  /** Kept for callers; the sheet reads the hours from the plan's slot. */
+  when?: string;
   onClose: () => void;
   /** What had focus when the sheet opened (the Full details button): it gets focus back on close. */
   returnFocus?: () => void;
 }) {
   const rank = pitch ? plan.pitches.indexOf(pitch) + 1 : 0;
+  const phone = usePhone();
+  const content = useRef<HTMLDivElement>(null);
   return (
     <Sheet open={pitch !== null} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full gap-0 bg-background p-0 sm:max-w-3xl" data-testid="pitch-sheet"
+      <SheetContent
+        side={phone ? "bottom" : "right"}
+        className="max-h-dvh w-full gap-0 bg-background p-0 data-[side=bottom]:h-[92dvh] data-[side=right]:sm:max-w-[720px]"
+        data-testid="pitch-sheet"
+        ref={content}
+        // Focus starts on the sheet itself, so no tooltip opens and the first Tab reaches the first control.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          content.current?.focus();
+        }}
         onCloseAutoFocus={(e) => {
           if (!returnFocus) return;
           e.preventDefault();
@@ -41,17 +69,24 @@ export function PitchSheet({
       >
         {pitch ? (
           <>
+            {phone ? <span aria-hidden="true" data-testid="sheet-handle" className="mx-auto mt-2 mb-0 block h-1.5 w-12 shrink-0 bg-input" /> : null}
             <SheetHeader className="border-b-2 border-rule bg-popover p-4 pr-16 md:p-6 md:pr-16">
               <SheetTitle className="font-display text-[34px] leading-[0.95] font-extrabold uppercase">{pitch.name}</SheetTitle>
               <SheetDescription className="font-mono text-xs font-bold tracking-[0.06em] uppercase">
-                Pitch {rank} · {when}
+                Pitch {rank} · {shortHours(plan.slot.startHour, plan.slot.endHour)}
               </SheetDescription>
             </SheetHeader>
             <div className="flex flex-col gap-5 p-4 md:p-6">
-              <PitchCard pitch={pitch} rank={rank} model={model} weights={plan.weights} />
+              <PitchDetails plan={plan} pitch={pitch} rank={rank} model={model} />
               <SetlistPanel pitch={pitch} learnThese={plan.learnThese} ageLean={plan.ageLean} />
-              <CrowdPanel crowd={plan.crowd} resolved={plan.resolvedArtists} topPitch={plan.pitches[0]?.name ?? null} />
-              <WeightsPanel weights={plan.weights} />
+              <CrowdPanel crowd={plan.crowd} resolved={plan.resolvedArtists} topPitch={plan.pitches[0]?.name ?? null} qlooMode={plan.qlooMode} />
+              <details className="border-2 border-rule bg-card [&_summary]:min-h-tap" data-testid="score-details">
+                <summary className="flex cursor-pointer items-center px-4 font-bold">How this score adds up</summary>
+                <div className="space-y-5 border-t border-border p-4">
+                  <ScoreBreakdown pitch={pitch} weights={plan.weights} />
+                  <WeightsPanel weights={plan.weights} />
+                </div>
+              </details>
             </div>
           </>
         ) : null}

@@ -8,12 +8,12 @@ export function leanText(lean: number): string {
 }
 
 /**
- * A signed lean (−1…1) either side of a centre line: + is above the average audience, − below. Not a percentage, so
+ * A signed lean (−1…1) either side of a centre line, scaled to the set's biggest lean (`max`): + is above the average audience, − below. Not a percentage, so
  * not a PercentCell. Renders an `li`: put it in a `ul`.
  */
-export function LeanBar({ label, lean, className }: { label: string; lean: number; className?: string }) {
+export function LeanBar({ label, lean, max = 1, className }: { label: string; lean: number; /** The biggest lean in the set: its bar fills its half of the track, so small leans never draw as stubs. */ max?: number; className?: string }) {
   const l = Math.max(-1, Math.min(1, lean));
-  const width = `${Math.round(Math.abs(l) * 50)}%`;
+  const width = `${Math.max(4, Math.round((Math.abs(l) / Math.max(0.05, max)) * 50))}%`;
   const text = leanText(l);
   return (
     <li className={cn("grid grid-cols-[minmax(0,10rem)_1fr_3.5rem] items-center gap-2 text-sm leading-5", className)}>

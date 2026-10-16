@@ -54,6 +54,22 @@ export async function startLearn(faults: string | null): Promise<Streaming | Ref
   }
 }
 
+/** Start a Repertoire research run (POST /api/playlist/research): a full run for a link, or "more". Same stream, same refusals. */
+export async function startResearch(body: { link?: string; refresh?: boolean; mode?: "full" | "more" }, faults: string | null): Promise<Streaming | Refusal> {
+  try {
+    const res = await fetch("/api/playlist/research", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json", ...(faults ? { "x-buskmap-faults": faults } : {}) },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok || !res.body) return await refusalOf(res);
+    return { ok: true, events: parsed(res.body) };
+  } catch {
+    return network;
+  }
+}
+
 /** Join a run in flight, or replay a stored one. */
 export async function joinLearn(runId: string): Promise<Streaming | Refusal> {
   try {

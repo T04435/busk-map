@@ -10,14 +10,18 @@ const NO_MATCH = { status: 200, contentType: "application/json", body: JSON.stri
 const routed = new WeakSet<Page>();
 
 /**
- * Adds a song the way the page offers it when Spotify has no match: search for "Title - Artist", then "Add as typed" (the
- * type-it-in form is prefilled from the query). "(own)" has no field, so own songs go through the API.
+ * Adds a song. On an empty Repertoire the page is the research link field only (docs/repertoire-research.md), so the first
+ * song (and any "(own)" song, which has no field) goes through the API. Once there is a Repertoire, the way the page offers
+ * it when Spotify has no match: open "Add a song", search for "Title - Artist", then "Add as typed".
  */
 async function add(page: Page, text: string, accepted = true) {
-  if (/\(own\)\s*$/i.test(text)) {
+  const own = /\(own\)\s*$/i.test(text);
+  const search = page.getByRole("combobox", { name: "Search songs on Spotify" });
+  const trigger = page.getByRole("button", { name: "Add a song", exact: true });
+  if (own || (await trigger.count()) === 0) {
     const [title, artist] = text.replace(/\(own\)\s*$/i, "").trim().split(/\s+-\s+/);
-    const res = await page.request.post("/api/playlist/songs", { data: { title, artist, own: true, source: "typed" } });
-    expect(res.ok()).toBe(true);
+    const res = await page.request.post("/api/playlist/songs", { data: { title, artist, own, source: "typed" } });
+    expect(res.ok()).toBe(accepted);
     await page.reload();
     return;
   }
@@ -25,7 +29,8 @@ async function add(page: Page, text: string, accepted = true) {
     routed.add(page);
     await page.route("**/api/repertoire?type=tracks*", (route) => route.fulfill(NO_MATCH));
   }
-  const box = page.getByRole("combobox", { name: "Search songs on Spotify" });
+  if (!(await search.isVisible())) await trigger.click();
+  const box = search;
   // Typed before hydration, the query is lost: retry until the type-it-in form shows.
   await expect(async () => {
     await box.fill("");
@@ -37,13 +42,16 @@ async function add(page: Page, text: string, accepted = true) {
   await expect(box).toHaveValue(accepted ? "" : text);
 }
 
+/** The empty Repertoire page: the research link field, nothing else. */
+const emptyPage = (page: Page) => expect(page.getByLabel("Your Spotify artist link")).toBeVisible();
+
 test.describe("Repertoire storage (offline, memory store)", () => {
   test.skip(!LOCAL, "Writes to the local offline server's memory store");
 
   test("a first save creates it, a reload keeps it, remove and move work", async ({ page }) => {
     await page.goto("/repertoire");
     await expect(page.getByRole("heading", { level: 1, name: "Your Repertoire" })).toBeVisible();
-    await expect(page.getByText("No songs yet.")).toBeVisible();
+    await emptyPage(page);
     // Browsing created nothing and set no cookie.
     expect((await page.context().cookies()).some((c) => c.name === "buskmap_playlist")).toBe(false);
 
@@ -110,18 +118,19 @@ test.describe("Repertoire storage (offline, memory store)", () => {
     await page.getByRole("button", { name: /^Move to Songs you can sing: Four/ }).click();
     await expect(page.getByRole("button", { name: /^Move to Songs you can sing: Five/ })).toBeFocused();
     await page.getByRole("button", { name: "Remove Five" }).click();
-    // The Learned list is empty: the add field.
-    await expect(page.getByRole("combobox", { name: "Search songs on Spotify" })).toBeFocused();
-    // The only row of Songs you can sing: also the add field.
+    // The Learned list is empty: the page's main field (the research link, as there is no research yet).
+    await expect(page.getByLabel("Your Spotify artist link")).toBeFocused();
+    // The only row of Songs you can sing: also the main field.
     for (const title of ["Four", "One"]) {
       await page.getByRole("button", { name: `Remove ${title}` }).click();
     }
-    await expect(page.getByText("No songs yet.")).toBeVisible();
-    await expect(page.getByRole("combobox", { name: "Search songs on Spotify" })).toBeFocused();
+    await expect(page.getByLabel("Your Spotify artist link")).toBeFocused();
   });
 
   test("the Spotify search adds a picked song with its length", async ({ page }) => {
     await page.goto("/repertoire");
+    await add(page, "First Song - Someone");
+    await page.getByRole("button", { name: "Add a song", exact: true }).click();
     const box = page.getByRole("combobox", { name: "Search songs on Spotify" });
     await box.pressSequentially("Gravy");
     await page.getByRole("listbox", { name: "Song results" }).getByRole("option", { name: /Gravy \(synthetic result 1\)/ }).click();
@@ -141,7 +150,7 @@ test.describe("Repertoire storage (offline, memory store)", () => {
     await add(pa, "Only Mine - Context A");
     await expect(pa.getByRole("list", { name: "Songs you can sing" })).toContainText("Only Mine");
     await pb.goto("/repertoire");
-    await expect(pb.getByText("No songs yet.")).toBeVisible();
+    await emptyPage(pb);
     await add(pb, "Other One - Context B");
     await expect(pb.getByRole("list", { name: "Songs you can sing" })).not.toContainText("Only Mine");
     await pa.reload();
@@ -168,7 +177,7 @@ test.describe("Repertoire storage (offline, memory store)", () => {
     await expect(page.getByRole("list", { name: "Songs you can sing" })).toContainText("Gone Soon");
     await page.getByRole("button", { name: "Forget my Repertoire" }).click();
     await page.getByRole("alertdialog", { name: "Forget your Repertoire?" }).getByRole("button", { name: "Delete my Repertoire" }).click();
-    await expect(page.getByText("No songs yet.")).toBeVisible();
+    await emptyPage(page);
     expect(nativeDialog).toBe(false);
     expect((await page.context().cookies()).some((c) => c.name === "buskmap_playlist" && c.value)).toBe(false);
   });
@@ -181,7 +190,7 @@ test.describe("Repertoire storage (offline, memory store)", () => {
 
   test("passes axe at 390, 768 and 1440 (empty and with songs)", async ({ page }, info) => {
     await page.goto("/repertoire");
-    await expect(page.getByText("No songs yet.")).toBeVisible();
+    await emptyPage(page);
     const check = async () => {
       const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
       expect(violations.map((v) => `${v.impact} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);

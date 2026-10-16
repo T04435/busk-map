@@ -150,6 +150,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         mode,
         at: new Date().toISOString(),
         steps,
+        totals,
       };
       await playlists.saveResearch(playlist.id, snapshot).catch((error) => log.warn("research snapshot not saved", { error: error instanceof Error ? error.message : "unknown" }));
     }

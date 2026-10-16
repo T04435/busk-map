@@ -124,6 +124,8 @@ export type ResearchSnapshot = {
   mode: ResearchMode;
   at: string;
   steps: { [K in ResearchStepKey]?: StoredStep<K> };
+  /** The last run's final totals (Qloo calls, songs checked, new songs). */
+  totals?: import("./learn-schema").LearnTotals;
 };
 
 /** The busk local scene's optional input: the act's genre tags (step 8), at most this many. */
@@ -148,3 +150,10 @@ export const researchRequestSchema = z.object({
   refresh: z.boolean().default(false),
 });
 export type ResearchRequest = z.infer<typeof researchRequestSchema>;
+
+/**
+ * Offline test mode only (the 3210 server, e2e): an artist the local mocks know end to end, so the full nine-step flow
+ * runs on synthetic data. The id is the Qloo mock catalogue's Spotify-shaped id for this name (qloo-mock/catalog.ts:
+ * mockSpotifyId); tests/unit/research/view.test.ts keeps them equal. Never shown on a live server.
+ */
+export const OFFLINE_TEST_ARTIST = { name: "Julia Jacklin", spotifyId: "IBaXCJ49QlTYT2jOrEp66p" } as const;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getVersion, LngLatBounds, Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
+import { getVersion, LngLatBounds, Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl, type GeoJSONSource, type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
@@ -42,6 +42,19 @@ const RAMP_FALLBACK = ["#fbe3d2", "#f9b98e", "#f28644", "#dd6322", "#7f2d0c"];
 const rampColors = () => [1, 2, 3, 4, 5].map((n, i) => themeColor(`--taste-${n}`, RAMP_FALLBACK[i]));
 /** Affinity (0–1) to the ramp step, as the legend's five cells. */
 const fillExpression = (colors: string[]) => ["step", ["get", "affinity"], colors[2], 0.68, colors[3], 0.88, colors[4]] as never;
+
+/** No tiles (offline, blocked, or the style host is down): a plain paper base, so the taste cells and pins still draw. */
+const baseStyle = (): StyleSpecification => ({
+  version: 8,
+  sources: {},
+  layers: [{ id: "base", type: "background", paint: { "background-color": themeColor("--muted", "#ebe6dc") } }],
+});
+
+/** Run `fn` once the current style is usable (the tiles' style, or the plain base after it failed to load). */
+function whenStyle(instance: MapLibreMap, fn: () => void) {
+  if (instance.isStyleLoaded()) fn();
+  else instance.once("style.load", fn);
+}
 
 const HEX_PTS = "50,2 97,26 97,74 50,98 3,74 3,26";
 
@@ -112,6 +125,13 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
     });
     instance.addControl(new NavigationControl({ showCompass: false }), "top-right");
     map.current = instance;
+    // The tiles' style never arrived: swap in the plain base once, so the layers below can be added.
+    let fellBack = false;
+    instance.on("error", () => {
+      if (fellBack || instance.isStyleLoaded()) return;
+      fellBack = true;
+      instance.setStyle(baseStyle());
+    });
     // Start with the attribution collapsed to its (i) button, so it doesn't cover the pins on phones.
     instance.once("load", () => {
       const attrib = container.current?.querySelector(".maplibregl-ctrl-attrib");
@@ -156,6 +176,8 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
       }),
     };
     const apply = () => {
+      // For tests and QA: how many orange cells the map was given (0 when no taste is drawn).
+      container.current?.setAttribute("data-taste-cells", String(data.features.length));
       const colors = rampColors();
       const source = instance.getSource("taste") as GeoJSONSource | undefined;
       if (source) {
@@ -167,8 +189,7 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
       instance.addLayer({ id: "taste", type: "fill", source: "taste", paint: { "fill-color": fillExpression(colors), "fill-opacity": 0.85 } });
       instance.addLayer({ id: "taste-outline", type: "line", source: "taste", paint: { "line-color": themeColor("--rule", "#141c21"), "line-opacity": 0.25, "line-width": 1 } });
     };
-    if (instance.isStyleLoaded()) apply();
-    else instance.once("load", apply);
+    whenStyle(instance, apply);
   }, [plan.tasteCells, themeTick]);
 
   // Pins: real buttons, so they are reachable by keyboard and screen readers. The 48px button is the hit area; the shape inside grows when selected.

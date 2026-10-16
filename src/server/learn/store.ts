@@ -463,9 +463,9 @@ export class PostgresLearnStore implements LearnStore {
   async finishRun(runId: string, f: FinishRun) {
     if (!isUuid(runId)) return;
     await this.sql.query(
-      `UPDATE learn_runs SET status = $2, end_code = $3, model = $4, steps = $5::jsonb, totals = $6::jsonb, usage = $7::jsonb, new_count = $8, skipped_count = $9, finished_at = now()
+      `UPDATE learn_runs SET status = $2, end_code = $3, steps = $4::jsonb, totals = $5::jsonb, usage = $6::jsonb, new_count = $7, skipped_count = $8, finished_at = now()
         WHERE id = $1::uuid`,
-      [runId, f.status, f.endCode, f.model, f.steps === null ? null : JSON.stringify(f.steps), JSON.stringify(f.totals), f.usage === null ? null : JSON.stringify(f.usage), f.newCount, f.skippedCount],
+      [runId, f.status, f.endCode, f.steps === null ? null : JSON.stringify(f.steps), JSON.stringify(f.totals), f.usage === null ? null : JSON.stringify(f.usage), f.newCount, f.skippedCount],
     );
     const owner = (await this.sql.query("SELECT playlist_id FROM learn_runs WHERE id = $1::uuid", [runId])) as { playlist_id: string }[];
     if (owner[0]) {

@@ -36,7 +36,7 @@ async function seeded() {
     songSource: "spotify", reason: "Because.", rank, evidence: { ranker: "mock", artistFrom: "related_artists", because: ["Dolly Parton"], affinity: 0.5, growth: null, trendDelta: null, basedOn: [{ kind: "repertoire", name: "Dolly Parton" }] },
   });
   const saved = await learn.insertSuggestions(playlist.id, run.run.id, [pick("Orphan Girl", 1), pick("Look at Miss Ohio", 2)]);
-  await learn.finishRun(run.run.id, { status: "done", endCode: null, model: "mock", steps: [], totals: { artists: 1, crowds: 0, liked: 1, songsChecked: 2, alreadySuggested: 0, dismissedSkipped: 0, alreadyKnown: 0, newSongs: 2, qlooCalls: 0, qlooCacheHits: 0 }, usage: null, newCount: 2, skippedCount: 0 });
+  await learn.finishRun(run.run.id, { status: "done", endCode: null, steps: [], totals: { artists: 1, crowds: 0, liked: 1, songsChecked: 2, alreadySuggested: 0, dismissedSkipped: 0, alreadyKnown: 0, newSongs: 2, qlooCalls: 0, qlooCacheHits: 0 }, usage: null, newCount: 2, skippedCount: 0 });
   return { ...m, cookie, saved, playlist, store };
 }
 

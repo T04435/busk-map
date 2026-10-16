@@ -90,6 +90,9 @@ export const PLAYLIST_COPY = {
       const by = e.mode === "mock" ? "The test model" : "Claude";
       return `${by} found ${songs(e.newCount)} to learn.${left}`;
     },
+    runStarted: "Looking for songs to learn",
+    replaying: (n: number) => `Replaying run ${n} from your list (stored steps, no new model call)`,
+    stepsPruned: "This run's steps are no longer kept. Its songs are still on your list.",
     errors: {
       suggestionNotFound: "That song isn't on your list any more. Reload to see the latest.",
       badMove: "That change isn't possible for this song.",
@@ -98,6 +101,7 @@ export const PLAYLIST_COPY = {
       notHere: "This run is going on another server. Its songs appear in your list when it finishes.",
       runNotFound: "That run isn't in your list any more.",
       emptyPlaylist: (min: number) => `Add at least ${min} songs you can sing, then find songs to learn.`,
+      alreadyRunning: "A run is already going. Its steps are on this page.",
       listFull: (max: number) => `Your list of songs to learn is full (${max}). Mark some learned or dismiss them first.`,
     },
   },

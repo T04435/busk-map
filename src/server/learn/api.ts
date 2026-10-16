@@ -1,11 +1,12 @@
 import "server-only";
-import type { LearnLimitBody, LearnListView, LearnRunView } from "@/lib/learn-schema";
+import type { LearnLimitBody, LearnListView, LearnRunView, LearnStreamEvent } from "@/lib/learn-schema";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import type { LearnGate } from "@/server/rate-limit";
 import { repertoireLimitState } from "@/server/rate-limit";
 import { testSwitches } from "@/server/env";
 import { errorResponse, json } from "@/server/playlist/api";
 import { LEARN_MAX_PENDING, LEARN_RUNS_PER_HOUR_PER_PLAYLIST, LEARN_WINDOW_MINUTES } from "@/server/playlist/config";
+import type { LearnRun } from "./runs";
 import type { LearnStore, RunListItem } from "./store";
 
 /** Shared by the /api/playlist/learn/* handlers: the Learn list (docs §7.3) and the 429 body (§7.2). */
@@ -16,7 +17,8 @@ export const runView = (r: RunListItem): LearnRunView => ({
   startedAt: new Date(r.startedAt).toISOString(),
   finishedAt: r.finishedAt === null ? null : new Date(r.finishedAt).toISOString(),
   status: r.status,
-  model: r.model,
+  // The wire says who ranked: a run that finished from the data alone reads as "template" ("from the data").
+  model: r.status === "fallback" ? "template" : r.model,
   inputs: r.inputs,
   newCount: r.newCount,
   skippedCount: r.skippedCount,
@@ -71,3 +73,37 @@ export function limitResponse(gate: Extract<LearnGate, { ok: false }>, cookies: 
 export const offline = () => testSwitches().offline;
 
 export { errorResponse, PLAYLIST_COPY };
+
+/** A refusal before a run starts: a plain JSON error with the contract's extra fields (§7.2), never a stream. */
+export function refusal(status: number, code: string, message: string, extra: Record<string, unknown> = {}, cookies: string[] = []): Response {
+  return json({ error: { code, message, ...extra } }, { status }, cookies);
+}
+
+const encoder = new TextEncoder();
+const NDJSON_HEADERS = { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" };
+
+/** A run's events as NDJSON, one object per line: what it has so far, then the rest live, closing at the run's end. */
+export function runStream(run: LearnRun, cookies: string[] = []): Response {
+  let unfollow = () => {};
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      unfollow = run.follow(
+        (event) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`)),
+        () => controller.close(),
+      );
+    },
+    cancel() {
+      unfollow();
+    },
+  });
+  const headers = new Headers(NDJSON_HEADERS);
+  for (const c of cookies) headers.append("Set-Cookie", c);
+  return new Response(body, { headers });
+}
+
+/** Stored events as NDJSON, all at once (a replay). */
+export function eventsStream(events: LearnStreamEvent[], cookies: string[] = []): Response {
+  const headers = new Headers(NDJSON_HEADERS);
+  for (const c of cookies) headers.append("Set-Cookie", c);
+  return new Response(events.map((e) => `${JSON.stringify(e)}\n`).join(""), { headers });
+}

@@ -27,7 +27,7 @@ const pick = (title: string, artist = "Gillian Welch", over: Partial<NewSuggesti
   ...over,
 });
 const inputs = { songs: 5, soundsLike: ["Paul Kelly"], pitches: [] };
-const finish = (over: Partial<FinishRun> = {}): FinishRun => ({ status: "done", endCode: null, model: "mock", steps: [], totals: ZERO_LEARN_TOTALS, usage: null, newCount: 0, skippedCount: 0, ...over });
+const finish = (over: Partial<FinishRun> = {}): FinishRun => ({ status: "done", endCode: null, steps: [], totals: ZERO_LEARN_TOTALS, usage: null, newCount: 0, skippedCount: 0, ...over });
 
 async function make() {
   const playlists = new MemoryPlaylistStore();

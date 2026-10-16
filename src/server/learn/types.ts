@@ -81,7 +81,6 @@ export type SetStatusResult =
 export type FinishRun = {
   status: Exclude<LearnRunStatus, "running">;
   endCode: string | null;
-  model: LearnModel;
   steps: StoredLearnStep[] | null;
   totals: LearnTotals;
   usage: RunUsage | null;

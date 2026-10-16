@@ -1,9 +1,10 @@
 import "server-only";
 import { providerStatus } from "@/server/env";
 import { runAdapter, settleWithLimit, type AdapterContext, type AdapterResult } from "../core";
-import { fetchArtistCatalogue, fetchReleaseCount, fetchReleaseYear, parseSpotifyArtistId, searchArtists, searchTracks, searchTracksByArtist } from "./client";
+import { fetchArtistCatalogue, fetchReleaseCount, fetchReleaseYear, parseSpotifyArtistId, searchArtistTracks, searchArtists, searchTracks, searchTracksByArtist } from "./client";
 import {
   syntheticArtistSearch,
+  syntheticArtistTracks,
   syntheticCatalogue,
   syntheticReleaseCount,
   syntheticReleaseYear,
@@ -65,6 +66,13 @@ export async function findTracks(
  */
 export async function findArtists(query: string, market: string, context: AdapterContext): Promise<AdapterResult<CatalogueArtist[]>> {
   return runAdapter({ ...common(context), fallback: [], synthetic: () => syntheticArtistSearch(query), live: () => searchArtists(query, market) });
+}
+
+/**
+ * An artist's songs, for the learn run's `top_tracks`. Fallback: an empty list (the run then asks Last.fm).
+ */
+export async function findArtistTracks(artist: string, market: string, context: AdapterContext): Promise<AdapterResult<CatalogueTrack[]>> {
+  return runAdapter({ ...common(context), fallback: [], synthetic: () => syntheticArtistTracks(artist), live: () => searchArtistTracks(artist, market) });
 }
 
 /** Ids per release-count lookup (one result list). */

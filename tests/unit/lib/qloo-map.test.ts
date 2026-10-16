@@ -3,6 +3,7 @@ import path from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import {
+  CALLS_PER_LEARN_RUN,
   callKinds,
   calls,
   dataPoints,
@@ -28,6 +29,8 @@ const FILES: Record<string, string> = {
   "client.ts": path.join(QLOO_DIR, "client.ts"),
   "index.ts": path.join(QLOO_DIR, "index.ts"),
   "context.ts": path.join(ROOT, "src/server/agent/context.ts"),
+  "learn/context.ts": path.join(ROOT, "src/server/learn/context.ts"),
+  "learn/tools.ts": path.join(ROOT, "src/server/learn/tools.ts"),
 };
 
 const parse = (file: string) => ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
@@ -113,6 +116,8 @@ function declaredNames(file: string): Set<string> {
     if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer && (ts.isArrowFunction(n.initializer) || ts.isFunctionExpression(n.initializer))) {
       names.add(n.name.text);
     }
+    // An agent tool: `name: tool({ … })` in the object a tools builder returns.
+    if (ts.isPropertyAssignment(n) && ts.isIdentifier(n.name) && ts.isCallExpression(n.initializer) && calleeName(n.initializer) === "tool") names.add(n.name.text);
   });
   return names;
 }
@@ -185,12 +190,12 @@ describe("qloo map: referential integrity", () => {
     expect(new Set(allIds).size).toBe(allIds.length);
   });
 
-  it("has the documented shape: 11 kinds (12 with 5b), 15 data points, 9 features, Spotify and Ticketmaster only", () => {
-    expect(callKinds).toBe(11);
-    expect(calls).toHaveLength(12);
-    expect(calls.filter((c) => c.variantOf).map((c) => c.id)).toEqual(["c5b"]);
-    expect(dataPoints).toHaveLength(15);
-    expect(featureCount).toBe(9);
+  it("has the documented shape: 12 kinds (14 with 5b and 5c), 17 data points, 10 features, Spotify and Ticketmaster only", () => {
+    expect(callKinds).toBe(12);
+    expect(calls).toHaveLength(14);
+    expect(calls.filter((c) => c.variantOf).map((c) => c.id)).toEqual(["c5b", "c5c"]);
+    expect(dataPoints).toHaveLength(17);
+    expect(featureCount).toBe(10);
     expect(secondarySources.map((s) => s.label)).toEqual(["Spotify", "Ticketmaster"]);
   });
 
@@ -239,7 +244,8 @@ describe("qloo map: referential integrity", () => {
 
 describe("qloo map: facts and trace", () => {
   it("derives the counts and states the quota", () => {
-    expect(facts.map((f) => f.value)).toEqual(["11", "24–33", "0", "9"]);
+    expect(facts.map((f) => f.value)).toEqual(["12", "24–33", "0", "10"]);
+    expect(CALLS_PER_LEARN_RUN).toBe("≤ 25");
     expect(quotaNote).toContain("10,000 requests a month per key, at 5 a second");
     expect(quotaNote).toContain("24 h");
   });
@@ -254,6 +260,15 @@ describe("qloo map: facts and trace", () => {
     const { nodes, edges: lit } = trace("f_fans");
     expect([...nodes].sort()).toEqual(["c11", "c5b", "d_contrast", "d_usual", "f_fans"].sort());
     expect(lit.size).toBe(4);
+  });
+
+  it("Songs to learn lights the learn calls, the crowd variant, Spotify's songs and the shared data points", () => {
+    const { nodes } = trace("f_learn");
+    for (const id of ["c12", "c5c", "c1", "c2", "c8", "c9", "spotify", "d_taste_artists", "d_tracks", "d_id", "d_trend", "d_demo"] as const) expect(nodes.has(id), id).toBe(true);
+    expect(nodes.has("ticketmaster")).toBe(false);
+    expect(calls.find((c) => c.id === "c5c")).toMatchObject({ variantOf: "c5", codeRef: "client.ts:localArtists", via: ["learn/tools.ts:crowd_at"] });
+    expect(calls.find((c) => c.id === "c12")).toMatchObject({ num: "12", codeRef: "client.ts:tasteArtists", urnType: "urn:entity:artist" });
+    expect(featuresTouchedBy("spotify")).toContain("f_learn");
   });
 
   it("a data point lights both ways", () => {

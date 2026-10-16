@@ -10,7 +10,7 @@
  * adapter can't gain or lose a call without this map changing too.
  */
 
-export type CallId = "c1" | "c2" | "c3" | "c4" | "c5" | "c5b" | "c6" | "c7" | "c8" | "c9" | "c10" | "c11";
+export type CallId = "c1" | "c2" | "c3" | "c4" | "c5" | "c5b" | "c5c" | "c6" | "c7" | "c8" | "c9" | "c10" | "c11" | "c12";
 export type SourceId = "spotify" | "ticketmaster";
 export type DataPointId =
   | "d_id"
@@ -27,8 +27,10 @@ export type DataPointId =
   | "d_demo"
   | "d_genre"
   | "d_contrast"
-  | "d_years";
-export type FeatureId = "f_rank" | "f_map" | "f_events" | "f_week" | "f_crowd" | "f_fans" | "f_setlist" | "f_plain" | "f_agent";
+  | "d_years"
+  | "d_taste_artists"
+  | "d_tracks";
+export type FeatureId = "f_rank" | "f_map" | "f_events" | "f_week" | "f_crowd" | "f_fans" | "f_setlist" | "f_plain" | "f_agent" | "f_learn";
 export type NodeId = CallId | SourceId | DataPointId | FeatureId;
 export type NodeKind = "call" | "source" | "dataPoint" | "feature";
 
@@ -94,7 +96,7 @@ export const calls: readonly QlooCall[] = [
     urnType: "urn:entity:artist",
     keyParams: ["query=<artist name>", "types=urn:entity:artist", "take=3"],
     codeRef: "client.ts:searchArtist",
-    via: ["index.ts:resolveArtists"],
+    via: ["index.ts:resolveArtists", "learn/context.ts:matchPlaylist"],
     dataPoints: [{ id: "d_id", how: "matches each artist by name when there is no Spotify id" }],
   },
   {
@@ -104,7 +106,7 @@ export const calls: readonly QlooCall[] = [
     endpoint: "/entities",
     keyParams: ["external.spotify.ids=<id>"],
     codeRef: "client.ts:entitiesBySpotifyIds",
-    via: ["index.ts:resolveArtists"],
+    via: ["index.ts:resolveArtists", "learn/context.ts:matchPlaylist"],
     dataPoints: [{ id: "d_id", how: "matches an artist by its Spotify id, so the right namesake is picked" }],
   },
   {
@@ -159,6 +161,18 @@ export const calls: readonly QlooCall[] = [
     dataPoints: [{ id: "d_usual", how: "the same question with no taste signal: everyone near a busking hotspot" }],
   },
   {
+    id: "c5c",
+    num: "5c",
+    label: "Crowd at your usual pitches",
+    endpoint: "/v2/insights",
+    urnType: "urn:entity:artist",
+    keyParams: ["signal.location=<WKT POLYGON around a usual pitch, 400 m>", "signal.interests.entities=<Repertoire ids>", "feature.explainability=true", "take=10"],
+    codeRef: "client.ts:localArtists",
+    via: ["learn/tools.ts:crowd_at"],
+    variantOf: "c5",
+    dataPoints: [{ id: "d_taste_artists", how: "the artists the crowd at one of your usual pitches likes, from fans of your songs" }],
+  },
+  {
     id: "c6",
     num: "6",
     label: "Affinity at a pitch",
@@ -188,7 +202,7 @@ export const calls: readonly QlooCall[] = [
     urnType: "urn:entity:artist",
     keyParams: ["signal.interests.entities=<one id>", "filter.start_date", "filter.end_date (42 days)"],
     codeRef: "client.ts:trendingFor",
-    via: ["client.ts:trendingWindow", "client.ts:trending", "context.ts:rising"],
+    via: ["client.ts:trendingWindow", "client.ts:trending", "context.ts:rising", "learn/tools.ts:rising"],
     dataPoints: [{ id: "d_trend", how: "how fast each artist is rising" }],
   },
   {
@@ -199,7 +213,7 @@ export const calls: readonly QlooCall[] = [
     urnType: "urn:demographics",
     keyParams: ["signal.interests.entities=<act ids>"],
     codeRef: "client.ts:demographics",
-    via: ["index.ts:crowdProfile"],
+    via: ["index.ts:crowdProfile", "learn/tools.ts:crowd_profile"],
     dataPoints: [{ id: "d_demo", how: "the age and gender your fans lean" }],
   },
   {
@@ -223,16 +237,28 @@ export const calls: readonly QlooCall[] = [
     via: ["context.ts:contrast"],
     dataPoints: [{ id: "d_contrast", how: "genre shares for your fans and the usual crowd" }],
   },
+  {
+    id: "c12",
+    num: "12",
+    label: "Artists like your Repertoire",
+    endpoint: "/v2/insights",
+    urnType: "urn:entity:artist",
+    keyParams: ["signal.interests.entities=<Repertoire ids>", "feature.explainability=true", "take=20", "no location"],
+    codeRef: "client.ts:tasteArtists",
+    via: ["learn/tools.ts:related_artists"],
+    dataPoints: [{ id: "d_taste_artists", how: "artists whose fans overlap your Repertoire’s fans, anywhere, and which of your artists explain each" }],
+  },
 ];
 
 export const secondarySources: readonly SecondarySource[] = [
   {
     id: "spotify",
     label: "Spotify",
-    contributes: "artist ids, release years",
+    contributes: "artist ids, release years, songs to learn",
     dataPoints: [
       { id: "d_id", how: "the artist picker supplies the Spotify id" },
       { id: "d_years", how: "release years for your songs" },
+      { id: "d_tracks", how: "songs by the artists a learn run chooses" },
     ],
   },
   {
@@ -257,6 +283,7 @@ export const dataPoints: readonly DataPoint[] = [
       { id: "f_map", how: "the heatmap is signalled with your artists" },
       { id: "f_crowd", how: "an artist Qloo can’t match is named in a warning" },
       { id: "f_week", how: "the week planner signals with your artists too" },
+      { id: "f_learn", how: "every look in a learn run signals with your Repertoire’s artists" },
     ],
   },
   {
@@ -354,6 +381,7 @@ export const dataPoints: readonly DataPoint[] = [
       { id: "f_setlist", how: "ranks learn these" },
       { id: "f_crowd", how: "the “Rising” badge" },
       { id: "f_agent", how: "the learn_these tool" },
+      { id: "f_learn", how: "who is rising among the artists a run found" },
     ],
   },
   {
@@ -365,6 +393,7 @@ export const dataPoints: readonly DataPoint[] = [
       { id: "f_crowd", how: "who your fans are" },
       { id: "f_setlist", how: "era fit: songs from your crowd’s years" },
       { id: "f_agent", how: "the crowd_at tool" },
+      { id: "f_learn", how: "era fit, with the age your fans lean" },
     ],
   },
   {
@@ -390,6 +419,20 @@ export const dataPoints: readonly DataPoint[] = [
     sub: "from Spotify",
     fields: ["release year"],
     features: [{ id: "f_setlist", how: "era fit, with your fans’ age lean" }],
+  },
+  {
+    id: "d_taste_artists",
+    label: "Artists to learn songs from",
+    sub: "your Repertoire’s fans, and the crowd at your pitches",
+    fields: ["entity_id", "name", "query.affinity", "query.explainability", "query.measurements.audience_growth"],
+    features: [{ id: "f_learn", how: "the artists a learn run chooses songs from, each with who explains it" }],
+  },
+  {
+    id: "d_tracks",
+    label: "Songs by those artists",
+    sub: "from Spotify, Last.fm as backup",
+    fields: ["track title", "artist", "release year", "duration"],
+    features: [{ id: "f_learn", how: "the songs a run picks from; earlier suggestions are left out here" }],
   },
 ];
 
@@ -445,6 +488,14 @@ export const features: readonly Feature[] = [
     with: ["a plain AI", "Busk Map"],
   },
   { id: "f_agent", label: "The agent’s tools", sub: "what Claude asks while it plans", location: "Plan page: Agent steps", how: "direct" },
+  {
+    id: "f_learn",
+    label: "Songs to learn",
+    sub: "a run that scouts new songs",
+    location: "Repertoire page: Songs to learn",
+    how: "combined",
+    with: ["Spotify", "Last.fm", "Claude Sonnet (the learn agent)"],
+  },
 ];
 
 /** Planned, not built (docs/qloo-data-map.md §3). Only items with built: false. */
@@ -462,6 +513,8 @@ export const dataPointCount = dataPoints.length;
 /** Measured, not derivable (docs/qloo-data-map.md §4): live 24–28, mock 33; a rerun is served from the cache. */
 export const CALLS_PER_NEW_BUSK = "24–33";
 export const CALLS_ON_RERUN = 0;
+/** A learn run's hard cap (config.ts:LEARN_QLOO_BUDGET): typically 8–9 requests, 25 at worst (docs/playlist-architecture.md §2.9). */
+export const CALLS_PER_LEARN_RUN = "≤ 25";
 
 export const QUOTA = {
   requestsPerMonth: 10_000,

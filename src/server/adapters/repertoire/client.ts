@@ -111,6 +111,31 @@ export async function searchTracksByArtist(query: string, artist: string, market
 }
 
 /**
+ * An artist's songs by name: a track search scoped to the artist (`artist:"…"`, ten results, cached for a day), keeping
+ * only tracks that list that artist, so a namesake's songs don't come back. Spotify's order is its relevance order, which
+ * stands in for popularity: artist top tracks returns 403 (see above). Used by the learn run's `top_tracks`
+ * (docs/playlist-architecture.md §2.2). Songs repeated under another edition collapse to the first.
+ */
+export async function searchArtistTracks(artist: string, market: string): Promise<CatalogueTrack[]> {
+  "use cache: remote";
+  cacheLife("days");
+  cacheTag("repertoire");
+  const params = new URLSearchParams({ q: `artist:"${artist.replaceAll('"', "")}"`, type: "track", limit: "10", market });
+  const body = await spotify(`/search?${params}`, searchSchema);
+  const seen = new Set<string>();
+  return (body.tracks?.items ?? [])
+    .filter((t): t is NonNullable<typeof t> => t !== null)
+    .filter((t) => t.artists.some((a) => nameKey(a.name) === nameKey(artist)))
+    .filter((t) => {
+      const key = songKey(t.name);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((t) => toTrack(t));
+}
+
+/**
  * First release year of one song: a track search by title and artist, keeping
  * results by that artist with the same song title, and taking the earliest
  * album year (so a remaster or a best-of doesn't make an old song look new).

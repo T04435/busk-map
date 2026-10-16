@@ -7,6 +7,8 @@ import type { CrowdProfile, GenreContrast, HeatCell, LocalArtists, QlooEntity, Q
 
 export type { CrowdProfile, Explanation, GenreContrast, HeatCell, Impact, LocalArtists, QlooEntity, QlooPlace, TasteTag, TrendRow } from "./schema";
 export type { TrendWindow } from "./client";
+/** Requests the trending window probe may send at most (a quarter back at a time). */
+export const TRENDING_PROBES = client.TRENDING_MAX_PROBES;
 
 /**
  * Qloo tool functions (spec.md, Agent design). The same client code runs in
@@ -101,6 +103,11 @@ export function busyPlaces(
 /** local_artists: what this crowd likes, with explainability (per result and aggregate). */
 export function localArtists(entityIds: string[], area: BBox, take: number, context: AdapterContext): Promise<AdapterResult<LocalArtists>> {
   return run<LocalArtists>(context, { artists: [], impact: [] }, (backend) => client.localArtists(backend, entityIds, area, take));
+}
+
+/** taste_artists: artists whose fans overlap these artists' fans, anywhere, with explainability (the learn run's related_artists). */
+export function tasteArtists(entityIds: string[], take: number, context: AdapterContext): Promise<AdapterResult<LocalArtists>> {
+  return run<LocalArtists>(context, { artists: [], impact: [] }, (backend) => client.tasteArtists(backend, entityIds, take));
 }
 
 /** Per-pitch affinity of the performer's artists, for setlist ordering. */

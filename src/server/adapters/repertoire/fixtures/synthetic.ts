@@ -55,6 +55,25 @@ export function syntheticScopedTrackSearch(query: string, artist: string): Catal
 }
 
 /**
+ * An artist's songs: six made-up tracks with Spotify-shaped ids (stable per artist), so offline learn runs have
+ * songs to filter against the history and a second run still finds new ones. Titles say they are synthetic.
+ */
+export function syntheticArtistTracks(artist: string): CatalogueTrack[] {
+  const known = CATALOG.find((a) => normalizeName(a.name) === normalizeName(artist));
+  const artistId = known?.spotifyId ?? syntheticSpotifyId(normalizeName(artist));
+  return [1, 2, 3, 4, 5, 6].map((n) => ({
+    id: syntheticSpotifyId(`${normalizeName(artist)}|track|${n}`),
+    title: `Synthetic track ${n}`,
+    artists: [{ id: artistId, name: known?.name ?? artist }],
+    album: "Synthetic Album",
+    image: null,
+    durationMs: 170_000 + n * 11_000,
+    url: null,
+    year: 1985 + n * 4,
+  }));
+}
+
+/**
  * Artists from the Qloo mock's catalogue whose name contains the query, with the
  * mock's Spotify-shaped ids, so offline plans resolve them through Qloo's
  * external-id lookup like live ones. Unknown queries get one made-up artist.

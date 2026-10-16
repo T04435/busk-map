@@ -72,6 +72,24 @@ export const PLAYLIST_COPY = {
 
   // Songs to learn: a learn run's words (docs §7). Errors first; the page copy follows.
   learn: {
+    /** The status line at the end of a run (docs §7.2 `end.message`), the same live and on replay. */
+    end: (e: { ok: boolean; mode: "agent" | "fallback" | "mock" | "none"; code: string | null; newCount: number; skippedCount: number }): string => {
+      const songs = (n: number) => `${n} ${n === 1 ? "song" : "songs"}`;
+      if (!e.ok) {
+        if (e.code === "qloo_unavailable") return "Suggestions need Qloo's taste data, and Qloo isn't answering right now. Try again in a little while.";
+        if (e.code === "no_match") return "Qloo couldn't match your artists, so there is nothing to learn from yet. Add songs by better-known artists and try again.";
+        if (e.code === "timeout") return "The run ran out of time before it found songs. Try again.";
+        return "The run stopped before it found songs. Try again in a little while.";
+      }
+      if (e.code === "nothing_new" || e.newCount === 0) return `No new songs this time: everything we found was suggested before${e.skippedCount ? ` (${songs(e.skippedCount)} left out)` : ""}.`;
+      const left = e.skippedCount ? ` Left out ${songs(e.skippedCount)} you already know or had in earlier runs.` : "";
+      if (e.mode === "fallback") {
+        const why = e.code === "timeout" ? "The AI ran out of time" : e.code === "stopped" ? "The AI reached its step limit" : "The AI was unavailable";
+        return `${why}, so these ${songs(e.newCount)} come from the data alone.${left}`;
+      }
+      const by = e.mode === "mock" ? "The test model" : "Claude";
+      return `${by} found ${songs(e.newCount)} to learn.${left}`;
+    },
     errors: {
       suggestionNotFound: "That song isn't on your list any more. Reload to see the latest.",
       badMove: "That change isn't possible for this song.",

@@ -282,6 +282,33 @@ async function localArtistsCached(backend: QlooBackend, entityIds: string[], are
   });
 }
 
+/**
+ * `urn:entity:artist` liked by fans of these artists anywhere (no location signal), with explainability: which of the
+ * input artists explain each result. The learn run's `related_artists` (docs/playlist-architecture.md §2.2, call #12).
+ */
+export async function tasteArtists(backend: QlooBackend, entityIds: string[], take: number): Promise<LocalArtists> {
+  return countLookup("tasteArtists", [backend, entityIds, take], () => tasteArtistsCached(backend, entityIds, take));
+}
+
+async function tasteArtistsCached(backend: QlooBackend, entityIds: string[], take: number): Promise<LocalArtists> {
+  "use cache: remote";
+  return lookupScope("tasteArtists", [backend, entityIds, take], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:artists");
+    const params = {
+      "filter.type": "urn:entity:artist",
+      "signal.interests.entities": ids(entityIds),
+      "feature.explainability": true,
+      take: Math.min(take, MAX_TAKE),
+    };
+    const body = await qlooGet(backend, "/v2/insights", params, insightsEntitiesResponseSchema);
+    return {
+      artists: listEntities("/v2/insights", params, body.results.entities).map(toEntity),
+      impact: toImpact(body.query?.explainability),
+    };
+  });
+}
+
 /** Score specific artists for the crowd around one point (`filter.results.entities`). */
 export async function affinityAt(backend: QlooBackend, entityIds: string[], point: LatLon, radiusM: number): Promise<Record<string, number>> {
   return countLookup("affinityAt", [backend, entityIds, point, radiusM], () => affinityAtCached(backend, entityIds, point, radiusM));

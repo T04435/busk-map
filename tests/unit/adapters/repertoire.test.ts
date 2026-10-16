@@ -244,3 +244,39 @@ describe("repertoire (Spotify)", () => {
     expect((await findReleaseYears([{ title: "A", artist: "B" }], "AU", OFFLINE)).data).toEqual(offline.data);
   });
 });
+
+describe("repertoire: an artist's songs (the learn run's top_tracks)", () => {
+  beforeEach(() => {
+    vi.stubEnv("SPOTIFY_CLIENT_ID", "synthetic-id");
+    vi.stubEnv("SPOTIFY_CLIENT_SECRET", "synthetic-secret");
+  });
+
+  const item = (id: string, name: string, artist: string) => ({ id, name, artists: [{ id: `a-${artist}`, name: artist }], duration_ms: 200_000, album: { name: "Album", release_date: "2001-05-01", images: [] } });
+
+  it("asks Spotify for the artist's tracks, keeps only that artist's (no namesakes) and collapses repeated editions", async () => {
+    const { findArtistTracks } = await fresh();
+    const { calls } = mockFetch([
+      tokenRoute,
+      route((u) => u.pathname === "/v1/search", () =>
+        json({ tracks: { items: [item("t1", "Orphan Girl", "Gillian Welch"), item("t2", "Orphan Girl - Remastered", "Gillian Welch"), item("t3", "Other Song", "Gillian Welch Tribute"), item("t4", "Elvis Presley Blues", "Gillian Welch"), null] } }),
+      ),
+    ]);
+    const result = await findArtistTracks("Gillian Welch", "AU", LIVE);
+    const search = calls.find((c) => c.url.pathname === "/v1/search")!;
+    expect(search.url.searchParams.get("q")).toBe('artist:"Gillian Welch"');
+    expect(search.url.searchParams.get("type")).toBe("track");
+    expect(search.url.searchParams.get("market")).toBe("AU");
+    expect(result.mode).toBe("live");
+    expect(result.data.map((t) => [t.id, t.title, t.year])).toEqual([["t1", "Orphan Girl", 2001], ["t4", "Elvis Presley Blues", 2001]]);
+  });
+
+  it("falls back to an empty list when Spotify fails (the run then asks Last.fm), and is synthetic offline", async () => {
+    const { findArtistTracks } = await fresh();
+    mockFetch([tokenRoute, route((u) => u.pathname === "/v1/search", () => json({}, 500))]);
+    expect((await findArtistTracks("X", "AU", LIVE)).data).toEqual([]);
+    const offline = await findArtistTracks("Paul Kelly", "AU", OFFLINE);
+    expect(offline.mode).toBe("synthetic");
+    expect(offline.data).toHaveLength(6);
+    expect(offline.data.every((t) => spotifyIdSchema.safeParse(t.id).success)).toBe(true);
+  });
+});

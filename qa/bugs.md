@@ -21,20 +21,23 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-015 | Medium | /brain: the sticky trace panel hides the focused node while tabbing (WCAG 2.2 AA 2.4.11) | Fixed (2b26dc5), verified by QA |
 | B-016 | Low | /repertoire: after Remove, keyboard focus falls to <body> | Fixed (1b00ab4), verified by QA |
 | B-017 | Low | /week loading state: `aria-label` on a role-less div (axe serious, aria-prohibited-attr) | Fixed (1b5a4e5), verified by QA |
-| B-018 | Medium | Honeycomb landing: hero "Plan a busk" CTA has no visible focus indicator (WCAG 2.4.7) | Open (design/honeycomb) |
-| B-019 | Medium | Honeycomb landing: "Honeycomb" brand teaser section missing | Open (design/honeycomb) |
-| B-020 | Medium | Honeycomb landing: "What you get back" lacks research funnel, taste map, Learn these, set length | Open (design/honeycomb) |
-| B-021 | Low | Honeycomb landing: hero map without zone/event/river; no glowing cells; caption reworded | Open (design/honeycomb) |
-| B-022 | Low | Honeycomb landing: act cards lack day/hours and "Plays …" lines | Open (design/honeycomb) |
-| B-023 | Low | Honeycomb landing: footer Brand link (removed by decision 121); paper not dark band | Open (design/honeycomb) |
-| B-024 | Low | Honeycomb landing: Brain teaser 4th number "parts of your plan" | Open (design/honeycomb) |
-| B-025 | Low | Honeycomb landing: H1 orphans "PLAY." at 1440 | Open (design/honeycomb) |
+| B-018 | Medium | Honeycomb landing: hero "Plan a busk" CTA has no visible focus indicator (WCAG 2.4.7) | Fixed (d169cb4), verified by QA on 91b220e |
+| B-019 | Medium | Honeycomb landing: "Honeycomb" brand teaser section missing | Held for the user (L23) |
+| B-020 | Medium | Honeycomb landing: "What you get back" lacks research funnel, taste map, Learn these, set length | Fixed (91b220e) with declared deviations, verified by QA; differences in B-033, B-034 |
+| B-021 | Low | Honeycomb landing: hero map without zone/event/river; no glowing cells; caption reworded | Glow and caption fixed (774a87f), verified; zone/event/river held for the user (L05) |
+| B-022 | Low | Honeycomb landing: act cards lack day/hours and "Plays …" lines | Fixed (ac950fd), verified; other card differences in B-032 |
+| B-023 | Low | Honeycomb landing: footer Brand link (removed by decision 121); paper not dark band | Fixed (514d36a), verified by QA |
+| B-024 | Low | Honeycomb landing: Brain teaser 4th number "parts of your plan" | Fixed (e2e3240), verified by QA |
+| B-025 | Low | Honeycomb landing: H1 orphans "PLAY." at 1440 | Fixed (29695f7), verified by QA |
 | B-026 | Low | "For judges" link from decision 104 never designed | Open (BRAND/MANAGER) |
 | B-027 | Medium | /repertoire learn feed: tool names, raw UUIDs and finish_suggestions JSON in the default view; oldest first; stays above the list; 10-count grid, not the funnel | Open (pending Learn* boards) |
 | B-028 | Low | /repertoire Qloo down: no "Your songs are safe." and nothing says the run did not count | Open |
 | B-029 | Low | /repertoire nothing new: copy says everything was suggested before while the run shows songs checked 0, suggested before 0; no left-out count or next-step hint | Open |
 | B-030 | Low | /repertoire Learn list: older runs do not fold | Open |
 | B-031 | Low | /repertoire Learn list: no filter chips (All · New · To learn · Learned · Not for me) | Open |
+| B-032 | Low | Honeycomb landing L13: act cards: filled orange initials hex reading "SA" (board: outline, "SX"); action is a plain dark row, not the orange underlined link; Plays lists differ from the board | Open (design/honeycomb) |
+| B-033 | Low | Honeycomb landing L17: research funnel labels under the hexes, dashes instead of ▸ chevrons, boxed in a card | Open (design/honeycomb) |
+| B-034 | Low | Honeycomb landing L20: setlist panel marked built but Learn these is a tan panel (board: bordered box, orange top rule, mono title); set-length line sans; rows 1–4 not 01–04; heading names the pitch; no Copy | Open (design/honeycomb) |
 
 ---
 
@@ -158,4 +161,7 @@ Spec: BRAND's `learn-run-sketch.md` v3 and DEV's contract (`docs/playlist-archit
 - **B-029 (Low):** at run 8 (nothing new) the message says everything found was suggested before, while that run's counts read songs checked 0 and suggested before 0. Sketch: "…already in your history (7 left out)", plus a hint to try after a new busk or after learning songs.
 - **B-030 (Low):** every run group stays expanded; sketch §3 says the newest run is open and older runs fold.
 - **B-031 (Low):** no filter chips; sketch §3 and §6 list All · New · To learn · Learned · Not for me.
+
+### B-032 to B-034 · Honeycomb landing recheck (design/honeycomb at 91b220e)
+Checked part by part against BRAND's 29-part inventory (`design-handoff/inventory/landing/`). Evidence at 390/768/1440 is on the `design/honeycomb` branch: `qa/reports/honeycomb-landing-recheck.html`, indexed by `qa/reports/honeycomb-landing-recheck.md`. All three are visual differences from the part's crop that DEV's fix report didn't declare (lost at DEV self-check). The recheck also verified B-018 and B-020 to B-025 (statuses above). After 8 pm the sax example shows "This slot has passed": that's the known evening-slot bug (fixed on dev/core in e220abd, being ported), not a new defect.
 

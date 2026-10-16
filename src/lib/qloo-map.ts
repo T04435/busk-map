@@ -1,0 +1,560 @@
+/**
+ * The brain of Busk Map: how Qloo data flows through the app, as built on dev/core.
+ *
+ * One source of truth for the /brain page and the landing teaser. The facts come from docs/qloo-data-map.md
+ * (commit 4164685): Qloo calls → the data points they return → the parts of a busk they decide. Spotify and
+ * Ticketmaster are the only secondary sources shown. Client-safe: plain data and pure helpers.
+ *
+ * tests/unit/lib/qloo-map.test.ts keeps this honest: every link target exists, nothing is orphaned, and the set of
+ * `calls[].codeRef` equals the client functions that send a Qloo request (read from the adapter's source), so the
+ * adapter can't gain or lose a call without this map changing too.
+ */
+
+export type CallId = "c1" | "c2" | "c3" | "c4" | "c5" | "c5b" | "c6" | "c7" | "c8" | "c9" | "c10" | "c11";
+export type SourceId = "spotify" | "ticketmaster";
+export type DataPointId =
+  | "d_id"
+  | "d_cells"
+  | "d_places"
+  | "d_vibe"
+  | "d_crowd"
+  | "d_because"
+  | "d_usual"
+  | "d_pitchaff"
+  | "d_headliner"
+  | "d_events"
+  | "d_trend"
+  | "d_demo"
+  | "d_genre"
+  | "d_contrast"
+  | "d_years";
+export type FeatureId = "f_rank" | "f_map" | "f_events" | "f_week" | "f_crowd" | "f_fans" | "f_setlist" | "f_plain" | "f_agent";
+export type NodeId = CallId | SourceId | DataPointId | FeatureId;
+export type NodeKind = "call" | "source" | "dataPoint" | "feature";
+
+/** One link to the next column, with how it is used. */
+export type Link<T extends NodeId> = { id: T; how: string };
+
+export type QlooCall = {
+  id: CallId;
+  /** The number in docs/qloo-data-map.md §1 ("5b" is a variant of 5). */
+  num: string;
+  label: string;
+  /** HTTP path, e.g. "/v2/insights". */
+  endpoint: string;
+  /** The `filter.type` (or `/search` `types`) sent, when the call sends one. */
+  urnType?: string;
+  keyParams: readonly string[];
+  /** The client function that sends the request: `client.ts:<function>` in src/server/adapters/qloo. */
+  codeRef: `client.ts:${string}`;
+  /** Who calls it (`file:function`), for the reader. */
+  via: readonly string[];
+  /** Set on a variant: the same client call made another way. Variants don't count as a kind of call. */
+  variantOf?: CallId;
+  dataPoints: readonly Link<DataPointId>[];
+};
+
+export type SecondarySource = {
+  id: SourceId;
+  label: string;
+  contributes: string;
+  dataPoints: readonly Link<DataPointId>[];
+};
+
+export type DataPoint = {
+  id: DataPointId;
+  label: string;
+  sub: string;
+  /** Response fields read (from the producing calls or sources). */
+  fields: readonly string[];
+  features: readonly Link<FeatureId>[];
+};
+
+export type FeatureHow = "direct" | "combined" | "diff";
+
+export type Feature = {
+  id: FeatureId;
+  label: string;
+  sub: string;
+  /** Where it shows in the app. */
+  location: string;
+  how: FeatureHow;
+  /** For "combined": the other sources it combines Qloo with. For "diff": the two sides compared. */
+  with?: readonly string[];
+};
+
+export type NextItem = { id: string; label: string; built: false };
+
+export const calls: readonly QlooCall[] = [
+  {
+    id: "c1",
+    num: "1",
+    label: "Artist search",
+    endpoint: "/search",
+    urnType: "urn:entity:artist",
+    keyParams: ["query=<artist name>", "types=urn:entity:artist", "take=3"],
+    codeRef: "client.ts:searchArtist",
+    via: ["index.ts:resolveArtists"],
+    dataPoints: [{ id: "d_id", how: "matches each artist by name when there is no Spotify id" }],
+  },
+  {
+    id: "c2",
+    num: "2",
+    label: "Spotify id match",
+    endpoint: "/entities",
+    keyParams: ["external.spotify.ids=<id>"],
+    codeRef: "client.ts:entitiesBySpotifyIds",
+    via: ["index.ts:resolveArtists"],
+    dataPoints: [{ id: "d_id", how: "matches an artist by its Spotify id, so the right namesake is picked" }],
+  },
+  {
+    id: "c3",
+    num: "3",
+    label: "Taste heatmap",
+    endpoint: "/v2/insights",
+    urnType: "urn:heatmap",
+    keyParams: ["signal.interests.entities=<act ids>", "filter.location=<WKT POLYGON>"],
+    codeRef: "client.ts:heatmap",
+    via: ["index.ts:tasteMap"],
+    dataPoints: [{ id: "d_cells", how: "cells across the city, each with affinity and popularity" }],
+  },
+  {
+    id: "c4",
+    num: "4",
+    label: "Places nearby",
+    endpoint: "/v2/insights",
+    urnType: "urn:entity:place",
+    keyParams: ["filter.location=<WKT POINT>", "filter.location.radius=2000", "filter.hours=<weekday>", "signal.interests.entities", "take=50"],
+    codeRef: "client.ts:places",
+    via: ["index.ts:busyPlaces"],
+    dataPoints: [
+      { id: "d_places", how: "places near the centre with popularity, opening hours and taste match" },
+      { id: "d_vibe", how: "live music, “good for” and keywords for each place" },
+    ],
+  },
+  {
+    id: "c5",
+    num: "5",
+    label: "Artists nearby, explained",
+    endpoint: "/v2/insights",
+    urnType: "urn:entity:artist",
+    keyParams: ["signal.location=<WKT POLYGON>", "signal.interests.entities=<act ids>", "feature.explainability=true", "take=20"],
+    codeRef: "client.ts:localArtists",
+    via: ["context.ts:localCrowd"],
+    dataPoints: [
+      { id: "d_crowd", how: "artists liked around the area, with affinity" },
+      { id: "d_because", how: "which of your artists explain each one" },
+    ],
+  },
+  {
+    id: "c5b",
+    num: "5b",
+    label: "The usual crowd",
+    endpoint: "/v2/insights",
+    urnType: "urn:entity:artist",
+    keyParams: ["signal.location=<WKT POLYGON around a hotspot>", "take=10", "no interest signal"],
+    codeRef: "client.ts:localArtists",
+    via: ["context.ts:hotspotCrowd"],
+    variantOf: "c5",
+    dataPoints: [{ id: "d_usual", how: "the same question with no taste signal: everyone near a busking hotspot" }],
+  },
+  {
+    id: "c6",
+    num: "6",
+    label: "Affinity at a pitch",
+    endpoint: "/v2/insights",
+    urnType: "urn:entity:artist",
+    keyParams: ["filter.results.entities=<song artists>", "signal.location=<WKT POINT>", "signal.location.radius=400"],
+    codeRef: "client.ts:affinityAt",
+    via: ["index.ts:artistAffinityAt"],
+    dataPoints: [{ id: "d_pitchaff", how: "how much the crowd at one pitch likes each song’s artist" }],
+  },
+  {
+    id: "c7",
+    num: "7",
+    label: "Headliner match",
+    endpoint: "/v2/insights",
+    urnType: "urn:entity:artist",
+    keyParams: ["filter.results.entities=<headliners>", "signal.interests.entities=<act ids>"],
+    codeRef: "client.ts:affinityFor",
+    via: ["index.ts:tasteMatch"],
+    dataPoints: [{ id: "d_headliner", how: "how much your fans like each event’s headliner" }],
+  },
+  {
+    id: "c8",
+    num: "8",
+    label: "Trending",
+    endpoint: "/v2/trending",
+    urnType: "urn:entity:artist",
+    keyParams: ["signal.interests.entities=<one id>", "filter.start_date", "filter.end_date (42 days)"],
+    codeRef: "client.ts:trendingFor",
+    via: ["client.ts:trendingWindow", "client.ts:trending", "context.ts:rising"],
+    dataPoints: [{ id: "d_trend", how: "how fast each artist is rising" }],
+  },
+  {
+    id: "c9",
+    num: "9",
+    label: "Demographics",
+    endpoint: "/v2/insights",
+    urnType: "urn:demographics",
+    keyParams: ["signal.interests.entities=<act ids>"],
+    codeRef: "client.ts:demographics",
+    via: ["index.ts:crowdProfile"],
+    dataPoints: [{ id: "d_demo", how: "the age and gender your fans lean" }],
+  },
+  {
+    id: "c10",
+    num: "10",
+    label: "Genres nearby",
+    endpoint: "/v2/insights",
+    urnType: "urn:tag",
+    keyParams: ["filter.tag.types=urn:tag:genre:music", "signal.location=<WKT POINT>", "signal.location.radius=400", "take=6"],
+    codeRef: "client.ts:crowdTags",
+    via: ["context.ts:crowdGenres"],
+    dataPoints: [{ id: "d_genre", how: "music genres liked within 400 m of a pitch" }],
+  },
+  {
+    id: "c11",
+    num: "11",
+    label: "Compare two crowds",
+    endpoint: "/v2/analysis/compare",
+    keyParams: ["a.signal.interests.entities=<act ids>", "b.signal.interests.entities=<usual crowd ids>"],
+    codeRef: "client.ts:compareGenres",
+    via: ["context.ts:contrast"],
+    dataPoints: [{ id: "d_contrast", how: "genre shares for your fans and the usual crowd" }],
+  },
+];
+
+export const secondarySources: readonly SecondarySource[] = [
+  {
+    id: "spotify",
+    label: "Spotify",
+    contributes: "artist ids, release years",
+    dataPoints: [
+      { id: "d_id", how: "the artist picker supplies the Spotify id" },
+      { id: "d_years", how: "release years for your songs" },
+    ],
+  },
+  {
+    id: "ticketmaster",
+    label: "Ticketmaster",
+    contributes: "events near each pitch",
+    dataPoints: [
+      { id: "d_events", how: "event times, venues and headliners" },
+      { id: "d_headliner", how: "the headliner names Qloo matches" },
+    ],
+  },
+];
+
+export const dataPoints: readonly DataPoint[] = [
+  {
+    id: "d_id",
+    label: "Your artists on Qloo",
+    sub: "every later call starts here",
+    fields: ["entity_id", "name"],
+    features: [
+      { id: "f_rank", how: "every taste question signals with your artists" },
+      { id: "f_map", how: "the heatmap is signalled with your artists" },
+      { id: "f_crowd", how: "an artist Qloo can’t match is named in a warning" },
+      { id: "f_week", how: "the week planner signals with your artists too" },
+    ],
+  },
+  {
+    id: "d_cells",
+    label: "Taste cells",
+    sub: "affinity and popularity by area",
+    fields: ["location.latitude", "location.longitude", "location.geohash", "query.affinity", "query.popularity"],
+    features: [
+      { id: "f_map", how: "the coloured taste cells" },
+      { id: "f_rank", how: "picks the candidate pitches and sets the taste score" },
+      { id: "f_week", how: "taste for each slot of the week" },
+      { id: "f_plain", how: "scores the plain AI’s spots the same way" },
+      { id: "f_agent", how: "the taste_map tool, which can zoom in" },
+    ],
+  },
+  {
+    id: "d_places",
+    label: "Open places",
+    sub: "popularity, hours, taste match",
+    fields: ["entity_id", "name", "location.lat", "location.lon", "popularity", "query.affinity", "properties.hours"],
+    features: [
+      { id: "f_rank", how: "busy places open in your slot" },
+      { id: "f_week", how: "opening hours for each slot" },
+      { id: "f_plain", how: "scores the plain AI’s spots the same way" },
+      { id: "f_agent", how: "the busy_places tool, at any point" },
+    ],
+  },
+  {
+    id: "d_vibe",
+    label: "Venue detail",
+    sub: "live music, good for, keywords",
+    fields: ["properties.live_music", "properties.good_for[].name", "properties.good_for[].weight", "properties.keywords[].name", "properties.keywords[].count"],
+    features: [{ id: "f_rank", how: "shown on each pitch: “live music, known for bands” (shown, not scored)" }],
+  },
+  {
+    id: "d_crowd",
+    label: "Artists this crowd likes",
+    sub: "with affinity",
+    fields: ["entity_id", "name", "query.affinity", "query.measurements.audience_growth", "external.lastfm[].listeners"],
+    features: [
+      { id: "f_crowd", how: "who this crowd likes" },
+      { id: "f_setlist", how: "learn these: the crowd’s top artists" },
+      { id: "f_agent", how: "the crowd_at tool" },
+    ],
+  },
+  {
+    id: "d_because",
+    label: "The “because” artists",
+    sub: "explainability",
+    fields: ["query.explainability (per result)", "query.explainability.effect_on_top10_recs"],
+    features: [{ id: "f_crowd", how: "the “because” artists, and what Qloo matched on" }],
+  },
+  {
+    id: "d_usual",
+    label: "The usual crowd’s artists",
+    sub: "near a busking hotspot",
+    fields: ["entity_id", "name", "query.affinity"],
+    features: [{ id: "f_fans", how: "the crowd that is there anyway" }],
+  },
+  {
+    id: "d_pitchaff",
+    label: "Song artists at a pitch",
+    sub: "affinity within 400 m",
+    fields: ["entity_id", "query.affinity"],
+    features: [
+      { id: "f_setlist", how: "nearly half of each song’s score, pitch by pitch" },
+      { id: "f_agent", how: "the build_setlist and compare_crowds tools" },
+    ],
+  },
+  {
+    id: "d_headliner",
+    label: "Headliner taste match",
+    sub: "your fans vs an event’s act",
+    fields: ["entity_id", "query.affinity"],
+    features: [
+      { id: "f_events", how: "an event’s crowd counts more when its act matches your taste" },
+      { id: "f_rank", how: "feeds the events part of each pitch score" },
+      { id: "f_plain", how: "scores the plain AI’s spots the same way" },
+      { id: "f_agent", how: "the events_near tool" },
+    ],
+  },
+  {
+    id: "d_events",
+    label: "Events and times",
+    sub: "from Ticketmaster",
+    fields: ["event start time", "venue", "headliner names"],
+    features: [{ id: "f_events", how: "when crowds arrive and leave near each pitch" }],
+  },
+  {
+    id: "d_trend",
+    label: "Who is rising",
+    sub: "trend change by artist",
+    fields: ["date", "population_percent_delta", "population_percentile"],
+    features: [
+      { id: "f_setlist", how: "ranks learn these" },
+      { id: "f_crowd", how: "the “Rising” badge" },
+      { id: "f_agent", how: "the learn_these tool" },
+    ],
+  },
+  {
+    id: "d_demo",
+    label: "Age and gender lean",
+    sub: "of your fans",
+    fields: ["query.age", "query.gender"],
+    features: [
+      { id: "f_crowd", how: "who your fans are" },
+      { id: "f_setlist", how: "era fit: songs from your crowd’s years" },
+      { id: "f_agent", how: "the crowd_at tool" },
+    ],
+  },
+  {
+    id: "d_genre",
+    label: "Genres around a pitch",
+    sub: "music genres, affinity",
+    fields: ["tag_id (or id)", "name", "query.affinity"],
+    features: [
+      { id: "f_crowd", how: "the genres around your top pitch" },
+      { id: "f_agent", how: "the crowd_at and compare_crowds tools" },
+    ],
+  },
+  {
+    id: "d_contrast",
+    label: "Genre shares, side by side",
+    sub: "your fans vs the usual crowd",
+    fields: ["results.a[].tag_id", "results.b[].tag_id", "name", "subtype", "query.count"],
+    features: [{ id: "f_fans", how: "your fans lean more towards some genres, less towards others" }],
+  },
+  {
+    id: "d_years",
+    label: "Release years",
+    sub: "from Spotify",
+    fields: ["release year"],
+    features: [{ id: "f_setlist", how: "era fit, with your fans’ age lean" }],
+  },
+];
+
+export const features: readonly Feature[] = [
+  {
+    id: "f_rank",
+    label: "Pitch ranking",
+    sub: "your three pitches, scored",
+    location: "Plan page: the top 3 pitches and their scores",
+    how: "combined",
+    with: ["City of Melbourne sensors", "the council’s busking rules", "OSM spots", "Ticketmaster", "Open-Meteo", "your tip history"],
+  },
+  { id: "f_map", label: "Taste map", sub: "where your taste lives", location: "Plan page: the map’s taste cells", how: "direct" },
+  {
+    id: "f_events",
+    label: "Event weighting",
+    sub: "crowds leaving a gig nearby",
+    location: "Pitch card: the events line",
+    how: "combined",
+    with: ["Ticketmaster"],
+  },
+  {
+    id: "f_week",
+    label: "Week planner",
+    sub: "the best slots this week",
+    location: "/week: the week grid",
+    how: "combined",
+    with: ["City of Melbourne sensors", "the council’s busking layers", "OSM spots"],
+  },
+  { id: "f_crowd", label: "Crowd panel", sub: "who this crowd likes, and why", location: "Plan page: the crowd panel", how: "direct" },
+  {
+    id: "f_fans",
+    label: "Fans vs the usual crowd",
+    sub: "what sets your crowd apart",
+    location: "Crowd panel: “Your fans vs the usual crowd”",
+    how: "diff",
+    with: ["your fans", "the usual crowd"],
+  },
+  {
+    id: "f_setlist",
+    label: "Setlist and learn these",
+    sub: "what to play, what to learn",
+    location: "Pitch card: the setlist, and Learn these",
+    how: "combined",
+    with: ["Last.fm", "Spotify"],
+  },
+  {
+    id: "f_plain",
+    label: "Plain-AI comparison",
+    sub: "its spots scored on Qloo data",
+    location: "Plan page: Busk Map vs a plain AI",
+    how: "diff",
+    with: ["a plain AI", "Busk Map"],
+  },
+  { id: "f_agent", label: "The agent’s tools", sub: "what Claude asks while it plans", location: "Plan page: Agent steps", how: "direct" },
+];
+
+/** Planned, not built (docs/qloo-data-map.md §3). Only items with built: false. */
+export const next: readonly NextItem[] = [
+  { id: "genre-signals", label: "Taste from genres as well as artists, for the taste map", built: false },
+  { id: "genre-search", label: "Searching Qloo’s genre list directly (/v2/tags)", built: false },
+  { id: "nearest-locality", label: "A nearest-neighbourhood retry when a city area comes back empty", built: false },
+];
+
+/** Kinds of Qloo call: every call except variants (5b is call 5 without an interest signal). */
+export const callKinds = calls.filter((c) => !c.variantOf).length;
+export const featureCount = features.length;
+export const dataPointCount = dataPoints.length;
+
+/** Measured, not derivable (docs/qloo-data-map.md §4): live 24–28, mock 33; a rerun is served from the cache. */
+export const CALLS_PER_NEW_BUSK = "24–33";
+export const CALLS_ON_RERUN = 0;
+
+export const QUOTA = {
+  requestsPerMonth: 10_000,
+  requestsPerSecond: 5,
+  pacedPerSecond: 3,
+  cacheHours: 24,
+} as const;
+
+export const facts: readonly { value: string; label: string }[] = [
+  { value: String(callKinds), label: "kinds of Qloo call" },
+  { value: CALLS_PER_NEW_BUSK, label: "Qloo calls for a new busk" },
+  { value: String(CALLS_ON_RERUN), label: `on a rerun: answers cached for ${QUOTA.cacheHours} h` },
+  { value: String(featureCount), label: "parts of your busk it decides" },
+];
+
+export const quotaNote =
+  `Qloo allows ${QUOTA.requestsPerMonth.toLocaleString("en-AU")} requests a month per key, at ${QUOTA.requestsPerSecond} a second. ` +
+  `Busk Map paces its calls to ${QUOTA.pacedPerSecond} a second and caches every answer for ${QUOTA.cacheHours} h, ` +
+  `so a key covers roughly 300–400 new busks a month, and reruns are free.`;
+
+// ---- The graph -----------------------------------------------------------
+
+export type Edge = { from: NodeId; to: NodeId; how: string };
+
+export const edges: readonly Edge[] = [
+  ...calls.flatMap((c) => c.dataPoints.map((d) => ({ from: c.id, to: d.id, how: d.how }))),
+  ...secondarySources.flatMap((s) => s.dataPoints.map((d) => ({ from: s.id, to: d.id, how: d.how }))),
+  ...dataPoints.flatMap((p) => p.features.map((f) => ({ from: p.id, to: f.id, how: f.how }))),
+];
+
+type AnyNode = { id: NodeId; label: string };
+const kindOf = new Map<NodeId, NodeKind>([
+  ...calls.map((c) => [c.id, "call"] as const),
+  ...secondarySources.map((s) => [s.id, "source"] as const),
+  ...dataPoints.map((d) => [d.id, "dataPoint"] as const),
+  ...features.map((f) => [f.id, "feature"] as const),
+]);
+const nodeById = new Map<NodeId, AnyNode>([...calls, ...secondarySources, ...dataPoints, ...features].map((n) => [n.id, n]));
+
+export function nodeKind(id: NodeId): NodeKind {
+  return kindOf.get(id)!;
+}
+
+export function nodeLabel(id: NodeId): string {
+  return nodeById.get(id)!.label;
+}
+
+export function isNodeId(id: string): id is NodeId {
+  return kindOf.has(id as NodeId);
+}
+
+/** Features a secondary source reaches, through its data points. */
+export function featuresTouchedBy(source: SourceId): FeatureId[] {
+  return [...trace(source).nodes].filter((id): id is FeatureId => nodeKind(id) === "feature");
+}
+
+export type Trace = { nodes: ReadonlySet<NodeId>; edges: ReadonlySet<number> };
+
+/** Everything downstream and upstream of one node: the node, every node on its paths, and those edges (by index). */
+export function trace(id: NodeId): Trace {
+  const nodes = new Set<NodeId>([id]);
+  const hit = new Set<number>();
+  const walk = (from: NodeId, down: boolean) => {
+    edges.forEach((e, i) => {
+      const [a, b] = down ? [e.from, e.to] : [e.to, e.from];
+      if (a !== from || hit.has(i)) return;
+      hit.add(i);
+      nodes.add(b);
+      walk(b, down);
+    });
+  };
+  walk(id, true);
+  walk(id, false);
+  return { nodes, edges: hit };
+}
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const list = (parts: string[]) => (parts.length < 2 ? parts.join("") : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`);
+
+/** One sentence for the trace: where the picked piece comes from and what it decides. */
+export function traceSummary(id: NodeId): string {
+  const { nodes } = trace(id);
+  const count = (kind: NodeKind) => [...nodes].filter((n) => n !== id && nodeKind(n) === kind).length;
+  const kind = nodeKind(id);
+  const up = [
+    count("call") && plural(count("call"), "Qloo call", "Qloo calls"),
+    count("source") && plural(count("source"), "other source", "other sources"),
+    kind === "feature" && plural(count("dataPoint"), "data point", "data points"),
+  ].filter((p): p is string => Boolean(p));
+  const down = [
+    kind !== "dataPoint" && kind !== "feature" && plural(count("dataPoint"), "data point", "data points"),
+    kind !== "feature" && plural(count("feature"), "part of your busk", "parts of your busk"),
+  ].filter((p): p is string => Boolean(p));
+  const clauses = [up.length ? `comes from ${list(up)}` : "", down.length ? `feeds ${list(down)}` : ""].filter(Boolean);
+  return `${nodeLabel(id)} ${clauses.join(", and ")}.`;
+}

@@ -46,7 +46,7 @@ export function WhatYouGet() {
         <Badge variant="estimate">Example data</Badge>
       </div>
 
-      <ResearchFunnel totals={TOTALS} live={false} picks={3} />
+      <ResearchFunnel layout="landing" totals={TOTALS} live={false} picks={3} />
 
       <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <div className="flex flex-col gap-4 border-2 border-rule bg-card p-4 md:p-6">

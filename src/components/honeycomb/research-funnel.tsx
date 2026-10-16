@@ -24,6 +24,7 @@ export function ResearchFunnel({
   running = [],
   live,
   picks,
+  layout = "stacked",
   className,
 }: {
   totals: Partial<ResearchTotals> | null;
@@ -32,21 +33,33 @@ export function ResearchFunnel({
   live: boolean;
   /** Number of pitches in the busk once it is ready (null while choosing). */
   picks: number | null;
+  /** "stacked": label under each cell, in a card, with a rule between (the plan page). "landing": label beside each cell, joined by ▸, no box (the landing's board). */
+  layout?: "stacked" | "landing";
   className?: string;
 }) {
   const t = totals ?? {};
   const stages = STAGES.filter((s) => (t[s.key] ?? 0) > 0 || running.includes(s.tool));
   const total = STAGES.reduce((sum, s) => (s.key === "qlooCalls" ? sum : sum + (t[s.key] ?? 0)), 0);
   const done = !live && picks !== null;
+  const landing = layout === "landing";
   const items: React.ReactNode[] = [];
-  const link = (k: string) => (
-    <li key={`${k}-l`} aria-hidden="true" className="hidden h-0.5 w-3 bg-rule sm:block" />
+  const link = (k: string) =>
+    landing ? (
+      <li key={`${k}-l`} aria-hidden="true" className="text-[11px] leading-none text-muted-foreground">
+        ▸
+      </li>
+    ) : (
+      <li key={`${k}-l`} aria-hidden="true" className="hidden h-0.5 w-3 bg-rule sm:block" />
+    );
+  const cellCls = cn(
+    "text-[13px] leading-4",
+    landing ? "flex items-center gap-2 text-left" : "flex min-w-[88px] flex-col items-center gap-1 text-center",
   );
   stages.forEach((s) => {
     const n = t[s.key] ?? 0;
     const busy = running.includes(s.tool) && n === 0;
     items.push(
-      <li key={s.key} title={s.src} className="flex min-w-[88px] flex-col items-center gap-1 text-center text-[13px] leading-4">
+      <li key={s.key} title={s.src} className={cellCls}>
         <HexCell size={36} tone={busy ? "dashed" : "default"} fontSize={String(n).length > 3 ? 11 : 14} label={busy ? `${s.many}: checking` : `${n} ${n === 1 ? s.one : s.many} (${s.src})`}>
           {busy ? <Loader size={14} /> : fmt(n)}
         </HexCell>
@@ -56,23 +69,23 @@ export function ResearchFunnel({
     );
   });
   items.push(
-    <li key="total" className="flex min-w-[88px] flex-col items-center gap-1 text-center text-[13px] leading-4 font-bold">
+    <li key="total" className={cn(cellCls, "font-bold")}>
       <HexCell size={42} fontSize={14} label={`${total} data points`}>
         {fmt(total)}
       </HexCell>
       <span aria-hidden="true">data points</span>
     </li>,
     link("total"),
-    <li key="picks" className="flex min-w-[88px] flex-col items-center gap-1 text-center text-[13px] leading-4 font-bold">
+    <li key="picks" className={cn(cellCls, "font-bold")}>
       <HexCell size={42} tone={done ? "primary" : "dashed"} fontSize={16} label={done ? `${picks} pitches for your busk` : "Choosing your pitches"}>
         {done ? picks : <Loader size={16} />}
       </HexCell>
-      <span aria-hidden="true">{done ? (picks === 1 ? "pitch" : "pitches") : "choosing pitches"}</span>
+      <span aria-hidden="true" className={landing && done ? "text-signal-text" : undefined}>{done ? (picks === 1 ? "pitch" : "pitches") : "choosing pitches"}</span>
     </li>,
   );
   return (
-    <section aria-label="The data behind your busk" aria-live={live ? "polite" : "off"} className={cn("border-2 border-rule bg-card p-4", className)}>
-      <ol className="m-0 flex list-none flex-wrap items-start justify-start gap-x-2 gap-y-4 p-0">{items}</ol>
+    <section aria-label="The data behind your busk" aria-live={live ? "polite" : "off"} className={cn(!landing && "border-2 border-rule bg-card p-4", className)}>
+      <ol className={cn("m-0 flex list-none flex-wrap p-0", landing ? "items-center gap-x-3 gap-y-3" : "items-start justify-start gap-x-2 gap-y-4")}>{items}</ol>
     </section>
   );
 }

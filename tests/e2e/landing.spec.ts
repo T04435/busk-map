@@ -88,6 +88,14 @@ test.describe("landing, as the deck draws it", () => {
     await expect(funnel).toContainText("496");
     await expect(funnel).toContainText("data points");
     await expect(funnel.getByRole("img", { name: "496 data points" })).toBeVisible();
+    // B-033: the landing funnel is not boxed, its stages are joined by decorative ▸ chevrons and the labels sit beside the cells.
+    expect(await funnel.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("0px");
+    await expect(funnel.locator('li[aria-hidden="true"]').first()).toHaveText("▸");
+    const cell = funnel.getByRole("img", { name: /taste cells mapped/ });
+    const label = funnel.getByText("taste cells mapped");
+    const [cb, lb] = [await cell.boundingBox(), await label.boundingBox()];
+    expect(lb!.x).toBeGreaterThan(cb!.x + cb!.width - 1);
+    expect(Math.abs(lb!.y + lb!.height / 2 - (cb!.y + cb!.height / 2))).toBeLessThan(12);
     await expect(get.getByRole("img", { name: /taste map for the example busk/ })).toBeVisible();
     await expect(get.getByRole("heading", { name: "Your busk" })).toBeVisible();
     await expect(get.locator('[data-slot="pitch-row"]')).toHaveCount(3);

@@ -375,9 +375,9 @@ html { scroll-padding-bottom: var(--bottom-nav); }
     @apply border-border;
   }
   /* Focus. shadcn components own their focus-visible styles in their own classes (utilities layer, so they win over this): fields
-     turn their border to --ring and add one 2px ring, buttons, toggles, switches and radios one 2px ring (ring-2 ring-ring, no offset). This rule is only
-     the fallback for plain elements (links, bare buttons, scrollable regions, tooltip triggers): one 2px ring (--focus-ring),
-     never a second one; it never touches fields (inputs are not in the list). */
+     turn their border to --ring plus one ring; buttons, toggles, switches and radios get one 2px outline in --ring with a 2px offset (and
+     shadow-none / ring-0, so this fallback adds nothing). This rule is only the fallback for plain elements (links, bare buttons,
+     scrollable regions, tooltip triggers): one 2px ring (--focus-ring), never a second one; it never touches fields. */
   :where(a, button, summary, [tabindex]):not([tabindex="-1"], input, textarea, select):focus-visible {
     outline: none;
     box-shadow: var(--focus-ring);

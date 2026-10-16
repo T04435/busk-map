@@ -3,15 +3,13 @@ import { ArrowRight, Clock, MapPin, Music, Scale } from "lucide-react";
 import { ExampleActCard } from "@/components/honeycomb/example-act-card";
 import { QlooWordmark } from "@/components/honeycomb/logo";
 import { HexCell } from "@/components/honeycomb/hex-cell";
-import { StatStrip } from "@/components/honeycomb/stat-strip";
 import { HeroTasteMap } from "@/components/landing/hero-taste-map";
 import { OwnRedirect } from "@/components/landing/own-redirect";
 import { Warmup } from "@/components/landing/warmup";
 import { WhatYouGet } from "@/components/landing/what-you-get";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { EXAMPLES } from "@/lib/examples";
-import { CALLS_ON_RERUN, CALLS_PER_NEW_BUSK, callKinds, featureCount } from "@/lib/qloo-map";
+import { CALLS_ON_RERUN, CALLS_PER_NEW_BUSK, callKinds } from "@/lib/qloo-map";
 import { SOURCES } from "@/lib/sources";
 
 const H2 = "m-0 font-display text-[clamp(44px,5vw,72px)] leading-[0.92] font-extrabold uppercase";
@@ -33,6 +31,33 @@ const BEYOND = [
   { title: "Council pitch plans", body: "Councils see which licensed pitches suit which kinds of act, and where a new pitch would draw a crowd." },
   { title: "Coffee carts and food trucks", body: "Mobile traders with street permits: where and when their kind of customer walks past." },
 ];
+
+const HEX = "[clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]";
+/** The three columns of the brain, as cells: Qloo calls, then data points, then features. A sketch, not data (hidden from screen readers). */
+const SKETCH = [
+  { label: "Qloo calls", cells: ["bg-qloo", "bg-primary", "bg-qloo", "bg-muted"] },
+  { label: "Data points", cells: ["bg-muted", "bg-primary", "bg-primary", "bg-muted"] },
+  { label: "Features", cells: ["bg-primary", "bg-muted", "bg-primary", "bg-muted"] },
+];
+function BrainSketch() {
+  return (
+    <div aria-hidden="true" className="box-border flex max-w-full min-w-0 flex-[0_1_340px] justify-center gap-2.5 border-[1.5px] border-border bg-card p-4">
+      {SKETCH.map((col, i) => (
+        <div key={col.label} className="contents">
+          {i > 0 ? <span className="mt-[22px] h-[18px] w-3 self-center bg-primary [clip-path:polygon(0_0,50%_0,100%_50%,50%_100%,0_100%)]" /> : null}
+          <div className="flex min-w-0 flex-1 flex-col items-center gap-2">
+            <span className="min-h-7 text-center font-mono text-[11px] leading-[14px] font-bold tracking-[0.08em] text-muted-foreground uppercase">{col.label}</span>
+            <div className="flex flex-col gap-1.5">
+              {col.cells.map((c, j) => (
+                <span key={j} className={`h-[34px] w-[30px] ${HEX} ${c}`} />
+              ))}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Home() {
   return (
@@ -180,27 +205,32 @@ export default function Home() {
               Powered by <QlooWordmark width={72} className="text-foreground" />
             </span>
             <h2 id="brain" className="m-0 font-display text-[clamp(44px,6vw,80px)] leading-[0.9] font-extrabold uppercase">
-              The <span className="text-qloo">brain</span> of Busk Map
+              The <span className="text-qloo">brain</span> of <br />
+              Busk Map
             </h2>
             <p className="m-0 max-w-xl text-lg leading-[27px]">
               Every Qloo call Busk Map makes, the data it brings back, and the part of your busk it decides. Pick any piece to light up its path.
             </p>
-            <StatStrip
-              tone="qloo"
-              label="Qloo in numbers"
-              items={[
+            <ul aria-label="Qloo in numbers" className="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 font-mono text-sm leading-5 font-medium text-muted-foreground">
+              {[
                 { n: callKinds, label: "kinds of Qloo call" },
                 { n: CALLS_PER_NEW_BUSK, label: "calls for a new busk" },
                 { n: CALLS_ON_RERUN, label: "on a rerun" },
-                { n: featureCount, label: "parts of your plan they decide" },
-              ]}
-            />
-            <Button asChild variant="outline" size="lg" className="self-start">
-              <Link href="/brain">
-                Open the brain <span aria-hidden="true">→</span>
-              </Link>
-            </Button>
+              ].map((item) => (
+                <li key={item.label}>
+                  <b className="mr-1.5 font-display text-[28px] leading-none font-extrabold text-qloo">{item.n}</b>
+                  {item.label}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/brain"
+              className="bm-poster inline-flex min-h-[52px] items-center gap-2.5 self-start border-2 border-foreground bg-qloo px-6 text-lg font-bold text-bluestone no-underline [--poster-shadow:4px_4px_0_var(--foreground)] hover:bg-[color-mix(in_oklab,var(--qloo)_88%,var(--foreground))]"
+            >
+              Open the brain <span aria-hidden="true">→</span>
+            </Link>
           </div>
+          <BrainSketch />
         </section>
         <section data-theme="dark" aria-labelledby="next-h" className="bm-grain flex flex-wrap items-center gap-8 border-[3px] border-rule bg-background p-5 text-foreground md:p-10">
           <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-2.5">

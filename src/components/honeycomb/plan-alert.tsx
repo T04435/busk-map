@@ -35,7 +35,7 @@ export function PlanAlert({
             </AlertDescription>
           </Alert>
           {children}
-          <Link className="inline-flex min-h-tap items-center self-start font-bold text-foreground underline underline-offset-3 hover:decoration-2" href="/">
+          <Link className="inline-flex min-h-tap items-center self-start font-bold text-signal-text underline underline-offset-3 hover:decoration-2" href="/">
             Back to Busk Map home
           </Link>
         </div>

@@ -7,7 +7,7 @@ import { StatusCard } from "@/components/status/status-card";
 import { Button } from "@/components/ui/button";
 
 export const ERROR_TITLE = "Something went wrong";
-export const ERROR_DESCRIPTION = "Something went wrong while setting up the pitch. Try again, or start over from the home page.";
+export const ERROR_DESCRIPTION = "Something went wrong loading this page. Try again, or start over from the home page.";
 /** The root layout failed: the whole app, not one pitch. */
 export const GLOBAL_ERROR_DESCRIPTION = "Something went wrong loading Busk Map. Try again, or start over from the home page.";
 

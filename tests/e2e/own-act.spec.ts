@@ -1,4 +1,5 @@
 import { EXPLANATIONS_LABEL, expect, isoDay, LOCAL, pickDate, SATURDAY, SUNDAY, test, waitForPlan } from "./fixtures";
+import { serverDay } from "./clock";
 
 test.describe("own act", () => {
   test.skip(!LOCAL, "Starts the agent automatically; local offline server only");
@@ -62,7 +63,7 @@ test.describe("own act", () => {
     // The plan date is today or later.
     const date = form.getByLabel("Date");
     await date.click();
-    await expect(page.locator(`[role="gridcell"][data-day="${isoDay(-2)}"]`).first()).toHaveAttribute("data-disabled", "true");
+    await expect(page.locator(`[role="gridcell"][data-day="${serverDay(-2)}"]`).first()).toHaveAttribute("data-disabled", "true");
     await page.keyboard.press("Escape");
     const day = isoDay(9);
     await pickDate(page, date, day);

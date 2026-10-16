@@ -1,10 +1,11 @@
 import "server-only";
-import { addDays, localToday, slotHours, type Slot } from "@/lib/slot";
+import { addDays, slotHours, type Slot } from "@/lib/slot";
 import { CITIES, type CityId } from "@/server/cities";
 import { AdapterError, runAdapter, type AdapterContext, type AdapterResult } from "../core";
 import { fetchHourlyForecast, fetchHourlyForecastRange } from "./client";
 import { syntheticWeather } from "./fixtures/synthetic";
 import type { WeatherData, WeatherHour } from "./schema";
+import { serverToday } from "@/server/clock";
 
 export type { WeatherData, WeatherHour } from "./schema";
 
@@ -19,7 +20,7 @@ export async function getWeather(
   cityId: CityId,
   slot: Slot,
   context: AdapterContext,
-  today: string = localToday(CITIES[cityId].timeZone),
+  today: string = serverToday(CITIES[cityId].timeZone),
 ): Promise<AdapterResult<WeatherData>> {
   const city = CITIES[cityId];
   const hours = slotHours(slot);
@@ -48,7 +49,7 @@ export async function getWeatherWeek(
   startDate: string,
   days: number,
   context: AdapterContext,
-  today: string = localToday(CITIES[cityId].timeZone),
+  today: string = serverToday(CITIES[cityId].timeZone),
 ): Promise<AdapterResult<Record<string, WeatherHour[]>>> {
   const city = CITIES[cityId];
   const last = addDays(today, FORECAST_DAYS - 1);

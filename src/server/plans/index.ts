@@ -3,6 +3,7 @@ import { exampleHistory } from "@/lib/example-tips";
 import { isPlanId, planPath } from "@/lib/plan-id";
 import { planRequestSchema, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
 import type { ParsedPlanUrl } from "@/lib/plan-url";
+import { serverNow } from "@/server/clock";
 import { localToday, slotUtcRange, type Slot } from "@/lib/slot";
 import { historyFromCookie, performerKeyFor } from "@/lib/tips";
 import { planKey } from "@/server/agent/plan-store";
@@ -22,7 +23,7 @@ export type PlanLink = { id: string } | { id: null; reason: "rate_limited" | "no
  * (reused ones are free). Never throws: without an id the caller keeps the
  * long /plan?… URL.
  */
-export async function resolvePlanLink(request: PlanRequest, exampleId: string | null, ip: string, now = new Date()): Promise<PlanLink> {
+export async function resolvePlanLink(request: PlanRequest, exampleId: string | null, ip: string, now = serverNow()): Promise<PlanLink> {
   const offline = testSwitches().offline;
   const store = shortPlanStore(offline);
   if (!linksDurable(store)) return { id: null, reason: "not_durable" };
@@ -52,7 +53,7 @@ export async function longUrlTarget(
   params: Record<string, string | string[] | undefined>,
   faults: readonly string[],
   ip: string,
-  now = new Date(),
+  now = serverNow(),
 ): Promise<string | null> {
   if (!parsed.ok || faults.length > 0) return null;
   const link = await resolvePlanLink(parsed.request, parsed.exampleId, ip, now);
@@ -93,7 +94,7 @@ export function snapshotEvents(s: PlanSnapshot): PlanStreamEvent[] {
 }
 
 /** Whether the slot has ended (city time). */
-export function slotPassed(slot: Slot, timeZone: string, now = Date.now()): boolean {
+export function slotPassed(slot: Slot, timeZone: string, now = serverNow().getTime()): boolean {
   return slotUtcRange(slot, timeZone).end.getTime() <= now;
 }
 

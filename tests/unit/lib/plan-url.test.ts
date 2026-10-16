@@ -3,7 +3,28 @@ import { parsePlanParams, planSearchParams } from "@/lib/plan-url";
 import { songKey, nameKey, trackKey } from "@/lib/text";
 import { parseSongLines } from "@/components/landing/performer-form";
 
-const today = "2026-10-15";
+const today = { today: "2026-10-15", hour: 12 };
+
+describe("plan URL default date", () => {
+  // 2026-10-16 is a Friday; the sax example is Friday 5-8 pm.
+  it("opens an example on the next slot that hasn't ended, at any hour", () => {
+    const slotDate = (hour: number, params: Record<string, string> = { example: "sax" }) => {
+      const parsed = parsePlanParams(params, { today: "2026-10-16", hour });
+      return parsed.ok ? parsed.request.slot.date : parsed.error;
+    };
+    expect(slotDate(10)).toBe("2026-10-16");
+    expect(slotDate(19)).toBe("2026-10-16");
+    expect(slotDate(20)).toBe("2026-10-23");
+    expect(slotDate(23)).toBe("2026-10-23");
+    // A custom act defaults to Saturday 6-9 pm; Friday evening is before it.
+    expect(slotDate(22, { name: "Jess", artists: "Paul Kelly" })).toBe("2026-10-17");
+  });
+
+  it("keeps an explicit date, even a past one", () => {
+    const parsed = parsePlanParams({ example: "sax", date: "2026-10-16" }, { today: "2026-10-16", hour: 22 });
+    expect(parsed.ok && parsed.request.slot.date).toBe("2026-10-16");
+  });
+});
 
 describe("plan URL state", () => {
   it("loads an example performer with its default slot", () => {

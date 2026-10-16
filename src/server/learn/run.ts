@@ -1,7 +1,6 @@
 import "server-only";
 import { skippedOf, type LearnStreamEvent, type StoredLearnStep } from "@/lib/learn-schema";
 import { fromLearnOutputs } from "@/lib/learn-totals";
-import { localToday } from "@/lib/slot";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import type { AdapterContext } from "@/server/adapters/core";
 import { withQlooUsage } from "@/server/adapters/qloo/usage";
@@ -15,6 +14,7 @@ import { endOf, suggestionEvent } from "./replay";
 import type { LearnRun } from "./runs";
 import type { LearnStore } from "./store";
 import type { HistoryData, RunRecord } from "./types";
+import { serverToday } from "@/server/clock";
 
 /** The stored steps of a run, trimmed to each tool's summary if they would pass the size cap (docs §1.2). */
 export function boundSteps(steps: StoredLearnStep[], maxBytes = LEARN_STEPS_MAX_BYTES): StoredLearnStep[] {
@@ -57,7 +57,7 @@ export async function executeLearnRun(args: {
   });
   push({ type: "status", message: PLAYLIST_COPY.learn.runStarted });
   try {
-    const today = localToday(CITIES.melbourne.timeZone);
+    const today = serverToday(CITIES.melbourne.timeZone);
     const outcome = await withQlooUsage(async (usage) => {
       const ctx = new LearnContext(adapters, playlist, history, today, usage);
       const result = await runLearnAgent(

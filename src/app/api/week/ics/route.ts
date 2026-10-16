@@ -1,10 +1,11 @@
 import { buildIcs } from "@/lib/ics";
 import { planSearchParams } from "@/lib/plan-url";
-import { localToday, zonedHourToUtc } from "@/lib/slot";
+import { zonedHourToUtc } from "@/lib/slot";
 import { parseWeekParams } from "@/lib/week-url";
 import { buildWeekPlan, WeekQlooUnavailableError } from "@/server/agent/week";
 import { CITIES } from "@/server/cities";
 import { adapterContextFor } from "@/server/request";
+import { serverNow, serverToday } from "@/server/clock";
 
 /**
  * GET /api/week/ics?<same params as /week>: the chosen sessions as an .ics
@@ -13,12 +14,12 @@ import { adapterContextFor } from "@/server/request";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const params = Object.fromEntries(url.searchParams);
-  const today = localToday(CITIES.melbourne.timeZone);
+  const today = serverToday(CITIES.melbourne.timeZone);
   const parsed = parseWeekParams(params, today);
   if (!parsed.ok) return Response.json({ error: { code: "invalid_request", message: parsed.error } }, { status: 400 });
 
   try {
-    const plan = await buildWeekPlan(parsed.request, adapterContextFor(url.searchParams.get("faults")), today, false);
+    const plan = await buildWeekPlan(parsed.request, adapterContextFor(url.searchParams.get("faults")), today, false, serverNow());
     const req = parsed.request;
     const ics = buildIcs(
       plan.sessions.map((s) => {
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
           url: planLink,
         };
       }),
-      new Date(),
+      serverNow(),
       `Busk Map: ${plan.performerName}`,
     );
     return new Response(ics, {

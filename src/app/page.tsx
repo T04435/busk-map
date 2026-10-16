@@ -8,12 +8,13 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Separator } from "@/components/ui/separator";
 import { EXAMPLES } from "@/lib/examples";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
-import { localToday, nextWeekday, weekdayOf } from "@/lib/slot";
+import { nextSlotDate, weekdayOf } from "@/lib/slot";
 import { loadStoredPlan } from "@/server/plans";
 import { playlistViewForCookie } from "@/server/playlist/read";
 import { SOURCES } from "@/lib/sources";
 import { CALLS_PER_NEW_BUSK, callKinds, featureCount } from "@/lib/qloo-map";
 import { Button } from "@/components/ui/button";
+import { serverLocalNow } from "@/server/clock";
 
 export default function Home({ searchParams }: PageProps<"/">) {
   return (
@@ -122,16 +123,16 @@ async function OwnActForm({ searchParams }: Pick<PageProps<"/">, "searchParams">
   const again = (await searchParams).again;
   // The default date depends on today, so render it at request time.
   await connection();
-  const today = localToday("Australia/Melbourne");
+  const { today, hour } = serverLocalNow("Australia/Melbourne");
   const stored = typeof again === "string" ? await loadStoredPlan(again).catch(() => null) : null;
   // This device's Repertoire (its cookie), if any: the form pre-fills from it unless ?again names an act.
   const repertoire = await playlistViewForCookie((await headers()).get("cookie"));
-  if (!stored) return <PerformerForm defaultDate={nextWeekday("saturday", today)} today={today} repertoire={repertoire} />;
+  if (!stored) return <PerformerForm defaultDate={nextSlotDate("saturday", 18, 21, today, hour)} today={today} repertoire={repertoire} />;
   const { performer, permit, slot } = stored.request;
   return (
     <PerformerForm
       key={stored.id}
-      defaultDate={nextWeekday(weekdayOf(slot.date), today)}
+      defaultDate={nextSlotDate(weekdayOf(slot.date), slot.startHour, slot.endHour, today, hour)}
       today={today}
       prefill={{ performer, permit, startHour: slot.startHour, endHour: slot.endHour }}
       repertoire={repertoire}

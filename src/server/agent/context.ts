@@ -2,7 +2,7 @@ import "server-only";
 import type { BBox } from "@/lib/geo";
 import type { TrendRow } from "@/server/adapters/qloo";
 import { ageLabel } from "@/lib/age";
-import { addDays, localToday, slotUtcRange, weekdayOf } from "@/lib/slot";
+import { addDays, slotUtcRange, weekdayOf } from "@/lib/slot";
 import { nameKey, trackKey } from "@/lib/text";
 import type { PlanRequest } from "@/lib/plan-schema";
 import type { AdapterContext, AdapterName, AdapterResult } from "@/server/adapters/core";
@@ -27,6 +27,7 @@ import {
   type ScoredPitch,
   type Weights,
 } from "@/server/scoring";
+import { serverToday } from "@/server/clock";
 
 /** Search radius for busy places, from the city centre. Covers the planning area. */
 export const PLACES_RADIUS_M = 2000;
@@ -95,7 +96,7 @@ export class PlanContext {
     this.request = request;
     this.adapters = adapters;
     this.city = CITIES[request.city];
-    this.today = today ?? localToday(this.city.timeZone);
+    this.today = today ?? serverToday(this.city.timeZone);
     this.weights = normalizeWeights(request.weights);
   }
 

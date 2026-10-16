@@ -6,6 +6,9 @@ import {
   formatHour,
   localToday,
   nextWeekday,
+  nextSlotDate,
+  localHour,
+  localNow,
   slotHours,
   slotSchema,
   slotUtcRange,
@@ -49,6 +52,38 @@ describe("slot", () => {
     expect(localToday("Australia/Melbourne", new Date("2026-10-14T14:30:00Z"))).toBe("2026-10-15");
     expect(nextWeekday("saturday", "2026-10-15")).toBe("2026-10-17");
     expect(nextWeekday("thursday", "2026-10-15")).toBe("2026-10-15");
+  });
+
+  it("finds the local hour and date in the city's zone", () => {
+    expect(localHour("Australia/Melbourne", new Date("2026-10-16T09:30:00Z"))).toBe(20);
+    expect(localHour("Australia/Melbourne", new Date("2026-10-15T13:00:00Z"))).toBe(0);
+    expect(localNow("Australia/Melbourne", new Date("2026-10-16T09:30:00Z"))).toEqual({ today: "2026-10-16", hour: 20 });
+  });
+
+  describe("nextSlotDate: the next slot that hasn't ended", () => {
+    // 2026-10-16 is a Friday. The sax example is Friday 17-20.
+    it("keeps today before the slot and during it", () => {
+      expect(nextSlotDate("friday", 17, 20, "2026-10-16", 9)).toBe("2026-10-16");
+      expect(nextSlotDate("friday", 17, 20, "2026-10-16", 17)).toBe("2026-10-16");
+      expect(nextSlotDate("friday", 17, 20, "2026-10-16", 19)).toBe("2026-10-16");
+    });
+    it("moves to next week once the slot has ended (the end hour is exclusive)", () => {
+      expect(nextSlotDate("friday", 17, 20, "2026-10-16", 20)).toBe("2026-10-23");
+      expect(nextSlotDate("friday", 17, 20, "2026-10-16", 23)).toBe("2026-10-23");
+    });
+    it("is the plain next weekday on other days, whatever the hour", () => {
+      expect(nextSlotDate("saturday", 18, 21, "2026-10-16", 23)).toBe("2026-10-17");
+      expect(nextSlotDate("thursday", 18, 21, "2026-10-16", 1)).toBe("2026-10-22");
+      expect(nextSlotDate("saturday", 18, 21, "2026-10-17", 21)).toBe("2026-10-24");
+      expect(nextSlotDate("saturday", 18, 21, "2026-10-17", 20)).toBe("2026-10-17");
+    });
+    it("handles a slot ending at midnight (24) and slots that run over midnight", () => {
+      expect(nextSlotDate("friday", 21, 24, "2026-10-16", 23)).toBe("2026-10-16");
+      // 22 to 2 am: Friday's slot is still on at 1 am Saturday.
+      expect(nextSlotDate("friday", 22, 2, "2026-10-17", 1)).toBe("2026-10-16");
+      expect(nextSlotDate("friday", 22, 2, "2026-10-17", 2)).toBe("2026-10-23");
+      expect(nextSlotDate("friday", 22, 2, "2026-10-16", 23)).toBe("2026-10-16");
+    });
   });
 
   it("formats slots", () => {

@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { FAKE_NOW } from "./tests/e2e/clock";
 
 /**
  * Judge-path e2e tests.
@@ -47,6 +48,10 @@ export default defineConfig({
           BUSKMAP_ALLOW_FAULTS: "1",
           // Deterministic and free: synthetic fixtures for every provider, mock AI.
           BUSKMAP_OFFLINE: "1",
+          // The server clock is frozen at Wednesday noon in Melbourne (honoured only with the fault switch above), so
+          // default dates and "slot passed" never depend on the time of day the suite runs. The Friday 5-8 pm example
+          // opens on 16 Oct, Saturday ones on 17 Oct. Specs that need another moment can change it here.
+          BUSKMAP_FAKE_NOW: FAKE_NOW,
         },
       },
 });

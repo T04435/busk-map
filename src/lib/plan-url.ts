@@ -14,7 +14,7 @@ import { findExample } from "./examples";
 import { artistsParam, parseArtistsParam, parseSongsParam, songsParam } from "./performer-url";
 import { parseWeightsParam, weightsParam } from "./weights-url";
 import { planRequestSchema, type PlanRequest } from "./plan-schema";
-import { nextWeekday } from "./slot";
+import { nextSlotDate } from "./slot";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -24,7 +24,10 @@ export type ParsedPlanUrl =
   | { ok: true; request: PlanRequest; exampleId: string | null; pitchId: string | null; autoRun: boolean }
   | { ok: false; error: string };
 
-export function parsePlanParams(params: Params, today: string, tipCookie?: string | null): ParsedPlanUrl {
+/** The city's current local date and hour. A default date is the next one whose slot hasn't ended by then. */
+export type LocalNow = { today: string; hour: number };
+
+export function parsePlanParams(params: Params, now: LocalNow, tipCookie?: string | null): ParsedPlanUrl {
   const example = findExample(first(params.example));
   const name = first(params.name);
   const performer = name
@@ -36,9 +39,11 @@ export function parsePlanParams(params: Params, today: string, tipCookie?: strin
     : example?.performer;
   if (!performer) return { ok: false, error: "Pick an example performer or describe your own." };
 
-  const date = first(params.date) ?? (example ? nextWeekday(example.weekday, today) : nextWeekday("saturday", today));
   const startHour = Number(first(params.from) ?? example?.startHour ?? 18);
   const endHour = Number(first(params.to) ?? example?.endHour ?? 21);
+  // An explicit date is kept as given. A default one is the next slot that hasn't ended (an evening click on Friday's
+  // 5-8 pm example opens next Friday, not the slot that has just passed).
+  const date = first(params.date) ?? nextSlotDate(example?.weekday ?? "saturday", startHour, endHour, now.today, now.hour);
 
   const parsed = planRequestSchema.safeParse({
     city: first(params.city) ?? "melbourne",

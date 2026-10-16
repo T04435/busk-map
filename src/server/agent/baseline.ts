@@ -1,5 +1,4 @@
 import "server-only";
-import { localToday } from "@/lib/slot";
 import type { BaselineView, PlanRequest } from "@/lib/plan-schema";
 import type { AdapterContext } from "@/server/adapters/core";
 import { CITIES } from "@/server/cities";
@@ -13,6 +12,7 @@ import { planKey, planStore, storeGet, storePut } from "./plan-store";
 import { buildEnginePlan, engineContext, presetIdFor } from "./preload";
 import { RUN_TTL_MS } from "./runs";
 import { knownPlaces } from "./where";
+import { serverToday } from "@/server/clock";
 
 /**
  * The plain-AI baseline for a plan: asked as soon as the plan page starts
@@ -69,7 +69,7 @@ async function build(request: PlanRequest, adapters: AdapterContext, day: string
 }
 
 function keyFor(request: PlanRequest, adapters: AdapterContext, today?: string) {
-  const day = today ?? localToday(CITIES[request.city].timeZone);
+  const day = today ?? serverToday(CITIES[request.city].timeZone);
   return { day, key: JSON.stringify([request, adapters.offline, [...adapters.faults].sort(), day]) };
 }
 

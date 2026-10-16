@@ -8,7 +8,7 @@ import { TIP_COOKIE } from "@/lib/tips";
 import { PlanScreen, PlanSkeleton } from "@/components/plan/plan-screen";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { parsePlanParams } from "@/lib/plan-url";
-import { localToday } from "@/lib/slot";
+import { serverLocalNow } from "@/server/clock";
 import { CITIES } from "@/server/cities";
 import { longUrlTarget } from "@/server/plans";
 import { adapterContextFor, clientIp, pageFaultsFor, renderFaultRequested } from "@/server/request";
@@ -45,7 +45,7 @@ async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchPar
   await connection();
   // The tip log's summary (this browser's cookie), for the personal bonus. Never in the URL.
   const tipCookie = (await cookies()).get(TIP_COOKIE)?.value ?? null;
-  const parsed = parsePlanParams(params, localToday(CITIES.melbourne.timeZone), tipCookie);
+  const parsed = parsePlanParams(params, serverLocalNow(CITIES.melbourne.timeZone), tipCookie);
   if (!parsed.ok) {
     return (
       <>

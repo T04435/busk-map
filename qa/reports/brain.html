@@ -21,7 +21,7 @@ h1{font-size:24px;margin:0} .ver{font-weight:800;margin:6px 0 2px} .chg{color:va
 figure{margin:0;min-width:0} figcaption{font-size:12px;color:var(--muted);margin-bottom:4px}
 img{display:block;max-width:100%;height:auto;max-height:520px;object-fit:contain;object-position:top left;border:1px solid var(--line);background:#fff}
 .box img{max-height:none}
-dl{margin:0;display:grid;gap:6px} dt{font-size:12px;color:var(--muted)} dd{margin:0} .call{font-weight:800;color:var(--accent)}
+dl{margin:0;display:grid;gap:6px} dt{font-size:12px;color:var(--muted)} dd{margin:0} .call{font-weight:800;color:var(--accent)} .spec{font-size:12px;color:var(--muted)}
 .chip{font-weight:800;padding:1px 8px} .chip.ok{background:var(--okbg);color:var(--ok)} .chip.bad{background:var(--badbg);color:var(--bad)} .chip.warn{background:var(--warnbg);color:var(--warn)} .chip.held{background:var(--heldbg);color:var(--held)}
 .ph{border:2px dashed var(--muted);color:var(--muted);padding:24px 8px;text-align:center;font-weight:800}
 body.action .row[data-action="false"]{display:none}
@@ -32,167 +32,493 @@ table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8
 </style></head>
 <body><div class="wrap">
 <h1>Brain · review</h1>
-<p class="ver">v1 · design/honeycomb ＠ 7b1521e · 17 Oct 2026 · route /brain</p>
-<p class="chg">First version: 14 provisional parts from the deck&#x27;s Brain board, trace state, field strip, impeccable critique and audit; B-052.</p>
-<div class="strip" role="group" aria-label="Summary"><span class="stat ok">12 Present</span><span class="stat warn">1 Different</span><span class="stat bad">0 Missing</span><span class="stat bad">1 Broken</span><button class="filter" type="button" aria-pressed="false" id="flt">Needs action only</button></div>
-<p class="chg">Deck: the Brain board (night). Build: QA&#x27;s own export. design/honeycomb predates dev/core&#x27;s Repertoire R4 (12 kinds, 5 facts, Last.fm, “Suggested set”); those arrive with the merge and are checked on dev/core by brain.spec. The row id is the ticket.</p>
+<p class="ver">v2 · design/honeycomb ＠ 7b1521e · 17 Oct 2026 · route /brain</p>
+<p class="chg">Re-keyed to BRAND&#x27;s inventory: 40 parts (BR01-BR40) with BRAND&#x27;s crops, checked at 1440, 768 and 390, day and night; user&#x27;s calls F07-F15 on their rows (F12 as corrected: lockup with the new wordmark); BRAND&#x27;s two build issues checked (nav current, footer): neither reproduced; B-114..B-121 raised.</p>
+<div class="strip" role="group" aria-label="Summary"><span class="stat ok">17 Present</span><span class="stat warn">22 Different</span><span class="stat bad">0 Missing</span><span class="stat bad">1 Broken</span><button class="filter" type="button" aria-pressed="false" id="flt">Needs action only</button></div>
+<p class="chg">Deck: BRAND&#x27;s crops of the App canvas board Brain (BrainTablet 768, BrainMobile 390). Build: QA&#x27;s own offline export of 7b1521e. design/honeycomb predates dev/core&#x27;s Repertoire R4 (12 kinds, 5 facts, Last.fm, “Suggested set”, Repertoire in the nav); the board here shows the older numbers (11 kinds, 4 facts, two other sources, 15 data points), so the build is judged against the board and R4 is noted where it changes a row. DEV landed F07-F12 (a68440d) and F13-F15 (e575a69) after 7b1521e; those rows say so under DEV status but are judged at 7b1521e. F12 as corrected by the user on 17 Oct: the one logo is the lockup [hex mark][new wordmark]; only the old wordmark lettering (larger M, other font) is retired; wordmark-only or mark-only in a header or footer fails. The inventory intro&#x27;s “wordmark only” is superseded. The row id is the ticket.</p>
 <article class="row" id="BR01" data-action="true">
-<div class="id"><a href="#BR01">BR01</a><span>Header: Powered by Qloo, title, intro</span></div>
-<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR01.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR01.jpg" alt="BR01 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR01-1440.jpg" alt="BR01 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR01-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR01-390.jpg" alt="BR01 build 390"></a></figure>
+<div class="id"><a href="#BR01">BR01</a><span>Header</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR01.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR01.jpg" alt="BR01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR01-1440.jpg" alt="BR01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR01-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR01-390.jpg" alt="BR01 build 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> As the board; the intro says “11 kinds” and “trace its path” (board: “eleven”, “light up”).</dd></div>
-<div><dt>User's call</dt><dd class="call">F09: the Qloo logo links to qloo.com in a new tab.</dd></div>
-<div><dt>Defect</dt><dd>—</dd></div>
+
+<div><dt>DEV status</dt><dd>a68440d (after 7b1521e; not rechecked) made the header and footer wordmark-only, which fails the corrected F12</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Nav Busks · Week · Brain · Tips with Brain current (aria-current page, orange fill). The logo is the lockup (hex mark + wordmark), which is right under the corrected F12, but its word is the OLD lettering: the M stands taller than B-U-S-K-A-P (zoomed crop). Board: Busks · Week · Setlist · Tips, nothing active (BRAND&#x27;s spec asks for Brain current in the build). Repertoire joins the nav with R4 on dev/core. Nav hides below 721 px as specified.</dd></div>
+<div><dt>User's call</dt><dd class="call">F12 (corrected 17 Oct): the one logo is the lockup [hex mark][new wordmark] in the header, footer and every asset; F12 retired only the old wordmark lettering (larger M, other font). Wordmark-only or mark-only in a header or footer fails; the mark alone only at icon size. Supersedes the inventory intro&#x27;s “wordmark only”.</dd></div>
+<div><dt>Defect</dt><dd>— (F12)</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
-</dl></article><article class="row" id="BR02" data-action="false">
-<div class="id"><a href="#BR02">BR02</a><span>Facts strip</span></div>
-<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR02.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR02.jpg" alt="BR02 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR02-1440.jpg" alt="BR02 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR02-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR02-390.jpg" alt="BR02 build 390"></a></figure>
+</dl></article><article class="row" id="BR02" data-action="true">
+<div class="id"><a href="#BR02">BR02</a><span>Page intro</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR02.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR02.jpg" alt="BR02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR02-1440.jpg" alt="BR02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR02-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR02-390.jpg" alt="BR02 build 390"></a></figure>
 <dl>
+
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> 11 · 24–33 · 0 · 9, as the board (dev/core R4 makes it five facts with 12 kinds and ≤ 25 per learn run).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Night #0f1416 ground, intro max 900 px, gap 18 px as the board. The grain is a 6 px dot grid only (.bm-grain); the board&#x27;s 4 px dot grain and faint hex lattice behind everything are not drawn.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Defect</dt><dd>B-114</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
-</dl></article><article class="row" id="BR03" data-action="false">
-<div class="id"><a href="#BR03">BR03</a><span>Wiring: Qloo calls column</span></div>
-<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR03.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR03.jpg" alt="BR03 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR03-1440.jpg" alt="BR03 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR03-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR03-390.jpg" alt="BR03 build 390"></a></figure>
+</dl></article><article class="row" id="BR03" data-action="true">
+<div class="id"><a href="#BR03">BR03</a><span>“Powered by Qloo” eyebrow</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR03.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR03.jpg" alt="BR03 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR03-1440.jpg" alt="BR03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR03-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR03-390.jpg" alt="BR03 build 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> 11 kinds (with 5b) with endpoints; numbered hex cells.</dd></div>
-<div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>—</dd></div>
+
+<div><dt>DEV status</dt><dd>a68440d (after 7b1521e; not rechecked) made the header and footer wordmark-only, which fails the corrected F12</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Powered by” in Qloo purple (rgb 140,140,200) with the Qloo wordmark at clamp(120px, 26vw, 200px) as the board, but the wordmark is a plain svg, not a link to qloo.com. The eyebrow also sits inside the h1, so the heading reads “Powered by Qloo The brain of Busk Map”.</dd></div>
+<div><dt>User's call</dt><dd class="call">F09: the Qloo logo links to qloo.com in a new tab (rel=&quot;noopener noreferrer&quot;).</dd></div>
+<div><dt>Defect</dt><dd>— (F09)</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="BR04" data-action="false">
-<div class="id"><a href="#BR04">BR04</a><span>Wiring: data points column</span></div>
-<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR04.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR04.jpg" alt="BR04 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR04-1440.jpg" alt="BR04 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR04-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR04-390.jpg" alt="BR04 build 390"></a></figure>
+<div class="id"><a href="#BR04">BR04</a><span>Headline</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR04.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR04.jpg" alt="BR04 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR04-1440.jpg" alt="BR04 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR04-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR04-390.jpg" alt="BR04 build 390"></a></figure>
 <dl>
+
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Same data points and sublines as the board.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “The brain / of Busk Map” on two lines, Big Shoulders 800, uppercase, “brain” in Qloo purple.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
-</dl></article><article class="row" id="BR05" data-action="false">
-<div class="id"><a href="#BR05">BR05</a><span>Wiring: your busk column</span></div>
-<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR05.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR05.jpg" alt="BR05 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR05-1440.jpg" alt="BR05 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR05-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR05-390.jpg" alt="BR05 build 390"></a></figure>
+</dl></article><article class="row" id="BR05" data-action="true">
+<div class="id"><a href="#BR05">BR05</a><span>Intro line</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR05.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR05.jpg" alt="BR05 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR05-1440.jpg" alt="BR05 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR05-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR05-390.jpg" alt="BR05 build 390"></a></figure>
 <dl>
+
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Nine parts with sublines; spaced to line up with their wires as the board.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Build: “… Busk Map asks it 11 kinds of question … Pick any piece below to trace its path.” Board: “eleven kinds” and “to light up its path”. 19/29 px, max 640 px as the board.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Defect</dt><dd>B-115</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="BR06" data-action="false">
-<div class="id"><a href="#BR06">BR06</a><span>Other sources (Spotify, Ticketmaster)</span></div>
-<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR06.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR06.jpg" alt="BR06 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR06-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR06-1440.jpg" alt="BR06 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR06-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR06-390.jpg" alt="BR06 build 390"></a></figure>
+<div class="id"><a href="#BR06">BR06</a><span>Numbers strip ×4</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR06.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR06.jpg" alt="BR06 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR06-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR06-1440.jpg" alt="BR06 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR06-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR06-390.jpg" alt="BR06 build 390"></a></figure>
 <dl>
+
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Dashed wires, as the board.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “11” kinds of Qloo call · “24–33” Qloo calls for a new busk · “0” on a rerun: answers cached for 24 h · “9” parts of your busk it decides, on a purple border; 2×2 at 390. R4 on dev/core makes it five facts with 12 kinds.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="BR07" data-action="false">
-<div class="id"><a href="#BR07">BR07</a><span>“The wiring” heading and legend</span></div>
-<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR07.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR07.jpg" alt="BR07 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR07-1440.jpg" alt="BR07 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR07-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR07-390.jpg" alt="BR07 build 390"></a></figure>
+<div class="id"><a href="#BR07">BR07</a><span>The wiring</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR07.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR07.jpg" alt="BR07 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR07-1440.jpg" alt="BR07 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR07-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR07-390.jpg" alt="BR07 build 390"></a></figure>
 <dl>
+
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Qloo · Spotify, Ticketmaster · the path you picked.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Heading and legend, three columns with two wire gutters, then the panel. The gutters are 64 px (gap-x-16) where the board has 72 px; not visible as a difference.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
-</dl></article><article class="row" id="BR08" data-action="true">
-<div class="id"><a href="#BR08">BR08</a><span>Pick any piece panel</span></div>
-<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR08.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR08.jpg" alt="BR08 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR08-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR08-1440.jpg" alt="BR08 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR08-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR08-390.jpg" alt="BR08 build 390"></a></figure>
+</dl></article><article class="row" id="BR08" data-action="false">
+<div class="id"><a href="#BR08">BR08</a><span>“The wiring” heading</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR08.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR08.jpg" alt="BR08 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR08-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR08-1440.jpg" alt="BR08 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR08-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR08-390.jpg" alt="BR08 build 390"></a></figure>
 <dl>
+
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> One sentence with a single suggestion; the board&#x27;s two “Try …” items with orange markers (Setlist and learn these; Taste heatmap) are gone.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> h2 “The wiring”, Big Shoulders 800 uppercase.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-052</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="BR09" data-action="false">
-<div class="id"><a href="#BR09">BR09</a><span>Three notes: numbers from data, the quota, next</span></div>
-<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR09.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR09.jpg" alt="BR09 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR09-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR09-1440.jpg" alt="BR09 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR09-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR09-390.jpg" alt="BR09 build 390"></a></figure>
+<div class="id"><a href="#BR09">BR09</a><span>Wire legend</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR09.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR09.jpg" alt="BR09 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR09-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR09-1440.jpg" alt="BR09 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR09-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR09-390.jpg" alt="BR09 build 390"></a></figure>
 <dl>
+
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Same three cards; the quota copy is updated to the current pacing.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Mono 12/16 muted: solid purple “Qloo”, dashed grey “Spotify, Ticketmaster”, solid orange “The path you picked”; wraps under the heading at 390.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
-</dl></article><article class="row" id="BR10" data-action="false">
-<div class="id"><a href="#BR10">BR10</a><span>Back to Busk Map</span></div>
-<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR10.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR10.jpg" alt="BR10 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR10-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR10-1440.jpg" alt="BR10 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR10-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR10-390.jpg" alt="BR10 build 390"></a></figure>
+</dl></article><article class="row" id="BR10" data-action="true">
+<div class="id"><a href="#BR10">BR10</a><span>Column heads ×3</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR10.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR10.jpg" alt="BR10 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR10-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR10-1440.jpg" alt="BR10 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR10-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR10-390.jpg" alt="BR10 build 390"></a></figure>
 <dl>
+
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Link as the board.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Purple, paper and orange hexes with “Qloo calls” “11 kinds”, “Data points” “what comes back”, “Your busk”, but the third note reads “9 parts it decides” (board “what it decides”).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Defect</dt><dd>B-115</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
-</dl></article><article class="row" id="BR11" data-action="false">
-<div class="id"><a href="#BR11">BR11</a><span>Trace state (a piece picked)</span></div>
-<figure><figcaption>Deck</figcaption><div class=ph>Not in the deck</div></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR11-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR11-1440.jpg" alt="BR11 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR11-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR11-390.jpg" alt="BR11 build 390"></a></figure>
+</dl></article><article class="row" id="BR11" data-action="true">
+<div class="id"><a href="#BR11">BR11</a><span>Qloo call nodes ×12</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR11.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR11.jpg" alt="BR11 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR11-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR11-1440.jpg" alt="BR11 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR11-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR11-390.jpg" alt="BR11 build 390"></a></figure>
 <dl>
+
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Picking “Setlist and learn these” lights its path and fills the panel (comes from 4 Qloo calls, 1 other source, 5 data points); the focused piece stays visible (B-015 fixed).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Twelve nodes (1–11 with 5b), names as the board, 53 px tall. The endpoint lines differ: build “/search · urn:entity:artist” (board “/search”), “/entities” (board “/entities · external.spotify.ids”), and 5, 5b, 6, 7 and 8 all end “urn:entity:artist” where the board tells them apart (“artist · explainability”, “artist · no taste signal”, “artist · signal.location”, “artist · filter.results”, “/v2/trending”). R4 on dev/core has 12 kinds.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Defect</dt><dd>B-116</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="BR12" data-action="false">
-<div class="id"><a href="#BR12">BR12</a><span>Phone layout (390)</span></div>
-<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/full-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/full-390.jpg" alt="BR12 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/full-390-night.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/full-390-night.jpg" alt="BR12 build 390"></a></figure>
+<div class="id"><a href="#BR12">BR12</a><span>One node (anatomy)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR12.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR12.jpg" alt="BR12 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR12-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR12-1440.jpg" alt="BR12 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR12-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR12-390.jpg" alt="BR12 build 390"></a></figure>
 <dl>
+
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Columns stack; no sideways scroll; axe clean.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Hex number, name and sub-line; every node is a button with aria-pressed; clicking the picked node again clears the trace.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="BR13" data-action="false">
-<div class="id"><a href="#BR13">BR13</a><span>Both themes</span></div>
-<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/full-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/full-1440.jpg" alt="BR13 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/full-1440-day.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/full-1440-day.jpg" alt="BR13 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/full-390-day.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/full-390-day.jpg" alt="BR13 build 390"></a></figure>
+<div class="id"><a href="#BR13">BR13</a><span>Other sources</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR13.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR13.jpg" alt="BR13 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR13-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR13-1440.jpg" alt="BR13 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR13-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR13-390.jpg" alt="BR13 build 390"></a></figure>
 <dl>
+
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> The page is night in day and night themes, as the board; axe clean in both.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Sub-head “With two other sources”, dashed transparent nodes “Spotify” artist ids, release years and “Ticketmaster” events near each pitch. R4 (B01) adds Last.fm and “three other sources” on dev/core.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
-</dl></article><article class="row" id="BR14" data-action="true">
-<div class="id"><a href="#BR14">BR14</a><span>Field focus</span></div>
-<figure><figcaption>Deck</figcaption><div class=ph>Not in the deck</div></figure>
+</dl></article><article class="row" id="BR14" data-action="false">
+<div class="id"><a href="#BR14">BR14</a><span>Data point nodes ×15</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR14.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR14.jpg" alt="BR14 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR14-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR14-1440.jpg" alt="BR14 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR14-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR14-390.jpg" alt="BR14 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> The board&#x27;s 15 data points with the same sub-lines, in order. R4 (B02) adds a 16th, “Song plays”, on dev/core.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR15" data-action="false">
+<div class="id"><a href="#BR15">BR15</a><span>Your busk nodes ×9</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR15.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR15.jpg" alt="BR15 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR15-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR15-1440.jpg" alt="BR15 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR15-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR15-390.jpg" alt="BR15 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Nine features in Big Shoulders 800 21/24 uppercase, spread down the column, sub-lines as the board. “Setlist and learn these” keeps the board&#x27;s name here; R4 (B03) renames it on dev/core.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR16" data-action="true">
+<div class="id"><a href="#BR16">BR16</a><span>Wires: calls → data points</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR16.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR16.jpg" alt="BR16 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR16-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR16-1440.jpg" alt="BR16 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> aria-hidden svg, solid purple 1.5 px Qloo wires and dashed grey (4 3) Spotify/Ticketmaster wires; 54 curves across both gutters. At rest the wires are 60% opacity (board 45%). Hidden below 1024 px as specified.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-117</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR17" data-action="true">
+<div class="id"><a href="#BR17">BR17</a><span>Wires: data points → your busk</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR17.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR17.jpg" alt="BR17 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR17-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR17-1440.jpg" alt="BR17 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Same styles; wires out of Events and times and Release years are dashed grey. Rest opacity 60% (board 45%).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-117</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR18" data-action="true">
+<div class="id"><a href="#BR18">BR18</a><span>Detail panel, nothing picked</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR18.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR18.jpg" alt="BR18 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR18-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR18-1440.jpg" alt="BR18 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR18-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR18-390.jpg" alt="BR18 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Pick any piece” and “Choose a Qloo call, a data point or a part of your busk, and its whole path lights up. Try Setlist and learn these, where four Qloo calls and Spotify meet.” The board&#x27;s two orange-arrow “Try …” lines (Setlist and learn these; Taste heatmap) are one run-on sentence; the Taste heatmap prompt is gone.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-052</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR19" data-action="false">
+<div class="id"><a href="#BR19">BR19</a><span>Notes ×3</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR19.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR19.jpg" alt="BR19 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR19-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR19-1440.jpg" alt="BR19 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR19-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR19-390.jpg" alt="BR19 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Three cards on an auto-fit grid (min 320 px), one per row at 390. The section is labelled by a hidden “Notes” h2 rather than by the first card&#x27;s title.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR20" data-action="true">
+<div class="id"><a href="#BR20">BR20</a><span>“Numbers come from data” card</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR20.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR20.jpg" alt="BR20 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR20-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR20-1440.jpg" alt="BR20 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR20-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR20-390.jpg" alt="BR20 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Same text except “a plan that cites a number no call returned is rejected” (board: “a busk that cites …”).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-115</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR21" data-action="true">
+<div class="id"><a href="#BR21">BR21</a><span>“Light on the quota” card</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR21.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR21.jpg" alt="BR21 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR21-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR21-1440.jpg" alt="BR21 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR21-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR21-390.jpg" alt="BR21 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Reworded: “Qloo allows 10,000 requests a month per key, at 5 a second. Busk Map paces its calls to 3 a second and caches every answer for 24 h, so a key covers roughly 300–400 new busks a month, and reruns are free.” Same numbers; drops the board&#x27;s “because bursts of 4 drew rate-limit errors”.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-115</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR22" data-action="true">
+<div class="id"><a href="#BR22">BR22</a><span>“Next · not built yet” card</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR22.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR22.jpg" alt="BR22 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR22-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR22-1440.jpg" alt="BR22 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR22-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR22-390.jpg" alt="BR22 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Dashed card, orange mono eyebrow and the three bullets, but the second reads “Searching Qloo’s genre list directly (/v2/tags)” (board has no endpoint).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-115</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR23" data-action="true">
+<div class="id"><a href="#BR23">BR23</a><span>Back link</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR23.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR23.jpg" alt="BR23 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR23-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR23-1440.jpg" alt="BR23 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR23-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR23-390.jpg" alt="BR23 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “← Back to Busk Map”, mono 700 16 px to /, but paper-coloured and underlined (board: orange, no underline).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-118</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR24" data-action="true">
+<div class="id"><a href="#BR24">BR24</a><span>Node hover and focus</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR24.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR24.jpg" alt="BR24 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR24-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR24-1440.jpg" alt="BR24 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR24-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR24-390.jpg" alt="BR24 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>Done in e575a69 (after 7b1521e; not rechecked)</dd></div>
+<div><dt>QA status</dt><dd><span class="chip bad">Broken</span> Hover turns the border Qloo purple as the board. Keyboard focus draws a double ring (2 px night gap plus 4 px orange box-shadow from the global :focus-visible rule) on all 38 nodes, 390 and 1440, day and night: see the field strip.</dd></div>
+<div><dt>User's call</dt><dd class="call">F13–F15: one shared focus ring, never a double ring.</dd></div>
+<div><dt>Defect</dt><dd>— (F14; Site-wide S09)</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR25" data-action="true">
+<div class="id"><a href="#BR25">BR25</a><span>Trace: a part of your busk picked (f_setlist)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR25.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR25.jpg" alt="BR25 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR25-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR25-1440.jpg" alt="BR25 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR25-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR25-390.jpg" alt="BR25 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> The right path lights: calls 5, 6, 8, 9, Spotify and 5 data points, 10 wires. Differences: traced nodes get a 2 px orange border but no outline; dimmed nodes are #1f282d with #a7b0b5 text (board #141b20, #9aa4aa); lit wires are 3 px (board 2.5 px) and the rest drop to 15% (board 10%).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-117</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR26" data-action="true">
+<div class="id"><a href="#BR26">BR26</a><span>Picked node</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR26.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR26.jpg" alt="BR26 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR26-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR26-1440.jpg" alt="BR26 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR26-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR26-390.jpg" alt="BR26 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> 2 px orange border and the 4 px orange offset shadow as the board, but the fill is dark orange (rgb 58,37,25; board #26323a) and there is no orange outline.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-117</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR27" data-action="true">
+<div class="id"><a href="#BR27">BR27</a><span>Detail panel, tracing a part of your busk</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR27.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR27.jpg" alt="BR27 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR27-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR27-1440.jpg" alt="BR27 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR27-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR27-390.jpg" alt="BR27 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Title “Setlist and learn these” in Qloo purple (board orange). Summary “Setlist and learn these comes from 4 Qloo calls, 1 other source and 5 data points.” (board “Lights up 4 Qloo calls, 5 data points and 1 part of your busk.”). “Comes from:” list matches. Wire lines read “From Artists this crowd likes: learn these: the crowd’s top artists” (board “← Artists this crowd likes: …”).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-119</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR28" data-action="true">
+<div class="id"><a href="#BR28">BR28</a><span>Clear trace</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR28.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR28.jpg" alt="BR28 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR28-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR28-1440.jpg" alt="BR28 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR28-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR28-390.jpg" alt="BR28 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Shown only while tracing and clears it, as the board. Drawn as the shadcn outline Button: Atkinson 14 px 700 uppercase, 2 px grey (#76828a) border; board: mono 700 12/16 with a 1.5 px paper border. F15 keeps the shadcn Button; the look belongs in a variant.</dd></div>
+<div><dt>User's call</dt><dd class="call">F15: shadcn primitives styled through tokens and variants.</dd></div>
+<div><dt>Defect</dt><dd>B-119</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR29" data-action="true">
+<div class="id"><a href="#BR29">BR29</a><span>Trace: a Qloo call picked (c3)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR29.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR29.jpg" alt="BR29 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR29-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR29-1440.jpg" alt="BR29 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR29-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR29-390.jpg" alt="BR29 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Taste heatmap lights Taste cells and 5 parts. Panel: “Taste heatmap feeds 1 data point and 5 parts of your busk.” (board “Lights up 1 Qloo call, 1 data point and 5 parts of your busk.”), “Decides: Taste map · Pitch ranking · …” (board order Pitch ranking · Taste map), “To Taste cells: …” (board “→”). “With two other sources” stays visible at 1440 (board hides it when no source is on the path); below 1024 it is removed as specified.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-119, B-120</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR30" data-action="true">
+<div class="id"><a href="#BR30">BR30</a><span>Trace: a data point picked (d_cells)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR30.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR30.jpg" alt="BR30 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR30-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR30-1440.jpg" alt="BR30 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR30-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR30-390.jpg" alt="BR30 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Lines go both ways and the panel says “Decides:” as the board, but as words: “From Taste heatmap: …” and “To Taste map: …” (board ← and →). Summary “Taste cells comes from 1 Qloo call, and feeds 5 parts of your busk.”</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-119</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR31" data-action="false">
+<div class="id"><a href="#BR31">BR31</a><span>Trace: Plain-AI comparison (f_plain)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR31.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR31.jpg" alt="BR31 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR31-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR31-1440.jpg" alt="BR31 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR31-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR31-390.jpg" alt="BR31 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “Comes from: Taste heatmap · Places nearby · Headliner match · Ticketmaster” as the board; 3 data points (Taste cells, Open places, Headliner taste match) light. Panel wording as BR27 (B-119).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR32" data-action="false">
+<div class="id"><a href="#BR32">BR32</a><span>Trace transition</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR32.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR32.jpg" alt="BR32 deck"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
 <figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
 <dl>
+
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip bad">Broken</span> All 38 pieces (buttons) fail at 390 and 1440, day and night: two ring layers when focused. See the strip below.</dd></div>
-<div><dt>User's call</dt><dd class="call">F13, F14, F15</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Measured: nodes transition colour, background and border over 0.15 s; wires transition opacity over 0.15 s. Off under reduced motion (BR37). No still image.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR33" data-action="true">
+<div class="id"><a href="#BR33">BR33</a><span>Sticky trace panel</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR33.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR33.jpg" alt="BR33 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR33-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR33-1440.jpg" alt="BR33 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR33-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR33-390.jpg" alt="BR33 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> While tracing the panel sticks to the viewport bottom, max 45vh (405 px at 900) and scrolls inside; at 390 it sits on top of the bottom nav (panel bottom 836 = nav top 836); in the flow when nothing is picked. Differences: z-index 10 (board 4) and a downward shadow-lg instead of the board&#x27;s 0 −8px 24px upward shadow, so it has no lift off the page.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-119</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR34" data-action="false">
+<div class="id"><a href="#BR34">BR34</a><span>Keyboard trace: panel folds (B-015)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR34-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR34-1440.jpg" alt="BR34 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR34-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR34-390.jpg" alt="BR34 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">While tracing and a node has keyboard focus, the panel folds to a slim bar (title and Clear trace) so it never hides the focused node (WCAG 2.4.11); scroll-padding-bottom = panel height + 16px, at least 96px, via ResizeObserver.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> With a node keyboard-focused the panel folds to title and Clear trace (88 px at 1440, 118 px at 390); scroll-padding-bottom 104 px / 198 px; the focused node stays clear of the panel. Mouse clicks keep the full panel. B-015 stays fixed.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR35" data-action="false">
+<div class="id"><a href="#BR35">BR35</a><span>Below 1024px: one column</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR35.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR35.jpg" alt="BR35 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR25-768.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR25-768.jpg" alt="BR35 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR25-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR25-390.jpg" alt="BR35 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> At 768 (image in the 1440 column) the columns stack, the gutters hide, each list is a two-column grid; while tracing all 27 dimmed nodes are hidden and the empty other-sources sub-head is removed. No sideways scroll.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR36" data-action="false">
+<div class="id"><a href="#BR36">BR36</a><span>Phone layout</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR36.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR36.jpg" alt="BR36 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/full-390-night.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/full-390-night.jpg" alt="BR36 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> At 390 the header nav hides and the bottom nav shows; numbers 2×2; notes one per row; no sideways scroll.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR37" data-action="false">
+<div class="id"><a href="#BR37">BR37</a><span>Reduced motion</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR37.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR37.jpg" alt="BR37 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> With prefers-reduced-motion the node and wire transition-property is none; no animations run on the page (document.getAnimations() = 0).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR38" data-action="true">
+<div class="id"><a href="#BR38">BR38</a><span>Site footer (added by F07–F11)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR38-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR38-1440.jpg" alt="BR38 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR38-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR38-390.jpg" alt="BR38 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">Not on the board. SiteFooter at the bottom of /brain: lockup and Qloo left (F12 corrected; the board spec says wordmark); Privacy · Terms · Brain · Brand centre; GitHub in a honeycomb cell and “Built by T04435” with the pixel critter right. See chrome FT01–FT11.</dd></div>
+<div><dt>DEV status</dt><dd>a68440d (after 7b1521e; not rechecked) made the header and footer wordmark-only, which fails the corrected F12</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> A footer is there, but the old one: lockup with the OLD wordmark lettering (taller M; corrected F12 wants the lockup with the new wordmark), “Taste data by Qloo · MIT licence” (Qloo logo not linked), “OPEN SOURCE github.com/T04435/busk-map”, “Built by T04435 (solo), with Claude, during the Qloo Agentic Hackathon” and the legal line. Not the F07–F11 footer (wordmark + Qloo left; Privacy · Terms · Brain · Brand centre; GitHub cell and Built by with the critter right).</dd></div>
+<div><dt>User's call</dt><dd class="call">F07–F11: the SiteFooter as on every public page (chrome inventory FT01–FT11). F12 (corrected): the lockup [hex mark][new wordmark], never wordmark-only.</dd></div>
+<div><dt>Defect</dt><dd>— (F07–F11)</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR39" data-action="false">
+<div class="id"><a href="#BR39">BR39</a><span>Bottom nav (phone)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR39.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR39.jpg" alt="BR39 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR39-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR39-390.jpg" alt="BR39 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Up to 720 px the MobileNav is fixed at the bottom: Busks · Week · Brain · Tips with Brain current (orange). Repertoire joins with R4 on dev/core.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR40" data-action="true">
+<div class="id"><a href="#BR40">BR40</a><span>Night theme only</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/inv/deck/BR40.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/deck/BR40.jpg" alt="BR40 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/inv/build/BR40-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR40-1440.jpg" alt="BR40 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/inv/build/BR40-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/inv/build/BR40-390.jpg" alt="BR40 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> In the day theme the page body and the header stay night as the board, but the bottom nav (rgb 251,249,245) and the footer switch to day paper, so the page ends on a light band and the phone has a light nav under a night page.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-121</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article>
-<section class="box" id="field-strip"><h2>Field strip (F14): /brain</h2><p>Every piece is a button; each shows two ring layers when focused (cause: the global :focus-visible rule, Site-wide S09).</p><a href="../screens/honeycomb/brain/field-strip.jpg"><img src="../screens/honeycomb/brain/field-strip.jpg" alt="Brain field strip"></a></section><section class="box" id="critique"><h2>Impeccable critique</h2><ol><li><b>P2 · The invitation got quieter.</b> The panel's two concrete “Try …” prompts became one run-on sentence (B-052); the page's best interaction is now easier to miss.</li><li><b>P3 · Tile borders are faint</b> (about 1.6:1 against the night ground, Assessment B): the 38 pieces read as one block until one is picked.</li><li>Otherwise the page is the board: strong hierarchy, one idea, a clear path from call to busk part.</li></ol></section><section class="box" id="audit"><h2>Impeccable audit</h2><table><tr><th>Check</th><th>Result</th></tr><tr><td>axe at 390 and 1440, day and night</td><td>Clean</td></tr><tr><td>Sideways scroll</td><td>None</td></tr><tr><td>Heading outline</td><td>h1 › h2 › h3, no skips</td></tr><tr><td>Keyboard trace</td><td>Enter selects, Escape clears (QA brain.spec); the focused piece stays clear of the panel</td></tr><tr><td>Focus</td><td>Doubled ring on every piece (F14)</td></tr></table></section>
-<section class="box"><h2>Versions</h2><ul><li><b>v1</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: First version: 14 provisional parts from the deck&#x27;s Brain board, trace state, field strip, impeccable critique and audit; B-052.</li></ul></section>
+<section class="box" id="field-strip"><h2>Field strip (F13, F14): /brain</h2><p>38 of 38 fields fail at 390 and 1440, day and night (152 checks): every node is a button and shows two ring layers when focused (cause: the global :focus-visible double shadow, Site-wide S09). DEV reports this fixed in e575a69, after 7b1521e.</p><a href="../screens/honeycomb/brain/inv/field-strip.jpg"><img src="../screens/honeycomb/brain/inv/field-strip.jpg" alt="Brain field strip: 38 nodes, focused and unfocused"></a></section><section class="box" id="critique"><h2>Impeccable critique</h2><ol><li><b>P2 · The invitation got quieter.</b> The idle panel's two concrete “Try …” prompts became one run-on sentence (BR18, B-052); the page's one interaction is easier to miss.</li><li><b>P2 · The trace speaks in two colours.</b> The picked node and its wires are orange, but the panel that explains them titles the pick in purple and writes “From …/To …” where the board draws arrows (BR26, BR27, BR29, BR30). The eye can't tie panel to path at a glance.</li><li><b>P2 · Day theme breaks the night page.</b> The footer and bottom nav go paper while the page stays night (BR40), so the page ends on a bright band.</li><li><b>P3 · Sub-lines don't tell calls apart.</b> Five Qloo calls end “urn:entity:artist” (BR11), so the column reads as repeats where the board shows what makes each call different.</li><li><b>P3 · Small texture and copy drift.</b> No hex lattice in the ground (BR02), “plan” for “busk”, and the back link in paper rather than orange (BR05, BR20, BR23).</li></ol></section><section class="box" id="audit"><h2>Impeccable audit</h2><table><tr><th>Check</th><th>Result</th></tr><tr><td>axe (WCAG 2.2 AA tags) at 390 and 1440, day and night; 768 night</td><td>Clean (0 violations, 26 rules passed each)</td></tr><tr><td>Sideways scroll at 390, 768, 1440</td><td>None (also none at 768 while tracing)</td></tr><tr><td>Heading outline</td><td>h1 › h2 › h3 › h4 › h3 … › h2 (Notes, hidden) › h3; no skips. The h1 includes the eyebrow (“Powered by Qloo The brain of Busk Map”)</td></tr><tr><td>Focus</td><td>Doubled ring on all 38 nodes (F14, BR24); Escape clears and focus returns to the traced node (QA brain.spec, v1)</td></tr><tr><td>Focus not obscured (2.4.11)</td><td>Pass: the panel folds while a node is focused; focused node clear of it at 390 and 1440 (BR34)</td></tr><tr><td>Reduced motion</td><td>Transitions off, 0 running animations (BR37)</td></tr><tr><td>Theme</td><td>main pinned dark; footer and bottom nav follow the day theme (BR40)</td></tr></table></section><section class="box" id="brand-issues"><h2>BRAND&#x27;s build issues</h2><table><tr><th>Issue</th><th>Result</th><th>Evidence</th></tr><tr><td>No nav item is current on /brain</td><td>Not reproduced</td><td>At 7b1521e both navs mark Brain with aria-current="page" and an orange fill (header at 1440, bottom nav at 390): BR01, BR39. The board itself draws no item active.</td></tr><tr><td>There's no footer on /brain</td><td>Not reproduced</td><td>A footer renders at 390, 768 and 1440 (109 px tall at 1440, 237 px at 390), but it is the old pre-F07–F11 footer: BR38.</td></tr></table></section>
+<section class="box"><h2>Versions</h2><ul><li><b>v2</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: Re-keyed to BRAND&#x27;s inventory: 40 parts (BR01-BR40) with BRAND&#x27;s crops, checked at 1440, 768 and 390, day and night; user&#x27;s calls F07-F15 on their rows (F12 as corrected: lockup with the new wordmark); BRAND&#x27;s two build issues checked (nav current, footer): neither reproduced; B-114..B-121 raised.</li><li><b>v1</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: First version: 14 provisional parts from the deck&#x27;s Brain board, trace state, field strip, impeccable critique and audit; B-052.</li></ul></section>
 </div>
 <script>
 const f=document.getElementById('flt');f.addEventListener('click',()=>{const on=!document.body.classList.contains('action');document.body.classList.toggle('action',on);f.setAttribute('aria-pressed',String(on));});

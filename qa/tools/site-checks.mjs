@@ -28,8 +28,20 @@ for (const r of ROUTES) {
   }
   if (r === "/") out.push(`INFO  footer links: ${info.links.join(" · ")}\nINFO  footer text: ${info.footerText}`);
 }
-const kinds = [...logoKinds.keys()];
-ok("F12 one Busk Map logo design across the app (outside /brand's specimens)", [...logoKinds.entries()].filter(([, rs]) => rs.some((r) => r !== "/brand")).length === 1, [...logoKinds.entries()].map(([k, rs]) => `${k} on ${[...new Set(rs)].join(",")}`).join(" | "));
+// F12 (user, corrected 17 Oct): the ONE logo is [hex mark][new wordmark] (the lockup) in the header, the footer and every
+// asset. Wordmark-only or mark-only in a header or footer fails; the mark alone is fine only at icon size (favicon, app icon).
+// The build's Logo variants by viewBox: lockup "2 0 256 48", wordmark-only "0 0 322 52", mark/ring "0 0 48 48". Anything else
+// is reported as UNKNOWN for a visual check against the user's reference (new stencil lettering, not the old larger-M face).
+const kindOf = (k) => (k === "svg:2 0 256 48" || /lockup/i.test(k) ? "lockup" : k === "svg:0 0 322 52" || /wordmark/i.test(k) ? "wordmark-only" : k === "svg:0 0 48 48" || /mark|icon/i.test(k) ? "mark-only" : "UNKNOWN");
+const chrome = [...logoKinds.entries()].flatMap(([k, rs]) => rs.filter((r) => r !== "/brand").map((r) => [k, r]));
+const placed = await (async () => { const out = []; const p2 = await b.newPage({ viewport: { width: 1440, height: 900 } });
+  for (const r of ROUTES.filter((x) => x !== "/brand")) { await p2.goto(B + r); await p2.waitForTimeout(800);
+    out.push(...(await p2.evaluate(() => [...document.querySelectorAll('header svg[aria-label="Busk Map"], footer svg[aria-label="Busk Map"], header img[alt*="Busk Map" i], footer img[alt*="Busk Map" i]')].filter((e) => e.getBoundingClientRect().width > 0).map((e) => `${e.closest("footer") ? "footer" : "header"}:${e.tagName === "IMG" ? "img:" + e.getAttribute("src") : "svg:" + e.getAttribute("viewBox")}`))).map((x) => `${r} ${x}`)); }
+  await p2.close(); return out; })();
+const bad = placed.filter((x) => kindOf(x.split(":").slice(1).join(":")) !== "lockup");
+ok("F12 header and footer use the lockup ([hex mark][wordmark]) on every route; no wordmark-only or mark-only", placed.length > 0 && bad.length === 0, bad.length ? bad.slice(0, 6).join(" | ") : `${placed.length} placements, all lockup`);
+ok("F12 one logo design in the app chrome (outside /brand's specimens)", new Set(chrome.map(([k]) => k)).size === 1, [...new Set(chrome.map(([k]) => `${k} (${kindOf(k)})`))].join(" | "));
+out.push("INFO  F12 lettering: compare a header crop with design-handoff/user-feedback-2026-10-17/04-wordmark-only-one.png (new stencil BUSK MAP); the old face with the larger M fails.");
 // F07, F08, F11 at 1440 on /
 await p.goto(B + "/"); await p.waitForTimeout(1200);
 const f = await p.evaluate(() => {

@@ -6,12 +6,13 @@ spec = importlib.util.spec_from_file_location("rc", sys.argv[2]); rc = importlib
 # Reuse the 29 parts from the QA-03 generator without running it.
 src = open(sys.argv[2]).read(); P = eval(src[src.index("P = [") + 4: src.index("]\nCOL") + 1])
 
-VERSION = "v4.1"
+VERSION = "v4.2"
 COMMIT = "7b1521e"
 DATE = "17 Oct 2026"
-CHANGES = "Added the user's calls F01–F15 (17 Oct): on L14, L16, L18, L05, L24, L21–L23 (order), L01 and L25, plus a new Site-wide section (F07–F15). No recheck yet: QA status is still v4 at 7b1521e; DEV is building."
+CHANGES = "F12 corrected by the user: the one logo is the lockup [hex mark][new wordmark]. L01: the lockup shape is right but its word is the old lettering (the M rises above the other letters), so L01 is now Different. No other recheck; QA status otherwise as v4 at 7b1521e."
 HISTORY = [
-  ("v4.1", COMMIT, DATE, CHANGES),
+  ("v4.2", COMMIT, DATE, CHANGES),
+  ("v4.1", "7b1521e", "17 Oct 2026", "Added the user's calls F01–F15 on L rows and a Site-wide section (F07–F15); no recheck."),
   ("v4", "7b1521e", "16 Oct 2026", "L03, L07, L11, L17, L20, L23 match (user calls; B-019, B-033, B-034 fixed); L04, L25 match; L18 live map and L24 credit line Different (declared); L13 kept (B-032 accepted); B-035 fixed. 25 Present, 3 Different, 1 Held."),
   ("v3", "91b220e", "16 Oct 2026", "Folded QA-01 and QA-03 into this page; added the user's calls (L03, L07, L11, L13, L17, L18, L20, L23)."),
   ("v2", "91b220e", "16 Oct 2026", "QA-03 recheck against BRAND's 29 parts: 20 Present, 6 Different, 1 Missing, 2 Held; B-032..B-034. (honeycomb-landing-recheck.html)"),
@@ -32,7 +33,7 @@ USER = {
   "L24": "F04: Remove the “Data: Qloo · …” credit line.",
   "L21": "F06: Beyond buskers comes first, then the Brain teaser, then the Brand teaser (replaces v67).",
   "L22": "F06: the Brain teaser moves after Beyond buskers, before the Brand teaser.",
-  "L01": "F12: the busk-map wordmark (dark and light) is the only logo; no lockup or mark.",
+  "L01": "F12 (corrected 17 Oct): the ONE logo is [hex mark][new wordmark] in the header, footer and every asset; wordmark-only or mark-only in a header fails; the mark alone only at icon size.",
   "L25": "F07–F11 and F12: see the Site-wide rows (GitHub cell, Built by + mark, Qloo logo links, /terms, three-part layout, wordmark only).",
 }
 DEFECTS = {
@@ -83,7 +84,7 @@ SITE = [  # row id, user's call, user's screenshot (or None), how QA checks it
   ("F09", "Every Qloo logo links to qloo.com in a new tab (rel=\"noopener noreferrer\").", None, "Every Qloo wordmark on every route: href, target=_blank, rel."),
   ("F10", "The legal line moves out of the footer into a Terms page (/terms), linked from the footer.", "07-legal-line.png", "/terms returns 200 and holds the legal line; the footer links to it and no longer shows the line."),
   ("F11", "Footer layout: left the wordmark and the Qloo logo; centre Privacy · Brain · Brand; right GitHub and Built by.", None, "Order at 1440; stacks cleanly at 390; nothing clipped."),
-  ("F12", "The busk-map wordmark (dark and light) is the ONLY logo in the app. Remove the lockup and the mark. (Favicon and app icon: a separate question.)", "04-wordmark-only-one.png", "Every route: only the wordmark asset renders as a logo."),
+  ("F12", "Corrected 17 Oct: the ONE logo is [hex mark][new wordmark] (the lockup) in the header, footer and every asset. F12 retired only the OLD wordmark lettering (the larger M). Wordmark-only or mark-only in a header fails; the mark alone only at icon size.", "04-wordmark-only-one.png", "site-checks: lockup in header and footer on every route; one design in the chrome; lettering checked visually against the reference."),
   ("F13", "Search inputs (Artists you sound like, song search): a normal input with only the search icon, shadcn InputGroup, one border, one focus ring.", "05-search-input-cooked.png", "Field strip: each field focused and unfocused, 390 and 1440, day and night; exactly one border and one ring."),
   ("F14", "Every input's focus: one ring, shadcn's own pattern (no white gap plus orange over the border).", "06-input-focus.png", "Same field strip, every input, select, picker and button."),
   ("F15", "Use shadcn/ui primitives styled through tokens and variants; no hand-built replacements; no global CSS overriding their states.", None, "Code check: components/ui primitives used; no global selectors on their states."),

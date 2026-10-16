@@ -16,10 +16,11 @@ for p in D["PARTS"]:
     action = p["qa"] in ("Different", "Missing", "Broken") or bool(re.search(r"\bF\d\d", call)) or call.startswith("Open question")
     rows.append(f'''<article class="row" id="{p["id"]}" data-action="{str(action).lower()}">
 <div class="id"><a href="#{p["id"]}">{p["id"]}</a><span>{html.escape(p["name"])}</span></div>
-{fig("Deck", p.get("deck"), p["id"] + " deck", "Not in the deck")}
+{fig("Deck", p.get("deck"), p["id"] + " deck", html.escape(p.get("deck_empty", "Not in the deck")))}
 {fig("Build · 1440", p.get("b1440"), p["id"] + " build 1440", "Not in the build")}
 {fig("Build · 390", p.get("b390"), p["id"] + " build 390", "Not in the build")}
 <dl>
+{f'<div><dt>Spec</dt><dd class="spec">{html.escape(p["spec"])}</dd></div>' if p.get("spec") else ""}
 <div><dt>DEV status</dt><dd>{html.escape(p.get("dev", "—"))}</dd></div>
 <div><dt>QA status</dt><dd><span class="chip {COL[p["qa"]]}">{p["qa"]}</span> {html.escape(p.get("note", ""))}</dd></div>
 <div><dt>User's call</dt><dd class="call">{html.escape(call) or "—"}</dd></div>
@@ -53,7 +54,7 @@ h1{{font-size:24px;margin:0}} .ver{{font-weight:800;margin:6px 0 2px}} .chg{{col
 figure{{margin:0;min-width:0}} figcaption{{font-size:12px;color:var(--muted);margin-bottom:4px}}
 img{{display:block;max-width:100%;height:auto;max-height:520px;object-fit:contain;object-position:top left;border:1px solid var(--line);background:#fff}}
 .box img{{max-height:none}}
-dl{{margin:0;display:grid;gap:6px}} dt{{font-size:12px;color:var(--muted)}} dd{{margin:0}} .call{{font-weight:800;color:var(--accent)}}
+dl{{margin:0;display:grid;gap:6px}} dt{{font-size:12px;color:var(--muted)}} dd{{margin:0}} .call{{font-weight:800;color:var(--accent)}} .spec{{font-size:12px;color:var(--muted)}}
 .chip{{font-weight:800;padding:1px 8px}} .chip.ok{{background:var(--okbg);color:var(--ok)}} .chip.bad{{background:var(--badbg);color:var(--bad)}} .chip.warn{{background:var(--warnbg);color:var(--warn)}} .chip.held{{background:var(--heldbg);color:var(--held)}}
 .ph{{border:2px dashed var(--muted);color:var(--muted);padding:24px 8px;text-align:center;font-weight:800}}
 body.action .row[data-action="false"]{{display:none}}

@@ -5,7 +5,7 @@ BUILD = "../screens/honeycomb/recheck/build/"
 DECK = "../screens/honeycomb/landing/"   # QA's own deck renders per width, from the 17 Oct audit (same v62 board)
 # part, name, deck render id (per width) or None, build image key (per width; {w} filled), status, dev claim, finding, lost_at, defect
 P = [
- ('L01', 'Header', 'header', 'L01-{w}', 'Present', 'built', 'Busks · Week · Brain · Tips, none active. Brain, not Setlist, is HQ default 2 (DEV lists it as a deviation).', None, None),
+ ('L01', 'Header', 'header', 'L01-{w}', 'Different', 'built', 'Busks · Week · Brain · Tips, none active (Brain per HQ default 2). The lockup shape is what the corrected F12 asks, but its word is the old lettering: the M rises above the other letters (QA zoomed crop, 17 Oct).', None, None),
  ("L02","Hero band","hero-ground","L02-{w}","Present","built","Night band, dot grain, hex lattice and the 6px orange rule.",None,None),
  ('L03', 'Glowing honeycomb cells', 'hero-ground', 'L03-{w}', 'Present', 'built', 'Glowing cells as the board; the small texts beside them are gone (user call).', None, None),
  ('L04', 'Hero headline', 'headline', 'L04-{w}', 'Present', 'deviation', 'Three-line headline; “What to play.” never wraps; the extra intro line under the H1 is gone, as on the board.', None, None),

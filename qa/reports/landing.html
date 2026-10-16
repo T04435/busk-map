@@ -32,10 +32,10 @@ body.action .row[data-action="false"]{display:none}
 </style></head>
 <body><div class="wrap">
 <h1>Landing · review</h1>
-<p class="ver">v4.1 · design/honeycomb ＠ 7b1521e · 17 Oct 2026</p>
-<p class="chg">Added the user&#x27;s calls F01–F15 (17 Oct): on L14, L16, L18, L05, L24, L21–L23 (order), L01 and L25, plus a new Site-wide section (F07–F15). No recheck yet: QA status is still v4 at 7b1521e; DEV is building.</p>
+<p class="ver">v4.2 · design/honeycomb ＠ 7b1521e · 17 Oct 2026</p>
+<p class="chg">F12 corrected by the user: the one logo is the lockup [hex mark][new wordmark]. L01: the lockup shape is right but its word is the old lettering (the M rises above the other letters), so L01 is now Different. No other recheck; QA status otherwise as v4 at 7b1521e.</p>
 <div class="strip" role="group" aria-label="Summary">
-<span class="stat ok">25 Present</span><span class="stat warn">3 Different</span><span class="stat bad">0 Missing</span><span class="stat bad">0 Broken</span><span class="stat held">1 Held</span>
+<span class="stat ok">24 Present</span><span class="stat warn">4 Different</span><span class="stat bad">0 Missing</span><span class="stat bad">0 Broken</span><span class="stat held">1 Held</span>
 <button class="filter" type="button" aria-pressed="false" id="flt">Needs action only</button>
 </div>
 <p class="chg">One row per part of BRAND's inventory (L01–L29). The row id is the ticket: “L07 remove…” means row L07 here. Not a part: B-026, the “For judges” link (held for the user).</p>
@@ -46,8 +46,8 @@ body.action .row[data-action="false"]{display:none}
 <figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L01-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L01-390.jpg" alt="L01 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>deviation: nav says Brain, not Setlist (HQ default)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Busks · Week · Brain · Tips, none active. Brain, not Setlist, is HQ default 2 (DEV lists it as a deviation).</dd></div>
-<div><dt>User's call</dt><dd class="call">F12: the busk-map wordmark (dark and light) is the only logo; no lockup or mark.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Busks · Week · Brain · Tips, none active (Brain per HQ default 2). The lockup shape is what the corrected F12 asks, but its word is the old lettering: the M rises above the other letters (QA zoomed crop, 17 Oct).</dd></div>
+<div><dt>User's call</dt><dd class="call">F12 (corrected 17 Oct): the ONE logo is [hex mark][new wordmark] in the header, footer and every asset; wordmark-only or mark-only in a header fails; the mark alone only at icon size.</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L02" data-action="false">
@@ -410,9 +410,9 @@ body.action .row[data-action="false"]{display:none}
 <div class="id"><a href="#F12">F12</a><span>Site-wide</span></div>
 <figure class="deck"><figcaption>User's screenshot</figcaption><a href="../screens/honeycomb/feedback/04-wordmark-only-one.png"><img loading="lazy" src="../screens/honeycomb/feedback/04-wordmark-only-one.png" alt="F12 user screenshot"></a></figure>
 <dl>
-<div><dt>User's call</dt><dd class="call">The busk-map wordmark (dark and light) is the ONLY logo in the app. Remove the lockup and the mark. (Favicon and app icon: a separate question.)</dd></div>
+<div><dt>User's call</dt><dd class="call">Corrected 17 Oct: the ONE logo is [hex mark][new wordmark] (the lockup) in the header, footer and every asset. F12 retired only the OLD wordmark lettering (the larger M). Wordmark-only or mark-only in a header fails; the mark alone only at icon size.</dd></div>
 <div><dt>DEV status</dt><dd>building</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Not checked yet</span> Every route: only the wordmark asset renders as a logo.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Not checked yet</span> site-checks: lockup in header and footer on every route; one design in the chrome; lettering checked visually against the reference.</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd>—</dd></div>
 </dl></article><article class="row site" id="F13" data-action="true">
@@ -443,7 +443,7 @@ body.action .row[data-action="false"]{display:none}
 <div><dt>Defect</dt><dd>—</dd></div>
 <div><dt>Last checked</dt><dd>—</dd></div>
 </dl></article>
-<section class="box"><h2>Versions</h2><ul><li><b>v4.1</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: Added the user&#x27;s calls F01–F15 (17 Oct): on L14, L16, L18, L05, L24, L21–L23 (order), L01 and L25, plus a new Site-wide section (F07–F15). No recheck yet: QA status is still v4 at 7b1521e; DEV is building.</li><li><b>v4</b> · design/honeycomb ＠ <code>7b1521e</code> · 16 Oct 2026: L03, L07, L11, L17, L20, L23 match (user calls; B-019, B-033, B-034 fixed); L04, L25 match; L18 live map and L24 credit line Different (declared); L13 kept (B-032 accepted); B-035 fixed. 25 Present, 3 Different, 1 Held.</li><li><b>v3</b> · design/honeycomb ＠ <code>91b220e</code> · 16 Oct 2026: Folded QA-01 and QA-03 into this page; added the user&#x27;s calls (L03, L07, L11, L13, L17, L18, L20, L23).</li><li><b>v2</b> · design/honeycomb ＠ <code>91b220e</code> · 16 Oct 2026: QA-03 recheck against BRAND&#x27;s 29 parts: 20 Present, 6 Different, 1 Missing, 2 Held; B-032..B-034. (honeycomb-landing-recheck.html)</li><li><b>v1</b> · design/honeycomb ＠ <code>69a6cad</code> · 17 Oct 2026: QA-01 first audit, 21 items mapped to parts by the inventory README; B-018..B-026. (honeycomb-landing-audit.html)</li></ul></section>
+<section class="box"><h2>Versions</h2><ul><li><b>v4.2</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: F12 corrected by the user: the one logo is the lockup [hex mark][new wordmark]. L01: the lockup shape is right but its word is the old lettering (the M rises above the other letters), so L01 is now Different. No other recheck; QA status otherwise as v4 at 7b1521e.</li><li><b>v4.1</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: Added the user&#x27;s calls F01–F15 on L rows and a Site-wide section (F07–F15); no recheck.</li><li><b>v4</b> · design/honeycomb ＠ <code>7b1521e</code> · 16 Oct 2026: L03, L07, L11, L17, L20, L23 match (user calls; B-019, B-033, B-034 fixed); L04, L25 match; L18 live map and L24 credit line Different (declared); L13 kept (B-032 accepted); B-035 fixed. 25 Present, 3 Different, 1 Held.</li><li><b>v3</b> · design/honeycomb ＠ <code>91b220e</code> · 16 Oct 2026: Folded QA-01 and QA-03 into this page; added the user&#x27;s calls (L03, L07, L11, L13, L17, L18, L20, L23).</li><li><b>v2</b> · design/honeycomb ＠ <code>91b220e</code> · 16 Oct 2026: QA-03 recheck against BRAND&#x27;s 29 parts: 20 Present, 6 Different, 1 Missing, 2 Held; B-032..B-034. (honeycomb-landing-recheck.html)</li><li><b>v1</b> · design/honeycomb ＠ <code>69a6cad</code> · 17 Oct 2026: QA-01 first audit, 21 items mapped to parts by the inventory README; B-018..B-026. (honeycomb-landing-audit.html)</li></ul></section>
 </div>
 <script>
 const f=document.getElementById('flt');f.addEventListener('click',()=>{const on=!document.body.classList.contains('action');document.body.classList.toggle('action',on);f.setAttribute('aria-pressed',String(on));});

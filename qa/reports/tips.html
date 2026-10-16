@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tips · review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f1ea;--card:#fff;--fg:#17191c;--muted:#5d6168;--line:#d9d4c8;--ok:#1d7a3a;--okbg:#e2f3e7;--bad:#b3141b;--badbg:#fbe3e4;--warn:#8a5a00;--warnbg:#fdf0d3;--held:#4b4f86;--heldbg:#e7e7f6;--accent:#c2410c}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#111416;--card:#1a1e21;--fg:#eceae4;--muted:#a3a8ad;--line:#2d3337;--ok:#6fd38f;--okbg:#14301e;--bad:#ff8c8f;--badbg:#3a1416;--warn:#f2c160;--warnbg:#33280f;--held:#b9b9f0;--heldbg:#25253d;--accent:#ff7a3d}}
+:root[data-theme="dark"]{--bg:#111416;--card:#1a1e21;--fg:#eceae4;--muted:#a3a8ad;--line:#2d3337;--ok:#6fd38f;--okbg:#14301e;--bad:#ff8c8f;--badbg:#3a1416;--warn:#f2c160;--warnbg:#33280f;--held:#b9b9f0;--heldbg:#25253d;--accent:#ff7a3d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.wrap{max-width:1600px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:24px;margin:0} .ver{font-weight:800;margin:6px 0 2px} .chg{color:var(--muted);margin:0 0 12px}
+.strip{display:flex;flex-wrap:wrap;gap:8px;align-items:center;position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0;border-bottom:1px solid var(--line)}
+.stat{padding:6px 12px;border:1px solid var(--line);background:var(--card);font-weight:800}
+.stat.ok{color:var(--ok)} .stat.bad{color:var(--bad)} .stat.warn{color:var(--warn)} .stat.held{color:var(--held)}
+.filter{font:inherit;padding:6px 12px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer;min-height:40px} .filter[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.row{display:grid;grid-template-columns:150px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,.55fr) minmax(0,1.3fr);gap:12px;background:var(--card);border:1px solid var(--line);margin:12px 0;padding:12px;scroll-margin-top:70px}
+.row:target{outline:3px solid var(--accent)}
+.id a{display:inline-block;font-size:22px;font-weight:800;color:var(--fg);text-decoration:none;border:2px solid var(--fg);padding:0 8px} .id span{display:block;margin-top:6px;font-weight:600}
+figure{margin:0;min-width:0} figcaption{font-size:12px;color:var(--muted);margin-bottom:4px}
+img{display:block;max-width:100%;height:auto;max-height:520px;object-fit:contain;object-position:top left;border:1px solid var(--line);background:#fff}
+.box img{max-height:none}
+dl{margin:0;display:grid;gap:6px} dt{font-size:12px;color:var(--muted)} dd{margin:0} .call{font-weight:800;color:var(--accent)} .spec{font-size:12px;color:var(--muted)}
+.chip{font-weight:800;padding:1px 8px} .chip.ok{background:var(--okbg);color:var(--ok)} .chip.bad{background:var(--badbg);color:var(--bad)} .chip.warn{background:var(--warnbg);color:var(--warn)} .chip.held{background:var(--heldbg);color:var(--held)}
+.ph{border:2px dashed var(--muted);color:var(--muted);padding:24px 8px;text-align:center;font-weight:800}
+body.action .row[data-action="false"]{display:none}
+.box{background:var(--card);border:1px solid var(--line);padding:12px 16px;margin-top:20px;overflow-x:auto} .box h2{font-size:16px;margin:0 0 6px}
+table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top}
+@media (max-width:1100px){.row{grid-template-columns:1fr 1fr} .id{grid-column:1/-1} dl{grid-column:1/-1}}
+@media (max-width:600px){.row{grid-template-columns:1fr}}
+</style></head>
+<body><div class="wrap">
+<h1>Tips · review</h1>
+<p class="ver">v1 · design/honeycomb ＠ 7b1521e · 17 Oct 2026 · route /tips</p>
+<p class="chg">First version: all 42 parts of BRAND&#x27;s inventory/tips judged at 1440 and 390 (768 checked), the user&#x27;s calls F12-F15, F20 and the Example-data allowance, field strip, impeccable critique and audit, BRAND&#x27;s two build issues.</p>
+<div class="strip" role="group" aria-label="Summary"><span class="stat ok">12 Present</span><span class="stat warn">27 Different</span><span class="stat bad">2 Missing</span><span class="stat bad">1 Broken</span><button class="filter" type="button" aria-pressed="false" id="flt">Needs action only</button></div>
+<p class="chg">Deck: BRAND&#x27;s crops from the Tips boards (TipsTablet, TipsMobile, TipsLoading, TipsErrors). Build: QA&#x27;s own export, offline, with a seeded own log (The Larkspur Two, 4 busks at Centre Place, Hardware Lane, Degraves Street) and one recent plan in localStorage; states forced in the browser (one-entry log, JavaScript off for loading, storage writes or reads blocked). Pitch names differ from the board because the build&#x27;s pitches are real ones; not judged. The row id is the ticket.</p>
+<article class="row" id="T01" data-action="true">
+<div class="id"><a href="#T01">T01</a><span>Header</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T01.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T01.jpg" alt="T01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T01-1440.jpg" alt="T01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T01-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T01-390.jpg" alt="T01 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Lockup with the hex mark (board and F12: the wordmark). Items Busks · Week · Brain · Tips with Tips current (orange tile); the board&#x27;s Repertoire item is not in the build (site-wide HQ default, judged in the site report).</dd></div>
+<div><dt>User's call</dt><dd class="call">F12: the wordmark is the only logo, no lockup or mark.</dd></div>
+<div><dt>Defect</dt><dd>F12 (site S04)</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T02" data-action="false">
+<div class="id"><a href="#T02">T02</a><span>Page head</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T02.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T02.jpg" alt="T02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T02-1440.jpg" alt="T02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T02-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T02-390.jpg" alt="T02 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Eyebrow, title and line stacked; the line is 668 px wide at 1440. Copy differences are under T03 and T05.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T03" data-action="true">
+<div class="id"><a href="#T03">T03</a><span>Eyebrow</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T03.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T03.jpg" alt="T03 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T03-1440.jpg" alt="T03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T03-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T03-390.jpg" alt="T03 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Reads “Kept in this browser only” (board: “Saved in this browser only · no account”). Mono uppercase muted as the board. No “Melbourne”, so F20 is met.</dd></div>
+<div><dt>User's call</dt><dd class="call">F20: no “Melbourne” in eyebrows or default text (met).</dd></div>
+<div><dt>Defect</dt><dd>B-055</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T04" data-action="false">
+<div class="id"><a href="#T04">T04</a><span>Title</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T04.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T04.jpg" alt="T04 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T04-1440.jpg" alt="T04 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T04-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T04-390.jpg" alt="T04 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> h1 “Tip log”, display face, uppercase.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T05" data-action="true">
+<div class="id"><a href="#T05">T05</a><span>Intro line</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T05.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T05.jpg" alt="T05 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T05-1440.jpg" alt="T05 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T05-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T05-390.jpg" alt="T05 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Reads “What you earned, per pitch and session. No account, and nothing stored on Busk Map&#x27;s servers.” The board&#x27;s line about comparing with your average and leaning plans towards the pitches that pay is missing. About 93 characters per line at 1440.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-055, B-069</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T06" data-action="true">
+<div class="id"><a href="#T06">T06</a><span>Your busks</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T06.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T06.jpg" alt="T06 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T06-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T06-1440.jpg" alt="T06 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T06-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T06-390.jpg" alt="T06 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> h2 reads “Your sessions” (board: “Your busks”). It comes after the form and the How-it card in one 896 px column (board: first in the main column of two).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-055, B-056</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T07" data-action="true">
+<div class="id"><a href="#T07">T07</a><span>Your act&#x27;s card head</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T07.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T07.jpg" alt="T07 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T07-1440.jpg" alt="T07 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T07-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T07-390.jpg" alt="T07 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Act name and “4 sessions · average A$46 an hour”, worked out from the saved log (correct for the seed). No “Open a plan” on your own act&#x27;s card: the build shows it only on example acts.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-057</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T08" data-action="true">
+<div class="id"><a href="#T08">T08</a><span>Open a plan</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T08.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T08.jpg" alt="T08 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T08-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T08-1440.jpg" alt="T08 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T08-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T08-390.jpg" alt="T08 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Outline button “Open a plan →” on each example card, linking to /plan?example=…. Missing on your own act&#x27;s card.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-057</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T09" data-action="true">
+<div class="id"><a href="#T09">T09</a><span>Effect on future plans</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T09.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T09.jpg" alt="T09 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T09-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T09-1440.jpg" alt="T09 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T09-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T09-390.jpg" alt="T09 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Caption and one row per pitch, effect on the right in mono 13 px, as the board. The rule differs: a pitch with 1 busk shows “No bonus: below your average” (Degraves Street, Hardware Lane) or can get a +N bonus; the board shows “not enough sessions yet” below 2 busks at that pitch. The build&#x27;s minimum is 2 busks in the whole log.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-058</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T10" data-action="false">
+<div class="id"><a href="#T10">T10</a><span>Bonus</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T10.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T10.jpg" alt="T10 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T10-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T10-1440.jpg" alt="T10 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T10-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T10-390.jpg" alt="T10 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “+2 in your plans”, mono bold, signal orange (Centre Place, 2 busks above average).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T11" data-action="true">
+<div class="id"><a href="#T11">T11</a><span>Not enough sessions</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T11.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T11.jpg" alt="T11 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T11-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T11-1440.jpg" alt="T11 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T11-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T11-390.jpg" alt="T11 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Log one more session for a bonus” shows only when the whole log has one busk (captured with a one-entry log). With 2 or more busks in the log, a 1-busk pitch never shows it.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-058</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T12" data-action="false">
+<div class="id"><a href="#T12">T12</a><span>No bonus</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T12.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T12.jpg" alt="T12 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T12-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T12-1440.jpg" alt="T12 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T12-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T12-390.jpg" alt="T12 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “No bonus: below your average”, muted mono, on own and example cards.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T13" data-action="true">
+<div class="id"><a href="#T13">T13</a><span>History</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T13.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T13.jpg" alt="T13 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T13-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T13-1440.jpg" alt="T13 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T13-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T13-390.jpg" alt="T13 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Caption and entries newest first. Dates are ISO and times carry am/pm twice: “2026-10-12 · 12 pm–3 pm · A$61/h” (board: “Sun 12 Oct · 12–3 pm”). A per-hour figure is added.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-059</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T14" data-action="true">
+<div class="id"><a href="#T14">T14</a><span>History entry</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T14.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T14.jpg" alt="T14 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T14-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T14-1440.jpg" alt="T14 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T14-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T14-390.jpg" alt="T14 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Top hairline, bold pitch name, takings right in the display face at 28 px (board 20 px text-data) with the trash beside it. The date line is ISO (see T13).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-059</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T15" data-action="false">
+<div class="id"><a href="#T15">T15</a><span>Delete entry</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T15.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T15.jpg" alt="T15 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T15-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T15-1440.jpg" alt="T15 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T15-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T15-390.jpg" alt="T15 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Ghost icon button with a trash icon on own entries only, labelled “Delete the 2026-10-12 session at Centre Place”. None on example entries.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T16" data-action="false">
+<div class="id"><a href="#T16">T16</a><span>Delete asks first</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T16-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T16-1440.jpg" alt="T16 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T16-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T16-390.jpg" alt="T16 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">From the TipLogEntry README: deleting asks first, in a Dialog that names the entry. Copy not designed yet.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> A Dialog names the entry: “Delete this session?” · “Centre Place for The Larkspur Two, 2026-10-12, 12 pm–3 pm: A$182. It leaves your tip log and your next plans stop counting it. This can&#x27;t be undone.” · Keep it · Delete session. The dialog&#x27;s copy isn&#x27;t designed yet; the date is ISO.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-059</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T17" data-action="true">
+<div class="id"><a href="#T17">T17</a><span>Loading the log</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T17.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T17.jpg" alt="T17 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T17-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T17-1440.jpg" alt="T17 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T17-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T17-390.jpg" alt="T17 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Before the log is read the section shows the plain line “Loading your tip log…” under “Your sessions” (captured with JavaScript off). No card with the act&#x27;s title, no “Reading your tip log…” subtitle, no skeleton rows, no aria-busy.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-060</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T18" data-action="true">
+<div class="id"><a href="#T18">T18</a><span>Empty: no busks logged</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T18.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T18.jpg" alt="T18 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T18-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T18-1440.jpg" alt="T18 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T18-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T18-390.jpg" alt="T18 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Dashed box (board: card with a 2 px rule), hex cell with a coins icon, “Nothing logged yet”, “No sessions logged in this browser yet. Plan a session, play it, then log what you earned.” with an inline link. No primary button “Plan a busk →”, and the line about two busks at a pitch is missing.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-061, B-055</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T19" data-action="true">
+<div class="id"><a href="#T19">T19</a><span>Example busks</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T19.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T19.jpg" alt="T19 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T19-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T19-1440.jpg" alt="T19 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T19-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T19-390.jpg" alt="T19 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Section “Example sessions” with badge, disclaimer and three example acts (acoustic, sax, folk duo), 9 entries each: 27 history rows. The board shows one act with 3 entries. The page is 5,532 px tall at 1440.</dd></div>
+<div><dt>User's call</dt><dd class="call">Example data badges are allowed on /tips for now (F01 was for the landing only).</dd></div>
+<div><dt>Defect</dt><dd>B-062, B-055</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T20" data-action="true">
+<div class="id"><a href="#T20">T20</a><span>“Example busks” heading and badge</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T20.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T20.jpg" alt="T20 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T20-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T20-1440.jpg" alt="T20 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T20-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T20-390.jpg" alt="T20 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> h2 “Example sessions” with the estimate Badge “Example data” inside the heading, so its accessible name is “Example sessions Example data”.</dd></div>
+<div><dt>User's call</dt><dd class="call">Example data badges are allowed on /tips for now (F01 was for the landing only).</dd></div>
+<div><dt>Defect</dt><dd>B-055</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T21" data-action="true">
+<div class="id"><a href="#T21">T21</a><span>Disclaimer line</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T21.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T21.jpg" alt="T21 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T21-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T21-1440.jpg" alt="T21 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T21-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T21-390.jpg" alt="T21 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Invented takings for the example performers, to show how a tip log reweights their plans. Not real data.” (board: “Made-up takings for the example acts, to show how a tip log changes their plans. Not real data.”). Muted.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-055</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T22" data-action="true">
+<div class="id"><a href="#T22">T22</a><span>Example act card</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T22.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T22.jpg" alt="T22 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T22-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T22-1440.jpg" alt="T22 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T22-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T22-390.jpg" alt="T22 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> First card is “Acoustic singer-songwriter” with the badge, “9 sessions · average A$45 an hour”, Open a plan, 4 effect rows and 9 history entries. Read-only (no delete), as the board. The board&#x27;s card is Folk duo with 3 rows and 3 entries.</dd></div>
+<div><dt>User's call</dt><dd class="call">Example data badges are allowed on /tips for now (F01 was for the landing only).</dd></div>
+<div><dt>Defect</dt><dd>B-062</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T23" data-action="true">
+<div class="id"><a href="#T23">T23</a><span>Example history entry</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T23.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T23.jpg" alt="T23 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T23-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T23-1440.jpg" alt="T23 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T23-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T23-390.jpg" alt="T23 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Example data” badge after the pitch name and no delete, as the board. The date line is ISO.</dd></div>
+<div><dt>User's call</dt><dd class="call">Example data badges are allowed on /tips for now (F01 was for the landing only).</dd></div>
+<div><dt>Defect</dt><dd>B-059</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T24" data-action="true">
+<div class="id"><a href="#T24">T24</a><span>Log your takings (form)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T24.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T24.jpg" alt="T24 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T24-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T24-1440.jpg" alt="T24 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T24-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T24-390.jpg" alt="T24 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> A full-width card at the top of the page, not the side column. Subtitle reads “After you play, note what you earned. Pitches where you earn more than your average get a small bonus in your next plans. Saved in this browser only.” (about 128 characters per line at 1440). Adds a “Busk” select (recent plans), or Act name and Pitch text inputs when there is none. At 390, with a recent plan, every field and the button run under the card&#x27;s right edge.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-056, B-063, B-069</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T25" data-action="true">
+<div class="id"><a href="#T25">T25</a><span>Pitch field</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T25.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T25.jpg" alt="T25 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T25-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T25-1440.jpg" alt="T25 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T25-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T25-390.jpg" alt="T25 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> A shadcn Select labelled “Pitch” with a chevron, listing the plan&#x27;s pitches, the first by default. Without a recent plan it is a text input (typed pitch). At 390 with a plan the chevron is cut off by the card edge.</dd></div>
+<div><dt>User's call</dt><dd class="call">F13–F15: shadcn primitives, one border, one focus ring (no double ring).</dd></div>
+<div><dt>Defect</dt><dd>B-063</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T26" data-action="true">
+<div class="id"><a href="#T26">T26</a><span>Date field</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T26.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T26.jpg" alt="T26 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T26-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T26-1440.jpg" alt="T26 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T26-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T26-390.jpg" alt="T26 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> A shadcn date picker (button + calendar) reading “MON 12 OCT 2026” in full at 1440 (398 px, half width beside Takings), default the plan&#x27;s date. Not clipped. At 390 it is full width.</dd></div>
+<div><dt>User's call</dt><dd class="call">F13–F15: shadcn primitives, one border, one focus ring (no double ring).</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T27" data-action="true">
+<div class="id"><a href="#T27">T27</a><span>Takings field</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T27.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T27.jpg" alt="T27 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T27-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T27-1440.jpg" alt="T27 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T27-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T27-390.jpg" alt="T27 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “A$” prefix inside, mono, inputMode decimal. Placeholder “85” (board “0.00”).</dd></div>
+<div><dt>User's call</dt><dd class="call">F13–F15: shadcn primitives, one border, one focus ring (no double ring).</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T28" data-action="true">
+<div class="id"><a href="#T28">T28</a><span>From and To fields</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T28.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T28.jpg" alt="T28 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T28-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T28-1440.jpg" alt="T28 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T28-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T28-390.jpg" alt="T28 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Two shadcn Selects side by side at 1440, stacked at 390, reading “6 pm” and “9 pm” from the plan (“12 pm” and “3 pm” with no plan; board 18:00–21:00). Never clipped: hour lists, not native time inputs.</dd></div>
+<div><dt>User's call</dt><dd class="call">F13–F15: shadcn primitives, one border, one focus ring (no double ring).</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T29" data-action="true">
+<div class="id"><a href="#T29">T29</a><span>Storage note</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T29.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T29.jpg" alt="T29 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T29-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T29-1440.jpg" alt="T29 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T29-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T29-390.jpg" alt="T29 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Saved in this browser only.” beside the button, with no info icon. “Nothing leaves your phone.” is missing.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-055</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T30" data-action="true">
+<div class="id"><a href="#T30">T30</a><span>Log takings</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T30.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T30.jpg" alt="T30 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T30-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T30-1440.jpg" alt="T30 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T30-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T30-390.jpg" alt="T30 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Primary button “Log takings” with no coins icon; 163 px wide at 1440 (board: block width); full width at 390.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-064</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T31" data-action="true">
+<div class="id"><a href="#T31">T31</a><span>Saved</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T31.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T31.jpg" alt="T31 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T31-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T31-1440.jpg" alt="T31 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T31-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T31-390.jpg" alt="T31 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> A status line (role status) under the button: “Logged A$45 at Centre Place. Plans for The Larkspur Two now take it into account.” The button stays “Log takings” with no check, and the line doesn&#x27;t say what changed for the pitch.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-065</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T32" data-action="true">
+<div class="id"><a href="#T32">T32</a><span>Field focus</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T32.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T32.jpg" alt="T32 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T32-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T32-1440.jpg" alt="T32 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T32-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T32-390.jpg" alt="T32 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip bad">Broken</span> Every focused field shows two ring layers: box-shadow “2 px paper, then 4 px dark” on top of the border (Takings shown). Field strip: 0 of 10 /tips fields pass.</dd></div>
+<div><dt>User's call</dt><dd class="call">F14: one focus ring, shadcn&#x27;s own pattern; no gap plus double ring.</dd></div>
+<div><dt>Defect</dt><dd>F14 (site S09)</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T33" data-action="true">
+<div class="id"><a href="#T33">T33</a><span>Field errors</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T33.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T33.jpg" alt="T33 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T33-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T33-1440.jpg" alt="T33 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T33-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T33-390.jpg" alt="T33 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Submitting with Takings empty saves nothing and shows one message under the button (role alert): “Takings: enter what you earned, in dollars (0 or more).” Only Takings gets aria-invalid. No Alert at the top naming the fields, no message under each field, no aria-describedby, focus stays on the button. One error at a time.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-066</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T33b" data-action="true">
+<div class="id"><a href="#T33b">T33b</a><span>Saving</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T33b.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T33b.jpg" alt="T33b deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip bad">Missing</span> No saving state: the save is synchronous and the button never shows a loader or “Saving…”.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-067</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T33c" data-action="true">
+<div class="id"><a href="#T33c">T33c</a><span>Couldn&#x27;t save</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T33c.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T33c.jpg" alt="T33c deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T33c-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T33c-1440.jpg" alt="T33c build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T33c-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T33c-390.jpg" alt="T33c build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> With storage writes blocked: one line under the button (role alert), “This browser blocked saving (private mode or storage turned off), so the session wasn&#x27;t logged.” The typed values stay. No Alert with a title, no “Nothing was sent anywhere.”, no Try again.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-066</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T33d" data-action="true">
+<div class="id"><a href="#T33d">T33d</a><span>Couldn&#x27;t read the log</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T33d.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T33d.jpg" alt="T33d deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T33d-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T33d-1440.jpg" alt="T33d build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T33d-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T33d-390.jpg" alt="T33d build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip bad">Missing</span> With storage reads blocked, the section shows the empty state: “Nothing logged yet” · “No sessions logged in this browser yet.” That is wrong when the log exists. No error Alert, no Reload.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-068</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T34" data-action="true">
+<div class="id"><a href="#T34">T34</a><span>How it changes your plans</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T34.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T34.jpg" alt="T34 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T34-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T34-1440.jpg" alt="T34 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T34-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T34-390.jpg" alt="T34 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> A solid card titled “How your results change your plans” with two dense paragraphs (about 133 characters per line at 1440), above the log. The board has a dashed box with four short bullets in the side column.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-055, B-056, B-069</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T35" data-action="false">
+<div class="id"><a href="#T35">T35</a><span>Bottom nav (phone)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T35.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T35.jpg" alt="T35 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T35-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T35-390.jpg" alt="T35 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Fixed at the bottom up to 720 px: Busks · Week · Brain · Tips with Tips current. The header nav hides. Repertoire is not an item (site-wide, judged in the site report).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T36" data-action="true">
+<div class="id"><a href="#T36">T36</a><span>Phone layout</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T36.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T36.jpg" alt="T36 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T36-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T36-1440.jpg" alt="T36 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T36-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T36-390.jpg" alt="T36 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Stacks with no sideways scroll at 390 or 768. The order is page head, form, How-it card, Your sessions, Example sessions (board: head, Your busks, Example busks, form, How it changes). Effect rows wrap the bonus under the pitch, as the board. With a recent plan the form&#x27;s fields overflow the card (T24).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-056, B-063</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T37" data-action="false">
+<div class="id"><a href="#T37">T37</a><span>Night theme</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/tips/inv/deck/T37.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/deck/T37.jpg" alt="T37 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T37-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T37-1440.jpg" alt="T37 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T37-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T37-390.jpg" alt="T37 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Page, cards and fields switch to night tokens. The bonus text and primary button stay signal orange. axe is clean at night at 390, 768 and 1440.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T38" data-action="false">
+<div class="id"><a href="#T38">T38</a><span>Reduced motion</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">Nothing on this page moves, so reduced motion changes nothing.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Nothing moves: 0 running animations and no animated elements in main.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="T39" data-action="true">
+<div class="id"><a href="#T39">T39</a><span>Site footer (added by F07–F11)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/tips/inv/build/T39-1440.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T39-1440.jpg" alt="T39 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/tips/inv/build/T39-390.jpg"><img loading="lazy" src="../screens/honeycomb/tips/inv/build/T39-390.jpg" alt="T39 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">Not on the board. SiteFooter at the bottom of /tips as on every public page (chrome inventory FT01–FT11).</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> The footer is there but unchanged: lockup, “Taste data by Qloo · MIT licence”, “OPEN SOURCE github.com/T04435/busk-map” text, “Built by T04435 (solo), with Claude…”, and the legal line. Judged in the site report (S03, S05–S08).</dd></div>
+<div><dt>User's call</dt><dd class="call">F07–F11: footer with the wordmark and the Qloo logo left; Privacy · Terms · Brain · Brand centre; GitHub in a honeycomb cell and Built by T04435 with the pixel critter right.</dd></div>
+<div><dt>Defect</dt><dd>F07–F11 (site S03, S05–S08)</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article>
+<section class="box" id="new-defects"><h2>New defects found in this review (placeholders until MANAGER numbers them)</h2><table><tr><th>Id</th><th>Severity</th><th>Parts</th><th>What differs</th></tr><tr><td>B-055</td><td>Low</td><td>T03, T05, T06, T18–T21, T29, T34</td><td>Copy says “sessions” where the brand word is “busks” (Your sessions, Example sessions, Nothing logged yet, Plan a session; also in tips/page.tsx metadata and the form's messages), and the eyebrow, intro, disclaimer, storage note and How-it copy differ from the board.</td></tr><tr><td>B-056</td><td>Medium</td><td>T06, T24, T34, T36</td><td>One 896 px column at 1440 and 768 (max-w-4xl) with the form first; the board has two columns (Your busks and Example busks in the main column; the form and How it changes in a side column) and a different phone order.</td></tr><tr><td>B-057</td><td>Low</td><td>T07, T08</td><td>Your own act's card has no “Open a plan” button; only example acts get one.</td></tr><tr><td>B-058</td><td>Low</td><td>T09, T11</td><td>Bonus rule per pitch: a pitch with 1 busk shows “No bonus: below your average” or can earn +N; “Log one more session for a bonus” shows only when the whole log has under 2 busks. The board marks any pitch with under 2 busks as not enough yet.</td></tr><tr><td>B-059</td><td>Low</td><td>T13, T14, T16, T23</td><td>Dates are ISO with am/pm twice (“2026-10-12 · 12 pm–3 pm”); the board writes “Sun 12 Oct · 12–3 pm”.</td></tr><tr><td>B-060</td><td>Low</td><td>T17</td><td>Loading is a plain line (“Loading your tip log…”); no card, no skeleton rows, no aria-busy.</td></tr><tr><td>B-061</td><td>Low</td><td>T18</td><td>The empty state has a dashed box and an inline link instead of the card with a 2 px rule and the primary “Plan a busk →” button.</td></tr><tr><td>B-062</td><td>Low</td><td>T19, T22</td><td>The example history is long: 3 example acts with 9 entries each (27 rows) where the board has one act with 3; the page is 5,010–5,532 px tall at 1440.</td></tr><tr><td>B-063</td><td>Medium</td><td>T24–T30, T36</td><td>At 390, with a recent plan in the browser, the Busk select's long text widens the form grid past the card: all fields and the Log takings button run under the card's right edge (chevrons and the calendar icon cut off).</td></tr><tr><td>B-064</td><td>Low</td><td>T30</td><td>The Log takings button has no coins icon and isn't block width at 1440.</td></tr><tr><td>B-065</td><td>Low</td><td>T31</td><td>After saving, the button doesn't change to “Logged” with a check, and the status line doesn't say what changed for the pitch.</td></tr><tr><td>B-066</td><td>Medium</td><td>T33, T33c</td><td>Errors come one at a time in a line under the button: no Alert at the top naming the fields, no message under each field or aria-describedby, and focus doesn't move to the field. The couldn't-save case is the same single line, with no Alert or Try again.</td></tr><tr><td>B-067</td><td>Low</td><td>T33b</td><td>There is no Saving state (no loader, no “Saving…”).</td></tr><tr><td>B-068</td><td>Medium</td><td>T33d</td><td>When the browser can't read the log, the page says “No sessions logged in this browser yet.” instead of the couldn't-read Alert with Reload.</td></tr><tr><td>B-069</td><td>Low</td><td>T05, T24, T34</td><td>Long lines at 1440: about 93 to 136 characters per line in the intro, the form's subtitle and the How-it paragraphs (the deck keeps them near 70).</td></tr></table></section><section class="box" id="field-strip"><h2>Field strip (F13, F14): /tips</h2><p>Columns: day 1440, night 1440, day 390, night 390; each pair unfocused then focused. Result at 7b1521e: <b>0 of 10 fields pass</b>. Each field has one border unfocused, but every focused field (Act name, Pitch, Date, Takings, From, To, Log takings, Open a plan) shows 2 ring layers. Data: field-strip run on 7b1521e (empty log, no recent plan).</p><a href="../screens/honeycomb/tips/inv/field-strip.jpg"><img src="../screens/honeycomb/tips/inv/field-strip.jpg" alt="Tips field strip"></a></section><section class="box" id="critique"><h2>Impeccable critique (design review)</h2><ol><li><b>P1 · The log is buried.</b> The page leads with the form and an explainer card. The performer's own busks start well below the fold, and the board's two-column page (log left, form right) is lost at 1440 (T06, T24, T34, B-056).</li><li><b>P1 · Errors that don't help.</b> One error at a time under the button, with no field-level message or focus move (T33). If the log can't be read, the page says nothing is logged (T33d). People will think their takings are gone.</li><li><b>P2 · The form breaks on a phone after you've planned.</b> This is the common path: you plan, play, then log. The Busk select's long label pushes every field past the card edge at 390 (B-063).</li><li><b>P2 · Examples drown the page.</b> 27 example rows over three acts (T19, T22) make a 5,500 px page. One short example would show the idea.</li><li><b>P3 · Words.</b> “sessions” for busks, ISO dates and “12 pm–3 pm” (T13), and lines of 130+ characters (T05, T34).</li></ol></section><section class="box" id="audit"><h2>Impeccable audit (technical)</h2><table><tr><th>Check</th><th>Result</th></tr><tr><td>axe (WCAG 2.2 AA tags) at 390, 768 and 1440, day and night, with a seeded log and empty</td><td>Clean (0 violations in all 12 runs)</td></tr><tr><td>Sideways scroll at 390, 768, 1440</td><td>None (scrollWidth = viewport). But with a recent plan at 390, the form's 7 controls overflow the card's content box and are clipped (B-063).</td></tr><tr><td>Heading outline</td><td>h1 Tip log › h2 Log your takings › h2 How your results change your plans › h2 Your sessions › h3 act › h4 Effect on future plans, History › h2 Example sessions (name includes “Example data”) › h3 × 3 › h4. No skips.</td></tr><tr><td>Focus</td><td>Visible but doubled on every field (T32, F14). The delete dialog traps focus and closes with Escape.</td></tr><tr><td>Live regions</td><td>Saved = role status; errors = role alert. Only Takings gets aria-invalid; no aria-describedby on fields (B-066).</td></tr><tr><td>Line length at 1440</td><td>About 93–136 characters per line (canvas estimate) in the intro, form subtitle and How-it paragraphs (B-069).</td></tr><tr><td>Page length</td><td>1440: 5,010 px empty, 5,532 px seeded; 390: 5,997 / 6,465 px.</td></tr><tr><td>Reduced motion</td><td>Nothing animates (T38).</td></tr><tr><td>F20 (“Melbourne”)</td><td>Not in the /tips copy. Pass.</td></tr></table></section><section class="box" id="brand-issues"><h2>BRAND&#x27;s build issues</h2><ul><li><b>Date field clipped at 1440 (“12/10/202”): Not reproduced.</b> The Date field is a shadcn date-picker button, not a native date input. It reads “MON 12 OCT 2026” in full in a 398 px button at 1440 (no text overflow) and at 390 (T26). At 390 with a recent plan the whole field's right edge is cut by the card (B-063), but the value still shows in full.</li><li><b>Time fields reading “06:00 pn”: Not reproduced.</b> From and To are shadcn Selects with hour options formatted “6 pm” / “9 pm”, not native time inputs, so the browser's locale time format never shows (T28).</li><li>Earlier QA notes: “sessions” for busks is <b>Confirmed</b> (B-055). The lost two-column layout at 1440 is <b>Confirmed</b> (B-056). The long example history is <b>Confirmed</b> (B-062: 27 rows). Line lengths are <b>Confirmed as long</b>, but measured at about 93–136 characters, not 123–182 (B-069).</li></ul></section><section class="box" id="whole"><h2>Whole page (build)</h2><a href="../screens/honeycomb/tips/inv/build/T36-1440.jpg">1440 day</a> · <a href="../screens/honeycomb/tips/inv/build/full-768.jpg">768 day</a> · <a href="../screens/honeycomb/tips/inv/build/T36-390.jpg">390 day</a> · <a href="../screens/honeycomb/tips/inv/build/T37-1440.jpg">1440 night</a> · <a href="../screens/honeycomb/tips/inv/build/T37-390.jpg">390 night</a> (top 1,800 px of each)</section>
+<section class="box"><h2>Versions</h2><ul><li><b>v1</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: First version: all 42 parts of BRAND&#x27;s inventory/tips judged at 1440 and 390 (768 checked), the user&#x27;s calls F12-F15, F20 and the Example-data allowance, field strip, impeccable critique and audit, BRAND&#x27;s two build issues.</li></ul></section>
+</div>
+<script>
+const f=document.getElementById('flt');f.addEventListener('click',()=>{const on=!document.body.classList.contains('action');document.body.classList.toggle('action',on);f.setAttribute('aria-pressed',String(on));});
+</script></body></html>

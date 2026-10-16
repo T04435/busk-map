@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { RotateCw } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import { StatusCard } from "@/components/status/status-card";
 import { Button } from "@/components/ui/button";
 
@@ -45,8 +45,18 @@ export function ErrorCard({ error, onRetry, plainLinks = false }: { error: Error
   }, [error]);
 
   // global-error.tsx replaces the root layout and has no router: a plain link is the self-contained way home.
-  // eslint-disable-next-line @next/next/no-html-link-for-pages
-  const home = plainLinks ? <a href="/">Go home</a> : <Link href="/">Go home</Link>;
+  const home = plainLinks ? (
+    // eslint-disable-next-line @next/next/no-html-link-for-pages
+    <a href="/">
+      Go home
+      <Icon name="arrow-right" size={16} />
+    </a>
+  ) : (
+    <Link href="/">
+      Go home
+      <Icon name="arrow-right" size={16} />
+    </Link>
+  );
 
   const retry = () => {
     // aria-disabled, not disabled: a disabled button drops keyboard focus to the body.
@@ -77,7 +87,7 @@ export function ErrorCard({ error, onRetry, plainLinks = false }: { error: Error
       actions={
         <>
           <Button onClick={retry} aria-disabled={pending || undefined} className={pending ? "cursor-progress" : undefined}>
-            <RotateCw aria-hidden="true" className={pending ? "motion-safe:animate-spin" : undefined} />
+            <Icon name="refresh" size={16} className={pending ? "motion-safe:animate-spin" : undefined} />
             {pending ? "Trying again…" : "Try again"}
           </Button>
           {/* Always in the DOM so the change is announced (WCAG 4.1.3). */}

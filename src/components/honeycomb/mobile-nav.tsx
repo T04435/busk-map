@@ -29,7 +29,7 @@ export function MobileNavView({ pathname }: { pathname: string | null }) {
             href={item.href}
             aria-current={on ? "page" : undefined}
             className={cn(
-              "relative flex min-h-tap min-w-tap flex-col items-center justify-center gap-0.5 font-mono text-[11px] font-bold tracking-[0.05em] uppercase",
+              "relative flex min-h-tap min-w-tap flex-col items-center justify-center gap-0.5 font-mono text-[11px] font-bold tracking-[0.05em] uppercase focus-visible:ring-0 focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
               on ? "text-foreground" : "text-muted-foreground"
             )}
           >

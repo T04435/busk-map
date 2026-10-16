@@ -2,6 +2,7 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 import { Slot } from "radix-ui"
+import { Icon, type IconName } from "@/components/honeycomb/icon"
 
 // Honeycomb badges: mono caps at the 11px floor, a 1.5px border, square. The text and border are the tone's token on a
 // 10% tint of it over `card`; every pair holds 4.5:1 in both themes. A badge always says its meaning in words.
@@ -40,22 +41,36 @@ const badgeVariants = cva(
   }
 )
 
+// DS tone icons (TONE_ICON): the glyph a tone carries when the caller passes none. A caller's own svg hides it (CSS below).
+const TONE_ICON: Partial<Record<NonNullable<VariantProps<typeof badgeVariants>["variant"]>, IconName>> = {
+  event: "ticket",
+  weather: "cloud",
+  legal: "legal",
+  restricted: "restricted",
+  destructive: "warning",
+}
+
 function Badge({
   className,
   variant = "neutral",
   asChild = false,
+  children,
   ...props
 }: React.ComponentProps<"span"> &
   VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
   const Comp = asChild ? Slot.Root : "span"
+  const toneIcon = asChild ? undefined : TONE_ICON[variant ?? "neutral"]
 
   return (
     <Comp
       data-slot="badge"
       data-variant={variant}
-      className={cn(badgeVariants({ variant }), className)}
+      className={cn(badgeVariants({ variant }), toneIcon && "[&:has(>svg)>[data-tone-icon]]:hidden", className)}
       {...props}
-    />
+    >
+      {toneIcon ? <span data-tone-icon="" className="contents"><Icon name={toneIcon} size={14} strokeWidth={2.5} /></span> : null}
+      {children}
+    </Comp>
   )
 }
 

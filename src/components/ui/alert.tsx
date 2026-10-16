@@ -3,10 +3,10 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { Icon } from "@/components/honeycomb/icon"
 import { cn } from "cn"
 
-// Honeycomb alerts: the tone colours the icon and the 2px border only. The text stays `foreground` on a faint tint of
+// Honeycomb alerts: the tone colours the icon and a 45% tint of it the 2px border (the DS .bm-alert). The text stays `foreground` on a faint tint of
 // `card`, so it always reads. `default` is the info tone and `destructive` the error tone (shadcn's names, kept).
 const alertVariants = cva(
-  "group/alert relative flex w-full items-start gap-3 rounded-none border-2 border-(--tone) bg-[color-mix(in_oklab,var(--tone)_8%,var(--card))] px-4 py-3 text-left text-sm text-foreground has-data-[slot=alert-action]:pr-18",
+  "group/alert relative flex w-full items-start gap-3 rounded-none border-2 border-[color-mix(in_oklab,var(--tone)_45%,var(--card))] bg-[color-mix(in_oklab,var(--tone)_8%,var(--card))] px-4 py-3 text-left text-sm leading-5 text-foreground has-data-[slot=alert-action]:pr-18",
   {
     variants: {
       variant: {
@@ -69,7 +69,7 @@ function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="alert-title"
       className={cn(
-        "font-mono text-xs leading-5 font-bold tracking-[0.05em] uppercase [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:decoration-2",
+        "font-mono text-xs leading-[22px] font-bold tracking-[0.05em] uppercase [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:decoration-2",
         className
       )}
       {...props}
@@ -85,7 +85,7 @@ function AlertDescription({
     <div
       data-slot="alert-description"
       className={cn(
-        "text-sm text-pretty text-foreground [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:decoration-2 [&_p:not(:last-child)]:mb-4",
+        "mt-0.5 text-sm leading-5 text-pretty text-foreground [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:decoration-2 [&_p:not(:last-child)]:mb-4",
         className
       )}
       {...props}

@@ -24,7 +24,7 @@ describe("global-error.tsx", () => {
     expect(html).toContain("<h1>Something went wrong</h1>");
     expect(html).toContain("Something went wrong loading Busk Map");
     expect(html).toContain(">Try again</button>");
-    expect(html).toMatch(/<a [^>]*href="\/"[^>]*>Go home<\/a>/);
+    expect(html).toMatch(/<a [^>]*href="\/"[^>]*>Go home<svg[\s\S]*?<\/svg><\/a>/);
   });
 
   it("is self-contained: system fonts for every family token and a plain link home (no router, no brand faces)", () => {
@@ -47,7 +47,7 @@ describe("error.tsx", () => {
     expect(html).not.toContain("<html");
     expect(html).toContain("<h1>Something went wrong</h1>");
     expect(html).toContain(">Try again</button>");
-    expect(html).toContain("Go home</a>");
+    expect(html).toMatch(/Go home<svg[\s\S]*?<\/svg><\/a>/);
     expect(html).not.toContain("SECRET_DETAIL");
   });
 

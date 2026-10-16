@@ -61,6 +61,7 @@ export function ExampleActCard({
           href={href}
           className="inline-flex min-h-11 items-center text-[15px] font-bold text-signal-text underline underline-offset-3 hover:decoration-2 after:absolute after:inset-0 after:content-['']"
         >
+          <span className="sr-only">{name} </span>
           {action} <span aria-hidden="true">&nbsp;→</span>
         </Link>
       </span>

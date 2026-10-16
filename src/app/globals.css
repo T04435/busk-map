@@ -1,14 +1,15 @@
 /* Honeycomb: the Busk Map theme for Tailwind v4 + shadcn/ui.
    From the design handoff's globals.css (design system tokens.json). Day is :root, night follows the system
-   setting (prefers-color-scheme) and is also forced by .dark or [data-theme="dark"]; [data-theme="light"]
+   setting (prefers-color-scheme) and is also forced by .dark, [data-theme="dark"] or .bm-night (surfaces pinned dark whatever the OS theme); [data-theme="light"]
    pins day. Every text pair passes WCAG AA in both themes. */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./ds-compat.css";
 
 /* dark: matches .dark / [data-theme="dark"] ancestors, or the system setting unless the page is pinned to day. */
 @custom-variant dark {
-  &:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *) {
+  &:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *, .bm-night, .bm-night *) {
     @slot;
   }
   @media (prefers-color-scheme: dark) {
@@ -68,7 +69,8 @@
   --estimate: #6d5a00;
 }
 .dark,
-[data-theme="dark"] {
+[data-theme="dark"],
+.bm-night {
   color-scheme: dark;
   --background: #0f1416;
   --foreground: #f2ede4;
@@ -199,17 +201,21 @@
   --shadow-lg: 6px 6px 0 #141c21;
   --focus-ring: 0 0 0 2px var(--ring);
 }
+/* Tokens composed from var() resolve where they are declared, so a dark-pinned scope must redeclare them to pick up its own --ring (QA P1). */
 .dark,
-[data-theme="dark"] {
+[data-theme="dark"],
+.bm-night {
   --shadow-sm: 2px 2px 0 #05080a;
   --shadow-md: 4px 4px 0 #ff6a2b;
   --shadow-lg: 6px 6px 0 #ff6a2b;
+  --focus-ring: 0 0 0 2px var(--ring);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not(.light) {
     --shadow-sm: 2px 2px 0 #05080a;
     --shadow-md: 4px 4px 0 #ff6a2b;
     --shadow-lg: 6px 6px 0 #ff6a2b;
+    --focus-ring: 0 0 0 2px var(--ring);
   }
 }
 
@@ -308,7 +314,7 @@ html { scroll-padding-bottom: var(--bottom-nav); }
 
 /* Orange fills carry a 2px rule by day; at night the rule drops (the fill is its own edge). */
 :root { --fill-rule: var(--rule); }
-.dark, [data-theme="dark"] { --fill-rule: transparent; }
+.dark, [data-theme="dark"], .bm-night { --fill-rule: transparent; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not(.light) { --fill-rule: transparent; } }
 
 /* Texture: the grain on hero grounds, the pink hatch for no-busking zones and test data, and the placeholder field. */

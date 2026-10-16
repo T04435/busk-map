@@ -26,8 +26,8 @@ const contrast = (a: string, b: string) => {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 };
-const dayCss = css.slice(css.indexOf(":root {"), css.indexOf('.dark,\n[data-theme="dark"] {'));
-const nightCss = css.slice(css.indexOf('.dark,\n[data-theme="dark"] {'));
+const dayCss = css.slice(css.indexOf(":root {"), css.indexOf('.dark,\n[data-theme="dark"],\n.bm-night {'));
+const nightCss = css.slice(css.indexOf('.dark,\n[data-theme="dark"],\n.bm-night {'));
 const tok = (block: string, name: string) => block.match(new RegExp(`${name}: (#[0-9a-fA-F]{6});`))?.[1] ?? "";
 const button = readFileSync(new URL("../../../src/components/ui/button.tsx", import.meta.url), "utf8");
 

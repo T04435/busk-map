@@ -1,0 +1,49 @@
+/*
+ * DS compatibility rules: the shared utility, tone and keyframe rules from the Busk Map DS (ds-src/bundle.css, v67) that the 1:1 component
+ * ports rely on. Verbatim, in the DS's order, using the app's own tokens (none are redefined here). Kept in `@layer components` so Tailwind
+ * utilities still win and nothing restyles a shadcn primitive. No global focus or hover rules for primitives live here (F15). Group-specific
+ * component CSS is added by the group that ports the component.
+ */
+@layer components {
+  /* bundle.css:9-20, 24-26 (the page-level body/box-sizing/colour-scheme lines are the app's own). */
+  .bm-stack { display: flex; flex-direction: column; gap: var(--space-3); }
+  .bm-row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+  .bm-muted { color: var(--muted-foreground); }
+  .bm-mono, .bm-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .bm-h { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+  .bm-h1 { font-size: 28px; line-height: 32px; font-weight: 650; letter-spacing: -0.015em; }
+  .bm-h2 { font-size: 20px; line-height: 26px; }
+  .bm-h3 { font-size: 16px; line-height: 22px; }
+  .bm-small { font-size: 14px; line-height: 20px; }
+  .bm-caption { font-size: 12px; line-height: 16px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+  .bm-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .bm-icon { display: inline-block; flex: none; vertical-align: middle; }
+  .bm-link { color: var(--foreground); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; border-radius: 4px; }
+  .bm-link:hover { text-decoration-thickness: 2.5px; }
+  /* bundle.css:61 */
+  .bm-hint { font-size: 14px; line-height: 20px; color: var(--muted-foreground); }
+  /* bundle.css:322, the tone colours of the icons (--footfall, --event, --weather, --pitch-legal, --hidden-gem and --chart-3 are app tokens). */
+  .bm-ic-footfall { color: var(--footfall); } .bm-ic-event { color: var(--event); } .bm-ic-weather { color: var(--weather); } .bm-ic-legal { color: var(--pitch-legal); } .bm-ic-gem { color: var(--hidden-gem); } .bm-ic-places { color: var(--chart-3); }
+  /* bundle.css:484 */
+  .bm-caption, .bm-pitch-rank, .bm-label-meta { font-family: var(--font-mono); font-weight: 500; font-size: 11px; line-height: 16px; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  /* Loader (components/Loader/source.css) */
+  .bm-ringspin { animation: bm-spin 1.1s linear infinite; transform-origin: 24px 24px; }
+  .bm-results-line .bm-loader { color: var(--primary); }
+  .bm-pending-note .bm-loader { color: var(--primary); }
+  .bm-loader-think .bm-ringspin { animation-duration: 2.6s; }
+  .bm-loader-think .bm-loader-core { animation: bm-breathe 1.3s ease-in-out infinite; transform-origin: 24px 24px; transform-box: view-box; }
+  .bm-rfunnel li .bm-loader { color: var(--primary); }
+  /* Not in the DS stylesheet (its global reduced-motion rule zeroes every duration): the ring stops but stays drawn. */
+  .bm-spin { animation: bm-spin 0.9s linear infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .bm-loader-think .bm-loader-core { animation: none; }
+    .bm-ringspin, .bm-spin, .bm-dots i, .bm-agent-wait, .bm-agent-think .bm-step-dot { animation: none; }
+  }
+}
+
+/* Keyframes (bundle.css:56, 384, 776, 1184) */
+@keyframes bm-spin { to { transform: rotate(360deg); } }
+@keyframes bm-blink { 50% { opacity: .2; } }
+@keyframes bm-agent-pulse { 50% { opacity: .35; } }
+@keyframes bm-breathe { 50% { transform: scale(.55); opacity: .6; } }

@@ -3,7 +3,8 @@ const LINK = "[clip-path:polygon(0_0,50%_0,100%_50%,50%_100%,0_100%)]";
 
 /**
  * The landing's brain teaser sketch (user, impeccable live 17 Oct): the brain's real shape as dense bands of cells, 11 Qloo
- * calls, 16 data points and 8 parts of your busk, under big display labels and joined by the F30 half-hex links.
+ * calls, 16 data points and 8 parts of your busk, under big display labels and joined by the F30 half-hex links. A pulse runs
+ * through every cell, calls to busk, three times on load (hc-flow in globals.css; still under reduced motion).
  * A sketch, not data: hidden from screen readers (the teaser's numbers and copy carry the meaning).
  */
 const COLUMNS = [
@@ -17,12 +18,16 @@ export function BrainSketch() {
     <div aria-hidden="true" className="box-border flex max-w-full min-w-0 flex-[0_1_340px] items-stretch justify-center gap-2.5 border-[1.5px] border-border bg-card p-4">
       {COLUMNS.map((col, i) => (
         <div key={col.label} className="contents">
-          {i > 0 ? <span className={`h-[18px] w-3 self-center bg-primary ${LINK}`} /> : null}
+          {i > 0 ? <span className={`hc-flow-link h-[18px] w-3 self-center bg-primary ${LINK}`} style={{ "--c": i } as React.CSSProperties} /> : null}
           <div className="flex min-w-0 flex-1 flex-col items-center gap-2">
             <span className="font-display text-[22px] leading-none font-extrabold uppercase">{col.label}</span>
             <div className="grid grid-cols-2 gap-1">
               {Array.from({ length: col.n }, (_, k) => (
-                <span key={k} className={`h-4 w-3.5 ${HEX} ${col.tone(k)}`} />
+                <span
+                  key={k}
+                  className={`hc-flow-cell h-4 w-3.5 ${HEX} ${col.tone(k)}`}
+                  style={{ "--g": COLUMNS.slice(0, i).reduce((t, c) => t + c.n, 0) + k } as React.CSSProperties}
+                />
               ))}
             </div>
           </div>

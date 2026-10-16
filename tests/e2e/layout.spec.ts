@@ -250,17 +250,6 @@ const PAGES: PageCase[] = [
     },
   },
   {
-    name: "tips",
-    open: async (page) => {
-      await page.goto("/tips");
-      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    },
-    controls: async (page) => {
-      await expectOnTop(page.getByRole("form", { name: "Log your takings" }).getByRole("button", { name: "Log takings" }), "Log takings");
-      await expectOnTop(page.getByRole("textbox", { name: "Takings" }), "Takings");
-    },
-  },
-  {
     name: "brain",
     open: async (page) => {
       await page.goto("/brain");

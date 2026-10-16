@@ -80,7 +80,6 @@ test.describe("QA /brain", () => {
   });
 
   test("the sticky trace panel never covers the focused node while tabbing (WCAG 2.4.11)", async ({ page }) => {
-    test.fail(true, "B-015: the sticky trace panel hides focused nodes (390, 768 and 1440)");
     await open(page);
     await node(page, /^Setlist and learn these/).click();
     const covered: string[] = [];

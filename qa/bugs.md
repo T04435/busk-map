@@ -17,8 +17,8 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-011 | Low | Landing search comboboxes say `aria-expanded="true"` in the server HTML until hydration | Fixed (868c371), verified by QA |
 | B-012 | Low | Flaky e2e: example-card test reads the plan stream body after navigating | Fixed (1950bd2), verified by QA |
 | B-013 | Low | Fresh-run limit message gives the retry time in Melbourne time with no zone | Fixed (4b6237b), verified by QA |
-| B-014 | Low | docs/qloo-data-map.md still calls the week-prefetch comment "about 47 Qloo calls" | Open |
-| B-015 | Medium | /brain: the sticky trace panel hides the focused node while tabbing (WCAG 2.2 AA 2.4.11) | Open |
+| B-014 | Low | docs/qloo-data-map.md still calls the week-prefetch comment "about 47 Qloo calls" | Fixed (b88e174), verified by QA |
+| B-015 | Medium | /brain: the sticky trace panel hides the focused node while tabbing (WCAG 2.2 AA 2.4.11) | Fixed (2b26dc5), verified by QA |
 
 ---
 

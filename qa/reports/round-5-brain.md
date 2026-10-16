@@ -46,3 +46,20 @@ Note: the follow-up Playwright run built the working tree, which held DEV's **un
 
 ## Not done
 Live checks and Lighthouse still need the user's approval.
+
+## Retest on the committed fixes (dev/core 2b26dc5)
+
+**Verdict: PASS.** Open: High 0, Medium 0, Low 0. Fixed and verified to date: 15 (B-001 to B-015).
+
+| Gate | Result |
+|---|---|
+| Working tree | Clean at 2b26dc5 (no uncommitted DEV edits this time) |
+| `pnpm check` | Pass, 462 unit tests; fixtures OK (262 files) |
+| Clean-export build of 2b26dc5 | install 0, typecheck 0, build 0 |
+| QA suite at 390/768/1440 | **129 passed.** B-015's `test.fail` marker was removed, so the focus-not-obscured check is now a regression test |
+| DEV's full e2e (desktop + mobile) | 244 passed, 36 skipped, 0 failed |
+
+| Bug | Fix | Verified |
+|---|---|---|
+| B-014 doc drift | b88e174 | `docs/qloo-data-map.md` §4 now says the plan-view comment gives "about N+2 Qloo calls" |
+| B-015 focus hidden behind the trace panel | 2b26dc5 | QA spec: 0 Tab stops fully hidden at 390, 768 and 1440. Screenshot at 390 with a trace open: the panel is a slim bar, and the focused "Affinity at a pitch" piece sits clear of it |

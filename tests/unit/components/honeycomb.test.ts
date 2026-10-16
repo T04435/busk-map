@@ -112,10 +112,10 @@ describe("RankTile and LeanBar", () => {
 });
 
 describe("navigation", () => {
-  it("holds features only: Busks and Repertoire (Week removed, Brain lives in the footer)", () => {
+  it("holds features only: Repertoire then Busks (Week removed, Brain lives in the footer)", () => {
     expect(NAV_ITEMS.map((i) => [i.label, i.href])).toEqual([
-      ["Busks", "/busks"],
       ["Repertoire", "/repertoire"],
+      ["Busks", "/busks"],
     ]);
   });
 
@@ -143,7 +143,7 @@ describe("navigation", () => {
     expect(html(createElement(AppHeaderView, { pathname: "/" }))).not.toContain("aria-current");
   });
 
-  it("MobileNav shows the bar once the main nav has two items (Busks and Repertoire), with the current one marked", () => {
+  it("MobileNav shows the bar once the main nav has two items (Repertoire and Busks), with the current one marked", () => {
     const out = html(createElement(MobileNavView, { pathname: "/repertoire" }));
     expect(out).toContain('href="/busks"');
     expect(out).toContain('href="/repertoire"');

@@ -39,7 +39,7 @@ test.describe("/busks", () => {
     expect(body.slot).toMatchObject({ startHour: 12, endHour: 15 });
   });
 
-  test("phones get the compact header and the bottom bar with Busks and Repertoire (two items)", async ({ page }) => {
+  test("phones get the compact header and the bottom bar with Repertoire and Busks (two items)", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/busks");
     // Streaming leaves the Suspense fallback header beside the real one for a moment: wait for one.

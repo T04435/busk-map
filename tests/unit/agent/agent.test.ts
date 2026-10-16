@@ -177,7 +177,7 @@ describe("crowd drivers and Qloo extras", () => {
   it("names the Qloo extras a plan can go without; the core calls are not among them", async () => {
     const { optionalQlooFeature } = await import("@/server/agent/context");
     expect(optionalQlooFeature("genres:-37.8100,144.9600")).toBe("the genres at the top pitch");
-    expect(optionalQlooFeature("affinity:spot:osm:city-square")).toBe("the setlist order by local taste");
+    expect(optionalQlooFeature("affinity:spot:osm:city-square")).toBe("the suggested set order by local taste");
     expect(optionalQlooFeature("places:wide")).toBe("busy places nearby");
     expect(optionalQlooFeature("compare")).toBe("the contrast with the usual crowd");
     expect(optionalQlooFeature("artists")).toBeNull();
@@ -191,7 +191,7 @@ describe("crowd drivers and Qloo extras", () => {
     // A year after the mock's (and live Qloo's) latest trending week.
     const ctx = new PlanContext(request, OFFLINE, "2027-09-01");
     expect(await ctx.rising()).toEqual([]);
-    expect(ctx.notes).toContain('Qloo shows no audience growth for these artists and has no trending data for the last year, so "learn these" is ranked by Qloo affinity and Last.fm listeners instead.');
+    expect(ctx.notes).toContain('Qloo shows no audience growth for these artists and has no trending data for the last year, so the songs to learn are ranked by Qloo affinity and Last.fm listeners instead.');
   });
 });
 

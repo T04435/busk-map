@@ -570,7 +570,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
 function PendingPlan() {
   return (
     <div className="space-y-6" aria-busy="true" aria-label="Plan pending" data-testid="plan-pending">
-      <p className="text-sm text-muted-foreground">The plan, map, crowd, setlist and comparison appear here when the agent finishes.</p>
+      <p className="text-sm text-muted-foreground">The plan, map, crowd, {PLAYLIST_COPY.suggestedSetNoun} and comparison appear here when the agent finishes.</p>
       <Skeleton className="h-32 w-full" />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Skeleton className="h-[22rem] w-full sm:h-[28rem]" />

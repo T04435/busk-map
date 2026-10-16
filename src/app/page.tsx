@@ -23,7 +23,7 @@ export default function Home({ searchParams }: PageProps<"/">) {
         <h1 className="text-4xl font-semibold tracking-tight">Busk Map</h1>
         <p className="text-lg text-muted-foreground">
           Know where to play, and what to play there. Busk Map finds the street pitches whose crowd matches your music at the hour you
-          want to play, and orders your setlist for each one.
+          want to play, and suggests a set of songs for each one.
         </p>
         <p className="text-muted-foreground">
           Not the spots every busker already plays: Busk Map starts from where your crowd&apos;s taste concentrates on Qloo&apos;s taste map,

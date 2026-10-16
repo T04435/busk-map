@@ -63,7 +63,7 @@ const clipped = (max: number) =>
     .transform((s) => (s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s))
     .pipe(z.string().min(1));
 
-/** POST /api/playlist/learn/suggestions: "Add to Repertoire" on a plan's Learn these (docs §3.3). */
+/** POST /api/playlist/learn/suggestions: "Add to Repertoire" on a plan's Songs to learn (docs §3.3). */
 export const addPlanSuggestionSchema = z.object({
   title: line(120),
   artist: line(80),
@@ -108,6 +108,7 @@ export type LearnSuggestionView = {
   because: string | null;
   basedOn: { kind: "learned" | "repertoire" | "crowd" | "soundsLike"; name: string }[];
   growth: number | null;
+  /** Percentile points gained over the trending window (see learn-schema.ts). */
   trendDelta: number | null;
   isNew: boolean;
   status: "pending" | "learned" | "dismissed";

@@ -551,11 +551,13 @@ function buildTools(ctx: LearnContext, state: LearnState) {
           ctx.windowChecked = true;
           const window = fromQloo(await qloo.trendingWindow(artistIds[0], ctx.today, ctx.adapters), "trending");
           const rows = window ? fromQloo(await qloo.rising(artistIds, window.start, window.end, ctx.adapters), "trending") : [];
-          const moving = rows.some((r) => (r.percentDelta ?? 0) !== 0 || (r.windowChange ?? 0) !== 0);
+          // ONE unit: percentile points gained over the window (newest week minus oldest, 0-100 scale). `percentDelta` is a
+          // week-over-week change in percent, a different unit, so it is never used here.
+          const moving = rows.some((r) => (r.windowChange ?? 0) !== 0);
           const artists = artistIds.map((id) => {
             const info = state.artists.get(id)!;
             const row = rows.find((r) => r.entityId === id);
-            const delta = moving && row ? (row.percentDelta ?? row.windowChange ?? null) : null;
+            const delta = moving && row ? (row.windowChange ?? null) : null;
             info.trendDelta = delta && delta !== 0 ? r2(delta) : null;
             return { artistId: id, name: info.name, growth: info.growth, trendDelta: info.trendDelta };
           });

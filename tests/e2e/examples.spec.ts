@@ -23,7 +23,7 @@ for (const example of EXAMPLES) {
       const pitches = page.getByRole("region", { name: "Pitches", exact: true }).getByRole("listitem");
       await expect(pitches).toHaveCount(3);
       await expect(page.getByRole("region", { name: "Map of pitches and Qloo taste affinity" })).toBeVisible();
-      await expect(page.getByRole("heading", { name: /^Setlist for / })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /^Suggested set for / })).toBeVisible();
       // The agent starts on load and the plan appears when it ends, with Claude's explanations (mock model offline).
       const steps = await agentSteps(page);
       if (LOCAL) {
@@ -59,11 +59,11 @@ for (const example of EXAMPLES) {
       await page.keyboard.press("Enter");
       await expect(second).toHaveAttribute("aria-pressed", "true");
       await expect(page).toHaveURL(/pitch=/);
-      await expect(page.getByRole("heading", { name: `Setlist for ${name}` })).toBeVisible();
+      await expect(page.getByRole("heading", { name: `Suggested set for ${name}` })).toBeVisible();
 
       // The selection survives a reload (shareable link).
       await page.reload();
-      await expect(page.getByRole("heading", { name: `Setlist for ${name}` })).toBeVisible();
+      await expect(page.getByRole("heading", { name: `Suggested set for ${name}` })).toBeVisible();
     });
   });
 }
@@ -123,7 +123,7 @@ test.describe("live agent (mock model offline)", () => {
     await expect(page.getByTestId("plan-pending")).toBeVisible();
     await expect(page.getByTestId("agent-status")).toHaveText(/The plan appears when it finishes/);
     await expect(page.getByRole("region", { name: "Pitches", exact: true })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: /^Setlist for / })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: /^Suggested set for / })).toHaveCount(0);
     await expect(page.getByText(/^Explanations: /)).toHaveCount(0);
     release();
 

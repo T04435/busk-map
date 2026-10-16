@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { baselineViewSchema, type BaselineView, type PlanPitch, type PlanRequest } from "@/lib/plan-schema";
 import { modelName, type ExplanationsModel } from "@/lib/sources";
+import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
 export type BaselineState = { status: "loading" } | { status: "done"; baseline: BaselineView } | { status: "unavailable"; message: string };
 
@@ -194,7 +195,7 @@ function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch
             ))}
           </ul>
         )}
-        {baseline.setlist.length > 0 && <p className="text-muted-foreground">Plain AI setlist: {baseline.setlist.join(", ")}</p>}
+        {baseline.setlist.length > 0 && <p className="text-muted-foreground">Plain AI {PLAYLIST_COPY.suggestedSetNoun}: {baseline.setlist.join(", ")}</p>}
       </section>
     </>
   );

@@ -77,7 +77,7 @@ test.describe("own act", () => {
     await expect(page.getByTestId("unmatched-artists")).toContainText("This plan uses the artists Qloo did match: Paul Kelly.");
     await expect(page.getByTestId("set-length")).toHaveText("Set length: 3:07 (1 song).");
     await expect(page.getByRole("button", { name: "Learn it: Gravy (synthetic result 1)" })).toHaveCount(0);
-    const learn = page.getByRole("region", { name: "Learn these" }).getByRole("button", { name: /^Learn it: / }).first();
+    const learn = page.getByRole("region", { name: "Songs you should learn" }).getByRole("button", { name: /^Learn it: / }).first();
     await learn.click();
     const menu = page.getByRole("menu");
     await expect(menu.getByRole("menuitem", { name: /Karaoke/ })).toHaveAttribute("href", /youtube\.com\/results\?search_query=.+karaoke/);

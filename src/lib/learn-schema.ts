@@ -64,6 +64,7 @@ export const learnSuggestionEventSchema = z.object({
   because: z.string().nullable(),
   basedOn: z.array(basedOnSchema),
   growth: z.number().nullable(),
+  /** Percentile points gained in Qloo's population percentile over the trending window (positive is rising). Null when flat or unchecked. */
   trendDelta: z.number().nullable(),
   isNew: z.boolean(),
   status: z.enum(["pending", "learned", "dismissed"]),

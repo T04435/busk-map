@@ -8,7 +8,7 @@ import { addPlanSuggestion } from "./playlist-api";
 type State = { kind: "idle" } | { kind: "adding" } | { kind: "done"; text: string } | { kind: "error"; text: string };
 
 /**
- * "Add to Repertoire" on a plan's Learn these (docs/playlist-architecture.md §3.3): the song joins the Songs to learn
+ * "Add to Repertoire" on a plan's Songs to learn (docs/playlist-architecture.md §3.3): the song joins the Songs to learn
  * list ("Added from plans"). It never edits the plan, and a song already suggested or already sung is said so, politely.
  * Not shown on example runs (§3.5).
  */

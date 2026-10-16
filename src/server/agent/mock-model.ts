@@ -124,7 +124,7 @@ export function nextMove(results: ToolResult[], tools: string[], scenario: MockS
   if (!done("compare_crowds").length && first && second) {
     return { text: `Comparing the crowds at ${first.name} and ${second.name}.`, calls: [{ toolName: "compare_crowds", input: { a: first.pitchId, b: second.pitchId } }] };
   }
-  if (!done("build_setlist").length && first) return { text: `Ordering the setlist for ${first.name}.`, calls: [{ toolName: "build_setlist", input: { pitchId: first.pitchId } }] };
+  if (!done("build_setlist").length && first) return { text: `Ordering the suggested set for ${first.name}.`, calls: [{ toolName: "build_setlist", input: { pitchId: first.pitchId } }] };
   return finish(results, scenario, rejections);
 }
 

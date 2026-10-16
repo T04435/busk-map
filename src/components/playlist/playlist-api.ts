@@ -35,7 +35,7 @@ export const createPlaylist = (seed: Omit<CreatePlaylistInput, "songs"> & { song
 
 export type SuggestionResult = { ok: true; suggestion: LearnSuggestionView } | { ok: false; code: string; message: string };
 
-/** "Add to Repertoire" on a plan's Learn these: a pending suggestion with no run. */
+/** "Add to Repertoire" on a plan's Songs to learn: a pending suggestion with no run. */
 export async function addPlanSuggestion(input: AddPlanSuggestionInput): Promise<SuggestionResult> {
   try {
     const res = await fetch("/api/playlist/learn/suggestions", {

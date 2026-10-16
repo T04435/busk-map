@@ -14,6 +14,7 @@ import { planSearchParams } from "@/lib/plan-url";
 import type { WeekPlan, WeekRequest } from "@/lib/week-schema";
 import { weekSearchParams } from "@/lib/week-url";
 import { useTipSync } from "@/components/tips/use-tip-sync";
+import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
 type Props = { initialPlan: WeekPlan; request: WeekRequest; exampleId: string | null; faults: string | null };
 
@@ -189,7 +190,7 @@ export function WeekView({ initialPlan, request, exampleId, faults }: Props) {
                         : `/plan?${planSearchParams({ city: request.city, permit: request.permit, performer: request.performer, slot: { date: s.date, startHour: s.startHour, endHour: s.endHour } })}`
                     }
                   >
-                    Open this session&apos;s plan and setlist
+                    Open this session&apos;s plan and {PLAYLIST_COPY.suggestedSetNoun}
                   </Link>
                 </li>
               ))}

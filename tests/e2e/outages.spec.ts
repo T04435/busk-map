@@ -33,7 +33,7 @@ test.describe("API-down states", () => {
   test("Last.fm down: setlists still order the songs, without play counts", async ({ page }) => {
     await page.goto("/plan?example=acoustic&faults=songs");
     await waitForPlan(page);
-    await expect(page.getByRole("heading", { name: /^Setlist for / })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Suggested set for / })).toBeVisible();
     await expect(page.getByText(/Last\.fm plays/)).toHaveCount(0);
   });
 });

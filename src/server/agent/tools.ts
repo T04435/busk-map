@@ -13,6 +13,7 @@ import { NumberBag } from "./number-bag";
 
 export { NumberBag };
 import { boxAround, knownPlaces, nearestName, resolveWhere, snapPoint, snapRadius, whereSchema, WhereError, type Resolved, type Where } from "./where";
+import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
 /**
  * Agent v2 tools. Claude chooses each tool's inputs; the tools reuse the
@@ -48,8 +49,8 @@ export const TOOL_LABELS: Record<string, string> = {
   check_pitch: "Checking a spot against the busking rules",
   score_pitches: "Scoring the pitch pool",
   compare_crowds: "Comparing two pitches' crowds",
-  build_setlist: "Setlist for a pitch",
-  learn_these: "Songs worth learning",
+  build_setlist: PLAYLIST_COPY.suggestedSetStepLabel,
+  learn_these: PLAYLIST_COPY.toLearnStepLabel,
   finish_plan: "Final answer",
 };
 
@@ -540,7 +541,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
       description: "Order the act's own songs for one scored pitch: crowd affinity for each song's artist there (Qloo), popularity (Last.fm) and era fit with the fans' age lean.",
       inputSchema: z.object({ pitchId: z.string().max(80) }),
       execute: async ({ pitchId }) => {
-        if (!state.scored) throw new WhereError("Call score_pitches first: build the setlist for a pitchId it returned.");
+        if (!state.scored) throw new WhereError("Call score_pitches first: build the suggested set for a pitchId it returned.");
         const pitch = state.pool.get(pitchId);
         if (!pitch) throw new WhereError(`Unknown pitchId ${pitchId}: use ids from score_pitches.`);
         const setlist = await ctx.setlistFor(pitch);

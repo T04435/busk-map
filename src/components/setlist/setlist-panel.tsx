@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { formatDuration } from "@/lib/live-search";
 import { ageLabel } from "@/lib/age";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
+import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
 /** Total length of the songs with a known length, and how many those are. */
 export function setLength(setlist: PlanPitch["setlist"]): { ms: number; timed: number } {
@@ -21,7 +22,7 @@ export function SetlistPanel({
   pitch: PlanPitch;
   learnThese: Plan["learnThese"];
   ageLean?: string | null;
-  /** "Add to Repertoire" on each Learn these item. False on example runs: presets never write a Repertoire. */
+  /** "Add to Repertoire" on each Songs to learn item. False on example runs: presets never write a Repertoire. */
   canAddToRepertoire?: boolean;
 }) {
   const length = setLength(pitch.setlist);
@@ -30,7 +31,7 @@ export function SetlistPanel({
     <Card>
       <CardHeader>
         <CardTitle>
-          <h2>Setlist for {pitch.name}</h2>
+          <h2>{PLAYLIST_COPY.suggestedSetFor(pitch.name)}</h2>
         </CardTitle>
         <CardDescription>
           Your songs, ordered by how much the crowd at this pitch likes each artist (Qloo), how well-known the song is (Last.fm) and how
@@ -42,7 +43,7 @@ export function SetlistPanel({
       </CardHeader>
       <CardContent className="space-y-6 text-sm">
         {pitch.setlist.length === 0 ? (
-          <p className="text-muted-foreground">Add songs you can play to get a setlist.</p>
+          <p className="text-muted-foreground">{PLAYLIST_COPY.suggestedSetEmpty}</p>
         ) : (
           <>
             <ol className="space-y-2">
@@ -83,8 +84,8 @@ export function SetlistPanel({
           </>
         )}
 
-        <section aria-label="Learn these">
-          <h3 className="font-medium">Learn these</h3>
+        <section aria-label={PLAYLIST_COPY.toLearn}>
+          <h3 className="font-medium">{PLAYLIST_COPY.toLearn}</h3>
           <p className="text-muted-foreground">
             Artists this crowd likes that you don&apos;t play yet, ranked by Qloo&apos;s audience growth, then trends, then affinity and
             Last.fm listeners.

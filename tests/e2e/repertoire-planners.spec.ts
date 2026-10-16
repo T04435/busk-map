@@ -46,7 +46,7 @@ test.describe("planners read the Repertoire (offline)", () => {
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await waitForPlan(page);
     // The plan's songs match the Repertoire's, and "Save these songs" is not offered to a device that has one.
-    for (const s of SONGS) await expect(page.getByRole("heading", { name: /Setlist for/ }).locator("xpath=ancestor::*[@data-slot='card'][1]")).toContainText(s.title);
+    for (const s of SONGS) await expect(page.getByRole("heading", { name: /Suggested set for/ }).locator("xpath=ancestor::*[@data-slot='card'][1]")).toContainText(s.title);
     await expect(page.getByTestId("save-as-repertoire")).toHaveCount(0);
     // The top pitch of this busk is now a usual pitch; the revision did not move.
     await expect.poll(async () => (await state(page)).usualPitches.length).toBe(1);
@@ -109,18 +109,18 @@ test.describe("planners read the Repertoire (offline)", () => {
     await expect(form(page).getByRole("switch", { name: "Use my Repertoire (2 songs)" })).toBeChecked();
   });
 
-  test("Add to Repertoire from Learn these: a pending suggestion, and a second add is refused politely", async ({ page }) => {
+  test("Add to Repertoire from Songs you should learn: a pending suggestion, and a second add is refused politely", async ({ page }) => {
     await seed(page);
     await page.goto("/");
     await form(page).getByRole("button", { name: "Plan my set" }).click();
     await waitForPlan(page);
-    const learn = page.getByRole("region", { name: "Learn these" });
+    const learn = page.getByRole("region", { name: "Songs you should learn" });
     const first = learn.getByRole("button", { name: /^Add to Repertoire: / }).first();
     await first.scrollIntoViewIfNeeded();
     const name = (await first.getAttribute("aria-label"))!;
     const before = await state(page);
     await first.click();
-    await expect(learn.getByRole("status").filter({ hasText: "Added to Songs to learn." })).toBeVisible();
+    await expect(learn.getByRole("status").filter({ hasText: "Added to Songs you should learn." })).toBeVisible();
     // It is a suggestion, not a song: the Repertoire itself did not change.
     const after = await state(page);
     expect(after.songs).toEqual(before.songs);
@@ -128,9 +128,9 @@ test.describe("planners read the Repertoire (offline)", () => {
     // Again (a fresh page, so a fresh button): refused, kindly, with no error.
     await page.reload();
     await waitForPlan(page);
-    await page.getByRole("region", { name: "Learn these" }).getByRole("button", { name }).click();
-    await expect(page.getByRole("region", { name: "Learn these" }).getByRole("status").filter({ hasText: "Already on your list of songs to learn." })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Learn these" }).getByRole("alert")).toHaveCount(0);
+    await page.getByRole("region", { name: "Songs you should learn" }).getByRole("button", { name }).click();
+    await expect(page.getByRole("region", { name: "Songs you should learn" }).getByRole("status").filter({ hasText: "Already on your list of songs to learn." })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Songs you should learn" }).getByRole("alert")).toHaveCount(0);
   });
 
   test("an example never reads or writes the Repertoire", async ({ page }) => {
@@ -203,8 +203,8 @@ test.describe("planners read the Repertoire (offline)", () => {
     await page.goto("/");
     await form(page).getByRole("button", { name: "Plan my set" }).click();
     await waitForPlan(page);
-    await page.getByRole("region", { name: "Learn these" }).getByRole("button", { name: /^Add to Repertoire: / }).first().click();
-    await expect(page.getByRole("region", { name: "Learn these" }).getByRole("status").filter({ hasText: "Added to Songs to learn." })).toBeVisible();
+    await page.getByRole("region", { name: "Songs you should learn" }).getByRole("button", { name: /^Add to Repertoire: / }).first().click();
+    await expect(page.getByRole("region", { name: "Songs you should learn" }).getByRole("status").filter({ hasText: "Added to Songs you should learn." })).toBeVisible();
     for (const width of widths) {
       await page.setViewportSize({ width, height: 900 });
       await check(`plan-${width}`);
@@ -230,6 +230,26 @@ test.describe("planners read the Repertoire (offline)", () => {
       await page.setViewportSize({ width, height: 900 });
       await check(`week-${width}`);
       await shot("week", width);
+    }
+  });
+
+  test("R4 words: the plan says Suggested set and Songs you should learn, never Setlist or Learn these (3 widths, axe, screenshots)", async ({ page }, info) => {
+    await page.goto("/plan?name=Words%20Duo&artists=Paul%20Kelly&songs=Gravy~Paul%20Kelly&date=2099-01-03&from=18&to=21");
+    await waitForPlan(page);
+    const heading = page.getByRole("heading", { name: /^Suggested set for / });
+    await expect(heading).toBeVisible();
+    const card = heading.locator("xpath=ancestor::*[@data-slot='card'][1]");
+    const learn = page.getByRole("region", { name: "Songs you should learn" });
+    await expect(learn.getByRole("heading", { name: "Songs you should learn" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Setlist|Learn these/ })).toHaveCount(0);
+    await expect(page.getByText(/\bsetlist\b|learn these|playlist/i)).toHaveCount(0);
+    for (const width of [390, 768, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await card.scrollIntoViewIfNeeded();
+      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+      expect(violations.map((v) => `${width} ${v.impact} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      if (SHOTS && info.project.name === "desktop") await card.screenshot({ path: `${SHOTS}/r4-suggested-set-${width}.png` });
     }
   });
 });

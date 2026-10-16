@@ -93,7 +93,7 @@ test.describe("Songs to learn: a learn run (offline)", () => {
 
     // Learned moves a song into Songs you can sing; focus lands on its Undo.
     const learned = await idOf(cardAt(group(page, 1), 0));
-    await cardOf(group(page, 1), learned).getByRole("button", { name: /^Learned: / }).click();
+    await cardOf(group(page, 1), learned).getByRole("button", { name: /^Mark as learned: / }).click();
     await expect(section(page).getByRole("status").filter({ hasText: `${learned.title} is now in Songs you can sing.` })).toBeVisible();
     await expect(cardOf(group(page, 1), learned).getByRole("button", { name: /^Undo: / })).toBeFocused();
     await expect(page.getByRole("list", { name: "Learned", exact: true }).getByText(learned.artist)).toBeVisible();
@@ -101,7 +101,7 @@ test.describe("Songs to learn: a learn run (offline)", () => {
     const dismissed = await idOf(cardAt(group(page, 1), 1));
     await cardOf(group(page, 1), dismissed).getByRole("button", { name: /^Not for me: / }).click();
     await expect(group(page, 1).getByRole("button", { name: "Not for me (1)" })).toBeVisible();
-    await expect(group(page, 1).getByRole("button", { name: /^Learned: / }).first()).toBeFocused();
+    await expect(group(page, 1).getByRole("button", { name: /^Mark as learned: / }).first()).toBeFocused();
 
     // Run again: the first run's songs are history. None comes back; the new ones are new; one builds on the learned song.
     await findButton(page, "Find more songs to learn").click();
@@ -124,10 +124,10 @@ test.describe("Songs to learn: a learn run (offline)", () => {
     // Undo on a dismissed song brings it back to the list (the only way back); Undo on a learned one takes it out of Songs you can sing.
     await group(page, 1).getByRole("button", { name: "Not for me (1)" }).click();
     await cardOf(group(page, 1), dismissed).getByRole("button", { name: /^Undo: / }).click();
-    await expect(cardOf(group(page, 1), dismissed).getByRole("button", { name: /^Learned: / })).toBeFocused();
+    await expect(cardOf(group(page, 1), dismissed).getByRole("button", { name: /^Mark as learned: / })).toBeFocused();
     await expect(group(page, 1).getByRole("button", { name: /^Not for me \(/ })).toHaveCount(0);
     await cardOf(group(page, 1), learned).getByRole("button", { name: /^Undo: / }).click();
-    await expect(cardOf(group(page, 1), learned).getByRole("button", { name: /^Learned: / })).toBeVisible();
+    await expect(cardOf(group(page, 1), learned).getByRole("button", { name: /^Mark as learned: / })).toBeVisible();
     await expect(page.getByRole("list", { name: "Learned", exact: true })).toHaveCount(0);
     // The API agrees: the three songs it holds are the ones typed in.
     const state = (await (await page.request.get("/api/playlist")).json()).playlist;
@@ -319,7 +319,7 @@ test.describe("Songs to learn: widths, accessibility, screenshots (offline)", ()
 
     // A learned song, a dismissed one with its disclosure open, and a second run
     const learned = await idOf(cardAt(group(page, 1), 0));
-    await cardOf(group(page, 1), learned).getByRole("button", { name: /^Learned: / }).click();
+    await cardOf(group(page, 1), learned).getByRole("button", { name: /^Mark as learned: / }).click();
     await expect(cardOf(group(page, 1), learned).getByRole("button", { name: /^Undo: / })).toBeVisible();
     const dismissed = await idOf(cardAt(group(page, 1), 1));
     await cardOf(group(page, 1), dismissed).getByRole("button", { name: /^Not for me: / }).click();

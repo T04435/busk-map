@@ -62,8 +62,8 @@ const OPTIONAL_QLOO: [prefix: string, feature: string][] = [
   ["genres:", "the genres at the top pitch"],
   ["hotspotCrowd", "the contrast with the usual crowd"],
   ["compare", "the contrast with the usual crowd"],
-  ["affinity:", "the setlist order by local taste"],
-  ["songArtists", "the setlist order by local taste"],
+  ["affinity:", "the suggested set order by local taste"],
+  ["songArtists", "the suggested set order by local taste"],
   ["eventArtists", "how well event crowds match your taste"],
   ["eventTaste", "how well event crowds match your taste"],
   ["agent:", "one of the agent's extra looks"],
@@ -216,16 +216,16 @@ export class PlanContext {
    * Momentum of the crowd's top artists. Live Qloo trending has no data for
    * recent weeks, so the window is the latest one with data (probed back a
    * quarter at a time, up to a year). Rows with no movement at all count as
-   * no momentum data; "learn these" then ranks by affinity and Last.fm.
+   * no momentum data; the songs to learn then rank by affinity and Last.fm.
    */
   rising(): Promise<TrendRow[]> {
     return this.once("risingWithWindow", async () => {
       const locals = (await this.localArtists()).slice(0, 5);
       if (locals.length === 0) return [];
-      // "Learn these" ranks by Qloo's audience growth first; trends and the fallback only matter without it.
+      // "Songs to learn" ranks by Qloo's audience growth first; trends and the fallback only matter without it.
       const growing = locals.some((a) => (a.audienceGrowth ?? 0) !== 0);
       const fallback = (why: string) => {
-        if (!growing && !this.qlooFailed()) this.notes.push(`Qloo shows no audience growth for these artists and ${why}, so "learn these" is ranked by Qloo affinity and Last.fm listeners instead.`);
+        if (!growing && !this.qlooFailed()) this.notes.push(`Qloo shows no audience growth for these artists and ${why}, so the songs to learn are ranked by Qloo affinity and Last.fm listeners instead.`);
       };
       const window = await this.track("trendWindow", () => qloo.trendingWindow(locals[0].id, this.today, this.adapters));
       if (!window) {

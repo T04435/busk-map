@@ -30,6 +30,7 @@ export type Evidence = {
   because: string[];
   affinity: number | null;
   growth: number | null;
+  /** Percentile points the artist gained in Qloo's population percentile over the trending window (0-100 scale, positive is rising). Null when flat or unchecked. */
   trendDelta: number | null;
   pitch?: string;
   basedOn: LearnSuggestionView["basedOn"];

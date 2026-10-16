@@ -3,7 +3,7 @@ import { addPlanSuggestionSchema } from "@/lib/playlist-schema";
 import { ensurePlaylist, errorResponse, guardMutation, isResponse, json, readSession } from "@/server/playlist/api";
 
 /**
- * POST /api/playlist/learn/suggestions: "Add to Repertoire" on a plan's Learn these (docs/playlist-architecture.md §3.3).
+ * POST /api/playlist/learn/suggestions: "Add to Repertoire" on a plan's Songs to learn (docs/playlist-architecture.md §3.3).
  * Inserts a pending suggestion with no run ("Added from plans"). The first add creates the Repertoire and sets the cookie.
  * A song already suggested (any status) is 409 `already_suggested`; one you already sing is 409 `in_repertoire`: the
  * unique key on (Repertoire, song key) is the no-repeat rule. R3 adds GET and PATCH next to it.

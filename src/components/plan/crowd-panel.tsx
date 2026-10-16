@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ageLabel } from "@/lib/age";
 import type { Plan } from "@/lib/plan-schema";
+import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
 const list = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
 
@@ -152,7 +153,7 @@ export function CrowdPanel({ crowd, resolved, topPitch }: { crowd: Plan["crowd"]
             <h3 className="font-medium">Who your fans are</h3>
             {ages.length > 0 && (
               <p className="text-muted-foreground">
-                Your fans skew {list(ages.map((a) => ageLabel(a.band)))}: the setlist favours songs from their era. Pitch your banter to suit.
+                Your fans skew {list(ages.map((a) => ageLabel(a.band)))}: the {PLAYLIST_COPY.suggestedSetNoun} favours songs from their era. Pitch your banter to suit.
               </p>
             )}
             <ul className="space-y-1" aria-label="Lean by age band and gender, against the average audience">

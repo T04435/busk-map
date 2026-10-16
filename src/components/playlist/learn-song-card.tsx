@@ -58,7 +58,7 @@ export function LearnSongCard({
         ))}
         {song.growth !== null && (
           <li>
-            <Badge variant="outline">{COPY.growth(song.growth)}</Badge>
+            <Badge variant="outline">{COPY.growth}</Badge>
           </li>
         )}
         {song.trendDelta !== null && (

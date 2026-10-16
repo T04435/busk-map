@@ -16,6 +16,7 @@ import { WhatYouGet } from "@/components/landing/what-you-get";
 import { EXAMPLES, exampleWhen, examplePlays } from "@/lib/examples";
 import { CALLS_ON_RERUN, CALLS_PER_NEW_BUSK, callKinds } from "@/lib/qloo-map";
 import { BrainSketch } from "@/components/honeycomb/brain-sketch";
+import { MotionPause } from "@/components/honeycomb/motion-pause";
 
 const H2 = "m-0 font-display text-[clamp(44px,5vw,72px)] leading-[0.92] font-extrabold uppercase";
 // The hex lattice behind the hero and the dark bands: a honeycomb in hairlines, one cell wide at 48.5px.
@@ -85,18 +86,25 @@ export default function Home() {
         </div>
       </section>
 
-      <div aria-hidden="true" className="overflow-hidden border-b-2 border-rule bg-primary py-3 text-primary-foreground">
-        <div className="hc-ticker flex gap-10 font-display text-[28px] leading-none font-extrabold whitespace-nowrap uppercase">
-          {[0, 1].map((copy) => (
-            <div key={copy} className="flex shrink-0 gap-10">
-              {TICKER.map((item) => (
-                <span key={item} className="flex gap-10">
-                  {item}
-                  <span>·</span>
-                </span>
-              ))}
-            </div>
-          ))}
+      {/* The ticker, with the one control that pauses every looping animation on the landing (WCAG 2.2.2). It sits on the page
+          ground, not the orange, so the focus ring shows. */}
+      <div className="flex items-stretch border-b-2 border-rule">
+        <div aria-hidden="true" className="min-w-0 flex-1 overflow-hidden bg-primary py-3 text-primary-foreground">
+          <div className="hc-ticker flex gap-10 font-display text-[28px] leading-none font-extrabold whitespace-nowrap uppercase">
+            {[0, 1].map((copy) => (
+              <div key={copy} className="flex shrink-0 gap-10">
+                {TICKER.map((item) => (
+                  <span key={item} className="flex gap-10">
+                    {item}
+                    <span>·</span>
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-none items-center border-l-2 border-rule bg-background px-2 text-foreground">
+          <MotionPause />
         </div>
       </div>
 

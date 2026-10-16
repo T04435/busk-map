@@ -421,6 +421,8 @@ html { scroll-padding-bottom: var(--bottom-nav); }
 .hc-flow-cell { animation-delay: calc(var(--g) * 0.08s); }
 .hc-flow-link { animation-delay: calc(var(--c) * 0.88s + 0.4s); }
 @media (prefers-reduced-motion: reduce) { .hc-flow-cell, .hc-flow-link { animation: none; } }
+/* The landing's one pause control (MotionPause) holds every loop where it is (WCAG 2.2.2): the ticker, the hero glow, the brain pulse. */
+:root[data-motion="paused"] :is(.hc-ticker, .hc-glow, .hc-flow-cell, .hc-flow-link) { animation-play-state: paused; }
 /* The sponsor's Qloo wordmark assembles once, when it scrolls into view (impeccable live, 17 Oct). Paths: 1 l, 2 Q, 3 and 4 the o's, 5 the purple bar. */
 @keyframes hc-qloo-rise { 0% { opacity: 0; transform: translateY(60%) scaleY(0.6); } 100% { opacity: 1; transform: none; } }
 @keyframes hc-qloo-bar { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }

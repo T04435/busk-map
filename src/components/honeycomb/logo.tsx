@@ -15,7 +15,7 @@ export type LogoProps = {
  * component. The mark alone is only the favicon and the app icon.
  */
 export function Logo({ size = 34, className, ground = "auto" }: LogoProps) {
-  const width = Math.round((size * 234.7) / 48);
+  const width = Math.round((size * 239.04) / 48);
   return (
     <span className={cn("inline-flex items-center", className)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}

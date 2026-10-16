@@ -6,7 +6,7 @@ import { cn } from "cn";
 import { activeNavId, NAV_ITEMS } from "@/components/honeycomb/nav-items";
 
 /**
- * The bottom bar under 721px: the main navigation on phones. Four items, never five, each at least 48px wide and the
+ * The bottom bar under 721px: the main navigation on phones. Three items, each at least 48px wide and the
  * full bar `size-nav` tall plus the safe-area inset. The current item says `aria-current="page"` and gets a boxed
  * orange tile behind its icon (with a 2px rule by day). Labels are mono caps.
  */
@@ -16,7 +16,8 @@ export function MobileNavView({ pathname }: { pathname: string | null }) {
     <nav
       aria-label="Main"
       data-mobile-nav=""
-      className="fixed inset-x-0 bottom-0 z-40 grid h-[calc(var(--size-nav)+env(safe-area-inset-bottom))] grid-cols-4 border-t-2 border-rule bg-card pb-[env(safe-area-inset-bottom)] min-[721px]:hidden"
+      data-theme={pathname === "/brain" || pathname?.startsWith("/brain/") ? "dark" : undefined}
+      className="fixed inset-x-0 bottom-0 z-40 grid h-[calc(var(--size-nav)+env(safe-area-inset-bottom))] grid-cols-3 border-t-2 border-rule bg-card pb-[env(safe-area-inset-bottom)] min-[721px]:hidden"
     >
       {NAV_ITEMS.map((item) => {
         const on = item.id === active;
@@ -32,7 +33,7 @@ export function MobileNavView({ pathname }: { pathname: string | null }) {
           >
             <span
               className={cn(
-                "grid h-[30px] w-12 place-items-center border-2",
+                "grid h-[30px] w-12 place-items-center border-2 transition-colors duration-200 ease-out motion-reduce:transition-none",
                 on ? "border-(--fill-rule) bg-primary text-primary-foreground" : "border-transparent"
               )}
             >

@@ -75,12 +75,11 @@ describe("RankTile and LeanBar", () => {
 });
 
 describe("navigation", () => {
-  it("has the four destinations, in order", () => {
+  it("has the three destinations, in order", () => {
     expect(NAV_ITEMS.map((i) => [i.label, i.href])).toEqual([
       ["Busks", "/busks"],
       ["Week", "/week"],
       ["Brain", "/brain"],
-      ["Tips", "/tips"],
     ]);
   });
 
@@ -92,7 +91,7 @@ describe("navigation", () => {
     expect(activeNavId("/p/abc123")).toBe("busks");
     expect(activeNavId("/week")).toBe("week");
     expect(activeNavId("/brain/")).toBe("brain");
-    expect(activeNavId("/tips")).toBe("tips");
+    expect(activeNavId("/tips")).toBeNull();
     expect(activeNavId("/pitchfork")).toBeNull();
   });
 
@@ -105,7 +104,7 @@ describe("navigation", () => {
       expect(out.match(/aria-current="page"/g)).toHaveLength(1);
       expect(out).toMatch(/aria-current="page"[^>]*>(?:(?!<\/a>).)*Week/);
       expect(out).toContain('aria-label="Main"');
-      for (const href of ["/busks", "/week", "/brain", "/tips"]) expect(out).toContain(`href="${href}"`);
+      for (const href of ["/busks", "/week", "/brain"]) expect(out).toContain(`href="${href}"`);
     });
 
     it(`${name} marks nothing on the landing page`, () => {

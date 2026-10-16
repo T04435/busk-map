@@ -8,20 +8,12 @@ export const metadata: Metadata = {
 
 const ITEMS = [
   {
-    title: "A device cookie",
-    body: "One small cookie (buskmap_tips) keeps the tip summary your plans use for the personal bonus. It is set by you logging a session, it stays on your device, and it holds no name or contact details.",
-  },
-  {
-    title: "Tips, in this browser only",
-    body: "The tip log is saved in your browser's own storage. It is never sent to a server as an account and never appears in a link.",
-  },
-  {
     title: "No accounts, no tracking",
     body: "There is nothing to sign up for. Busk Map has no advertising, no analytics profile and no tracking cookies.",
   },
   {
     title: "What a plan sends out",
-    body: "To make a plan, the act name, artists and the time you pick go to the data sources listed on the Terms page. Each plan is stored under its short link (the request, never your tips) so the link opens again.",
+    body: "To make a plan, the act name, artists and the time you pick go to the data sources listed on the Terms page. Each plan is stored under its short link (the request, nothing else) so the link opens again.",
   },
 ];
 

@@ -8,7 +8,7 @@ import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { PercentCell } from "@/components/honeycomb/percent-cell";
 import { Button } from "@/components/ui/button";
 import { geohashBounds } from "@/lib/geo";
-import type { Plan } from "@/lib/plan-schema";
+import type { Plan, PlanPitch } from "@/lib/plan-schema";
 
 /**
  * MapLibre map with OpenFreeMap tiles. The taste grid is a layer of pointy-top honeycomb cells in the five-step taste ramp
@@ -56,7 +56,8 @@ function hexagon(lat: number, lon: number, halfWidthDeg: number) {
 }
 
 type Props = {
-  plan: Pick<Plan, "tasteCells" | "pitches" | "others">;
+  /** Only what the map draws, so the landing can feed it a labelled example without a full plan. */
+  plan: Pick<Plan, "tasteCells" | "others"> & { pitches: Pick<PlanPitch, "id" | "name" | "lat" | "lon" | "score" | "discovery">[] };
   center: { lat: number; lon: number };
   selectedId: string | null;
   onSelect: (pitchId: string) => void;

@@ -424,7 +424,11 @@ Proposed `rate-limit.ts:learnRunGate`, the `freshRunGate` pattern:
 - **Per IP: 6 runs an hour**, `learnIpLimiter = createRateLimiter(6, 60 * 60_000)`, per instance like the other limiters.
 - **Free:** replays and joining an in-flight run never count. Offline test mode is never limited (the e2e tests share one IP), as in `freshRunGate`.
 - **Test fault:** `faults=learn-limit` (proposed `request.ts:LEARN_LIMIT_FAULT`, the `FRESH_LIMIT_FAULT` gate: only with `BUSKMAP_ALLOW_FAULTS=1`, never in production) forces a refusal with `retryAfterS = 2700` (`FORCED_LIMIT_RETRY_S`).
-- **Refusal:** HTTP 429 with `Retry-After` and `Cache-Control: no-store`, body `{ error: { code: "limit", message, retryAt, retryAfterS, limit: { max: 3, windowMinutes: 60, retryInMinutes } } }`. The message is relative (the B-013 rule): "You've started 3 runs this hour. Try again in about 40 minutes."
+- **Refusal:** HTTP 429 with `Retry-After` and `Cache-Control: no-store`, body `{ error: { code: "limit", message, retryAt, retryAfterS, limit: { scope, max, windowMinutes, retryInMinutes, resetAt } } }`. `scope` says which limit was hit:
+  - `"repertoire"` (max 3 an hour, counted from this Repertoire's stored runs): "You've started 3 runs this hour. Try again in about 40 minutes."
+  - `"ip"` (max 6 an hour from one network): worded so it doesn't blame the performer, e.g. "A lot of runs have started from this network in the last hour. Try again in about 25 minutes."
+
+  When both limits are hit, `scope` is the one that resets later. `resetAt` (ISO) equals `retryAt`; it's kept for BRAND's naming. Messages stay relative (the B-013 rule).
 - A WAF rule on `^/api/playlist/learn$` (`docs/deploy.md`), higher than 6, as for `/api/plan`.
 
 ### 2.11 When Qloo or the catalogues return nothing
@@ -711,7 +715,7 @@ Field notes (what the server can really know):
 
 | HTTP | `error.code` | Extra fields | LearnRunBar state |
 |---|---|---|---|
-| 429 (with `Retry-After`) | `limit` | `retryAt`, `retryAfterS`, `limit` {`max`, `windowMinutes`, `retryInMinutes`} | limit reached |
+| 429 (with `Retry-After`) | `limit` | `retryAt`, `retryAfterS`, `limit` {`scope`: `repertoire` \| `ip`, `max`, `windowMinutes`, `retryInMinutes`, `resetAt`} | limit reached (the copy depends on `scope`: the Repertoire's own 3 an hour, or the network's 6 an hour, worded not to blame the performer) |
 | 409 | `empty_playlist` | `minSongs` (3) | empty Repertoire |
 | 409 | `already_running` | `runId` | running (the client joins `…/runs/<runId>/events`) |
 | 409 | `list_full` | `pending`, `max` (40) | list full |
@@ -753,7 +757,7 @@ Field notes (what the server can really know):
 | done | `end.ok`, `mode: "agent"` (or `"mock"`, with the test-model wording) | `newCount`, new cards with `isNew` |
 | fallback | `end.ok`, `mode: "fallback"` | `end.message`, `end.code` |
 | nothing new | `end.ok`, `newCount: 0`, `code: "nothing_new"` | `skippedCount` |
-| limit | 429 `limit` | `limit.retryInMinutes`, `message` |
+| limit | 429 `limit` | `limit.scope` (`repertoire` \| `ip`), `limit.retryInMinutes`, `message` |
 | Qloo down | `end.ok: false`, `code: "qloo_unavailable"` (or `no_match`) | `message` |
 | error | `end.ok: false` with any other code, a 503, or a broken stream | `message` |
 | empty Repertoire | 409 `empty_playlist`, or fewer than 3 songs you can sing on the page | `minSongs` |
@@ -765,7 +769,7 @@ Field notes (what the server can really know):
 1. **`match_playlist` and `history` are server steps, not model tools.** They stream as normal steps, so the cards are the same, but the model never calls them: both are deterministic, and the history must always be in the context (it goes into the prompt). It saves two model steps per run.
 2. **`crowd_profile` is added** (optional, Qloo demographics, for era fit). It needs one plain card. The model may skip it.
 3. **No `error` event and no `plan` event:** the learn stream always ends with `end`. The plan stream has no `end` today and still ends with `plan` or `error`; the learn stream is a new route, so this is safe.
-4. **The limit and the other pre-run refusals are HTTP errors, not an `end` event** (`limit`, `empty_playlist`, `already_running`, `list_full`, `no_playlist`). No run starts, so there is no stream: this matches the plan route (B-013). The 429 body carries BRAND's `limit` {`max`, `windowMinutes`, `retryInMinutes`}. So `end.code` does not include `limit` or `empty_playlist`.
+4. **The limit and the other pre-run refusals are HTTP errors, not an `end` event** (`limit`, `empty_playlist`, `already_running`, `list_full`, `no_playlist`). No run starts, so there is no stream: this matches the plan route (B-013). The 429 body carries BRAND's `limit` {`max`, `windowMinutes`, `retryInMinutes`}, plus `scope` (`repertoire` | `ip`) and `resetAt`, so the UI can show BRAND's two different messages. So `end.code` does not include `limit` or `empty_playlist`.
 5. **`end` gains `runId`, `mode` and `message`**, and its `code` list adds `model_unavailable`, `no_match` and `nothing_new`. `code` is null on a clean run. `mode: "fallback"` is the "from the data alone" ending.
 6. **`suggestion` gains `rank`, `reason`, `trendDelta` and `status`.** `reason` is the AI's why line, separate from Qloo's `because`. `trendDelta` carries the rising signal, because `growth` is usually null live.
 7. **`because`, `year`, `durationMs`, `image`, `sourceUrl` and `growth` are nullable** (see the field notes): only Spotify has year, duration and art, explainability can be empty, and live `audience_growth` is 0.

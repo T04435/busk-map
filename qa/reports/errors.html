@@ -25,185 +25,188 @@ dl{margin:0;display:grid;gap:6px} dt{font-size:12px;color:var(--muted)} dd{margi
 .chip{font-weight:800;padding:1px 8px} .chip.ok{background:var(--okbg);color:var(--ok)} .chip.bad{background:var(--badbg);color:var(--bad)} .chip.warn{background:var(--warnbg);color:var(--warn)} .chip.held{background:var(--heldbg);color:var(--held)}
 .ph{border:2px dashed var(--muted);color:var(--muted);padding:24px 8px;text-align:center;font-weight:800}
 body.action .row[data-action="false"]{display:none}
+.ready{border:2px solid var(--line);background:var(--card);padding:12px 16px;margin:8px 0 14px} .ready.ready{border-color:var(--ok)} .ready.ready-with-notes{border-color:var(--warn)} .ready.not-ready{border-color:var(--bad)}
 .box{background:var(--card);border:1px solid var(--line);padding:12px 16px;margin-top:20px;overflow-x:auto} .box h2{font-size:16px;margin:0 0 6px}
+.prov{border-left:4px solid var(--accent);padding:6px 10px;background:var(--bg);font-size:13px} .synth{border:2px solid var(--fg);padding:8px 12px;margin:10px 0} .synth h3{margin:0 0 4px;font-size:14px} .box details{margin-top:10px} .box summary{font-weight:800;cursor:pointer;min-height:32px} .box h3,.box h4,.box h5,.box h6{font-size:14px;margin:12px 0 4px} .box table{margin:6px 0} .box code{font-size:12px}
 table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top}
 @media (max-width:1100px){.row{grid-template-columns:1fr 1fr} .id{grid-column:1/-1} dl{grid-column:1/-1}}
 @media (max-width:600px){.row{grid-template-columns:1fr}}
 </style></head>
 <body><div class="wrap">
 <h1>Errors · review</h1>
-<p class="ver">v3 · design/honeycomb ＠ 8207373 · 17 Oct 2026 · route /this-is-not-a-pitch (404), /plan?example=acoustic&amp;faults=render (route error), global-error.tsx (source), /p/ZZZZZZZZZ (plan not found), /plan?example=sax&amp;faults=fresh-limit (run limit)</p>
-<p class="chg">Recheck at 8207373. Now Present: N01, N12, E01, U01, R01 (F12 lockup, new lettering); N02, G01 (B-122 fixed, centred); E06, G04 (refresh icon); R06 (B-128 fixed, “1 plan”, “1 minute”); R09 (the alert no longer promises earlier plans). Different: N03 (the 404 numeral is in, but rust signal-text, not primary orange); N04, E02, G03 shadow still soft (B-053/B-054 open on the shadow only: the utility ignores the honeycomb --shadow-md token); G03 copy now about the whole app (B-124 fixed for the global error, open on the route error); N14, E13, G09 now B-155 (phone buttons and gutters); E08, G06 B-156 (mono label). Broken: N10, E10 by night (B-134: the primary button&#x27;s focus ring is its own orange, so nothing changes on focus); by day F14 is met (one 2 px ring).</p>
-<div class="strip" role="group" aria-label="Summary"><span class="stat ok">29 Present</span><span class="stat warn">25 Different</span><span class="stat bad">0 Missing</span><span class="stat bad">2 Broken</span><button class="filter" type="button" aria-pressed="false" id="flt">Needs action only</button></div>
-<p class="chg">Deck: BRAND&#x27;s crops from inventory/errors (App canvas NotFound, Error, GlobalError; Plan canvas NotFound, RunLimit). Build: QA&#x27;s own offline production export of 8207373; the route error comes from faults=render and the run limit from faults=fresh-limit (test only). The global error can&#x27;t be triggered offline: G rows are judged from global-error.tsx and the shared ErrorCard/StatusCard at 8207373. The row id is the ticket.</p>
+<p class="ver">v4 · design/honeycomb ＠ f83f1a1 · 17 Oct 2026 · route /this-is-not-a-pitch (404), /plan?example=acoustic&amp;faults=render (route error), global-error.tsx (source), /p/ZZZZZZZZZ (plan not found), /plan?example=sax&amp;faults=fresh-limit (run limit)</p>
+<p class="chg">DS parity and glyph rule applied (same commit): StatusCard, ErrorState, EmptyState, PlanNotFound, PlanAlert, AgentStatusLine and Button compared with BRAND&#x27;s DS specimens. Now Different against DS StatusCard: N04–N08, E02–E04, E05, G03 (B-212); R05 against DS Alert/PlanAlert (B-213); R08 against DS PlanAlert (B-213). PlanNotFound and Button match the DS. No glyph icons (U06&#x27;s arrow is an SVG). READY now Not ready. Full pass at f83f1a1. Fixed: B-138 and the shadow half of B-053/B-054 (cards show the 4 px ink offset, orange at night: N04, E02, G03, N11, E11); B-134 (one 2 px outline 2 px outside every button, so the night ring sits on the card, not the fill: N10, E10, U07, G08); B-123 (64 px solid lifted cell, 24 px title, muted 42ch body: N05–N07, E03–E05); B-124 on the route error too (“loading this page”, E05); B-125 (arrow on the plan not found&#x27;s home link, U06); B-126 (plan not found unboxed, 520 px, 44 px title, muted: U02, U04, U05); B-127 mostly (run limit at 760 px, status line under the alert, signal-text home link, alert near the top on phones: R05, R08, R11); B-098/F20 (run limit eyebrow “Fri 16 Oct · 5–8 pm · General permit”, R02). Still open: N03 colour (DEV deviation), B-155 (N14, E13, G09, U08), B-156 (E08, G06), R07 type. No Tips anywhere. Recorded DEV&#x27;s declared limit: the render error and /p/&lt;unknown&gt; answer HTTP 200 (/p is noindex). The impeccable critique and audit were run for real this round (skill v4.4.0, dual-agent, at f83f1a1, 390/768/1440; provenance at the top of both sections), replacing v3&#x27;s hand-written sections. New from impeccable, verified by QA: B-229 (Try again silent, focus lost), B-230 (ghost pin and wrong tab title on plan-not-found). DEV&#x27;s limit (HTTP 200 on /p/&lt;unknown&gt; and the render error, noindex) is accepted.</p>
+<section class="ready not-ready" aria-label="Ready for design-approve"><b>Ready for the user's design-approve? Not ready.</b> New user rule: every component must match its DS specimen. The 404 and route/global error cards differ on sight from DS StatusCard (centred, 64 px solid hex, 24 px title, muted body, shadow, footnote at the foot; DS: left-aligned, 72 px hex, 40–56 px title, footnote above the actions, arrow on the 404 home button): N04–N08, E02–E05, E08, G03, G06 (B-212). The board draws the centred version DEV followed, so the user must pick board or DS first. Smaller: run limit alert border (R05, B-213), home action placement (R08, B-213), status line font (R07), phone buttons (B-155), numeral colour (N03). Impeccable adds B-229 and B-230.</section>
+<div class="strip" role="group" aria-label="Summary"><span class="stat ok">37 Present</span><span class="stat warn">19 Different</span><span class="stat bad">0 Missing</span><span class="stat bad">0 Broken</span><button class="filter" type="button" aria-pressed="false" id="flt">Needs action only</button></div>
+<p class="chg">Deck: BRAND&#x27;s crops from inventory/errors (App canvas NotFound, Error, GlobalError; Plan canvas NotFound, RunLimit). Build: QA&#x27;s own offline production export of f83f1a1 (scratchpad/hc9, .next-qa); the route error comes from faults=render and the run limit from faults=fresh-limit (test only). The global error can&#x27;t be triggered offline: G rows are judged from global-error.tsx and the shared ErrorCard/StatusCard at f83f1a1. The row id is the ticket.</p>
 <article class="row" id="N01" data-action="true">
 <div class="id"><a href="#N01">N01</a><span>Header</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/N01.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/N01.jpg" alt="N01 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/N01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N01-1440.jpg" alt="N01 build 1440"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/N01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N01-1440.jpg" alt="N01 build 1440"></a></figure>
 <figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> The lockup is the design system&#x27;s file as an image (/brand/busk-map-lockup-*.svg, 36 px tall): hex mark + the new stencil wordmark; zoomed 4× (QA), the M sits level with the other letters, so the old lettering is gone and F12 is met. Nav Busks · Week · Brain · Tips, none active, as the spec.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> The lockup (/brand/busk-map-lockup-*.svg, B-135&#x27;s new files): hex mark + the new stencil wordmark, F12 met. Nav Busks · Week · Brain (Tips retired, no /tips link anywhere on the page). None active, as the spec.</dd></div>
 <div><dt>User's call</dt><dd class="call">F12 (corrected 17 Oct): the one logo is the lockup, hex mark + the new wordmark, in the header, footer and every asset; only the old wordmark lettering is retired. Wordmark-only or mark-only in a header fails (the board&#x27;s wordmark-only header is superseded).</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="N02" data-action="false">
 <div class="id"><a href="#N02">N02</a><span>Page layout</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/N02.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/N02.jpg" alt="N02 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/N02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N02-1440.jpg" alt="N02 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/N02-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N02-390.jpg" alt="N02 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/N02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N02-1440.jpg" alt="N02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/N02-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N02-390.jpg" alt="N02 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Header, main, then the bottom nav on phones. The 404 numeral and card are centred vertically in main (group centre 433 px, main centre 434 px at 1440); card column 576 px. The site footer follows (site chrome, F07).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Header, main (max 640 px, 64/24 px padding from 768; 32/16 on phones), centred vertically, then the footer; the bottom nav on phones. HTTP 404 with robots noindex.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-122 fixed at 8207373</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-122 fixed (v3)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="N03" data-action="true">
 <div class="id"><a href="#N03">N03</a><span>“404” numeral</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/N03.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/N03.jpg" alt="N03 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/N03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N03-1440.jpg" alt="N03 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/N03-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N03-390.jpg" alt="N03 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/N03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N03-1440.jpg" alt="N03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/N03-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N03-390.jpg" alt="N03 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>Deviation (3d59083): signal-text so it passes AA contrast by day</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “404” above the card, Big Shoulders 800, 160 px at 1440 and 96 px at 390 (clamp 20vw), centred, aria-hidden. Colour is signal-text rgb(177,58,0), a dark rust (5.2:1 on the page), not the board&#x27;s primary orange; the numeral is decorative (aria-hidden), so BRAND to say whether the board orange stands.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “404” above the card, Big Shoulders 800, 160 px at 1440 and 96 px at 390, line-height .85, centred, aria-hidden. Colour is still signal-text rgb(177,58,0), a dark rust, not the board&#x27;s primary orange. It&#x27;s decorative (aria-hidden), so the AA reason doesn&#x27;t bind: the user&#x27;s / BRAND&#x27;s eye.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-053 fixed at 8207373 (numeral)</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-053 (numeral colour only)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="N04" data-action="true">
 <div class="id"><a href="#N04">N04</a><span>Not-found card</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/N04.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/N04.jpg" alt="N04 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/N04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N04-1440.jpg" alt="N04 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/N04-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N04-390.jpg" alt="N04 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/N04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N04-1440.jpg" alt="N04 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/N04-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N04-390.jpg" alt="N04 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Card background, 2 px rule border, 40/24 px padding at 1440, content centred: as the board. The card has shadow-md, but it renders Tailwind&#x27;s soft default (0 4px 6px rgba(0,0,0,.1)), not the honeycomb token --shadow-md (4px 4px 0 ink; orange at night): the token is set on :root, not in @theme, so the utility never reads it.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Card background, 2 px rule border, 40/24 px padding at 1440, 576 px, content centred; matches the board. Shadow is now the honeycomb token: 4px 4px 0 ink by day, 4px 4px 0 orange (#ff6a2b) at night (measured), so the poster offset arrives. Differs from DS StatusCard (v62/v63 specimen, same copy): DS is left-aligned, max 560 px, 24 px padding, no shadow, a 72 px lifted hex (dashed for not-found, error tone for errors), title clamp(40px,7vw,56px), body 17/26 in the foreground colour, the mono footnote (12/16, label and digest) above the actions, and the 404 primary button with an arrow-right icon. The board&#x27;s App canvas draws the centred EmptyState card the build now follows (cb96ada), so board and DS disagree: BRAND/the user to pick. Here: centred vs left, 576 vs 560 px, 40/24 vs 24 px padding, shadow vs none.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-053 (open: shadow only), B-138</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-212 (B-053, B-138 fixed at f83f1a1)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="N05" data-action="true">
 <div class="id"><a href="#N05">N05</a><span>Pin hex</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/N05.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/N05.jpg" alt="N05 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/N05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N05-1440.jpg" alt="N05 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/N05-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N05-390.jpg" alt="N05 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/N05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N05-1440.jpg" alt="N05 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/N05-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N05-390.jpg" alt="N05 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> 72 px dashed hex with an orange-offset pin (the plan not found&#x27;s cell), now centred; board: 64 px solid lifted hex, orange offset behind, plain pin.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> 64 px solid lifted hex with the orange offset and the pin, as the board. Differs from DS StatusCard: 72 px lifted DASHED hex (tone dashed, pin 30 px).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-123</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-212 (B-123 fixed against the board)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="N06" data-action="true">
 <div class="id"><a href="#N06">N06</a><span>Title</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/N06.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/N06.jpg" alt="N06 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/N06-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N06-1440.jpg" alt="N06 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/N06-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N06-390.jpg" alt="N06 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/N06-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N06-1440.jpg" alt="N06 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/N06-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N06-390.jpg" alt="N06 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “No pitch here” is the page&#x27;s h1, centred. Set in Big Shoulders 56 px caps (40 px at 390); the board&#x27;s title is small (about 18 px) under the big numeral.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “No pitch here” is the page&#x27;s h1, centred, Big Shoulders 800 caps, 24 px at every width (the board&#x27;s small title). Differs from DS StatusCard: title clamp(40px,7vw,56px)/0.95, left-aligned.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-123</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-212</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="N07" data-action="true">
 <div class="id"><a href="#N07">N07</a><span>Body</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/N07.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/N07.jpg" alt="N07 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/N07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N07-1440.jpg" alt="N07 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/N07-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N07-390.jpg" alt="N07 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/N07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N07-1440.jpg" alt="N07 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/N07-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N07-390.jpg" alt="N07 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Copy exact: “This page doesn&#x27;t exist. It may have moved, or the link may be incomplete.” Centred now; still the full foreground colour (board muted).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Copy exact: “This page doesn&#x27;t exist. It may have moved, or the link may be incomplete.” Centred, muted rgb(86,96,106), 17/26, max 42ch (the board). Differs from DS StatusCard: 17/26 in the foreground colour, left-aligned, no 42ch cap. (The DS specimen&#x27;s bold body comes from a class clash in the DS bundle: .bm-status is also DataStatusBadge&#x27;s bold 13 px class, so bold isn&#x27;t the intent.)</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-123</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
-</dl></article><article class="row" id="N08" data-action="false">
+<div><dt>Defect</dt><dd>B-212</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="N08" data-action="true">
 <div class="id"><a href="#N08">N08</a><span>“Go to Busk Map home”</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/N08.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/N08.jpg" alt="N08 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/N08-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N08-1440.jpg" alt="N08 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/N08-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N08-390.jpg" alt="N08 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/N08-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N08-1440.jpg" alt="N08 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/N08-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N08-390.jpg" alt="N08 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> An &lt;a href=&quot;/&quot;&gt; styled as the primary Button (shadcn asChild), 44 px tall, centred; full width at 390.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> An &lt;a href=&quot;/&quot;&gt; styled as the primary Button (shadcn asChild), 44 px tall, natural width at 1440 and 768; matches DS Button primary. Differs from DS StatusCard: its 404 example gives this button iconEnd arrow-right (an SVG icon); the build has no arrow (the board has none either).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-212</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="N09" data-action="false">
 <div class="id"><a href="#N09">N09</a><span>“Try an example plan”</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/N09.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/N09.jpg" alt="N09 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/N09-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N09-1440.jpg" alt="N09 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/N09-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N09-390.jpg" alt="N09 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/N09-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N09-1440.jpg" alt="N09 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/N09-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N09-390.jpg" alt="N09 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> An &lt;a href=&quot;/plan?example=acoustic&quot;&gt; styled as the outline Button beside it; full width under it at 390.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> An &lt;a href=&quot;/plan?example=acoustic&quot;&gt; styled as the outline Button beside it.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="N10" data-action="true">
 <div class="id"><a href="#N10">N10</a><span>Focus</span></div>
 <figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/N10-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N10-1440.jpg" alt="N10 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/N10-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N10-390.jpg" alt="N10 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/N10-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N10-1440.jpg" alt="N10 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/N10-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N10-390.jpg" alt="N10 build 390"></a></figure>
 <dl>
 <div><dt>Spec</dt><dd class="spec">Not drawn. Both buttons: one focus ring, shadcn&#x27;s pattern (F14).</dd></div>
-<div><dt>DEV status</dt><dd>DEV: the default button&#x27;s focus ring at night isn&#x27;t verified yet.</dd></div>
-<div><dt>QA status</dt><dd><span class="chip bad">Broken</span> By day F14 is met: one 2 px ink ring (box-shadow 0 0 0 2px), no second layer, on both links. By night the primary link&#x27;s ring is rgb(255,106,43), the same orange as its fill, sitting flush against it: the focused button only grows 2 px and looks unchanged (night crops in the field-strip section: off, then on; 1:1 against the fill). The outline link&#x27;s orange ring reads fine (5.8:1 on the card). The field strip counts a ring, so it passes there.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> One 2 px outline in the ring token, 2 px outside the button (outline-offset 2px, no ring box-shadow): ink by day; at night orange rgb(255,106,43) sitting on the card ground rgb(24,32,37), a clear gap from the orange fill (night crops in the field-strip section). Field strip 2/2 pass.</dd></div>
 <div><dt>User's call</dt><dd class="call">F14: one focus ring, shadcn&#x27;s own pattern (F15: shadcn Button, no hand-built states).</dd></div>
-<div><dt>Defect</dt><dd>B-134</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-134 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="N11" data-action="false">
 <div class="id"><a href="#N11">N11</a><span>Night theme</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/N11.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/N11.jpg" alt="N11 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/N11-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N11-1440.jpg" alt="N11 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/N11-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N11-390.jpg" alt="N11 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/N11-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N11-1440.jpg" alt="N11 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/N11-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N11-390.jpg" alt="N11 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night tokens (body #0f1416, card #182025), lockup on the dark header; axe clean. Carries N03–N07&#x27;s differences; the soft shadow is invisible at night (the token would be a 4 px orange offset, N04); primary focus: N10.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night tokens (body #0f1416, card #182025, cream border), lockup on the dark header, the card&#x27;s orange 4 px offset; axe clean. Carries N03&#x27;s numeral colour and B-212.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="N12" data-action="true">
 <div class="id"><a href="#N12">N12</a><span>Phone header (≤720px)</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/N12.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/N12.jpg" alt="N12 deck"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/N12-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N12-390.jpg" alt="N12 build 390"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/N12-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N12-390.jpg" alt="N12 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Below 768 px the header nav hides and only the lockup stays (new lettering, F12 met). Breakpoint 768, board 721; at 768 both read the same.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Below 721 px (be63a53, the board&#x27;s switch) the header nav hides and only the lockup stays; at 768 the nav shows.</dd></div>
 <div><dt>User's call</dt><dd class="call">F12 (corrected 17 Oct): the one logo is the lockup, hex mark + the new wordmark, in the header, footer and every asset; only the old wordmark lettering is retired. Wordmark-only or mark-only in a header fails (the board&#x27;s wordmark-only header is superseded).</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="N13" data-action="false">
 <div class="id"><a href="#N13">N13</a><span>Bottom nav (≤720px)</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/N13.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/N13.jpg" alt="N13 deck"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/N13-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N13-390.jpg" alt="N13 build 390"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/N13-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N13-390.jpg" alt="N13 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Fixed at the bottom, Busks · Week · Brain · Tips, no item current. Shows under 768 px (board: under 721).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Fixed at the bottom, Busks · Week · Brain, no item current.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="N14" data-action="true">
 <div class="id"><a href="#N14">N14</a><span>Phone layout (≤720px)</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/N14.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/N14.jpg" alt="N14 deck"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/N14-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/N14-390.jpg" alt="N14 build 390"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/N14-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/N14-390.jpg" alt="N14 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> The numeral scales to 96 px, everything is centred, no sideways scroll. The wrapped links stretch to the full card width (shadcn max-sm:w-full) and the gutters are 16 px; board: natural-width buttons, centred, 24 px gutters.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Numeral 96 px, centred, no sideways scroll. The links still stretch to the card&#x27;s full width (306 px, shadcn max-sm:w-full) and the gutters are 16 px; board: natural-width buttons, wrapped and centred, 24 px gutters; DS StatusCard at 390 also keeps natural-width buttons.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-155</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-155, B-212</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="N15" data-action="false">
 <div class="id"><a href="#N15">N15</a><span>Reduced motion</span></div>
 <figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
@@ -212,106 +215,106 @@ table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8
 <dl>
 <div><dt>Spec</dt><dd class="spec">No motion on this page.</dd></div>
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> No animations on the page (document.getAnimations() is empty with motion allowed).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> No animations on the page (document.getAnimations() empty with motion allowed).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="E01" data-action="true">
 <div class="id"><a href="#E01">E01</a><span>Header</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/E01.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/E01.jpg" alt="E01 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/E01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E01-1440.jpg" alt="E01 build 1440"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/E01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E01-1440.jpg" alt="E01 build 1440"></a></figure>
 <figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> The lockup is the design system&#x27;s file as an image (/brand/busk-map-lockup-*.svg, 36 px tall): hex mark + the new stencil wordmark; zoomed 4× (QA), the M sits level with the other letters, so the old lettering is gone and F12 is met. Busks is active because the failing page was /plan (the header follows the URL; the board draws no item active).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> The lockup (/brand/busk-map-lockup-*.svg, B-135&#x27;s new files): hex mark + the new stencil wordmark, F12 met. Nav Busks · Week · Brain (Tips retired, no /tips link anywhere on the page). Busks is active because the failing page was /plan (the header follows the URL; the board draws none active).</dd></div>
 <div><dt>User's call</dt><dd class="call">F12 (corrected 17 Oct): the one logo is the lockup, hex mark + the new wordmark, in the header, footer and every asset; only the old wordmark lettering is retired. Wordmark-only or mark-only in a header fails (the board&#x27;s wordmark-only header is superseded).</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="E02" data-action="true">
 <div class="id"><a href="#E02">E02</a><span>Error card</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/E02.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/E02.jpg" alt="E02 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/E02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E02-1440.jpg" alt="E02 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/E02-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E02-390.jpg" alt="E02 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/E02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E02-1440.jpg" alt="E02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/E02-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E02-390.jpg" alt="E02 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Card background, 2 px rule border, role alert, 40/24 px padding, centred, the reference under a rule at the foot: as the board. The card has shadow-md, but it renders Tailwind&#x27;s soft default (0 4px 6px rgba(0,0,0,.1)), not the honeycomb token --shadow-md (4px 4px 0 ink; orange at night): the token is set on :root, not in @theme, so the utility never reads it.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Card background, 2 px rule border, role alert, 40/24 px padding (board 40/24/28 bottom), 20 px gap, centred, the reference under a rule at the foot. Shadow is now the honeycomb token: 4px 4px 0 ink by day, 4px 4px 0 orange (#ff6a2b) at night (measured), so the poster offset arrives. HTTP 200 (DEV&#x27;s declared limit: Next&#x27;s PPR shell commits before the page code runs, so the status can&#x27;t change); no robots meta on this response. Differs from DS StatusCard (v62/v63 specimen, same copy): DS is left-aligned, max 560 px, 24 px padding, no shadow, a 72 px lifted hex (dashed for not-found, error tone for errors), title clamp(40px,7vw,56px), body 17/26 in the foreground colour, the mono footnote (12/16, label and digest) above the actions, and the 404 primary button with an arrow-right icon. The board&#x27;s App canvas draws the centred EmptyState card the build now follows (cb96ada), so board and DS disagree: BRAND/the user to pick.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-054, B-138 (open: shadow only)</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-212 (B-054, B-138 fixed at f83f1a1)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="E03" data-action="true">
 <div class="id"><a href="#E03">E03</a><span>Warning hex</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/E03.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/E03.jpg" alt="E03 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/E03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E03-1440.jpg" alt="E03 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/E03-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E03-390.jpg" alt="E03 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/E03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E03-1440.jpg" alt="E03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/E03-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E03-390.jpg" alt="E03 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Error-tone lifted hex with the warning triangle (TriangleAlert), as the board; but 72 px (board 64 px), the shared StatusCard size.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> 64 px lifted hex in the error tone with the warning triangle, as the board. Differs from DS StatusCard: 72 px.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-123</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-212</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="E04" data-action="true">
 <div class="id"><a href="#E04">E04</a><span>Title</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/E04.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/E04.jpg" alt="E04 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/E04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E04-1440.jpg" alt="E04 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/E04-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E04-390.jpg" alt="E04 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/E04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E04-1440.jpg" alt="E04 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/E04-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E04-390.jpg" alt="E04 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Something went wrong” is the h1 (as the spec) inside the role alert card, centred; 56 px display caps, two lines at 390 (board: small).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Something went wrong” is the h1 inside the role alert card, 24 px display caps, centred (the board). Differs from DS StatusCard: clamp(40px,7vw,56px), left-aligned (two lines at 390).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-123</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
-</dl></article><article class="row" id="E05" data-action="true">
+<div><dt>Defect</dt><dd>B-212</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="E05" data-action="false">
 <div class="id"><a href="#E05">E05</a><span>Body</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/E05.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/E05.jpg" alt="E05 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/E05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E05-1440.jpg" alt="E05 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/E05-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E05-390.jpg" alt="E05 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/E05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E05-1440.jpg" alt="E05 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/E05-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E05-390.jpg" alt="E05 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Copy matches the board: “Something went wrong while setting up the pitch. Try again, or start over from the home page.” Centred, not muted. The route error boundary is app/error.tsx, so this “pitch” sentence shows for a failure on any page.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “Something went wrong loading this page. Try again, or start over from the home page.” Muted, 42ch, centred. The board&#x27;s “while setting up the pitch” is replaced, as BRAND asked, because error.tsx catches every page (the DS specimen still has the pitch sentence: BRAND&#x27;s B-124 call stands). Differs from DS StatusCard: foreground colour, left-aligned.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-123, B-124</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-212 (B-124 fixed at f83f1a1)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="E06" data-action="false">
 <div class="id"><a href="#E06">E06</a><span>“Try again”</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/E06.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/E06.jpg" alt="E06 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/E06-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E06-1440.jpg" alt="E06 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/E06-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E06-390.jpg" alt="E06 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/E06-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E06-1440.jpg" alt="E06 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/E06-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E06-390.jpg" alt="E06 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> A &lt;button&gt;, primary, with the refresh icon (RotateCw), calls retry() (Next 16&#x27;s prop, per the bundled docs).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> A &lt;button&gt;, primary, with the refresh icon (RotateCw), calls retry() (Next 16&#x27;s prop).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-125 fixed at 8207373 (refresh icon)</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="E07" data-action="false">
 <div class="id"><a href="#E07">E07</a><span>“Go home”</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/E07.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/E07.jpg" alt="E07 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/E07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E07-1440.jpg" alt="E07 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/E07-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E07-390.jpg" alt="E07 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/E07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E07-1440.jpg" alt="E07 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/E07-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E07-390.jpg" alt="E07 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> An &lt;a href=&quot;/&quot;&gt; styled as the outline Button.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="E08" data-action="true">
 <div class="id"><a href="#E08">E08</a><span>Reference line</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/E08.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/E08.jpg" alt="E08 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/E08-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E08-1440.jpg" alt="E08 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/E08-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E08-390.jpg" alt="E08 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/E08-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E08-1440.jpg" alt="E08 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/E08-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E08-390.jpg" alt="E08 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Reference: 2403440468” at the foot under a 1 px rule, centred, 13 px muted: as the board. The “Reference:” label is mono too (board: sans label, mono digest).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Reference: 190861489” at the foot under a 1 px rule, centred, 13 px muted, as the board. The “Reference:” label is JetBrains Mono like the digest (board: sans label). Differs from DS StatusCard in place and size: DS puts the footnote ABOVE the actions, 12/16 mono 500, no rule; its label is mono too, so DS sides with the build on B-156 (BRAND to re-rule B-156).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-156</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-212, B-156 (board; DS agrees with the build)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="E09" data-action="false">
 <div class="id"><a href="#E09">E09</a><span>Error digest</span></div>
 <figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
@@ -319,59 +322,59 @@ table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8
 <figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
 <dl>
 <div><dt>Spec</dt><dd class="spec">The reference is the error&#x27;s digest (matches the server log). While null, hide the line.</dd></div>
-<div><dt>DEV status</dt><dd>errorNote not done yet (DEV)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> From the source: the line renders only when error.digest is set (footnote null otherwise); the server render error showed its digest. A client error (no digest) can&#x27;t be forced offline. The board&#x27;s errorNote is a note for DEV, not on-page copy; DEV says it isn&#x27;t done yet, and nothing on the page depends on it.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> From the source: the line renders only when error.digest is set; the server render error showed its digest. A client error (no digest) can&#x27;t be forced offline.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="E10" data-action="true">
 <div class="id"><a href="#E10">E10</a><span>Focus</span></div>
 <figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/E10-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E10-1440.jpg" alt="E10 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/E10-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E10-390.jpg" alt="E10 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/E10-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E10-1440.jpg" alt="E10 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/E10-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E10-390.jpg" alt="E10 build 390"></a></figure>
 <dl>
 <div><dt>Spec</dt><dd class="spec">Not drawn. One focus ring on both buttons (F14).</dd></div>
-<div><dt>DEV status</dt><dd>DEV: the default button&#x27;s focus ring at night isn&#x27;t verified yet.</dd></div>
-<div><dt>QA status</dt><dd><span class="chip bad">Broken</span> By day: one 2 px ink ring on Try again and Go home (F14 met). By night Try again (primary) has an orange ring on an orange fill: no visible change on focus (as N10).</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> One 2 px outline in the ring token, 2 px outside the button (outline-offset 2px, no ring box-shadow): ink by day; at night orange rgb(255,106,43) sitting on the card ground rgb(24,32,37), a clear gap from the orange fill (night crops in the field-strip section). Same on Try again and Go home.</dd></div>
 <div><dt>User's call</dt><dd class="call">F14: one focus ring, shadcn&#x27;s own pattern (F15: shadcn Button, no hand-built states).</dd></div>
-<div><dt>Defect</dt><dd>B-134</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-134 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="E11" data-action="false">
 <div class="id"><a href="#E11">E11</a><span>Night theme</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/E11.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/E11.jpg" alt="E11 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/E11-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E11-1440.jpg" alt="E11 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/E11-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E11-390.jpg" alt="E11 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/E11-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E11-1440.jpg" alt="E11 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/E11-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E11-390.jpg" alt="E11 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night tokens; axe clean at 390 and 1440. Carries E02&#x27;s shadow and E10&#x27;s primary focus.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night tokens, orange card offset, visible night focus; axe clean at 390 and 1440. Carries B-212.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="E12" data-action="false">
 <div class="id"><a href="#E12">E12</a><span>Bottom nav (≤720px)</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/E12.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/E12.jpg" alt="E12 deck"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/E12-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E12-390.jpg" alt="E12 build 390"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/E12-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E12-390.jpg" alt="E12 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Fixed at the bottom; header nav hidden. Busks is current because the failing URL is /plan (board: none current).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="E13" data-action="true">
 <div class="id"><a href="#E13">E13</a><span>Phone layout (≤720px)</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/E13.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/E13.jpg" alt="E13 deck"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/E13-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/E13-390.jpg" alt="E13 build 390"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/E13-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/E13-390.jpg" alt="E13 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Card 358 px wide (16 px gutters, board 24), centred; Try again and Go home stack full width (board: natural width, wrapped, centred). No sideways scroll.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Card 358 px wide (16 px gutters, board 24), centred; Try again and Go home stack full width (306 px; board and DS StatusCard: natural width). No sideways scroll.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-155</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-155, B-212</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="G01" data-action="false">
 <div class="id"><a href="#G01">G01</a><span>No layout</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/G01.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/G01.jpg" alt="G01 deck"></a></figure>
@@ -380,10 +383,10 @@ table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> From the source: global-error.tsx renders its own &lt;html&gt;/&lt;body class=&quot;flex min-h-full flex-col&quot;&gt;, no header, nav or footer; the card&#x27;s &lt;main&gt; is flex-1 with justify-center, so it sits centred on the background, as the board.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> From the source: global-error.tsx renders its own &lt;html&gt;/&lt;body class=&quot;flex min-h-full flex-col&quot;&gt;, no header, nav or footer; the card&#x27;s &lt;main&gt; is flex-1 justify-center, centred on the background.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-122 fixed at 8207373</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="G02" data-action="false">
 <div class="id"><a href="#G02">G02</a><span>System font fallback</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/G02.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/G02.jpg" alt="G02 deck"></a></figure>
@@ -392,10 +395,10 @@ table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> From the source: the html element sets system-ui, -apple-system, “Segoe UI”, Roboto, sans-serif and maps --font-display/--font-sans to it (mono to the ui-monospace stack); the title stays bold caps.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> From the source: the html sets system-ui, -apple-system, “Segoe UI”, Roboto, sans-serif and maps --font-display/--font-sans to it (mono to the ui-monospace stack); the title stays bold caps.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="G03" data-action="true">
 <div class="id"><a href="#G03">G03</a><span>Error card</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/G03.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/G03.jpg" alt="G03 deck"></a></figure>
@@ -404,10 +407,10 @@ table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> From the source: the same ErrorCard as E02 (soft shadow, B-054). The copy is now its own: “Something went wrong loading Busk Map. Try again, or start over from the home page.” (GLOBAL_ERROR_DESCRIPTION), so it no longer talks about a pitch (BRAND&#x27;s call over the board&#x27;s sentence).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> From the source: the same ErrorCard/StatusCard as E02 (so the same DS StatusCard differences, B-212), so the 64 px cell, small title, muted body and the hard 4 px shadow token (globals.css is imported). Copy is its own: “Something went wrong loading Busk Map. Try again, or start over from the home page.” (BRAND&#x27;s call over the board&#x27;s pitch sentence).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-124 fixed at 8207373 (global error); B-054 (shadow)</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-212 (B-054, B-124 fixed)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="G04" data-action="false">
 <div class="id"><a href="#G04">G04</a><span>“Try again”</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/G04.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/G04.jpg" alt="G04 deck"></a></figure>
@@ -416,10 +419,10 @@ table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> From the source: a &lt;button&gt;, primary, with the RotateCw refresh icon, calls retry().</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> From the source: a &lt;button&gt;, primary, RotateCw icon, calls retry().</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-125 fixed at 8207373 (refresh icon)</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="G05" data-action="false">
 <div class="id"><a href="#G05">G05</a><span>“Go home”</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/G05.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/G05.jpg" alt="G05 deck"></a></figure>
@@ -431,7 +434,7 @@ table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> From the source: a plain &lt;a href=&quot;/&quot;&gt; (plainLinks), so a full page load, styled as the outline Button.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="G06" data-action="true">
 <div class="id"><a href="#G06">G06</a><span>Reference line</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/G06.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/G06.jpg" alt="G06 deck"></a></figure>
@@ -440,10 +443,10 @@ table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> From the source: as E08 (at the foot under a rule; the label is mono).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> From the source: as E08 (at the foot under a rule, 13 px; DS StatusCard: above the actions, 12/16, no rule; label mono in both).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-156</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-212, B-156</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="G07" data-action="false">
 <div class="id"><a href="#G07">G07</a><span>Error digest</span></div>
 <figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
@@ -455,7 +458,7 @@ table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> From the source: same ErrorCard, the line renders only when the digest is set.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="G08" data-action="false">
 <div class="id"><a href="#G08">G08</a><span>Night theme</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/G08.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/G08.jpg" alt="G08 deck"></a></figure>
@@ -464,10 +467,10 @@ table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> From the source: globals.css is imported and follows prefers-color-scheme with no layout script; not rendered (can&#x27;t trigger offline). Carries E10&#x27;s night focus on Try again.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> From the source: globals.css follows prefers-color-scheme; the shared Button&#x27;s outline focus (B-134 fix) applies. Not rendered (can&#x27;t trigger offline).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="G09" data-action="true">
 <div class="id"><a href="#G09">G09</a><span>Phone layout (≤720px)</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/G09.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/G09.jpg" alt="G09 deck"></a></figure>
@@ -476,142 +479,142 @@ table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> From the source: same card, 16 px gutters, buttons full width under 640 px (max-sm:w-full), no bottom nav (the layout is gone).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> From the source: same card, 16 px gutters, buttons full width under 640 px (max-sm:w-full), no bottom nav.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>B-155</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="U01" data-action="true">
 <div class="id"><a href="#U01">U01</a><span>Header</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/U01.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/U01.jpg" alt="U01 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/U01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/U01-1440.jpg" alt="U01 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/U01-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/U01-390.jpg" alt="U01 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/U01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/U01-1440.jpg" alt="U01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/U01-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/U01-390.jpg" alt="U01 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Busks active, as the spec. The lockup is the design system&#x27;s file as an image (/brand/busk-map-lockup-*.svg, 36 px tall): hex mark + the new stencil wordmark; zoomed 4× (QA), the M sits level with the other letters, so the old lettering is gone and F12 is met.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Busks active, as the spec. The lockup (/brand/busk-map-lockup-*.svg, B-135&#x27;s new files): hex mark + the new stencil wordmark, F12 met. Nav Busks · Week · Brain (Tips retired, no /tips link anywhere on the page).</dd></div>
 <div><dt>User's call</dt><dd class="call">F12 (corrected 17 Oct): the one logo is the lockup, hex mark + the new wordmark, in the header, footer and every asset; only the old wordmark lettering is retired. Wordmark-only or mark-only in a header fails (the board&#x27;s wordmark-only header is superseded).</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
-</dl></article><article class="row" id="U02" data-action="true">
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="U02" data-action="false">
 <div class="id"><a href="#U02">U02</a><span>Plan not found</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/U02.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/U02.jpg" alt="U02 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/U02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/U02-1440.jpg" alt="U02 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/U02-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/U02-390.jpg" alt="U02 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/U02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/U02-1440.jpg" alt="U02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/U02-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/U02-390.jpg" alt="U02 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Now centred (vertically and horizontally), but still inside the shared bordered card (card background, 2 px rule, 40/24 px padding, soft shadow), 576 px wide; board: no card, on the page background, max 520 px, 48 px top padding. HTTP 200.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> No card: on the page background, centred, max 520 px, 48 px top padding (py-12), as the board and DS PlanNotFound (72 px lifted dashed pin hex, 44 px balanced title, muted 42ch body, primary button with arrow-right: all match). HTTP 200 (DEV&#x27;s declared limit: Next&#x27;s PPR shell commits before the page code runs, so the status can&#x27;t change) with &lt;meta name=&quot;robots&quot; content=&quot;noindex&quot;&gt;, so search engines drop it; acceptable.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-126</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-126 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="U03" data-action="false">
 <div class="id"><a href="#U03">U03</a><span>Dashed pin hex</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/U03.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/U03.jpg" alt="U03 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/U03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/U03-1440.jpg" alt="U03 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/U03-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/U03-390.jpg" alt="U03 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/U03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/U03-1440.jpg" alt="U03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/U03-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/U03-390.jpg" alt="U03 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> 72 px lifted dashed hex with the pin, centred, as the board.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
-</dl></article><article class="row" id="U04" data-action="true">
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="U04" data-action="false">
 <div class="id"><a href="#U04">U04</a><span>Title</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/U04.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/U04.jpg" alt="U04 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/U04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/U04-1440.jpg" alt="U04 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/U04-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/U04-390.jpg" alt="U04 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/U04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/U04-1440.jpg" alt="U04 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/U04-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/U04-390.jpg" alt="U04 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> h1 “We can&#x27;t find this busk”, Big Shoulders 800 caps, centred, but 56 px (40 at 390; board 44 px).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> h1 “We can&#x27;t find this busk”, Big Shoulders 800 caps, 44 px at 1440 and 768 (clamp, 36 px at 390), centred.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-126</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
-</dl></article><article class="row" id="U05" data-action="true">
+<div><dt>Defect</dt><dd>B-126 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="U05" data-action="false">
 <div class="id"><a href="#U05">U05</a><span>Body</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/U05.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/U05.jpg" alt="U05 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/U05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/U05-1440.jpg" alt="U05 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/U05-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/U05-390.jpg" alt="U05 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/U05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/U05-1440.jpg" alt="U05 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/U05-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/U05-390.jpg" alt="U05 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Copy exact: “The link may be cut short or mistyped. Check you copied all of it, or start a new busk.” 17/26 and centred as the board, but the full foreground colour (board muted).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Copy exact: “The link may be cut short or mistyped. Check you copied all of it, or start a new busk.” 17/26, muted, 42ch, centred.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-126</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
-</dl></article><article class="row" id="U06" data-action="true">
+<div><dt>Defect</dt><dd>B-126 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="U06" data-action="false">
 <div class="id"><a href="#U06">U06</a><span>“Go to Busk Map home”</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/U06.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/U06.jpg" alt="U06 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/U06-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/U06-1440.jpg" alt="U06 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/U06-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/U06-390.jpg" alt="U06 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/U06-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/U06-1440.jpg" alt="U06 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/U06-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/U06-390.jpg" alt="U06 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> An &lt;a href=&quot;/&quot;&gt; styled as the primary Button. Still no arrow-right icon.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> An &lt;a href=&quot;/&quot;&gt; styled as the primary Button with the arrow-right icon, a lucide ArrowRight SVG (aria-hidden), not a “→” glyph, so the glyph rule is met; the link text is just “Go to Busk Map home”. Matches DS PlanNotFound (iconEnd arrow-right).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-125 (open: arrow only)</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-125 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="U07" data-action="false">
 <div class="id"><a href="#U07">U07</a><span>Night theme</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/U07.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/U07.jpg" alt="U07 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/U07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/U07-1440.jpg" alt="U07 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/U07-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/U07-390.jpg" alt="U07 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/U07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/U07-1440.jpg" alt="U07 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/U07-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/U07-390.jpg" alt="U07 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night tokens; axe clean. Carries U02&#x27;s differences and E10&#x27;s night focus on the primary link.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night tokens; axe clean; the primary link&#x27;s orange outline sits 2 px out on the dark ground (B-134 fixed).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="U08" data-action="true">
 <div class="id"><a href="#U08">U08</a><span>Phone layout (≤720px)</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/U08.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/U08.jpg" alt="U08 deck"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/U08-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/U08-390.jpg" alt="U08 build 390"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/U08-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/U08-390.jpg" alt="U08 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Phone header and the bottom nav (Busks current), as the spec asks; stacks centred, but boxed in the card with a full-width button (board: no card, natural-width button).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Phone header and the bottom nav (Busks current), unboxed and centred, the title wraps (36 px). The home button stretches full width (358 px, max-sm:w-full); board: natural width.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-126, B-155</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-155</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="R01" data-action="true">
 <div class="id"><a href="#R01">R01</a><span>Header</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/R01.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/R01.jpg" alt="R01 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/R01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/R01-1440.jpg" alt="R01 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/R01-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/R01-390.jpg" alt="R01 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/R01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/R01-1440.jpg" alt="R01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/R01-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/R01-390.jpg" alt="R01 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Busks active, as the spec. The lockup is the design system&#x27;s file as an image (/brand/busk-map-lockup-*.svg, 36 px tall): hex mark + the new stencil wordmark; zoomed 4× (QA), the M sits level with the other letters, so the old lettering is gone and F12 is met.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Busks active, as the spec. The lockup (/brand/busk-map-lockup-*.svg, B-135&#x27;s new files): hex mark + the new stencil wordmark, F12 met. Nav Busks · Week · Brain (Tips retired, no /tips link anywhere on the page).</dd></div>
 <div><dt>User's call</dt><dd class="call">F12 (corrected 17 Oct): the one logo is the lockup, hex mark + the new wordmark, in the header, footer and every asset; only the old wordmark lettering is retired. Wordmark-only or mark-only in a header fails (the board&#x27;s wordmark-only header is superseded).</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="R02" data-action="true">
 <div class="id"><a href="#R02">R02</a><span>Plan eyebrow</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/R02.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/R02.jpg" alt="R02 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/R02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/R02-1440.jpg" alt="R02 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/R02-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/R02-390.jpg" alt="R02 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/R02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/R02-1440.jpg" alt="R02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/R02-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/R02-390.jpg" alt="R02 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “MELBOURNE · FRIDAY 2026-10-16, 5 PM–8 PM · GENERAL PERMIT”: mono bold caps muted, the requested plan&#x27;s city · day · hours · permit. ISO date with the full weekday and “5 PM–8 PM” (board “Sat 18 Oct · 6–9 pm”); the plan page&#x27;s eyebrow format. The city is the plan&#x27;s own, so F20 is met.</dd></div>
-<div><dt>User's call</dt><dd class="call">F20: no “Melbourne” in eyebrows unless the data is that city&#x27;s (here it is the plan&#x27;s city).</dd></div>
-<div><dt>Defect</dt><dd>B-098</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “Fri 16 Oct · 5–8 pm · General permit”, mono bold caps muted: day · hours · permit in the board&#x27;s format. The city is dropped (B-098&#x27;s ruling for plan eyebrows; F20 only allowed it).</dd></div>
+<div><dt>User's call</dt><dd class="call">F20: no “Melbourne” in eyebrows unless the data is that city&#x27;s.</dd></div>
+<div><dt>Defect</dt><dd>B-098 fixed</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="R03" data-action="false">
 <div class="id"><a href="#R03">R03</a><span>Act title</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/R03.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/R03.jpg" alt="R03 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/R03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/R03-1440.jpg" alt="R03 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/R03-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/R03-390.jpg" alt="R03 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/R03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/R03-1440.jpg" alt="R03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/R03-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/R03-390.jpg" alt="R03 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> h1 “SOUL AND FUNK SAX PLAYER” (the sax example), Big Shoulders 56 px caps (40 at 390).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> h1 “Soul and funk sax player” (the sax example), Big Shoulders 56 px caps (46 at 768, 40 at 390).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="R04" data-action="false">
 <div class="id"><a href="#R04">R04</a><span>Requested plan</span></div>
 <figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
@@ -620,22 +623,22 @@ table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8
 <dl>
 <div><dt>Spec</dt><dd class="spec">Eyebrow and title come from the plan request. While null, show only the alert and the home link.</dd></div>
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Eyebrow and title come from the request (city, date, hours, permit, act). The null case (no request in hand) isn&#x27;t reachable: the page always parses a request before rendering.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Eyebrow and title come from the request. The null case isn&#x27;t reachable: the page always parses a request before rendering.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="R05" data-action="true">
 <div class="id"><a href="#R05">R05</a><span>Plan limit alert</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/R05.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/R05.jpg" alt="R05 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/R05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/R05-1440.jpg" alt="R05 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/R05-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/R05-390.jpg" alt="R05 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/R05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/R05-1440.jpg" alt="R05 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/R05-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/R05-390.jpg" alt="R05 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Warning alert, clock icon, “Plan limit reached”, “You&#x27;ve started 5 plans this hour. Try again in about 45 minutes.” (45 is the test fault&#x27;s wait; the “or open one of your earlier plans” clause is gone, see R09). The alert still spans the full content width (1120 px at 1440; board max 760), holds the home button, and sits under the Plan my week instead · Tip log buttons, the status line and the offline test-data banner and alert.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Differs from DS PlanAlert (limit) / DS Alert: the warning border is the full tone rgb(168,22,79) at 2 px; DS mixes the tone 45% into the card (about rgb(213,151,166) by day), so the build&#x27;s frame is much darker; the tint matches. DS copy also keeps “…or open one of your earlier plans.” (R09 open question). Warning alert, clock icon, max 760 px: “Plan limit reached”, “You&#x27;ve started 5 plans this hour. Try again in about 45 minutes.” (45 is the test fault&#x27;s wait; no earlier-plans clause, R09). The act buttons are gone; only the offline “Qloo test data” banner sits above it (test builds only).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-127</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-213; B-127 fixed at f83f1a1 (layout)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="R06" data-action="false">
 <div class="id"><a href="#R06">R06</a><span>Limit and minutes</span></div>
 <figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
@@ -644,34 +647,34 @@ table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8
 <dl>
 <div><dt>Spec</dt><dd class="spec">“5” is the hourly limit and “20” the minutes; with limit 1 the build says “1 plan”, likewise “1 minute”.</dd></div>
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Both are pluralised now: `plan${limit === 1 ? &quot;&quot; : &quot;s&quot;}` and the same for minutes. The function from the 8207373 source, evaluated: limit 1 and 60 s → “You&#x27;ve started 1 plan this hour. Try again in about 1 minute.”; limit 5 and 45 min → “…5 plans… 45 minutes.” The limit is still the constant 5 (only the minutes are live on the page).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Both pluralise (rate-limit.ts unchanged since v3: limit 1 and 60 s → “1 plan … 1 minute”). The limit is the constant 5.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-128 fixed at 8207373</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-128 fixed (v3)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="R07" data-action="true">
 <div class="id"><a href="#R07">R07</a><span>“No new plan was started.”</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/R07.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/R07.jpg" alt="R07 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/R07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/R07-1440.jpg" alt="R07 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/R07-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/R07-390.jpg" alt="R07 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/R07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/R07-1440.jpg" alt="R07 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/R07-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/R07-390.jpg" alt="R07 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> role status, dashed hex with the clock. Sans 14 px, 24 px hex (board mono 14/20, 28 px), and above the alerts (board: under the alert).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> role status, under the alert now (as the board), dashed hex with the clock. Still Atkinson sans 14/20; DS AgentStatusLine: mono 500 14/20 (its 24 px dashed hex matches the build; the board drew 28 px).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-127</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-127 (open: status line type; DS AgentStatusLine)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="R08" data-action="true">
 <div class="id"><a href="#R08">R08</a><span>“Back to Busk Map home”</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/R08.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/R08.jpg" alt="R08 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/R08-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/R08-1440.jpg" alt="R08 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/R08-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/R08-390.jpg" alt="R08 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/R08-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/R08-1440.jpg" alt="R08 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/R08-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/R08-390.jpg" alt="R08 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> An outline uppercase Button inside the alert (href /); board: a bold signal-coloured text link under the status line.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> A bold signal-text underlined link under the status line, href /, 48 px tap height, as the board. Differs from DS PlanAlert (limit): the home action is an outline size-sm Button (“BACK TO BUSK MAP HOME”) in the alert&#x27;s actions row, inside the alert. Board and DS disagree.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-127</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-213</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="R09" data-action="true">
 <div class="id"><a href="#R09">R09</a><span>Earlier plans link</span></div>
 <figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
@@ -680,37 +683,114 @@ table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8
 <dl>
 <div><dt>Spec</dt><dd class="spec">Not drawn. The alert says “open one of your earlier plans” but the board gives no way to; DESIGN to confirm.</dd></div>
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> No link to earlier plans, as the board, and the alert no longer says “open one of your earlier plans”, so nothing is promised that the page can&#x27;t give.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> No link to earlier plans and no promise of one in the alert.</dd></div>
 <div><dt>User's call</dt><dd class="call">Open question: DESIGN to confirm whether a link to the performer&#x27;s plans belongs here.</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="R10" data-action="false">
 <div class="id"><a href="#R10">R10</a><span>Night theme</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/R10.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/R10.jpg" alt="R10 deck"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v3/R10-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/R10-1440.jpg" alt="R10 build 1440"></a></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/R10-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/R10-390.jpg" alt="R10 build 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/inv/v4/R10-1440.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/R10-1440.jpg" alt="R10 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/R10-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/R10-390.jpg" alt="R10 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night tokens; axe clean at 390 and 1440. The outline home button&#x27;s orange ring is visible at night.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night tokens; axe clean at 390 and 1440; the home link&#x27;s focus ring is visible.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
-</dl></article><article class="row" id="R11" data-action="true">
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="R11" data-action="false">
 <div class="id"><a href="#R11">R11</a><span>Phone layout (≤720px)</span></div>
 <figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/inv/deck/R11.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/deck/R11.jpg" alt="R11 deck"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
-<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v3/R11-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v3/R11-390.jpg" alt="R11 build 390"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/inv/v4/R11-390.jpg"><img loading="lazy" src="../screens/honeycomb/errors/inv/v4/R11-390.jpg" alt="R11 build 390"></a></figure>
 <dl>
 
 <div><dt>DEV status</dt><dd>—</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Single column, the alert fills the width, phone header and bottom nav (Busks current), as the spec. The alert still starts 672 px down, under the act buttons, status line and test-data banner and alert; its home button sits behind the bottom nav at first view.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Single column; the alert fills the width (358 px) and starts 266 px down (v3: 672), status line and home link above the fold; phone header and bottom nav (Busks current).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-127</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-127 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article>
-<section class="box" id="field-strip"><h2>Field strip (F14): app 404</h2><p>Route /no-such-page (same 404 as /this-is-not-a-pitch), from the 8207373 field-strip data (fields8). Columns: day 1440, night 1440, day 390, night 390; each pair unfocused then focused. Result: <b>2 of 2 pass</b> (8 states): each link shows one ring. The strip counts a ring box-shadow; it can't see that the primary link's night ring is the same orange as its fill. Looked at by eye:</p><p><a href="../screens/honeycomb/errors/inv/v3/field-strip.jpg"><img src="../screens/honeycomb/errors/inv/v3/field-strip.jpg" alt="404 field strip at 8207373"></a></p><p>Night, 1440, “Go to Busk Map home”: unfocused, then focused (B-134). The only change is 2 px more orange.</p><p><img src="../screens/honeycomb/errors/inv/v3/N10-night-off.jpg" alt="Primary link at night, unfocused"> <img src="../screens/honeycomb/errors/inv/v3/N10-night-on.jpg" alt="Primary link at night, focused"></p></section><section class="box" id="critique"><h2>Impeccable critique</h2><ol><li><b>P1 · Night focus vanishes on the main action.</b> Every primary button on these pages (Go to Busk Map home, Try again) gets an orange ring on an orange fill at night, so a keyboard user can't tell it's focused (N10, E10, U07; B-134). By day F14 is met.</li><li><b>P2 · The poster shadow never arrives.</b> The 404, route error and plan not found cards ask for shadow-md and get Tailwind's soft blur, not the honeycomb 4 px ink offset (orange at night), because the token sits on :root and not in @theme (N04, E02, G03; B-053/B-054). Likely site-wide wherever shadow-md is used.</li><li><b>P2 · The run limit is still buried.</b> On a phone the alert starts 672 px down, under the act's buttons, the status line and the test-data banner (R05, R11; B-127); the one thing to read is the last thing seen.</li><li><b>P3 · One card scale for every moment.</b> The 404 is now a big numeral over a centred card, much closer to the board, but the title is still 56 px display caps under a 72 px dashed hex, so the card shouts as loud as the numeral (N05–N07, E03–E05; B-123). The plan not found is still boxed (U02; B-126).</li><li><b>P3 · Copy now fits the failure.</b> The global error talks about Busk Map, not a pitch (G03), and the limit message pluralises and no longer promises earlier plans (R05, R06, R09). The route error still says “setting up the pitch” for any page (E05; B-124).</li></ol></section><section class="box" id="audit"><h2>Impeccable audit</h2><table><tr><th>Check</th><th>Result</th></tr><tr><td>axe (WCAG 2.2 AA tags) at 390 and 1440, day and night: 404, route error, plan not found, run limit</td><td>Clean (0 violations, 16 runs)</td></tr><tr><td>Sideways scroll at 390, 768, 1440 (day and night)</td><td>None on any of the four pages</td></tr><tr><td>Heading outline</td><td>One h1 each: “No pitch here”, “Something went wrong”, “We can't find this busk”, the act name on the run limit; no other headings in main. The “404” is a &lt;p aria-hidden&gt;, not a heading. Global error: h1 from the source</td></tr><tr><td>Landmarks</td><td>One &lt;main id=main&gt; per page; skip link present (layout)</td></tr><tr><td>Focus (2.4.7, 1.4.11)</td><td>Day: one 2 px ink ring on every action (F14 met). Night: outline buttons' orange ring 5.8:1 on the card (pass); primary buttons' ring is rgb(255,106,43) on a rgb(255,106,43) fill, 1:1 against the adjacent fill, the only change is 2 px of extra orange (B-134)</td></tr><tr><td>Contrast, 404 numeral</td><td>signal-text rgb(177,58,0) on #f2eee6: 5.2:1 (decorative, aria-hidden)</td></tr><tr><td>Target size</td><td>Every action 44 px tall</td></tr><tr><td>HTTP status</td><td>404 for an unknown URL; 200 for /p/ZZZZZZZZZ (plan not found) and for the render error (boundary after streaming starts): worth knowing for monitoring</td></tr><tr><td>Reduced motion</td><td>No animations on any of the four pages (getAnimations() empty with motion allowed)</td></tr><tr><td>Logo (F12)</td><td>Header: /brand/busk-map-lockup-*.svg, 36 px, new stencil lettering (zoomed 4×); the footer shows the same lockup</td></tr><tr><td>768</td><td>Header nav shown, bottom nav hidden, cards centred at 576 px; title 54 px; no breakage</td></tr></table></section><section class="box" id="brand-issues"><h2>BRAND&#x27;s build issues</h2><table><tr><th>Issue</th><th>Result</th><th>Evidence</th></tr><tr><td>No h1 on the 404 or either error page</td><td>Not reproduced</td><td>Rendered at 8207373: h1 “No pitch here” (404) and h1 “Something went wrong” (route error) at 390, 768 and 1440. Global error: StatusCard renders &lt;h1&gt; unless embedded, and ErrorCard doesn't embed it (source).</td></tr><tr><td>The global error's copy is wrong (“while setting up the pitch”)</td><td>Fixed at 8207373</td><td>error-card.tsx now passes GLOBAL_ERROR_DESCRIPTION when plainLinks (global-error.tsx): “Something went wrong loading Busk Map. Try again, or start over from the home page.” The route error keeps the pitch sentence (E05, B-124 open there).</td></tr><tr><td>Home and example actions are buttons, not links</td><td>Not reproduced</td><td>Rendered as &lt;a href="/"&gt; and &lt;a href="/plan?example=acoustic"&gt; (shadcn Button asChild + next/link) on the 404, route error, plan not found and run limit; global error uses a plain &lt;a href="/"&gt;. Only Try again is a &lt;button&gt;, as it should be.</td></tr><tr><td>The run limit says “1 plans”</td><td>Fixed at 8207373</td><td>rate-limit.ts pluralises both counts; evaluated with limit 1 → “You've started 1 plan this hour. Try again in about 1 minute.” On the page: “You've started 5 plans this hour. Try again in about 45 minutes.” (R06, B-128)</td></tr><tr><td>The plan pages don't switch to the bottom nav at phone width</td><td>Not reproduced</td><td>At 390 /p/ZZZZZZZZZ and the run limit hide the header nav and show the fixed bottom nav with Busks current (U08, R11).</td></tr></table></section><section class="box" id="recheck"><h2>DEV&#x27;s fixes rechecked at 8207373</h2><table><tr><th>Defect</th><th>Result</th><th>Evidence</th></tr><tr><td>B-053 (573a599, 3d59083)</td><td>Partly fixed</td><td>“404” numeral in (160 px, centred, aria-hidden; rust signal-text, N03), content centred. Still open: the poster shadow (soft Tailwind blur; N04)</td></tr><tr><td>B-054 (573a599)</td><td>Partly fixed</td><td>Warning triangle, centred, reference at the foot under a rule. Still open: the poster shadow (E02, G03)</td></tr><tr><td>B-122</td><td>Fixed</td><td>Cards centred vertically (N02, G01)</td></tr><tr><td>B-123</td><td>Open</td><td>72 px dashed hex, 56 px title, body not muted (N05–N07, E03–E05)</td></tr><tr><td>B-124</td><td>Partly fixed</td><td>Global error has its own copy (G03); the route error still says “pitch” on any page (E05)</td></tr><tr><td>B-125</td><td>Partly fixed</td><td>Refresh icon on Try again (E06, G04); no arrow on the plan not found's home link (U06)</td></tr><tr><td>B-126</td><td>Open</td><td>Plan not found centred now, but still boxed, 576 px, 56 px title, body not muted (U02, U04, U05, U08)</td></tr><tr><td>B-127</td><td>Open</td><td>Layout unchanged (R05, R07, R08, R11); copy changed only</td></tr><tr><td>B-128</td><td>Fixed</td><td>“plan”/“plans” and “minute”/“minutes” pluralise (R06)</td></tr><tr><td>errorNote</td><td>Not done (DEV)</td><td>A DEV note on the board, not on-page copy; nothing on these pages waits on it (E09)</td></tr></table></section><section class="box" id="new-defects"><h2>New defects (to be numbered in bugs.md)</h2><ul><li><b>B-134 · Medium · N10, E10 (also U07, G08):</b> at night the default (primary) Button's focus ring is the same orange as its fill (rgb(255,106,43), 0 0 0 2px, flush), so focus shows no visible change; by day the ink ring is fine. Likely every primary Button site-wide.</li><li><b>B-155 · Low · N14, E13, G09, U08:</b> at phone width the wrapped buttons stretch full width (max-sm:w-full) and the card gutters are 16 px; board: natural-width buttons, centred, 24 px gutters.</li><li><b>B-156 · Low · E08, G06:</b> the “Reference:” label is mono like the digest; board: sans label, mono digest.</li></ul></section>
-<section class="box"><h2>Versions</h2><ul><li><b>v3</b> · design/honeycomb ＠ <code>8207373</code> · 17 Oct 2026: Recheck at 8207373. Now Present: N01, N12, E01, U01, R01 (F12 lockup, new lettering); N02, G01 (B-122 fixed, centred); E06, G04 (refresh icon); R06 (B-128 fixed, “1 plan”, “1 minute”); R09 (the alert no longer promises earlier plans). Different: N03 (the 404 numeral is in, but rust signal-text, not primary orange); N04, E02, G03 shadow still soft (B-053/B-054 open on the shadow only: the utility ignores the honeycomb --shadow-md token); G03 copy now about the whole app (B-124 fixed for the global error, open on the route error); N14, E13, G09 now B-155 (phone buttons and gutters); E08, G06 B-156 (mono label). Broken: N10, E10 by night (B-134: the primary button&#x27;s focus ring is its own orange, so nothing changes on focus); by day F14 is met (one 2 px ring).</li><li><b>v2</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: BRAND&#x27;s 56 parts replace v1&#x27;s 7 provisional rows; adds the plan not found and the run limit, BRAND&#x27;s build issues checked, B-122..B-128. Headers judged on the corrected F12 (the lockup is the one logo).</li><li><b>v1</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: First version: 404, error and global error against the deck at 3 widths, day and night; field strip; B-053, B-054.</li></ul></section>
+<section class="box" id="field-strip"><h2>Field strip (F14): app 404</h2><p>Route /no-such-page (same 404 as /this-is-not-a-pitch), from the f83f1a1 field-strip data (fields9). Columns: day 1440, night 1440, day 390, night 390; each pair unfocused then focused. Result: <b>2 of 2 pass</b> (8 states): each link shows one outline ring 2 px out.</p><p><a href="../screens/honeycomb/errors/inv/v4/field-strip.jpg"><img src="../screens/honeycomb/errors/inv/v4/field-strip.jpg" alt="404 field strip at f83f1a1"></a></p><p>Night, 1440, “Go to Busk Map home”: unfocused, then focused; and the route error card at night with Try again focused (B-134 fixed: the ring sits on the card, apart from the fill).</p><p><img src="../screens/honeycomb/errors/inv/v4/N10-night-off.jpg" alt="Primary link at night, unfocused"> <img src="../screens/honeycomb/errors/inv/v4/N10-night-on.jpg" alt="Primary link at night, focused"></p><p><img src="../screens/honeycomb/errors/inv/v4/E10-night-focus.jpg" alt="Route error at night, Try again focused"></p></section><section class="box" id="critique"><h2>Impeccable critique</h2><p class="prov"><b>How this was produced.</b> The impeccable skill v4.4.0 (<code>impeccable:impeccable</code>), verb <code>critique</code>, run on design/honeycomb <code>f83f1a1</code> from QA's clean export, offline, at 390, 768, 1440 px. Method: dual-agent (A: <code>a097636be8c4b9a65</code> · B: <code>aa36a316903eb40f1</code>), each an isolated sub-agent that did not read the QA report or the other assessment. A and B are reproduced as the skill wrote them (<code>qa/impeccable/errors-A.md</code>, <code>errors-B.md</code>). The block marked “QA synthesis” is QA's, not the skill's.</p><div class="synth"><h3>QA synthesis</h3>
+<p><b>Scores.</b> Critique (A): Nielsen 23/40 (58%, Acceptable). Audit (B): 15/20, Good; Implementation Integrity <b>Pass</b>. axe 0 violations in 16 runs. CLI detector: 0 findings (B proved it parses TSX with a planted file); overlay hits are the header rule, the Paper token, the overlay's colour, a mono label and the test-data hatch.</p>
+<p><b>Verified by QA and filed.</b></p><ul>
+<li><b>B-229 · Medium</b> (A P1 + B P2): Try again on the route error gives no pending state, comes back with the identical card and drops focus to <code>&lt;body&gt;</code>; a second failure announces nothing (error-card.tsx:36–39; WCAG 2.4.3, 4.1.3).</li>
+<li><b>B-230 · Low</b> (A P2 + B P2): plan-not-found draws an orange ghost pin offset behind the dashed hex (QA saw it at 390), and its tab title is “Plan · Busk Map”; the noindex meta appears twice.</li></ul>
+<p><b>DEV's honest limit, judged.</b> /p/&lt;unknown&gt; answers HTTP 200 (and the render error too). B traces it to <code>notFound()</code> running inside <code>&lt;Suspense&gt;</code> after streaming starts (p/[id]/page.tsx:22–27): fixable, but the page is noindex and says the right thing, so QA accepts the 200 as the stated limit and files only the visible parts (B-230).</p>
+<p><b>Recorded, not filed.</b> B P2: “Go to Busk Map home” overflows its button at 200% text (button.tsx:10, <code>whitespace-nowrap</code> + fixed height). B P2: the shared header's hard-coded hexes (B-234). A P2: four states in three systems (B-212 is the DS side). A P1 on the limit page's hierarchy and its single exit is a layout call against the board (R05–R08): asked of MANAGER.</p></div><details open><summary>Assessment A · design review (as written)</summary><h3>Assessment A: error and edge pages (Operate), f83f1a1 @ :3213</h3>
+<p>Routes: 404 <code>/this-is-not-a-pitch</code>, plan-not-found <code>/p/ZZZZZZZZZ</code>, route error <code>faults=render</code>, run limit <code>faults=fresh-limit</code>. Checked at 390/768/1440, day and night, with Try again clicked and keyboard tabbing; shots are in <code>scratchpad/imp/errors-A/</code>.</p>
+<h4>Design specificity verdict</h4>
+<p><b>Mostly authored, but uneven.</b> The 404 is clearly this product: a giant orange Big Shoulders "404", a lifted honeycomb pin cell in a hard-shadow card, "No pitch here", and a second door ("Try an example plan"). The route error reuses that card with a red hex. The other two states drift. Plan-not-found is a bare stack with a dashed hex and a 44px h1, against 24px in the cards. The run limit is a generic inline alert that any SaaS could ship.</p>
+<h4>Nielsen heuristics (all applicable)</h4>
+<table><thead><tr><th>#</th><th>Heuristic</th><th>Score</th><th>Evidence</th></tr></thead><tbody><tr><td>1</td><td>System status</td><td>2</td><td>Try again (768) re-renders the same card, same Reference 190861489, with no pending state; focus drops to body</td></tr><tr><td>2</td><td>Real world</td><td>3</td><td>"No pitch here", "can't find this busk" fit the domain; the reference number is unexplained</td></tr><tr><td>3</td><td>User control</td><td>3</td><td>Every state has a way home; the limit state offers nothing else</td></tr><tr><td>4</td><td>Consistency</td><td>2</td><td>3 layouts for 4 states; "Go to Busk Map home" / "Go home" / "Back to Busk Map home"</td></tr><tr><td>5</td><td>Error prevention</td><td>2</td><td>No warning that you're near the 5-per-hour limit</td></tr><tr><td>6</td><td>Recognition</td><td>3</td><td>The limit page keeps the slot eyebrow and the act name</td></tr><tr><td>7</td><td>Flexibility</td><td>2</td><td>"About 45 minutes" instead of a clock time; no auto-retry; no recent plan to open</td></tr><tr><td>8</td><td>Aesthetic</td><td>3</td><td>On-brand, but the hatched QLOO TEST DATA bar outshouts the limit alert</td></tr><tr><td>9</td><td>Error recovery</td><td>2</td><td>404 good; route error names nothing; limit has no next step</td></tr><tr><td>10</td><td>Help</td><td>1</td><td>No help or contact path; the reference code has nowhere to go</td></tr><tr><td></td><td><b>Total</b></td><td><b>23/40 (58%), Acceptable</b></td><td></td></tr></tbody></table>
+<h4>Cognitive load</h4>
+<p><b>1 checklist failure (low).</b> The failure is visual hierarchy on the limit page: the h1 "SOUL AND FUNK SAX PLAYER" and the full-width test-data bar both outrank the small "PLAN LIMIT REACHED" alert, capped at 760px at 1440. No decision point offers more than 4 options.</p>
+<h4>Emotional journey</h4>
+<p>The 404 ends warmly with two doors. The route error is the low point: "Something went wrong" appears twice, retry silently fails, and you're holding a number you can't use. The limit page reassures ("No new plan was started.") but its last element is a bare text link, so planning tonight's slot ends at a dead end.</p>
+<h4>Strengths</h4>
+<ul><li>The 404 at every width: the stacked full-width CTAs at 390 and the strong double focus ring.</li><li>Specific limit copy ("5 plans this hour… about 45 minutes") on a role=alert.</li><li>All four states hold up at night (the lift turns orange, the red hex keeps contrast), with no horizontal scroll at 390.</li></ul>
+<h4>Priority issues</h4>
+<ol><li><b>[P1] Retry is silent.</b> The route error's Try again gives no pending state, comes back with the identical card, and moves focus to <code>&lt;body&gt;</code>. <b>Fix:</b> a pending button, different copy on the second failure, and focus on the h1. <code>/harden</code></li><li><b>[P1] The limit page's hierarchy is inverted and it has only one way out.</b> The real message is the third-loudest item, and at 1440 the 760px alert sits misaligned under the full-width bar. <b>Fix:</b> lead with the limit, give a clock time, and offer actions that don't count against it (recent plans, an example). <code>/layout</code>, then <code>/clarify</code></li><li><b>[P2] Four states use three systems.</b> Card+numeral, bare stack, card, and inline alert, with three home-link wordings. <b>Fix:</b> put every full-page state in StatusCard and use one CTA label. <code>/polish</code></li><li><b>[P2] Plan-not-found shows a doubled pin and is a soft 404.</b> <code>lift</code> applies a drop-shadow through the dashed cell's transparent fill, so an orange ghost pin sits offset behind the icon (zoomed in <code>z-hex.png</code>, day and night). The page also returns HTTP 200 with the tab title "Plan · Busk Map". <b>Fix:</b> don't lift dashed cells, give the page its own title, and return a 404 status. <code>/polish</code></li><li><b>[P3] Route-error copy is vague.</b> It doesn't say that the plan failed to load or that your inputs are kept, and there's no report link for the reference code. <code>/clarify</code></li></ol>
+<h4>Persona red flags</h4>
+<ul><li><b>Jordan (first-timer from a broken shared link):</b> /p/ZZZZZZZZZ says "start a new busk" but offers only a home link. The 404's "Try an example plan" is missing exactly where it's needed most.</li><li><b>Casey (mobile, between sets):</b> at 390 the limit page needs mental arithmetic ("about 45 minutes"), and its only action is a small text link just above the footer.</li><li><b>Sam (keyboard / screen reader):</b> focus is lost after retry, and a second failure announces nothing new.</li></ul>
+<h4>Minor observations</h4>
+<ul><li>On the 404 no nav item is active; on plan-not-found BUSKS is active.</li><li>At 1440 by day, the 404 numeral (brownish signal-text) and the primary button read as two different oranges.</li><li>The limit's status line repeats the alert's clock icon.</li></ul>
+<h4>Questions</h4>
+<ul><li>Should a refused run show the last plan made for this slot instead of a dead end?</li><li>Who is "Reference: 190861489" for, and why can't the page send it?</li><li>Why does the warmest copy sit on the page users reach least, while the shared-link page they actually hit is the plainest?</li></ul></details></section><section class="box" id="audit"><h2>Impeccable audit</h2><p class="prov"><b>How this was produced.</b> The impeccable skill v4.4.0 (<code>impeccable:impeccable</code>), verb <code>audit</code>, run on design/honeycomb <code>f83f1a1</code> from QA's clean export, offline, at 390, 768, 1440 px. Method: dual-agent (A: <code>a097636be8c4b9a65</code> · B: <code>aa36a316903eb40f1</code>), each an isolated sub-agent that did not read the QA report or the other assessment. A and B are reproduced as the skill wrote them (<code>qa/impeccable/errors-A.md</code>, <code>errors-B.md</code>). The block marked “QA synthesis” is QA's, not the skill's.</p><details open><summary>Assessment B · detector, browser evidence and audit /20 (as written)</summary><h3>Errors and edge pages: Assessment B (detector + browser evidence) and audit</h3>
+<p>Build: Busk Map design/honeycomb f83f1a1, offline, http://localhost:3213 (production build: minified React, <code>/api/health</code> → <code>{offline:true, faults:true}</code>). Source: the hc9 export. Routes: <code>/this-is-not-a-pitch</code> (404), <code>/p/ZZZZZZZZZ</code> (planNF), <code>/plan?example=acoustic&amp;faults=render</code> (render), <code>/plan?example=sax&amp;faults=fresh-limit</code> (limit). Run as an isolated sub-agent. No QA reports and no Assessment A output were read. Evidence is in <code>scratchpad/imp/errors-B/</code>: <code>detect.json</code>, <code>overlay.json</code>, <code>evidence.json</code>, <code>follow.json</code>, the scripts <code>run.cjs</code>, <code>overlay2.cjs</code>, <code>follow.cjs</code> and <code>retry.cjs</code>, and the screenshots (<code>&lt;route&gt;-&lt;width&gt;-&lt;light|dark|overlay&gt;.png</code>, <code>focus-<i>.png</code> and <code></i>-text200.png</code>).</p>
+<h4>1. CLI scan</h4>
+<p>Command: <code>impeccable detect --json</code> on these files:</p>
+<ul><li><code>src/app/not-found.tsx</code>, <code>src/app/error.tsx</code>, <code>src/app/global-error.tsx</code> and <code>src/app/p/[id]/not-found.tsx</code></li><li><code>src/components/status/</code> (<code>error-card.tsx</code>, <code>status-card.tsx</code>) and <code>src/app/plan/page.tsx</code></li><li><code>src/components/honeycomb/plan-alert.tsx</code> and <code>hex-cell.tsx</code></li><li><code>src/components/plan/plan-view.tsx</code></li><li><code>src/components/ui/alert.tsx</code> and <code>button.tsx</code></li></ul>
+<p>Result:</p>
+<ul><li><b>Exit 0, <code>[]</code>.</b> That is 0 findings and 0 rules, with nothing on stderr.</li><li><b>Canary check.</b> A throwaway <code>.tsx</code> containing <code>border-l-4</code>, <code>bg-clip-text</code> and a purple gradient returned exit 2 with 3 findings: side-tab, gradient-text and ai-color-palette. So the detector does parse TSX, and the clean result is real.</li></ul>
+<h4>2. Browser overlay</h4>
+<p>Setup:</p>
+<ul><li>Each route got a new Playwright context and page at 1440 and at 390 (light), 8 runs in all.</li><li>Mutation preflight passed on all 8. <code>document.title</code> was set to <code>[Human] …</code> and an appended <code>&lt;script&gt;</code> executed (<code>window.__mutok=1</code>).</li><li><code>detect.js</code> was added with <code>page.addScriptTag({path})</code>, followed by a 3 s wait.</li><li>The script exposes <code>window.impeccableDetect()</code> and others; its results were read from there. Overlay elements rendered: 3 on most pages, 5 on limit.</li><li>No step failed. live-server was not started, as the brief says.</li></ul>
+<p>Console counts:</p>
+<ul><li>404, planNF and render: <code>[impeccable] 2 anti-patterns found</code></li><li>limit: <code>3 anti-patterns found</code></li></ul>
+<p>The results were the same at 1440 and 390.</p>
+<table><thead><tr><th>Rule</th><th>Where</th><th>Pages</th><th>Verdict</th></tr></thead><tbody><tr><td>side-tab (<code>border-bottom: 4px</code>)</td><td><code>header.flex.h-16</code>, <code>src/components/honeycomb/app-header.tsx:17</code> (<code>border-b-4 border-primary</code>)</td><td>all</td><td><b>False positive.</b> It is the full-width app bar's orange rule, not a one-sided card accent.</td></tr><tr><td>cream-palette (<code>rgb(242,238,230)</code>)</td><td>body; <code>--background: #f2eee6</code>, <code>src/app/globals.css:24</code></td><td>all</td><td><b>True by rule.</b> The value is a brand token and dark mode swaps it to <code>#0f1416</code>. Whether it is a reflexive choice is for Assessment A.</td></tr><tr><td>dark-glow (<code>#ffba00</code> zero-offset glow)</td><td>body (in the results array only, not in the console count)</td><td>all</td><td><b>False positive.</b> No element on the page computes a <code>#ffba00</code> / <code>rgb(255,186,0)</code> box- or text-shadow (checked every node), and the colour is not in <code>src/</code>. It matches the detector's own highlight colour (<code>oklch(84% 0.19 80.46)</code>), so the overlay is detecting itself.</td></tr><tr><td>all-caps-body (36 chars uppercase)</td><td><code>span.font-mono.text-xs</code>, the eyebrow "Fri 16 Oct · 5–8 pm · General permit"</td><td>limit</td><td><b>False positive in intent.</b> It is a 12px mono metadata label, not body copy.</td></tr><tr><td>repeating-stripes-gradient</td><td><code>.bm-hatch-test</code> on the "Qloo test data" banner, <code>globals.css:323</code></td><td>limit</td><td><b>Intentional.</b> It is a documented hazard hatch that marks mock data. Keep it.</td></tr></tbody></table>
+<p>Other console output:</p>
+<ul><li>render shows <code>Minified React error #441</code>. This is React's production placeholder for "an error occurred in the Server Components render", which is expected for the simulated fault. It also logs <code>Busk Map render error {digest, name}</code>, as designed.</li><li>404 logs a 404 resource load (the document itself).</li><li>limit logs a 429 from <code>/api/plan</code> (the fault, as designed).</li></ul>
+<h4>3. Audit</h4>
+<h5>Evidence collected</h5>
+<ul><li><b>axe</b> (@axe-core/playwright 4.13, WCAG 2.0/2.1/2.2 A+AA plus best-practice):<ul><li>Covered every route at 390 and 1440, day and night: 16 runs.</li><li><b>0 violations and 0 incomplete.</b></li></ul><li><b>Contrast</b>, measured from computed styles, with alpha flattened by canvas:<ul><li>404 body: 6.09 (day) / 7.48 (night)</li><li>Decorative "404": 5.22 / 7.40</li><li>Primary button ink on orange: 5.53 / 6.49</li><li>Error reference (mono, 13px): 6.09 / 7.48</li><li>planNF body: 5.54 / 8.41</li><li>Limit alert ink on its tint: about 15:1 by day (alert background resolves to <code>rgb(247,232,231)</code>) and about 14:1 at night</li><li>Limit "Back to Busk Map home": 5.22 / 7.40</li><li>Lowest pair: 5.22.</li></ul><li><b>Keyboard:</b><ul><li>Tab order starts at Skip to content (150×52, visible on focus), then the logo, Busks, Week and Brain, then the page actions in reading order, then the footer.</li><li>The header uses a 2px <code>#f2ede4</code> ring on the dark bar. Buttons use a 2px outline in the ring token, offset 2px. Inline links use a 2px ink box-shadow. Focus is visible on every stop (see the <code>focus-*.png</code> crops).</li><li>There is no keyboard trap.</li></ul><li><b>Headings and landmarks:</b><ul><li>Each page has exactly one <code>h1</code>: "No pitch here", "We can't find this busk", "Something went wrong" and "Soul and funk sax player".</li><li>The "404" numeral is an <code>aria-hidden</code> <code>&lt;p&gt;</code>.</li><li>Landmarks: header, nav, <code>main#main</code> and footer. The error card has <code>role=alert</code>. On limit, the alert has <code>role=alert</code> and the status lines have <code>role=status</code>.</li><li><code>lang="en-AU"</code>.</li></ul><li><b>Touch targets at 390:</b><ul><li>All main-content actions are at least 44px tall and span the full width (306–358px).</li><li>Bottom tab bar items are 130×62.</li><li>The footer has inline text links narrower than 44px: Terms 37, Brain 32 and Brand 35 (each 48 tall), and the Qloo link is 44×15. That footer is shared chrome.</li></ul><li><b>Horizontal scroll:</b><ul><li><code>scrollWidth == clientWidth</code> at 390, 768 and 1440 on all 4 routes.</li><li>It still holds at 390 with the root font size at 200%.</li></ul><li><b>Reduced motion:</b> <code>document.getAnimations()</code> is empty on every route, both with and without <code>reduce</code>. The pages have no motion. <code>globals.css</code> guards every keyframe class under <code>prefers-reduced-motion</code>.</li><li><b>Dark mode:</b> all 4 routes render correctly at night (see <code>*-dark.png</code>), with tokens swapping cleanly. The error cell's lift becomes the night destructive tone.</li><li><b>Hard-coded colours:</b><ul><li><b>0</b> in the target sources: <code>not-found.tsx</code> ×2, <code>error.tsx</code>, <code>global-error.tsx</code>, <code>status/*</code>, <code>plan-alert.tsx</code> and <code>hex-cell.tsx</code>.</li><li>The shared <code>app-header.tsx:17,18,30,31</code>, which renders on every page here, hard-codes <code>#f2ede4</code>, <code>#a7b0b5</code> and <code>#232d33</code>.</li><li><code>global-error.tsx:6-8</code> hard-codes font stacks on purpose, because no brand fonts load there.</li></ul><li><b>HTTP status and titles:</b><ul><li>404: status 404, title "Page not found · Busk Map", noindex.</li><li><b>planNF: status 200</b> and title "Plan · Busk Map". It has <code>noindex</code>, emitted twice.</li><li>render: 200, "Something went wrong · Busk Map".</li><li>limit: 200, "Plan · Busk Map".</li></ul><li><b>Try again</b> (render, 390):<ul><li>Clicking it refetches the RSC payload and the same card comes back.</li><li>Focus falls to <code>&lt;body&gt;</code>. The button gives no pending or busy state, and nothing confirms that a retry happened.</li></ul><li><b>Not exercised:</b> <code>global-error.tsx</code>, because no fault breaks the root layout. I reviewed its source only: it has its own <code>&lt;html lang&gt;</code>, a <code>&lt;title&gt;</code>, the system font stack and a plain <code>&lt;a href="/"&gt;</code>.</li></ul>
+<h5>Audit Health Score</h5>
+<table><thead><tr><th>#</th><th>Dimension</th><th>Score</th><th>Key finding</th></tr></thead><tbody><tr><td>1</td><td>Accessibility</td><td>3</td><td>axe clean in 16 runs and every pair at least 5.2:1. Focus drops to <code>&lt;body&gt;</code> after Try again.</td></tr><tr><td>2</td><td>Performance</td><td>3</td><td>The pages are tiny and have no animations. Each error page fires about 12 footer and nav RSC prefetches, with duplicates.</td></tr><tr><td>3</td><td>Responsive Design</td><td>3</td><td>No overflow at 390/768/1440 and main targets at least 44px. Button labels spill their box at large text size (<code>whitespace-nowrap</code>).</td></tr><tr><td>4</td><td>Theming</td><td>3</td><td>The target files use tokens only and dark mode works. The shared app header hard-codes 3 hex colours.</td></tr><tr><td>5</td><td>Implementation Integrity</td><td>3</td><td>The CLI is clean and the overlay findings are mostly false positives. The unknown-plan page is a soft 404 (HTTP 200, "Plan" title), and the StatusCard docstring claims a page it does not render.</td></tr><tr><td><b>Total</b></td><td></td><td><b>15/20</b></td><td><b>Good</b></td></tr></tbody></table>
+<h5>Implementation Integrity verdict</h5>
+<p><b>Pass.</b> The 404, error and global-error pages share one <code>StatusCard</code> (<code>status-card.tsx</code>) built from product-specific pieces: the honeycomb <code>HexCell</code> with a hard 4px offset lift, display caps and a mono reference footnote. The limit state reuses <code>PlanAlert</code>, so its copy cannot drift. The CLI detector found nothing.</p>
+<p>Of the 5 overlay rules:</p>
+<ul><li>side-tab, dark-glow and all-caps-body are false positives.</li><li>The hatch is intentional.</li><li>Only cream-palette is a true rule hit, and it is a brand token.</li></ul>
+<p>Two pieces of verified drift remain:</p>
+<ul><li>(a) <code>/p/&lt;id&gt;</code> not-found is served with HTTP 200 and the parent page's title.</li><li>(b) <code>status-card.tsx:6</code> says the card sits behind "/p/&lt;id&gt; not found", but <code>src/app/p/[id]/not-found.tsx</code> deliberately builds its own card-less layout (board X01).</li></ul>
+<h5>Executive summary</h5>
+<ul><li>Score <b>15/20 (Good)</b>.</li><li>Issues: P0 0 · P1 0 · P2 4 · P3 4.</li><li>Top issues:<ul><li>The unknown plan returns a soft 404.</li><li>Try again drops focus and gives no feedback.</li><li>Button labels overflow at large text sizes.</li><li>The shared header uses hard-coded colours.</li></ul><li>Next steps: <code>/impeccable harden</code> for the status code, title and retry feedback, <code>/impeccable adapt</code> for text scaling, then <code>/impeccable polish</code>.</li></ul>
+<h5>Findings by severity</h5>
+<p><b>[P2] Unknown plan id is a soft 404</b></p>
+<ul><li>Location: <code>src/app/p/[id]/page.tsx:22-27</code> (<code>notFound()</code> runs inside <code>&lt;Suspense&gt;</code> after streaming has begun, at :42 and :44). Rendered by <code>src/app/p/[id]/not-found.tsx</code>.</li><li>Category: Implementation Integrity</li><li>Impact:<ul><li><code>/p/ZZZZZZZZZ</code> returns <b>HTTP 200</b>, so link checkers, monitoring and crawlers see a valid page. <code>noindex</code> softens the SEO side.</li><li>The tab title stays "Plan · Busk Map" while the page says "We can't find this busk".</li><li>Screen-reader users hear a different title from the page they get.</li></ul><li>Standard: HTTP semantics; WCAG 2.4.2 Page Titled (the title does not describe the page).</li><li>Recommendation:<ul><li>Resolve the id before the Suspense boundary (or in <code>generateMetadata</code>) so that <code>notFound()</code> runs before streaming starts.</li><li>Give <code>p/[id]/not-found.tsx</code> its own title, such as "Busk not found · Busk Map".</li><li>Drop the duplicate <code>noindex</code> meta.</li></ul><li>Suggested: <code>/impeccable harden</code></li></ul>
+<p><b>[P2] Try again gives no feedback and loses focus</b></p>
+<ul><li>Location: <code>src/components/status/error-card.tsx:36-39</code></li><li>Category: Accessibility</li><li>Impact:<ul><li>After a click, the RSC refetch completes and the identical card re-renders.</li><li>Focus falls to <code>&lt;body&gt;</code> (verified), so keyboard and screen-reader users lose their place.</li><li>Nobody can tell whether the retry ran.</li></ul><li>WCAG: 2.4.3 Focus Order; 4.1.3 Status Messages.</li><li>Recommendation:<ul><li>Keep focus on the button or move it to the <code>h1</code> on re-render.</li><li>Show a brief pending state (<code>aria-busy</code>, or a "Trying again…" label).</li><li>If the retry fails again, say so ("Still not loading").</li></ul><li>Suggested: <code>/impeccable harden</code></li></ul>
+<p><b>[P2] Button labels overflow at large text sizes</b></p>
+<ul><li>Location: <code>src/components/ui/button.tsx:10</code> (<code>whitespace-nowrap</code>, fixed <code>h-control</code> 44px). Seen on <code>not-found.tsx:21-26</code> and <code>error-card.tsx:36-43</code>.</li><li>Category: Responsive</li><li>Impact: at 390 with the root font size at 200%, "GO TO BUSK MAP HOME" spills past the button and the card edge (<code>404-390-text200.png</code>). The second button ends up under the fixed tab bar.</li><li>WCAG: 1.4.4 Resize Text and 1.4.10 Reflow (partial).</li><li>Recommendation: let full-width phone buttons wrap (<code>max-sm:whitespace-normal</code>, <code>min-h-control</code> instead of <code>h-control</code>).</li><li>Suggested: <code>/impeccable adapt</code></li></ul>
+<p><b>[P2] Shared app header hard-codes colours</b></p>
+<ul><li>Location: <code>src/components/honeycomb/app-header.tsx:17,18,30,31</code> (<code>#f2ede4</code>, <code>#a7b0b5</code>, <code>#232d33</code>)</li><li>Category: Theming</li><li>Impact: these values bypass the token system on every page, including all 4 audited here. They will drift if the palette changes.</li><li>Recommendation: add <code>--bar-foreground</code>, <code>--bar-muted</code> and <code>--bar-hover</code> tokens next to <code>--bluestone</code>.</li><li>Suggested: <code>/impeccable colorize</code></li></ul>
+<p><b>[P3] Body text sizes are fixed in px</b></p>
+<ul><li>Location: <code>status-card.tsx:52</code> and <code>p/[id]/not-found.tsx:15</code> (<code>text-[17px] leading-[26px]</code>), and <code>status-card.tsx:54</code> (<code>text-[13px] leading-4</code>)</li><li>Category: Accessibility</li><li>Impact: these sizes ignore the user's default font-size preference, though browser zoom still scales them.</li><li>Recommendation: use rem-based tokens.</li><li>Suggested: <code>/impeccable typeset</code></li></ul>
+<p><b>[P3] The error card's alert role covers the whole card</b></p>
+<ul><li>Location: <code>status-card.tsx:45</code></li><li>Category: Accessibility</li><li>Impact: on load, <code>role=alert</code> on the whole section announces the title, the body, both button labels and the reference code in one burst.</li><li>Recommendation: put the alert on the title and description only, or use <code>aria-labelledby</code>/<code>aria-describedby</code> on a region.</li><li>Suggested: <code>/impeccable harden</code></li></ul>
+<p><b>[P3] StatusCard docstring does not match the code</b></p>
+<ul><li>Location: <code>status-card.tsx:5-7</code></li><li>Category: Implementation Integrity</li><li>Impact: the docstring lists "/p/&lt;id&gt; not found", but that page uses its own layout. That misleads maintainers.</li><li>Recommendation: correct the comment, or bring planNF onto the card if X01 changes.</li><li>Suggested: <code>/impeccable document</code></li></ul>
+<p><b>[P3] Error pages prefetch every link</b></p>
+<ul><li>Location: shared chrome (header, footer and tab bar <code>Link</code>s)</li><li>Category: Performance</li><li>Impact: about 12–15 RSC prefetch requests fire on a 404 or error page, including duplicate keys for the same route. The cost is small, but it is wasted on a page the user is about to leave.</li><li>Recommendation: use <code>prefetch={false}</code> on footer links.</li><li>Suggested: <code>/impeccable optimize</code></li></ul>
+<h5>Patterns and systemic issues</h5>
+<ul><li><b>Fixed control sizing.</b> <code>whitespace-nowrap</code> with a fixed <code>h-control</code> is the button baseline, so every full-width phone action breaks when text is enlarged, not just these pages.</li><li><b>px type in status surfaces.</b> The px font sizes repeat across the status surfaces (<code>text-[17px]</code> ×2, <code>text-[13px]</code>).</li><li><b>Not-found semantics.</b> Status and title handling is only right on the site-wide 404. The scoped not-found under a streamed page loses both.</li></ul>
+<h5>Positive findings</h5>
+<ul><li><b>Accessibility:</b><ul><li>axe is clean across 16 runs at both widths and both themes.</li><li>The lowest text contrast is 5.22:1, and the limit alert is about 15:1.</li><li>Each page has one <code>h1</code>, a working skip link and consistent landmarks.</li><li>Focus is clearly visible on every stop: the ring on the header bar, and an outline offset to the page ground on buttons (the B-134 note).</li></ul><li><b>Error card:</b><ul><li>Shows only the digest as "Reference" and never the message or stack. It logs <code>{digest, name}</code> only.</li><li>Uses the correct Next 16 <code>retry</code> prop, checked against <code>node_modules/next/dist/docs/.../error.md</code>.</li><li><code>global-error</code> keeps its own document, <code>lang</code>, title and system fonts, and uses a plain link home.</li></ul><li><b>Theming:</b> the target sources use tokens only, and night mode renders correctly on all 4 routes.</li><li><b>Responsive:</b> no horizontal scroll at any width, and the phone actions span the full width at 44px or more.</li><li><b>Limit state:</b><ul><li>Reuses <code>PlanAlert</code>, with copy kept in one place.</li><li>Says plainly that nothing started ("No new plan was started.").</li><li>Offers one clear way out.</li></ul><li><b>Motion:</b> none on these pages, and every keyframe class in <code>globals.css</code> has a reduced-motion guard.</li></ul>
+<h5>Recommended actions</h5>
+<ol><li><b>[P2] <code>/impeccable harden</code></b>:<ul><li>Make <code>/p/&lt;id&gt;</code> not-found return 404 with its own title.</li><li>Give Try again focus handling and a pending/failed state.</li><li>Narrow the error card's alert region.</li></ul><li><b>[P2] <code>/impeccable adapt</code></b>: let full-width buttons wrap with a minimum height of <code>h-control</code>, and re-check at 200% text.</li><li><b>[P2] <code>/impeccable colorize</code></b>: move the app header's three hex colours to bar tokens.</li><li><b>[P3] <code>/impeccable typeset</code></b>: use rem-based body and footnote sizes in the status card and planNF.</li><li><b>[P3] <code>/impeccable optimize</code></b>: stop footer prefetching on error pages.</li><li><b>[P3] <code>/impeccable document</code></b>: fix the StatusCard docstring.</li><li><code>/impeccable polish</code></li></ol>
+<p>You can ask me to run these one at a time, all at once, or in any order you prefer. Re-run <code>/impeccable audit</code> after fixes to see your score improve.</p></details></section><section class="box" id="brand-issues"><h2>BRAND&#x27;s build issues</h2><table><tr><th>Issue</th><th>Result</th><th>Evidence</th></tr><tr><td>No h1 on the 404 or either error page</td><td>Not reproduced</td><td>Rendered at f83f1a1: h1 “No pitch here” and h1 “Something went wrong” at 390, 768 and 1440. Global error: StatusCard renders &lt;h1&gt; unless embedded (source).</td></tr><tr><td>The global error's copy is wrong (“while setting up the pitch”)</td><td>Fixed</td><td>Global: “Something went wrong loading Busk Map…”; route error: “Something went wrong loading this page…” (G03, E05).</td></tr><tr><td>Home and example actions are buttons, not links</td><td>Not reproduced</td><td>&lt;a href="/"&gt; and &lt;a href="/plan?example=acoustic"&gt; on the 404, route error, plan not found and run limit; global error a plain &lt;a href="/"&gt;. Only Try again is a &lt;button&gt;.</td></tr><tr><td>The run limit says “1 plans”</td><td>Fixed (v3)</td><td>Pluralises both counts (R06).</td></tr><tr><td>The plan pages don't switch to the bottom nav at phone width</td><td>Not reproduced</td><td>At 390 /p/ZZZZZZZZZ and the run limit hide the header nav and show the bottom nav with Busks current (U08, R11).</td></tr></table></section><section class="box" id="recheck"><h2>DEV&#x27;s fixes rechecked at f83f1a1</h2><table><tr><th>Defect</th><th>Result</th><th>Evidence</th></tr><tr><td>B-053</td><td>Fixed, one deviation</td><td>Hard shadow now (N04). The numeral stays rust signal-text by DEV's choice (N03)</td></tr><tr><td>B-054</td><td>Fixed</td><td>Hard shadow on the error card (E02, G03)</td></tr><tr><td>B-123</td><td>Fixed</td><td>64 px solid cell, 24 px title, muted 42ch body (N05–N07, E03–E05)</td></tr><tr><td>B-124</td><td>Fixed</td><td>Route error “loading this page” (E05); global its own (G03)</td></tr><tr><td>B-125</td><td>Fixed</td><td>Refresh icon (E06, G04); arrow on the plan not found's link (U06)</td></tr><tr><td>B-126</td><td>Fixed</td><td>Unboxed, 520 px, 48 px top, 44 px title, muted body (U02, U04, U05); the phone button width is B-155</td></tr><tr><td>B-127</td><td>Mostly fixed</td><td>760 px alert, status line under it, signal-text link, near the top on phones (R05, R08, R11). Open: the status line is sans with a 24 px cell (R07)</td></tr><tr><td>B-134</td><td>Fixed</td><td>Outline 2 px out on every Button, visible at night (N10, E10, U07)</td></tr><tr><td>B-138</td><td>Fixed</td><td>--shadow-sm/md/lg mapped in @theme: hard offsets day and night (N04, E02)</td></tr><tr><td>B-155</td><td>Open</td><td>Full-width phone buttons, 16 px gutters (N14, E13, G09, U08)</td></tr><tr><td>B-156</td><td>Open</td><td>“Reference:” label in mono (E08, G06)</td></tr></table></section><section class="box" id="new-defects"><h2>New defects (to be numbered in bugs.md)</h2><ul><li><b>B-212 · Medium · DS StatusCard · N04–N08, E02–E05, E08, G03, G06 (and N11, E11, N14, E13):</b> the build's StatusCard is centred, max 576 px, 40/24 px padding, shadow-md, a 64 px solid lifted hex, a 24 px title, a muted 42ch body, the footnote last under a 1 px rule (13 px), no arrow on the 404 home button. DS StatusCard: left-aligned (align-items flex-start), max 560 px, 24 px padding, 2 px rule border and no shadow, 72 px lifted hex (dashed + pin for not-found, error tone + warning for errors, icon 30 px), title 800 clamp(40px,7vw,56px)/0.95 caps, body 17/26 foreground, footnote mono 500 12/16 muted ABOVE the actions, actions wrap at natural width, the 404 primary has iconEnd arrow-right. The board's App canvas draws the centred version: board and DS conflict.</li><li><b>B-213 · Low · DS Alert / PlanAlert (limit) · R05:</b> the warning alert's 2 px border is the full tone (rgb(168,22,79)); DS Alert mixes the tone 45% into the card (about rgb(213,151,166) by day, rgb(111,77,94) at night). Shared Alert, so likely on every alert site-wide. DS copy also keeps “…or open one of your earlier plans.” (R09 still open).</li><li><b>B-213 · Low · DS PlanAlert (limit) · R08:</b> “Back to Busk Map home” is a signal-text link under the status line (as the board); DS PlanAlert puts it inside the alert as an outline size-sm Button in the actions row.</li></ul><p>The HTTP 200 on the render error and /p/&lt;unknown&gt; is DEV's declared limit (audit), not a defect. No glyph icons, so no B-162 rows.</p></section>
+<section class="box"><h2>Versions</h2><ul><li><b>v4</b> · design/honeycomb ＠ <code>f83f1a1</code> · 17 Oct 2026: DS parity and glyph rule applied (same commit): StatusCard, ErrorState, EmptyState, PlanNotFound, PlanAlert, AgentStatusLine and Button compared with BRAND&#x27;s DS specimens. Now Different against DS StatusCard: N04–N08, E02–E04, E05, G03 (B-212); R05 against DS Alert/PlanAlert (B-213); R08 against DS PlanAlert (B-213). PlanNotFound and Button match the DS. No glyph icons (U06&#x27;s arrow is an SVG). READY now Not ready. Full pass at f83f1a1. Fixed: B-138 and the shadow half of B-053/B-054 (cards show the 4 px ink offset, orange at night: N04, E02, G03, N11, E11); B-134 (one 2 px outline 2 px outside every button, so the night ring sits on the card, not the fill: N10, E10, U07, G08); B-123 (64 px solid lifted cell, 24 px title, muted 42ch body: N05–N07, E03–E05); B-124 on the route error too (“loading this page”, E05); B-125 (arrow on the plan not found&#x27;s home link, U06); B-126 (plan not found unboxed, 520 px, 44 px title, muted: U02, U04, U05); B-127 mostly (run limit at 760 px, status line under the alert, signal-text home link, alert near the top on phones: R05, R08, R11); B-098/F20 (run limit eyebrow “Fri 16 Oct · 5–8 pm · General permit”, R02). Still open: N03 colour (DEV deviation), B-155 (N14, E13, G09, U08), B-156 (E08, G06), R07 type. No Tips anywhere. Recorded DEV&#x27;s declared limit: the render error and /p/&lt;unknown&gt; answer HTTP 200 (/p is noindex).</li><li><b>v3</b> · design/honeycomb ＠ <code>8207373</code> · 17 Oct 2026: Recheck at 8207373: F12 lockup, B-122 and B-128 fixed, refresh icon; B-053/B-054 open on the soft shadow; new B-134, B-155, B-156.</li><li><b>v2</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: BRAND&#x27;s 56 parts replace v1&#x27;s 7 provisional rows; adds the plan not found and the run limit, BRAND&#x27;s build issues checked, B-122..B-128. Headers judged on the corrected F12 (the lockup is the one logo).</li><li><b>v1</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: First version: 404, error and global error against the deck at 3 widths, day and night; field strip; B-053, B-054.</li></ul></section>
 </div>
 <script>
 const f=document.getElementById('flt');f.addEventListener('click',()=>{const on=!document.body.classList.contains('action');document.body.classList.toggle('action',on);f.setAttribute('aria-pressed',String(on));});

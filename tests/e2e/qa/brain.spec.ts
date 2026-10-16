@@ -21,7 +21,7 @@ test.describe("QA /brain", () => {
     await open(page);
     const facts = page.getByRole("region", { name: "Qloo calls per busk" }).getByRole("listitem");
     await expect(facts).toHaveText([/^11\s*kinds of Qloo call$/, /^24–33\s*Qloo calls for a new busk$/, /^0\s*on a rerun: answers cached for 24 h$/, /^9\s*parts of your busk it decides$/]);
-    await expect(page.getByTestId("quota-note")).toContainText("10,000 requests a month");
+    await expect(page.getByTestId("quota-note")).toContainText("One key's 10,000 calls a month cover roughly 300–400 new busks"); // B-115 copy
   });
 
   test("keyboard trace: Enter traces and announces; Escape clears, announces, and returns focus to the node", async ({ page }) => {

@@ -25,15 +25,16 @@ dl{margin:0;display:grid;gap:6px} dt{font-size:12px;color:var(--muted)} dd{margi
 .ph{border:2px dashed var(--bad);color:var(--bad);padding:24px 8px;text-align:center;font-weight:800} .ph.soft{border-color:var(--muted);color:var(--muted)}
 body.action .row[data-action="false"]{display:none}
 .row.site{grid-template-columns:150px minmax(0,1fr) minmax(0,2fr)} .sect{font-size:18px;margin:28px 0 4px}
-.box{background:var(--card);border:1px solid var(--line);padding:12px 16px;margin-top:20px} .box h2{font-size:16px;margin:0 0 6px}
+.box{background:var(--card);border:1px solid var(--line);padding:12px 16px;margin-top:20px;overflow-x:auto} table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top} .prov{border-left:4px solid var(--accent);padding:6px 10px;background:var(--bg);font-size:13px} .synth{border:2px solid var(--fg);padding:8px 12px;margin:10px 0} .synth h3{margin:0 0 4px;font-size:14px} .box details{margin-top:10px} .box summary{font-weight:800;cursor:pointer;min-height:32px} .box h3,.box h4,.box h5,.box h6{font-size:14px;margin:12px 0 4px} .box table{margin:6px 0} .box code{font-size:12px} .box h2{font-size:16px;margin:0 0 6px}
 @media (max-width:1100px){.row{grid-template-columns:1fr 1fr} .id{grid-column:1/-1} dl{grid-column:1/-1}}
 @media (max-width:1100px){.row.site{grid-template-columns:1fr 1fr}}
 @media (max-width:600px){.row,.row.site{grid-template-columns:1fr}}
 </style></head>
 <body><div class="wrap">
 <h1>Landing · review</h1>
-<p class="ver">v5 · design/honeycomb ＠ 8207373 · 17 Oct 2026</p>
-<p class="chg">Recheck at 8207373 (DEV closed F01–F15). L01 now Present (F12 lockup with the new lettering); L14, L16 badges gone (F01); L18 F02/F03/F05 done but Different (legend wraps at 390, tiled attribution icon, short map: B-137..5); L21→L22→L23 order fixed (F06); L24 credit line gone (F04). New: L08/L24 poster CTAs render 44 px tall (B-139); L23 specimen lost its app icon (B-140); L11 still an arrow (F22, round 2); L26 Different (B-129). Site-wide F07–F15 all Present. 21 Present, 7 Different, 1 Held.</p>
+<p class="ver">v6 · design/honeycomb ＠ f83f1a1 · 17 Oct 2026</p>
+<p class="chg">The one full pass at DEV&#x27;s closing commit f83f1a1; every row re-judged; DS parity and glyph rule applied. Fixed since v5: L08 and L24 poster CTAs 76 and 64 px (B-139); L18 legend one line at 390 (B-137) and the map fills its column (B-141); L01/L26 nav at 721 (B-129); L01 lockup P whole (B-135); L11 play triangle (F22). Changed: L05 full-bleed with pins 1, 2, 3 (F19; zone, event, river and low-taste cells held by DEV); L23 counts 72 · 3 · 21 from /brand; Tips gone. DS parity: L13 (ExampleActCard), L17 (ResearchFunnel), L18 (PitchRow, PitchPin, TasteMapLegend, PlanMap), L20 (SetlistPanel), L22 and L23 (StatStrip) differ from their DS specimens (B-163..B-170); glyph icons on L17, L22, L23 (B-162). Still open: B-136, B-140; B-171 phone hero order. L21b not built (F23 held). 21 Present, 7 Different, 1 Held. The impeccable critique and audit were run for real this round (skill v4.4.0, dual-agent, at f83f1a1, 390/768/1440; provenance at the top of both sections), replacing v3&#x27;s hand-written sections. New from impeccable, verified by QA: B-218 (High: day-scheme focus ring invisible in the dark bands), B-226 (ticker can&#x27;t be paused), B-231 (targets under 44 px).</p>
+<section class="ready" aria-label="Ready for design-approve" style="border:2px solid var(--line);background:var(--card);padding:12px 16px;margin:8px 0 14px"><b>Ready for the user's design-approve? Not ready.</b> DS parity and the glyph rule now apply: L17 (funnel: glyph connectors, wrong numerals vs DS ResearchFunnel), L13 (act cards vs DS ExampleActCard), L18 (PitchRow, PitchPin, legend, other pitches vs the DS), L20 (SetlistPanel), L22 and L23 (StatStrip, text arrows) visibly differ from their DS specimens; L13 and L18&#x27;s legend need the user to choose between the DS and their earlier calls. Also open: B-136, B-140, B-171; L05 held; L21b not built (F23 held). Impeccable adds B-218 (High) and B-226.</section>
 <div class="strip" role="group" aria-label="Summary">
 <span class="stat ok">21 Present</span><span class="stat warn">7 Different</span><span class="stat bad">0 Missing</span><span class="stat bad">0 Broken</span><span class="stat held">1 Held</span>
 <button class="filter" type="button" aria-pressed="false" id="flt">Needs action only</button>
@@ -42,322 +43,322 @@ body.action .row[data-action="false"]{display:none}
 <article class="row" id="L01" data-action="false">
 <div class="id"><a href="#L01">L01</a><span>Header</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L01.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L01.jpg" alt="L01 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L01-1440.jpg" alt="L01 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L01-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L01-390.jpg" alt="L01 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L01-1440.jpg" alt="L01 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L01-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L01-390.jpg" alt="L01 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>done: F12 lockup (images, 36 px); nav says Brain (HQ default)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> The lockup [hex mark][new stencil wordmark] as an image, 36 px tall, letters all one height as in the user&#x27;s reference (F12 corrected: fixed). Nav Busks · Week · Brain · Tips, none active. The header nav starts at 768 px, not 721 (B-129, tracked on L26).</dd></div>
-<div><dt>User's call</dt><dd class="call">F12 (corrected 17 Oct): the ONE logo is [hex mark][new wordmark] in the header, footer and every asset; wordmark-only or mark-only in a header fails; the mark alone only at icon size. (done at 8207373)</dd></div>
-<div><dt>Defect</dt><dd>B-129 (see L26)</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>DEV status</dt><dd>done: lockup files (B-135), nav at 721 (B-129), no Tips</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> The lockup [hex mark][new stencil wordmark] as an image, 36 px tall; the P&#x27;s orange offset is no longer clipped (B-135 fixed at f83f1a1, BRAND&#x27;s new files). Nav Busks · Week · Brain, none active; no Tips item. The header nav now starts at 721 px (B-129 fixed). DS AppHeader and Logo: matches (night bar, orange rule, lockup, mono nav with icons); the DS&#x27;s mark-only Logo on phones is overruled by the user&#x27;s F12.</dd></div>
+<div><dt>User's call</dt><dd class="call">Tips removed by the user (17 Oct). F12 (corrected 17 Oct): the ONE logo is [hex mark][new wordmark] in the header, footer and every asset; wordmark-only or mark-only in a header fails; the mark alone only at icon size. (done at 8207373)</dd></div>
+<div><dt>Defect</dt><dd>B-129 fixed · B-135 fixed</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L02" data-action="false">
 <div class="id"><a href="#L02">L02</a><span>Hero band</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L02.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L02.jpg" alt="L02 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L02-1440.jpg" alt="L02 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L02-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L02-390.jpg" alt="L02 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L02-1440.jpg" alt="L02 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L02-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L02-390.jpg" alt="L02 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>built</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night band, dot grain, hex lattice and the 6px orange rule.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night band, dot grain, hex lattice and the 6px orange rule. The taste map now fills the right half edge to edge (F19).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L03" data-action="false">
 <div class="id"><a href="#L03">L03</a><span>Glowing honeycomb cells</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L03.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L03.jpg" alt="L03 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L03-1440.jpg" alt="L03 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L03-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L03-390.jpg" alt="L03 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L03-1440.jpg" alt="L03 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L03-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L03-390.jpg" alt="L03 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>changed: small texts removed (user call)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Glowing cells as the board; the small texts beside them stay gone (user call).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> 104 glowing cells (lp-glow running on 104 elements), top-right corner and bottom band; the small texts beside them stay gone (user call).</dd></div>
 <div><dt>User's call</dt><dd class="call">Remove the small texts on both sides. (done in v4)</dd></div>
 <div><dt>Defect</dt><dd>B-021 glow fixed</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L04" data-action="false">
 <div class="id"><a href="#L04">L04</a><span>Hero headline</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L04.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L04.jpg" alt="L04 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L04-1440.jpg" alt="L04 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L04-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L04-390.jpg" alt="L04 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L04-1440.jpg" alt="L04 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L04-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L04-390.jpg" alt="L04 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>built</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Three-line headline; “What to play.” never wraps at 1440.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Three-line headline; “What to play.” in signal orange, never wraps at 1440.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>B-025 fixed</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L05" data-action="true">
 <div class="id"><a href="#L05">L05</a><span>Hero taste map</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L05.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L05.jpg" alt="L05 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L05-1440.jpg" alt="L05 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L05-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L05-390.jpg" alt="L05 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L05-1440.jpg" alt="L05 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L05-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L05-390.jpg" alt="L05 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>deviation: separate SVG, not orange-only yet (asking the user)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip held">Held</span> Unchanged since v4: a separate SVG (HeroTasteMap), not the app&#x27;s map. Still has the dark cells F05 removes (DEV&#x27;s declared deviation: asking the user if F05 covers the hero). Pins 1 and 3 plus an unnumbered gem diamond; no hatched zone, event or river; a framed rectangle, not full-bleed (round 2 F16/F19 not built yet).</dd></div>
-<div><dt>User's call</dt><dd class="call">Held. F05: if the hero uses the same map, only the orange cells, no dark cells. (DEV asks: it&#x27;s a separate SVG.) Round 2 F16/F19: hatched zone cells, full-bleed map. (not built yet)</dd></div>
-<div><dt>Defect</dt><dd>B-021 (zone, event, river) held</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>DEV status</dt><dd>F19 full-bleed and pins 1–3 done; zone, event, river and orange-only held</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> Held by DEV (zone, event, river and the low-taste cells). Built at f83f1a1: the map fills the hero&#x27;s right half edge to edge (F19, no framed rectangle) and all three pitches are numbered pins 1, 2, 3 (no unnumbered gem). Held: no hatched zone, event diamond or river; dark low-taste cells still drawn (568 of 783 cells are the darkest fill). At 390 and 768 the map now sits above the headline (see L27). DS TasteMap: the hero pins are plain dark hexes with a large numeral, not DS PitchPin ring pins with a number tab, and there is no legend; held with the rest of L05 (no new defect).</dd></div>
+<div><dt>User's call</dt><dd class="call">F05: if the hero uses the same map, only the orange cells, no dark cells. Round 2 F16/F19: hatched zone cells, full-bleed map; pitches as pins 1, 2, 3. (full-bleed and pins done at f83f1a1; zone, event, river and low-taste cells held by DEV)</dd></div>
+<div><dt>Defect</dt><dd>B-021 (zone, event, river) held by DEV</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L06" data-action="false">
 <div class="id"><a href="#L06">L06</a><span>Map fill-in and pin drop</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L06.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L06.jpg" alt="L06 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L05-1440.jpg" alt="L06 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L05-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L05-390.jpg" alt="L06 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L05-1440.jpg" alt="L06 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L05-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L05-390.jpg" alt="L06 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>built</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Cells fill in and pins drop; under reduced motion the finished map shows with 0 running animations.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> 780 cells fill in (hc-cell-in), then the 3 pins drop (hc-pin-in), all done by 5 s; under reduced motion the finished map shows with 0 running animations.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L07" data-action="false">
 <div class="id"><a href="#L07">L07</a><span>Map caption</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L07.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L07.jpg" alt="L07 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L05-1440.jpg" alt="L07 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L05-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L05-390.jpg" alt="L07 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L05-1440.jpg" alt="L07 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L05-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L05-390.jpg" alt="L07 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>changed: all captions removed (user call)</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> No caption, by the user&#x27;s call. Nothing else under the map.</dd></div>
 <div><dt>User's call</dt><dd class="call">Remove all the small texts. (done in v4)</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
-</dl></article><article class="row" id="L08" data-action="true">
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="L08" data-action="false">
 <div class="id"><a href="#L08">L08</a><span>Hero CTA</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L08.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L08.jpg" alt="L08 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L08-1440-focus.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L08-1440-focus.jpg" alt="L08 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L08-390-focus.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L08-390-focus.jpg" alt="L08 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L08-1440-focus.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L08-1440-focus.jpg" alt="L08 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L08-390-focus.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L08-390-focus.jpg" alt="L08 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>changed: Button poster variant (F13–F15)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Now the Button poster variant: orange, cream 2px edge, 6px cream shadow, 34px Big Shoulders, and a 3px orange focus outline 10px out (visible beside the shadow; screenshot is focused). But it renders 44 px tall at 390, 768 and 1440 (board and v4: 76 px): the default size&#x27;s h-control wins over the h-19 class.</dd></div>
-<div><dt>User's call</dt><dd class="call">F13–F15: the hero CTA uses the Button poster variant (inventory intro).</dd></div>
-<div><dt>Defect</dt><dd>B-018 fixed · B-139 (44 px tall)</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>DEV status</dt><dd>done: poster-lg 76 px (B-139)</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Button poster variant, size poster-lg: 76 px tall at 390, 768 and 1440 (B-139 fixed), orange, 2px cream edge, 6px cream shadow, 34px Big Shoulders; focused: 3px orange outline 10px out, visible beside the shadow (screenshot is focused). DS Button: the DS specimen shows no poster variant to compare; the arrow is an icon, not a glyph.</dd></div>
+<div><dt>User's call</dt><dd class="call">F13–F15: the hero CTA uses the Button poster variant (inventory intro). (done; 76 px since f83f1a1)</dd></div>
+<div><dt>Defect</dt><dd>B-018 fixed · B-139 fixed</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L09" data-action="false">
 <div class="id"><a href="#L09">L09</a><span>In partnership with Qloo</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L09.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L09.jpg" alt="L09 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L09-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L09-1440.jpg" alt="L09 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L09-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L09-390.jpg" alt="L09 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L09-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L09-1440.jpg" alt="L09 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L09-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L09-390.jpg" alt="L09 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>done: Qloo logo links out (F09)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Purple words and the Qloo wordmark, centred; the wordmark now links to qloo.com in a new tab (F09).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Purple words and the Qloo wordmark, centred across the hero; the wordmark links to qloo.com in a new tab (F09). At 1440 the wordmark now sits over the full-bleed map&#x27;s dark cells, still legible. DS QlooWordmark: matches (paper letters, purple bar).</dd></div>
 <div><dt>User's call</dt><dd class="call">F09: every Qloo logo links to qloo.com in a new tab. (done at 8207373)</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L10" data-action="false">
 <div class="id"><a href="#L10">L10</a><span>Ticker band</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L10.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L10.jpg" alt="L10 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L10-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L10-1440.jpg" alt="L10 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L10-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L10-390.jpg" alt="L10 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L10-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L10-1440.jpg" alt="L10 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L10-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L10-390.jpg" alt="L10 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>built</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Six phrases, rolling; still under reduced motion.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Six phrases, rolling (hc-roll); still under reduced motion.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
-</dl></article><article class="row" id="L11" data-action="true">
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="L11" data-action="false">
 <div class="id"><a href="#L11">L11</a><span>Demo video slot</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L11.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L11.jpg" alt="L11 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L11-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L11-1440.jpg" alt="L11 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L11-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L11-390.jpg" alt="L11 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L11-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L11-1440.jpg" alt="L11 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L11-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L11-390.jpg" alt="L11 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>changed: placeholder slot, no controls, no autoplay</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Placeholder slot as before: orange hex, “[Demo video · 60–90 s]” and the line, no media, no controls. The hex still holds an arrow; round 2 F22 asks for a play triangle (not built yet).</dd></div>
-<div><dt>User's call</dt><dd class="call">Add the video slot. (done in v4) F22 (round 2): the icon is a play triangle, not an arrow. (not built yet)</dd></div>
-<div><dt>Defect</dt><dd>— (F22 play triangle: round 2, not built yet)</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>DEV status</dt><dd>done: play triangle (F22)</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Placeholder slot: orange hex with a play triangle (F22 done), “[Demo video · 60–90 s]” and the line, no media, no controls.</dd></div>
+<div><dt>User's call</dt><dd class="call">Add the video slot. (done in v4) F22 (round 2): the icon is a play triangle, not an arrow. (done at f83f1a1)</dd></div>
+<div><dt>Defect</dt><dd>— (F22 done)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L12" data-action="false">
 <div class="id"><a href="#L12">L12</a><span>“Try an act” heading</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L12.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L12.jpg" alt="L12 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L12-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L12-1440.jpg" alt="L12 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L12-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L12-390.jpg" alt="L12 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L12-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L12-1440.jpg" alt="L12 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L12-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L12-390.jpg" alt="L12 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>built</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Second sentence in signal text.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L13" data-action="true">
 <div class="id"><a href="#L13">L13</a><span>Act cards ×3</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L13.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L13.jpg" alt="L13 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L13-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L13-1440.jpg" alt="L13 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L13-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L13-390.jpg" alt="L13 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L13-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L13-1440.jpg" alt="L13 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L13-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L13-390.jpg" alt="L13 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>built as before (user call); B-032 not applied</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Kept as built by the user&#x27;s call: filled “SA” hex, dark action row, the app&#x27;s Plays lists (B-032 accepted). Keyboard focus is a 2px dark ring right against the 2px dark border, so it reads as a thicker border (DEV&#x27;s one-ring fallback, asking BRAND).</dd></div>
+<div><dt>DEV status</dt><dd>built as before (user call); BRAND&#x27;s one-ring sentence</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Kept as built by the user&#x27;s call: filled “SA” hex, dark action row, the app&#x27;s Plays lists (B-032 accepted). Keyboard focus is BRAND&#x27;s one 2px ring with no gap (f83f1a1 ring sentence), so on the card&#x27;s 2px dark border it reads as a thicker border. DS parity: differs from DS ExampleActCard, a compact one-row card (orange hex initials, name, one-line blurb, mono “Sounds like”, arrow at the right; no day · hours, no Plays line, no ruled action row). This conflicts with the user&#x27;s earlier keep call, so the user must choose.</dd></div>
 <div><dt>User's call</dt><dd class="call">Keep as built (B-032 accepted).</dd></div>
-<div><dt>Defect</dt><dd>B-022 fixed · B-032 accepted (user)</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-022 fixed · B-032 accepted (user) · B-163 (DS ExampleActCard)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L14" data-action="false">
 <div class="id"><a href="#L14">L14</a><span>“Busking is guesswork” heading</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L14.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L14.jpg" alt="L14 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L14-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L14-1440.jpg" alt="L14 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L14-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L14-390.jpg" alt="L14 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L14-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L14-1440.jpg" alt="L14 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L14-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L14-390.jpg" alt="L14 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>done: badge removed (F01)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “guesswork” in signal text; no Example data badge (F01 done).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “guesswork” in signal text; no Example data badge (F01).</dd></div>
 <div><dt>User's call</dt><dd class="call">F01: Remove the “Example data” badge. (done at 8207373)</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L15" data-action="false">
 <div class="id"><a href="#L15">L15</a><span>Problem cards ×4</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L15.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L15.jpg" alt="L15 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L15-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L15-1440.jpg" alt="L15 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L15-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L15-390.jpg" alt="L15 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L15-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L15-1440.jpg" alt="L15 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L15-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L15-390.jpg" alt="L15 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>built</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Copy as the board.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L16" data-action="false">
 <div class="id"><a href="#L16">L16</a><span>“What you get back” heading</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L16.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L16.jpg" alt="L16 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L16-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L16-1440.jpg" alt="L16 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L16-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L16-390.jpg" alt="L16 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L16-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L16-1440.jpg" alt="L16 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L16-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L16-390.jpg" alt="L16 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>done: badge removed (F01)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Heading only; no Example data badge (F01 done).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Heading only; no Example data badge (F01).</dd></div>
 <div><dt>User's call</dt><dd class="call">F01: Remove the “Example data” badge. (done at 8207373)</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
-</dl></article><article class="row" id="L17" data-action="false">
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="L17" data-action="true">
 <div class="id"><a href="#L17">L17</a><span>Research funnel</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L17.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L17.jpg" alt="L17 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L17-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L17-1440.jpg" alt="L17 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L17-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L17-390.jpg" alt="L17 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L17-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L17-1440.jpg" alt="L17 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L17-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L17-390.jpg" alt="L17 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>changed to match the deck</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Funnel as the board: labels beside each hex, ▸ chevrons, one row at 1440.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Funnel as the board: 412 taste cells › 1 crowd › 4 places › 1 event › 2 sensors › 37 rules › 36 scored › 3 songs › 496 data points › 3 pitches; one row at 1440. DS parity: differs from DS ResearchFunnel: the cells are joined by “▸” text glyphs, not half a honeycomb cell turned on its side (B-162); the counts are set in Big Shoulders, larger than the DS&#x27;s small sans numerals in 30 px cells.</dd></div>
 <div><dt>User's call</dt><dd class="call">Fix to the deck. (done in v4)</dd></div>
-<div><dt>Defect</dt><dd>B-020 fixed · B-033 fixed</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-020 fixed · B-033 fixed · B-162 (▸ connectors) · B-164 (DS ResearchFunnel)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L18" data-action="true">
 <div class="id"><a href="#L18">L18</a><span>Your busk (PlanMap)</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L18.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L18.jpg" alt="L18 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L18-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L18-1440.jpg" alt="L18 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L18-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L18-390.jpg" alt="L18 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L18-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L18-1440.jpg" alt="L18 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L18-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L18-390.jpg" alt="L18 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>done: F02, F03, F05</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> F02, F03, F05 done: “Full details →” on each pitch row; zoom buttons kept; no “test data”; only orange taste cells, no dark cells; zoomed out so streets, river and labels show; legend is one line at the bottom (Taste · Top pitch · Hidden gem · Other) with a tooltip on each item. Left: at 390 the legend wraps to two lines; the attribution control shows a tiled, clipped “i” icon (4 copies) bottom right at every width; at 1440 the map is 544 px tall in a 699 px column, leaving empty paper below. No zone, river or event (held, L05).</dd></div>
-<div><dt>User's call</dt><dd class="call">Fix to the deck. Then F02: add “Full details →” per pitch row; keep the zoom buttons; remove “test data” from the legend. F03: the legend becomes one line at the bottom of the map, with tooltips for the details. F05: only the orange honeycomb cells, no dark cells; zoom out a little so the map itself shows. (done at 8207373, see QA note)</dd></div>
-<div><dt>Defect</dt><dd>B-020 fixed (declared deviation) · B-137, B-136, B-141</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>DEV status</dt><dd>done: F02, F03, F05; legend one line, map fills column</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> F02, F03, F05 hold: “Full details” per pitch row, zoom kept, no “test data”, orange cells only, zoomed out. Fixed at f83f1a1: the legend is one line at 390 too (Taste match · 1 Top pitch · Other pitch, 42 px at every width; B-137 fixed); the map now fills its column (1440: 667 px frame in a 699 px column; B-141 fixed); every pitch a numbered pin. Left: the attribution “i” still tiles 2×2 and clips bottom right at every width (B-136). No zone, river or event (held, L05). DS parity: differs from DS PitchRow (DS: [rank] [NAME @ time] [score] on one line, badges and mono caps “FULL DETAILS” under it; build: name and “@ 12–3 pm” on two lines, a rule, then badges and sans “Full details”) (B-165); from DS PitchPin (DS: hex with an orange ring around a paper dot plus a number tab; build: dark hex with a white hex centre) (B-166); from DS TasteMapLegend (DS: boxed legend, “TASTE MATCH” eyebrow, 1–5 ramp with LOW/HIGH, then symbols; build: one-line bar, the user&#x27;s F03 call) (B-167, user to choose); from DS PlanMap (DS: “N more pitches scored…” line under the list; build: a “Browse other pitches (2)” button on the map) (B-168).</dd></div>
+<div><dt>User's call</dt><dd class="call">Fix to the deck. Then F02: add “Full details →” per pitch row; keep the zoom buttons; remove “test data” from the legend. F03: the legend becomes one line at the bottom of the map, with tooltips for the details. F05: only the orange honeycomb cells, no dark cells; zoom out a little so the map itself shows. (done; one line at 390 since f83f1a1)</dd></div>
+<div><dt>Defect</dt><dd>B-136 open · B-137, B-141 fixed · B-165 PitchRow · B-166 PitchPin · B-167 TasteMapLegend · B-168 PlanMap</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L19" data-action="false">
 <div class="id"><a href="#L19">L19</a><span>“And what to play there”</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L19.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L19.jpg" alt="L19 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L19-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L19-1440.jpg" alt="L19 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L19-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L19-390.jpg" alt="L19 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L19-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L19-1440.jpg" alt="L19 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L19-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L19-390.jpg" alt="L19 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>built</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Heading and paragraph as the board.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
-</dl></article><article class="row" id="L20" data-action="false">
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="L20" data-action="true">
 <div class="id"><a href="#L20">L20</a><span>Setlist panel</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L20.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L20.jpg" alt="L20 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L20-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L20-1440.jpg" alt="L20 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L20-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L20-390.jpg" alt="L20 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L20-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L20-1440.jpg" alt="L20 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L20-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L20-390.jpg" alt="L20 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>changed: Copy, rows 01–04, mono set length, bordered Learn these</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “Setlist for this pitch”, Copy, rows 01–04, mono set length, bordered Learn these with the orange rule.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Setlist for this pitch”, Copy, rows 01–04, mono set length, bordered Learn these with the orange rule. DS parity: differs from DS SetlistPanel: the subtitle is a method paragraph (DS: “Southbank Promenade · Sun 12–3 pm · best fit first”); “LEARN THESE” is mono caps (DS: Big Shoulders title); the Copy button label is mono (DS: bold sans).</dd></div>
 <div><dt>User's call</dt><dd class="call">Fix to the deck. (done in v4)</dd></div>
-<div><dt>Defect</dt><dd>B-020 fixed · B-034 fixed</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-020 fixed · B-034 fixed · B-169 (DS SetlistPanel)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L21" data-action="false">
 <div class="id"><a href="#L21">L21</a><span>Beyond buskers</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L21.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L21.jpg" alt="L21 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L21-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L21-1440.jpg" alt="L21 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L21-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L21-390.jpg" alt="L21 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L21-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L21-1440.jpg" alt="L21 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L21-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L21-390.jpg" alt="L21 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>done: first of the three (F06)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Now directly after What you get back, before the Brain teaser (F06 done at 390, 768 and 1440).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Directly after What you get back, before the Brain teaser (F06) at 390, 768 and 1440.</dd></div>
 <div><dt>User's call</dt><dd class="call">F06: Beyond buskers comes first, then the Brain teaser, then the Brand teaser (replaces v67). (done at 8207373)</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
-</dl></article><article class="row" id="L22" data-action="false">
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="L22" data-action="true">
 <div class="id"><a href="#L22">L22</a><span>Brain teaser</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L22.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L22.jpg" alt="L22 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L22-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L22-1440.jpg" alt="L22 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L22-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L22-390.jpg" alt="L22 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L22-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L22-1440.jpg" alt="L22 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L22-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L22-390.jpg" alt="L22 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>done: after Beyond (F06); Qloo logo links out (F09)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> After Beyond buskers, before Brand (F06). 11 · 24–33 · 0, purple button, wiring sketch; the “Powered by” Qloo wordmark links to qloo.com (F09).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> After Beyond buskers, before Brand (F06). 11 · 24–33 · 0, purple button, wiring sketch; the “Powered by” Qloo wordmark links to qloo.com (F09). DS parity: the numbers differ from DS StatStrip (DS tone qloo: a framed, ruled strip of cells, purple number above its label; build: inline number beside a mono label, no cells); “Open the brain →” uses a text arrow (B-162).</dd></div>
 <div><dt>User's call</dt><dd class="call">F06: the Brain teaser moves after Beyond buskers, before the Brand teaser. F09: Qloo logo links out. (done at 8207373)</dd></div>
-<div><dt>Defect</dt><dd>B-024 fixed</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-024 fixed · B-162 (→) · B-170 (DS StatStrip)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L23" data-action="true">
 <div class="id"><a href="#L23">L23</a><span>Brand teaser</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L23.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L23.jpg" alt="L23 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L23-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L23-1440.jpg" alt="L23 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L23-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L23-390.jpg" alt="L23 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L23-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L23-1440.jpg" alt="L23 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L23-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L23-390.jpg" alt="L23 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>done: last of the three (F06)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Last of the three (F06). “Honeycomb”, line, 90 · 3 · 9, “See the brand →” (one of the page&#x27;s 2 /brand links; the other is the footer, F11). The specimen card lost its app icon (the hex mark) at 8207373: it starts with hex cell 1 (board and v4: app icon, 1, 91).</dd></div>
+<div><dt>DEV status</dt><dd>done: last of the three (F06); counts from /brand&#x27;s lists</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Last of the three (F06). “Honeycomb”, line, “See the brand →” (one of the page&#x27;s 2 /brand links). The numbers now read 72 components · 3 typefaces · 21 assets, counted from /brand&#x27;s own lists (f83f1a1; the board&#x27;s 90 and 9 were hard-coded). The specimen card still has no app icon: it starts at hex cell 1, then 91 (board: app icon, 1, 91). DS parity: the numbers differ from DS StatStrip (DS: framed, ruled cells, number above label; build: inline) (B-170); “See the brand →” uses a text arrow (B-162).</dd></div>
 <div><dt>User's call</dt><dd class="call">Add the brand teaser. (done in v4) F06: order is Beyond buskers → Brain → Brand. (done at 8207373)</dd></div>
-<div><dt>Defect</dt><dd>B-019 fixed · B-140 (app icon gone)</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
-</dl></article><article class="row" id="L24" data-action="true">
+<div><dt>Defect</dt><dd>B-019 fixed · B-140 open (app icon gone) · B-162 (→) · B-170 (DS StatStrip)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="L24" data-action="false">
 <div class="id"><a href="#L24">L24</a><span>Closing CTA</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L24.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L24.jpg" alt="L24 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L24-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L24-1440.jpg" alt="L24 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L24-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L24-390.jpg" alt="L24 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L24-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L24-1440.jpg" alt="L24 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L24-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L24-390.jpg" alt="L24 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>done: credit line removed (F04)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> No credit line under the CTA (F04 done). The button is now the poster variant: “PLAN A BUSK” in 24px Big Shoulders capitals, 44 px tall (board and v4: sans “Plan a busk”, 64 px).</dd></div>
+<div><dt>DEV status</dt><dd>done: credit line removed (F04); poster 64 px (B-139)</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> No credit line (F04). The button is the poster variant at size poster: 64 px tall at 390, 768 and 1440 (B-139 fixed), “PLAN A BUSK” in 24px Big Shoulders capitals with the cream poster shadow (the board&#x27;s sans “Plan a busk” predates the poster variant, F13–F15). DS Button: no poster variant in the DS specimen to compare; arrow-free label.</dd></div>
 <div><dt>User's call</dt><dd class="call">F04: Remove the “Data: Qloo · …” credit line. (done at 8207373)</dd></div>
-<div><dt>Defect</dt><dd>B-139 (44 px, capitals)</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-139 fixed</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L25" data-action="false">
 <div class="id"><a href="#L25">L25</a><span>Footer</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L25.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L25.jpg" alt="L25 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/L25-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L25-1440.jpg" alt="L25 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L25-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L25-390.jpg" alt="L25 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/L25-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L25-1440.jpg" alt="L25 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L25-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L25-390.jpg" alt="L25 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>done: F07–F11 footer</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Re-laid out by F07–F11: left lockup “with” Qloo; centre Privacy · Terms · Brain · Brand; right GitHub in a hex cell and “Built by T04435” with the pixel mark; no legal line (on /terms). Stacks cleanly at 390.</dd></div>
+<div><dt>DEV status</dt><dd>done: F07–F11 footer, agreed F08</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> F07–F11 layout: left lockup “with” Qloo; centre Privacy · Terms · Brain · Brand; right GitHub in a hex cell, “Built by” (plain text) T04435 (link) and the critter (to claude.com/claude-code, new tab). No legal line (on /terms). Stacks cleanly at 390. DS SiteFooter: the DS specimen is the pre-F07–F11 footer (legal line, “Open source” text); the user&#x27;s F07–F11 calls win, so no DS defect.</dd></div>
 <div><dt>User's call</dt><dd class="call">F07–F11 and F12: see the Site-wide rows (GitHub cell, Built by + mark, Qloo logo links, /terms, three-part layout, lockup). (done at 8207373)</dd></div>
 <div><dt>Defect</dt><dd>B-023 fixed</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
-</dl></article><article class="row" id="L26" data-action="true">
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="L26" data-action="false">
 <div class="id"><a href="#L26">L26</a><span>Bottom nav (phone)</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L26.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L26.jpg" alt="L26 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><div class="ph soft">Phone only</div></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/L26-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/L26-390.jpg" alt="L26 build at 390"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/L26-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/L26-390.jpg" alt="L26 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>built; nav says Brain (HQ default)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Bottom nav Busks · Week · Brain · Tips at 390. It switches to the header nav at 768 px, not 721: from 721 to 767 the bottom bar still shows.</dd></div>
-<div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>B-129 (nav switches at 768, not 721)</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
-</dl></article><article class="row" id="L27" data-action="false">
+<div><dt>DEV status</dt><dd>done: 721 px switch (B-129), no Tips</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Bottom nav Busks · Week · Brain at 390 (no Tips). Shown up to 720 px; from 721 the header nav shows and the bar hides (checked at 720, 721, 767, 768; B-129 fixed). DS MobileNav: matches (icons over mono caps labels, card bar); items follow the user&#x27;s Tips removal.</dd></div>
+<div><dt>User's call</dt><dd class="call">Tips removed by the user (17 Oct): Busks · Week · Brain. (done)</dd></div>
+<div><dt>Defect</dt><dd>B-129 fixed</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="L27" data-action="true">
 <div class="id"><a href="#L27">L27</a><span>Phone layout</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L27.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L27.jpg" alt="L27 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/full-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/full-1440.jpg" alt="L27 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/full-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/full-390.jpg" alt="L27 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/full-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/full-1440.jpg" alt="L27 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/full-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/full-390.jpg" alt="L27 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>built</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Stacks at 390; no sideways scroll at 390, 768 or 1440, day and night.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> No sideways scroll at 390, 768 or 1440, day and night; cards one per row; What you get back rows stack. But the hero now stacks map, headline, CTA at 390 and 768 (the full-bleed map moved above the headline); the board stacks headline, map, CTA.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
-<div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Defect</dt><dd>B-171 (phone hero order)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L28" data-action="false">
 <div class="id"><a href="#L28">L28</a><span>Reduced motion</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L28.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L28.jpg" alt="L28 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/motion-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/motion-1440.jpg" alt="L28 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/motion-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/motion-390.jpg" alt="L28 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/motion-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/motion-1440.jpg" alt="L28 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/motion-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/motion-390.jpg" alt="L28 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>built (covered by e2e)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Reduced motion: glow and ticker still, finished map; 0 running animations at 390, 768 and 1440.</dd></div>
+<div><dt>DEV status</dt><dd>built; global 0 ms transitions under reduced motion</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Reduced motion: glow and ticker still, finished map; 0 running animations at 390, 768 and 1440; transitions 0 ms (f83f1a1 global rule).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row" id="L29" data-action="false">
 <div class="id"><a href="#L29">L29</a><span>Night theme</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L29.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L29.jpg" alt="L29 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v5/night-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/night-1440.jpg" alt="L29 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v5/night-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/night-390.jpg" alt="L29 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/v6/night-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/night-1440.jpg" alt="L29 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/v6/night-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/night-390.jpg" alt="L29 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>built</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night theme: paper sections switch; night bands unchanged; axe clean at 390 and 1440.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article>
 <h2 class="sect" id="site-wide">Site-wide (F07–F15)</h2>
 <p class="chg">The user's calls that aren't one landing part. Row id = ticket, e.g. “F13”.</p>
@@ -367,18 +368,18 @@ body.action .row[data-action="false"]{display:none}
 <dl>
 <div><dt>User's call</dt><dd class="call">Footer: a GitHub icon with a link, in a honeycomb cell, instead of the “OPEN SOURCE github.com/…” text.</dd></div>
 <div><dt>DEV status</dt><dd>done</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> GitHub icon in a 40×46 hex cell, link “Busk Map on GitHub” to github.com/T04435/busk-map; no repo text (site-checks pass, every route).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> GitHub icon in a 40×46 hex cell, link “Busk Map on GitHub” to github.com/T04435/busk-map; no repo text (site-checks 27/0 at f83f1a1, every route).</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row site" id="F08" data-action="false">
 <div class="id"><a href="#F08">F08</a><span>Site-wide</span></div>
 <figure class="deck"><figcaption>User's screenshot</figcaption><a href="../screens/honeycomb/feedback/03-built-by-mark.png"><img loading="lazy" src="../screens/honeycomb/feedback/03-built-by-mark.png" alt="F08 user screenshot"></a></figure>
 <dl>
 <div><dt>User's call</dt><dd class="call">Footer: “Built by T04435” plus the pixel mark (the Claude Code critter recreated as an SVG, not the Claude logo), each linked. Replaces the “@…” text.</dd></div>
 <div><dt>DEV status</dt><dd>done</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “Built by T04435” and the inline-SVG mark (“T04435 on GitHub”) both link to github.com/T04435; no “@…” text. At 8207373 the mark is DEV&#x27;s approximation; BRAND&#x27;s exact path lands later (865999d).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> The agreed footer (B-160): “Built by” plain text; “T04435” links to github.com/T04435; the critter (BRAND&#x27;s path, 865999d) links to claude.com/claude-code in a new tab, rel noopener noreferrer, named “Built with Claude Code (opens in a new tab)”; no “@…” text.</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row site" id="F09" data-action="false">
 <div class="id"><a href="#F09">F09</a><span>Site-wide</span></div>
 <figure class="deck"><figcaption>User's screenshot</figcaption><div class="ph soft">No screenshot</div></figure>
@@ -387,7 +388,7 @@ body.action .row[data-action="false"]{display:none}
 <div><dt>DEV status</dt><dd>done</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Landing: 3 Qloo wordmarks (hero, Brain teaser, footer), all https://qloo.com, target _blank, rel noopener noreferrer, named “Qloo (opens qloo.com in a new tab)”. site-checks: every route passes.</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row site" id="F10" data-action="false">
 <div class="id"><a href="#F10">F10</a><span>Site-wide</span></div>
 <figure class="deck"><figcaption>User's screenshot</figcaption><a href="../screens/honeycomb/feedback/07-legal-line.png"><img loading="lazy" src="../screens/honeycomb/feedback/07-legal-line.png" alt="F10 user screenshot"></a></figure>
@@ -396,58 +397,149 @@ body.action .row[data-action="false"]{display:none}
 <div><dt>DEV status</dt><dd>done</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> /terms returns 200 and holds “never confirms a pitch is legal”; the footer links Terms and no longer shows the line (every route).</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row site" id="F11" data-action="false">
 <div class="id"><a href="#F11">F11</a><span>Site-wide</span></div>
 <figure class="deck"><figcaption>User's screenshot</figcaption><div class="ph soft">No screenshot</div></figure>
 <dl>
 <div><dt>User's call</dt><dd class="call">Footer layout: left the wordmark and the Qloo logo; centre Privacy · Brain · Brand; right GitHub and Built by.</dd></div>
 <div><dt>DEV status</dt><dd>done</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> 1440: left lockup “with” Qloo, centre Privacy · Terms · Brain · Brand (Terms added for F10), right GitHub and Built by. 390: three stacked rows, nothing clipped, no sideways scroll.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> 1440: left lockup “with” Qloo, centre Privacy · Terms · Brain · Brand (Terms added for F10), right GitHub and Built by. 768 and 390: stacked rows, nothing clipped, no sideways scroll.</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row site" id="F12" data-action="false">
 <div class="id"><a href="#F12">F12</a><span>Site-wide</span></div>
 <figure class="deck"><figcaption>User's screenshot</figcaption><a href="../screens/honeycomb/feedback/04-wordmark-only-one.png"><img loading="lazy" src="../screens/honeycomb/feedback/04-wordmark-only-one.png" alt="F12 user screenshot"></a></figure>
 <dl>
 <div><dt>User's call</dt><dd class="call">Corrected 17 Oct: the ONE logo is [hex mark][new wordmark] (the lockup) in the header, footer and every asset. F12 retired only the OLD wordmark lettering (the larger M). Wordmark-only or mark-only in a header fails; the mark alone only at icon size.</dd></div>
 <div><dt>DEV status</dt><dd>done</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Header 36 px and footer 34 px use /brand/busk-map-lockup-dark.svg; at 4× the letters are the new stencil face, M the same height as the rest (matches the reference). site-checks: 16 placements, all lockup. Side effect: the brand teaser&#x27;s app icon was removed (L23, B-140).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Header 36 px and footer 34 px use /brand/busk-map-lockup-dark.svg (BRAND&#x27;s new files, d3ec211); at 4× the letters are the new stencil face and the P&#x27;s orange offset is whole (B-135 fixed). site-checks: 16 placements, all lockup. The brand teaser&#x27;s app icon is still missing (L23, B-140).</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row site" id="F13" data-action="false">
 <div class="id"><a href="#F13">F13</a><span>Site-wide</span></div>
 <figure class="deck"><figcaption>User's screenshot</figcaption><a href="../screens/honeycomb/feedback/05-search-input-cooked.png"><img loading="lazy" src="../screens/honeycomb/feedback/05-search-input-cooked.png" alt="F13 user screenshot"></a></figure>
 <dl>
 <div><dt>User's call</dt><dd class="call">Search inputs (Artists you sound like, song search): a normal input with only the search icon, shadcn InputGroup, one border, one focus ring.</dd></div>
 <div><dt>DEV status</dt><dd>done</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Not on the landing any more (the form is on /busks). Field strip at 8207373: /busks 68 states, 0 fail, including both searches, day and night, 390 and 1440. Visual check on the Busks review.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Not on the landing (the form is on /busks). Field strip fields9 at f83f1a1: /busks 68 states, 0 fail, both searches included, day and night, 390 and 1440.</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row site" id="F14" data-action="false">
 <div class="id"><a href="#F14">F14</a><span>Site-wide</span></div>
 <figure class="deck"><figcaption>User's screenshot</figcaption><a href="../screens/honeycomb/feedback/06-input-focus.png"><img loading="lazy" src="../screens/honeycomb/feedback/06-input-focus.png" alt="F14 user screenshot"></a></figure>
 <dl>
 <div><dt>User's call</dt><dd class="call">Every input&#x27;s focus: one ring, shadcn&#x27;s own pattern (no white gap plus orange over the border).</dd></div>
 <div><dt>DEV status</dt><dd>done</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Field strip: 586 states, 4 fail, none on the landing (3 are the exempt DISABLED specimen on /brand, 1 the plan&#x27;s “≈612 people an hour” button). Landing: 72 states, 0 fail. Plain links and cards use DEV&#x27;s one-ring fallback (asking BRAND): on the act cards (L13) it reads as a thicker border.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Field strip fields9: 542 states, 4 fail, none on the landing (the exempt DISABLED specimen on /brand and the plan&#x27;s “≈612 people an hour est.” button inside a closed fold). Landing: 68 states (17 controls), 0 fail. Cards and plain links use BRAND&#x27;s one-ring sentence (f83f1a1): on the act cards (L13) it reads as a thicker border.</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article><article class="row site" id="F15" data-action="false">
 <div class="id"><a href="#F15">F15</a><span>Site-wide</span></div>
 <figure class="deck"><figcaption>User's screenshot</figcaption><div class="ph soft">No screenshot</div></figure>
 <dl>
 <div><dt>User's call</dt><dd class="call">Use shadcn/ui primitives styled through tokens and variants; no hand-built replacements; no global CSS overriding their states.</dd></div>
 <div><dt>DEV status</dt><dd>done</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Landing CTAs are now Button (poster variant) via asChild; the only global focus rule is a :where() fallback in the base layer for plain links and bare buttons, which primitives&#x27; own utilities override (DEV&#x27;s declared deviation, asking BRAND). The poster variant&#x27;s height is lost to the default size (B-139).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Landing CTAs are Button poster variant via asChild with their own sizes (poster-lg 76 px, poster 64 px; d66c770), so the default size no longer overrides them (B-139 fixed). The only global focus rule is the zero-specificity :where() fallback that never matches inputs (f4e4f3c).</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>8207373</code></dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
 </dl></article>
-<section class="box" id="new-defects"><h2>New defects at 8207373</h2><ul><li><b>B-139</b> · Medium · L08, L24: Both poster CTAs render 44 px tall at 390, 768 and 1440 (hero: board and v4 76 px; closing: 64 px). The Button&#x27;s default size (h-control) wins over the poster variant&#x27;s h-16 and the hero&#x27;s h-19. The closing CTA also changed from sans “Plan a busk” to 24px Big Shoulders capitals.</li><li><b>B-140</b> · Low · L23: The brand teaser&#x27;s specimen card no longer shows the app icon (hex mark); it starts at hex cell 1. The board and v4 had it. Likely a side effect of F12 (mark-only removed), but the mark alone is allowed at icon size.</li><li><b>B-137</b> · Low · L18: At 390 the map legend wraps to two lines (“Other” on its own line); F03 asks for one line.</li><li><b>B-136</b> · Low · L18: The map&#x27;s attribution control shows its “i” icon tiled 2×2 and clipped at the bottom-right corner, at every width (also in v4&#x27;s captures).</li><li><b>B-141</b> · Low · L18: At 1440 the map frame is 544 px tall in a 699 px column: about 155 px of empty paper under the map (the board&#x27;s map fills the column).</li></ul></section>
-<section class="box" id="audit"><h2>Checks at 8207373</h2><ul><li><b>axe (WCAG 2.0–2.2 A/AA tags), reduced motion, after scrolling the page</b>: 390 day 0 · 390 night 0 · 1440 day 0 · 1440 night 0 violations</li><li><b>Sideways scroll</b>: 0 px at 390, 768 and 1440, day and night</li><li><b>Running animations with reduced motion</b>: 0 at 390, 768 and 1440</li><li><b>Heading outline</b>: H1, then H2 Try an act · Busking is guesswork · What you get back (H3 Your busk · And what to play there · Setlist) · Beyond buskers · The brain of Busk Map · Honeycomb · Your crowd is out there</li><li><b>Section order (F06)</b>: hero · ticker · video · try · guesswork · what you get · Beyond · Brain · Brand · CTA (390, 768, 1440)</li><li><b>Keyboard focus walk, 1440</b>: Skip link, lockup, nav, CTA, Qloo, act cards, pitch rows, Full details, legend tooltips, Copy, Learn it, teasers, footer: all show a ring; act cards&#x27; ring is dark on a dark border (L13)</li><li><b>/brand links (QA spec L23)</b>: 2: the teaser&#x27;s “See the brand →” and the footer&#x27;s Brand</li><li><b>Field strip, route / (fields8)</b>: 72 states (18 controls), 0 fail</li><li><b>site-checks at 8207373</b>: 24 pass, 0 fail</li></ul>
-<figure><figcaption>Field strip, route / (each control unfocused and focused, 390 and 1440, day and night)</figcaption><a href="../screens/honeycomb/recheck/v5/field-strip.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v5/field-strip.jpg" alt="Landing field strip at 8207373"></a></figure>
-<p class="chg">Not a row yet: L21b “Thanks to” (round 2, F23–F24), added to BRAND's inventory after this review's 29 parts; not built at 8207373.</p></section>
-<section class="box"><h2>Versions</h2><ul><li><b>v5</b> · design/honeycomb ＠ <code>8207373</code> · 17 Oct 2026: Recheck at 8207373 (DEV closed F01–F15). L01 now Present (F12 lockup with the new lettering); L14, L16 badges gone (F01); L18 F02/F03/F05 done but Different (legend wraps at 390, tiled attribution icon, short map: B-137..5); L21→L22→L23 order fixed (F06); L24 credit line gone (F04). New: L08/L24 poster CTAs render 44 px tall (B-139); L23 specimen lost its app icon (B-140); L11 still an arrow (F22, round 2); L26 Different (B-129). Site-wide F07–F15 all Present. 21 Present, 7 Different, 1 Held.</li><li><b>v4.2</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: F12 corrected by the user: L01 Different (old lettering, the M rises above the other letters); no other recheck.</li><li><b>v4.1</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: Added the user&#x27;s calls F01–F15 on L rows and a Site-wide section (F07–F15); no recheck.</li><li><b>v4</b> · design/honeycomb ＠ <code>7b1521e</code> · 16 Oct 2026: L03, L07, L11, L17, L20, L23 match (user calls; B-019, B-033, B-034 fixed); L04, L25 match; L18 live map and L24 credit line Different (declared); L13 kept (B-032 accepted); B-035 fixed. 25 Present, 3 Different, 1 Held.</li><li><b>v3</b> · design/honeycomb ＠ <code>91b220e</code> · 16 Oct 2026: Folded QA-01 and QA-03 into this page; added the user&#x27;s calls (L03, L07, L11, L13, L17, L18, L20, L23).</li><li><b>v2</b> · design/honeycomb ＠ <code>91b220e</code> · 16 Oct 2026: QA-03 recheck against BRAND&#x27;s 29 parts: 20 Present, 6 Different, 1 Missing, 2 Held; B-032..B-034. (honeycomb-landing-recheck.html)</li><li><b>v1</b> · design/honeycomb ＠ <code>69a6cad</code> · 17 Oct 2026: QA-01 first audit, 21 items mapped to parts by the inventory README; B-018..B-026. (honeycomb-landing-audit.html)</li></ul></section>
+<section class="box" id="new-defects"><h2>New defects at f83f1a1</h2><ul><li><b>B-171</b> · Low · L27 (L05): At 390 and 768 the hero stacks the full-bleed taste map first, then the headline and the CTA; the board (L27) stacks headline, map, CTA. At 390 the headline starts about 375 px down, below the map.</li><li><b>B-163</b> · Medium · L13: DS ExampleActCard: the DS card is one compact row (orange hex initials, name, blurb, mono “Sounds like”, arrow right); the build card adds day · hours, a Plays line and a ruled “Watch Busk Map plan this act” row. Conflicts with the user&#x27;s keep call (B-032): the user must choose.</li><li><b>B-164</b> · Medium · L17: DS ResearchFunnel: the counts are Big Shoulders numerals, larger than the DS&#x27;s small sans numerals in 30 px cells (the connectors are B-162).</li><li><b>B-165</b> · Medium · L18: DS PitchRow: the DS puts [rank] [NAME @ time] [score] on one line and badges plus mono caps “FULL DETAILS” under it, with no inner rule; the build sets “@ 12–3 pm” on its own line, rules the row in two, and uses sans “Full details”.</li><li><b>B-166</b> · Low · L18 (L05): DS PitchPin: the DS pin is a dark hex with an orange ring around a paper dot and a number tab; the build&#x27;s map pins are dark hexes with a white hex centre (the hero&#x27;s pins are plain numbered hexes, held with L05).</li><li><b>B-167</b> · Low · L18: DS TasteMapLegend: the DS legend is a boxed panel (“TASTE MATCH”, a 1–5 ramp with LOW/HIGH, then the symbols); the build has the user&#x27;s F03 one-line bar. The user must choose.</li><li><b>B-168</b> · Low · L18: DS PlanMap: the DS says how many other pitches were scored in a line under the list; the build puts a “Browse other pitches (2)” button on the map instead.</li><li><b>B-169</b> · Low · L20: DS SetlistPanel: the subtitle is a method paragraph (DS: pitch · day time · best fit first); “LEARN THESE” is mono caps (DS: Big Shoulders); the Copy label is mono (DS: bold sans).</li><li><b>B-170</b> · Medium · L22, L23: DS StatStrip: the teasers&#x27; numbers are inline (number beside a mono label); the DS strip is a framed row of ruled cells with the number above its label (purple in the qloo tone).</li><li><b>B-162</b> · shared · L17, L22, L23: Glyph icons: the funnel&#x27;s “▸” connectors, “Open the brain →” and “See the brand →” are text glyphs, not icons.</li><li><b>B-136</b> · Low · L18: Still open at f83f1a1: the map&#x27;s attribution “i” control tiles 2×2 and clips bottom right, at 390, 768 and 1440.</li><li><b>B-140</b> · Low · L23: Still open at f83f1a1: the brand teaser&#x27;s specimen card starts at hex cell 1; no app icon.</li><li><b>B-139 · B-137 · B-141 · B-129 · B-135</b> · fixed · L08, L24 · L18 · L18 · L01, L26 · L01: Fixed at f83f1a1: poster CTAs 76 and 64 px; legend one line (42 px) at 390; map frame 667 px in a 699 px column at 1440; nav switch at 721; lockup P offset whole.</li></ul></section>
+<section class="box" id="checks"><h2>Checks at f83f1a1</h2><ul><li><b>axe (WCAG 2.0–2.2 A/AA tags), reduced motion, after scrolling the page</b>: 390 day 0 · 390 night 0 · 1440 day 0 · 1440 night 0 violations</li><li><b>Sideways scroll</b>: 0 px at 390, 768 and 1440, day and night</li><li><b>Running animations with reduced motion</b>: 0 at 390, 768 and 1440; without: 104 glow cells, ticker, 780 cell fill-ins and 3 pin drops, done by 5 s</li><li><b>Heading outline</b>: H1, then H2 Try an act · Busking is guesswork · What you get back (H3 Your busk · And what to play there · Setlist for this pitch) · Beyond buskers · The brain of Busk Map · Honeycomb · Your crowd is out there</li><li><b>Section order (F06)</b>: hero · ticker · video · try · guesswork · what you get · Beyond · Brain · Brand · CTA (390, 768, 1440)</li><li><b>Nav switch (B-129)</b>: 390, 720: bottom bar, no header nav · 721, 767, 768, 1440: header nav, no bottom bar</li><li><b>Keyboard focus walk, 1440</b>: Skip link, lockup, nav, CTA, Qloo, act cards, Week links, pitch rows, Full details, legend tooltips, Copy, Learn it, teasers, closing CTA, footer: every stop shows a ring; the act cards&#x27; ring sits on their dark border (L13)</li><li><b>Tips retired</b>: No Tips nav item (header or bottom bar), no /tips link, no tip copy on /; no-tips-checks 0 fail of 58 at f83f1a1</li><li><b>F20 city names</b>: No “Melbourne” in any landing eyebrow, tagline or default text; only the basemap&#x27;s own labels in the L18 map and the City of Melbourne source names in the funnel tooltips (real data)</li><li><b>/brand links (QA spec L23)</b>: 2: the teaser&#x27;s “See the brand →” and the footer&#x27;s Brand</li><li><b>Field strip, route / (fields9)</b>: 68 states (17 controls), 0 fail</li><li><b>site-checks at f83f1a1</b>: 27 pass, 0 fail</li><li><b>DS parity (v62/v63 specimens, qa/screens/honeycomb/ds/)</b>: Match: AppHeader, Logo, QlooWordmark, MobileNav. Differ: ExampleActCard (L13), ResearchFunnel (L17), PitchRow, PitchPin, TasteMapLegend, PlanMap (L18), SetlistPanel (L20), StatStrip (L22, L23). Not comparable: Button poster (no poster specimen), SiteFooter (specimen predates F07–F11), BrandHoneycomb (a brand board, not a landing part), TasteMap (hero held, L05)</li><li><b>Glyph rule (text glyphs used as icons)</b>: 3 on /: “▸” in the funnel (L17), “→” in Open the brain (L22) and See the brand (L23), all B-162; every other arrow is an SVG icon</li></ul>
+<figure><figcaption>Field strip, route / (each control unfocused and focused, 390 and 1440, day and night)</figcaption><a href="../screens/honeycomb/recheck/v6/field-strip.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/v6/field-strip.jpg" alt="Landing field strip at f83f1a1"></a></figure>
+<p class="chg">BRAND's 30th part, L21b “Thanks to” (round 2, F23–F24: Qloo as sponsor, then “Built with” logos, just before the Brain teaser): not built at f83f1a1. No “Thanks to” or “Built with” section on the page; Beyond buskers goes straight to the Brain teaser. F23 is held by DEV, so it is not logged as a defect.</p></section>
+<section class="box" id="critique"><h2>Impeccable critique</h2><p class="prov"><b>How this was produced.</b> The impeccable skill v4.4.0 (<code>impeccable:impeccable</code>), verb <code>critique</code>, run on design/honeycomb <code>f83f1a1</code> from QA's clean export, offline, at 390, 768, 1440 px. Method: dual-agent (A: <code>ae2a9b3cf3f49b9cc</code> · B: <code>ad1d6f8dc433da92c</code>), each an isolated sub-agent that did not read the QA report or the other assessment. A and B are reproduced as the skill wrote them (<code>qa/impeccable/landing-A.md</code>, <code>landing-B.md</code>). The block marked “QA synthesis” is QA's, not the skill's.</p><div class="synth"><h3>QA synthesis</h3>
+<p><b>Scores.</b> Critique (A): Nielsen 20/28 (71%, Good; 3 heuristics n/a). Audit (B): 15/20, Good; Implementation Integrity <b>Pass</b>. CLI detector: 0 findings; browser overlay 16 (1440) / 14 (390) hits, about half false positives (B's own table).</p>
+<p><b>Verified by QA and filed.</b></p><ul>
+<li><b>B-218 · High</b> (A P1 on /brain, B P1 here): in the day OS scheme the focus ring inside pinned-dark bands is the light ring <code>#141c21</code> on the dark ground. QA measured 1.08:1 (in the dark scheme the same ring is orange, 6.49:1). <code>--focus-ring</code> is resolved on <code>:root</code>, so <code>data-theme="dark"</code> bands inherit it. Hero Qloo link, brain-teaser Qloo link and every footer link on /.</li>
+<li><b>B-226 · Medium</b> (B P2): the ticker scrolls forever with no pause or stop control, and doesn't stop on hover (QA checked); only reduced motion stops it. WCAG 2.2.2.</li>
+<li><b>B-231 · Low</b> (B P2, shared): targets under 44 px at 390: map-legend keys 32 px, Qloo wordmark links 33/25/15 px tall, inline “Week:” links 18 px.</li></ul>
+<p><b>Dismissed.</b> Overlay <code>dark-glow #ffba00</code> (the overlay's own colour), <code>side-tab</code> on full-width section rules, <code>text-occlusion</code> (the overlay's labels), <code>cream-palette</code> (the brand's Paper token), stripes (the no-busking hatch).</p>
+<p><b>Where impeccable meets the user's calls, the user's call wins</b> (recorded, not a defect or a question). Impeccable suggests removing the demo-video placeholder (A P1, B P2); the user decided to keep the slot (L11). Impeccable suggests naming the city in the hero (A P1); the user decided no city lock (F20). Impeccable suggests moving Beyond buskers, Brain and Brand below the closing CTA (A P2); the user decided the section order (F06). Impeccable suggests grouping the funnel into 3 stats (A P2): that overlaps L17 and B-164 (DS ResearchFunnel).</p>
+<p><b>Not filed, recorded.</b> B P3: 104 endless SVG opacity animations in the hero (off-screen too), 13 arbitrary <code>text-[…]</code> h2 sizes, teaser buttons restyled with ~12 overrides on <code>variant="poster"</code>, <code>aria-label</code> on a plain span (setlist-panel.tsx:111). A P3: night mode loses the band rhythm.</p></div><details open><summary>Assessment A · design review (as written)</summary><h3>Assessment A · Landing <code>/</code> (Persuade) · f83f1a1</h3>
+<p>Inspected live at 390, 768 and 1440 wide, day and night. Clicked the hero CTA (→ <code>/busks</code> form) and the Folk duo card (→ new run at <code>/p/…</code>), tabbed 8 focus stops.</p>
+<h4>Design specificity verdict</h4>
+<p><b>Authored for this product.</b> The hero is a hex taste map with numbered pitches 1–3, a poster headline and an orange slab button. "Busking is guesswork" sets the guess ("Wonderwall, again.") against the fix. "What you get back" uses the real product components, not generic feature tiles. The bottom third drifts: Beyond buskers, Brain and Brand are three look-alike bordered panels with offset shadows, written for judges rather than buskers.</p>
+<h4>Nielsen heuristics</h4>
+<table><thead><tr><th>#</th><th>Heuristic</th><th>Score</th><th>Key issue</th></tr></thead><tbody><tr><td>1</td><td>Visibility of status</td><td>3</td><td>The example cards start a run right away. The taste map can show an empty "Show the map" stub.</td></tr><tr><td>2</td><td>Match real world</td><td>3</td><td>Busker voice is strong ("ranger moves you on"). The funnel uses system jargon: "taste cells mapped", "sensor counts", "rules checks".</td></tr><tr><td>3</td><td>User control</td><td>3</td><td>The own-act and Week paths are offered. Each example click silently makes a new plan URL.</td></tr><tr><td>4</td><td>Consistency</td><td>3</td><td>The main action has three labels: "Plan a busk", "Plan your busk" and "Watch Busk Map plan this act".</td></tr><tr><td>5</td><td>Error prevention</td><td>3</td><td>The Copy and "Learn it" buttons in the static setlist preview look live.</td></tr><tr><td>6</td><td>Recognition</td><td>3</td><td>Cards show "Sounds like" and "Plays".</td></tr><tr><td>7</td><td>Flexibility</td><td>n/a</td><td>Persuade surface</td></tr><tr><td>8</td><td>Aesthetic / minimalist</td><td>2</td><td>A "[Demo video · 60–90 s]" placeholder, a 10-node funnel and three teaser bands.</td></tr><tr><td>9</td><td>Error recovery</td><td>n/a</td><td>No input on this page that can fail.</td></tr><tr><td>10</td><td>Help &amp; docs</td><td>n/a</td><td>Persuade surface</td></tr><tr><td><b>Total</b></td><td></td><td><b>20/28</b></td><td><b>71%: Good</b> (low end)</td></tr></tbody></table>
+<h4>Cognitive load</h4>
+<p>Three checklist failures (moderate):</p>
+<ul><li><b>Chunking:</b> the funnel is a 10-node chain. At 390 it wraps into 5 ragged lines.</li><li><b>Single focus:</b> "IN PARTNERSHIP WITH Qloo" is set in 44px purple display type right under the hero CTA (1440), so it competes with the button.</li><li><b>Progressive disclosure:</b> the landing page shows the full setlist with Learn these, set length and per-song scores.</li></ul>
+<p><b>Decision points with more than 4 options:</b> "Try an act" has 7 links (3 cards, 3 Week links, Plan your busk).</p>
+<h4>Emotional journey</h4>
+<ul><li><b>Peak:</b> the hero. The glowing map makes the promise concrete in about 2 s, in both themes.</li><li><b>Valleys:</b> the demo-video placeholder right after the ticker, then "Not built yet", Brain and Brand just before the ask.</li><li><b>End:</b> "Your crowd is out there." is strong, but it comes after the detours.</li><li><b>Night mode:</b> at 1440 dark, the hero, video, Beyond, Brain and closing bands all share the page background, flattening the poster rhythm.</li></ul>
+<h4>Strengths</h4>
+<ol><li><b>The hero's type and map.</b> "What to play." stays on one line at every width, and the CTA clears the fold at 390 (y≈690–760).</li><li><b>The "Guessing / With Busk Map" cards.</b> Concrete, local, funny.</li><li><b>Real components with labelled example data.</b> Honest expectations.</li></ol>
+<h4>Priority issues</h4>
+<ul><li><b>[P1] A demo-video placeholder ships as the second block.</b><ul><li>Why: peak attention spent on missing content; reads unfinished (all widths, both themes).</li><li>Fix: remove it until the video exists, or use a short loop of the funnel filling in.</li><li>Command: <code>/impeccable distill</code></li></ul><li><b>[P1] The hero never says where or for whom.</b><ul><li>Why: no city named; Melbourne shows only via example street names.</li><li>Fix: one line under the H1 (city plus what you get); shrink the partnership line to a mono label.</li><li>Command: <code>/impeccable clarify</code></li></ul><li><b>[P2] The bottom third serves judges.</b><ul><li>Why: Beyond buskers, Brain and Brand sit between the product proof and the close.</li><li>Fix: move them below the final CTA, or merge them into one "Under the hood" strip.</li><li>Command: <code>/impeccable distill</code></li></ul><li><b>[P2] The 10-node funnel is hard to read, worst at 390.</b><ul><li>Fix: 3 grouped stats here (looked at / checked / picked); full chain on the result page.</li><li>Command: <code>/impeccable layout</code></li></ul><li><b>[P3] Night mode loses the band rhythm.</b><ul><li>Fix: give the dark bands a raised surface or an orange top rule.</li><li>Command: <code>/impeccable colorize</code></li></ul></li></ul>
+<h4>Persona red flags</h4>
+<ul><li><b>Jordan (first-timer):</b><ul><li>The hero names no city.</li><li>"Sensor counts" and "rules checks" are opaque.</li><li>The two CTA verbs ("Plan a busk" and "Watch Busk Map plan this act") leave the difference unclear.</li></ul><li><b>Riley (stress tester):</b><ul><li>The bracketed video placeholder and the "not built yet" badge suggest a prototype.</li><li>The Copy and "Learn it" buttons on the example data invite pointless clicks.</li></ul><li><b>Casey (mobile, 390):</b><ul><li>The map takes the top ~310px, so the headline starts at y≈440.</li><li>The page is 9,431px tall, and the closing CTA sits about 8 screens down.</li></ul></li></ul>
+<h4>Minor observations</h4>
+<ul><li><b>Card focus:</b> keyboard focus on the example cards is only a thicker border, weak next to the CTA's solid outline (1440 day).</li><li><b>Ticker:</b> "Qloo" appears in 4 of the 6 items, so it reads like sponsor copy.</li></ul>
+<h4>Provocative questions</h4>
+<ul><li>Is this page for the busker or the judge?</li><li>If the hero already shows the taste map, does the page need a video at all?</li><li>What would be lost if the page ended right after "And what to play there"?</li></ul></details></section><section class="box" id="audit"><h2>Impeccable audit</h2><p class="prov"><b>How this was produced.</b> The impeccable skill v4.4.0 (<code>impeccable:impeccable</code>), verb <code>audit</code>, run on design/honeycomb <code>f83f1a1</code> from QA's clean export, offline, at 390, 768, 1440 px. Method: dual-agent (A: <code>ae2a9b3cf3f49b9cc</code> · B: <code>ad1d6f8dc433da92c</code>), each an isolated sub-agent that did not read the QA report or the other assessment. A and B are reproduced as the skill wrote them (<code>qa/impeccable/landing-A.md</code>, <code>landing-B.md</code>). The block marked “QA synthesis” is QA's, not the skill's.</p><details open><summary>Assessment B · detector, browser evidence and audit /20 (as written)</summary><h3>Landing page <code>/</code>: Assessment B (detector and browser evidence) and audit</h3>
+<p>Build: Busk Map design/honeycomb f83f1a1, offline at http://localhost:3213. Source: the scratchpad/hc9 export. Every command ran from that export. I ran no live-server, and I did not start or stop the app server. I read no QA report and no Assessment A output. Evidence files are in <code>scratchpad/imp/landing-B/</code>: the scripts <code>run.mjs</code>, <code>focus.mjs</code>, <code>focus2.mjs</code> and <code>perf.mjs</code>, plus <code>results.json</code>, <code>detect.json</code>, <code>detect-noconfig.json</code>, the overlay screenshots <code>overlay-1440.png</code> and <code>overlay-390.png</code>, the full-page screenshots <code>full-{390,1440}-{light,dark}.png</code>, and the focus crops <code>focus-*.png</code>.</p>
+<p>---</p>
+<h4>Assessment B</h4>
+<h5>1. CLI scan (<code>impeccable detect --json</code>)</h5>
+<p>Targets scanned:</p>
+<ul><li><code>src/app/page.tsx</code></li><li><code>src/components/landing/</code> (the whole folder)</li><li>honeycomb components: <code>example-act-card</code>, <code>logo</code>, <code>percent-cell</code>, <code>hex-cell</code>, <code>cell-image</code>, <code>research-funnel</code>, <code>score-ring</code></li><li><code>src/components/setlist/setlist-panel.tsx</code> and <code>src/components/ui/button.tsx</code></li><li>layout chrome: <code>app-header</code>, <code>mobile-nav</code>, <code>site-footer</code></li></ul>
+<table><thead><tr><th>Run</th><th>Exit</th><th>Findings</th></tr></thead><tbody><tr><td><code>detect --json &lt;targets&gt;</code></td><td><b>0</b></td><td><b>0</b> (<code>[]</code>)</td></tr><tr><td><code>detect --json --no-config &lt;targets&gt;</code></td><td><b>0</b></td><td><b>0</b></td></tr><tr><td>text mode</td><td>0</td><td>nothing printed</td></tr></tbody></table>
+<ul><li>The scan found nothing. The export contains no DESIGN.md, ignore file or <code>impeccable-disable</code> comment, and <code>--no-config</code> gives the same result, so nothing was suppressed.</li><li>Scanning all of <code>src/components</code> also returns 0.</li><li>Static JSX scanning cannot resolve Tailwind classes into computed styles. The browser pass below is where the rules fire.</li><li>One run failed for a harness reason: zsh did not split a <code>$T</code> string into separate arguments, so the CLI exited 1 with "cannot access". I re-ran with an array; those are the results above.</li></ul>
+<h5>2. Browser overlay (<code>detect.js</code> injected)</h5>
+<p>Steps, done at both 1440 and 390 in a new Playwright context each time:</p>
+<ol><li>Navigated with <code>waitUntil: load</code>. <code>networkidle</code> never settles here: it times out because <code>Warmup</code> POSTs to <code>/api/warm</code>.</li><li>Set <code>document.title</code> to <code>[Human] Busk Map</code>. The mutation preflight passed.</li><li>Scrolled to the top.</li><li>Ran <code>page.addScriptTag({ path: detect.js })</code>. Injection succeeded and <code>window.impeccableDetect</code> is a function.</li><li>Waited 3 s and read console messages containing "impeccable".</li></ol>
+<p>Result: no step failed, and there were no page errors.</p>
+<p>Console output:</p>
+<ul><li>1440: <code>[impeccable] 11 anti-patterns found</code> (16 findings on 11 elements or page level)</li><li>390: <code>[impeccable] 10 anti-patterns found</code> (14 findings)</li></ul>
+<p>The overlay is visible in <code>overlay-1440.png</code>.</p>
+<table><thead><tr><th>Rule</th><th>Where (selector / source)</th><th>Verdict</th></tr></thead><tbody><tr><td>side-tab ×4</td><td><code>header</code> border-bottom 4px (app-header); hero <code>section</code> border-bottom 6px (page.tsx:76); CTA <code>section</code> border-top 6px (page.tsx:323)</td><td><b>False positive.</b> These are full-bleed band rules between sections, not accents on a card.</td></tr><tr><td>side-tab ×1</td><td>"Learn these" box, <code>border-t-4 border-t-primary</code> (setlist-panel.tsx:126)</td><td><b>True, by design.</b> The component doc asks for "an orange top rule". P3.</td></tr><tr><td>nested-cards ×4</td><td>"Learn these" inside the setlist card; a <code>div.flex.h-full</code> in What you get; BrainSketch inside the brain teaser (page.tsx:46); brand swatch panel inside the brand teaser (page.tsx:294)</td><td><b>Partly true.</b> The bordered illustration panels sit inside bordered teaser sections. P3.</td></tr><tr><td>kicker-above-heading ×2</td><td>"Powered by Qloo" above "The brain of Busk Map" (page.tsx:231); "The brand" above "Honeycomb" (page.tsx:272)</td><td><b>True pattern.</b> Eyebrow plus giant heading, twice in a row. P3 / judgement call for Assessment A.</td></tr><tr><td>oversized-h1 (1440 only)</td><td><code>#hero</code>: 119px, 42 chars, 46vh</td><td><b>Borderline false positive.</b> It is three short poster lines, and the primary CTA stays above the fold at 1440×900.</td></tr><tr><td>text-occlusion (1440 only)</td><td>span "✦ oversized hero headlin…" covered by the h1</td><td><b>False positive.</b> The span is the detector's own overlay label.</td></tr><tr><td>cream-palette (page)</td><td>body <code>rgb(242,238,230)</code></td><td><b>Intentional.</b> This is the brand's "Paper" token.</td></tr><tr><td>bounce-easing (page)</td><td><code>.hc-pin</code> uses <code>cubic-bezier(0.2,1.4,0.4,1)</code> (globals.css:392, hero-taste-map.tsx:91)</td><td><b>True.</b> The pins overshoot as they drop. It is off under reduced motion. P3.</td></tr><tr><td>dark-glow (page)</td><td>zero-offset glow <code>#ffba00</code></td><td><b>False positive.</b> <code>#ffba00</code> appears nowhere in <code>src</code>. It matches the overlay's own oklch(84% .19 80) outline.</td></tr><tr><td>repeating-gradient stripes (advisory)</td><td>Map-legend zone swatch (map-legend.tsx:58)</td><td><b>Advisory, intentional.</b> It is the no-busking hatch.</td></tr></tbody></table>
+<p>The detector's visual-contrast pass returned 0 analyses.</p>
+<p>---</p>
+<h4>Audit (audit.md)</h4>
+<h5>Evidence gathered</h5>
+<ul><li><b>axe-core 4.13</b> (@axe-core/playwright, tags wcag2a/aa, 21a/aa, 22aa and best-practice):<ul><li>390 day, 390 night, 1440 day and 1440 night all report <b>0 violations</b>.</li><li>Incomplete items: <code>color-contrast</code> ×73 (bm-grain background images, the hero image node, and short SVG text) and <code>aria-prohibited-attr</code> ×3 (<code>span[aria-label="Length 4:56"]</code>, setlist-panel.tsx:111).</li></ul><li><b>Contrast</b>, measured from computed colours. Every pair passes AA:</li></ul>
+<table><thead><tr><th>Text pair</th><th>Ratio</th></tr></thead><tbody><tr><td>Signal text on paper</td><td>5.22</td></tr><tr><td>Signal on card</td><td>5.75</td></tr><tr><td>"With Busk Map" 11px on accent</td><td>4.91 (day) / 5.74 (night), the lowest</td></tr><tr><td>Muted on paper</td><td>5.54</td></tr><tr><td>Muted on card</td><td>6.09</td></tr><tr><td>Qloo purple on night</td><td>5.92</td></tr><tr><td>Signal on night</td><td>7.40</td></tr><tr><td>Poster CTA</td><td>6.49</td></tr></tbody></table>
+<ul><li><b>Headings</b>: one h1, then h2 ×8 in order. Under What you get the levels run h3 ×3 and then one h4 under the setlist. Nothing is skipped.</li><li><b>Landmarks</b>: header, nav[Main], main, footer and nav[Site] are present, and every section is labelled with aria-labelledby. There is a skip link.</li><li><b>Keyboard</b>: tab order follows the visual order at both widths: skip link, home, nav, Plan a busk, Qloo, the 3 act cards, the week links, the pitch rows, the map/legend, Copy, Learn it, the teasers, the CTA, and the footer. There are no traps.<ul><li>Focus is visible on the poster CTAs (3px orange outline, offset 10px), the cards, the header nav and every control in night mode.</li><li>Focus <b>is not visible in day mode</b> on links inside <code>data-theme="dark"</code> islands (see P1).</li></ul><li><b>Touch targets below 44 px at 390</b> (excluding the skip link):<ul><li>inline "Week:" and "Plan your busk" links: 18px tall</li><li>map-legend toggles "Taste match", "Top pitch" and "Other pitch": 32px (<code>min-h-8</code>)</li><li>Qloo links: 96×33 (hero), 72×25 (brain teaser) and 44×15 (footer)</li><li>"Learn it": 40px</li><li>footer text links: 32–37px wide but 48px tall</li></ul><li><b>Horizontal scroll</b>: at 390, 768 and 1440 the scrollWidth equals the clientWidth. There is no overflow, because the hero SVG paths are clipped by <code>overflow-hidden</code>.</li><li><b>Reduced motion</b>:<ul><li><code>no-preference</code>: 129 running animations (104 <code>hc-glow</code>, 24 <code>hc-breathe</code>, 1 <code>hc-roll</code> ticker) and 35 elements with transitions.</li><li><code>reduce</code>: <b>0 animations and 0 transitions</b>. The glow is held at 0.5 opacity and the map draws statically. This is an intentional alternative rather than a global 0.01ms kill.</li></ul><li><b>Performance</b> (local production server):<ul><li>34 requests: JS 316 KB transferred, CSS 147 KB</li><li>LCP about 0.1 s, CLS 0, 1,887 DOM nodes</li><li>The MapLibre map is lazy and loads nothing until it is opened. <code>CellImage</code> uses <code>loading="lazy"</code>.</li></ul><li><b>Hard-coded colours</b> (page.tsx and the components it renders): none in page.tsx, which uses tokens and <code>var()</code> only. The single hex is <code>#8C8CC8</code> in <code>logo.tsx:39</code>, the Qloo bar; it equals <code>--qloo</code>.</li><li><b>Dark mode</b>: day and night both render correctly. The dark islands (<code>data-theme="dark"</code>) swap their tokens correctly, except <code>--focus-ring</code>.</li><li><b>Not tested</b>: map drag and pinch under synthesized touch (the map was not opened), and text scaling to 200%.</li></ul>
+<h5>Audit Health Score</h5>
+<table><thead><tr><th>#</th><th>Dimension</th><th>Score</th><th>Key Finding</th></tr></thead><tbody><tr><td>1</td><td>Accessibility</td><td>3</td><td>In day mode the focus ring is invisible on links inside dark islands (<code>--focus-ring</code> is resolved at <code>:root</code>)</td></tr><tr><td>2</td><td>Performance</td><td>3</td><td>Lean: 316 KB JS, CLS 0, lazy map. 104 infinite SVG-opacity animations in the hero</td></tr><tr><td>3</td><td>Responsive Design</td><td>3</td><td>No overflow at 390/768/1440. Legend toggles (32px) and Qloo links (25–33px) are below 44px</td></tr><tr><td>4</td><td>Theming</td><td>3</td><td>Tokens throughout and day/night both verified. One scoping bug in the focus-ring token</td></tr><tr><td>5</td><td>Implementation Integrity</td><td>3</td><td>0 static findings. Overlay true positives are minor; there is a placeholder demo slot and ad hoc button restyles</td></tr><tr><td><b>Total</b></td><td></td><td><b>15/20</b></td><td><b>Good</b></td></tr></tbody></table>
+<h5>Implementation Integrity Verdict: <b>Pass</b></h5>
+<p>The page expresses a coherent, product-specific system:</p>
+<ul><li>the hex lattice, hex cells and BrainSketch are drawn from the same honeycomb vocabulary as the product;</li><li>the copy is about pitches, permits and setlists;</li><li>the colours come only from tokens.</li></ul>
+<p>The static detector reports 0. Of the overlay's 14–16 findings:</p>
+<ul><li>7 are false positives or intentional brand choices (band rules, the overlay's own label and glow, the Paper token, the hatch);</li><li>the true positives are minor and stylistic: nested teaser panels, a repeated kicker-above-heading, and the pin overshoot.</li></ul>
+<p>The real integrity gaps are:</p>
+<ul><li>a visible "[Demo video · 60–90 s]" placeholder;</li><li>two <code>variant="poster"</code> buttons re-skinned with long className overrides instead of a variant.</li></ul>
+<h5>Executive Summary</h5>
+<ul><li>Audit Health Score: <b>15/20 (Good)</b></li><li>Issues: <b>P0 0 · P1 1 · P2 3 · P3 5</b></li><li>Top issues:<ol><li><b>P1:</b> the focus ring is invisible in day mode on the hero Qloo link, the brain-teaser Qloo link and every footer link.</li><li><b>P2:</b> the auto-scrolling ticker has no pause control (WCAG 2.2.2).</li><li><b>P2:</b> touch targets under 44px at 390 (legend toggles, Qloo links, inline week links).</li><li><b>P2:</b> a placeholder demo-video slot ships on the landing page.</li></ol><li>Next steps: fix the focus-ring token scoping (one CSS change); then harden the ticker and the touch targets; then polish.</li></ul>
+<h5>Detailed Findings</h5>
+<p><b>[P1] Focus ring invisible on dark islands in day mode</b></p>
+<ul><li><b>Location:</b><ul><li><code>src/app/globals.css:200</code> defines <code>--focus-ring: 0 0 0 2px var(--ring)</code> on <code>:root</code>, and the fallback rule that uses it is at <code>globals.css:353</code>.</li><li>Affected: <code>page.tsx:107</code> (hero QlooLink), <code>page.tsx:232</code> (brain QlooLink), and <code>site-footer.tsx:60–88</code> (9 links).</li></ul><li><b>Category:</b> Accessibility / Theming</li><li><b>Impact:</b><ul><li><code>var(--ring)</code> is resolved where <code>--focus-ring</code> is declared, on <code>:root</code>. Dark islands therefore inherit the day ring <code>#141c21</code> and do not get their own <code>#ff6a2b</code>.</li><li>The measured result is a 2px <code>rgb(20,28,33)</code> ring on an <code>rgb(15,20,22)</code> ground, about 1.1:1. The ring is invisible; see <code>focus-light-hero-qloo.png</code> and <code>focus-light-footer-privacy.png</code>.</li><li>Night mode is fine (<code>focus-dark-hero-qloo.png</code>).</li></ul><li><b>WCAG:</b> 2.4.7 Focus Visible (AA); 1.4.11 Non-text Contrast (AA)</li><li><b>Recommendation:</b> declare <code>--focus-ring</code> again inside <code>.dark, [data-theme="dark"]</code> and in the dark media block, or use <code>box-shadow: 0 0 0 2px var(--ring)</code> directly in the rule at line 353.</li><li><b>Suggested command:</b> <code>/impeccable harden</code></li></ul>
+<p><b>[P2] Ticker scrolls forever with no pause</b></p>
+<ul><li><b>Location:</b> <code>page.tsx:112–125</code>, <code>.hc-ticker</code> (globals.css:378)</li><li><b>Category:</b> Accessibility</li><li><b>Impact:</b><ul><li>Visible text moves continuously, 40 s per loop, next to the hero.</li><li>It stops only under prefers-reduced-motion. There is no pause on hover or focus and no control.</li><li><code>aria-hidden</code> keeps it from screen readers, but not from distraction for sighted users.</li></ul><li><b>WCAG:</b> 2.2.2 Pause, Stop, Hide (A)</li><li><b>Recommendation:</b> pause it on hover and focus-within and add a pause toggle, or make it static after one loop.</li><li><b>Suggested command:</b> <code>/impeccable harden</code></li></ul>
+<p><b>[P2] Touch targets under 44px at 390</b></p>
+<ul><li><b>Location:</b><ul><li><code>map-legend.tsx:16</code> (<code>min-h-8</code>, 32px)</li><li><code>logo.tsx:48–57</code> QlooWordmark: 96×33, 72×25, 44×15 in the footer</li><li><code>page.tsx:161</code> and <code>page.tsx:170</code>, inline links 18px tall</li><li><code>learn-it-menu.tsx:13</code> (<code>min-h-10</code>, 40px)</li></ul><li><b>Category:</b> Responsive</li><li><b>Impact:</b> mis-taps on phones. The 15px-tall footer Qloo mark is the worst. The week links wrap into two rows about 20px apart at 390.</li><li><b>WCAG:</b> 2.5.8 Target Size Minimum (AA) is met by most of these; the footer Qloo mark is marginal. They fail the 44px house standard (<code>--size-tap: 48px</code>).</li><li><b>Recommendation:</b><ul><li>Give QlooWordmark <code>min-h-tap</code> plus padding.</li><li>Use <code>min-h-tap</code> on the legend buttons.</li><li>Present the week links as a stacked list or chips at small widths.</li></ul><li><b>Suggested command:</b> <code>/impeccable adapt</code></li></ul>
+<p><b>[P2] Placeholder demo video ships on the landing page</b></p>
+<ul><li><b>Location:</b> <code>page.tsx:128–136</code></li><li><b>Category:</b> Implementation Integrity</li><li><b>Impact:</b> a large 16:9 dark block reading "[Demo video · 60–90 s]" sits directly under the hero. It reads as unfinished and pushes the act cards down by a full screen at 390.</li><li><b>Recommendation:</b> hide the slot until the video exists, or replace it with a still from the hero map.</li><li><b>Suggested command:</b> <code>/impeccable distill</code></li></ul>
+<p><b>[P3] Teaser buttons re-skinned ad hoc</b></p>
+<ul><li><b>Location:</b> <code>page.tsx:253</code> and <code>page.tsx:288</code></li><li><b>Category:</b> Implementation Integrity</li><li><b>Impact:</b> <code>variant="poster"</code> is overridden with about 12 utilities: font, case, tracking, background, hover <code>color-mix</code> and shadows. This is a hidden second button style outside <code>button.tsx</code>, so it will drift.</li><li><b>Recommendation:</b> add a <code>poster-secondary</code> variant (or similar) to <code>button.tsx</code>.</li><li><b>Suggested command:</b> <code>/impeccable polish</code></li></ul>
+<p><b>[P3] Seven distinct h2 sizes</b></p>
+<ul><li><b>Location:</b> <code>page.tsx</code>. The H2 constant is <code>clamp(44,5vw,72)</code>, and the other h2s use <code>clamp(40,4.4vw,60)</code>, <code>clamp(44,6vw,80)</code> (×2) and <code>clamp(52,7vw,104)</code>. There are also 13 arbitrary <code>text-[…]</code> values in the file.</li><li><b>Category:</b> Implementation Integrity</li><li><b>Impact:</b> the type scale lives in page code, not in tokens.</li><li><b>Recommendation:</b> move the scale into display tokens.</li><li><b>Suggested command:</b> <code>/impeccable typeset</code></li></ul>
+<p><b>[P3] 104 infinite SVG opacity animations in the hero</b></p>
+<ul><li><b>Location:</b> <code>hero-glow.tsx:44–50</code> and globals.css:375–376, plus 24 <code>hc-breathe</code> in hero-taste-map</li><li><b>Category:</b> Performance</li><li><b>Impact:</b> opacity on SVG child paths is not composited, so the SVG repaints continuously. It runs even off-screen. I measured no jank on desktop, but this costs battery on phones.</li><li><b>Recommendation:</b> pause it when the hero is out of view (IntersectionObserver toggling a class), or animate fewer cells.</li><li><b>Suggested command:</b> <code>/impeccable optimize</code></li></ul>
+<p><b>[P3] Detector true positives</b></p>
+<ul><li><b>Location:</b> nested teaser panels (<code>page.tsx:46</code> and <code>page.tsx:294</code>), the repeated kicker above a giant heading (<code>page.tsx:231</code> and <code>page.tsx:272</code>), and the overshoot easing on <code>.hc-pin</code></li><li><b>Category:</b> Implementation Integrity</li><li><b>Impact:</b> stylistic. These are worth a design call, not a fix.</li><li><b>Suggested command:</b> <code>/impeccable quieter</code></li></ul>
+<p><b>[P3] <code>aria-label</code> on a generic span</b></p>
+<ul><li><b>Location:</b> <code>setlist-panel.tsx:111</code> (<code>aria-label="Length 4:56"</code>)</li><li><b>Category:</b> Accessibility</li><li><b>Impact:</b> a label on a generic element is prohibited, so screen readers ignore it and read just "4:56".</li><li><b>WCAG:</b> 4.1.2 (best practice)</li><li><b>Recommendation:</b> use visually hidden text "Length" instead.</li><li><b>Suggested command:</b> <code>/impeccable harden</code></li></ul>
+<h5>Patterns &amp; Systemic Issues</h5>
+<ul><li><b>Theme tokens that reference other tokens are resolved at <code>:root</code>.</b> <code>--focus-ring</code> is one; check any other composite token (for example <code>--shadow-*</code>, which is already re-declared per theme) when adding dark islands.</li><li><b>Wordmark and inline links are sized by their content, not by the tap token.</b> QlooWordmark is used three times on this page, at 25–33px or less.</li><li><b>Page code carries styling the system should own:</b> arbitrary type sizes, button re-skins and shadow overrides.</li></ul>
+<h5>Positive Findings</h5>
+<ul><li>axe reports 0 violations at 390 and 1440, in both day and night.</li><li>Every measured text pair passes AA, most at 5.5–8.4:1.</li><li>The semantic skeleton is strong:<ul><li>one h1 with an sr-only "Busk Map:" prefix;</li><li>labelled sections and a skip link;</li><li>decorative SVGs and sketches are <code>aria-hidden</code>;</li><li>the hero map is <code>role="img"</code> with a real description.</li></ul><li>Reduced motion is handled properly, element by element: 129 animations drop to 0, and the glow is held at half strength rather than killed.</li><li>No horizontal overflow at any width. The h1 sizes itself to its column (<code>19cqw</code>) so "What to play." stays on one line.</li><li>The page is lean and fast: map lazy, images lazy, CLS 0.</li><li>The poster CTAs have a strong 3px offset focus outline.</li><li>Colour comes only from tokens, and day/night switching works, including inside the dark islands.</li></ul>
+<h4>Recommended Actions</h4>
+<ol><li><b>[P1] <code>/impeccable harden</code></b>: re-declare <code>--focus-ring</code> per theme so focus shows on the dark islands in day mode (hero and teaser Qloo links, footer). Also add pause on hover/focus to the ticker (P2) and swap the span's aria-label for hidden text (P3).</li><li><b>[P2] <code>/impeccable adapt</code></b>: bring QlooWordmark, the map-legend toggles and the inline week links to the 44/48px tap size at 390.</li><li><b>[P2] <code>/impeccable distill</code></b>: remove or replace the "[Demo video]" placeholder.</li><li><b>[P3] <code>/impeccable optimize</code></b>: pause the hero glow and breathe animations when off-screen.</li><li><b>[P3] <code>/impeccable typeset</code></b>: move the h2 scale into tokens.</li><li><b>[P3] <code>/impeccable polish</code></b>: add a secondary poster button variant, review the nested teaser panels and repeated kickers, then a final pass.</li></ol>
+<p>You can ask me to run these one at a time, all at once, or in any order you prefer.</p>
+<p>Re-run <code>/impeccable audit</code> after fixes to see your score improve.</p></details></section>
+<section class="box"><h2>Versions</h2><ul><li><b>v6</b> · design/honeycomb ＠ <code>f83f1a1</code> · 17 Oct 2026: The one full pass at DEV&#x27;s closing commit f83f1a1; every row re-judged; DS parity and glyph rule applied. Fixed since v5: L08 and L24 poster CTAs 76 and 64 px (B-139); L18 legend one line at 390 (B-137) and the map fills its column (B-141); L01/L26 nav at 721 (B-129); L01 lockup P whole (B-135); L11 play triangle (F22). Changed: L05 full-bleed with pins 1, 2, 3 (F19; zone, event, river and low-taste cells held by DEV); L23 counts 72 · 3 · 21 from /brand; Tips gone. DS parity: L13 (ExampleActCard), L17 (ResearchFunnel), L18 (PitchRow, PitchPin, TasteMapLegend, PlanMap), L20 (SetlistPanel), L22 and L23 (StatStrip) differ from their DS specimens (B-163..B-170); glyph icons on L17, L22, L23 (B-162). Still open: B-136, B-140; B-171 phone hero order. L21b not built (F23 held). 21 Present, 7 Different, 1 Held.</li><li><b>v5</b> · design/honeycomb ＠ <code>8207373</code> · 17 Oct 2026: Recheck at 8207373 (DEV closed F01–F15). L01 Present (F12 lockup); L14, L16 badges gone (F01); L18 Different (B-136, B-137, B-141); F06 order fixed; L24 credit line gone (F04); L08/L24 poster CTAs 44 px (B-139); L23 lost its app icon (B-140); L26 Different (B-129). 21 Present, 7 Different, 1 Held.</li><li><b>v4.2</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: F12 corrected by the user: L01 Different (old lettering, the M rises above the other letters); no other recheck.</li><li><b>v4.1</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: Added the user&#x27;s calls F01–F15 on L rows and a Site-wide section (F07–F15); no recheck.</li><li><b>v4</b> · design/honeycomb ＠ <code>7b1521e</code> · 16 Oct 2026: L03, L07, L11, L17, L20, L23 match (user calls; B-019, B-033, B-034 fixed); L04, L25 match; L18 live map and L24 credit line Different (declared); L13 kept (B-032 accepted); B-035 fixed. 25 Present, 3 Different, 1 Held.</li><li><b>v3</b> · design/honeycomb ＠ <code>91b220e</code> · 16 Oct 2026: Folded QA-01 and QA-03 into this page; added the user&#x27;s calls (L03, L07, L11, L13, L17, L18, L20, L23).</li><li><b>v2</b> · design/honeycomb ＠ <code>91b220e</code> · 16 Oct 2026: QA-03 recheck against BRAND&#x27;s 29 parts: 20 Present, 6 Different, 1 Missing, 2 Held; B-032..B-034. (honeycomb-landing-recheck.html)</li><li><b>v1</b> · design/honeycomb ＠ <code>69a6cad</code> · 17 Oct 2026: QA-01 first audit, 21 items mapped to parts by the inventory README; B-018..B-026. (honeycomb-landing-audit.html)</li></ul></section>
 </div>
 <script>
 const f=document.getElementById('flt');f.addEventListener('click',()=>{const on=!document.body.classList.contains('action');document.body.classList.toggle('action',on);f.setAttribute('aria-pressed',String(on));});

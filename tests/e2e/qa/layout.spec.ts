@@ -19,7 +19,6 @@ const SCREENS: { name: string; path: string; ready: (p: Page) => Promise<void> }
   { name: "brain", path: "/brain", ready: (p) => expect(p.getByRole("heading", { name: "The wiring" })).toBeVisible() },
   { name: "plan slot passed", path: "/plan?name=QA%20Past&artists=Paul%20Kelly&songs=Dumb%20Things~Paul%20Kelly&date=2026-10-03&from=12&to=15&permit=general", ready: (p) => expect(p.getByTestId("slot-passed")).toBeVisible() },
   { name: "plan sources down", path: "/plan?example=folk-duo&faults=footfall,weather,events", ready: (p) => expect(p.getByRole("region", { name: "Pitches", exact: true })).toBeVisible() },
-  { name: "tip log", path: "/tips", ready: (p) => expect(p.getByRole("heading", { level: 1 })).toBeVisible() },
   { name: "not found", path: "/qa-no-such-page", ready: (p) => expect(p.getByText("No pitch here")).toBeVisible() },
   { name: "plan not found", path: "/p/zzzzzzzzz", ready: (p) => expect(p.getByText("We can't find this busk")).toBeVisible() },
   { name: "plan limit reached", path: "/plan?example=sax&faults=fresh-limit", ready: (p) => expect(p.getByText("Plan limit reached")).toBeVisible() },

@@ -7,7 +7,10 @@ const { chromium } = require("@playwright/test");
 const B = `http://localhost:${process.argv[3]}`, OUT = process.argv[4]; mkdirSync(OUT, { recursive: true });
 const ROUTES = process.argv[5] ? process.argv[5].split(",") : ["/busks", "/tips", "/week?example=acoustic", "/"];
 const SEL = 'main input:not([type=hidden]):not([type=checkbox]):not([type=radio]), main textarea, main select, main [role=combobox], main button, main [role=switch], main a[data-slot=button]';
-const measure = `(el) => {
+// A radio inside a choice card draws its focus on the CARD (BRAND's ruling: .bm-choice:focus-within), so measure the card.
+const CARD = "[data-slot=choice-card], .bm-choice";
+const measure = `(el0) => {
+  const el = el0.closest("${CARD}") || el0;
   const r0 = el.getBoundingClientRect(); const layers = []; let e = el;
   for (let i = 0; e && i < 3; i++, e = e.parentElement) {
     const r = e.getBoundingClientRect(); if (i && (Math.abs(r.left - r0.left) > 8 || Math.abs(r.right - r0.right) > 8 || Math.abs(r.top - r0.top) > 8 || Math.abs(r.bottom - r0.bottom) > 8)) break;
@@ -31,7 +34,8 @@ for (const scheme of ["light", "dark"]) for (const w of [390, 1440]) {
       const name = ((await el.getAttribute("aria-label")) || (await el.getAttribute("placeholder")) || (await el.innerText().catch(() => "")) || (await el.getAttribute("id")) || "field").replace(/\s+/g, " ").trim().slice(0, 40);
       const kind = await el.evaluate((e) => e.tagName.toLowerCase() + (e.getAttribute("role") ? ":" + e.getAttribute("role") : "") + (e.type && e.tagName === "INPUT" ? ":" + e.type : ""));
       await el.scrollIntoViewIfNeeded(); await p.mouse.move(0, 0); await p.evaluate(() => document.activeElement?.blur());
-      const box = await el.boundingBox(); if (!box || box.width < 4) continue;
+      const card = el.locator(`xpath=ancestor-or-self::*[@data-slot="choice-card" or contains(concat(" ", normalize-space(@class), " "), " bm-choice ")][1]`);
+      const box = (await card.count()) ? await card.first().boundingBox() : await el.boundingBox(); if (!box || box.width < 4) continue;
       const clip = { x: Math.max(0, box.x - 10), y: Math.max(0, box.y - 10), width: Math.min(w - Math.max(0, box.x - 10), box.width + 20), height: box.height + 20 };
       const id = `${scheme}-${w}-${r.replace(/[^a-z]/gi, "") || "home"}-${i}`;
       const un = await el.evaluate(new Function("return " + measure)());

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, Clock, MapPin, Music, Scale } from "lucide-react";
 import { ExampleActCard } from "@/components/honeycomb/example-act-card";
-import { QlooWordmark } from "@/components/honeycomb/logo";
+import { Logo, QlooWordmark } from "@/components/honeycomb/logo";
+import { PercentCell } from "@/components/honeycomb/percent-cell";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { HeroGlow } from "@/components/landing/hero-glow";
 import { HeroTasteMap } from "@/components/landing/hero-taste-map";
@@ -87,16 +88,10 @@ export default function Home() {
               <br />
               <span className="whitespace-nowrap text-signal-text">What to play.</span>
             </h1>
-            <p className="m-0 max-w-xl text-lg leading-[27px]">
-              Busk Map finds the street pitches whose crowd matches your music at the hour you want to play, and orders your setlist for each one.
-            </p>
           </div>
           <div className="flex min-w-0 flex-[1_1_460px] flex-col gap-4">
             <figure className="m-0 flex flex-col gap-2.5">
               <HeroTasteMap label="An illustration of Qloo's taste map for a folk duo, with their three pitches" />
-              <figcaption className="font-mono text-xs leading-4 font-medium text-muted-foreground">
-                Qloo&apos;s taste map for a folk duo, filling in as the research runs: the brighter the cell, the more their crowd gathers there. An example, not a city&apos;s data.
-              </figcaption>
             </figure>
             <Link
               href="/busks"
@@ -132,6 +127,16 @@ export default function Home() {
       </div>
 
       <div className="mx-auto flex max-w-[1360px] flex-col gap-20 px-4 pt-16 pb-16 md:gap-28 md:px-6 md:pt-24">
+        <figure aria-label="Demo video, coming soon" data-testid="demo-video-slot" className="bm-grain m-0 flex aspect-video max-h-[720px] w-full flex-col items-center justify-center gap-4 border-[3px] border-rule bg-background p-6 text-center text-foreground shadow-md" data-theme="dark">
+          <HexCell size={96} tone="primary" fontSize={44}>
+            <ArrowRight aria-hidden="true" className="size-10" />
+          </HexCell>
+          <b className="font-display text-[clamp(28px,4vw,44px)] leading-none font-extrabold uppercase">[Demo video · 60–90 s]</b>
+          <figcaption className="m-0 max-w-xl font-mono text-xs leading-4 text-muted-foreground">
+            A folk duo plans a Sunday busk: Qloo&apos;s taste map fills in, the research runs, the busk appears.
+          </figcaption>
+        </figure>
+
         <section aria-labelledby="try-h" className="flex flex-col gap-7">
           <h2 id="try-h" className={H2}>
             Try an act. <span className="text-signal-text">Watch it plan live.</span>
@@ -259,6 +264,67 @@ export default function Home() {
               </li>
             ))}
           </ul>
+        </section>
+
+        <section
+          aria-labelledby="brand-h"
+          data-testid="brand-teaser"
+          className="flex flex-wrap items-center justify-between gap-8 border-[3px] border-rule bg-card p-5 shadow-[8px_8px_0_var(--primary)] md:p-10"
+        >
+          <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-4">
+            <span className="font-mono text-xs leading-4 font-bold tracking-[0.08em] text-signal-text uppercase">The brand</span>
+            <h2 id="brand-h" className="m-0 font-display text-[clamp(44px,6vw,80px)] leading-[0.9] font-extrabold text-signal-text uppercase">
+              Honeycomb
+            </h2>
+            <p className="m-0 max-w-xl text-lg leading-[27px]">
+              Busk Map dresses like a street poster: one honeycomb idea, signal orange on night and paper, and type you can read from across the street. Every
+              screen here is built from one published design system.
+            </p>
+            <ul aria-label="The brand in numbers" className="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 font-mono text-sm leading-5 font-medium text-muted-foreground">
+              {[
+                { n: 90, label: "components" },
+                { n: 3, label: "typefaces" },
+                { n: 9, label: "assets" },
+              ].map((item) => (
+                <li key={item.label}>
+                  <b className="mr-1.5 font-display text-[28px] leading-none font-extrabold text-foreground">{item.n}</b>
+                  {item.label}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/brand"
+              className="bm-poster inline-flex min-h-[52px] items-center gap-2.5 self-start border-2 border-rule bg-primary px-6 text-lg font-bold text-primary-foreground no-underline [--poster-shadow:4px_4px_0_var(--foreground)] hover:bg-[color-mix(in_oklab,var(--primary)_88%,var(--foreground))]"
+            >
+              See the brand <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+          <div aria-hidden="true" className="box-border flex max-w-full min-w-0 flex-[0_1_340px] flex-col gap-3 border-2 border-rule bg-secondary p-4">
+            <div className="flex items-center gap-3">
+              <Logo variant="mark" size={44} />
+              <HexCell size={36} tone="primary" fontSize={16}>
+                1
+              </HexCell>
+              <PercentCell value={91} size={44} label="" />
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center font-mono text-[10px] leading-3 text-muted-foreground">
+              {[
+                ["Signal orange", "bg-primary"],
+                ["Bluestone", "bg-bluestone"],
+                ["Paper", "bg-background"],
+              ].map(([name, c]) => (
+                <span key={name} className="flex flex-col gap-1">
+                  <i className={`block h-9 border-2 border-rule ${c}`} />
+                  {name}
+                </span>
+              ))}
+            </div>
+            <div className="flex flex-col">
+              <b className="font-display text-3xl leading-none font-extrabold uppercase">Big Shoulders</b>
+              <b className="text-base">Atkinson Hyperlegible Next</b>
+              <span className="font-mono text-sm text-muted-foreground">JetBrains Mono</span>
+            </div>
+          </div>
         </section>
 
       </div>

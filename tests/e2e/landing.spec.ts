@@ -60,13 +60,32 @@ test.describe("landing, as the deck draws it", () => {
     }
   });
 
+  test("the demo video slot is a labelled frame with no controls until a video exists (L11)", async ({ page }) => {
+    await page.goto("/");
+    const slot = page.getByTestId("demo-video-slot");
+    await expect(slot).toContainText("[Demo video · 60–90 s]");
+    await expect(slot.getByRole("button")).toHaveCount(0);
+    await expect(slot.locator("video, a, iframe")).toHaveCount(0);
+  });
+
+  test("the brand teaser shows the numbers and links to /brand (B-019, L23)", async ({ page }) => {
+    await page.goto("/");
+    const teaser = page.getByTestId("brand-teaser");
+    await expect(teaser.getByRole("heading", { name: "Honeycomb" })).toBeVisible();
+    await expect(teaser.getByRole("list", { name: "The brand in numbers" })).toContainText("90components");
+    await expect(teaser.getByRole("list", { name: "The brand in numbers" })).toContainText("3typefaces");
+    await expect(teaser.getByRole("list", { name: "The brand in numbers" })).toContainText("9assets");
+  });
+
   test("the footer has no Brand link and continues the closing band's dark ground (B-023)", async ({ page }) => {
     await page.goto("/");
     const footer = page.locator('[data-slot="site-footer"]');
     await expect(footer).toHaveCount(1); // the Suspense fallback is gone once the real footer has rendered
     await expect(footer).toBeVisible();
     await expect(footer.getByRole("link", { name: "Brand" })).toHaveCount(0);
-    await expect(page.locator('a[href="/brand"]')).toHaveCount(0);
+    // The only link to /brand on the landing is the brand teaser (B-019, the user's call).
+    await expect(page.locator('a[href="/brand"]')).toHaveCount(1);
+    await expect(page.getByTestId("brand-teaser").getByRole("link", { name: /See the brand/ })).toHaveAttribute("href", "/brand");
     await expect(footer).toHaveAttribute("data-theme", "dark");
     const bg = (sel: string) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).backgroundColor);
     expect(await bg('[data-slot="site-footer"]')).toBe(await bg('[aria-labelledby="cta-h"]'));
@@ -82,7 +101,9 @@ test.describe("landing, as the deck draws it", () => {
     await page.goto("/");
     const hero = page.locator('section[aria-labelledby="hero"]');
     await expect(hero.locator("svg[aria-hidden=true] path.hc-glow")).toHaveCount(104);
-    await expect(hero.locator("figcaption")).toContainText("Qloo's taste map for a folk duo, filling in as the research runs: the brighter the cell, the more their crowd gathers there.");
+    // The user's call: no small captions on either side of the cells.
+    await expect(hero.locator("figcaption")).toHaveCount(0);
+    await expect(hero.locator("p")).toHaveCount(0);
     // Pulsing by default.
     expect(await hero.evaluate((el) => el.getAnimations({ subtree: true }).some((a) => (a as CSSAnimation).animationName === "hc-glow"))).toBe(true);
   });
@@ -111,7 +132,10 @@ test.describe("landing, as the deck draws it", () => {
     const [cb, lb] = [await cell.boundingBox(), await label.boundingBox()];
     expect(lb!.x).toBeGreaterThan(cb!.x + cb!.width - 1);
     expect(Math.abs(lb!.y + lb!.height / 2 - (cb!.y + cb!.height / 2))).toBeLessThan(12);
-    await expect(get.getByRole("img", { name: /taste map for the example busk/ })).toBeVisible();
+    // The live PlanMap with example data, three pins and the list beside it.
+    await expect(get.getByRole("region", { name: "Map of pitches and Qloo taste affinity" })).toBeVisible();
+    await expect(get.locator("button[data-pitch-id]")).toHaveCount(3, { timeout: 20_000 });
+    await expect(get.locator("figcaption")).toHaveCount(0);
     await expect(get.getByRole("heading", { name: "Your busk" })).toBeVisible();
     await expect(get.locator('[data-slot="pitch-row"]')).toHaveCount(3);
     await expect(get.getByRole("heading", { name: /to play there/ })).toBeVisible();

@@ -7,8 +7,8 @@ export default function PlanNotFound() {
   return (
     <StatusCard
       testId="plan-not-found"
-      title="Plan not found"
-      description="This link doesn't match a saved plan. Check that the whole link was copied, or start a new plan."
+      title="We can't find this busk"
+      description="The link may be cut short or mistyped. Check you copied all of it, or start a new busk."
       actions={
         <Button asChild>
           <Link href="/">Go to Busk Map home</Link>

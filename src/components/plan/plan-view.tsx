@@ -1,34 +1,50 @@
 "use client";
 
-import { ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ComparePanel, useBaseline } from "@/components/compare/compare-panel";
-import { LazyPlanMap } from "@/components/map/lazy-plan-map";
-import { MapLegend } from "@/components/map/map-legend";
+import { AgentStatusLine, type AgentState } from "@/components/honeycomb/agent-status-line";
+import { Banner } from "@/components/honeycomb/banner";
+import { BothAgreeBadge } from "@/components/honeycomb/both-agree-badge";
+import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
-import { PitchCard } from "@/components/pitch-card/pitch-card";
-import { SetlistPanel } from "@/components/setlist/setlist-panel";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { PageHeader } from "@/components/honeycomb/page-header";
+import { PitchRow } from "@/components/honeycomb/pitch-row";
+import { PlanAlert } from "@/components/honeycomb/plan-alert";
+import { ResearchFunnel } from "@/components/honeycomb/research-funnel";
+import { UnmatchedAlert } from "@/components/honeycomb/unmatched-alert";
+import { WithCells } from "@/components/honeycomb/with-cells";
+import { LazyPlanMap } from "@/components/map/lazy-plan-map";
 import { Badge } from "@/components/ui/badge";
-import { creditsClaude, explanationsLabel, modelName, QLOO_TEST_LABEL, type ExplanationsModel } from "@/lib/sources";
-import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { creditsClaude, explanationsLabel, modelName, QLOO_TEST_LABEL, type ExplanationsModel } from "@/lib/sources";
 import { FRESH_HEADER, PLAN_ID_HEADER } from "@/lib/plan-id";
 import { planStreamEventSchema, type Plan, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
+import type { ResearchTotals } from "@/lib/research-totals";
+import { formatHour } from "@/lib/slot";
 import { weekSearchParams } from "@/lib/week-url";
-import { agentVsEngineLines } from "@/lib/agent-vs-engine";
-import { TipLogForm } from "@/components/tips/tip-log-form";
 import { useTipSync } from "@/components/tips/use-tip-sync";
-import { AgentSteps, applyStreamEvent, type AgentStep, type RunUsage } from "./agent-steps";
+import { AgentStepStream, applyStreamEvent, type AgentStep, type FeedPhase, type RunUsage } from "./agent-steps";
+import { AgentVsEngine } from "./agent-vs-engine";
 import { CopyLink } from "./copy-link";
-import { CrowdPanel } from "./crowd-panel";
-import { DataSources } from "./data-sources";
+import { DataSources, statusText } from "./data-sources";
+import { PitchSheet } from "./pitch-sheet";
 import { WeatherStrip } from "./weather-strip";
-import { WeightsPanel } from "./weights-panel";
+
+/** From 1024 px the busk's research sits around the busk (funnel on top, feed at the foot); below it the busk comes first and the research is folded. */
+const WIDE_QUERY = "(min-width: 1024px)";
+function useWide(): boolean {
+  return useSyncExternalStore(
+    (notify) => {
+      const mq = window.matchMedia(WIDE_QUERY);
+      mq.addEventListener("change", notify);
+      return () => mq.removeEventListener("change", notify);
+    },
+    () => window.matchMedia(WIDE_QUERY).matches,
+    () => true,
+  );
+}
 
 type RunState =
   | { status: "idle" | "running" | "done" }
@@ -65,9 +81,11 @@ const replayState = (replay: Props["replay"]) => {
   if (!replay) return null;
   const plan = replay.events.findLast((e) => e.type === "plan");
   const usage = replay.events.findLast((e) => e.type === "usage");
+  const totals = replay.events.findLast((e) => e.type === "totals");
   return {
     plan: plan?.type === "plan" ? plan.plan : null,
     usage: usage?.type === "usage" ? usage : null,
+    totals: totals?.type === "totals" ? totals.totals : null,
     steps: replay.events.reduce<AgentStep[]>((steps, event) => applyStreamEvent(steps, event), []),
   };
 };
@@ -75,28 +93,6 @@ const replayState = (replay: Props["replay"]) => {
 /** If a live run hasn't ended by now, show the engine's plan anyway (the agent itself times out at 90 s). */
 const AGENT_WAIT_MS = 110_000;
 const templateNote = (model: ExplanationsModel | null) => `The reasons below are the template ones from the data, not ${modelName(model)}'s.`;
-
-/** Agent vs engine: whether the model kept the engine's top 3, or what it picked over what, and why. No design yet. */
-function AgentVsEngine({ agent, model }: { agent: NonNullable<Plan["agent"]>; model: ExplanationsModel | null }) {
-  const lines = agentVsEngineLines(agent, model);
-  return (
-    <div className="space-y-1 text-sm" data-testid="agent-vs-engine">
-      <p className="font-medium">Agent vs engine</p>
-      {lines.length === 1 && agent.changes.length === 0 ? (
-        <p>{lines[0]}</p>
-      ) : (
-        <ul className="list-disc space-y-1 pl-5">
-          {lines.map((line) => (
-            <li key={line} data-testid="agent-vs-engine-change">
-              {line}
-            </li>
-          ))}
-        </ul>
-      )}
-      {agent.added.length > 0 && <p className="text-muted-foreground">Added by {modelName(model)} and scored by the engine: {agent.added.join(", ")}.</p>}
-    </div>
-  );
-}
 
 const list = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
 
@@ -119,6 +115,11 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   const [revealed, setRevealed] = useState(Boolean(stored?.plan) || !autoRun || initialPlan?.qlooFailed === true);
   /** Run totals from the server (steps, tokens, time). */
   const [usage, setUsage] = useState<RunUsage | null>(stored?.usage ?? null);
+  /** The running research totals (the funnel): the latest `totals` event; the plan's own totals replace them once it arrives. */
+  const [liveTotals, setLiveTotals] = useState<ResearchTotals | null>(stored?.totals ?? null);
+  /** The page-level "Show raw data" switch: tool names, inputs and the returned data show only when it is on. */
+  const [showRaw, setShowRaw] = useState(false);
+  const wide = useWide();
   /** The run was replayed from the cache: its steps are collapsed. */
   const [replayed, setReplayed] = useState(Boolean(stored?.plan));
   /** Why the plan shown isn't Claude's (agent failed, timed out or fell back to templates). */
@@ -127,8 +128,11 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const pitchList = plan?.pitches ?? [];
-  const selectedId = searchParams.get("pitch") ?? pitchList[0]?.id ?? null;
-  const selected = pitchList.find((p) => p.id === selectedId) ?? pitchList[0] ?? null;
+  // `?pitch=<id>` is the deep link to a pitch's details sheet. The list and the map's pins select a pitch on their own (not in the URL).
+  const sheetId = searchParams.get("pitch");
+  const sheetPitch = pitchList.find((p) => p.id === sheetId) ?? null;
+  const [pickedId, setPickedId] = useState<string | null>(() => sheetId);
+  const selectedId = sheetPitch?.id ?? pickedId ?? pitchList[0]?.id ?? null;
   // A stored run counts as started: a changed request (a new tip log entry) then plans again.
   const started = useRef(Boolean(stored?.plan));
   useTipSync(request.performer.name, exampleId, request.history);
@@ -137,14 +141,23 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   const baseline = useBaseline(request, faults, revealed);
   const agreedWith = new Map(baseline.status === "done" ? baseline.baseline.bothAgree.map((a) => [a.pitchId, a.plainName]) : []);
 
-  const select = useCallback(
+  const opener = useRef<HTMLElement | null>(null);
+  const openDetails = useCallback(
     (pitchId: string) => {
+      opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setPickedId(pitchId);
       const params = new URLSearchParams(searchParams.toString());
       params.set("pitch", pitchId);
       router.replace(`${pathname}?${params}`, { scroll: false });
     },
     [pathname, router, searchParams],
   );
+  const closeDetails = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("pitch");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   /** No plan arrived (the agent failed before assembling one): load the engine's plan from the server (run=0). */
   const showEnginePlan = useCallback(() => {
@@ -161,6 +174,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     setRunNote(null);
     setReplayed(false);
     setUsage(null);
+    setLiveTotals(null);
     // Whatever ends the run, a plan is shown: Claude's, or the engine's with a note.
     const fail = (message: string) => {
       setRun({ status: "error", message });
@@ -207,6 +221,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
           if (event.type === "status" && event.message !== "Planning started") setRunNote(event.message);
           if (event.type === "status" && event.replay) setReplayed(true);
           if (event.type === "usage") setUsage(event);
+          if (event.type === "totals") setLiveTotals(event.totals);
           if (event.type === "plan") {
             setPlan(event.plan);
             setRun({ status: "done" });
@@ -257,305 +272,283 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   // Before the run starts (first render, server and client alike) and while it runs, the plan is pending; so is a fallback plan still loading.
   const pending = !revealed || plan === null;
 
-  // Who wrote the notes and explanations: the plan says once it exists; until then, the model this server runs (B-010).
   const model = plan?.explanationsModel ?? heading.model;
   const qlooDown = plan?.qlooFailed === true || (run.status === "error" && run.message.startsWith("Qloo"));
   const unmatched = qlooDown || !plan ? [] : plan.resolvedArtists.filter((a) => a.matched === null).map((a) => a.query);
   const matched = (plan?.resolvedArtists ?? []).filter((a) => a.matched !== null).map((a) => a.matched!);
   const tipPitches = pitchList.filter((p) => p.tip && p.tip.points > 0);
+  const limited = run.status === "limited";
+
+  // The research feed: its phase, mode and totals.
+  const lastStep = steps.filter((s) => s.tool).at(-1);
+  const phase: FeedPhase | null =
+    run.status === "running"
+      ? steps.length === 0 || (steps.at(-1)?.tool === null && !lastStep)
+        ? "starting"
+        : lastStep?.status === "running"
+          ? "working"
+          : "thinking"
+      : run.status === "done"
+        ? plan?.explanations === "ai" || !plan ? "done" : "fallback"
+        : run.status === "error"
+          ? qlooDown ? "error" : "fallback"
+          : null;
+  const live = phase === "starting" || phase === "working" || phase === "thinking";
+  const mode = replayed ? "replay" : runNote?.startsWith("Joining") ? "joined" : "live";
+  const totals: Partial<ResearchTotals> | null = plan?.researchTotals ?? liveTotals;
+  const running = steps.filter((s) => s.status === "running" && s.tool).map((s) => s.tool!);
+  const dataPoints = totals ? Object.entries(totals).reduce((sum, [k, v]) => (k === "qlooCalls" || k === "qlooCacheHits" ? sum : sum + (v ?? 0)), 0) : 0;
+  const hasFeed = !limited && (steps.length > 0 || live);
+  const secs = usage ? usage.ms / 1000 : null;
+  const slotShort = plan ? `${formatHour(plan.slot.startHour)}–${formatHour(plan.slot.endHour)}` : "";
+  const agentState: AgentState | null = limited
+    ? "none"
+    : pending
+      ? "researching"
+      : run.status === "idle"
+        ? "engine"
+        : run.status === "running"
+          ? "rerun"
+          : run.status === "done"
+            ? replayed
+              ? "replayed"
+              : "done"
+            : null;
+
+  const sourcesDown = plan ? plan.dataStatus.filter((s) => s.mode === "fallback" && s.source !== "qloo") : [];
+  const EFFECT: Record<string, string> = {
+    "melbourne-pedestrian": "Foot traffic is estimated from busy places and events, and marked est.",
+    ticketmaster: "Event crowds are left out of the scores.",
+    "open-meteo": "The weather is left out of the scores.",
+    lastfm: "Song play counts are left out; the setlist still orders your songs.",
+  };
+
+  const funnelSentence =
+    plan?.funnel && plan.funnel.topCells > 0 ? (
+      <p className="m-0 mt-3 text-sm text-muted-foreground">
+        How this plan was found: Qloo mapped your taste over {plan.funnel.cells} areas of the city. Your top {plan.funnel.topCells} areas gave {plan.funnel.considered} public
+        spaces, footpaths and council sites; the council&apos;s busking rules ruled out {plan.funnel.excluded}, and {plan.funnel.candidates} were scored on foot traffic,
+        nearby places, events and weather for your slot.
+      </p>
+    ) : null;
+  const funnel = qlooDown || (!totals && !live) ? null : (
+    <div data-testid="plan-funnel">
+      <ResearchFunnel totals={totals} running={running} live={live} picks={!live && plan && plan.pitches.length > 0 ? plan.pitches.length : null} />
+      {!live ? funnelSentence : null}
+    </div>
+  );
+
+  const stream = hasFeed ? (
+    <AgentStepStream
+      steps={steps}
+      model={model}
+      phase={phase ?? "done"}
+      mode={mode}
+      modeText={runNote}
+      seconds={secs}
+      endNote={fallbackNote}
+      endCode={qlooDown ? "qloo" : null}
+      when={slotShort}
+      collapsed={!wide && !pending && !qlooDown}
+      showRaw={showRaw}
+      onShowRawChange={setShowRaw}
+      subtitle={!wide && !live && !qlooDown ? "Each check the model ran for the busk above, and what it found." : undefined}
+      footer={plan && !pending && !qlooDown ? <DataSources status={plan.dataStatus} showAi={creditsClaude(plan)} /> : null}
+    />
+  ) : null;
+
+  const header = (
+    <PageHeader
+      meta={`${heading.cityName} · ${heading.slotLabel} · ${heading.permit} permit`}
+      title={heading.performerName}
+      badges={[
+        { label: heading.qlooMode === "live" ? "Live Qloo data" : QLOO_TEST_LABEL, tone: heading.qlooMode === "live" ? "neutral" : "estimate" },
+        ...(plan ? [{ label: plan.footfallLevel === "city-sensors" ? "Foot traffic: city sensors" : "Foot traffic: unavailable", tone: plan.footfallLevel === "city-sensors" ? ("neutral" as const) : ("estimate" as const) }] : []),
+        ...(!pending && plan ? [{ label: explanationsLabel(plan), tone: "neutral" as const }] : []),
+        // A stored run reopened from its link says so at the top, not only in the collapsed steps.
+        ...(replayed ? [{ label: "Replay of an earlier run (no new model call)", tone: "neutral" as const, testId: "replay-label" }] : []),
+      ]}
+      links={[
+        {
+          // No prefetch: prefetching /week builds a whole week plan on every plan view, about N+2 Qloo calls (one artist lookup per act artist, one heatmap, one places; docs/qloo-data-map.md).
+          label: "Plan my week instead",
+          href: `/week?${weekSearchParams(
+            { city: request.city, permit: request.permit, performer: request.performer, startDate: request.slot.date, limits: { maxSessions: 5, maxPerDay: 1, unavailable: [] }, weights: request.weights },
+            exampleId,
+          )}`,
+          prefetch: false,
+        },
+        { label: "Tip log", href: "/tips" },
+      ]}
+      end={shareId ? <CopyLink id={shareId} /> : undefined}
+    />
+  );
+
+  const alerts = (
+    <>
+      {heading.qlooMode === "synthetic" && (
+        <>
+          <Banner tone="test">
+            <b className="font-bold uppercase">Qloo test data</b>
+          </Banner>
+          <PlanAlert kind="test-data" />
+        </>
+      )}
+      {!pending && unmatched.length > 0 && <UnmatchedAlert unmatched={unmatched} matched={matched} mock={plan?.qlooMode === "synthetic"} />}
+      {qlooDown && <PlanAlert kind="qloo-down" />}
+      {limited && <PlanAlert kind="limit" message={run.status === "limited" ? run.message : undefined} />}
+      {run.status === "error" && !qlooDown ? (
+        <PlanAlert kind="agent-error">
+          {run.message} The plan below is the engine&apos;s, from the data. {templateNote(model)}
+        </PlanAlert>
+      ) : (
+        fallbackNote && !qlooDown && <PlanAlert kind="fallback" note={fallbackNote} />
+      )}
+    </>
+  );
 
   return (
     <div className="space-y-6">
-      <header className="space-y-2">
-        <p className="text-sm text-muted-foreground">
-          {heading.cityName} · {heading.slotLabel} · {heading.permit} permit
-        </p>
-        <h1 className="text-3xl font-semibold tracking-tight">{heading.performerName}</h1>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant={heading.qlooMode === "live" ? "outline" : "secondary"}>
-            {heading.qlooMode === "live" ? "Live Qloo data" : QLOO_TEST_LABEL}
-          </Badge>
-          {plan && <Badge variant="outline">{plan.footfallLevel === "city-sensors" ? "Foot traffic: city sensors" : "Foot traffic: unavailable"}</Badge>}
-          {!pending && plan && <Badge variant="outline">{explanationsLabel(plan)}</Badge>}
-          {/* A stored run reopened from its link says so at the top, not only in the collapsed steps. */}
-          {replayed && (
-            <Badge variant="secondary" data-testid="replay-label">
-              Replay of an earlier run (no new model call)
-            </Badge>
-          )}
-        </div>
-        <p className="flex flex-wrap gap-x-4 text-sm">
-          {/* No prefetch: prefetching /week builds a whole week plan on every plan view, about N+2 Qloo calls (one artist lookup per act artist, one heatmap, one places; docs/qloo-data-map.md). */}
-          <Link
-            className="underline"
-            prefetch={false}
-            href={`/week?${weekSearchParams(
-              { city: request.city, permit: request.permit, performer: request.performer, startDate: request.slot.date, limits: { maxSessions: 5, maxPerDay: 1, unavailable: [] }, weights: request.weights },
-              exampleId,
-            )}`}
-          >
-            Plan my week instead
-          </Link>
-          <Link className="underline" href="/tips">
-            Tip log
-          </Link>
-        </p>
-        {shareId && <CopyLink id={shareId} />}
-      </header>
+      {header}
+      <AgentStatusLine state={agentState} usage={usage} />
+      {alerts}
 
-      {heading.qlooMode === "synthetic" && (
-        <Alert>
-          <AlertTitle>{QLOO_TEST_LABEL}</AlertTitle>
-          <AlertDescription>
-            The taste map, crowd and trends on this page come from Busk Map&apos;s local mock of the Qloo API, which runs when no Qloo key is
-            configured (and in tests). It is test data, not Qloo data. Venue and street names are real (OpenStreetMap); foot traffic,
-            busking rules, events and weather are real wherever the sources below say Live.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {!pending && unmatched.length > 0 && (
-        <Alert data-testid="unmatched-artists">
-          <AlertTitle>
-            Qloo couldn&apos;t match {list(unmatched)}
-          </AlertTitle>
-          <AlertDescription>
-            {matched.length > 0
-              ? `This plan uses the artists Qloo did match: ${list(matched)}.`
-              : "Without a matched artist Busk Map can't map where your crowd's taste is, so taste is left out: the pitches below are ranked on foot traffic, events and weather only. Try better-known artists you sound like."}
-            {plan.qlooMode === "synthetic" ? " (Qloo test data: the local mock knows about 130 artists.)" : ""}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {qlooDown && (
-        <Alert variant="destructive">
-          <AlertTitle>Qloo is unavailable</AlertTitle>
-          <AlertDescription>Busk Map needs Qloo&apos;s taste data to plan. Please try again in a few minutes.</AlertDescription>
-        </Alert>
-      )}
-
-      <section aria-label="Agent" className="space-y-3">
-        {/* No re-run for buskers: a reload replays the stored run. Developers can add ?fresh=1 (outside production). */}
-        <div className="flex flex-wrap items-center gap-3">
-          <p className="text-sm text-muted-foreground" data-testid="agent-status">
-            {run.status === "limited"
-              ? "No new plan was started."
-              : pending
-              ? "The agent is researching with Qloo and the other sources. The plan appears when it finishes."
-              : run.status === "idle"
-                ? "Shown: the engine's plan from the data, without the agent."
-                : run.status === "running"
-                  ? "The agent is running again. The plan below stays until it finishes."
-                  : run.status === "done"
-                    ? replayed
-                      ? "The agent's plan, replayed."
-                      : "The agent's plan."
-                    : null}
-          </p>
-        </div>
-        {runNote && <p className="text-sm text-muted-foreground">{runNote}</p>}
-        {usage && (
-          <p className="text-sm text-muted-foreground" data-testid="agent-usage">
-            {usage.steps} model steps · {usage.inputTokens.toLocaleString("en-AU")} input and {usage.outputTokens.toLocaleString("en-AU")} output tokens
-            {usage.reasoningTokens ? ` (${usage.reasoningTokens.toLocaleString("en-AU")} thinking)` : ""} · {(usage.ms / 1000).toFixed(1)} s
-          </p>
-        )}
-        {!pending && plan?.agent && <AgentVsEngine agent={plan.agent} model={model} />}
-        {run.status === "limited" && (
-          <Alert data-testid="fresh-limit">
-            <AlertTitle>Plan limit reached</AlertTitle>
-            <AlertDescription>
-              <p>{run.message}</p>
-              <p>
-                <Link className="underline" href="/">
-                  Back to Busk Map home
-                </Link>
-              </p>
-            </AlertDescription>
-          </Alert>
-        )}
-        {run.status === "error" && !qlooDown ? (
-          <Alert variant="destructive">
-            <AlertTitle>The agent could not finish</AlertTitle>
-            <AlertDescription>
-              {run.message} The plan below is the engine&apos;s, from the data. {templateNote(model)}
-            </AlertDescription>
-          </Alert>
-        ) : (
-          fallbackNote &&
-          !qlooDown && (
-            <Alert data-testid="agent-fallback">
-              <AlertTitle>Shown: the engine&apos;s plan</AlertTitle>
-              <AlertDescription>{fallbackNote}</AlertDescription>
-            </Alert>
-          )
-        )}
-        {replayed && steps.length > 0 ? (
-          <Collapsible className="text-sm">
-            <CollapsibleTrigger asChild>
-              <Button variant="link" size="sm" className="group h-auto px-0 text-muted-foreground">
-                <ChevronRightIcon aria-hidden className="transition-transform group-data-[state=open]:rotate-90" />
-                Agent steps (replayed, {steps.filter((s) => s.tool).length})
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2">
-              <AgentSteps steps={steps} model={model} />
-            </CollapsibleContent>
-          </Collapsible>
-        ) : (
-          <AgentSteps steps={steps} model={model} />
-        )}
-      </section>
-
-      {run.status === "limited" ? null : pending || !plan ? (
-        <PendingPlan />
+      {limited || qlooDown ? (
+        qlooDown ? stream : null
+      ) : pending || !plan ? (
+        <>
+          {funnel}
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,760px)_minmax(0,1fr)]">
+            {stream}
+            <PendingPlan />
+          </div>
+        </>
       ) : (
         <>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <h2>Plan</h2>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>{plan.summary}</p>
-            {plan.funnel && plan.funnel.topCells > 0 && (
-              <p className="text-muted-foreground" data-testid="plan-funnel">
-                How this plan was found: Qloo mapped your taste over {plan.funnel.cells} areas of the city. Your top {plan.funnel.topCells} areas gave{" "}
-                {plan.funnel.considered} public spaces, footpaths and council sites; the council&apos;s busking rules ruled out {plan.funnel.excluded},
-                and {plan.funnel.candidates} were scored on foot traffic, nearby places, events and weather for your slot.
+          {wide ? (
+            funnel
+          ) : (
+            totals && (
+              <p className="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-sm text-muted-foreground" data-testid="found-from">
+                <span>Found from {dataPoints.toLocaleString("en-AU")} data points</span>
+                <a className="font-bold text-foreground underline underline-offset-3" href="#research">
+                  See the research ↓
+                </a>
               </p>
-            )}
-            {plan.notes.length > 0 && (
-              <ul className="list-disc pl-5 text-muted-foreground">
-                {plan.notes.map((note) => (
-                  <li key={note}>{note}</li>
-                ))}
-              </ul>
-            )}
-            {plan.tipHistory && (
-              <p className="flex flex-wrap items-center gap-2 text-muted-foreground" data-testid="tip-history">
-                {plan.tipHistory.source !== "yours" && <Badge variant="secondary">Example data</Badge>}
-                <span>
-                  Your tip log ({plan.tipHistory.sessions} sessions, average ${Math.round(plan.tipHistory.perHour)}/h)
-                  {tipPitches.length > 0
-                    ? ` adds a small bonus to ${list(tipPitches.map((p) => `${p.name} (+${p.tip!.points})`))}, where you earned more than your average.`
-                    : " doesn't change these pitches: none of them earned you more than your average yet."}{" "}
-                  <Link className="underline" href="/tips">
-                    How it works
-                  </Link>
-                </span>
-              </p>
-            )}
-            <WeatherStrip weather={plan.weather} />
-          </CardContent>
-        </Card>
+            )
+          )}
 
-        {qlooDown ? null : plan.pitches.length === 0 ? (
-          <Alert>
-            <AlertTitle>No pitch to recommend</AlertTitle>
-            <AlertDescription>
-              The busking rules or the data for this slot left no candidate pitches.{" "}
-              <a className="underline" href={plan.rulesUrl} target="_blank" rel="noreferrer">
-                Read the council&apos;s busking rules
-              </a>
-              .
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-            <div className="space-y-2">
-              <div className="h-[22rem] sm:h-[28rem]">
-                <LazyPlanMap plan={plan} center={center} selectedId={selected?.id ?? null} onSelect={select} />
-              </div>
-              <MapLegend testData={plan.qlooMode === "synthetic"} />
-            </div>
-            <section aria-label="Pitches" className="space-y-2">
-              <h2 className="text-lg font-semibold">Top pitches</h2>
-              <ol className="space-y-2">
-                {plan.pitches.map((pitch, i) => (
-                  <li key={pitch.id}>
-                    <Button
-                      variant={pitch.id === selected?.id ? "default" : "outline"}
-                      className="h-auto w-full justify-between whitespace-normal text-left"
-                      aria-pressed={pitch.id === selected?.id}
-                      data-pitch-name={pitch.name}
-                      onClick={() => select(pitch.id)}
-                    >
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span>
-                          {i + 1}. {pitch.name}
-                        </span>
-                        <DiscoveryBadge discovery={pitch.discovery} className="border-current bg-transparent text-current" />
-                        {agreedWith.has(pitch.id) && (
-                          <Badge variant="outline" className="border-current bg-transparent text-current" title={`The plain AI also named ${agreedWith.get(pitch.id)}`}>
-                            Both agree
-                          </Badge>
-                        )}
-                      </span>
-                      <span className="shrink-0">{pitch.score}/100</span>
-                    </Button>
-                  </li>
-                ))}
-              </ol>
-              {plan.others.length > 0 && (
-                <Collapsible className="text-sm">
-                  <CollapsibleTrigger asChild>
-                    <Button variant="link" size="sm" className="group h-auto px-0 text-muted-foreground">
-                      <ChevronRightIcon aria-hidden className="transition-transform group-data-[state=open]:rotate-90" />
-                      Other scored pitches ({plan.others.length})
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <ul className="mt-2 space-y-1">
-                      {plan.others.map((p) => (
-                        <li key={p.id} className="flex justify-between gap-2">
-                          <span>
-                            {p.name}
-                            {p.discovery === "hidden-gem" ? " · hidden gem" : p.discovery === "usual" ? " · usual spot" : ""}
-                            {p.tipPoints ? ` · tips +${p.tipPoints}` : ""}
-                            {p.tooCloseTo ? ` · too close to ${p.tooCloseTo.name}` : ""}
-                          </span>
-                          <span className="text-muted-foreground">{p.score}/100</span>
+          {plan.pitches.length === 0 ? (
+            <PlanAlert kind="no-pitch" rulesHref={plan.rulesUrl} />
+          ) : (
+            <>
+              {wide && plan.agent && <AgentVsEngine agent={plan.agent} model={model} />}
+              <section aria-label="Your busk" className="space-y-4">
+                <div className="space-y-1">
+                  <h2 className="m-0 font-display text-[40px] leading-none font-extrabold uppercase">Your busk</h2>
+                  <p className="m-0 text-muted-foreground">
+                    <WithCells text={plan.summary} />
+                  </p>
+                  {plan.notes.length > 0 && (
+                    <ul className="m-0 list-disc pl-5 text-sm text-muted-foreground">
+                      {plan.notes.map((note) => (
+                        <li key={note}>
+                          <WithCells text={note} />
                         </li>
                       ))}
                     </ul>
-                  </CollapsibleContent>
-                </Collapsible>
+                  )}
+                </div>
+                <div className="grid gap-5 min-[860px]:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] min-[860px]:items-stretch">
+                  <div className="min-w-0">
+                    <LazyPlanMap
+                      plan={plan}
+                      center={center}
+                      selectedId={selectedId}
+                      onSelect={setPickedId}
+                      testData={plan.qlooMode === "synthetic"}
+                    />
+                  </div>
+                  <section aria-label="Pitches" className="space-y-3 min-[860px]:order-first">
+                    <h3 className="m-0 font-mono text-xs font-bold tracking-[0.06em] text-muted-foreground uppercase">Top pitches</h3>
+                    <ol className="m-0 flex list-none flex-col gap-3 p-0">
+                      {plan.pitches.map((pitch, i) => (
+                        <PitchRow
+                          key={pitch.id}
+                          pitchId={pitch.id}
+                          rank={i + 1}
+                          name={pitch.name}
+                          when={slotShort}
+                          score={pitch.score}
+                          selected={pitch.id === selectedId}
+                          onSelect={() => setPickedId(pitch.id)}
+                          onDetails={() => openDetails(pitch.id)}
+                          badges={
+                            <>
+                              <DiscoveryBadge discovery={pitch.discovery} />
+                              {agreedWith.has(pitch.id) && <BothAgreeBadge title={`The plain AI also named ${agreedWith.get(pitch.id)}`} />}
+                              {pitch.tip && pitch.tip.points > 0 && <Badge variant="neutral">Your tips +{pitch.tip.points}</Badge>}
+                            </>
+                          }
+                        />
+                      ))}
+                    </ol>
+                    {plan.others.length > 0 && (
+                      <p className="m-0 text-sm text-muted-foreground" data-testid="others-note">
+                        {plan.others.length} more pitches scored. They&apos;re the small markers on the map: pick one for its summary. The top 3 are kept 250 m apart.
+                      </p>
+                    )}
+                    <p className="m-0 text-sm font-bold">Busk Map never confirms a pitch is legal. Check your permit conditions on the day.</p>
+                    {plan.tipHistory && (
+                      <p className="m-0 flex flex-wrap items-center gap-2 text-sm text-muted-foreground" data-testid="tip-history">
+                        {plan.tipHistory.source !== "yours" && <Badge variant="estimate">Example data</Badge>}
+                        <span>
+                          Your tip log ({plan.tipHistory.sessions} sessions, average A${Math.round(plan.tipHistory.perHour)} an hour)
+                          {tipPitches.length > 0
+                            ? ` adds a small bonus to ${list(tipPitches.map((p) => `${p.name} (+${p.tip!.points})`))}, where you earned more than your average.`
+                            : " doesn't change these pitches: none of them earned you more than your average yet."}{" "}
+                          <Link className="font-bold text-foreground underline underline-offset-3" href="/tips">
+                            How it works
+                          </Link>
+                        </span>
+                      </p>
+                    )}
+                    <p className="m-0 text-sm" data-testid="tip-log-link">
+                      Played here? <Link className="font-bold underline underline-offset-3" href="/tips">Open the Tip log</Link>.
+                    </p>
+                  </section>
+                </div>
+              </section>
+
+              {sourcesDown.length > 0 && (
+                <section aria-label="Sources that didn't answer" data-testid="source-down" className="space-y-2 border-2 border-dashed border-input p-4">
+                  <ul className="m-0 flex list-none flex-col gap-2 p-0">
+                    {sourcesDown.map((s) => (
+                      <li key={s.adapter} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <DataStatusBadge status="unavailable" source={s.adapter === "melbourne-pedestrian" ? "Foot traffic" : s.adapter === "ticketmaster" ? "Events" : s.adapter === "open-meteo" ? "Weather" : s.adapter === "lastfm" ? "Last.fm" : s.source} label={statusText(s)} />
+                        <span className="text-sm text-muted-foreground">{EFFECT[s.source] ?? "The rest of your busk is unaffected."}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               )}
+              <WeatherStrip weather={plan.weather} slot={plan.slot} />
+              <ComparePanel state={baseline} pitches={plan.pitches} model={heading.model} />
+            </>
+          )}
+
+          {stream && (
+            <section id="research" aria-label="The research" className="scroll-mt-20 space-y-4">
+              {!wide && <h2 className="m-0 font-display text-[32px] leading-none font-extrabold uppercase">The research</h2>}
+              {!wide && funnel}
+              {!wide && plan.agent && <AgentVsEngine agent={plan.agent} model={model} />}
+              {stream}
             </section>
-          </div>
-        )}
-
-        {selected && !qlooDown && (
-          <div className="grid gap-6 lg:grid-cols-2">
-            <PitchCard pitch={selected} rank={plan.pitches.indexOf(selected) + 1} model={model} />
-            <SetlistPanel pitch={selected} learnThese={plan.learnThese} ageLean={plan.ageLean} />
-          </div>
-        )}
-
-        {!qlooDown && plan.pitches.length > 0 && (
-          <TipLogForm
-            performerName={request.performer.name}
-            exampleId={exampleId}
-            slot={request.slot}
-            pitches={[...plan.pitches, ...plan.others].map((p) => ({ id: p.id, name: p.name }))}
-            defaultPitchId={selected?.id ?? null}
-          />
-        )}
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          <CrowdPanel crowd={plan.crowd} resolved={plan.resolvedArtists} topPitch={plan.pitches[0]?.name ?? null} />
-          <WeightsPanel weights={plan.weights} />
-        </div>
-
-        {!qlooDown && <ComparePanel state={baseline} pitches={plan.pitches} model={heading.model} />}
-
-        <DataSources status={plan.dataStatus} showAi={creditsClaude(plan)} />
+          )}
         </>
       )}
+
+      {plan && <PitchSheet plan={plan} pitch={sheetPitch} model={model} when={heading.slotLabel} onClose={closeDetails} returnFocus={() => opener.current?.focus()} />}
     </div>
   );
 }
@@ -563,23 +556,17 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
 /** Where the plan, map, pitches, crowd, setlist and comparison will go while the agent works. */
 function PendingPlan() {
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="Plan pending" data-testid="plan-pending">
-      <p className="text-sm text-muted-foreground">The plan, map, crowd, setlist and comparison appear here when the agent finishes.</p>
-      <Skeleton className="h-32 w-full" />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <Skeleton className="h-[22rem] w-full sm:h-[28rem]" />
-        <div className="space-y-2">
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
+    <div className="min-w-0 space-y-4" aria-busy="true" aria-label="Plan pending" data-testid="plan-pending">
+      <p className="m-0 text-sm text-muted-foreground">The plan, map, crowd, setlist and comparison appear here when the agent finishes.</p>
+      {[1, 2, 3].map((n) => (
+        <div key={n} className="flex items-center gap-3 border-2 border-border bg-card p-3">
+          <Skeleton className="h-[46px] w-10 [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]" />
+          <Skeleton className="h-5 flex-1" />
+          <Skeleton className="h-11 w-[38px] [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]" />
         </div>
-      </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Skeleton className="h-64 w-full" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-      <Skeleton className="h-48 w-full" />
+      ))}
+      <Skeleton className="h-64 w-full" />
+      <Skeleton className="h-24 w-full" />
     </div>
   );
 }

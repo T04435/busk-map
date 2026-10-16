@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckIcon, LinkIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { planPath } from "@/lib/plan-id";
@@ -34,6 +34,13 @@ export function CopyLink({ id }: { id: string }) {
   const [state, setState] = useState<"idle" | "copied" | "manual">("idle");
   const [url, setUrl] = useState("");
 
+  // The "copied" look lasts about 2.4 s.
+  useEffect(() => {
+    if (state !== "copied") return;
+    const t = setTimeout(() => setState("idle"), 2400);
+    return () => clearTimeout(t);
+  }, [state]);
+
   function copy() {
     const link = `${window.location.origin}${planPath(id)}`;
     setUrl(link);
@@ -50,19 +57,22 @@ export function CopyLink({ id }: { id: string }) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button type="button" variant="outline" size="sm" onClick={copy} data-testid="copy-link">
+      <Button type="button" variant={state === "copied" ? "secondary" : "outline"} onClick={copy} data-testid="copy-link">
         {state === "copied" ? <CheckIcon aria-hidden /> : <LinkIcon aria-hidden />}
         {state === "copied" ? "Link copied" : "Copy link"}
       </Button>
       {state === "manual" && (
-        <Input
+        <div className="flex flex-col gap-1">
+          <p className="m-0 text-sm text-muted-foreground">Your browser didn&apos;t let us copy it. It&apos;s selected: press Ctrl+C or ⌘C, or long-press to copy.</p>
+          <Input
           readOnly
           value={url}
           aria-label="Plan link"
-          className="h-8 w-72 max-w-full"
+          className="w-72 max-w-full font-mono text-sm"
           autoFocus
           onFocus={(event) => event.currentTarget.select()}
-        />
+          />
+        </div>
       )}
       <span className="sr-only" aria-live="polite">
         {state === "copied" ? "Link copied" : state === "manual" ? "Copy the link from the box" : ""}

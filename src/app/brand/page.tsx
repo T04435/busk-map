@@ -391,7 +391,7 @@ export default function BrandPage() {
             <div className={`${CARD} gap-3.5`}>
               <b className="font-display text-[22px] leading-none font-extrabold uppercase">Buttons</b>
               <div className="flex flex-wrap items-center gap-2.5">
-                <Button>Plan my set <ArrowRight aria-hidden="true" /></Button>
+                <Button>Plan my busk <ArrowRight aria-hidden="true" /></Button>
                 <Button variant="outline">Week</Button>
                 <Button variant="secondary">Secondary</Button>
                 <Button variant="ghost">Cancel</Button>

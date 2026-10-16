@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { TIP_COOKIE } from "@/lib/tips";
 import { PlanScreen, PlanSkeleton } from "@/components/plan/plan-screen";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { PageHeader } from "@/components/honeycomb/page-header";
+import { PlanAlert } from "@/components/honeycomb/plan-alert";
 import { parsePlanParams } from "@/lib/plan-url";
 import { localToday } from "@/lib/slot";
 import { CITIES } from "@/server/cities";
@@ -20,12 +20,7 @@ export const metadata: Metadata = {
 
 export default function PlanPage({ searchParams }: PageProps<"/plan">) {
   return (
-    <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
-      <nav className="mb-6 text-sm">
-        <Link className="underline" href="/">
-          Busk Map home
-        </Link>
-      </nav>
+    <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:py-8">
       <Suspense fallback={<PlanSkeleton />}>
         <PlanContent searchParams={searchParams} />
       </Suspense>
@@ -48,19 +43,10 @@ async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchPar
   const parsed = parsePlanParams(params, localToday(CITIES.melbourne.timeZone), tipCookie);
   if (!parsed.ok) {
     return (
-      <>
-        <h1 className="mb-4 text-3xl font-semibold tracking-tight">Plan</h1>
-        <Alert variant="destructive">
-          <AlertTitle>We couldn&apos;t read this plan</AlertTitle>
-          <AlertDescription>
-            {parsed.error}{" "}
-            <Link className="underline" href="/">
-              Start again
-            </Link>
-            .
-          </AlertDescription>
-        </Alert>
-      </>
+      <div className="space-y-6">
+        <PageHeader title="Plan" />
+        <PlanAlert kind="bad-link" message={parsed.error} />
+      </div>
     );
   }
   const faults = typeof params.faults === "string" ? params.faults : null;

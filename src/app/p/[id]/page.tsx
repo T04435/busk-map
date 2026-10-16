@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { PlanScreen, PlanSkeleton, SlotPassedNote } from "@/components/plan/plan-screen";
+import { PageHeader } from "@/components/honeycomb/page-header";
+import { SlotPassed } from "@/components/honeycomb/slot-passed";
+import { PlanScreen, PlanSkeleton } from "@/components/plan/plan-screen";
 import { describeSlot, localToday } from "@/lib/slot";
 import { TIP_COOKIE } from "@/lib/tips";
 import { CITIES } from "@/server/cities";
@@ -20,12 +21,7 @@ const first = (value: string | string[] | undefined) => (Array.isArray(value) ? 
 
 export default function ShortPlanPage({ params, searchParams }: PageProps<"/p/[id]">) {
   return (
-    <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
-      <nav className="mb-6 text-sm">
-        <Link className="underline" href="/">
-          Busk Map home
-        </Link>
-      </nav>
+    <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:py-8">
       <Suspense fallback={<PlanSkeleton />}>
         <ShortPlan params={params} searchParams={searchParams} />
       </Suspense>
@@ -63,13 +59,8 @@ async function ShortPlan({ params, searchParams }: Pick<PageProps<"/p/[id]">, "p
   if (passed && !snapshot) {
     return (
       <div className="space-y-6">
-        <header className="space-y-2">
-          <p className="text-sm text-muted-foreground">
-            {city.name} · {slotLabel} · {request.permit} permit
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight">{request.performer.name}</h1>
-        </header>
-        <SlotPassedNote slotLabel={slotLabel} againHref={againHref} />
+        <PageHeader meta={`${city.name} · ${slotLabel} · ${request.permit} permit`} title={request.performer.name} />
+        <SlotPassed slotLabel={slotLabel} againHref={againHref} alone />
       </div>
     );
   }
@@ -87,7 +78,7 @@ async function ShortPlan({ params, searchParams }: Pick<PageProps<"/p/[id]">, "p
   }
   return (
     <div className="space-y-6">
-      {passed && <SlotPassedNote slotLabel={slotLabel} againHref={againHref} />}
+      {passed && <SlotPassed slotLabel={slotLabel} againHref={againHref} />}
       <PlanScreen
         request={request}
         exampleId={stored.exampleId}

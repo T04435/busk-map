@@ -196,7 +196,7 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
       )}
       <div className="flex flex-wrap gap-3 border-t border-border pt-5 max-sm:[&>button]:w-full">
         <Button type="submit" value="plan" size="lg" disabled={submitting}>
-          Plan my set
+          Plan my busk
           <ArrowRight aria-hidden="true" />
         </Button>
         <Button type="submit" value="week" variant="outline" size="lg">

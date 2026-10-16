@@ -157,6 +157,7 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
   const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
   const [replays, setReplays] = useState<Record<string, { live: LearnLive | null; state: "loading" | "open" | "failed" }>>({});
+  const [folds, setFolds] = useState<Record<string, boolean>>({});
   const focusAfter = useRef<string | null>(null);
   const mounted = useRef(true);
   const joined = useRef<string | null>(null);
@@ -268,7 +269,7 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
         focusAfter.current = `undo-${song.id}`;
       } else if (status === "dismissed") {
         setInfo(COPY.dismissedDone(song.title));
-        const pending = groups.flatMap((g) => g.songs).filter((s) => s.status === "pending" && s.id !== song.id);
+        const pending = groups.filter((g, i) => folds[g.key] ?? (!g.run || i === 0)).flatMap((g) => g.songs).filter((s) => s.status === "pending" && s.id !== song.id);
         const next = pending.find((_, i, all) => all[i - 1]?.id === song.id) ?? pending[0];
         focusAfter.current = next ? `learned-${next.id}` : "learn-run-button";
       } else {
@@ -403,16 +404,27 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
         {info}
       </div>
 
-      {groups.map((group) => {
+      {groups.map((group, index) => {
         const dismissed = group.songs.filter((s) => s.status === "dismissed");
         const shown = group.songs.filter((s) => s.status !== "dismissed");
         const run = group.run;
         const open = run ? replays[run.runId] : undefined;
+        // The newest run is open and older runs fold (B-030); a group the performer opened or closed stays that way.
+        const expanded = folds[group.key] ?? (!run || index === 0);
         return (
-          <div key={group.key} className="space-y-1" data-testid="learn-group" data-run={run?.number ?? group.key}>
+          <Collapsible key={group.key} open={expanded} onOpenChange={(next) => setFolds((current) => ({ ...current, [group.key]: next }))} className="space-y-1" data-testid="learn-group" data-run={run?.number ?? group.key} data-open={expanded ? "true" : "false"}>
             <div className="space-y-1">
-              <h3 className="text-base font-semibold">{group.title}</h3>
+              <h3 className="text-base font-semibold">
+                <CollapsibleTrigger asChild>
+                  <Button type="button" variant="ghost" size="sm" className="group -ml-2 h-auto px-2 py-1 text-base font-semibold" data-testid="learn-group-toggle">
+                    <ChevronRightIcon aria-hidden className="transition-transform group-data-[state=open]:rotate-90" />
+                    {group.title}
+                  </Button>
+                </CollapsibleTrigger>
+              </h3>
               {run && <p className="text-sm text-muted-foreground">{runMeta(run)}</p>}
+            </div>
+            <CollapsibleContent className="space-y-1">
               {run && run.status !== "running" && (
                 <Button type="button" variant="link" size="sm" className="h-auto px-0" aria-expanded={open?.state === "open"} onClick={() => void replay(run)} disabled={!run.stepsKept}>
                   {open?.state === "open" ? COPY.hideSteps : run.stepsKept ? COPY.replay : COPY.stepsPruned}
@@ -420,35 +432,35 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
               )}
               {open?.state === "loading" && <p className="text-sm text-muted-foreground">{COPY.replayLoading}</p>}
               {open?.state === "failed" && <p className="text-sm text-destructive">{COPY.replayFailed}</p>}
-            </div>
-            {open?.state === "open" && open.live && <RunFeed live={open.live} heading={`${COPY.runHeading(run!.number)}: ${COPY.stepsHeading}`} running={false} />}
-            {shown.length > 0 ? (
-              <ul aria-label={group.title} className="divide-y">
-                {shown.map((song) => (
-                  <LearnSongCard key={song.id} song={song} busy={busy} onStatus={(s, status) => void change(s, status)} />
-                ))}
-              </ul>
-            ) : (
-              run && dismissed.length === 0 && <p className="text-sm text-muted-foreground">{run.status === "failed" ? COPY.errorTitle : COPY.nothingNewTitle}</p>
-            )}
-            {dismissed.length > 0 && (
-              <Collapsible>
-                <CollapsibleTrigger asChild>
-                  <Button variant="link" size="sm" className="group h-auto px-0 text-muted-foreground">
-                    <ChevronRightIcon aria-hidden className="transition-transform group-data-[state=open]:rotate-90" />
-                    {COPY.dismissedGroup(dismissed.length)}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <ul aria-label={`${group.title}: ${COPY.notForMe}`} className="divide-y">
-                    {dismissed.map((song) => (
-                      <LearnSongCard key={song.id} song={song} busy={busy} onStatus={(s, status) => void change(s, status)} />
-                    ))}
-                  </ul>
-                </CollapsibleContent>
-              </Collapsible>
-            )}
-          </div>
+              {open?.state === "open" && open.live && <RunFeed live={open.live} heading={`${COPY.runHeading(run!.number)}: ${COPY.stepsHeading}`} running={false} />}
+              {shown.length > 0 ? (
+                <ul aria-label={group.title} className="divide-y">
+                  {shown.map((song) => (
+                    <LearnSongCard key={song.id} song={song} busy={busy} onStatus={(s, status) => void change(s, status)} />
+                  ))}
+                </ul>
+              ) : (
+                run && dismissed.length === 0 && <p className="text-sm text-muted-foreground">{run.status === "failed" ? COPY.errorTitle : COPY.nothingNewTitle}</p>
+              )}
+              {dismissed.length > 0 && (
+                <Collapsible>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="link" size="sm" className="group h-auto px-0 text-muted-foreground">
+                      <ChevronRightIcon aria-hidden className="transition-transform group-data-[state=open]:rotate-90" />
+                      {COPY.dismissedGroup(dismissed.length)}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <ul aria-label={`${group.title}: ${COPY.notForMe}`} className="divide-y">
+                      {dismissed.map((song) => (
+                        <LearnSongCard key={song.id} song={song} busy={busy} onStatus={(s, status) => void change(s, status)} />
+                      ))}
+                    </ul>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
         );
       })}
     </section>

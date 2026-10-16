@@ -121,6 +121,15 @@ test.describe("Songs to learn: a learn run (offline)", () => {
     const order = await section(page).locator('[data-testid="learn-group"]').evaluateAll((els) => els.map((e) => e.getAttribute("data-run")));
     expect(order).toEqual(["2", "1"]);
 
+    // The newest run is open and the older one has folded (B-030): its songs are hidden until it is opened.
+    await expect(group(page, 2)).toHaveAttribute("data-open", "true");
+    await expect(group(page, 1)).toHaveAttribute("data-open", "false");
+    await expect(group(page, 1).getByTestId("learn-group-toggle")).toHaveAttribute("aria-expanded", "false");
+    await expect(cards(group(page, 1))).toHaveCount(0);
+    await group(page, 1).getByTestId("learn-group-toggle").click();
+    await expect(group(page, 1).getByTestId("learn-group-toggle")).toHaveAttribute("aria-expanded", "true");
+    await expect(cards(group(page, 1)).first()).toBeVisible();
+
     // Undo on a dismissed song brings it back to the list (the only way back); Undo on a learned one takes it out of Songs you can sing.
     await group(page, 1).getByRole("button", { name: "Not for me (1)" }).click();
     await cardOf(group(page, 1), dismissed).getByRole("button", { name: /^Undo: / }).click();
@@ -326,6 +335,7 @@ test.describe("Songs to learn: widths, accessibility, screenshots (offline)", ()
     await cardOf(group(page, 1), dismissed).getByRole("button", { name: /^Not for me: / }).click();
     await findButton(page, "Find more songs to learn").click();
     await expect(section(page).getByTestId("learn-end")).toHaveAttribute("data-state", "done");
+    await group(page, 1).getByTestId("learn-group-toggle").click();
     await group(page, 1).getByRole("button", { name: "Not for me (1)" }).click();
     await group(page, 1).getByRole("button", { name: "Replay steps" }).click();
     await expect(group(page, 1).getByTestId("learn-run")).toBeVisible();

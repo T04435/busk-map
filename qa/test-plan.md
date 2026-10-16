@@ -6,6 +6,15 @@ Deadline: submissions close 30 Oct 2026, 23:45 ET (31 Oct 03:45 UTC). The live U
 QA verifies independently of DEV's tests. QA reports facts; the user decides scope. Sources of truth:
 `hackathon/hackathons/qloo-2026/` → `spec.md`, `dev-brief-mvp.md`, `dev-brief-agent-v2.md`, `architecture.md`, `research/rules-and-api.md`, and `state.json` (decisions with `status: "decided"`, and `checklist`).
 
+## 0. Review scope: dev work vs UI work (user rule, 16 Oct 2026)
+
+| Work | Branches | What QA checks | What QA does not do |
+|---|---|---|---|
+| **Dev work**: feature work in plain shadcn (Repertoire, plan inputs) | `dev/core` | Function; the API and its contract; data; the spec's behaviour and copy; accessibility (axe, keyboard, focus); the 3 widths for **breakage only** (no sideways scroll, nothing clipped or unusable); the pinned clocks (§1) | Deck-vs-build comparison; layout, styling or placement findings; impeccable critique. Reports stay short and functional (text, no side-by-side HTML) |
+| **UI work**: `design/honeycomb`, and brand syncs into core (e.g. R6) | `design/honeycomb`, sync rounds | Full visual review against the deck and the parts inventory (`design-handoff/inventory/…`); impeccable critique and audit; side-by-side visual HTML reports at 390/768/1440 with status chips | — |
+
+Every report names the exact commit tested at the top, from QA's own export on QA's own port (never a shared server whose folder may lag).
+
 ## 1. How QA runs
 
 | Gate | Command | Notes |
@@ -98,7 +107,7 @@ Never: copy env files, print secrets, point anything at production, enter creden
 - `/api/baseline-stats` reports agent-vs-engine divergence and plain-AI uniqueness (live store only).
 
 ## 7. Screen widths (user rule)
-- Every screen at **390, 768 and 1440 px**, actually rendered and looked at. A screen that breaks at any of the three fails the round.
+- Every screen at **390, 768 and 1440 px**, actually rendered and looked at. A screen that breaks at any of the three fails the round. On dev work this is a breakage check only (§0).
 - No horizontal scroll, tap targets ≥ 24 px, map usable or list alternative reachable, no overlapping sticky UI.
 
 ## 8. Accessibility (WCAG 2.2 AA)

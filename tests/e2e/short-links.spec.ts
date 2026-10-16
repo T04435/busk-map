@@ -59,7 +59,7 @@ test.describe("short plan links with the agent (mock model offline)", () => {
 
   test("the custom act: form → /p/<id>; the old long URL redirects to the same id; a reload replays with no new run", async ({ page }, testInfo) => {
     const name = `Short Link Trio ${testInfo.project.name}`;
-    await page.goto("/");
+    await page.goto("/busks");
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill(name);
     await form.getByLabel("Artists you sound like").fill("Paul Kelly");
@@ -73,7 +73,7 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     await expect(page.getByRole("button", { name: /Re-run|Plan with the agent/ })).toHaveCount(0);
 
     // The old long URL for the same act and slot (the form's default: next Saturday 6–9 pm) resolves to the same id.
-    const date = (await page.getByText(/^Melbourne · /).textContent())!.match(/\d{4}-\d{2}-\d{2}/)![0];
+    const date = (await page.getByText(/^Melbourne · \w+day \d{4}/).textContent())!.match(/\d{4}-\d{2}-\d{2}/)![0];
     await page.goto(`/plan?name=${encodeURIComponent(name)}&artists=Paul%20Kelly&songs=Dumb%20Things~Paul%20Kelly&date=${date}&from=18&to=21&permit=general&run=1`);
     await expect(page).toHaveURL(SHORT);
     expect(idOf(page.url())).toBe(id);
@@ -127,7 +127,7 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     await expect(note).toContainText("Saturday 2026-10-03, 12 pm–3 pm");
     expect(agentCalls).toEqual([]);
     await note.getByRole("link", { name: "Plan again for a new date" }).click();
-    await expect(page).toHaveURL(/\/\?again=[0-9A-Za-z]{9}#own$/);
+    await expect(page).toHaveURL(/\/busks\?again=[0-9A-Za-z]{9}$/);
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await expect(form.getByLabel("Act name")).toHaveValue("Past Slot Duo");
     await expect(form.getByRole("list", { name: "Artists you picked" })).toContainText("Paul Kelly");

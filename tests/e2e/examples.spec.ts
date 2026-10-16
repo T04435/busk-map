@@ -2,11 +2,12 @@ import { EXAMPLES } from "../../src/lib/examples";
 import { AGENT_KEPT_TOP3, agentSteps, CLAUDE_CREDIT, EXPLAINED_BY, EXPLANATIONS_LABEL, expect, LOCAL, MODEL_NOTE_PREFIX, SATURDAY, test, waitForPlan } from "./fixtures";
 
 test.describe("landing", () => {
-  test("shows the three example performers and the own-act form", async ({ page }) => {
+  test("shows the three example performers and a way to plan your own busk", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1, name: "Busk Map" })).toBeVisible();
     for (const example of EXAMPLES) await expect(page.getByRole("link", { name: new RegExp(`^${example.label} `) })).toBeVisible();
-    await expect(page.getByRole("form", { name: "Plan for your own act" })).toBeVisible();
+    // The own-act form lives on /busks now; the landing links to it.
+    await expect(page.getByRole("link", { name: "Plan a busk" }).first()).toHaveAttribute("href", "/busks");
   });
 });
 

@@ -4,7 +4,7 @@ test.describe("own act", () => {
   test.skip(!LOCAL, "Starts the agent automatically; local offline server only");
 
   test("a typed performer and songs open a plan and start the agent", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/busks");
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill("Jess on guitar");
     await form.getByLabel("Artists you sound like").fill("Paul Kelly, Missy Higgins");
@@ -19,7 +19,7 @@ test.describe("own act", () => {
   });
 
   test("live search: artist chips, a picked song ranked by the act's artists, and the date picker", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/busks");
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill("Search Tester");
 
@@ -89,7 +89,7 @@ test.describe("own act", () => {
   });
 
   test("an artist picked from offline search (a made-up artist) opens a plan (B-003)", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/busks");
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill("Synthetic Pick");
     await form.getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Nobody Band Zzq");
@@ -100,12 +100,15 @@ test.describe("own act", () => {
   });
 
   test("asks for an artist before planning", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/busks");
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill("No artists");
     await form.getByRole("button", { name: "Plan my set" }).click();
-    await expect(form.getByRole("alert")).toHaveText("Add at least one artist you sound like.");
-    await expect(page).toHaveURL(/\/$/);
+    // One alert, naming the field (B-003), and the same words under the field.
+    await expect(form.getByRole("alert")).toContainText("Artists you sound like");
+    await expect(form.getByRole("alert")).toContainText("Add at least one artist you sound like.");
+    await expect(form.locator("#err-artists")).toHaveText("Add at least one artist you sound like.");
+    await expect(page).toHaveURL(/\/busks$/);
   });
 
   test("a typed plan link (deep link) opens the same plan", async ({ page }) => {

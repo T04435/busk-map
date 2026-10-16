@@ -9,8 +9,11 @@ async function selectValues(request: import("@playwright/test").APIRequestContex
 }
 
 test.describe("server HTML (B-006)", () => {
-  test("the landing selects show their default labels before hydration", async ({ request }) => {
-    expect(await selectValues(request, "/")).toEqual(["6 pm", "9 pm", "General"]);
+  test("the /busks selects show their default labels before hydration, and General permit is picked", async ({ request }) => {
+    expect(await selectValues(request, "/busks")).toEqual(["6 pm", "9 pm"]);
+    const html = await (await request.get("/busks")).text();
+    // The permit is a choice card now: its radio is checked in the server HTML.
+    expect(html).toMatch(/<button[^>]*role="radio"[^>]*aria-checked="true"[^>]*value="general"|<button[^>]*value="general"[^>]*aria-checked="true"/);
   });
 
   test("the week limits show their values before hydration", async ({ request }) => {
@@ -19,8 +22,8 @@ test.describe("server HTML (B-006)", () => {
 });
 
 test.describe("server HTML (B-011)", () => {
-  test("the landing search comboboxes are closed before hydration", async ({ request }) => {
-    const response = await request.get("/");
+  test("the /busks search comboboxes are closed before hydration", async ({ request }) => {
+    const response = await request.get("/busks");
     expect(response.status()).toBe(200);
     const html = await response.text();
     const comboboxes = [...html.matchAll(/<input[^>]*role="combobox"[^>]*>/g)].map((m) => m[0]);

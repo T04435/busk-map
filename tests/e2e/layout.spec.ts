@@ -168,8 +168,31 @@ const PAGES: PageCase[] = [
     },
     controls: async (page) => {
       await expectOnTop(page.getByRole("link", { name: /^Soul and funk sax player / }), "example card");
-      await expectOnTop(page.getByRole("button", { name: "Plan my set" }), "Plan my set");
+      await expectOnTop(page.getByRole("link", { name: "Plan a busk" }).first(), "Plan a busk");
       await expectOnTop(page.getByRole("link", { name: "Open the brain" }), "Open the brain");
+    },
+  },
+  {
+    name: "busks",
+    open: async (page) => {
+      await page.goto("/busks");
+      await expect(page.getByRole("heading", { level: 1, name: "Plan your busk" })).toBeVisible();
+      await expect(page.getByRole("form", { name: "Plan for your own act" })).toBeVisible();
+    },
+    controls: async (page) => {
+      await expectOnTop(page.getByRole("link", { name: /^Soul and funk sax player / }), "example card");
+      await expectOnTop(page.getByRole("radio", { name: "General permit" }), "General permit");
+      await expectOnTop(page.getByRole("button", { name: "Plan my set" }), "Plan my set");
+    },
+  },
+  {
+    name: "brand",
+    open: async (page) => {
+      await page.goto("/brand");
+      await expect(page.getByRole("heading", { level: 1, name: /Honeycomb/ })).toBeVisible();
+    },
+    controls: async (page) => {
+      await expectOnTop(page.getByRole("link", { name: "Assets" }).first(), "Assets anchor");
     },
   },
   {

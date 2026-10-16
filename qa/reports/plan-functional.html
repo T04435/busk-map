@@ -1,0 +1,16 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width, initial-scale=1">
+<title>Plan · functional</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;800&display=swap" rel=stylesheet>
+<style>
+:root{--bg:#f4f1ea;--card:#fff;--fg:#17191c;--muted:#5d6168;--line:#d9d4c8;--ok:#1d7a3a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#111416;--card:#1a1e21;--fg:#eceae4;--muted:#a3a8ad;--line:#2d3337;--ok:#6fd38f}}
+:root[data-theme="dark"]{--bg:#111416;--card:#1a1e21;--fg:#eceae4;--muted:#a3a8ad;--line:#2d3337;--ok:#6fd38f}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.wrap{max-width:1200px;margin:0 auto;padding:24px 16px} h1{font-size:22px;margin:0 0 4px} .sub{color:var(--muted)}
+.scroll{overflow-x:auto} table{border-collapse:collapse;width:100%;background:var(--card)} th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.ok{color:var(--ok);font-weight:800} .sum{font-weight:800}
+</style></head><body><div class=wrap>
+<h1>Plan · functional</h1><p class=sub>v1 · branch dev/core · commit tested c845cd7 · offline, unit level · functional only (test plan §0) · 17 Oct 2026. Cite a row as “Plan · functional #02”.</p>
+<p class=sum>4 of 4 pass. B-043's counting logic (a Qloo-down plan run doesn't count) works as specified. The page side of B-043 (the “No plan without taste data” panel with Try again) is tracked in Plan · review on design/honeycomb.</p>
+<div class=scroll><table><thead><tr><th>Row</th><th>Defect</th><th>Check</th><th>Result</th><th>Evidence</th></tr></thead><tbody><tr><th scope=row>#01</th><td>B-043</td><td>Qloo-down runs leave the 5-per-hour fresh-run count unchanged; the next run is allowed</td><td class=ok>Pass</td><td>5 Qloo-down runs then 5 real runs fit; the 6th is refused (qa/unit/plan-uncounted-runs.test.ts)</td></tr><tr><th scope=row>#02</th><td>B-043</td><td>A normal end, a timeout (engine plan), an internal error, model_unavailable and stopped keep their hit</td><td class=ok>Pass</td><td>refundPlanRun returns false for each; the 6th run after 5 such runs is refused</td></tr><tr><th scope=row>#03</th><td>B-043</td><td>Replays, joins and offline runs record nothing, so nothing is refunded</td><td class=ok>Pass</td><td>freshRunGate with reused or offline never touches the limiter; the route refunds only when counted = !reused &amp;&amp; !offline (route.ts, read at c845cd7)</td></tr><tr><th scope=row>#04</th><td>B-043</td><td>Only the Qloo-down catch refunds</td><td class=ok>Pass</td><td>route.ts: refundPlanRun sits only in the QlooUnavailableError branch; the internal branch and the agent&#x27;s own 90 s timeout (engine plan) don&#x27;t refund</td></tr></tbody></table></div>
+</div></body></html>

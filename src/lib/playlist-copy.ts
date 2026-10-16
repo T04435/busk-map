@@ -46,7 +46,10 @@ export const PLAYLIST_COPY = {
   yourSong: "Your song",
   count: (n: number, max: number) => `${n} of ${max} songs`,
   forget: "Forget my Repertoire",
-  forgetConfirm: "Delete your Repertoire from this device and our server? This can't be undone.",
+  forgetTitle: "Forget your Repertoire?",
+  forgetConfirm: "This deletes your Repertoire from this device and our server. It can't be undone.",
+  forgetCancel: "Keep it",
+  forgetAction: "Delete my Repertoire",
   forgotten: "Your Repertoire was deleted.",
   loading: "Loading your Repertoire…",
 

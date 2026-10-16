@@ -154,9 +154,22 @@ test.describe("Repertoire storage (offline, memory store)", () => {
     await page.goto("/repertoire");
     await add(page, "Gone Soon - Someone");
     await expect(page.getByRole("list", { name: "Songs you can sing" })).toContainText("Gone Soon");
-    page.once("dialog", (d) => void d.accept());
+    let nativeDialog = false;
+    page.on("dialog", (d) => {
+      nativeDialog = true;
+      void d.dismiss();
+    });
     await page.getByRole("button", { name: "Forget my Repertoire" }).click();
+    // A shadcn AlertDialog, never the browser's confirm(): Keep it closes and keeps the Repertoire.
+    const confirm = page.getByRole("alertdialog", { name: "Forget your Repertoire?" });
+    await expect(confirm).toBeVisible();
+    await confirm.getByRole("button", { name: "Keep it" }).click();
+    await expect(confirm).toBeHidden();
+    await expect(page.getByRole("list", { name: "Songs you can sing" })).toContainText("Gone Soon");
+    await page.getByRole("button", { name: "Forget my Repertoire" }).click();
+    await page.getByRole("alertdialog", { name: "Forget your Repertoire?" }).getByRole("button", { name: "Delete my Repertoire" }).click();
     await expect(page.getByText("No songs yet.")).toBeVisible();
+    expect(nativeDialog).toBe(false);
     expect((await page.context().cookies()).some((c) => c.name === "buskmap_playlist" && c.value)).toBe(false);
   });
 

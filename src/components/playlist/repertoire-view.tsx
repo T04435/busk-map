@@ -6,6 +6,17 @@ import type { TrackResult } from "@/components/forms/repertoire-api";
 import { RepertoireAdd } from "./repertoire-add";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -176,7 +187,6 @@ export function RepertoireView() {
   }
 
   async function forget() {
-    if (!window.confirm(COPY.forgetConfirm)) return;
     await run(() => forgetPlaylist(), COPY.forgotten);
   }
 
@@ -297,9 +307,25 @@ export function RepertoireView() {
 
           {playlist && (
             <section className="max-w-2xl">
-              <Button variant="ghost" size="sm" disabled={busy} onClick={forget}>
-                {COPY.forget}
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" disabled={busy}>
+                    {COPY.forget}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{COPY.forgetTitle}</AlertDialogTitle>
+                    <AlertDialogDescription>{COPY.forgetConfirm}</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{COPY.forgetCancel}</AlertDialogCancel>
+                    <AlertDialogAction variant="destructive" onClick={() => void forget()}>
+                      {COPY.forgetAction}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </section>
           )}
         </>

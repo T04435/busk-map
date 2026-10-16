@@ -34,7 +34,7 @@ export const toPicked = (track: TrackResult, own: boolean): PickedSong => ({
 const MAX_PICKED = 60;
 
 /** One picked song. A typed one can be edited in place: the title and artist become two fields until Done. */
-function PickedRow({ song, onRemove, onEdit }: { song: PickedSong; onRemove: (song: PickedSong) => void; onEdit?: (song: PickedSong, edit: { title: string; artist: string }) => void }) {
+function PickedRow({ song, ownerImage, onRemove, onEdit }: { song: PickedSong; ownerImage?: string; onRemove: (song: PickedSong) => void; onEdit?: (song: PickedSong, edit: { title: string; artist: string }) => void }) {
   const typed = song.key.startsWith("typed:");
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(song.title);
@@ -81,7 +81,8 @@ function PickedRow({ song, onRemove, onEdit }: { song: PickedSong; onRemove: (so
         <span className="inline-flex flex-none items-center gap-3 max-[560px]:order-3 max-[560px]:basis-full max-[560px]:pl-11">
           {song.own && (
             <Badge variant="solid">
-              <Icon name="music" size={14} strokeWidth={2.5} />
+              {/* eslint-disable-next-line @next/next/no-img-element -- a 16px external Spotify photo */}
+              {ownerImage ? <img src={ownerImage} alt="" width={16} height={16} className="size-4 rounded-full object-cover" /> : <Icon name="music" size={14} strokeWidth={2.5} />}
               Your song
             </Badge>
           )}
@@ -102,7 +103,8 @@ function PickedRow({ song, onRemove, onEdit }: { song: PickedSong; onRemove: (so
 }
 
 /** The songs you picked: a cover cell, title, "artist · album", a "Your song" badge, the length and a remove button. */
-export function PickedSongs({ songs, onRemove, onEdit }: { songs: PickedSong[]; onRemove: (song: PickedSong) => void; onEdit?: (song: PickedSong, edit: { title: string; artist: string }) => void }) {
+/** `ownerImage`: the artist photo shown in the "Your song" tag (optional; the tag keeps its icon without it). */
+export function PickedSongs({ songs, ownerImage, onRemove, onEdit }: { songs: PickedSong[]; ownerImage?: string; onRemove: (song: PickedSong) => void; onEdit?: (song: PickedSong, edit: { title: string; artist: string }) => void }) {
   if (songs.length === 0) return <p className="m-0 text-sm text-muted-foreground">Search for songs above.</p>;
   const known = songs.reduce((sum, s) => sum + (s.durationMs ?? 0), 0);
   const unknown = songs.some((s) => s.durationMs === null);
@@ -117,7 +119,7 @@ export function PickedSongs({ songs, onRemove, onEdit }: { songs: PickedSong[]; 
       </div>
       <ul aria-label="Songs you picked" className="m-0 list-none divide-y divide-border overflow-hidden border-2 border-rule bg-card p-0 text-sm">
         {songs.map((song) => (
-          <PickedRow key={song.key} song={song} onRemove={onRemove} onEdit={onEdit} />
+          <PickedRow key={song.key} song={song} ownerImage={ownerImage} onRemove={onRemove} onEdit={onEdit} />
         ))}
       </ul>
     </div>
@@ -135,8 +137,11 @@ export function RepertoirePicker({
   setPicked,
   errorId,
   error,
+  ownerImage,
 }: {
   artists: PickedArtist[];
+  /** Artist photo for the "Your song" tags. */
+  ownerImage?: string;
   picked: PickedSong[];
   setPicked: Dispatch<SetStateAction<PickedSong[]>>;
   errorId?: string;
@@ -211,7 +216,7 @@ export function RepertoirePicker({
     <fieldset className="m-0 flex min-w-0 flex-col gap-3.5 border-0 p-0" aria-describedby={error ? errorId : undefined}>
       <legend className="mb-1 p-0 text-label font-bold">Songs you can play</legend>
       <SongSearch onAdd={(track) => addSongs([toPicked(track, false)])} isAdded={(track) => picked.some((p) => p.key === track.id)} artists={artists} onAddTyped={addTyped} />
-      <PickedSongs songs={picked} onRemove={(song) => setPicked((current) => current.filter((p) => p !== song))} onEdit={editTyped} />
+      <PickedSongs songs={picked} ownerImage={ownerImage} onRemove={(song) => setPicked((current) => current.filter((p) => p !== song))} onEdit={editTyped} />
       <div className="space-y-1">
         <Label htmlFor={linkId}>Your Spotify artist link (optional)</Label>
         <InputGroup className="has-[>[data-align=inline-start]]:[&>input]:pl-10">

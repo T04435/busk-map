@@ -8,13 +8,18 @@ import type { SpotifyProfile } from "@/lib/playlist-schema";
 
 const MAX_GENRES = 5;
 const PHOTO_PX = 160;
+/** The "Your song" tag photo is small. */
+const TAG_PHOTO_PX = 64;
 
-/** The smallest photo at least PHOTO_PX wide, else the first one; https only. Null when there is none. */
-export function profilePhoto(images: SpotifyProfile["images"]): string | null {
+/** The smallest photo at least `minPx` wide (default PHOTO_PX), else the first one; https only. Null when there is none. */
+export function profilePhoto(images: SpotifyProfile["images"], minPx = PHOTO_PX): string | null {
   const usable = images.filter((i) => i.url.startsWith("https://"));
-  const wide = usable.filter((i) => (i.width ?? 0) >= PHOTO_PX).sort((a, b) => (a.width ?? 0) - (b.width ?? 0));
+  const wide = usable.filter((i) => (i.width ?? 0) >= minPx).sort((a, b) => (a.width ?? 0) - (b.width ?? 0));
   return (wide[0] ?? usable[0])?.url ?? null;
 }
+
+/** The photo for the "Your song" tag (`ownerImage`): the smallest image at least 64px wide. */
+export const ownerImageOf = (profile: SpotifyProfile | null | undefined): string | undefined => (profile ? (profilePhoto(profile.images, TAG_PHOTO_PX) ?? undefined) : undefined);
 
 /**
  * The Spotify profile of the Repertoire's artist: photo in a hex cell (the hex mark with initials when there is no

@@ -25,7 +25,7 @@ import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import { playlistSongKey, type PlaylistSongView, type PlaylistView } from "@/lib/playlist-schema";
 import { LearnPanel } from "./learn-panel";
 import { addSong, createPlaylist, forgetPlaylist, loadPlaylist, moveSong, refreshProfile, removeSong, savePlaylist, type PlaylistResult, type ProfileRefreshOutcome } from "./playlist-api";
-import { ProfileHeader } from "./profile-header";
+import { ownerImageOf, ProfileHeader } from "./profile-header";
 import { SoundsLikeSuggestionsList, withSuggested } from "./sounds-like-suggestions";
 import { ArtistPicker, typedArtists, type PickedArtist } from "@/components/landing/artist-picker";
 import { Input } from "@/components/ui/input";
@@ -44,14 +44,21 @@ function focusTargetAfter(rows: PlaylistSongView[], id: string, action: "remove"
   return near ? `${action}-${near.id}` : ADD_FIELD;
 }
 
-function SongRow({ song, children }: { song: PlaylistSongView; children: React.ReactNode }) {
+/** `ownerImage`: the artist photo for the "Your song" tag (BRAND styles it). */
+function SongRow({ song, ownerImage, children }: { song: PlaylistSongView; ownerImage?: string; children: React.ReactNode }) {
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
       <span className="min-w-0 flex-1">
         <span className="block truncate font-bold">{song.title}</span>
         <span className="block truncate text-sm text-muted-foreground">{song.artist}</span>
       </span>
-      {song.own && <Badge variant="secondary">{COPY.yourSong}</Badge>}
+      {song.own && (
+        <Badge variant="secondary">
+          {/* eslint-disable-next-line @next/next/no-img-element -- a 16px external Spotify photo */}
+          {ownerImage && <img src={ownerImage} alt="" width={16} height={16} className="size-4 rounded-full object-cover" />}
+          {COPY.yourSong}
+        </Badge>
+      )}
       {song.durationMs !== null && <span className="font-mono text-xs text-muted-foreground tabular-nums">{formatDuration(song.durationMs)}</span>}
       <span className="flex gap-2">{children}</span>
     </li>
@@ -119,6 +126,7 @@ export function RepertoireView() {
   }, []);
 
   const songs = useMemo(() => playlist?.songs ?? [], [playlist]);
+  const ownerImage = ownerImageOf(playlist?.spotifyProfile);
   const canSing = songs.filter((s) => s.state === "can_sing");
   const learned = songs.filter((s) => s.state === "learned");
   const keys = useMemo(() => new Set(songs.map((s) => playlistSongKey(s.artist, s.title))), [songs]);
@@ -311,7 +319,7 @@ export function RepertoireView() {
             ) : (
               <ul aria-label={COPY.canSing} className="m-0 list-none divide-y divide-border border-2 border-rule bg-card px-3">
                 {canSing.map((song) => (
-                  <SongRow key={song.id} song={song}>
+                  <SongRow key={song.id} song={song} ownerImage={ownerImage}>
                     <Button variant="outline" size="sm" disabled={busy} data-focus-id={`remove-${song.id}`} aria-label={`${COPY.remove} ${song.title}`} onClick={() => { focusAfter.current = focusTargetAfter(canSing, song.id, "remove"); void run(() => removeSong(song.id), `Removed ${song.title}.`); }}>
                       {COPY.remove}
                     </Button>
@@ -330,7 +338,7 @@ export function RepertoireView() {
             ) : (
               <ul aria-label={COPY.learned} className="m-0 list-none divide-y divide-border border-2 border-rule bg-card px-3">
                 {learned.map((song) => (
-                  <SongRow key={song.id} song={song}>
+                  <SongRow key={song.id} song={song} ownerImage={ownerImage}>
                     <Button variant="outline" size="sm" disabled={busy} data-focus-id={`move-${song.id}`} aria-label={`${COPY.moveToCanSing}: ${song.title}`} onClick={() => { focusAfter.current = focusTargetAfter(learned, song.id, "move"); void run(() => moveSong(song.id, "can_sing"), `${song.title} moved to ${COPY.canSing}.`); }}>
                       {COPY.moveToCanSing}
                     </Button>

@@ -77,14 +77,19 @@ test.describe("landing, as the deck draws it", () => {
     await expect(teaser.getByRole("list", { name: "The brand in numbers" })).toContainText("9assets");
   });
 
-  test("the footer has no Brand link and continues the closing band's dark ground (B-023)", async ({ page }) => {
+  test("the footer (F07-F11) is wordmark + Qloo, Privacy/Terms/Brain/Brand, GitHub icon + Built by, and continues the closing band's dark ground (B-023)", async ({ page }) => {
     await page.goto("/");
     const footer = page.locator('[data-slot="site-footer"]');
     await expect(footer).toHaveCount(1); // the Suspense fallback is gone once the real footer has rendered
     await expect(footer).toBeVisible();
-    await expect(footer.getByRole("link", { name: "Brand" })).toHaveCount(0);
-    // The only link to /brand on the landing is the brand teaser (B-019, the user's call).
-    await expect(page.locator('a[href="/brand"]')).toHaveCount(1);
+    for (const name of ["Privacy", "Terms", "Brain", "Brand"]) await expect(footer.getByRole("link", { name })).toBeVisible();
+    await expect(footer.getByRole("link", { name: "Busk Map on GitHub" })).toHaveAttribute("href", "https://github.com/T04435/busk-map");
+    await expect(footer.getByRole("link", { name: "Built by T04435" })).toHaveAttribute("href", "https://github.com/T04435");
+    await expect(footer.getByRole("link", { name: "T04435 on GitHub" })).toHaveAttribute("href", "https://github.com/T04435");
+    await expect(footer.getByRole("link", { name: /^Qloo/ })).toHaveAttribute("href", "https://qloo.com");
+    await expect(footer).not.toContainText("never confirms a pitch is legal");
+    await expect(footer).not.toContainText("github.com/");
+    await expect(page.getByTestId("brand-teaser").getByRole("link", { name: /See the brand/ })).toHaveAttribute("href", "/brand");
     await expect(page.getByTestId("brand-teaser").getByRole("link", { name: /See the brand/ })).toHaveAttribute("href", "/brand");
     await expect(footer).toHaveAttribute("data-theme", "dark");
     const bg = (sel: string) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).backgroundColor);
@@ -94,7 +99,7 @@ test.describe("landing, as the deck draws it", () => {
     await expect(page.getByRole("heading", { level: 1, name: /Honeycomb/ })).toBeVisible();
     await expect(page.locator('[data-slot="site-footer"]')).toHaveCount(1);
     await expect(page.locator('[data-slot="site-footer"]')).not.toHaveAttribute("data-theme", "dark");
-    await expect(page.locator('[data-slot="site-footer"]').getByRole("link", { name: "Brand" })).toHaveCount(0);
+    await expect(page.locator('[data-slot="site-footer"]').getByRole("link", { name: "Brand" })).toBeVisible();
   });
 
   test("the hero ground has the deck's glowing cells and the deck's caption (B-021)", async ({ page }) => {
@@ -119,7 +124,7 @@ test.describe("landing, as the deck draws it", () => {
   test("What you get back shows the funnel, a taste map with pins, Learn these and the set length, labelled as an example (B-020)", async ({ page }) => {
     await page.goto("/");
     const get = page.getByTestId("what-you-get");
-    await expect(get.getByText("Example data").first()).toBeVisible();
+    await expect(get.getByText("Example data")).toHaveCount(0); // F01: no badge
     const funnel = get.getByRole("region", { name: "The data behind your busk" });
     await expect(funnel).toContainText("496");
     await expect(funnel).toContainText("data points");

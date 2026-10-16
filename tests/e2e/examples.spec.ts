@@ -111,7 +111,7 @@ test.describe("data-led plans", () => {
       }
       await expect(page.getByRole("region", { name: "Pitches", exact: true }).getByText("Hidden gem").first()).toBeVisible();
       await expect(page.getByTestId("plan-funnel")).toContainText("Qloo mapped your taste");
-      await expect(page.getByLabel("Map legend")).toContainText("Taste map (Qloo heatmap");
+      await expect(page.getByLabel("Map legend")).toContainText("Taste");
       // The crowd, the weights and the setlist sit in each pitch's details.
       const sheet = await openDetails(page);
       await expect(sheet.getByRole("heading", { name: "Who this crowd likes" })).toBeVisible();

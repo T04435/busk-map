@@ -22,7 +22,7 @@ const LABEL = "Map of pitches and Qloo taste affinity";
  * already offers everything the map does. The legend sits under the map on phones and floats over its corner from 768 px; the
  * map pads its framing so the legend never covers a pin.
  */
-export function LazyPlanMap({ testData, ...props }: ComponentProps<typeof PlanMapType> & { testData: boolean }) {
+export function LazyPlanMap({ testData, ...props }: ComponentProps<typeof PlanMapType> & { testData?: boolean }) {
   const placeholder = useRef<HTMLDivElement>(null);
   const [show, setShow] = useState(false);
 
@@ -79,7 +79,7 @@ export function LazyPlanMap({ testData, ...props }: ComponentProps<typeof PlanMa
           </div>
         )}
       </div>
-      <MapLegend testData={testData} className="md:absolute md:bottom-3 md:left-3 md:z-10 md:max-w-[min(26rem,calc(100%-1.5rem))]" />
+      <MapLegend testData={testData} className="md:absolute md:inset-x-3 md:bottom-3 md:z-10 md:w-fit md:max-w-[calc(100%-1.5rem)]" />
     </div>
   );
 }

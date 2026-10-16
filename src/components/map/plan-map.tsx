@@ -61,6 +61,8 @@ type Props = {
   center: { lat: number; lon: number };
   selectedId: string | null;
   onSelect: (pitchId: string) => void;
+  /** Zoom the framing out: the highest zoom the fit may use and the room around the pins. The landing shows more of the map. */
+  frame?: { maxZoom: number; padding: number };
 };
 
 const SVG = (inner: string) => `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true" focusable="false" style="position:absolute;inset:0;overflow:visible">${inner}</svg>`;
@@ -72,7 +74,7 @@ function topPin(rank: number, gem: boolean): string {
   return `${shape}<span style="position:absolute;right:-6px;top:-8px;min-width:20px;height:22px;padding:0 4px;display:grid;place-items:center;background:var(--primary);color:var(--primary-foreground);border:2px solid var(--fill-rule);font:800 14px/1 var(--font-display)" aria-hidden="true">${rank}</span>`;
 }
 
-export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
+export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const markers = useRef<Marker[]>([]);
@@ -97,8 +99,11 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
     return legend.offsetHeight + 24;
   }, []);
   const fit = useCallback(
-    (instance: MapLibreMap, bounds: LngLatBounds) => instance.fitBounds(bounds, { padding: { top: 60, left: 60, right: 60, bottom: 60 + legendPad() }, maxZoom: 15, duration: 0 }),
-    [legendPad],
+    (instance: MapLibreMap, bounds: LngLatBounds) => {
+      const pad = framing?.padding ?? 60;
+      return instance.fitBounds(bounds, { padding: { top: pad, left: pad, right: pad, bottom: pad + legendPad() }, maxZoom: framing?.maxZoom ?? 15, duration: 0 });
+    },
+    [legendPad, framing?.padding, framing?.maxZoom],
   );
 
   // Create the map once.

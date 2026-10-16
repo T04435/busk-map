@@ -1,7 +1,6 @@
 import { ResearchFunnel } from "@/components/honeycomb/research-funnel";
 import { LandingBusk } from "@/components/landing/landing-busk";
 import { SetlistPanel } from "@/components/setlist/setlist-panel";
-import { Badge } from "@/components/ui/badge";
 
 /*
  * Everything below is made-up EXAMPLE data, shown through the real components, to show the shape of a busk. It is not a
@@ -31,7 +30,6 @@ export function WhatYouGet() {
         <h2 id="get-h" className="m-0 font-display text-[clamp(44px,5vw,72px)] leading-[0.92] font-extrabold uppercase">
           What you get back
         </h2>
-        <Badge variant="estimate">Example data</Badge>
       </div>
 
       <ResearchFunnel layout="landing" totals={TOTALS} live={false} picks={3} />

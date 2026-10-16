@@ -1,18 +1,17 @@
 import Link from "next/link";
 import { ArrowRight, Clock, MapPin, Music, Scale } from "lucide-react";
 import { ExampleActCard } from "@/components/honeycomb/example-act-card";
-import { Logo, QlooWordmark } from "@/components/honeycomb/logo";
+import { QlooLink } from "@/components/honeycomb/logo";
 import { PercentCell } from "@/components/honeycomb/percent-cell";
+import { Button } from "@/components/ui/button";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { HeroGlow } from "@/components/landing/hero-glow";
 import { HeroTasteMap } from "@/components/landing/hero-taste-map";
 import { OwnRedirect } from "@/components/landing/own-redirect";
 import { Warmup } from "@/components/landing/warmup";
 import { WhatYouGet } from "@/components/landing/what-you-get";
-import { Badge } from "@/components/ui/badge";
 import { EXAMPLES, exampleWhen, examplePlays } from "@/lib/examples";
 import { CALLS_ON_RERUN, CALLS_PER_NEW_BUSK, callKinds } from "@/lib/qloo-map";
-import { SOURCES } from "@/lib/sources";
 
 const H2 = "m-0 font-display text-[clamp(44px,5vw,72px)] leading-[0.92] font-extrabold uppercase";
 // The hex lattice behind the hero and the dark bands: a honeycomb in hairlines, one cell wide at 48.5px.
@@ -93,20 +92,19 @@ export default function Home() {
             <figure className="m-0 flex flex-col gap-2.5">
               <HeroTasteMap label="An illustration of Qloo's taste map for a folk duo, with their three pitches" />
             </figure>
-            <Link
-              href="/busks"
-              className="flex min-h-[76px] items-center justify-between border-2 border-foreground bg-primary px-8 font-display text-[34px] leading-none font-extrabold text-primary-foreground uppercase no-underline bm-poster [--poster-shadow:6px_6px_0_var(--foreground)] hover:bg-[color-mix(in_oklab,var(--primary)_88%,var(--foreground))]"
-            >
+            <Button asChild variant="poster" className="h-19 w-full justify-between px-8 text-[34px] leading-none [&_svg:not([class*=size-])]:size-9">
+              <Link href="/busks">
               Plan a busk
               <ArrowRight aria-hidden="true" className="size-9" />
             </Link>
+            </Button>
           </div>
           <div className="flex basis-full flex-wrap items-center justify-center gap-x-7 gap-y-4 pt-4 text-qloo">
             {/* The halo keeps the purple legible when a glowing cell pulses behind it. */}
             <span className="font-display text-[clamp(26px,5vw,44px)] leading-none font-extrabold tracking-[0.02em] whitespace-nowrap uppercase [text-shadow:0_0_3px_var(--background),0_0_8px_var(--background),0_0_14px_var(--background)]">
               In partnership with
             </span>
-            <QlooWordmark width={160} className="h-auto w-[clamp(96px,22vw,160px)] text-foreground" />
+            <QlooLink width={160} className="w-[clamp(96px,22vw,160px)]" wordmarkClassName="h-auto w-full text-foreground" />
           </div>
         </div>
       </section>
@@ -184,7 +182,6 @@ export default function Home() {
             <h2 id="who-h" className={H2}>
               Busking is <span className="text-signal-text">guesswork</span>
             </h2>
-            <Badge variant="estimate">Example data</Badge>
           </div>
           <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(min(260px,100%),1fr))] gap-4 p-0">
             {PROBLEMS.map(({ icon: Icon, title, guess, fix }) => (
@@ -210,6 +207,24 @@ export default function Home() {
 
         <WhatYouGet />
 
+        <section data-theme="dark" aria-labelledby="next-h" className="bm-grain flex flex-wrap items-center gap-8 border-[3px] border-rule bg-background p-5 text-foreground md:p-10">
+          <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-2.5">
+            <span className="font-mono text-xs leading-4 font-bold tracking-[0.08em] text-signal-text uppercase">Next · not built yet</span>
+            <h2 id="next-h" className="m-0 font-display text-[clamp(40px,4.4vw,60px)] leading-[0.92] font-extrabold uppercase">
+              Beyond buskers
+            </h2>
+            <p className="m-0">Busk Map already reads taste, street pitches, permits, foot traffic and the hour. Three things it could place next, with little change.</p>
+          </div>
+          <ul className="m-0 grid min-w-0 flex-[2_1_520px] list-none grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))] gap-3 p-0">
+            {BEYOND.map((item) => (
+              <li key={item.title} className="flex flex-col gap-1.5 border-[1.5px] border-border bg-card p-4">
+                <b className="font-display text-xl leading-none font-extrabold uppercase">{item.title}</b>
+                <span className="text-sm leading-5 text-muted-foreground">{item.body}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
         <section
           data-theme="dark"
           aria-labelledby="brain"
@@ -218,7 +233,7 @@ export default function Home() {
         >
           <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-4">
             <span className="inline-flex items-center gap-2.5 font-mono text-xs leading-4 font-bold tracking-[0.08em] text-muted-foreground uppercase">
-              Powered by <QlooWordmark width={72} className="text-foreground" />
+              Powered by <QlooLink width={72} />
             </span>
             <h2 id="brain" className="m-0 font-display text-[clamp(44px,6vw,80px)] leading-[0.9] font-extrabold uppercase">
               The <span className="text-qloo">brain</span> of <br />
@@ -239,31 +254,13 @@ export default function Home() {
                 </li>
               ))}
             </ul>
-            <Link
-              href="/brain"
-              className="bm-poster inline-flex min-h-[52px] items-center gap-2.5 self-start border-2 border-foreground bg-qloo px-6 text-lg font-bold text-bluestone no-underline [--poster-shadow:4px_4px_0_var(--foreground)] hover:bg-[color-mix(in_oklab,var(--qloo)_88%,var(--foreground))]"
-            >
+            <Button asChild variant="poster" className="h-auto min-h-[52px] self-start gap-2.5 border-foreground bg-qloo px-6 text-lg font-sans font-bold normal-case tracking-normal text-bluestone hover:bg-[color-mix(in_oklab,var(--qloo)_88%,var(--foreground))] shadow-[4px_4px_0_var(--foreground)] hover:shadow-[5px_5px_0_var(--foreground)]">
+              <Link href="/brain">
               Open the brain <span aria-hidden="true">→</span>
             </Link>
+            </Button>
           </div>
           <BrainSketch />
-        </section>
-        <section data-theme="dark" aria-labelledby="next-h" className="bm-grain flex flex-wrap items-center gap-8 border-[3px] border-rule bg-background p-5 text-foreground md:p-10">
-          <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-2.5">
-            <span className="font-mono text-xs leading-4 font-bold tracking-[0.08em] text-signal-text uppercase">Next · not built yet</span>
-            <h2 id="next-h" className="m-0 font-display text-[clamp(40px,4.4vw,60px)] leading-[0.92] font-extrabold uppercase">
-              Beyond buskers
-            </h2>
-            <p className="m-0">Busk Map already reads taste, street pitches, permits, foot traffic and the hour. Three things it could place next, with little change.</p>
-          </div>
-          <ul className="m-0 grid min-w-0 flex-[2_1_520px] list-none grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))] gap-3 p-0">
-            {BEYOND.map((item) => (
-              <li key={item.title} className="flex flex-col gap-1.5 border-[1.5px] border-border bg-card p-4">
-                <b className="font-display text-xl leading-none font-extrabold uppercase">{item.title}</b>
-                <span className="text-sm leading-5 text-muted-foreground">{item.body}</span>
-              </li>
-            ))}
-          </ul>
         </section>
 
         <section
@@ -292,16 +289,14 @@ export default function Home() {
                 </li>
               ))}
             </ul>
-            <Link
-              href="/brand"
-              className="bm-poster inline-flex min-h-[52px] items-center gap-2.5 self-start border-2 border-rule bg-primary px-6 text-lg font-bold text-primary-foreground no-underline [--poster-shadow:4px_4px_0_var(--foreground)] hover:bg-[color-mix(in_oklab,var(--primary)_88%,var(--foreground))]"
-            >
+            <Button asChild variant="poster" className="h-auto min-h-[52px] self-start gap-2.5 border-rule px-6 text-lg font-sans font-bold normal-case tracking-normal shadow-[4px_4px_0_var(--foreground)] hover:shadow-[5px_5px_0_var(--foreground)]">
+              <Link href="/brand">
               See the brand <span aria-hidden="true">→</span>
             </Link>
+            </Button>
           </div>
           <div aria-hidden="true" className="box-border flex max-w-full min-w-0 flex-[0_1_340px] flex-col gap-3 border-2 border-rule bg-secondary p-4">
             <div className="flex items-center gap-3">
-              <Logo variant="mark" size={44} />
               <HexCell size={36} tone="primary" fontSize={16}>
                 1
               </HexCell>
@@ -336,17 +331,12 @@ export default function Home() {
             <br />
             <span className="text-signal-text">is out there.</span>
           </h2>
-          <Link
-            href="/busks"
-            className="inline-flex min-h-16 items-center border-2 border-foreground bg-primary px-9 text-xl font-bold text-primary-foreground no-underline bm-poster [--poster-shadow:6px_6px_0_var(--foreground)] hover:bg-[color-mix(in_oklab,var(--primary)_88%,var(--foreground))]"
-          >
+          <Button asChild variant="poster">
+              <Link href="/busks">
             Plan a busk
           </Link>
+            </Button>
         </div>
-        {/* The lockup, the Qloo credit and the legal line are the site footer (the root layout), dark on this page; the data sources stay here. */}
-        <p className="mx-auto m-0 max-w-[1360px] px-4 pb-8 text-xs text-muted-foreground md:px-6">
-          Data: {[SOURCES.qloo, SOURCES["melbourne-pedestrian"], SOURCES["melbourne-busking"], SOURCES.ticketmaster, SOURCES.lastfm, SOURCES["open-meteo"], SOURCES.spotify, SOURCES.osm].map((s) => s.name).join(" · ")}
-        </p>
       </section>
 
     </main>

@@ -6,7 +6,7 @@ import { ANY_TIME_DAY, formatHour } from "@/lib/slot";
 import { nameKey } from "@/lib/text";
 import * as qloo from "@/server/adapters/qloo";
 import { getTypicalFootfall } from "@/server/adapters/footfall";
-import { candidateAt, openDuring, pickTopPitches, typicalForSlot, type Candidate, type KnownPlace, type ScoredPitch } from "@/server/scoring";
+import { candidateAt, openDuring, pickTopPitches, scoreWindows, typicalForSlot, type Candidate, type KnownPlace, type ScoredPitch } from "@/server/scoring";
 import { USUAL_HOTSPOTS } from "@/server/data/spots";
 import type { PlanContext } from "./context";
 import { NumberBag } from "./number-bag";
@@ -48,6 +48,7 @@ export const TOOL_LABELS: Record<string, string> = {
   footfall_at: "Foot traffic at a point",
   check_pitch: "Checking a spot against the busking rules",
   score_pitches: "Scoring the pitch pool",
+  best_hours: "Finding the best hours",
   compare_crowds: "Comparing two pitches' crowds",
   build_setlist: PLAYLIST_COPY.suggestedSetStepLabel,
   learn_these: PLAYLIST_COPY.toLearnStepLabel,
@@ -63,6 +64,7 @@ export const TOOL_SOURCES: Record<string, string> = {
   footfall_at: "City of Melbourne pedestrian sensors (typical by weekday and hour)",
   check_pitch: "City of Melbourne busking layers",
   score_pitches: "Busk Map scoring engine (no model)",
+  best_hours: "Busk Map scoring engine, City of Melbourne sensors, Ticketmaster, Open-Meteo",
   compare_crowds: "Qloo /v2/insights · urn:tag and per-point artist affinity, plus engine factors",
   build_setlist: "Qloo /v2/insights per pitch, Last.fm, Spotify release years",
   learn_these: "Qloo insights and trending, Last.fm",
@@ -141,6 +143,8 @@ function compactPitch(p: ScoredPitch, engineTop: Set<string>, added: Set<string>
     kind: p.kind,
     discovery: p.discovery,
     usualSpot: p.usualSpot,
+    // Any time only: the pitch's best 3-hour window (additive; fixed-slot rows are unchanged).
+    ...(p.window ? { window: `${formatHour(p.window.startHour)}–${formatHour(p.window.endHour)}`, windowStartHour: p.window.startHour, windowEndHour: p.window.endHour } : {}),
     taste: r2(p.factors.taste),
     footfall: r2(p.factors.footfall),
     places: r2(p.factors.places),
@@ -159,7 +163,7 @@ export const CROWD_TOOLS = ["taste_map", "crowd_at", "events_near"] as const;
 /** Looks before score_pitches opens. */
 export const MIN_LOOKS = 3;
 /** Tools closed until the pool is scored (or, for score_pitches, until the looks are in). */
-export const AFTER_SCORING = ["score_pitches", "compare_crowds", "build_setlist", "finish_plan"] as const;
+export const AFTER_SCORING = ["score_pitches", "best_hours", "compare_crowds", "build_setlist", "finish_plan"] as const;
 
 /** Whether score_pitches is open: enough looks, one of them about the crowd; or the run is wrapping up. */
 export function scoringOpen(state: Pick<AgentState, "looks" | "wrappingUp">): boolean {
@@ -214,6 +218,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
     const p = state.pool.get(pitchId) ?? (await ctx.ranked()).find((x) => x.id === pitchId);
     return p?.window ?? null;
   };
+  const clock = (iso: string) => new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: ctx.city.timeZone }).format(new Date(iso));
 
   /** The engine's pool plus the agent's additions, scored with the same inputs and weights. */
   async function scorePool(): Promise<{ ranked: ScoredPitch[]; engineTop: ScoredPitch[] }> {
@@ -523,10 +528,72 @@ function buildTools(ctx: PlanContext, state: AgentState) {
           summary: ranked.length ? `${ranked.length} pitches scored; best ${ranked[0].name} ${ranked[0].score}/100; engine's top 3: ${engineTop.map((p) => p.name).join(", ")}` : "No legal pitch found",
           weights: ctx.weights,
           poolSize: ranked.length,
+          ...(ctx.isAnyTime ? { windows: ctx.windows().length, note: "Any time: each pitch is scored at its own best 3-hour window that day; call best_hours for the hours." } : {}),
           added: [...state.added],
           rankOf: Object.fromEntries([...asked].map((id) => [id, ranked.findIndex((p) => p.id === id) + 1])),
           slotWeather: weather ? weather.hours.map((h) => `${formatHour(h.hour)} ${h.temperatureC ?? "?"}°C rain ${h.precipitationProbability ?? "?"}% wind ${h.windKmh ?? "?"} km/h`).join("; ") : "no forecast",
           pitches: shown.map((p) => compactPitch(p, engineIds, state.added, corners)),
+        });
+      },
+    }),
+
+    best_hours: tool({
+      description:
+        "Any time only: for up to 3 scored pitches, the engine's top 3 three-hour windows of the day (10 am to 10 pm) with scores, typical people an hour at the nearest sensor for each hour, the events arriving or leaving nearby, rain by hour and the places open then. Engine data only.",
+      inputSchema: z.object({ pitchIds: z.array(z.string().max(80)).min(1).max(3).describe("pitchIds from score_pitches.") }),
+      execute: async ({ pitchIds }) => {
+        if (!state.scored) throw new WhereError("Call score_pitches first: ask for the best hours of pitchIds it returned.");
+        const unknown = pitchIds.filter((id) => !state.pool.has(id));
+        if (unknown.length) throw new WhereError(`Unknown pitchId ${unknown.join(", ")}: use ids from score_pitches.`);
+        const windows = ctx.windows();
+        if (windows.length === 0) throw new WhereError("No busking hours are left on that day.");
+        const [base, reference] = await Promise.all([ctx.anyTimeBase(), ctx.footfallReference()]);
+        const hours = Array.from({ length: ANY_TIME_DAY.endHour - ANY_TIME_DAY.startHour }, (_, i) => ANY_TIME_DAY.startHour + i);
+        const label = (w: { startHour: number; endHour: number }) => `${formatHour(w.startHour)}–${formatHour(w.endHour)}`;
+        const pitches = [...new Set(pitchIds)].map((id) => {
+          const pitch = state.pool.get(id)!;
+          const top = scoreWindows(pitch, base, windows, ctx.weights, reference)
+            .sort((a, b) => b.score - a.score || a.window!.startHour - b.window!.startHour)
+            .slice(0, 3);
+          const sensor = base.sensors.map((s) => ({ s, d: distanceM(pitch, s) })).filter((x) => x.d <= 600).sort((a, b) => a.d - b.d)[0]?.s ?? null;
+          const people = (h: number) => (sensor && sensor.byWeekdayHour[ctx.weekday]?.[h] !== undefined ? Math.round(sensor.byWeekdayHour[ctx.weekday][h]) : null);
+          const rain = (h: number) => base.weather?.find((x) => x.hour === h)?.precipitationProbability ?? null;
+          const peak = hours.reduce<number | null>((best, h) => ((people(h) ?? -1) > (best === null ? -1 : (people(best) ?? -1)) ? h : best), null);
+          return {
+            pitchId: id,
+            name: pitch.name,
+            best: label(top[0].window!),
+            windows: top.map((t) => ({
+              window: label(t.window!),
+              startHour: t.window!.startHour,
+              endHour: t.window!.endHour,
+              score: t.score,
+              peoplePerHour: t.evidence.sensor?.avgHourly ?? null,
+              events: t.evidence.events.slice(0, 2).map((e) => ({
+                name: e.name,
+                moment: e.moment,
+                at: clock(e.moment === "leaving" ? e.end : e.start),
+                endEstimated: e.endEstimated,
+              })),
+              rainPercent: (() => {
+                const v = base.weather?.filter((x) => x.hour >= t.window!.startHour && x.hour < t.window!.endHour).map((x) => x.precipitationProbability ?? 0);
+                return v && v.length ? Math.max(...v) : null;
+              })(),
+              placesOpen: t.evidence.places.filter((p) => p.open === "open").slice(0, 3).map((p) => p.name),
+            })),
+            sensor: sensor?.name ?? null,
+            peakHour: peak,
+            hourly: hours.map((h) => ({ hour: h, people: people(h), rainPercent: rain(h) })),
+          };
+        });
+        const first = pitches[0];
+        const firstEvent = first.windows[0].events[0];
+        return seen({
+          summary: `Best ${first.windows[0].window} at ${first.name}${first.peakHour !== null ? `: foot traffic peaks at ${formatHour(first.peakHour)}` : ""}${firstEvent ? `${first.peakHour !== null ? " and" : ":"} the ${firstEvent.name} crowd ${firstEvent.moment === "leaving" ? "lets out" : "arrives"} at ${firstEvent.at}` : ""}`,
+          weekday: ctx.weekday,
+          windowsScored: windows.length,
+          pitches,
+          note: "Typical people an hour are estimates from recent weeks at the nearest sensor; event end times may be estimated.",
         });
       },
     }),
@@ -611,6 +678,8 @@ function buildTools(ctx: PlanContext, state: AgentState) {
       },
     }),
   };
+  // best_hours exists only for an any-time request (plan-inputs-architecture.md 2.4); the key stays in the type.
+  if (!ctx.isAnyTime) delete (tools as Partial<typeof tools>).best_hours;
   return tools;
 }
 

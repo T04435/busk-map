@@ -431,7 +431,7 @@ export default function BrandPage() {
         <section id="handoff" aria-labelledby="handoff-h" data-theme="dark" className="bm-grain flex scroll-mt-6 flex-col gap-4 border-[3px] border-rule bg-background p-6 text-foreground shadow-[8px_8px_0_var(--primary)] md:p-10">
           <span className="font-mono text-xs leading-4 font-bold tracking-[0.08em] text-signal-text uppercase">08</span>
           <h2 id="handoff-h" className={H2}>Handoff</h2>
-          <p className="m-0 max-w-3xl text-lg leading-[27px]">Everything a team needs to apply Honeycomb to the app, in <code className="font-mono text-[0.9em]">hackathons/qloo-2026/design-handoff/</code>:</p>
+          <p className="m-0 max-w-3xl text-lg leading-[27px]">Everything a team needs to apply Honeycomb to the app, in the design team&apos;s handoff folder (<code className="font-mono text-[0.9em]">design-handoff/</code>), which is not part of this repository. It contains:</p>
           <ul className="m-0 flex list-disc flex-col gap-1.5 pl-5">
             <li><code className="font-mono text-[0.9em]">globals.css</code>: every token, day and night, mapped to shadcn.</li>
             <li><code className="font-mono text-[0.9em]">fonts.md</code>: the three typefaces and how to load them.</li>

@@ -46,11 +46,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <AppHeader />
         </Suspense>
         {children}
-        <Suspense fallback={<SiteFooterView />}>
-          <SiteFooter />
-        </Suspense>
+        {/* Before the footer in DOM and tab order (B-233); it is position: fixed, so it still sits at the bottom. */}
         <Suspense fallback={<MobileNavView pathname={null} />}>
           <MobileNav />
+        </Suspense>
+        <Suspense fallback={<SiteFooterView />}>
+          <SiteFooter />
         </Suspense>
       </body>
     </html>

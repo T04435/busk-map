@@ -152,12 +152,12 @@ test.describe("the brain of Busk Map at three widths", () => {
         // The slim bar stays usable: the traced name and Clear trace are readable, and the details return once focus
         // moves to Clear trace (out of the pieces).
         const panel = page.getByTestId("trace-panel");
-        await expect(panel.getByText("Setlist and learn these", { exact: true })).toBeVisible();
+        await expect(panel.getByText("Set and songs to learn", { exact: true })).toBeVisible();
         const clearButton = page.getByRole("button", { name: "Clear trace" });
         await expect(clearButton).toBeVisible();
         await clearButton.focus();
         await expect(page.getByTestId("trace-detail")).toBeVisible();
-        await expect(page.getByRole("status")).toContainText("Tracing. Setlist and learn these comes from");
+        await expect(page.getByRole("status")).toContainText("Tracing. Set and songs to learn comes from");
 
         // Clearing the trace drops the scroll padding again.
         await page.keyboard.press("Escape");
@@ -200,7 +200,7 @@ test.describe("the brain of Busk Map", () => {
   test("the idle panel offers two Try prompts (B-052)", async ({ page }) => {
     await openBrain(page);
     const panel = page.getByTestId("trace-panel");
-    await expect(panel.getByText("Try Setlist and learn these")).toBeVisible();
+    await expect(panel.getByText("Try Set and songs to learn")).toBeVisible();
     await expect(panel.getByText("Try Taste heatmap")).toBeVisible();
   });
 

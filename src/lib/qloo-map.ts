@@ -433,7 +433,7 @@ export const features: readonly Feature[] = [
   },
   {
     id: "f_setlist",
-    label: "Setlist and learn these",
+    label: "Set and songs to learn",
     sub: "what to play, what to learn",
     location: "Pitch card: the setlist, and Learn these",
     how: "combined",

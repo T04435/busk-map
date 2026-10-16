@@ -46,7 +46,9 @@ for (const example of EXAMPLES) {
         await expect(page.getByText(/sent to the test model \(offline\) with no tools/)).toBeVisible();
         await expect(steps.getByTestId("agent-note-text").first()).toContainText(MODEL_NOTE_PREFIX);
         // The site footer credits Claude as a builder ("with Claude"): that is not a model claim, so look in the page body.
-        await expect(page.locator("main").getByText(/Claude/)).toHaveCount(0);
+        // The landing page we came from stays mounted but hidden (cache components keep the previous route), and its PartnersSection
+        // names the Claude tile: only the visible <main> is the plan page.
+        await expect(page.locator("main:visible").getByText(/Claude/)).toHaveCount(0);
       }
       // Every data source is credited.
       for (const credit of ["Taste data by Qloo", "Pedestrian counts: City of Melbourne Open Data", "Weather data by Open-Meteo.com"]) {

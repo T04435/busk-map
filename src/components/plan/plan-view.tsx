@@ -103,8 +103,6 @@ const AGENT_WAIT_MS = 110_000;
 const ranOutNote = (model: ExplanationsModel | null) => `${modelName(model, "start")} ran out of time, so these spots come straight from Busk Map's scores. The reasons are standard ones.`;
 const couldntNote = (model: ExplanationsModel | null) => `${modelName(model, "start")} couldn't finish, so these spots come straight from Busk Map's scores. The reasons are standard ones.`;
 
-const list = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
-
 export function PlanView({ initialPlan, heading, request, center, autoRun, exampleId, faults, shareId = null, replay = null, fresh = false }: Props) {
   // A stored run starts the view finished: its plan, its steps (collapsed, as a replay) and its totals.
   const [stored] = useState(() => replayState(replay));
@@ -292,7 +290,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   const matched = (plan?.resolvedArtists ?? []).filter((a) => a.matched !== null).map((a) => a.matched!);
   /** No artist matched: taste is left out, Claude had nothing to research (M01 to M04). */
   const noTaste = !pending && unmatched.length > 0 && matched.length === 0;
-  const tipPitches = pitchList.filter((p) => p.tip && p.tip.points > 0);
   const limited = run.status === "limited";
   /** Whether the model wrote this plan's reasons (false on the fallback and with no taste: the rows then say "From the data"). */
   const written = plan ? plan.explanations === "ai" : true;
@@ -481,7 +478,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
                 <DiscoveryBadge discovery={pitch.discovery} />
                 <FoundByBadge origin={pitch.origin} written={written} model={model} />
                 {agreedWith.has(pitch.id) && <BothAgreeBadge title={`The plain AI also named ${agreedWith.get(pitch.id)}`} />}
-                {pitch.tip && pitch.tip.points > 0 && <Badge variant="neutral">Your tips +{pitch.tip.points}</Badge>}
               </>
             }
           />
@@ -496,27 +492,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
         </p>
       )}
       <p className="m-0 text-sm font-bold">Busk Map never confirms a pitch is legal. Check your permit conditions on the day.</p>
-      {plan.tipHistory && (
-        <p className="m-0 flex flex-wrap items-center gap-2 text-sm text-muted-foreground" data-testid="tip-history">
-          {plan.tipHistory.source !== "yours" && <Badge variant="estimate">Example data</Badge>}
-          <span>
-            Your tip log ({plan.tipHistory.sessions} sessions, average A${Math.round(plan.tipHistory.perHour)} an hour)
-            {tipPitches.length > 0
-              ? ` adds a small bonus to ${list(tipPitches.map((p) => `${p.name} (+${p.tip!.points})`))}, where you earned more than your average.`
-              : " doesn't change these pitches: none of them earned you more than your average yet."}{" "}
-            <Link className="font-bold text-foreground underline underline-offset-3" href="/tips">
-              How it works
-            </Link>
-          </span>
-        </p>
-      )}
-      <p className="m-0 text-sm" data-testid="tip-log-link">
-        Played here?{" "}
-        <Link className="font-bold text-foreground underline underline-offset-3 hover:decoration-2" href="/tips#log-takings">
-          Log your takings
-        </Link>
-        .
-      </p>
       <p className="m-0 flex flex-wrap gap-x-4 text-sm" data-testid="plan-links">
         <Link
           // No prefetch: prefetching /week builds a whole week plan on every plan view, about N+2 Qloo calls (one artist lookup per act artist, one heatmap, one places; docs/qloo-data-map.md).
@@ -528,9 +503,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
           prefetch={false}
         >
           Plan my week instead
-        </Link>
-        <Link className="inline-flex min-h-tap items-center font-bold text-foreground underline underline-offset-3 hover:decoration-2" href="/tips">
-          Tip log
         </Link>
       </p>
     </section>

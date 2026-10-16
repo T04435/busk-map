@@ -350,7 +350,6 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <DiscoveryBadge discovery={dot.discovery} />
-            {dot.tipPoints ? <span className="font-mono text-xs">Your tips +{dot.tipPoints}</span> : null}
           </div>
           {dot.tooCloseTo ? (
             <p className="m-0" data-testid="too-close">

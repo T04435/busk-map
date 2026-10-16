@@ -14,11 +14,7 @@ import { EXAMPLE_CENTER, EXAMPLE_OTHERS, EXAMPLE_PITCHES, EXAMPLE_TASTE_CELLS } 
 const SUMMARY =
   "Southbank Promenade has the closest crowd to your folk sound on Qloo, about 1,900 people an hour in your slot, and a matinee letting out at 2:45 pm. Hardware Lane is the quieter hidden gem; Degraves Street is busier but shared.";
 
-// Only the orange cells (a strong enough match to reach the ramp's orange steps): the quiet ground cells are left off, so the map
-// itself shows around them (F05).
-const ORANGE_CELLS = EXAMPLE_TASTE_CELLS.filter((c) => c.affinity >= 0.48);
-const FRAME = { maxZoom: 14.2, padding: 90 };
-const PLAN = { tasteCells: ORANGE_CELLS, pitches: EXAMPLE_PITCHES, others: EXAMPLE_OTHERS };
+const PLAN = { tasteCells: EXAMPLE_TASTE_CELLS, pitches: EXAMPLE_PITCHES, others: EXAMPLE_OTHERS };
 
 /**
  * "Your busk" as the deck draws it: the summary and the three ranked pitches beside the real PlanMap, all example data. Picking a
@@ -79,7 +75,7 @@ export function LandingBusk() {
         </ol>
       </div>
       <div className="min-w-0 p-3 md:p-4">
-        <LazyPlanMap plan={PLAN} center={EXAMPLE_CENTER} selectedId={selectedId} onSelect={setSelectedId} frame={FRAME} />
+        <LazyPlanMap plan={PLAN} center={EXAMPLE_CENTER} selectedId={selectedId} onSelect={setSelectedId} />
       </div>
       <Sheet open={open !== null} onOpenChange={(o) => !o && setOpenId(null)}>
         <SheetContent

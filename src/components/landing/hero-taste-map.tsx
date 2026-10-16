@@ -87,12 +87,8 @@ export function HeroTasteMap({ className, label, heat = HERO_HEAT, pins = HERO_P
       {cells}
       {pins.map((pin) => {
         const { x, y } = center(pin.col, pin.row);
-        return pin.kind === "gem" ? (
-          <g key={pin.rank} className="hc-pin" style={{ "--d": `${1500 + pin.rank * 160}ms` } as React.CSSProperties}>
-            <polygon points={`${x},${y - 20} ${x + 17},${y} ${x},${y + 20} ${x - 17},${y}`} fill="var(--honey)" stroke="var(--bluestone)" strokeWidth={3} />
-            <circle cx={x} cy={y} r={5} fill="var(--bluestone)" />
-          </g>
-        ) : (
+        // Every ranked pitch is a numbered pin, hidden gems too (the gem is marked where pitches are listed).
+        return (
           <g key={pin.rank} className="hc-pin" style={{ "--d": `${1500 + pin.rank * 160}ms` } as React.CSSProperties}>
             <polygon points={hexPoints(x, y, 21)} fill="var(--bluestone)" stroke="var(--primary)" strokeWidth={3} />
             <text x={x} y={y + 8} textAnchor="middle" fill="var(--primary)" style={{ font: "800 22px var(--font-display)" }}>

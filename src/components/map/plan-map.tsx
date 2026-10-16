@@ -8,14 +8,15 @@ import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { PercentCell } from "@/components/honeycomb/percent-cell";
 import { Button } from "@/components/ui/button";
 import { geohashBounds } from "@/lib/geo";
+import { MAP_FRAME, orangeCells } from "@/components/map/taste-cells";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
 
 /**
- * MapLibre map with OpenFreeMap tiles. The taste grid is a layer of pointy-top honeycomb cells in the five-step taste ramp
+ * THE map: the landing's preview and the plan page draw the same one (F02, F03, F05, F16 as far as the data goes). MapLibre with OpenFreeMap tiles. The taste grid is a layer of pointy-top honeycomb cells in the five-step taste ramp
  * (read from the theme's CSS variables, repainted when the theme changes). The top pitches are focusable hexagon pins; every
  * other scored pitch is a quiet dot (also a button, so it is keyboard reachable) that opens a summary: name, score and, when it
  * was left out by the 250 m spacing rule, the pick it is too close to. The pitch list beside the map is the keyboard-first
- * alternative for the top three. No events or no-busking zones are drawn: the plan carries no coordinates for them.
+ * alternative for the top three. Taste draws as bare orange cells only (see taste-cells.ts). No events or no-busking zones are drawn: the plan carries no coordinates for them.
  */
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
@@ -40,7 +41,7 @@ function themeColor(variable: string, fallback: string): string {
 const RAMP_FALLBACK = ["#fbe3d2", "#f9b98e", "#f28644", "#dd6322", "#7f2d0c"];
 const rampColors = () => [1, 2, 3, 4, 5].map((n, i) => themeColor(`--taste-${n}`, RAMP_FALLBACK[i]));
 /** Affinity (0–1) to the ramp step, as the legend's five cells. */
-const fillExpression = (colors: string[]) => ["step", ["get", "affinity"], colors[0], 0.26, colors[1], 0.48, colors[2], 0.68, colors[3], 0.88, colors[4]] as never;
+const fillExpression = (colors: string[]) => ["step", ["get", "affinity"], colors[2], 0.68, colors[3], 0.88, colors[4]] as never;
 
 const HEX_PTS = "50,2 97,26 97,74 50,98 3,74 3,26";
 
@@ -67,10 +68,9 @@ type Props = {
 
 const SVG = (inner: string) => `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true" focusable="false" style="position:absolute;inset:0;overflow:visible">${inner}</svg>`;
 
-function topPin(rank: number, gem: boolean): string {
-  const shape = gem
-    ? SVG(`<polygon points="50,4 96,50 50,96 4,50" style="fill:var(--honey);stroke:var(--bluestone);stroke-width:5"/><circle cx="50" cy="50" r="9" style="fill:var(--bluestone)"/>`)
-    : SVG(`<polygon points="${HEX_PTS}" style="fill:var(--bluestone);stroke:var(--primary);stroke-width:7"/><polygon points="50,30 70,41 70,63 50,74 30,63 30,41" style="fill:var(--background)"/>`);
+/** A ranked pin: a dark hex puck with the orange ring and its rank number. Every ranked pitch is numbered, hidden gems included (they are marked in the list). */
+function topPin(rank: number): string {
+  const shape = SVG(`<polygon points="${HEX_PTS}" style="fill:var(--bluestone);stroke:var(--primary);stroke-width:7"/><polygon points="50,30 70,41 70,63 50,74 30,63 30,41" style="fill:var(--background)"/>`);
   return `${shape}<span style="position:absolute;right:-6px;top:-8px;min-width:20px;height:22px;padding:0 4px;display:grid;place-items:center;background:var(--primary);color:var(--primary-foreground);border:2px solid var(--fill-rule);font:800 14px/1 var(--font-display)" aria-hidden="true">${rank}</span>`;
 }
 
@@ -92,18 +92,12 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
     onSelectRef.current = onSelect;
   }, [onSelect]);
 
-  /** Room at the bottom when the legend floats over the map (from 768 px up), so framed pins never sit under it. */
-  const legendPad = useCallback(() => {
-    const legend = container.current?.closest('[data-slot="map-frame"]')?.querySelector<HTMLElement>('[data-slot="map-legend"]');
-    if (!legend || getComputedStyle(legend).position !== "absolute") return 0;
-    return legend.offsetHeight + 24;
-  }, []);
   const fit = useCallback(
     (instance: MapLibreMap, bounds: LngLatBounds) => {
-      const pad = framing?.padding ?? 60;
-      return instance.fitBounds(bounds, { padding: { top: pad, left: pad, right: pad, bottom: pad + legendPad() }, maxZoom: framing?.maxZoom ?? 15, duration: 0 });
+      const pad = framing?.padding ?? MAP_FRAME.padding;
+      return instance.fitBounds(bounds, { padding: pad, maxZoom: framing?.maxZoom ?? MAP_FRAME.maxZoom, duration: 0 });
     },
-    [legendPad, framing?.padding, framing?.maxZoom],
+    [framing?.padding, framing?.maxZoom],
   );
 
   // Create the map once.
@@ -156,7 +150,7 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
     if (!instance) return;
     const data = {
       type: "FeatureCollection" as const,
-      features: plan.tasteCells.map((c) => {
+      features: orangeCells(plan.tasteCells).map((c) => {
         const half = c.geohash ? (geohashBounds(c.geohash).east - geohashBounds(c.geohash).west) / 2 : 0.0015;
         return { type: "Feature" as const, properties: { affinity: c.affinity }, geometry: { type: "Polygon" as const, coordinates: hexagon(c.lat, c.lon, half) } };
       }),
@@ -202,11 +196,13 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
       const el = document.createElement("button");
       el.type = "button";
       el.dataset.pitchId = p.id;
-      const gem = p.discovery === "hidden-gem";
-      const tag = gem ? ", hidden gem" : p.discovery === "usual" ? ", usual pitch" : "";
+      const tag = p.discovery === "hidden-gem" ? ", hidden gem" : p.discovery === "usual" ? ", usual pitch" : "";
       el.setAttribute("aria-label", `Pitch ${rank}: ${p.name}, score ${p.score}${tag}`);
       el.className = "group relative z-10 block size-12 cursor-pointer";
-      el.innerHTML = `<span data-shape class="absolute top-1/2 left-1/2 block size-8 -translate-x-1/2 -translate-y-1/2 transition-transform group-aria-pressed:scale-125">${topPin(rank, gem)}</span>`;
+      // The first pitch is the largest; 2 and 3 are smaller. The selected pin grows and shows its name.
+      const size = rank === 1 ? "size-10" : "size-8";
+      const label = p.name.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      el.innerHTML = `<span data-shape class="absolute top-1/2 left-1/2 block ${size} -translate-x-1/2 -translate-y-1/2 transition-transform group-aria-pressed:scale-110">${topPin(rank)}</span><span data-caption aria-hidden="true" class="pointer-events-none absolute top-[calc(50%+1.5rem)] left-1/2 hidden -translate-x-1/2 border-2 border-rule bg-card px-1.5 py-0.5 font-mono text-[11px] leading-4 font-bold tracking-[0.04em] whitespace-nowrap text-foreground uppercase group-aria-pressed:block">${label}</span>`;
       el.addEventListener("click", () => {
         setDotId(null);
         onSelectRef.current(p.id);
@@ -263,7 +259,7 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
   const dot = plan.others.find((o) => o.id === dotId) ?? null;
 
   return (
-    <div className="relative h-full min-h-80 w-full overflow-hidden border-2 border-rule bg-muted" onKeyDown={(e) => e.key === "Escape" && dotRef.current && closeSummary()}>
+    <div className="relative h-full min-h-80 w-full overflow-hidden bg-muted" onKeyDown={(e) => e.key === "Escape" && dotRef.current && closeSummary()}>
       <div ref={container} className="size-full" role="region" aria-label="Map of pitches and Qloo taste affinity" />
       {others.length > 0 && !dot ? (
         <Button

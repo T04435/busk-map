@@ -467,13 +467,12 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
                   )}
                 </div>
                 <div className="grid gap-5 min-[860px]:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] min-[860px]:items-stretch">
-                  <div className="min-w-0">
+                  <div className="h-96 min-w-0 md:h-[34rem]">
                     <LazyPlanMap
                       plan={plan}
                       center={center}
                       selectedId={selectedId}
                       onSelect={setPickedId}
-                      testData={plan.qlooMode === "synthetic"}
                     />
                   </div>
                   <section aria-label="Pitches" className="space-y-3 min-[860px]:order-first">

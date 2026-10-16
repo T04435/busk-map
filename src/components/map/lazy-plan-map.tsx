@@ -7,6 +7,7 @@ import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapLegend } from "./map-legend";
+import { drawn } from "./taste-cells";
 import type { PlanMap as PlanMapType } from "./plan-map";
 
 const PlanMap = dynamic(() => import("./plan-map").then((m) => m.PlanMap), {
@@ -19,10 +20,9 @@ const LABEL = "Map of pitches and Qloo taste affinity";
 /**
  * MapLibre is the heaviest thing on the page (about 2 s of main-thread work on a mid-range phone). Load it only when the map
  * area comes near the screen, and when the browser is idle, so the plan itself is interactive first. The pitch list beside it
- * already offers everything the map does. The legend sits under the map on phones and floats over its corner from 768 px; the
- * map pads its framing so the legend never covers a pin.
+ * already offers everything the map does. The legend is one line along the bottom of the map, on every width, so it never covers a pin.
  */
-export function LazyPlanMap({ testData, ...props }: ComponentProps<typeof PlanMapType> & { testData?: boolean }) {
+export function LazyPlanMap(props: ComponentProps<typeof PlanMapType>) {
   const placeholder = useRef<HTMLDivElement>(null);
   const [show, setShow] = useState(false);
 
@@ -54,15 +54,16 @@ export function LazyPlanMap({ testData, ...props }: ComponentProps<typeof PlanMa
     };
   }, [show]);
 
+  const on = drawn(props.plan);
   return (
-    <div data-slot="map-frame" className="relative flex flex-col gap-3 md:block">
-      <div className="h-[24rem] md:h-[34rem]">
+    <div data-slot="map-frame" className="flex h-full min-h-96 flex-col border-2 border-rule bg-card">
+      <div className="min-h-80 flex-1 md:min-h-[30rem]">
         {show ? (
           <PlanMap {...props} />
         ) : (
           <div
             ref={placeholder}
-            className="bm-hatch-field flex size-full min-h-80 flex-col items-center justify-center gap-4 border-2 border-rule bg-muted p-6 text-center"
+            className="bm-hatch-field flex size-full min-h-80 flex-col items-center justify-center gap-4 bg-muted p-6 text-center"
             role="region"
             aria-label={LABEL}
           >
@@ -79,7 +80,7 @@ export function LazyPlanMap({ testData, ...props }: ComponentProps<typeof PlanMa
           </div>
         )}
       </div>
-      <MapLegend testData={testData} className="md:absolute md:inset-x-3 md:bottom-3 md:z-10 md:w-fit md:max-w-[calc(100%-1.5rem)]" />
+      <MapLegend taste={on.taste} others={on.others} />
     </div>
   );
 }

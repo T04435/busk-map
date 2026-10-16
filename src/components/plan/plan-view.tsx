@@ -26,10 +26,8 @@ import { Button } from "@/components/ui/button";
 import { FRESH_HEADER, PLAN_ID_HEADER } from "@/lib/plan-id";
 import { planStreamEventSchema, type Plan, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
 import type { ResearchTotals } from "@/lib/research-totals";
-import { rememberPlan } from "@/lib/recent-plans";
 import { formatHour, nightWord, slotEyebrow } from "@/lib/slot";
 import { weekSearchParams } from "@/lib/week-url";
-import { useTipSync } from "@/components/tips/use-tip-sync";
 import { AgentStepStream, applyStreamEvent, type AgentStep, type FeedPhase, type RunUsage } from "./agent-steps";
 import { AgentVsEngine } from "./agent-vs-engine";
 import { CopyLink } from "./copy-link";
@@ -140,14 +138,8 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   const sheetPitch = pitchList.find((p) => p.id === sheetId) ?? null;
   const [pickedId, setPickedId] = useState<string | null>(() => sheetId);
   const selectedId = sheetPitch?.id ?? pickedId ?? pitchList[0]?.id ?? null;
-  // A stored run counts as started: a changed request (a new tip log entry) then plans again.
+  // A stored run counts as started.
   const started = useRef(Boolean(stored?.plan));
-  useTipSync(request.performer.name, exampleId, request.history);
-  // Remember the plan's pitches in this browser, so the tip log can offer them when the busker logs takings.
-  useEffect(() => {
-    if (!plan || !revealed || plan.qlooFailed) return;
-    rememberPlan({ performerName: request.performer.name, exampleId, slot: plan.slot, pitches: [...plan.pitches, ...plan.others].map((p) => ({ id: p.id, name: p.name })) });
-  }, [plan, revealed, request.performer.name, exampleId]);
   // The plain-AI baseline (a control: agreement is a badge, never a score change).
   // Asked once the plan is shown: during the agent's run the server starts it after the agent's data is in.
   const baseline = useBaseline(request, faults, revealed);

@@ -65,7 +65,7 @@ test.describe("the brain of Busk Map at three widths", () => {
         await expect(page.getByText("kinds of Qloo call")).toBeVisible();
         await expect(page.getByTestId("quota-note")).toContainText("One key's 10,000 calls a month cover roughly 300–400 new busks");
         await expect(page.getByRole("heading", { name: "Next · not built yet" })).toBeVisible();
-        await expect(page.locator("[data-node-id]")).toHaveCount(12 + 2 + 15 + 9);
+        await expect(page.locator("[data-node-id]")).toHaveCount(12 + 3 + 16 + 8);
         await expectNoSidewaysScroll(page);
         await page.screenshot({ path: path.join(SCREENS, `brain-${width.name}.png`), fullPage: true });
 
@@ -82,7 +82,7 @@ test.describe("the brain of Busk Map at three widths", () => {
           if (width.stacked) await expect(nodeOf(page, off), `${off} is filtered out`).toBeHidden();
           else await expect(nodeOf(page, off), `${off} is dimmed, still shown`).toBeVisible();
         }
-        await expect(page.getByRole("status")).toContainText("Tracing. Taste heatmap feeds 1 data point and 5 parts of your busk.");
+        await expect(page.getByRole("status")).toContainText("Tracing. Taste heatmap feeds 1 data point and 4 parts of your busk.");
         const clear = page.getByRole("button", { name: "Clear trace" });
         await expectOnTop(clear, "Clear trace");
         await expectNoSidewaysScroll(page);

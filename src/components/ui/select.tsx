@@ -3,7 +3,6 @@
 import * as React from "react"
 import { cn } from "cn"
 import { Select as SelectPrimitive } from "radix-ui"
-import { ChevronUpIcon } from "lucide-react"
 import { Icon } from "@/components/honeycomb/icon"
 
 function Select({
@@ -153,8 +152,7 @@ function SelectScrollUpButton({
       )}
       {...props}
     >
-      <ChevronUpIcon
-      />
+      <Icon name="chevron-up" />
     </SelectPrimitive.ScrollUpButton>
   )
 }

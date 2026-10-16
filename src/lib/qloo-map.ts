@@ -2,8 +2,8 @@
  * The brain of Busk Map: how Qloo data flows through the app, as built on dev/core.
  *
  * One source of truth for the /brain page and the landing teaser. The facts come from docs/qloo-data-map.md
- * (commit 4164685): Qloo calls → the data points they return → the parts of a busk they decide. Spotify and
- * Ticketmaster are the only secondary sources shown. Client-safe: plain data and pure helpers.
+ * (commit 4164685): Qloo calls → the data points they return → the parts of a busk they decide. Spotify,
+ * Ticketmaster and Last.fm are the only secondary sources shown. Client-safe: plain data and pure helpers.
  *
  * tests/unit/lib/qloo-map.test.ts keeps this honest: every link target exists, nothing is orphaned, and the set of
  * `calls[].codeRef` equals the client functions that send a Qloo request (read from the adapter's source), so the
@@ -11,7 +11,7 @@
  */
 
 export type CallId = "c1" | "c2" | "c3" | "c4" | "c5" | "c5b" | "c6" | "c7" | "c8" | "c9" | "c10" | "c11";
-export type SourceId = "spotify" | "ticketmaster";
+export type SourceId = "spotify" | "ticketmaster" | "lastfm";
 export type DataPointId =
   | "d_id"
   | "d_cells"
@@ -27,8 +27,9 @@ export type DataPointId =
   | "d_demo"
   | "d_genre"
   | "d_contrast"
-  | "d_years";
-export type FeatureId = "f_rank" | "f_map" | "f_events" | "f_week" | "f_crowd" | "f_fans" | "f_setlist" | "f_plain" | "f_agent";
+  | "d_years"
+  | "d_plays";
+export type FeatureId = "f_rank" | "f_map" | "f_events" | "f_crowd" | "f_fans" | "f_setlist" | "f_plain" | "f_agent";
 export type NodeId = CallId | SourceId | DataPointId | FeatureId;
 export type NodeKind = "call" | "source" | "dataPoint" | "feature";
 
@@ -244,6 +245,12 @@ export const secondarySources: readonly SecondarySource[] = [
       { id: "d_headliner", how: "the headliner names Qloo matches" },
     ],
   },
+  {
+    id: "lastfm",
+    label: "Last.fm",
+    contributes: "song plays, top tracks",
+    dataPoints: [{ id: "d_plays", how: "play counts and listeners for each song and artist (Spotify gives the rest)" }],
+  },
 ];
 
 export const dataPoints: readonly DataPoint[] = [
@@ -256,7 +263,6 @@ export const dataPoints: readonly DataPoint[] = [
       { id: "f_rank", how: "every taste question signals with your artists" },
       { id: "f_map", how: "the heatmap is signalled with your artists" },
       { id: "f_crowd", how: "an artist Qloo can’t match is named in a warning" },
-      { id: "f_week", how: "the week planner signals with your artists too" },
     ],
   },
   {
@@ -267,7 +273,6 @@ export const dataPoints: readonly DataPoint[] = [
     features: [
       { id: "f_map", how: "the coloured taste cells" },
       { id: "f_rank", how: "picks the candidate pitches and sets the taste score" },
-      { id: "f_week", how: "taste for each slot of the week" },
       { id: "f_plain", how: "scores the plain AI’s spots the same way" },
       { id: "f_agent", how: "the taste_map tool, which can zoom in" },
     ],
@@ -279,7 +284,6 @@ export const dataPoints: readonly DataPoint[] = [
     fields: ["entity_id", "name", "location.lat", "location.lon", "popularity", "query.affinity", "properties.hours"],
     features: [
       { id: "f_rank", how: "busy places open in your slot" },
-      { id: "f_week", how: "opening hours for each slot" },
       { id: "f_plain", how: "scores the plain AI’s spots the same way" },
       { id: "f_agent", how: "the busy_places tool, at any point" },
     ],
@@ -391,6 +395,13 @@ export const dataPoints: readonly DataPoint[] = [
     fields: ["release year"],
     features: [{ id: "f_setlist", how: "era fit, with your fans’ age lean" }],
   },
+  {
+    id: "d_plays",
+    label: "Song plays",
+    sub: "from Last.fm",
+    fields: ["playcount", "listeners"],
+    features: [{ id: "f_setlist", how: "how well known each song is (32% of its place in the set), and the top tracks behind songs to learn" }],
+  },
 ];
 
 export const features: readonly Feature[] = [
@@ -410,14 +421,6 @@ export const features: readonly Feature[] = [
     location: "Pitch card: the events line",
     how: "combined",
     with: ["Ticketmaster"],
-  },
-  {
-    id: "f_week",
-    label: "Week planner",
-    sub: "the best slots this week",
-    location: "/week: the week grid",
-    how: "combined",
-    with: ["City of Melbourne sensors", "the council’s busking layers", "OSM spots"],
   },
   { id: "f_crowd", label: "Crowd panel", sub: "who this crowd likes, and why", location: "Plan page: the crowd panel", how: "direct" },
   {

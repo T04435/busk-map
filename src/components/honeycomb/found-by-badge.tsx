@@ -1,4 +1,3 @@
-import { Database } from "lucide-react";
 import { Icon } from "@/components/honeycomb/icon";
 import { Badge } from "@/components/ui/badge";
 import { modelName, type ExplanationsModel } from "@/lib/sources";
@@ -12,7 +11,7 @@ export function FoundByBadge({ origin, written, model }: { origin: string; writt
   if (!written)
     return (
       <Badge variant="neutral" title="Ranked from Busk Map's scores, with standard reasons">
-        <Database aria-hidden="true" />
+        <Icon name="database" size={14} />
         From the data
       </Badge>
     );

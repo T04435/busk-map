@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "cn";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import { Button } from "@/components/ui/button";
 import {
   callKinds,
@@ -218,7 +218,7 @@ export function BrainMap() {
           </li>
           <li className="inline-flex items-center gap-1.5">
             <i aria-hidden="true" className="w-[22px] border-t-2 border-dashed border-muted-foreground" />
-            Spotify, Ticketmaster
+            Spotify, Ticketmaster, Last.fm
           </li>
           <li className="inline-flex items-center gap-1.5">
             <i aria-hidden="true" className="h-[3px] w-[22px] bg-primary" />
@@ -257,7 +257,7 @@ export function BrainMap() {
             <h4
               className={cn("m-0 font-mono text-[11px] leading-[14px] font-bold tracking-[0.08em] text-muted-foreground uppercase", !onPathSources && "lg:invisible")}
             >
-              With two other sources
+              With three other sources
             </h4>
             <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1" aria-label="Other sources">
               {secondarySources.map((s) => node(s.id, s.label, s.contributes, undefined, true))}
@@ -313,7 +313,7 @@ function IdlePanel() {
       </p>
       <ul className="m-0 mt-2 flex list-none flex-col gap-1.5 p-0 text-sm leading-5">
         {[
-          ["Setlist and learn these", "four Qloo calls and Spotify meet in your setlist"],
+          ["Setlist and learn these", "four Qloo calls, Spotify and Last.fm meet in your setlist"],
           ["Taste heatmap", "one call that shapes the map and the ranking"],
         ].map(([name, what]) => (
           <li key={name} className="flex gap-2">
@@ -368,9 +368,8 @@ function TracedPanel({ selected, onClear }: { selected: NodeId; onClear: () => v
               <span aria-hidden="true" className="mt-[3px] h-3.5 w-2 shrink-0 bg-primary [clip-path:polygon(0_0,50%_0,100%_50%,50%_100%,0_100%)]" />
               <span>
                 <b>
-                  {l.arrow === "from" ? <ArrowLeft aria-hidden="true" className="mr-1 inline size-3.5 align-[-2px]" strokeWidth={2} /> : <ArrowRight aria-hidden="true" className="mr-1 inline size-3.5 align-[-2px]" strokeWidth={2} />}
-                  <span className="sr-only">{l.dir} </span>
-                  {l.name}
+                  <Icon name={l.arrow === "from" ? "arrow-left" : "arrow-right"} size={14} className="mr-1 align-[-2px]" />
+                  {l.dir} {l.name}
                 </b>
                 : {l.how}
               </span>

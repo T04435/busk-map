@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Download } from "lucide-react";
 import { ComponentGroups, PlanStates } from "@/components/brand/brand-components";
 import { IconGrid } from "@/components/brand/brand-icons";
 import { ASSET_GROUPS, COMPONENT_COUNT, KIT, SCREENS } from "@/components/brand/brand-tables";
@@ -381,7 +380,7 @@ export default function BrandPage() {
                         <span className="font-mono text-xs leading-4 break-all">{file.name}</span>
                         <a href={file.src} download={file.name} aria-label={`Download ${file.name}`} className="inline-flex min-h-tap items-center gap-1 font-mono text-[13px] leading-4 font-bold whitespace-nowrap underline underline-offset-3 hover:decoration-2">
                           Download
-                          <Download aria-hidden="true" className="size-3.5" />
+                          <Icon name="download" size={14} />
                         </a>
                       </span>
                       {file.note ? <span className="text-xs text-muted-foreground">{file.note}</span> : null}
@@ -415,7 +414,7 @@ export default function BrandPage() {
                     <td className={`${TD} ${MONO}`}>
                       <a href={k.src} download={k.file} className="inline-flex min-h-tap items-center gap-1 break-all underline underline-offset-3 hover:decoration-2">
                         {k.file}
-                        <Download aria-hidden="true" className="size-3.5 shrink-0" />
+                        <Icon name="download" size={14} className="shrink-0" />
                       </a>
                     </td>
                   </tr>

@@ -1,6 +1,5 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { CircleAlert, CircleHelp } from "lucide-react"
 import { Icon } from "@/components/honeycomb/icon"
 import { cn } from "cn"
 
@@ -25,14 +24,14 @@ const alertVariants = cva(
   }
 )
 
-// DS glyphs where the DS has one (info, warning); Lucide (same 2px stroke) for error and estimate, which it lacks.
+// DS glyphs per tone (the DS ALERT_ICON table): info, warning, alert-circle for error, help-circle for estimate.
 const TONE_ICON = {
   default: () => <Icon name="info" size={20} />,
   info: () => <Icon name="info" size={20} />,
   warning: () => <Icon name="warning" size={20} />,
-  destructive: () => <CircleAlert className="size-5" />,
-  error: () => <CircleAlert className="size-5" />,
-  estimate: () => <CircleHelp className="size-5" />,
+  destructive: () => <Icon name="alert-circle" size={20} />,
+  error: () => <Icon name="alert-circle" size={20} />,
+  estimate: () => <Icon name="help-circle" size={20} />,
 } as const
 
 function Alert({

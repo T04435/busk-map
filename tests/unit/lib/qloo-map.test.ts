@@ -185,13 +185,13 @@ describe("qloo map: referential integrity", () => {
     expect(new Set(allIds).size).toBe(allIds.length);
   });
 
-  it("has the documented shape: 11 kinds (12 with 5b), 15 data points, 9 features, Spotify and Ticketmaster only", () => {
+  it("has the documented shape: 11 kinds (12 with 5b), 16 data points, 8 features, Spotify, Ticketmaster and Last.fm only", () => {
     expect(callKinds).toBe(11);
     expect(calls).toHaveLength(12);
     expect(calls.filter((c) => c.variantOf).map((c) => c.id)).toEqual(["c5b"]);
-    expect(dataPoints).toHaveLength(15);
-    expect(featureCount).toBe(9);
-    expect(secondarySources.map((s) => s.label)).toEqual(["Spotify", "Ticketmaster"]);
+    expect(dataPoints).toHaveLength(16);
+    expect(featureCount).toBe(8);
+    expect(secondarySources.map((s) => s.label)).toEqual(["Spotify", "Ticketmaster", "Last.fm"]);
   });
 
   it("every link target exists and points to the next column", () => {
@@ -239,14 +239,14 @@ describe("qloo map: referential integrity", () => {
 
 describe("qloo map: facts and trace", () => {
   it("derives the counts and states the quota", () => {
-    expect(facts.map((f) => f.value)).toEqual(["11", "24–33", "0", "9"]);
+    expect(facts.map((f) => f.value)).toEqual(["11", "24–33", "0", "8"]);
     expect(quotaNote).toContain("10,000 requests a month per key, at 5 a second");
     expect(quotaNote).toContain("24 h");
   });
 
   it("a call lights its data points and the features downstream, nothing upstream of those", () => {
     const { nodes } = trace("c3");
-    expect([...nodes].sort()).toEqual(["c3", "d_cells", "f_agent", "f_map", "f_plain", "f_rank", "f_week"].sort());
+    expect([...nodes].sort()).toEqual(["c3", "d_cells", "f_agent", "f_map", "f_plain", "f_rank"].sort());
     expect(nodes.has("c4")).toBe(false);
   });
 
@@ -270,7 +270,7 @@ describe("qloo map: facts and trace", () => {
   });
 
   it("summarises a trace in one sentence", () => {
-    expect(traceSummary("c3")).toBe("Taste heatmap feeds 1 data point and 5 parts of your busk.");
+    expect(traceSummary("c3")).toBe("Taste heatmap feeds 1 data point and 4 parts of your busk.");
     expect(traceSummary("f_events")).toBe("Event weighting comes from 1 Qloo call, 1 other source and 2 data points.");
     expect(traceSummary("d_headliner")).toBe("Headliner taste match comes from 1 Qloo call and 1 other source, and feeds 4 parts of your busk.");
   });

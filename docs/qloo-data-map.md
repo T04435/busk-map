@@ -27,7 +27,7 @@ The client makes 12 kinds of call, which come in 14 shapes (`localArtists` is ca
 
 **The plain-AI comparison** (`agent/compare.ts`, `scoring/baseline.ts`, `compare-panel.tsx`) makes **no Qloo call** of its own. The plain model gets no data. Its spots are then located and scored with the engine's own `scoreInputs` (#3, #4, #7 and the other sources). The panel is a diff, plain AI vs Busk Map, and shows Qloo's taste factor and cell rank for each side.
 
-**Pitch ranking** (`scoring/pitch-score.ts:scorePitch`) combines taste (#3), places (#4) and events (#7 on Ticketmaster) with sensor footfall, Open-Meteo weather, the council's rules and the performer's tip history. The weights are fixed per plan and shown in the UI.
+**Pitch ranking** (`scoring/pitch-score.ts:scorePitch`) combines taste (#3), places (#4) and events (#7 on Ticketmaster) with sensor footfall, Open-Meteo weather and the council's rules. The weights are fixed per plan and shown in the UI.
 
 ## 2. Fetched but unused
 

@@ -383,7 +383,6 @@ export class PlanContext {
       endHour: this.request.slot.endHour,
       slotStartMs: start.getTime(),
       slotEndMs: end.getTime(),
-      history: this.request.history ?? null,
     };
   }
 

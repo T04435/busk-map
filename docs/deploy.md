@@ -83,10 +83,6 @@ Matching rule for fresh agent runs (Pro, or instead of the rule above on Hobby):
 - [ ] AI Gateway budget set.
 - [ ] OpenFreeMap tile terms confirmed (open issue in `architecture.md`).
 
-## Privacy notes for the tip log
-
-The tip log is stored in the performer's browser (localStorage). Plans read only a summary of it (takings per hour per pitch, at most 15 pitches for the 6 most recent performers) from a first-party cookie, `buskmap_tips`, so it is sent to Busk Map's own server with page requests but never stored there and never put in a URL. The examples' remote data cache entries hold only data fetched for the built-in example inputs.
-
 ## Plain-AI baseline stats (optional database)
 
 Every plan runs a plain-AI baseline (Claude Haiku, no tools, no data) in parallel and sets it beside Busk Map's picks. Comparisons are recorded for the uniqueness stats at `GET /api/baseline-stats` only when `DATABASE_URL` points to Postgres (for example Neon from the Vercel Marketplace). Without it, recording is a no-op (one log line) and plans work as usual.

@@ -5,11 +5,7 @@
  * (artist ids and song lengths are optional; see lib/performer-url.ts)
  * Optional: w=taste,footfall,places,events,weather[,discovery]  pitch=<id>  run=0 (show the engine's plan only;
  * by default the agent starts on load, and the server replays a recent run of the same request)
- * The personal tip bonus is not in the URL (takings are private): it comes from
- * this browser's tip cookie (see lib/tips.ts). Example performers default to their example sessions.
  */
-import { exampleHistory } from "./example-tips";
-import { historyFromCookie, performerKeyFor } from "./tips";
 import { findExample } from "./examples";
 import { artistsParam, parseArtistsParam, parseSongsParam, songsParam } from "./performer-url";
 import { parseWeightsParam, weightsParam } from "./weights-url";
@@ -27,7 +23,7 @@ export type ParsedPlanUrl =
 /** The city's current local date and hour. A default date is the next one whose slot hasn't ended by then. */
 export type LocalNow = { today: string; hour: number };
 
-export function parsePlanParams(params: Params, now: LocalNow, tipCookie?: string | null): ParsedPlanUrl {
+export function parsePlanParams(params: Params, now: LocalNow, _tipCookie?: string | null): ParsedPlanUrl {
   const example = findExample(first(params.example));
   const name = first(params.name);
   const performer = name
@@ -51,7 +47,6 @@ export function parsePlanParams(params: Params, now: LocalNow, tipCookie?: strin
     permit: first(params.permit) ?? "general",
     performer,
     weights: parseWeightsParam(first(params.w)),
-    history: historyFromCookie(tipCookie, performerKeyFor(performer.name, name ? null : (example?.id ?? null))) ?? (name ? undefined : exampleHistory(example?.id)),
   });
   if (!parsed.success) {
     const fields = [...new Set(parsed.error.issues.map((i) => i.path.join(".")))];

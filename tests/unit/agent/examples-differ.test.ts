@@ -46,32 +46,16 @@ describe("example performers get data-led, different plans (offline)", () => {
   });
 });
 
-describe("example tip logs (offline)", () => {
-  it("add a small, explained bonus where the example performer earned more, keeping the same top three", async () => {
+describe("example requests (offline)", () => {
+  it("carry no tip history, and the plans have no tip bonus", async () => {
     mockFetch([]);
     vi.resetModules();
     const { buildEnginePlan, exampleRequests } = await import("@/server/agent/preload");
-    for (const [i, request] of exampleRequests({ today: TODAY, hour: 12 }).entries()) {
-      expect(request.history?.source).toBe("example");
-      const withTips = await buildEnginePlan(request, OFFLINE, TODAY);
-      const without = await buildEnginePlan({ ...request, history: undefined }, OFFLINE, TODAY);
-      expect(withTips.tipHistory).toMatchObject({ source: "example" });
-      expect(without.tipHistory).toBeNull();
-      // Each example log has two strong pitches (one near the top of the live plan, one of the mock's), so a top-three pitch gets a bonus.
-      const boosted = withTips.pitches.filter((p) => p.tip && p.tip.points > 0);
-      expect(boosted.length, EXAMPLES[i].id).toBeGreaterThan(0);
-      for (const pitch of boosted) {
-        expect(pitch.tip!.points).toBeGreaterThanOrEqual(2);
-        expect(pitch.tip!.points).toBeLessThanOrEqual(5);
-        const before = without.pitches.find((p) => p.id === pitch.id);
-        expect(before, `${EXAMPLES[i].id}: ${withTips.pitches.map((p) => `${p.id} ${p.score}`).join(", ")} vs ${without.pitches.map((p) => `${p.id} ${p.score}`).join(", ")}`).toBeDefined();
-        expect(pitch.score).toBe(before!.score + pitch.tip!.points);
-      }
-      // Personal results only nudge: the example plans keep the same top three (a near tie may swap places).
-      expect(withTips.pitches.map((p) => p.id).sort()).toEqual(without.pitches.map((p) => p.id).sort());
-      // Pitches where they earned less get no bonus.
-      const strong = new Set(["spot:osm:albert-coates-lane", "spot:osm:city-square", "spot:osm:centre-place", "spot:osm:cohen-place-plaza", "spot:osm:federation-wharf"]);
-      expect(withTips.pitches.filter((p) => !strong.has(p.id)).every((p) => !p.tip || p.tip.points === 0)).toBe(true);
+    for (const request of exampleRequests({ today: TODAY, hour: 12 })) {
+      expect(request).not.toHaveProperty("history");
+      const plan = await buildEnginePlan(request, OFFLINE, TODAY);
+      expect(plan.tipHistory).toBeNull();
+      expect(plan.pitches.every((p) => p.tip === null)).toBe(true);
     }
   });
 });

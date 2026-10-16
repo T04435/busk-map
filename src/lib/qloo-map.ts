@@ -494,7 +494,7 @@ export const features: readonly Feature[] = [
     sub: "your three pitches, scored",
     location: "Plan page: the top 3 pitches and their scores",
     how: "combined",
-    with: ["City of Melbourne sensors", "the council’s busking rules", "OSM spots", "Ticketmaster", "Open-Meteo", "your tip history"],
+    with: ["City of Melbourne sensors", "the council’s busking rules", "OSM spots", "Ticketmaster", "Open-Meteo"],
   },
   { id: "f_map", label: "Taste map", sub: "where your taste lives", location: "Plan page: the map’s taste cells", how: "direct" },
   {

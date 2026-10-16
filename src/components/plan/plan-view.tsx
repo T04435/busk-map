@@ -453,7 +453,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   );
 
   const pitchesList = plan ? (
-    <section aria-label="Pitches" className="space-y-3 p-4 pt-0 md:p-6 md:pt-0 lg:col-start-1 lg:row-start-2">
+    <section aria-label="Pitches" className="space-y-3 p-4 md:p-6 lg:pt-0 lg:col-start-1 lg:row-start-2">
       <h3 className="sr-only">Top pitches</h3>
       <ol className="m-0 flex list-none flex-col gap-3 p-0">
         {plan.pitches.map((pitch, i) => (
@@ -558,7 +558,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
                     </ul>
                   )}
                 </div>
-                <div className="flex min-w-0 flex-col p-3 md:p-4 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:border-l-2 lg:border-rule">
+                <div className="flex min-w-0 flex-col border-y-2 border-rule lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:border-y-0 lg:border-l-2">
                   <LazyPlanMap plan={plan} center={center} selectedId={selectedId} onSelect={setPickedId} />
                 </div>
                 {pitchesList}

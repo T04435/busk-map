@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { cn } from "cn";
 import { useEffect, useRef, useState, type ComponentProps } from "react";
 import { Map as MapIcon } from "lucide-react";
 import { HexCell } from "@/components/honeycomb/hex-cell";
@@ -23,8 +22,7 @@ const LABEL = "Map of pitches and Qloo taste affinity";
  * area comes near the screen, and when the browser is idle, so the plan itself is interactive first. The pitch list beside it
  * already offers everything the map does. The legend is one line along the bottom of the map, on every width, so it never covers a pin.
  */
-/** `frameClassName` restyles the frame, e.g. borderless when the map fills a half of a card that already has the rule (the landing). */
-export function LazyPlanMap({ frameClassName, ...props }: ComponentProps<typeof PlanMapType> & { frameClassName?: string }) {
+export function LazyPlanMap(props: ComponentProps<typeof PlanMapType>) {
   const placeholder = useRef<HTMLDivElement>(null);
   const [show, setShow] = useState(false);
 
@@ -57,8 +55,9 @@ export function LazyPlanMap({ frameClassName, ...props }: ComponentProps<typeof 
   }, [show]);
 
   const on = drawn(props.plan);
+  // No frame of its own: the map fills the card it sits in edge to edge, and that card's rule frames it (no nested card; user, live session 17 Oct).
   return (
-    <div data-slot="map-frame" className={cn("flex h-full min-h-96 flex-col border-2 border-rule bg-card", frameClassName)}>
+    <div data-slot="map-frame" className="flex h-full min-h-96 flex-col">
       <div className="min-h-80 flex-1 md:min-h-[30rem]">
         {show ? (
           <PlanMap {...props} />

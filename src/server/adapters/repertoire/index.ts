@@ -1,8 +1,9 @@
 import "server-only";
 import { providerStatus } from "@/server/env";
 import { runAdapter, settleWithLimit, type AdapterContext, type AdapterResult } from "../core";
-import { fetchArtistCatalogue, fetchReleaseCount, fetchReleaseYear, parseSpotifyArtistId, searchArtistTracks, searchArtists, searchTracks, searchTracksByArtist } from "./client";
+import { fetchArtistCatalogue, fetchArtistProfile, fetchReleaseCount, fetchReleaseYear, parseSpotifyArtistId, searchArtistTracks, searchArtists, searchTracks, searchTracksByArtist } from "./client";
 import {
+  syntheticArtistProfile,
   syntheticArtistSearch,
   syntheticArtistTracks,
   syntheticCatalogue,
@@ -13,6 +14,7 @@ import {
 } from "./fixtures/synthetic";
 import { trackKey } from "@/lib/text";
 import { mergeTrackLists, rankByActArtists, scopedArtistNames, MAX_SCOPED_ARTISTS } from "@/lib/track-rank";
+import type { SpotifyProfile } from "@/lib/playlist-schema";
 import type { CatalogueArtist, CatalogueTrack } from "./schema";
 
 export type { CatalogueArtist, CatalogueTrack } from "./schema";
@@ -141,5 +143,20 @@ export async function findReleaseYears(
         settled.flatMap((s, i) => (s.status === "fulfilled" && s.value !== null ? [[trackKey(unique[i].artist, unique[i].title), s.value]] : [])),
       );
     },
+  });
+}
+
+/**
+ * The profile header's snapshot of a Spotify artist (name, photos, genres, followers), stamped with when it was
+ * fetched. Fallback: null (the Repertoire keeps whatever snapshot it already has). Called only when the link
+ * changes or the performer asks to refresh: never on page load.
+ */
+export async function getArtistProfile(artistId: string, context: AdapterContext): Promise<AdapterResult<SpotifyProfile | null>> {
+  const stamp = (raw: Awaited<ReturnType<typeof fetchArtistProfile>>): SpotifyProfile => ({ ...raw, fetchedAt: new Date().toISOString() });
+  return runAdapter({
+    ...common(context),
+    fallback: null,
+    synthetic: () => stamp(syntheticArtistProfile(artistId)),
+    live: async () => stamp(await fetchArtistProfile(artistId)),
   });
 }

@@ -97,7 +97,26 @@ export const PLAYLIST_COPY = {
     back: "Back to my Repertoire",
     savedPage: "Act details saved.",
   },
-  profile: { refresh: "Refresh my songs" },
+  profile: {
+    refresh: "Refresh my songs",
+    heading: "Your Spotify profile",
+    refreshProfile: "Refresh profile",
+    loadProfile: "Load my Spotify profile",
+    refreshing: "Refreshing your profile…",
+    refreshed: "Profile refreshed.",
+    followers: (n: number) => `${n.toLocaleString("en-AU")} ${n === 1 ? "follower" : "followers"}`,
+    notFound: "Spotify has no artist at that link, so there is no profile to show.",
+    spotifyDown: "Spotify isn't answering right now. Your saved profile is unchanged. Try Refresh in a minute.",
+  },
+  soundsLike: {
+    heading: "Suggested: artists you sound like",
+    intro: "From fans of your music on Qloo. Add the ones that fit; nothing changes until you add them.",
+    add: "Add",
+    addAll: "Add all",
+    loading: "Looking for artists you sound like…",
+    unknown: "Qloo doesn't know this artist yet, so there are no suggestions.",
+    unavailable: "Couldn't load suggestions right now. Refresh your profile to try again.",
+  },
 
   // Friendly errors
   errors: {
@@ -109,6 +128,7 @@ export const PLAYLIST_COPY = {
     full: (max: number) => `Your Repertoire holds ${max} songs. Remove one to add another.`,
     stale: "Your Repertoire changed in another tab. Reload to see the latest.",
     notFound: "That song isn't in your Repertoire any more.",
+    rateLimited: "Too many requests in a short time. Wait a moment and try again.",
     tooMany: "You've made a lot of Repertoires from this network. Try again in a little while.",
     unavailable: "Saving isn't available right now. You can still plan without a Repertoire.",
     network: "We couldn't reach the server. Try again.",

@@ -1,0 +1,76 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Chip } from "@/components/honeycomb/chip";
+import { Button } from "@/components/ui/button";
+import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
+import type { SoundsLikeSuggestions } from "@/lib/playlist-schema";
+import { MAX_PICKED_ARTISTS, type PickedArtist } from "@/components/landing/artist-picker";
+import { loadSoundsLike } from "./playlist-api";
+
+/** The picker's list with suggestions added (skipping ones it already has, up to the picker's maximum). Typed-style chips: Qloo's names carry no Spotify id. */
+export function withSuggested(current: PickedArtist[], add: readonly { name: string }[]): PickedArtist[] {
+  const next = [...current];
+  for (const { name } of add) {
+    if (next.length >= MAX_PICKED_ARTISTS) break;
+    if (!next.some((a) => a.name.toLowerCase() === name.toLowerCase())) next.push({ name, spotifyId: null, image: null });
+  }
+  return next;
+}
+
+type Suggested = SoundsLikeSuggestions["artists"][number];
+
+/**
+ * Qloo's "artists you sound like" for the saved Spotify artist, offered as suggestions under the picker. Nothing is picked
+ * for you: "Add" hands the artist to the parent's own list (which saves the way it always did), and added ones disappear.
+ * It reads the server's saved Qloo artist, so it never looks the artist up again; `refreshKey` changes when the profile does.
+ * When Qloo doesn't know the artist: one quiet line, no chips.
+ */
+export function SoundsLikeSuggestionsList({ enabled, refreshKey, picked, onAdd }: { enabled: boolean; refreshKey: string; picked: readonly string[]; onAdd: (artists: Suggested[]) => void }) {
+  const [state, setState] = useState<{ key: string; data: SoundsLikeSuggestions } | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const controller = new AbortController();
+    void loadSoundsLike(controller.signal).then((data) => {
+      if (!controller.signal.aborted) setState({ key: refreshKey, data });
+    });
+    return () => controller.abort();
+  }, [enabled, refreshKey]);
+
+  if (!enabled) return null;
+  if (!state || state.key !== refreshKey) {
+    return (
+      <p role="status" className="m-0 text-sm text-muted-foreground">
+        {COPY.soundsLike.loading}
+      </p>
+    );
+  }
+  const { status, artists } = state.data;
+  if (status === "unknown_artist") return <p className="m-0 text-sm text-muted-foreground" data-testid="sounds-like-note">{COPY.soundsLike.unknown}</p>;
+  if (status === "unavailable") return <p className="m-0 text-sm text-muted-foreground" data-testid="sounds-like-note">{COPY.soundsLike.unavailable}</p>;
+  const has = new Set(picked.map((n) => n.toLowerCase()));
+  const open = artists.filter((a) => !has.has(a.name.toLowerCase()));
+  if (status !== "ok" || open.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2" data-testid="sounds-like-suggestions">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+        <h3 className="m-0 text-sm font-bold">{COPY.soundsLike.heading}</h3>
+        <Button type="button" variant="ghost" size="sm" onClick={() => onAdd(open)}>
+          {COPY.soundsLike.addAll}
+        </Button>
+      </div>
+      <p className="m-0 text-sm text-muted-foreground">{COPY.soundsLike.intro}</p>
+      <ul aria-label={COPY.soundsLike.heading} className="m-0 flex list-none flex-wrap gap-2 p-0">
+        {open.map((artist) => (
+          <li key={artist.qlooId} className="flex items-center gap-1">
+            <Chip>{artist.name}</Chip>
+            <Button type="button" variant="outline" size="sm" aria-label={`${COPY.soundsLike.add} ${artist.name}`} onClick={() => onAdd([artist])}>
+              {COPY.soundsLike.add}
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

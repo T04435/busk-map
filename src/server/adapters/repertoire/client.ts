@@ -8,10 +8,12 @@ import {
   albumTracksSchema,
   albumsSchema,
   albumsTotalSchema,
+  artistSchema,
   pickImage,
   releaseYear,
   searchSchema,
   tokenSchema,
+  type ArtistProfileRaw,
   type CatalogueArtist,
   type CatalogueTrack,
 } from "./schema";
@@ -167,6 +169,24 @@ export async function searchArtists(query: string, market: string): Promise<Cata
   return (body.artists?.items ?? [])
     .filter((a): a is NonNullable<typeof a> => a !== null)
     .map((a) => ({ id: a.id, name: a.name, image: pickImage(a.images), releases: null, url: a.external_urls?.spotify ?? null }));
+}
+
+/**
+ * One artist's profile: name, photos (largest first), genres and, when Spotify sends them, followers
+ * (GET /v1/artists/{id}). Cached for a day; throws on failure (a 404 is `not_found`), so failures are not cached.
+ * The related-artists, recommendations and audio-features endpoints are retired for new apps and never used.
+ */
+export async function fetchArtistProfile(artistId: string): Promise<ArtistProfileRaw> {
+  "use cache: remote";
+  cacheLife("days");
+  cacheTag("repertoire");
+  const body = await spotify(`/artists/${encodeURIComponent(artistId)}`, artistSchema);
+  return {
+    name: body.name,
+    images: (body.images ?? []).slice(0, 5).map(({ url, width, height }) => ({ url, width: width ?? null, height: height ?? null })),
+    genres: body.genres ?? [],
+    ...(typeof body.followers?.total === "number" ? { followers: body.followers.total } : {}),
+  };
 }
 
 /** Albums and singles by an artist: the `total` of a one-item albums page. Throws on failure, so failures are not cached. */

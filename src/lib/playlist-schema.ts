@@ -161,6 +161,13 @@ export type PlaylistView = {
   maxSongs: number;
 };
 
+/** GET /api/playlist/sounds-like: Qloo's artists whose fans overlap the performer's own artist's, to accept or ignore. */
+export type SoundsLikeStatus = "ok" | "no_artist" | "not_loaded" | "unknown_artist" | "unavailable" | "no_playlist";
+export type SoundsLikeSuggestions = { status: SoundsLikeStatus; artists: { name: string; qlooId: string }[] };
+
+/** POST /api/playlist/profile: the Repertoire after the refresh, and what each source said. */
+export type ProfileRefreshResult = { playlist: PlaylistView; spotify: "ok" | "unavailable" | "not_found" | "no_link"; qloo: "matched" | "unknown" | "unavailable" | "skipped" };
+
 /** The error body: `{ error: { code, message } }` (the plan route's shape). */
 export type PlaylistErrorBody = { error: { code: string; message: string } };
 

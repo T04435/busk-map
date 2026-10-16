@@ -4,13 +4,15 @@ import { Icon } from "@/components/honeycomb/icon";
 import { Loader } from "@/components/honeycomb/loader";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { loadPlaylist, savePlaylist } from "@/components/playlist/playlist-api";
+import { loadPlaylist, refreshProfile, savePlaylist } from "@/components/playlist/playlist-api";
 import { CityPicker } from "@/components/forms/city-picker";
 import { PermitPicker } from "@/components/forms/permit-picker";
 import { DatePicker } from "@/components/forms/date-picker";
 import { choiceOf, slotIdOf, TimeSlotPicker } from "@/components/forms/time-slot-picker";
 import type { TrackResult } from "@/components/forms/repertoire-api";
 import { RepertoireAdd } from "@/components/playlist/repertoire-add";
+import { ProfileHeader } from "@/components/playlist/profile-header";
+import { SoundsLikeSuggestionsList, withSuggested } from "@/components/playlist/sounds-like-suggestions";
 import { RepertoireSource } from "@/components/playlist/repertoire-source";
 import { FormMessage } from "@/components/honeycomb/form-message";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -144,6 +146,7 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
   const [profileId, setProfileId] = useState<string | null>(repertoire?.spotifyArtistId ?? null);
   const [actNote, setActNote] = useState<{ kind: "info" | "error" | "stale"; text: string } | null>(null);
   const [actBusy, setActBusy] = useState(false);
+  const [profileBusy, setProfileBusy] = useState(false);
   const [artistQuery, setArtistQuery] = useState("");
   // The block: the Repertoire's songs (or the last busk's), the ones unticked for this busk, and the ones added just for it.
   const [base, setBase] = useState<PickedSong[]>(() => initial?.picked ?? prefillSongs(prefill));
@@ -244,13 +247,27 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
       soundsLike: chosen.slice(0, 10).map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}) })),
       spotifyArtistId: profileId,
     });
-    setActBusy(false);
     if (result.ok && result.playlist) {
       setRep(result.playlist);
       if (saved) setSaved({ ...saved, revision: result.playlist.revision });
       fillActFrom(result.playlist);
       setActNote({ kind: "info", text: COPY.saved });
+      // A new (or cleared) Spotify link is loaded once, here, when it is saved; never on page load.
+      if ((result.playlist.spotifyArtistId ?? null) !== (rep.spotifyArtistId ?? null)) await loadProfile();
     } else if (!result.ok) setActNote({ kind: result.code === "stale" ? "stale" : "error", text: result.message });
+    setActBusy(false);
+  }
+
+  /** Loads the Spotify artist and finds it in Qloo, for the saved link: after a link change is saved, or when Refresh is pressed. */
+  async function loadProfile() {
+    setProfileBusy(true);
+    const outcome = await refreshProfile();
+    setProfileBusy(false);
+    if (!outcome.ok) return setActNote({ kind: outcome.code === "stale" ? "stale" : "error", text: outcome.message });
+    setRep(outcome.playlist);
+    setSaved((current) => (current ? { ...current, revision: outcome.playlist.revision } : current));
+    if (outcome.spotify === "not_found") setActNote({ kind: "error", text: COPY.profile.notFound });
+    else if (outcome.spotify === "unavailable") setActNote({ kind: "error", text: COPY.profile.spotifyDown });
   }
 
   /** The only thing here that writes the Repertoire: an explicit save, checked against the revision last seen. */
@@ -393,6 +410,7 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
   return (
     <form ref={formRef} onSubmit={submit} onKeyDown={keepEnterInFields} className="flex flex-col gap-7 border-2 border-rule bg-card p-4 md:p-7" aria-label="Plan for your own act" aria-busy={submitting || undefined} noValidate>
       <section aria-label="Your act" className="flex flex-col gap-4.5">
+        {rep && <ProfileHeader profile={rep.spotifyProfile} hasLink={Boolean(rep.spotifyArtistId)} busy={profileBusy} onRefresh={() => void loadProfile()} />}
         <div className="space-y-1.5">
           <Label htmlFor="name">Act name</Label>
           <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Jess on acoustic guitar" maxLength={80} aria-invalid={hasError("name") || undefined} aria-describedby={errorId("name")} />
@@ -410,6 +428,12 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
             </FormMessage>
           )}
         </div>
+        <SoundsLikeSuggestionsList
+          enabled={Boolean(rep?.spotifyArtistId)}
+          refreshKey={`${rep?.qlooArtistId ?? ""}|${rep?.spotifyProfile?.fetchedAt ?? ""}`}
+          picked={currentFields().chosen.map((a) => a.name)}
+          onAdd={(add) => setArtists((current) => withSuggested(current, add))}
+        />
         {rep && actEdited && (
           <div className="flex flex-wrap items-center gap-2" data-testid="save-act">
             <p className="text-sm text-muted-foreground">{COPY.act.editedHint}</p>

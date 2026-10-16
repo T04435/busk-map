@@ -13,7 +13,9 @@ import { formatDuration } from "@/lib/live-search";
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import { playlistSongKey, type PlaylistSongView, type PlaylistView } from "@/lib/playlist-schema";
 import { LearnPanel } from "./learn-panel";
-import { addSong, createPlaylist, forgetPlaylist, loadPlaylist, moveSong, removeSong, savePlaylist, type PlaylistResult } from "./playlist-api";
+import { addSong, createPlaylist, forgetPlaylist, loadPlaylist, moveSong, refreshProfile, removeSong, savePlaylist, type PlaylistResult, type ProfileRefreshOutcome } from "./playlist-api";
+import { ProfileHeader } from "./profile-header";
+import { SoundsLikeSuggestionsList, withSuggested } from "./sounds-like-suggestions";
 import { ArtistPicker, typedArtists, type PickedArtist } from "@/components/landing/artist-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,6 +53,7 @@ export function RepertoireView() {
   const [loaded, setLoaded] = useState(false);
   const [message, setMessage] = useState<{ kind: "error" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [profileBusy, setProfileBusy] = useState(false);
   // The act fields: edited here, written only by "Save act details".
   const [actName, setActName] = useState("");
   const [actArtists, setActArtists] = useState<PickedArtist[]>([]);
@@ -166,13 +169,42 @@ export function RepertoireView() {
     if (ok) setArtistQuery("");
   }
 
-  /** The Spotify profile link was changed and its songs loaded: keep it in the Repertoire so it is never asked again. */
+  /** Says what a profile refresh did, when it was not plain success. */
+  function profileNote(outcome: ProfileRefreshOutcome) {
+    if (!outcome.ok) return setMessage({ kind: "error", text: outcome.message });
+    if (outcome.spotify === "not_found") return setMessage({ kind: "error", text: COPY.profile.notFound });
+    if (outcome.spotify === "unavailable") return setMessage({ kind: "error", text: COPY.profile.spotifyDown });
+  }
+
+  /** Loads the Spotify artist and finds it in Qloo, for the saved link. Only on a link change or Refresh, never on page load. */
+  async function refreshNow() {
+    setProfileBusy(true);
+    try {
+      const outcome = await refreshProfile();
+      if (outcome.ok) setPlaylist(outcome.playlist);
+      profileNote(outcome);
+      if (outcome.ok && outcome.spotify === "ok") setMessage({ kind: "info", text: COPY.profile.refreshed });
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
+  /** The Spotify profile link was changed and its songs loaded: keep it in the Repertoire so it is never asked again, and load the profile once. */
   async function saveProfile(id: string | null) {
     const current = await loadPlaylist();
     if (!current.ok) return;
     const saved = await (current.playlist ? savePlaylist({ revision: current.playlist.revision, spotifyArtistId: id }) : createPlaylist({ spotifyArtistId: id }));
     // Quietly: the "Added N of your songs" line from the load stays on screen.
-    if (saved.ok) setPlaylist(saved.playlist);
+    if (!saved.ok) return;
+    setPlaylist(saved.playlist);
+    setProfileBusy(true);
+    try {
+      const outcome = await refreshProfile();
+      if (outcome.ok) setPlaylist(outcome.playlist);
+      profileNote(outcome);
+    } finally {
+      setProfileBusy(false);
+    }
   }
 
   async function forget() {
@@ -197,6 +229,8 @@ export function RepertoireView() {
         </Alert>
       )}
 
+      {loaded && playlist && <ProfileHeader profile={playlist.spotifyProfile} hasLink={Boolean(playlist.spotifyArtistId)} busy={profileBusy} onRefresh={() => void refreshNow()} />}
+
       <section aria-labelledby="act-heading" className="max-w-2xl space-y-4" data-testid="act-profile">
         <h2 id="act-heading" className="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
           {COPY.act.heading}
@@ -207,6 +241,12 @@ export function RepertoireView() {
           <Input id="name" value={actName} onChange={(e) => setActName(e.target.value)} placeholder="e.g. Jess on acoustic guitar" maxLength={80} />
         </div>
         <ArtistPicker value={actArtists} onChange={setActArtists} query={artistQuery} onQueryChange={setArtistQuery} />
+        <SoundsLikeSuggestionsList
+          enabled={loaded && Boolean(playlist?.spotifyArtistId)}
+          refreshKey={`${playlist?.qlooArtistId ?? ""}|${playlist?.spotifyProfile?.fetchedAt ?? ""}`}
+          picked={chosenArtists().map((a) => a.name)}
+          onAdd={(add) => setActArtists((current) => withSuggested(current, add))}
+        />
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="outline" size="sm" disabled={busy || !actEdited} onClick={() => void saveAct()}>
             {COPY.act.savePage}

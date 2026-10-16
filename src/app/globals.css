@@ -421,6 +421,17 @@ html { scroll-padding-bottom: var(--bottom-nav); }
 .hc-flow-cell { animation-delay: calc(var(--g) * 0.08s); }
 .hc-flow-link { animation-delay: calc(var(--c) * 0.88s + 0.4s); }
 @media (prefers-reduced-motion: reduce) { .hc-flow-cell, .hc-flow-link { animation: none; } }
+/* The sponsor's Qloo wordmark assembles once on load (impeccable live, 17 Oct). Paths: 1 l, 2 Q, 3 and 4 the o's, 5 the purple bar. */
+@keyframes hc-qloo-rise { 0% { opacity: 0; transform: translateY(60%) scaleY(0.6); } 100% { opacity: 1; transform: none; } }
+@keyframes hc-qloo-bar { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+.hc-qloo-rise path { transform-box: fill-box; transform-origin: 50% 100%; animation: hc-qloo-rise 0.6s cubic-bezier(.2,.9,.25,1.2) both; }
+.hc-qloo-rise path:nth-child(2) { animation-delay: 0.05s; }
+.hc-qloo-rise path:nth-child(1) { animation-delay: 0.17s; }
+.hc-qloo-rise path:nth-child(4) { animation-delay: 0.29s; }
+.hc-qloo-rise path:nth-child(3) { animation-delay: 0.41s; }
+.hc-qloo-rise path:nth-child(5) { transform-origin: 0 50%; animation: hc-qloo-bar 0.5s cubic-bezier(.2,.8,.2,1) 0.75s both; }
+@media (prefers-reduced-motion: reduce) { .hc-qloo-rise path { animation: none; } }
+
 .hc-cell { transform-box: fill-box; transform-origin: center; animation: hc-cell-in 520ms var(--ease-out, ease) backwards; animation-delay: var(--d, 0ms); }
 .hc-cell-hot { animation: hc-cell-in 520ms var(--ease-out, ease) backwards, hc-breathe 3.6s ease-in-out infinite; animation-delay: var(--d, 0ms), calc(var(--d, 0ms) + 2400ms); }
 .hc-pin { transform-box: fill-box; transform-origin: center; animation: hc-pin-in 480ms cubic-bezier(0.2, 1.4, 0.4, 1) backwards; animation-delay: var(--d, 0ms); }

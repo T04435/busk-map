@@ -20,7 +20,7 @@ import { LazyPlanMap } from "@/components/map/lazy-plan-map";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { creditsClaude, explanationsLabel, modelName, QLOO_TEST_LABEL, type ExplanationsModel } from "@/lib/sources";
-import { Clock, MapPin, Search } from "lucide-react";
+import { ArrowDown, Clock, MapPin, Search } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FRESH_HEADER, PLAN_ID_HEADER } from "@/lib/plan-id";
@@ -532,7 +532,8 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
               <p className="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-sm text-muted-foreground" data-testid="found-from">
                 <span>Found from {dataPoints.toLocaleString("en-AU")} data points</span>
                 <a className="inline-flex min-h-tap items-center font-bold text-foreground underline underline-offset-3" href="#research">
-                  See the research ↓
+                  See the research
+                  <ArrowDown aria-hidden="true" className="ml-1.5 size-4" strokeWidth={2} />
                 </a>
               </p>
             )

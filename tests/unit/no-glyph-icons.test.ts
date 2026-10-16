@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 // Icons are SVG components, never text glyphs. Comments may keep arrows.
-const GLYPHS = /[▸►▶→←✓✔✗✕★]/;
+const GLYPHS = /[▸►▶→←↑↓⇒➜➔✓✔✗✕★]|››/;
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => {

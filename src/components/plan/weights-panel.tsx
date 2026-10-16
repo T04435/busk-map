@@ -17,11 +17,7 @@ export function WeightsPanel({ weights }: { weights: Plan["weights"] }) {
     <section aria-label="How pitches are scored" className="space-y-4 border-2 border-rule bg-card p-4 md:p-6">
       <header className="space-y-1">
         <h3 className="m-0 font-display text-[28px] leading-none font-extrabold uppercase">How pitches are scored</h3>
-        <p className="m-0 text-sm text-muted-foreground">
-          Candidates come from your top Qloo taste cells, snapped to public spaces and checked against the council&apos;s busking rules. Each is scored as a weighted
-          average of the factors with data, plus a small bonus for hidden gems, minus the weather penalty. At the well-known busking pitches, foot traffic counts 85%:
-          other buskers share that crowd. Missing sources drop out instead of counting as zero.
-        </p>
+        <p className="m-0 text-sm text-muted-foreground">The same weights for every pitch.</p>
         <p className="m-0 text-sm text-muted-foreground" data-testid="spacing-rule">
           The top 3 are at least 250 m apart, so each is a different pitch. A higher-scored pitch within 250 m of a pick is left out: its dot on the map says
           &ldquo;too close to&rdquo; that pick.

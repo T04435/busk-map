@@ -45,6 +45,21 @@ test.describe("landing, as the deck draws it", () => {
     await expect(cards.nth(2)).toContainText("Plays Big Jet Plane, Bloom, The Boxer");
   });
 
+  test("the landing setlist's Copy button copies the set as text and says Copied (B-034)", async ({ page, context }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]).catch(() => undefined);
+    await page.goto("/");
+    const btn = page.getByTestId("copy-set");
+    await btn.scrollIntoViewIfNeeded();
+    await btn.click();
+    await expect(btn).toHaveText("Copied");
+    await expect(page.getByRole("status").filter({ hasText: "Copied" })).toHaveCount(1);
+    const text = await page.evaluate(() => navigator.clipboard.readText()).catch(() => null);
+    if (text !== null) {
+      expect(text).toContain("01 Fast Car - Tracy Chapman, 1988 (4:56)");
+      expect(text).toContain("04 Harbour Lights");
+    }
+  });
+
   test("the footer has no Brand link and continues the closing band's dark ground (B-023)", async ({ page }) => {
     await page.goto("/");
     const footer = page.locator('[data-slot="site-footer"]');
@@ -100,7 +115,11 @@ test.describe("landing, as the deck draws it", () => {
     await expect(get.getByRole("heading", { name: "Your busk" })).toBeVisible();
     await expect(get.locator('[data-slot="pitch-row"]')).toHaveCount(3);
     await expect(get.getByRole("heading", { name: /to play there/ })).toBeVisible();
-    await expect(get.getByTestId("set-length")).toHaveText("Set length: at least 13:05 (3 of 4 songs have a known length).");
+    await expect(get.getByTestId("set-length")).toHaveText("Set length at least 13:05 · 3 of 4 songs have a known length");
+    await expect(get.getByRole("heading", { name: "Setlist for this pitch" })).toBeVisible();
+    await expect(get.getByRole("heading", { name: "Learn these" })).toHaveText("Learn these");
+    await expect(get.locator('section[aria-label="Suggested set"] ol').first().locator("li").nth(3)).toContainText("04");
+    expect(await get.getByRole("region", { name: "Learn these" }).evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("4px");
     await expect(get.getByRole("region", { name: "Learn these" })).toContainText("Edge of Town");
     await expect(get.getByRole("region", { name: "Learn these" })).toContainText("Dinosaurs");
   });

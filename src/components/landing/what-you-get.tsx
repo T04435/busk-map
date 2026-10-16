@@ -104,7 +104,7 @@ export function WhatYouGet() {
           </p>
         </div>
         <div className="min-w-0 flex-[999_1_520px]">
-          <SetlistPanel pitch={{ name: PITCHES[0].name, setlist: SETLIST }} learnThese={LEARN} ageLean="25–34" />
+          <SetlistPanel variant="preview" pitch={{ name: PITCHES[0].name, setlist: SETLIST }} learnThese={LEARN} ageLean="25–34" />
         </div>
       </div>
     </section>

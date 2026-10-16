@@ -1,6 +1,7 @@
 import { RotateCw, WifiOff } from "lucide-react";
 import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
 import { HexCell } from "@/components/honeycomb/hex-cell";
+import { QlooWordmark } from "@/components/honeycomb/logo";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -17,7 +18,10 @@ export function QlooDownPanel({ onRetry, busy = false }: { onRetry: () => void; 
       <p className="m-0 max-w-[52ch] text-base leading-6">
         Busk Map plans around your sound, and Qloo, our taste data source, isn&apos;t answering. Your act, day and permit are kept: try again in a minute.
       </p>
-      <DataStatusBadge status="unavailable" source="Qloo" label="Unavailable" reason="not responding" />
+      <span className="inline-flex flex-wrap items-center gap-2">
+        <QlooWordmark width={52} />
+        <DataStatusBadge status="unavailable" label="Unavailable" reason="not responding" />
+      </span>
       <Button type="button" onClick={onRetry} disabled={busy} data-testid="qloo-retry">
         <RotateCw aria-hidden="true" />
         Try again

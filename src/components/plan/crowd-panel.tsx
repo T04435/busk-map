@@ -23,7 +23,7 @@ function Block({ title, label, evidence, children }: { title: string; label?: st
 }
 
 /**
- * Why this crowd: what central Melbourne's crowd likes given the performer's taste (Qloo local artists with explainability),
+ * Why this crowd: what the crowd around the plan area likes given the performer's taste (Qloo local artists with explainability),
  * what drives the match, the performer's fans against the usual hotspot crowd, the genres at the top pitch, and the fans'
  * age and gender lean. Every block ends with the Qloo call behind it.
  */
@@ -43,7 +43,7 @@ export function CrowdPanel({ crowd, resolved, topPitch, qlooMode = "live" }: { c
             <DataStatusBadge status={qlooMode === "live" ? "live" : "test"} />
           </span>
         </div>
-        <p className="m-0 text-sm text-muted-foreground">From Qloo&apos;s taste graph: aggregate taste around central Melbourne, never data about individuals.</p>
+        <p className="m-0 text-sm text-muted-foreground">From Qloo&apos;s taste graph: aggregate taste around your pitches, never data about individuals.</p>
       </header>
       {empty && (
         <p className="m-0 text-muted-foreground" data-testid="crowd-empty">
@@ -64,7 +64,7 @@ export function CrowdPanel({ crowd, resolved, topPitch, qlooMode = "live" }: { c
       )}
 
       {crowd.localArtists.length > 0 && (
-        <Block title="Artists this crowd likes" label="Local artists" evidence="Qloo insights: artists liked in central Melbourne by fans of your artists, with each of your artists' explainability score.">
+        <Block title="Artists this crowd likes" label="Local artists" evidence="Qloo insights: artists liked around the plan area by fans of your artists, with each of your artists' explainability score.">
           <ul className="m-0 flex list-none flex-col gap-3 p-0">
             {crowd.localArtists.map((a) => (
               <li key={a.name} className="space-y-1">

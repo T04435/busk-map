@@ -11,7 +11,8 @@ test.describe("API-down states", () => {
     const retry = page.getByTestId("qloo-down").getByRole("button", { name: "Try again" });
     await retry.click();
     await expect(page.getByRole("heading", { name: "No plan without taste data" })).toBeVisible();
-    await expect(page.getByTestId("qloo-down")).toContainText(/Qloo:\s*Unavailable/);
+    await expect(page.getByTestId("qloo-down")).toContainText(/Unavailable\s*·\s*not responding/);
+    await expect(page.getByTestId("qloo-down").getByRole("link", { name: /^Qloo/ })).toHaveAttribute("href", "https://qloo.com");
   });
 
   test("Qloo down during an agent run: the stream ends with the Qloo error", async ({ page }) => {

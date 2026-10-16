@@ -196,7 +196,7 @@ function SetlistPreview({
         </>
       )}
 
-      <section aria-label={PLAYLIST_COPY.toLearn} className="space-y-2 border-2 border-rule border-t-4 border-t-primary bg-card p-4">
+      <section aria-label={PLAYLIST_COPY.toLearn} className="space-y-2 border-t-2 border-rule pt-4">
         <h4 className="m-0 flex items-center gap-2 font-display text-lg font-extrabold tracking-[0.02em] uppercase">
           <Icon name="learn" size={18} />
           {PLAYLIST_COPY.toLearn}

@@ -424,7 +424,7 @@ html { scroll-padding-bottom: var(--bottom-nav); }
 /* The sponsor's Qloo wordmark assembles once on load (impeccable live, 17 Oct). Paths: 1 l, 2 Q, 3 and 4 the o's, 5 the purple bar. */
 @keyframes hc-qloo-rise { 0% { opacity: 0; transform: translateY(60%) scaleY(0.6); } 100% { opacity: 1; transform: none; } }
 @keyframes hc-qloo-bar { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
-.hc-qloo-rise path { transform-box: fill-box; transform-origin: 50% 100%; animation: hc-qloo-rise 0.6s cubic-bezier(.2,.9,.25,1.2) both; }
+.hc-qloo-rise path { transform-box: fill-box; transform-origin: 50% 100%; animation: hc-qloo-rise 0.6s cubic-bezier(.2,.8,.2,1) both; }
 .hc-qloo-rise path:nth-child(2) { animation-delay: 0.05s; }
 .hc-qloo-rise path:nth-child(1) { animation-delay: 0.17s; }
 .hc-qloo-rise path:nth-child(4) { animation-delay: 0.29s; }

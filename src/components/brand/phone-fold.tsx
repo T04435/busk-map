@@ -4,7 +4,7 @@ import { useSyncExternalStore, type ReactNode } from "react";
 import { Disclosure } from "@/components/honeycomb/disclosure";
 import { cn } from "cn";
 
-const NARROW = "(max-width: 1023px)";
+const NARROW = "(max-width: 719px)";
 const subscribe = (notify: () => void) => {
   const mq = window.matchMedia(NARROW);
   mq.addEventListener("change", notify);
@@ -12,7 +12,7 @@ const subscribe = (notify: () => void) => {
 };
 
 /**
- * A long block of the brand page. From 1024 px it is the heading and the content as they are; on phones and tablets it folds under a
+ * A long block of the brand page. From 720 px it is the heading and the content as they are; on phones it folds under a
  * Disclosure with the same heading as its label, closed, so a 23,000 px page reads in a few screens. The server
  * renders it open (the wide layout), and a phone folds it after hydration.
  */

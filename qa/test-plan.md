@@ -29,6 +29,8 @@ Every report names the exact commit tested at the top, from QA's own export on Q
 | Manual walk | `NEXT_DIST_DIR=.next-qa pnpm build`, then `NEXT_DIST_DIR=.next-qa BUSKMAP_OFFLINE=1 BUSKMAP_ALLOW_FAULTS=1 PORT=3110 pnpm start --port 3110` (own build dir, so DEV's builds can't break it) | Desktop 1440×900 and phone (Pixel 7 / 375×812). Stop the server when done. |
 | Live check (manual) | the user's or a QA live server, **max 5 cold agent runs per round** | Each run logged in the round report with time and estimated cost (~$0.10–0.15). Prefer cached examples and replays (free). |
 
+Build cache: if a build fails mid-way (e.g. a Google Fonts fetch for next/font), delete that build's dist folder (.next-qa-e2e etc.) before retrying. Turbopack keeps the failed state and every later build fails with “Can't resolve '@vercel/turbopack-next/internal/font/google/font'” until the folder is gone (seen 17 Oct at 8207373).
+
 Commits: the git index is shared with DEV, so commit only QA paths, always with a pathspec: `git commit -m "qa: …" -- qa/ tests/e2e/qa/`. Never a bare `git commit`, `-a`, or `git add -A`/`.`. Before each commit, `git diff --cached --stat` must show only QA paths.
 
 Never: copy env files, print secrets, point anything at production, enter credentials, push, deploy, or leave a server running.

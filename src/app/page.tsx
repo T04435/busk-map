@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 
 export default function Home({ searchParams }: PageProps<"/">) {
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 space-y-10 px-4 py-12">
+    <main id="main" className="mx-auto w-full max-w-5xl flex-1 space-y-10 px-4 py-12">
       <Warmup />
       <header className="max-w-2xl space-y-4">
         <h1 className="text-4xl font-semibold tracking-tight">Busk Map</h1>
@@ -97,12 +97,10 @@ export default function Home({ searchParams }: PageProps<"/">) {
         </Button>
       </section>
 
-      <footer className="space-y-1 text-xs text-muted-foreground">
-        <p>Data: {[SOURCES.qloo, SOURCES["melbourne-pedestrian"], SOURCES["melbourne-busking"], SOURCES.ticketmaster, SOURCES.lastfm, SOURCES["open-meteo"], SOURCES.spotify, SOURCES.osm].map((s) => s.name).join(" · ")}</p>
-        <p>
-          Busk Map never confirms a pitch is legal; check your permit conditions. Built for the Qloo Agentic Hackathon. MIT licence.
-        </p>
-      </footer>
+      {/* The lockup, the Qloo credit and the legal line are the site footer (the root layout); the data sources stay here. */}
+      <p className="text-xs text-muted-foreground">
+        Data: {[SOURCES.qloo, SOURCES["melbourne-pedestrian"], SOURCES["melbourne-busking"], SOURCES.ticketmaster, SOURCES.lastfm, SOURCES["open-meteo"], SOURCES.spotify, SOURCES.osm].map((s) => s.name).join(" · ")}
+      </p>
     </main>
   );
 }

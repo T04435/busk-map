@@ -20,7 +20,7 @@ const first = (value: string | string[] | undefined) => (Array.isArray(value) ? 
 
 export default function ShortPlanPage({ params, searchParams }: PageProps<"/p/[id]">) {
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
+    <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
       <nav className="mb-6 text-sm">
         <Link className="underline" href="/">
           Busk Map home

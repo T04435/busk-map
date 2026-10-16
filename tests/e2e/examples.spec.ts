@@ -36,7 +36,8 @@ for (const example of EXAMPLES) {
         await expect(page.getByTestId("agent-vs-engine")).toContainText(AGENT_KEPT_TOP3);
         await expect(page.getByText(/sent to the test model \(offline\) with no tools/)).toBeVisible();
         await expect(steps.getByTestId("agent-note-text").first()).toContainText(MODEL_NOTE_PREFIX);
-        await expect(page.getByText(/Claude/)).toHaveCount(0);
+        // The site footer credits Claude as a builder ("with Claude"): that is not a model claim, so look in the page body.
+        await expect(page.locator("main").getByText(/Claude/)).toHaveCount(0);
       }
       // Every data source is credited.
       for (const credit of ["Taste data by Qloo", "Pedestrian counts: City of Melbourne Open Data", "Weather data by Open-Meteo.com"]) {

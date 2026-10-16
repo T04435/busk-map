@@ -44,7 +44,7 @@ test.describe("accessibility", () => {
       const input = page.getByPlaceholder(placeholder);
       const group = input.locator("xpath=ancestor::*[@data-slot='input-group'][1]");
       const ring = () => group.evaluate((el) => getComputedStyle(el).boxShadow);
-      expect(await ring()).not.toMatch(/ 3px/);
+      expect(await ring()).not.toMatch(/ 4px/);
       // The server HTML already says aria-expanded="false" (B-011), so it no longer marks hydration: retry the
       // keyboard round trip until the hydrated input keeps focus.
       await expect(input).toHaveAttribute("aria-expanded", "false");
@@ -54,8 +54,8 @@ test.describe("accessibility", () => {
         await page.keyboard.press("Shift+Tab");
         await expect(input).toBeFocused({ timeout: 500 });
       }).toPass();
-      // The default shadcn Input ring (focus-visible:ring-3 ring-ring/50): a 3px box-shadow.
-      await expect.poll(ring).toMatch(/ 3px/);
+      // Honeycomb's full-strength focus ring (--focus-ring): a 2px paper gap, then a 4px ink (night: orange) ring.
+      await expect.poll(ring).toMatch(/ 4px/);
     }
   });
 });

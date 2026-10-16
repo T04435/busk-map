@@ -80,7 +80,9 @@ function useScrollPaddingBelow(panel: React.RefObject<HTMLElement | null>) {
     const root = document.documentElement;
     const previous = root.style.scrollPaddingBottom;
     const set = () => {
-      root.style.scrollPaddingBottom = `${Math.max(MIN_SCROLL_PADDING_PX, Math.ceil(el.getBoundingClientRect().height) + PANEL_GAP_PX)}px`;
+      // Under 768 px the fixed bottom nav sits under the panel (the panel's `bottom` is the nav's height), so it counts too.
+      const nav = document.querySelector("[data-mobile-nav]")?.getBoundingClientRect().height ?? 0;
+      root.style.scrollPaddingBottom = `${Math.max(MIN_SCROLL_PADDING_PX, Math.ceil(el.getBoundingClientRect().height + nav) + PANEL_GAP_PX)}px`;
     };
     set();
     const observer = new ResizeObserver(set);
@@ -154,7 +156,7 @@ export function BrainMap() {
             {num && <span className="sr-only">{num}. </span>}
             {label}
           </span>
-          <span className="truncate font-mono text-xs text-muted-foreground group-data-[trace=selected]:text-primary-foreground/80">{sub}</span>
+          <span className="truncate font-mono text-xs text-muted-foreground group-data-[trace=selected]:text-primary-foreground">{sub}</span>
         </span>
       </button>
     </li>
@@ -271,7 +273,7 @@ function TracedPanel({ selected, onClear }: { selected: NodeId; onClear: () => v
   return (
     <div
       ref={ref}
-      className="sticky bottom-0 z-10 max-h-[45vh] space-y-2 overflow-auto rounded-xl border bg-background p-4 text-sm shadow-lg"
+      className="sticky bottom-(--bottom-nav) z-10 max-h-[45vh] space-y-2 overflow-auto rounded-xl border bg-background p-4 text-sm shadow-lg"
       data-testid="trace-panel"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">

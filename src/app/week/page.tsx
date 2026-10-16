@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function WeekPage({ searchParams }: PageProps<"/week">) {
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
+    <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
       <nav className="mb-6 text-sm">
         <Link className="underline" href="/">
           Busk Map home

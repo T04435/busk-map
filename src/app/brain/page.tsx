@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function BrainPage() {
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 space-y-10 px-4 py-8">
+    <main id="main" className="mx-auto w-full max-w-6xl flex-1 space-y-10 px-4 py-8">
       <nav className="text-sm">
         <Link className="underline" href="/">
           Busk Map home

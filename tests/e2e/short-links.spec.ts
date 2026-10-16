@@ -4,33 +4,42 @@ const SHORT = /\/p\/([0-9A-Za-z]{9})$/;
 const idOf = (url: string) => SHORT.exec(new URL(url).pathname)?.[1] ?? null;
 
 test.describe("short plan links", () => {
-  test("an example card is inputs only: every click is a new short link and a fresh agent run", async ({ page }) => {
+  test("an example card is inputs only: every click is a new short link and a fresh agent run", async ({ page, request }) => {
     test.skip(!LOCAL, "Starts agent runs; local offline server only");
-    /** Click the sax card and read the agent's stream for that page: the run it started. */
+    // UI: each click opens a new /p/<id> and runs the agent live (steps listed, no replay label).
+    // Only the request the page sends is read here, never a response body from a page that has moved on (B-012).
     const click = async () => {
       await page.goto("/");
-      const streamed = page.waitForResponse((r) => r.url().endsWith("/api/plan") && r.request().method() === "POST");
+      const sent = page.waitForRequest((r) => r.url().endsWith("/api/plan") && r.method() === "POST");
       await page.getByRole("link", { name: /^Soul and funk sax player / }).click();
       await expect(page).toHaveURL(SHORT);
-      const events = (await (await streamed).text())
-        .split("\n")
-        .filter(Boolean)
-        .map((line) => JSON.parse(line) as { type: string; replay?: boolean; message?: string });
+      const body = (await sent).postDataJSON() as Record<string, unknown>;
       await waitForPlan(page);
-      return { id: idOf(page.url()), events };
+      await expect(page.getByRole("list", { name: "Agent steps" }).getByText("Scoring the pitch pool").first()).toBeVisible();
+      await expect(page.getByTestId("replay-label")).toHaveCount(0);
+      return { id: idOf(page.url()), body };
     };
     const first = await click();
     const second = await click();
     expect(first.id).toBeTruthy();
     expect(second.id).not.toBe(first.id);
-    for (const { events } of [first, second]) {
-      // A new run: "Planning started" with no replay or join, then the steps streamed, then the plan. No stored plan.
+    expect(second.body).toEqual(first.body);
+
+    // Stream: the preset's request, posted twice through the API client, read in full. Each is a new run.
+    for (let i = 0; i < 2; i++) {
+      const response = await request.post("/api/plan", { data: first.body });
+      expect(response.status()).toBe(200);
+      const events = (await response.text())
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => JSON.parse(line) as { type: string; replay?: boolean; message?: string });
+      // "Planning started" with no replay or join, then the steps streamed, then the plan. No stored plan.
       expect(events[0]).toEqual({ type: "status", message: "Planning started" });
       expect(events.some((e) => e.type === "status" && (e.replay || /Replaying|Joining/.test(e.message ?? "")))).toBe(false);
       expect(events.filter((e) => e.type === "tool-start").length).toBeGreaterThan(2);
+      expect(events.findIndex((e) => e.type === "tool-start")).toBeGreaterThan(0);
       expect(events.at(-1)?.type).toBe("plan");
     }
-    await expect(page.getByTestId("replay-label")).toHaveCount(0);
   });
 
   test("an unknown or malformed id shows a not-found state with a link home", async ({ page }) => {

@@ -8,7 +8,6 @@ import {
   calls,
   dataPoints,
   edges,
-  featureCount,
   features,
   nodeKind,
   nodeLabel,
@@ -19,6 +18,31 @@ import {
 } from "@/lib/qloo-map";
 
 type TraceState = "none" | "selected" | "path" | "dim";
+
+/** The board's sub-line for each call: the endpoint and what tells the calls on it apart (B-116). */
+const CALL_SUB: Partial<Record<NodeId, string>> = {
+  c1: "/search",
+  c2: "/entities · external.spotify.ids",
+  c3: "/v2/insights · urn:heatmap",
+  c4: "/v2/insights · urn:entity:place",
+  c5: "/v2/insights · artist · explainability",
+  c5b: "/v2/insights · artist · no taste signal",
+  c6: "/v2/insights · artist · signal.location",
+  c7: "/v2/insights · artist · filter.results",
+  c8: "/v2/trending",
+  c9: "/v2/insights · urn:demographics",
+  c10: "/v2/insights · urn:tag",
+  c11: "/v2/analysis/compare",
+};
+
+/** The panel's "Lights up …" sentence, counted like the board: every lit Qloo call, data point and part of the busk (the picked one too). */
+function lightsUp(id: NodeId): string {
+  const { nodes } = trace(id);
+  const count = (kind: string) => [...nodes].filter((n) => nodeKind(n) === kind).length;
+  const part = (n: number, one: string, many: string) => (n ? [`${n} ${n === 1 ? one : many}`] : []);
+  const parts = [...part(count("call"), "Qloo call", "Qloo calls"), ...part(count("dataPoint"), "data point", "data points"), ...part(count("feature"), "part of your busk", "parts of your busk")];
+  return `Lights up ${parts.length < 2 ? parts.join("") : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`}.`;
+}
 
 /** Three columns from 1024 px up (Tailwind's lg); at 1023 px and below the columns stack. */
 const WIDE = "(min-width: 1024px)";
@@ -102,6 +126,14 @@ export function BrainMap() {
   const paths = useWires(gridRef, nodeRefs);
   const lit = useMemo(() => (selected ? trace(selected) : null), [selected]);
 
+  // Picking a piece opens the trace panel and, in the stacked layout, hides the dimmed pieces, so the picked piece can end up
+  // under the panel or far off screen. Once that has laid out, bring it back, keeping the panel's scroll padding (B-150, B-015).
+  useEffect(() => {
+    if (!selected) return;
+    const frame = requestAnimationFrame(() => nodeRefs.current.get(selected)?.scrollIntoView({ block: "nearest", behavior: "instant" }));
+    return () => cancelAnimationFrame(frame);
+  }, [selected]);
+
   const stateOf = (id: NodeId): TraceState => (!lit ? "none" : id === selected ? "selected" : lit.nodes.has(id) ? "path" : "dim");
 
   const pick = (id: NodeId) => {
@@ -134,14 +166,16 @@ export function BrainMap() {
         data-trace={stateOf(id)}
         onClick={() => pick(id)}
         className={cn(
-          "group flex min-h-12 w-full items-center gap-3 border-[1.5px] px-3 py-2 text-left text-sm transition-colors hover:border-qloo motion-reduce:transition-none",
+          "group flex min-h-12 w-full scroll-mt-24 items-center gap-3 border-[1.5px] px-3 py-2 text-left text-sm transition-colors hover:border-qloo motion-reduce:transition-none",
           feature ? "min-h-[52px]" : "",
           secondary && stateOf(id) === "none" && "border-dashed border-input",
           {
             none: secondary ? "bg-transparent text-muted-foreground" : "border-border bg-card text-card-foreground",
-            selected: "border-2 border-primary bg-accent text-accent-foreground shadow-[4px_4px_0_var(--primary)]",
-            path: "border-2 border-primary bg-card text-card-foreground",
-            dim: "border-border bg-muted text-muted-foreground",
+            // A lit or picked piece keeps a visible keyboard ring: an outline set off from the orange border (B-149).
+            selected:
+              "border-2 border-primary bg-[#26323a] text-foreground shadow-[4px_4px_0_var(--primary)] outline-1 outline-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+            path: "border-2 border-primary bg-card text-card-foreground outline-1 outline-primary/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+            dim: "border-border bg-[#141b20] text-[#9aa4aa]",
           }[stateOf(id)],
         )}
       >
@@ -151,7 +185,7 @@ export function BrainMap() {
             className={cn(
               "grid h-[34px] w-[30px] shrink-0 place-items-center font-mono text-xs font-bold",
               HEX,
-              stateOf(id) === "dim" ? "bg-border text-muted-foreground" : "bg-qloo text-bluestone",
+              stateOf(id) === "dim" ? "bg-border text-[#9aa4aa]" : "bg-qloo text-bluestone",
             )}
           >
             {num}
@@ -162,7 +196,7 @@ export function BrainMap() {
             {num && <span className="sr-only">{num}. </span>}
             {label}
           </span>
-          <span className={cn("truncate font-mono text-[11px] leading-[15px]", stateOf(id) === "dim" ? "text-muted-foreground" : num ? "text-qloo" : "text-muted-foreground")}>{sub}</span>
+          <span className={cn("truncate font-mono text-[11px] leading-[15px]", stateOf(id) === "dim" ? "text-[#9aa4aa]" : stateOf(id) === "selected" ? "text-[#b8b8e6]" : num ? "text-qloo" : "text-muted-foreground")}>{sub}</span>
         </span>
       </button>
     </li>
@@ -206,9 +240,9 @@ export function BrainMap() {
                 className={cn(
                   "transition-opacity motion-reduce:transition-none",
                   on ? "stroke-primary" : secondary ? "stroke-muted-foreground" : "stroke-qloo",
-                  on ? "opacity-100" : lit ? "opacity-15" : "opacity-60",
+                  on ? "opacity-100" : lit ? "opacity-10" : "opacity-45",
                 )}
-                strokeWidth={on ? 3 : 1.5}
+                strokeWidth={on ? 2.5 : 1.5}
               />
             );
           })}
@@ -216,10 +250,14 @@ export function BrainMap() {
 
         <Column title="Qloo calls" note={`${callKinds} kinds`} mark="bg-qloo">
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1" aria-label="Qloo calls">
-            {calls.map((c) => node(c.id, c.label, `${c.endpoint}${c.urnType ? ` · ${c.urnType}` : ""}`, c.num))}
+            {calls.map((c) => node(c.id, c.label, CALL_SUB[c.id] ?? `${c.endpoint}${c.urnType ? ` · ${c.urnType}` : ""}`, c.num))}
           </ul>
           <div className={cn("space-y-2 pt-3", !onPathSources && "max-lg:hidden")}>
-            <h4 className="m-0 font-mono text-[11px] leading-[14px] font-bold tracking-[0.08em] text-muted-foreground uppercase">With two other sources</h4>
+            <h4
+              className={cn("m-0 font-mono text-[11px] leading-[14px] font-bold tracking-[0.08em] text-muted-foreground uppercase", !onPathSources && "lg:invisible")}
+            >
+              With two other sources
+            </h4>
             <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1" aria-label="Other sources">
               {secondarySources.map((s) => node(s.id, s.label, s.contributes, undefined, true))}
             </ul>
@@ -232,7 +270,7 @@ export function BrainMap() {
           </ul>
         </Column>
 
-        <Column title="Your busk" note={`${featureCount} parts it decides`} mark="bg-primary">
+        <Column title="Your busk" note="what it decides" mark="bg-primary">
           <ul className="grid gap-2 sm:grid-cols-2 lg:flex lg:flex-1 lg:flex-col lg:justify-between" aria-label="Your busk">
             {features.map((f) => node(f.id, f.label, f.sub, undefined, false, true))}
           </ul>
@@ -270,9 +308,21 @@ function IdlePanel() {
     <div className="border-2 border-qloo bg-popover p-4 text-sm" data-testid="trace-panel">
       <p className="m-0 font-display text-[22px] leading-none font-extrabold uppercase">Pick any piece</p>
       <p className="m-0 mt-2 text-sm leading-5 text-muted-foreground">
-        Choose a Qloo call, a data point or a part of your busk, and its whole path lights up. Try Setlist and learn these, where four
-        Qloo calls and Spotify meet.
+        Choose a Qloo call, a data point or a part of your busk, and its whole path lights up.
       </p>
+      <ul className="m-0 mt-2 flex list-none flex-col gap-1.5 p-0 text-sm leading-5">
+        {[
+          ["Setlist and learn these", "four Qloo calls and Spotify meet in your setlist"],
+          ["Taste heatmap", "one call that shapes the map, the ranking and the week"],
+        ].map(([name, what]) => (
+          <li key={name} className="flex gap-2">
+            <span aria-hidden="true" className="mt-[3px] h-3.5 w-2 shrink-0 bg-primary [clip-path:polygon(0_0,50%_0,100%_50%,50%_100%,0_100%)]" />
+            <span>
+              Try <b>{name}</b>: {what}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -288,27 +338,27 @@ function TracedPanel({ selected, onClear }: { selected: NodeId; onClear: () => v
   const isFeature = nodeKind(selected) === "feature";
   const reach = [...nodes].filter((id) => id !== selected && (isFeature ? ["call", "source"] : ["feature"]).includes(nodeKind(id)));
   const links = edges.flatMap((e) =>
-    e.to === selected ? [{ dir: "From", name: nodeLabel(e.from), how: e.how }] : e.from === selected ? [{ dir: "To", name: nodeLabel(e.to), how: e.how }] : [],
+    e.to === selected ? [{ dir: "From", arrow: "←", name: nodeLabel(e.from), how: e.how }] : e.from === selected ? [{ dir: "To", arrow: "→", name: nodeLabel(e.to), how: e.how }] : [],
   );
   return (
     <div
       ref={ref}
-      className="sticky bottom-(--bottom-nav) z-10 max-h-[45vh] space-y-2 overflow-auto border-2 border-qloo bg-popover p-4 text-sm text-popover-foreground shadow-lg"
+      className="sticky bottom-(--bottom-nav) z-10 max-h-[45vh] space-y-2 overflow-auto border-2 border-qloo bg-popover p-4 text-sm text-popover-foreground shadow-[0_-8px_24px_rgb(0_0_0/0.45)]"
       data-testid="trace-panel"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="m-0 font-display text-[22px] leading-none font-extrabold text-qloo uppercase">{nodeLabel(selected)}</p>
-        <Button type="button" variant="outline" onClick={onClear}>
+        <p className="m-0 font-display text-[22px] leading-none font-extrabold text-primary uppercase">{nodeLabel(selected)}</p>
+        <Button type="button" variant="outline" className="border-[1.5px] border-foreground font-mono text-xs font-bold uppercase" onClick={onClear}>
           Clear trace
         </Button>
       </div>
       {/* Keyboard users tabbing through the pieces get a slim bar (name and Clear trace) so the panel covers less of the
           page; the details come back when focus leaves the pieces. Mouse clicks don't match :focus-visible. */}
       <div className="space-y-2 group-has-[[data-node-id]:focus-visible]/brain:hidden" data-testid="trace-detail">
-        <p className="m-0 font-mono text-[13px] leading-[18px] text-muted-foreground">{traceSummary(selected)}</p>
+        <p className="m-0 font-mono text-[13px] leading-[18px] text-muted-foreground">{lightsUp(selected)}</p>
         {reach.length > 0 && (
           <p className="m-0">
-            <b className="text-qloo">{isFeature ? "Comes from:" : "Decides:"}</b> {reach.map(nodeLabel).join(" · ")}
+            <b className="text-primary">{isFeature ? "Comes from:" : "Decides:"}</b> {reach.map(nodeLabel).join(" · ")}
           </p>
         )}
         <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
@@ -317,7 +367,9 @@ function TracedPanel({ selected, onClear }: { selected: NodeId; onClear: () => v
               <span aria-hidden="true" className="mt-[3px] h-3.5 w-2 shrink-0 bg-primary [clip-path:polygon(0_0,50%_0,100%_50%,50%_100%,0_100%)]" />
               <span>
                 <b>
-                  {l.dir} {l.name}
+                  <span aria-hidden="true">{l.arrow} </span>
+                  <span className="sr-only">{l.dir} </span>
+                  {l.name}
                 </b>
                 : {l.how}
               </span>

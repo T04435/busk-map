@@ -30,10 +30,10 @@ body.action .row[data-action="false"]{display:none}
 </style></head>
 <body><div class="wrap">
 <h1>Landing · review</h1>
-<p class="ver">v3 · design/honeycomb ＠ 91b220e · 16 Oct 2026</p>
-<p class="chg">Folded QA-01 and QA-03 into this page; added the user&#x27;s calls (L03, L07, L11, L13, L17, L18, L20, L23). DEV&#x27;s fixes 2d8dc86..4b9bff1 not checked yet: that HEAD doesn&#x27;t build (B-035).</p>
+<p class="ver">v4 · design/honeycomb ＠ 7b1521e · 16 Oct 2026</p>
+<p class="chg">L03, L07, L11, L17, L20, L23 now match (user calls applied; B-019, B-033, B-034 fixed). L04 and L25 now match. L18 changed to the live map: still Different (declared). L24 Different: credit line, a question for the user. L13 kept as built (B-032 accepted). B-035 fixed (builds from an export). 25 Present, 3 Different, 1 Held.</p>
 <div class="strip" role="group" aria-label="Summary">
-<span class="stat ok">20 Present</span><span class="stat warn">6 Different</span><span class="stat bad">1 Missing</span><span class="stat bad">0 Broken</span><span class="stat held">2 Held</span>
+<span class="stat ok">25 Present</span><span class="stat warn">3 Different</span><span class="stat bad">0 Missing</span><span class="stat bad">0 Broken</span><span class="stat held">1 Held</span>
 <button class="filter" type="button" aria-pressed="false" id="flt">Needs action only</button>
 </div>
 <p class="chg">One row per part of BRAND's inventory (L01–L29). The row id is the ticket: “L07 remove…” means row L07 here. Not a part: B-026, the “For judges” link (held for the user).</p>
@@ -43,11 +43,11 @@ body.action .row[data-action="false"]{display:none}
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L01-1440.jpg" alt="L01 build at 1440"></a></figure>
 <figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L01-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L01-390.jpg" alt="L01 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>built</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Busks · Week · Brain · Tips, none active; Brain per HQ default 2.</dd></div>
+<div><dt>DEV status</dt><dd>deviation: nav says Brain, not Setlist (HQ default)</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Busks · Week · Brain · Tips, none active. Brain, not Setlist, is HQ default 2 (DEV lists it as a deviation).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L02" data-action="false">
 <div class="id"><a href="#L02">L02</a><span>Hero band</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L02.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L02.jpg" alt="L02 deck crop"></a></figure>
@@ -58,29 +58,29 @@ body.action .row[data-action="false"]{display:none}
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night band, dot grain, hex lattice and the 6px orange rule.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
-</dl></article><article class="row" id="L03" data-action="true">
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="L03" data-action="false">
 <div class="id"><a href="#L03">L03</a><span>Glowing honeycomb cells</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L03.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L03.jpg" alt="L03 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L03-1440.jpg" alt="L03 build at 1440"></a></figure>
 <figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L03-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L03-390.jpg" alt="L03 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>built</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Orange cells along the hero&#x27;s lower band; under reduced motion they hold at opacity 0.5 (getComputedStyle). B-021 glow part fixed.</dd></div>
+<div><dt>DEV status</dt><dd>changed: small texts removed (user call)</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Glowing cells as the board; the small texts beside them are gone (user call).</dd></div>
 <div><dt>User's call</dt><dd class="call">Remove the small texts on both sides.</dd></div>
 <div><dt>Defect</dt><dd>B-021 glow fixed</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
-</dl></article><article class="row" id="L04" data-action="true">
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="L04" data-action="false">
 <div class="id"><a href="#L04">L04</a><span>Hero headline</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L04.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L04.jpg" alt="L04 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L04-1440.jpg" alt="L04 build at 1440"></a></figure>
 <figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L04-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L04-390.jpg" alt="L04 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>deviation</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “What to play.” never wraps (4 lines at 1440 and 390, 3 at 768). B-025 fixed. Declared extra: HQ&#x27;s one-line intro under the H1.</dd></div>
+<div><dt>DEV status</dt><dd>built</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Three-line headline; “What to play.” never wraps; the extra intro line under the H1 is gone, as on the board.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>B-025 fixed</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L05" data-action="false">
 <div class="id"><a href="#L05">L05</a><span>Hero taste map</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L05.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L05.jpg" alt="L05 deck crop"></a></figure>
@@ -91,7 +91,7 @@ body.action .row[data-action="false"]{display:none}
 <div><dt>QA status</dt><dd><span class="chip held">Held</span> Pins 1 and 3 plus a hidden-gem diamond. Zone, event and river held for the user. Also unlike the board: a full rectangular grid (board: an irregular blob with gaps) and plain numbered pins (board: target rings with number badges).</dd></div>
 <div><dt>User's call</dt><dd class="call">Held.</dd></div>
 <div><dt>Defect</dt><dd>B-021 (zone, event, river) held</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L06" data-action="false">
 <div class="id"><a href="#L06">L06</a><span>Map fill-in and pin drop</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L06.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L06.jpg" alt="L06 deck crop"></a></figure>
@@ -102,18 +102,18 @@ body.action .row[data-action="false"]{display:none}
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Cells fill in and pins drop (CSS); finished state under reduced motion, with no running animations.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
-</dl></article><article class="row" id="L07" data-action="true">
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="L07" data-action="false">
 <div class="id"><a href="#L07">L07</a><span>Map caption</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L07.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L07.jpg" alt="L07 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L07-1440.jpg" alt="L07 build at 1440"></a></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L07-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L07-390.jpg" alt="L07 build at 390"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L05-1440.jpg" alt="L07 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L05-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L05-390.jpg" alt="L07 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>deviation</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Board wording verbatim plus “An example, not a city&#x27;s data.” (declared).</dd></div>
+<div><dt>DEV status</dt><dd>changed: all captions removed (user call). Asks: keep the two “Example data” badges (L14, L16)?</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Caption removed by the user&#x27;s call (the board has one). Nothing else under the map.</dd></div>
 <div><dt>User's call</dt><dd class="call">Remove all the small texts.</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L08" data-action="false">
 <div class="id"><a href="#L08">L08</a><span>Hero CTA</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L08.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L08.jpg" alt="L08 deck crop"></a></figure>
@@ -124,7 +124,7 @@ body.action .row[data-action="false"]{display:none}
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Poster block and shadow; the keyboard focus ring now shows beside the shadow (screenshot is the focused state). B-018 fixed.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>B-018 fixed</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L09" data-action="false">
 <div class="id"><a href="#L09">L09</a><span>In partnership with Qloo</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L09.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L09.jpg" alt="L09 deck crop"></a></figure>
@@ -135,7 +135,7 @@ body.action .row[data-action="false"]{display:none}
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Purple words, Qloo wordmark, centred.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L10" data-action="false">
 <div class="id"><a href="#L10">L10</a><span>Ticker band</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L10.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L10.jpg" alt="L10 deck crop"></a></figure>
@@ -146,18 +146,18 @@ body.action .row[data-action="false"]{display:none}
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Six phrases, rolling; still under reduced motion.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
-</dl></article><article class="row" id="L11" data-action="true">
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="L11" data-action="false">
 <div class="id"><a href="#L11">L11</a><span>Demo video slot</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L11.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L11.jpg" alt="L11 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><div class="ph">Not in the build</div></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><div class="ph">Not in the build</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L11-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L11-1440.jpg" alt="L11 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L11-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L11-390.jpg" alt="L11 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>deviation</dd></div>
-<div><dt>QA status</dt><dd><span class="chip bad">Missing</span> Not built until a video exists: DEV deviation 1, accepted earlier; flag for the user.</dd></div>
+<div><dt>DEV status</dt><dd>changed: placeholder slot, no controls, no autoplay</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Placeholder slot as the board: orange hex, “[Demo video · 60–90 s]” and the line. No media element, no autoplay, no controls.</dd></div>
 <div><dt>User's call</dt><dd class="call">Add the video slot.</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L12" data-action="false">
 <div class="id"><a href="#L12">L12</a><span>“Try an act” heading</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L12.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L12.jpg" alt="L12 deck crop"></a></figure>
@@ -168,29 +168,29 @@ body.action .row[data-action="false"]{display:none}
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Second sentence in signal text.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L13" data-action="true">
 <div class="id"><a href="#L13">L13</a><span>Act cards ×3</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L13.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L13.jpg" alt="L13 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L13-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L13-1440.jpg" alt="L13 build at 1440"></a></figure>
 <figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L13-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L13-390.jpg" alt="L13 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>deviation → ee3bf34 (unchecked)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> B-022 fixed: day · hours and Plays lines. Declared: the action starts a plan run, not /busks pre-filled. Not declared: initials hex filled orange with “SA” (board: outline hex, “SX”); the action is a plain dark row with a right arrow (board: orange underlined link); Plays lists differ from the board (Gravy, Dumb Things, Depreston vs Gravy, Depreston, Riptide; Isn&#x27;t She Lovely vs Nakamarra).</dd></div>
+<div><dt>DEV status</dt><dd>built as before (user call); B-032 not applied</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Kept as built by the user&#x27;s call: filled “SA” hex, dark action row, the app&#x27;s Plays lists (B-032 accepted, not applied).</dd></div>
 <div><dt>User's call</dt><dd class="call">Keep as built (B-032 accepted).</dd></div>
-<div><dt>Defect</dt><dd>B-022 fixed · B-032 accepted</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
-</dl></article><article class="row" id="L14" data-action="false">
+<div><dt>Defect</dt><dd>B-022 fixed · B-032 accepted (user)</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="L14" data-action="true">
 <div class="id"><a href="#L14">L14</a><span>“Busking is guesswork” heading</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L14.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L14.jpg" alt="L14 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L14-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L14-1440.jpg" alt="L14 build at 1440"></a></figure>
 <figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L14-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L14-390.jpg" alt="L14 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>built</dd></div>
+<div><dt>DEV status</dt><dd>built. Asks: keep the “Example data” badge?</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> “guesswork” in signal text; Example data badge (HQ correction).</dd></div>
-<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>User's call</dt><dd class="call">Open question: keep the “Example data” badge?</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L15" data-action="false">
 <div class="id"><a href="#L15">L15</a><span>Problem cards ×4</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L15.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L15.jpg" alt="L15 deck crop"></a></figure>
@@ -201,40 +201,40 @@ body.action .row[data-action="false"]{display:none}
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Copy as the board.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
-</dl></article><article class="row" id="L16" data-action="false">
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="L16" data-action="true">
 <div class="id"><a href="#L16">L16</a><span>“What you get back” heading</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L16.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L16.jpg" alt="L16 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L16-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L16-1440.jpg" alt="L16 build at 1440"></a></figure>
 <figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L16-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L16-390.jpg" alt="L16 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>built</dd></div>
+<div><dt>DEV status</dt><dd>built. Asks: keep the “Example data” badge?</dd></div>
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Plus an Example data badge.</dd></div>
-<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>User's call</dt><dd class="call">Open question: keep the “Example data” badge?</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
-</dl></article><article class="row" id="L17" data-action="true">
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="L17" data-action="false">
 <div class="id"><a href="#L17">L17</a><span>Research funnel</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L17.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L17.jpg" alt="L17 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L17-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L17-1440.jpg" alt="L17 build at 1440"></a></figure>
 <figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L17-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L17-390.jpg" alt="L17 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>deviation → fixed in 2d8dc86 (unchecked)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> B-020: real totals 412 › … › 496 data points › 3 pitches. Declared: no Qloo calls cell. Not declared: labels sit under the hexes, stages are joined by dashes (board: labels beside each hex, ▸ chevrons) and the row is boxed in a bordered card (board: an open row).</dd></div>
+<div><dt>DEV status</dt><dd>changed to match the deck</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Funnel as the board: labels beside each hex, ▸ chevrons, not boxed, one row at 1440.</dd></div>
 <div><dt>User's call</dt><dd class="call">Fix to the deck.</dd></div>
-<div><dt>Defect</dt><dd>B-020 fixed · B-033 open</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Defect</dt><dd>B-020 fixed · B-033 fixed</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L18" data-action="true">
 <div class="id"><a href="#L18">L18</a><span>Your busk (PlanMap)</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L18.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L18.jpg" alt="L18 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L18-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L18-1440.jpg" alt="L18 build at 1440"></a></figure>
 <figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L18-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L18-390.jpg" alt="L18 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>deviation</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Summary, three PitchRows (Southbank selected) and a hex map with pins and legend. Declared: no river, no-busking zone, event diamond, small dots or Full details (a static example).</dd></div>
+<div><dt>DEV status</dt><dd>changed to the live PlanMap with example data. Remaining: no zone, river or event (L05); no “Full details →”; legend says “test data” and “Browse other pitches (2)”</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Live PlanMap with example data; pins and list select each other both ways; loads lazily. Still unlike the board: no zone, river or event (held, L05), no “Full details →”; the map adds zoom buttons, “Browse other pitches (2)” and a legend reading “test data”.</dd></div>
 <div><dt>User's call</dt><dd class="call">Fix to the deck.</dd></div>
 <div><dt>Defect</dt><dd>B-020 fixed (declared deviation)</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L19" data-action="false">
 <div class="id"><a href="#L19">L19</a><span>“And what to play there”</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L19.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L19.jpg" alt="L19 deck crop"></a></figure>
@@ -245,18 +245,18 @@ body.action .row[data-action="false"]{display:none}
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> Heading and paragraph as the board.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
-</dl></article><article class="row" id="L20" data-action="true">
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="L20" data-action="false">
 <div class="id"><a href="#L20">L20</a><span>Setlist panel</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L20.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L20.jpg" alt="L20 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L20-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L20-1440.jpg" alt="L20 build at 1440"></a></figure>
 <figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L20-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L20-390.jpg" alt="L20 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>built → fixed in 4b9bff1 (unchecked)</dd></div>
-<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Songs, scores, set length 13:05 and Learn these ×2 are there, but DEV marks it built while: Learn these is a tan filled panel with a sans title (board: a bordered box with an orange top rule and a mono caps “LEARN THESE”); the set-length line is sans in brackets (board: mono, “· 3 of 4 songs…”); rows are numbered 1–4 (board: 01–04); the heading names the pitch; no Copy button.</dd></div>
+<div><dt>DEV status</dt><dd>changed: Copy, rows 01–04, mono set length, bordered Learn these. Remaining: heading in mono (per notes)</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “Setlist for this pitch”, Copy, rows 01–04, mono set length, bordered Learn these with the orange rule. Minor: the fan-age line joins the intro paragraph.</dd></div>
 <div><dt>User's call</dt><dd class="call">Fix to the deck.</dd></div>
-<div><dt>Defect</dt><dd>B-020 fixed · B-034 open</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Defect</dt><dd>B-020 fixed · B-034 fixed (B-035 build fix fe89b0e)</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L21" data-action="false">
 <div class="id"><a href="#L21">L21</a><span>Beyond buskers</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L21.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L21.jpg" alt="L21 deck crop"></a></figure>
@@ -267,7 +267,7 @@ body.action .row[data-action="false"]{display:none}
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> “Busk Map already reads…” per HQ default 16.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L22" data-action="false">
 <div class="id"><a href="#L22">L22</a><span>Brain teaser</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L22.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L22.jpg" alt="L22 deck crop"></a></figure>
@@ -278,51 +278,51 @@ body.action .row[data-action="false"]{display:none}
 <div><dt>QA status</dt><dd><span class="chip ok">Present</span> 11 · 24–33 · 0 as a mono line, purple button, hex wiring sketch; 4th number gone. B-024 fixed. (dev/core&#x27;s R4 makes it 12 kinds: update when merged.)</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>B-024 fixed</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
-</dl></article><article class="row" id="L23" data-action="true">
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="L23" data-action="false">
 <div class="id"><a href="#L23">L23</a><span>Brand teaser</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L23.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L23.jpg" alt="L23 deck crop"></a></figure>
-<figure><figcaption>Build · 1440</figcaption><div class="ph">Not in the build</div></figure>
-<figure class="p390"><figcaption>Build · 390</figcaption><div class="ph">Not in the build</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L23-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L23-1440.jpg" alt="L23 build at 1440"></a></figure>
+<figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L23-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L23-390.jpg" alt="L23 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>held</dd></div>
-<div><dt>QA status</dt><dd><span class="chip held">Held</span> Not built: B-019, held for the user.</dd></div>
+<div><dt>DEV status</dt><dd>changed: brand teaser added</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Brand teaser as the board: “Honeycomb”, line, 90 · 3 · 9, “See the brand →” (the page&#x27;s only /brand link) and the specimen card.</dd></div>
 <div><dt>User's call</dt><dd class="call">Add the brand teaser.</dd></div>
-<div><dt>Defect</dt><dd>B-019 open</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
-</dl></article><article class="row" id="L24" data-action="false">
+<div><dt>Defect</dt><dd>B-019 fixed</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="L24" data-action="true">
 <div class="id"><a href="#L24">L24</a><span>Closing CTA</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L24.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L24.jpg" alt="L24 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L24-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L24-1440.jpg" alt="L24 build at 1440"></a></figure>
 <figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L24-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L24-390.jpg" alt="L24 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>built</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night band, orange rule, poster CTA with focus ring. Adds a data-sources line (build addition).</dd></div>
-<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>DEV status</dt><dd>deviation: “Data: Qloo · …” credit line kept (question for the user)</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> As the board, plus a “Data: Qloo · …” credit line under the CTA (DEV&#x27;s question for the user).</dd></div>
+<div><dt>User's call</dt><dd class="call">Open question: keep the “Data: Qloo · …” credit line?</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L25" data-action="false">
 <div class="id"><a href="#L25">L25</a><span>Footer</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L25.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L25.jpg" alt="L25 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/L25-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L25-1440.jpg" alt="L25 build at 1440"></a></figure>
 <figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L25-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L25-390.jpg" alt="L25 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>built</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> No Brand link; on the CTA&#x27;s night band. B-023 fixed.</dd></div>
+<div><dt>DEV status</dt><dd>changed: repo link in signal text</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> No Brand link; on the night band; the repo link in signal text as the board.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>B-023 fixed</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L26" data-action="false">
 <div class="id"><a href="#L26">L26</a><span>Bottom nav (phone)</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L26.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L26.jpg" alt="L26 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><div class="ph soft">Phone only</div></figure>
 <figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/L26-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/L26-390.jpg" alt="L26 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>built</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Below 721 px the bottom nav reads Busks · Week · Brain · Tips; header nav above.</dd></div>
+<div><dt>DEV status</dt><dd>deviation: nav says Brain, not Setlist (HQ default)</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Bottom nav Busks · Week · Brain · Tips below 721 px (Brain per HQ default 2).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L27" data-action="false">
 <div class="id"><a href="#L27">L27</a><span>Phone layout</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L27.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L27.jpg" alt="L27 deck crop"></a></figure>
@@ -330,21 +330,21 @@ body.action .row[data-action="false"]{display:none}
 <figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/full-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/full-390.jpg" alt="L27 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>built</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Stacks at 390; no horizontal scroll at 390, 768 or 1440 (scrollWidth = viewport).</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Stacks at 390; no sideways scroll at 390, 768 or 1440, day and night.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L28" data-action="false">
 <div class="id"><a href="#L28">L28</a><span>Reduced motion</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L28.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L28.jpg" alt="L28 deck crop"></a></figure>
 <figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/recheck/build/motion-1440.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/motion-1440.jpg" alt="L28 build at 1440"></a></figure>
 <figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/motion-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/motion-390.jpg" alt="L28 build at 390"></a></figure>
 <dl>
-<div><dt>DEV status</dt><dd>built</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> prefers-reduced-motion: no running animations (document.getAnimations), glow at 0.5, finished map.</dd></div>
+<div><dt>DEV status</dt><dd>built (covered by e2e)</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Reduced motion: still glow and ticker, finished map (DEV&#x27;s e2e; QA&#x27;s suite runs with motion reduced too).</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article><article class="row" id="L29" data-action="false">
 <div class="id"><a href="#L29">L29</a><span>Night theme</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption><a href="../screens/honeycomb/recheck/board/L29.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/board/L29.jpg" alt="L29 deck crop"></a></figure>
@@ -352,12 +352,12 @@ body.action .row[data-action="false"]{display:none}
 <figure class="p390"><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/recheck/build/night-390.jpg"><img loading="lazy" src="../screens/honeycomb/recheck/build/night-390.jpg" alt="L29 build at 390"></a></figure>
 <dl>
 <div><dt>DEV status</dt><dd>built</dd></div>
-<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Paper sections take the night body; night bands unchanged.</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night theme: paper sections switch; night bands unchanged; axe clean at 3 widths.</dd></div>
 <div><dt>User's call</dt><dd class="call">—</dd></div>
 <div><dt>Defect</dt><dd>—</dd></div>
-<div><dt>Last checked</dt><dd><code>91b220e</code></dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
 </dl></article>
-<section class="box"><h2>Versions</h2><ul><li><b>v3</b> · design/honeycomb ＠ <code>91b220e</code> · 16 Oct 2026: Folded QA-01 and QA-03 into this page; added the user&#x27;s calls (L03, L07, L11, L13, L17, L18, L20, L23). DEV&#x27;s fixes 2d8dc86..4b9bff1 not checked yet: that HEAD doesn&#x27;t build (B-035).</li><li><b>v2</b> · design/honeycomb ＠ <code>91b220e</code> · 16 Oct 2026: QA-03 recheck against BRAND&#x27;s 29 parts: 20 Present, 6 Different, 1 Missing, 2 Held; B-032..B-034. (honeycomb-landing-recheck.html)</li><li><b>v1</b> · design/honeycomb ＠ <code>69a6cad</code> · 17 Oct 2026: QA-01 first audit, 21 items mapped to parts by the inventory README; B-018..B-026. (honeycomb-landing-audit.html)</li></ul></section>
+<section class="box"><h2>Versions</h2><ul><li><b>v4</b> · design/honeycomb ＠ <code>7b1521e</code> · 16 Oct 2026: L03, L07, L11, L17, L20, L23 now match (user calls applied; B-019, B-033, B-034 fixed). L04 and L25 now match. L18 changed to the live map: still Different (declared). L24 Different: credit line, a question for the user. L13 kept as built (B-032 accepted). B-035 fixed (builds from an export). 25 Present, 3 Different, 1 Held.</li><li><b>v3</b> · design/honeycomb ＠ <code>91b220e</code> · 16 Oct 2026: Folded QA-01 and QA-03 into this page; added the user&#x27;s calls (L03, L07, L11, L13, L17, L18, L20, L23).</li><li><b>v2</b> · design/honeycomb ＠ <code>91b220e</code> · 16 Oct 2026: QA-03 recheck against BRAND&#x27;s 29 parts: 20 Present, 6 Different, 1 Missing, 2 Held; B-032..B-034. (honeycomb-landing-recheck.html)</li><li><b>v1</b> · design/honeycomb ＠ <code>69a6cad</code> · 17 Oct 2026: QA-01 first audit, 21 items mapped to parts by the inventory README; B-018..B-026. (honeycomb-landing-audit.html)</li></ul></section>
 </div>
 <script>
 const f=document.getElementById('flt');f.addEventListener('click',()=>{const on=!document.body.classList.contains('action');document.body.classList.toggle('action',on);f.setAttribute('aria-pressed',String(on));});

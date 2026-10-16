@@ -6,17 +6,19 @@ spec = importlib.util.spec_from_file_location("rc", sys.argv[2]); rc = importlib
 # Reuse the 29 parts from the QA-03 generator without running it.
 src = open(sys.argv[2]).read(); P = eval(src[src.index("P = [") + 4: src.index("]\nCOL") + 1])
 
-VERSION = "v3"
-COMMIT = "91b220e"
+VERSION = "v4"
+COMMIT = "7b1521e"
 DATE = "16 Oct 2026"
-CHANGES = "Folded QA-01 and QA-03 into this page; added the user's calls (L03, L07, L11, L13, L17, L18, L20, L23). DEV's fixes 2d8dc86..4b9bff1 not checked yet: that HEAD doesn't build (B-035)."
+CHANGES = "L03, L07, L11, L17, L20, L23 now match (user calls applied; B-019, B-033, B-034 fixed). L04 and L25 now match. L18 changed to the live map: still Different (declared). L24 Different: credit line, a question for the user. L13 kept as built (B-032 accepted). B-035 fixed (builds from an export). 25 Present, 3 Different, 1 Held."
 HISTORY = [
-  ("v3", COMMIT, DATE, CHANGES),
+  ("v4", COMMIT, DATE, CHANGES),
+  ("v3", "91b220e", "16 Oct 2026", "Folded QA-01 and QA-03 into this page; added the user's calls (L03, L07, L11, L13, L17, L18, L20, L23)."),
   ("v2", "91b220e", "16 Oct 2026", "QA-03 recheck against BRAND's 29 parts: 20 Present, 6 Different, 1 Missing, 2 Held; B-032..B-034. (honeycomb-landing-recheck.html)"),
   ("v1", "69a6cad", "17 Oct 2026", "QA-01 first audit, 21 items mapped to parts by the inventory README; B-018..B-026. (honeycomb-landing-audit.html)"),
 ]
 USER = {
   "L03": "Remove the small texts on both sides.",
+  "L24": "Open question: keep the “Data: Qloo · …” credit line?", "L14": "Open question: keep the “Example data” badge?", "L16": "Open question: keep the “Example data” badge?",
   "L07": "Remove all the small texts.",
   "L11": "Add the video slot.",
   "L13": "Keep as built (B-032 accepted).",
@@ -26,13 +28,22 @@ USER = {
 }
 DEFECTS = {
   "L03": "B-021 glow fixed", "L04": "B-025 fixed", "L05": "B-021 (zone, event, river) held", "L08": "B-018 fixed",
-  "L13": "B-022 fixed · B-032 accepted", "L17": "B-020 fixed · B-033 open", "L18": "B-020 fixed (declared deviation)",
-  "L20": "B-020 fixed · B-034 open", "L22": "B-024 fixed", "L23": "B-019 open", "L25": "B-023 fixed",
+  "L13": "B-022 fixed · B-032 accepted (user)", "L17": "B-020 fixed · B-033 fixed", "L18": "B-020 fixed (declared deviation)",
+  "L20": "B-020 fixed · B-034 fixed (B-035 build fix fe89b0e)", "L22": "B-024 fixed", "L23": "B-019 fixed", "L25": "B-023 fixed",
 }
-DEV = {  # DEV's status as relayed by MANAGER: fix report at 91b220e, plus commits since (not yet checked by QA)
-  "L17": "deviation → fixed in 2d8dc86 (unchecked)", "L13": "deviation → ee3bf34 (unchecked)", "L20": "built → fixed in 4b9bff1 (unchecked)",
+DEV = {  # DEV's per-part status for v4, relayed by MANAGER
+  "L01": "deviation: nav says Brain, not Setlist (HQ default)", "L26": "deviation: nav says Brain, not Setlist (HQ default)",
+  "L03": "changed: small texts removed (user call)", "L05": "held",
+  "L07": "changed: all captions removed (user call). Asks: keep the two “Example data” badges (L14, L16)?",
+  "L11": "changed: placeholder slot, no controls, no autoplay", "L13": "built as before (user call); B-032 not applied",
+  "L17": "changed to match the deck",
+  "L18": "changed to the live PlanMap with example data. Remaining: no zone, river or event (L05); no “Full details →”; legend says “test data” and “Browse other pitches (2)”",
+  "L20": "changed: Copy, rows 01–04, mono set length, bordered Learn these. Remaining: heading in mono (per notes)",
+  "L23": "changed: brand teaser added", "L24": "deviation: “Data: Qloo · …” credit line kept (question for the user)",
+  "L25": "changed: repo link in signal text", "L28": "built (covered by e2e)",
+  "L14": "built. Asks: keep the “Example data” badge?", "L16": "built. Asks: keep the “Example data” badge?",
 }
-DEVBASE = {"built": "built", "deviation": "deviation", "held": "held"}
+DEVBASE = {"built": "built", "deviation": "built", "held": "built"}
 COL = {"Present": "ok", "Different": "warn", "Missing": "bad", "Broken": "bad", "Held": "held"}
 BOARD = "../screens/honeycomb/recheck/board/"; BUILD = "../screens/honeycomb/recheck/build/"
 
@@ -44,7 +55,7 @@ for pid, name, deck, build, status, dc, find, lost, defect in P:
     if pid == "L26": b1440 = '<div class="ph soft">Phone only</div>'
     b390 = img(f"{BUILD}{build.format(w='390')}.jpg", f"{pid} build at 390") if build else '<div class="ph">Not in the build</div>'
     call = USER.get(pid, "")
-    action = bool(call and call != "Held." and not call.startswith("Keep")) or status in ("Different", "Missing", "Broken")
+    action = call.startswith("Open question") or status in ("Different", "Missing", "Broken")
     rows.append(f'''<article class="row" id="{pid}" data-action="{str(action).lower()}">
 <div class="id"><a href="#{pid}">{pid}</a><span>{html.escape(name)}</span></div>
 <figure class="deck"><figcaption>Deck crop</figcaption>{img(BOARD + pid + ".jpg", pid + " deck crop")}</figure>

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ArrowRight, Calendar, Music, X } from "lucide-react";
-import { BrandChoiceDemo, BrandSlotDemo } from "@/components/brand/brand-demos";
+import { ArrowRight, Calendar, Music } from "lucide-react";
+import { BrandChoiceDemo, BrandMapDemo, BrandPickedSongsDemo, BrandSlotDemo } from "@/components/brand/brand-demos";
 import { COMPONENT_GROUPS } from "@/components/brand/brand-tables";
 import { PhoneFold } from "@/components/brand/phone-fold";
 import { AgentStatusLine } from "@/components/honeycomb/agent-status-line";
@@ -17,7 +17,6 @@ import { HexCell } from "@/components/honeycomb/hex-cell";
 import { LeanBar } from "@/components/honeycomb/lean-bar";
 import { Loader } from "@/components/honeycomb/loader";
 import { QlooWordmark } from "@/components/honeycomb/logo";
-import { MapLegend } from "@/components/map/map-legend";
 import { NoteCard } from "@/components/honeycomb/note-card";
 import { PercentCell } from "@/components/honeycomb/percent-cell";
 import { PitchRow } from "@/components/honeycomb/pitch-row";
@@ -47,51 +46,6 @@ function Group({ title, names, children, wide }: { title: string; names: readonl
       {children}
       <List names={names} />
     </PhoneFold>
-  );
-}
-
-/** A small taste map: heat cells, three pitch pins, a river and no-busking zones as hatched cells (never a rectangle, F16). */
-function MapSpecimen() {
-  const cell = (cx: number, cy: number, r = 13) => Array.from({ length: 6 }, (_, i) => `${(cx + r * Math.sin((Math.PI / 3) * i)).toFixed(1)},${(cy - r * Math.cos((Math.PI / 3) * i)).toFixed(1)}`).join(" ");
-  const heat: [number, number, number][] = [[120, 70, 5], [144, 70, 4], [132, 91, 4], [108, 91, 3], [156, 91, 3], [120, 112, 3], [144, 112, 2], [96, 70, 2]];
-  const zones: [number, number][] = [[212, 52], [236, 52], [224, 73], [248, 73]];
-  return (
-    <svg role="img" aria-label="Taste map: honeycomb heat cells, three numbered pitches, a river and hatched no-busking cells" viewBox="0 0 300 170" className="block w-full border-2 border-rule bg-secondary">
-      <defs>
-        <pattern id="brand-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <rect width="6" height="6" fill="var(--card)" />
-          <rect width="2" height="6" fill="var(--zone-pink)" />
-        </pattern>
-      </defs>
-      <path d="M0 128 C70 100 120 150 190 128 S270 110 300 120" fill="none" stroke="var(--event)" strokeWidth="14" opacity="0.45" />
-      {zones.map(([x, y]) => (
-        <polygon key={`${x}${y}`} points={cell(x, y, 13)} fill="url(#brand-hatch)" stroke="var(--zone-pink)" strokeWidth="1.5" />
-      ))}
-      {heat.map(([x, y, s]) => (
-        <polygon key={`${x}${y}`} points={cell(x, y, 13)} fill={`var(--taste-${s})`} stroke="var(--rule)" strokeWidth="1" />
-      ))}
-      {[[132, 91, 1], [108, 91, 2], [156, 91, 3]].map(([x, y, n]) => (
-        <g key={n}>
-          <polygon points={cell(x, y, 9)} fill="var(--primary)" stroke="var(--rule)" strokeWidth="2" />
-          <text x={x} y={y + 4} textAnchor="middle" fontSize="11" fontWeight="800" fill="var(--primary-foreground)">{n}</text>
-        </g>
-      ))}
-    </svg>
-  );
-}
-
-function PickedSong({ title, by, time, mine }: { title: string; by: string; time: string; mine?: boolean }) {
-  return (
-    <li className="flex items-center gap-3 border-2 border-border bg-secondary/60 p-2.5">
-      <HexCell size={36} tone="muted"><Music aria-hidden="true" className="size-4" /></HexCell>
-      <span className="min-w-0 flex-1">
-        <b className="block leading-5">{title}</b>
-        <span className="text-sm text-muted-foreground">{by}</span>
-      </span>
-      {mine ? <Badge variant="solid">Your song</Badge> : null}
-      <span className="font-mono text-xs">{time}</span>
-      <span aria-hidden="true" className="grid size-8 place-items-center"><X className="size-4" /></span>
-    </li>
   );
 }
 
@@ -153,21 +107,11 @@ export function ComponentGroups() {
       <Group title="Plan your busk" names={COMPONENT_GROUPS.plan}>
         <BrandChoiceDemo />
         <BrandSlotDemo />
-        <div className="flex flex-col gap-2">
-          <div className="flex items-baseline justify-between gap-2">
-            <b>Your picks</b>
-            <span className="font-mono text-xs text-muted-foreground">2 songs · 4:56</span>
-          </div>
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
-            <PickedSong title="Fast Car" by="Tracy Chapman" time="4:56" />
-            <PickedSong title="Laneway Light" by="The Larkspur Two" time="3:12" mine />
-          </ul>
-        </div>
+        <BrandPickedSongsDemo />
       </Group>
 
       <Group title="Map" names={COMPONENT_GROUPS.map}>
-        <MapSpecimen />
-        <div className="border-2 border-rule"><MapLegend zones className="border-t-0" /></div>
+        <BrandMapDemo />
       </Group>
 
       <Group title="The busk" names={COMPONENT_GROUPS.busk} wide>

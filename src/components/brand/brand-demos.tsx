@@ -9,6 +9,9 @@ import { Chip } from "@/components/honeycomb/chip";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatHour } from "@/lib/slot";
+import { LazyPlanMap } from "@/components/map/lazy-plan-map";
+import { PickedSongs, type PickedSong } from "@/components/landing/repertoire-picker";
+import { EXAMPLE_CENTER, EXAMPLE_OTHERS, EXAMPLE_PITCHES, EXAMPLE_TASTE_CELLS } from "@/lib/landing-example-busk";
 
 /** The pickable parts of the showcase: choice cards, quick slots and chips, with real state so they can be tried. */
 export function BrandChoiceDemo() {
@@ -70,4 +73,23 @@ export function BrandSlotDemo() {
       </div>
     </div>
   );
+}
+
+const MAP_PLAN = { tasteCells: EXAMPLE_TASTE_CELLS, pitches: EXAMPLE_PITCHES, others: EXAMPLE_OTHERS };
+
+/** The real plan map (with its legend), fed the landing's example busk. */
+export function BrandMapDemo() {
+  const [selected, setSelected] = useState(EXAMPLE_PITCHES[0].id);
+  return <LazyPlanMap plan={MAP_PLAN} center={EXAMPLE_CENTER} selectedId={selected} onSelect={setSelected} />;
+}
+
+const SONGS: PickedSong[] = [
+  { key: "ex-fast-car", title: "Fast Car", artist: "Tracy Chapman", album: "Tracy Chapman", image: null, durationMs: 296000, own: false },
+  { key: "ex-laneway", title: "Laneway Light", artist: "The Larkspur Two", album: null, image: null, durationMs: 192000, own: true },
+];
+
+/** The real picked-songs list, with example songs; Remove works on the example. */
+export function BrandPickedSongsDemo() {
+  const [songs, setSongs] = useState(SONGS);
+  return <PickedSongs songs={songs} onRemove={(s) => setSongs((cur) => cur.filter((x) => x !== s))} />;
 }

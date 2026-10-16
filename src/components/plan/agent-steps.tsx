@@ -3,7 +3,7 @@
 import { useId, useState, type ReactNode } from "react";
 import { Clock, Dot, Users, X } from "lucide-react";
 import { cn } from "cn";
-import { Disclosure } from "@/components/honeycomb/disclosure";
+import { Fold } from "@/components/honeycomb/fold";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Loader } from "@/components/honeycomb/loader";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -265,7 +265,7 @@ export function AgentStepStream({
           <span data-testid="agent-tag" className={cn("border-[1.5px] px-2 py-0.5", live ? "border-(--fill-rule) bg-primary text-primary-foreground" : "border-border text-muted-foreground")}>{tag}</span>
           {live ? null : (
             <span className="flex items-center gap-2">
-              <label htmlFor={rawId} className="cursor-pointer">Show raw data</label>
+              <label htmlFor={rawId} className="inline-flex min-h-tap cursor-pointer items-center">Show raw data</label>
               <Switch id={rawId} checked={showRaw} onCheckedChange={onShowRawChange} data-testid="raw-switch" />
             </span>
           )}
@@ -293,9 +293,10 @@ export function AgentStepStream({
         </p>
       ) : null}
       {collapsed || mode === "replay" ? (
-        <Disclosure label={mode === "replay" ? "Every check, from earlier" : "Every check"} count={calls.length} data-testid="agent-disclosure">
+        // A replay opens already folded; a run that just finished folds with a short animation (the phone and tablet layout).
+        <Fold label={mode === "replay" ? "Every check, from earlier" : "Every check"} count={calls.length} arriving={mode !== "replay"} data-testid="agent-disclosure">
           {list}
-        </Disclosure>
+        </Fold>
       ) : (
         list
       )}

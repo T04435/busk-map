@@ -4,6 +4,7 @@ import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { EvidenceLine } from "@/components/honeycomb/evidence-line";
 import { MeterBar, PercentCell } from "@/components/honeycomb/percent-cell";
 import { PitchRow } from "@/components/honeycomb/pitch-row";
+import { WithCells } from "@/components/honeycomb/with-cells";
 import { RankTile } from "@/components/honeycomb/rank-tile";
 import { LearnItMenu } from "@/components/songs/learn-it-menu";
 import type { AgentStep } from "@/lib/agent-steps";
@@ -284,7 +285,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
           <li key={`${str(x.song)}${i}`} className="flex items-start gap-2">
             <span className="min-w-0 flex-1">
               <b>{str(x.song)}</b> <span className="text-muted-foreground">· {str(x.artist)}{num(x.year) ? `, ${num(x.year)}` : ""}</span>
-              {str(x.why) ? <span className="block text-sm text-muted-foreground">{str(x.why)}</span> : null}
+              {str(x.why) ? <span className="block text-sm text-muted-foreground"><WithCells text={str(x.why) as string} size={28} /></span> : null}
             </span>
             <PercentCell value={num(x.score)} size={36} label="Fit" />
           </li>
@@ -302,7 +303,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
             <b className="font-mono">{i + 1}</b>
             <span className="min-w-0 flex-1">
               <b>{str(x.title) ?? "Any song"}</b> · {str(x.artist)}
-              {str(x.why) ? <small className="block text-muted-foreground">{str(x.why)}</small> : null}
+              {str(x.why) ? <small className="block text-muted-foreground"><WithCells text={str(x.why) as string} size={28} /></small> : null}
             </span>
             {str(x.title) ? <LearnItMenu title={str(x.title) as string} artist={str(x.artist) ?? ""} /> : null}
           </li>

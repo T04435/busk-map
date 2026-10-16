@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRight, Check, ExternalLink, MapPin, Music } from "lucide-react";
 import { BrandChoiceDemo, BrandSlotDemo } from "@/components/brand/brand-demos";
+import { PhoneFold } from "@/components/brand/phone-fold";
 import { Banner } from "@/components/honeycomb/banner";
 import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
@@ -221,28 +222,32 @@ export default function BrandPage() {
             </>
           }
         >
-          <ul className={`${GRID} m-0 list-none p-0`}>
-            {PRINCIPLES.map(([title, body]) => (
-              <li key={title} className={CARD}>
-                <b className="font-display text-2xl leading-none font-extrabold uppercase">{title}</b>
-                <span>
-                  <Rich>{body}</Rich>
-                </span>
-              </li>
-            ))}
-          </ul>
-          <h3 className={H3}>Voice</h3>
-          <ul className={`${GRID} m-0 list-none p-0`}>
-            {VOICE.map(([title, body]) => (
-              <li key={title} className={CARD}>
-                <b>{title}</b>
-                <span>{body}</span>
-              </li>
-            ))}
-          </ul>
+          <PhoneFold heading="Principles" count={PRINCIPLES.length} headingClassName="sr-only">
+            <ul className={`${GRID} m-0 list-none p-0`}>
+              {PRINCIPLES.map(([title, body]) => (
+                <li key={title} className={CARD}>
+                  <b className="font-display text-2xl leading-none font-extrabold uppercase">{title}</b>
+                  <span>
+                    <Rich>{body}</Rich>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </PhoneFold>
+          <PhoneFold heading="Voice" headingClassName={H3}>
+            <ul className={`${GRID} m-0 list-none p-0`}>
+              {VOICE.map(([title, body]) => (
+                <li key={title} className={CARD}>
+                  <b>{title}</b>
+                  <span>{body}</span>
+                </li>
+              ))}
+            </ul>
+          </PhoneFold>
         </Section>
 
         <Section id="words" n="02" title="The words" intro="Use these words, in these senses, everywhere: UI, docs, video and social. No tool names in the UI.">
+          <PhoneFold heading="The word list" count={WORDS.length} headingClassName="sr-only">
           <TableFrame label="The words" min={520}>
             <thead>
               <tr>
@@ -265,11 +270,11 @@ export default function BrandPage() {
               ))}
             </tbody>
           </TableFrame>
+          </PhoneFold>
         </Section>
 
         <Section id="foundations" n="03" title="Foundations">
-          <div className="flex flex-col gap-4">
-            <h3 className={H3}>Colour</h3>
+          <PhoneFold heading="Colour" headingClassName={H3}>
             <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 p-0">
               {COLOURS.map(([name, token, use]) => (
                 <li key={token} className="flex flex-col border-2 border-rule bg-card">
@@ -289,10 +294,9 @@ export default function BrandPage() {
               ))}
             </div>
             <span className="font-mono text-xs leading-4 text-muted-foreground">Taste ramp: --taste-1 to --taste-5, low to high Qloo affinity. Every colour has a night value.</span>
-          </div>
+          </PhoneFold>
 
-          <div className="flex flex-col gap-4">
-            <h3 className={H3}>Type</h3>
+          <PhoneFold heading="Type" headingClassName={H3}>
             <div className={GRID}>
               <div className={CARD}>
                 <span className="font-display text-[56px] leading-[0.9] font-extrabold uppercase">Southbank</span>
@@ -310,10 +314,9 @@ export default function BrandPage() {
                 <span className="text-sm text-muted-foreground">--font-mono · times, counts, sources, labels</span>
               </div>
             </div>
-          </div>
+          </PhoneFold>
 
-          <div className="flex flex-col gap-4">
-            <h3 className={H3}>The honeycomb</h3>
+          <PhoneFold heading="The honeycomb" headingClassName={H3}>
             <p className="m-0 max-w-3xl">One idea per pointy-top cell: a rank, a person, a song or a score. Never a circle or a square tile. Every 0–100 value is a PercentCell.</p>
             <div className="flex flex-wrap items-center gap-4.5 border-2 border-rule bg-card p-5">
               <HexCell size={56} fontSize={24} tone="primary">1</HexCell>
@@ -325,10 +328,9 @@ export default function BrandPage() {
               <PercentCell value={null} size={56} label="Score" />
               <RankTile n={2} />
             </div>
-          </div>
+          </PhoneFold>
 
-          <div className="flex flex-col gap-4">
-            <h3 className={H3}>Space, size, shape and motion</h3>
+          <PhoneFold heading="Space, size, shape and motion" headingClassName={H3}>
             <div className={GRID}>
               <div className={CARD}><Scale title="Spacing (4px base)" rows={SPACE} /></div>
               <div className={CARD}><Scale title="Sizes" rows={SIZES} /></div>
@@ -343,7 +345,7 @@ export default function BrandPage() {
                 <span className={MONO}>Under prefers-reduced-motion, everything drops to 0 ms except progress.</span>
               </div>
             </div>
-          </div>
+          </PhoneFold>
         </Section>
 
         <Section
@@ -356,6 +358,7 @@ export default function BrandPage() {
             </>
           }
         >
+          <PhoneFold heading="Colour tokens, day and night" count={TOKENS.length} headingClassName="sr-only">
           <TableFrame label="Colour tokens, day and night" min={860}>
             <thead>
               <tr>
@@ -384,12 +387,12 @@ export default function BrandPage() {
               ))}
             </tbody>
           </TableFrame>
+          </PhoneFold>
         </Section>
 
         <Section id="components" n="05" title="Components" intro="The same components the app renders, live: nothing here is a picture. Switch your system to night to see the other theme.">
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(380px,100%),1fr))] gap-4">
-            <div className={`${CARD} gap-3.5`}>
-              <b className="font-display text-[22px] leading-none font-extrabold uppercase">Buttons</b>
+            <PhoneFold heading="Buttons" headingClassName="font-display text-[22px] leading-none font-extrabold uppercase" wideClassName={`${CARD} gap-3.5`}>
               <div className="flex flex-wrap items-center gap-2.5">
                 <Button>Plan my busk <ArrowRight aria-hidden="true" /></Button>
                 <Button variant="outline">Week</Button>
@@ -413,10 +416,9 @@ export default function BrandPage() {
                 <Input id="brand-input-err" aria-invalid="true" aria-describedby="brand-input-err-m" defaultValue="A very long act name" />
                 <FormMessage tone="error" id="brand-input-err-m" alert={false}>Act name: use 80 characters or fewer.</FormMessage>
               </div>
-            </div>
+            </PhoneFold>
 
-            <div className={`${CARD} gap-3.5`}>
-              <b className="font-display text-[22px] leading-none font-extrabold uppercase">Badges and status</b>
+            <PhoneFold heading="Badges and status" headingClassName="font-display text-[22px] leading-none font-extrabold uppercase" wideClassName={`${CARD} gap-3.5`}>
               <div className="flex flex-wrap gap-2">
                 <Badge variant="neutral">Neutral</Badge>
                 <Badge variant="solid">Your song</Badge>
@@ -440,26 +442,23 @@ export default function BrandPage() {
               <FormMessage>Loading your songs from Spotify…</FormMessage>
               <FormMessage tone="error" alert={false}>Pick today or a later date.</FormMessage>
               <FormMessage tone="success">Logged A$85 at Hardware Lane.</FormMessage>
-            </div>
+            </PhoneFold>
 
-            <div className={`${CARD} gap-3.5`}>
-              <b className="font-display text-[22px] leading-none font-extrabold uppercase">Alerts and banners</b>
+            <PhoneFold heading="Alerts and banners" headingClassName="font-display text-[22px] leading-none font-extrabold uppercase" wideClassName={`${CARD} gap-3.5`}>
               <Alert variant="info"><AlertTitle>Info</AlertTitle><AlertDescription>Planning again for The Larkspur Two.</AlertDescription></Alert>
               <Alert variant="warning"><AlertTitle>The city&apos;s sensors didn&apos;t answer</AlertTitle><AlertDescription>Foot traffic is estimated and marked &quot;est.&quot;.</AlertDescription></Alert>
               <Alert variant="error"><AlertTitle>Plan limit reached</AlertTitle><AlertDescription>No new plan was started.</AlertDescription></Alert>
               <Alert variant="estimate"><AlertTitle>Estimate</AlertTitle><AlertDescription>This number is modelled, not measured.</AlertDescription></Alert>
               <Banner tone="test">Test data: nothing here is a real pitch.</Banner>
               <Banner tone="less">Less data for this city: some sources are missing.</Banner>
-            </div>
+            </PhoneFold>
 
-            <div className={`${CARD} gap-4`}>
-              <b className="font-display text-[22px] leading-none font-extrabold uppercase">Choice cards and toggles</b>
+            <PhoneFold heading="Choice cards and toggles" headingClassName="font-display text-[22px] leading-none font-extrabold uppercase" wideClassName={`${CARD} gap-4`}>
               <BrandChoiceDemo />
               <BrandSlotDemo />
-            </div>
+            </PhoneFold>
 
-            <div className={`${CARD} gap-4`}>
-              <b className="font-display text-[22px] leading-none font-extrabold uppercase">Numbers</b>
+            <PhoneFold heading="Numbers" headingClassName="font-display text-[22px] leading-none font-extrabold uppercase" wideClassName={`${CARD} gap-4`}>
               <div className="flex flex-wrap items-center gap-4">
                 <PercentCell value={91} size={64} label="Score" tone="primary" />
                 <PercentCell value={64} size={48} label="Affinity" />
@@ -473,19 +472,17 @@ export default function BrandPage() {
               </ul>
               <StatStrip tone="qloo" label="Qloo in numbers" items={[{ n: 11, label: "kinds of Qloo call" }, { n: "0", label: "on a rerun" }]} />
               <EvidenceLine>Qloo insights: the strongest folk taste area in your slot.</EvidenceLine>
-            </div>
+            </PhoneFold>
 
-            <div className={`${CARD} gap-4`}>
-              <b className="font-display text-[22px] leading-none font-extrabold uppercase">Cards</b>
+            <PhoneFold heading="Cards" headingClassName="font-display text-[22px] leading-none font-extrabold uppercase" wideClassName={`${CARD} gap-4`}>
               <ExampleActCard name="Folk duo" blurb="Two voices, guitar and banjo. Sunday afternoon." soundsLike="Gillian Welch" href="/brand#components" />
               <NoteCard variant="next">Taste from genres as well as artists</NoteCard>
               <NoteCard title="A note">Short, titled, in a hairline frame.</NoteCard>
-            </div>
+            </PhoneFold>
 
-            <div className={`${CARD} gap-4`}>
-              <b className="font-display text-[22px] leading-none font-extrabold uppercase">StatusCard</b>
+            <PhoneFold heading="StatusCard" headingClassName="font-display text-[22px] leading-none font-extrabold uppercase" wideClassName={`${CARD} gap-4`}>
               <StatusCard embedded testId="brand-status-notfound" title="No pitch here" description="This page doesn't exist." actions={<Button asChild variant="outline"><Link href="/">Busk Map home</Link></Button>} footnote="Reference: a1b2c3" />
-            </div>
+            </PhoneFold>
           </div>
         </Section>
 
@@ -496,8 +493,7 @@ export default function BrandPage() {
           intro="The Hive mark: the pitch ring around one paper-coloured cell, inside a signal-orange cell. One inner cell only; clear space is a quarter of the tile on every side; the lockup is never under 24 px high. Every file below is in public/brand."
         >
           {ASSET_GROUPS.map((group) => (
-            <div key={group.name} className="flex flex-col gap-3">
-              <h3 className="m-0 font-display text-[26px] leading-none font-extrabold uppercase">{group.name}</h3>
+            <PhoneFold key={group.name} heading={group.name} count={group.files.length} headingClassName="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
               <ul className="m-0 grid list-none gap-3 p-0" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(${group.min}, 100%), 1fr))` }}>
                 {group.files.map((file) => (
                   <li key={file.name} className="flex min-w-0 flex-col border-2 border-rule bg-card">
@@ -514,7 +510,7 @@ export default function BrandPage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </PhoneFold>
           ))}
           <p className="m-0 flex items-center gap-2 text-sm text-muted-foreground">
             <Check aria-hidden="true" className="size-4" />

@@ -235,7 +235,8 @@ const PAGES: PageCase[] = [
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     },
     controls: async (page) => {
-      await expectOnTop(page.getByRole("link", { name: "Busk Map home" }), "Busk Map home");
+      await expectOnTop(page.getByRole("form", { name: "Log your takings" }).getByRole("button", { name: "Log takings" }), "Log takings");
+      await expectOnTop(page.getByRole("textbox", { name: "Takings" }), "Takings");
     },
   },
   {
@@ -248,7 +249,7 @@ const PAGES: PageCase[] = [
       await expectOnTop(page.locator('[data-node-id="c1"]'), "first Qloo call");
       await expectOnTop(page.locator('[data-node-id="ticketmaster"]'), "Ticketmaster");
       await expectOnTop(page.locator('[data-node-id="f_agent"]'), "last feature");
-      await expectOnTop(page.getByRole("link", { name: "Busk Map home" }), "Busk Map home");
+      await expectOnTop(page.getByRole("link", { name: "Back to Busk Map" }), "Back to Busk Map");
     },
   },
   {

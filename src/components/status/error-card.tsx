@@ -12,10 +12,14 @@ export const ERROR_DESCRIPTION = "Something went wrong while setting up the pitc
  * Shared by error.tsx and global-error.tsx. Never shows error.message or a stack: only the digest,
  * which matches the server log line. The server logger is server-only, so this logs with console.error.
  */
-export function ErrorCard({ error, onRetry }: { error: Error & { digest?: string }; onRetry: () => void }) {
+export function ErrorCard({ error, onRetry, plainLinks = false }: { error: Error & { digest?: string }; onRetry: () => void; /** A plain <a> for "Go home": global-error.tsx has no router or layout to lean on. */ plainLinks?: boolean }) {
   useEffect(() => {
     console.error("Busk Map render error", { digest: error.digest, name: error.name });
   }, [error]);
+
+  // global-error.tsx replaces the root layout and has no router: a plain link is the self-contained way home.
+  // eslint-disable-next-line @next/next/no-html-link-for-pages
+  const home = plainLinks ? <a href="/">Go home</a> : <Link href="/">Go home</Link>;
 
   return (
     <StatusCard
@@ -28,7 +32,7 @@ export function ErrorCard({ error, onRetry }: { error: Error & { digest?: string
         <>
           <Button onClick={() => onRetry()}>Try again</Button>
           <Button asChild variant="outline">
-            <Link href="/">Go home</Link>
+            {home}
           </Button>
         </>
       }

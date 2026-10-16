@@ -22,6 +22,7 @@ import { creditsClaude, explanationsLabel, modelName, QLOO_TEST_LABEL, type Expl
 import { FRESH_HEADER, PLAN_ID_HEADER } from "@/lib/plan-id";
 import { planStreamEventSchema, type Plan, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
 import type { ResearchTotals } from "@/lib/research-totals";
+import { rememberPlan } from "@/lib/recent-plans";
 import { formatHour } from "@/lib/slot";
 import { weekSearchParams } from "@/lib/week-url";
 import { useTipSync } from "@/components/tips/use-tip-sync";
@@ -136,6 +137,11 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   // A stored run counts as started: a changed request (a new tip log entry) then plans again.
   const started = useRef(Boolean(stored?.plan));
   useTipSync(request.performer.name, exampleId, request.history);
+  // Remember the plan's pitches in this browser, so the tip log can offer them when the busker logs takings.
+  useEffect(() => {
+    if (!plan || !revealed || plan.qlooFailed) return;
+    rememberPlan({ performerName: request.performer.name, exampleId, slot: plan.slot, pitches: [...plan.pitches, ...plan.others].map((p) => ({ id: p.id, name: p.name })) });
+  }, [plan, revealed, request.performer.name, exampleId]);
   // The plain-AI baseline (a control: agreement is a badge, never a score change).
   // Asked once the plan is shown: during the agent's run the server starts it after the agent's data is in.
   const baseline = useBaseline(request, faults, revealed);
@@ -431,7 +437,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
             totals && (
               <p className="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-sm text-muted-foreground" data-testid="found-from">
                 <span>Found from {dataPoints.toLocaleString("en-AU")} data points</span>
-                <a className="font-bold text-foreground underline underline-offset-3" href="#research">
+                <a className="inline-flex min-h-tap items-center font-bold text-foreground underline underline-offset-3" href="#research">
                   See the research ↓
                 </a>
               </p>
@@ -514,7 +520,11 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
                       </p>
                     )}
                     <p className="m-0 text-sm" data-testid="tip-log-link">
-                      Played here? <Link className="font-bold underline underline-offset-3" href="/tips">Open the Tip log</Link>.
+                      Played here?{" "}
+                      <Link className="font-bold text-foreground underline underline-offset-3 hover:decoration-2" href="/tips#log-takings">
+                        Log your takings
+                      </Link>
+                      .
                     </p>
                   </section>
                 </div>

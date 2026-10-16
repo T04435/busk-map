@@ -28,7 +28,7 @@ export function PlanAlert({
   children?: ReactNode;
 }) {
   const home = (label: string) => (
-    <Button asChild variant="outline" size="sm" className="mt-2">
+    <Button asChild variant="outline" className="mt-2">
       <Link href="/">{label}</Link>
     </Button>
   );
@@ -70,7 +70,7 @@ export function PlanAlert({
           <AlertTitle>No pitch to recommend</AlertTitle>
           <AlertDescription>
             The busking rules or the data for this slot left no candidate pitches.{" "}
-            <a href={rulesHref} target="_blank" rel="noreferrer">
+            <a href={rulesHref} target="_blank" rel="noreferrer" className="inline-flex min-h-tap items-center">
               Read the council&apos;s busking rules
             </a>
             .

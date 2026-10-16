@@ -23,14 +23,10 @@ export const metadata: Metadata = {
 export default function WeekPage({ searchParams }: PageProps<"/week">) {
   return (
     <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
-      <nav className="mb-6 text-sm">
-        <Link className="underline" href="/">
-          Busk Map home
-        </Link>
-      </nav>
       <Suspense
         fallback={
-          <div className="space-y-4" aria-busy="true" aria-label="Loading week">
+          <div className="space-y-4" role="status" aria-busy="true">
+            <span className="sr-only">Loading week</span>
             <Skeleton className="h-8 w-64" />
             <Skeleton className="h-64 w-full" />
           </div>

@@ -1,12 +1,14 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Clock, MapPin, Music, Scale } from "lucide-react";
 import { ExampleActCard } from "@/components/honeycomb/example-act-card";
 import { QlooWordmark } from "@/components/honeycomb/logo";
+import { HexCell } from "@/components/honeycomb/hex-cell";
 import { StatStrip } from "@/components/honeycomb/stat-strip";
 import { HeroTasteMap } from "@/components/landing/hero-taste-map";
 import { OwnRedirect } from "@/components/landing/own-redirect";
 import { Warmup } from "@/components/landing/warmup";
 import { WhatYouGet } from "@/components/landing/what-you-get";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EXAMPLES } from "@/lib/examples";
 import { CALLS_ON_RERUN, CALLS_PER_NEW_BUSK, callKinds, featureCount } from "@/lib/qloo-map";
@@ -18,6 +20,13 @@ const LATTICE =
   "M24.2 0 L48.5 14 L48.5 42 L24.2 56 L0 42 L0 14Z M0 42 L24.2 56 L24.2 84 L0 98 L-24.2 84 L-24.2 56Z M48.5 42 L72.7 56 L72.7 84 L48.5 98 L24.2 84 L24.2 56Z M24.2 84 L48.5 98 L48.5 126 L24.2 140 L0 126 L0 98Z M0 -42 L24.2 -28 L24.2 0 L0 14 L-24.2 0 L-24.2 -28Z M48.5 -42 L72.7 -28 L72.7 0 L48.5 14 L24.2 0 L24.2 -28Z";
 
 const TICKER = ["Qloo taste map", "Qloo crowd at each pitch", "Qloo venue and event crowds", "Qloo audience age", "foot traffic for your hour", "3 pitches for you"];
+
+const PROBLEMS = [
+  { icon: MapPin, title: "Where?", guess: "Bourke Street Mall, like every other busker.", fix: "Southbank Promenade: the strongest folk taste area on Qloo." },
+  { icon: Clock, title: "When?", guess: "Turn up at noon and hope.", fix: "About 1,900 people an hour, and a matinee lets out at 2:45 pm." },
+  { icon: Scale, title: "Allowed?", guess: "The station steps, until a ranger moves you on.", fix: "A general-permit pitch, clear of the no-busking zones." },
+  { icon: Music, title: "What to play?", guess: "Wonderwall, again.", fix: "Open with Fast Car: the song this crowd knows best." },
+];
 
 const BEYOND = [
   { title: "Every street act", body: "Magicians, living statues, chalk artists: the same pitches, rules and hours, with a routine in place of a setlist." },
@@ -128,25 +137,36 @@ export default function Home() {
           </p>
         </section>
 
-        <WhatYouGet />
-
-        <section data-theme="dark" aria-labelledby="next-h" className="bm-grain flex flex-wrap items-center gap-8 border-[3px] border-rule bg-background p-5 text-foreground md:p-10">
-          <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-2.5">
-            <span className="font-mono text-xs leading-4 font-bold tracking-[0.08em] text-signal-text uppercase">Next · not built yet</span>
-            <h2 id="next-h" className="m-0 font-display text-[clamp(40px,4.4vw,60px)] leading-[0.92] font-extrabold uppercase">
-              Beyond buskers
+        <section aria-labelledby="who-h" className="flex flex-col gap-7">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <h2 id="who-h" className={H2}>
+              Busking is <span className="text-signal-text">guesswork</span>
             </h2>
-            <p className="m-0">Busk Map already reads taste, street pitches, permits, foot traffic and the hour. Three things it could place next, with little change.</p>
+            <Badge variant="estimate">Example data</Badge>
           </div>
-          <ul className="m-0 grid min-w-0 flex-[2_1_520px] list-none grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))] gap-3 p-0">
-            {BEYOND.map((item) => (
-              <li key={item.title} className="flex flex-col gap-1.5 border-[1.5px] border-border bg-card p-4">
-                <b className="font-display text-xl leading-none font-extrabold uppercase">{item.title}</b>
-                <span className="text-sm leading-5 text-muted-foreground">{item.body}</span>
+          <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(min(260px,100%),1fr))] gap-4 p-0">
+            {PROBLEMS.map(({ icon: Icon, title, guess, fix }) => (
+              <li key={title} className="flex flex-col border-2 border-rule bg-card">
+                <div className="flex items-center gap-3 px-5 pt-[18px] pb-3.5">
+                  <HexCell size={40}>
+                    <Icon aria-hidden="true" className="size-[18px]" />
+                  </HexCell>
+                  <b className="font-display text-[26px] leading-none font-extrabold uppercase">{title}</b>
+                </div>
+                <div className="flex flex-col gap-1 px-5 pb-4">
+                  <span className="font-mono text-[11px] leading-4 font-bold tracking-[0.06em] text-muted-foreground uppercase">Guessing</span>
+                  <span className="text-[15px] leading-[22px] text-muted-foreground">{guess}</span>
+                </div>
+                <div className="mt-auto flex flex-col gap-1 border-t-2 border-rule bg-accent px-5 py-4">
+                  <span className="font-mono text-[11px] leading-4 font-bold tracking-[0.06em] text-signal-text uppercase">With Busk Map</span>
+                  <span className="text-base leading-[23px] font-bold">{fix}</span>
+                </div>
               </li>
             ))}
           </ul>
         </section>
+
+        <WhatYouGet />
 
         <section
           data-theme="dark"
@@ -181,6 +201,24 @@ export default function Home() {
             </Button>
           </div>
         </section>
+        <section data-theme="dark" aria-labelledby="next-h" className="bm-grain flex flex-wrap items-center gap-8 border-[3px] border-rule bg-background p-5 text-foreground md:p-10">
+          <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-2.5">
+            <span className="font-mono text-xs leading-4 font-bold tracking-[0.08em] text-signal-text uppercase">Next · not built yet</span>
+            <h2 id="next-h" className="m-0 font-display text-[clamp(40px,4.4vw,60px)] leading-[0.92] font-extrabold uppercase">
+              Beyond buskers
+            </h2>
+            <p className="m-0">Busk Map already reads taste, street pitches, permits, foot traffic and the hour. Three things it could place next, with little change.</p>
+          </div>
+          <ul className="m-0 grid min-w-0 flex-[2_1_520px] list-none grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))] gap-3 p-0">
+            {BEYOND.map((item) => (
+              <li key={item.title} className="flex flex-col gap-1.5 border-[1.5px] border-border bg-card p-4">
+                <b className="font-display text-xl leading-none font-extrabold uppercase">{item.title}</b>
+                <span className="text-sm leading-5 text-muted-foreground">{item.body}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
       </div>
 
       <section data-theme="dark" aria-labelledby="cta-h" className="bm-grain border-t-[6px] border-primary bg-background text-foreground">

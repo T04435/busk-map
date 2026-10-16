@@ -264,7 +264,6 @@ export function PlanMap({ plan, center, selectedId, onSelect }: Props) {
           ref={browseRef}
           type="button"
           variant="outline"
-          size="sm"
           aria-haspopup="dialog"
           aria-expanded="false"
           data-testid="browse-others"

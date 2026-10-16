@@ -27,6 +27,13 @@ describe("global-error.tsx", () => {
     expect(html).toMatch(/<a [^>]*href="\/"[^>]*>Go home<\/a>/);
   });
 
+  it("is self-contained: system fonts for every family token and a plain link home (no router, no brand faces)", () => {
+    expect(html).toMatch(/<html[^>]*--font-display:system-ui/);
+    expect(html).toMatch(/<html[^>]*--font-mono:ui-monospace/);
+    expect(html).not.toContain("font-display-src");
+    expect(html).not.toContain("/_next/static/media");
+  });
+
   it("shows the digest as a reference, never the message or stack", () => {
     expect(html).toContain("Reference: <code>1234567890</code>");
     expect(html).not.toContain("SECRET_DETAIL");

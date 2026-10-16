@@ -120,7 +120,8 @@ export function BrainMap() {
     if (event.key === "Escape" && selected) clear();
   };
 
-  const node = (id: NodeId, label: string, sub: string, num?: string, secondary = false) => (
+  const HEX = "[clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]";
+  const node = (id: NodeId, label: string, sub: string, num?: string, secondary = false, feature = false) => (
     <li key={id} className={cn(stateOf(id) === "dim" && "max-lg:hidden")}>
       <button
         type="button"
@@ -133,30 +134,35 @@ export function BrainMap() {
         data-trace={stateOf(id)}
         onClick={() => pick(id)}
         className={cn(
-          "group flex min-h-12 w-full items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none",
-          secondary && "border-dashed",
+          "group flex min-h-12 w-full items-center gap-3 border-[1.5px] px-3 py-2 text-left text-sm transition-colors outline-none hover:border-qloo focus-visible:focus-ring motion-reduce:transition-none",
+          feature ? "min-h-[52px]" : "",
+          secondary && stateOf(id) === "none" && "border-dashed border-input",
           {
-            none: secondary ? "bg-transparent text-muted-foreground hover:bg-muted" : "bg-card text-card-foreground hover:bg-muted",
-            selected: "border-primary bg-primary text-primary-foreground",
-            path: "border-foreground bg-card text-foreground ring-1 ring-foreground",
-            dim: "border-border/60 bg-transparent text-muted-foreground hover:bg-muted",
+            none: secondary ? "bg-transparent text-muted-foreground" : "border-border bg-card text-card-foreground",
+            selected: "border-2 border-primary bg-accent text-accent-foreground shadow-[4px_4px_0_var(--primary)]",
+            path: "border-2 border-primary bg-card text-card-foreground",
+            dim: "border-border bg-muted text-muted-foreground",
           }[stateOf(id)],
         )}
       >
         {num && (
           <span
             aria-hidden="true"
-            className="flex size-7 shrink-0 items-center justify-center rounded-md border border-current/30 font-mono text-xs"
+            className={cn(
+              "grid h-[34px] w-[30px] shrink-0 place-items-center font-mono text-xs font-bold",
+              HEX,
+              stateOf(id) === "dim" ? "bg-border text-muted-foreground" : "bg-qloo text-bluestone",
+            )}
           >
             {num}
           </span>
         )}
         <span className="flex min-w-0 flex-col">
-          <span className={cn("font-medium", secondary && stateOf(id) === "none" && "font-normal")}>
+          <span className={cn(feature ? "font-display text-[21px] leading-6 font-extrabold uppercase" : "text-[15px] leading-5 font-bold", secondary && stateOf(id) === "none" && "font-normal")}>
             {num && <span className="sr-only">{num}. </span>}
             {label}
           </span>
-          <span className="truncate font-mono text-xs text-muted-foreground group-data-[trace=selected]:text-primary-foreground">{sub}</span>
+          <span className={cn("truncate font-mono text-[11px] leading-[15px]", stateOf(id) === "dim" ? "text-muted-foreground" : num ? "text-qloo" : "text-muted-foreground")}>{sub}</span>
         </span>
       </button>
     </li>
@@ -166,11 +172,24 @@ export function BrainMap() {
 
   return (
     <section aria-labelledby="wiring" className="group/brain space-y-4" onKeyDown={onKeyDown}>
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
-        <h2 id="wiring" className="text-2xl font-semibold tracking-tight">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <h2 id="wiring" className="m-0 font-display text-[clamp(36px,5vw,56px)] leading-[0.92] font-extrabold uppercase">
           The wiring
         </h2>
-        <p className="text-sm text-muted-foreground">Pick any piece to trace its path. Dashed: Spotify and Ticketmaster, the other sources.</p>
+        <ul aria-label="Legend" className="m-0 flex list-none flex-wrap items-center gap-x-4 gap-y-2 p-0 font-mono text-xs leading-4 font-medium text-muted-foreground">
+          <li className="inline-flex items-center gap-1.5">
+            <i aria-hidden="true" className="h-[3px] w-[22px] bg-qloo" />
+            Qloo
+          </li>
+          <li className="inline-flex items-center gap-1.5">
+            <i aria-hidden="true" className="w-[22px] border-t-2 border-dashed border-muted-foreground" />
+            Spotify, Ticketmaster
+          </li>
+          <li className="inline-flex items-center gap-1.5">
+            <i aria-hidden="true" className="h-[3px] w-[22px] bg-primary" />
+            The path you picked
+          </li>
+        </ul>
       </div>
 
       <div ref={gridRef} className="relative grid gap-8 lg:grid-cols-3 lg:gap-x-16" data-testid="brain-grid">
@@ -186,36 +205,36 @@ export function BrainMap() {
                 strokeDasharray={secondary ? "4 3" : undefined}
                 className={cn(
                   "transition-opacity motion-reduce:transition-none",
-                  on ? "stroke-foreground" : "stroke-muted-foreground",
-                  on ? "opacity-100" : lit ? "opacity-10" : "opacity-30",
+                  on ? "stroke-primary" : secondary ? "stroke-muted-foreground" : "stroke-qloo",
+                  on ? "opacity-100" : lit ? "opacity-15" : "opacity-60",
                 )}
-                strokeWidth={on ? 2 : 1}
+                strokeWidth={on ? 3 : 1.5}
               />
             );
           })}
         </svg>
 
-        <Column title="Qloo calls" note={`${callKinds} kinds`}>
+        <Column title="Qloo calls" note={`${callKinds} kinds`} mark="bg-qloo">
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1" aria-label="Qloo calls">
             {calls.map((c) => node(c.id, c.label, `${c.endpoint}${c.urnType ? ` · ${c.urnType}` : ""}`, c.num))}
           </ul>
           <div className={cn("space-y-2 pt-3", !onPathSources && "max-lg:hidden")}>
-            <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">With two other sources</h4>
+            <h4 className="m-0 font-mono text-[11px] leading-[14px] font-bold tracking-[0.08em] text-muted-foreground uppercase">With two other sources</h4>
             <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1" aria-label="Other sources">
               {secondarySources.map((s) => node(s.id, s.label, s.contributes, undefined, true))}
             </ul>
           </div>
         </Column>
 
-        <Column title="Data points" note="what comes back">
+        <Column title="Data points" note="what comes back" mark="bg-foreground">
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1" aria-label="Data points">
             {dataPoints.map((d) => node(d.id, d.label, d.sub))}
           </ul>
         </Column>
 
-        <Column title="Your busk" note={`${featureCount} parts it decides`}>
+        <Column title="Your busk" note={`${featureCount} parts it decides`} mark="bg-primary">
           <ul className="grid gap-2 sm:grid-cols-2 lg:flex lg:flex-1 lg:flex-col lg:justify-between" aria-label="Your busk">
-            {features.map((f) => node(f.id, f.label, f.sub))}
+            {features.map((f) => node(f.id, f.label, f.sub, undefined, false, true))}
           </ul>
         </Column>
       </div>
@@ -229,12 +248,13 @@ export function BrainMap() {
   );
 }
 
-function Column({ title, note, children }: { title: string; note: string; children: ReactNode }) {
+function Column({ title, note, mark, children }: { title: string; note: string; mark: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <h3 className="flex items-baseline gap-2 text-lg font-semibold">
+      <h3 className="m-0 flex h-10 items-center gap-2.5 font-display text-[22px] leading-none font-extrabold uppercase">
+        <span aria-hidden="true" className={cn("h-7 w-6 shrink-0 [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]", mark)} />
         {title}
-        <span className="font-mono text-xs font-normal text-muted-foreground">{note}</span>
+        <span className="font-mono text-xs font-medium tracking-normal text-muted-foreground normal-case">{note}</span>
       </h3>
       {children}
     </div>
@@ -247,9 +267,9 @@ function TracePanel({ selected, onClear }: { selected: NodeId | null; onClear: (
 
 function IdlePanel() {
   return (
-    <div className="rounded-xl border p-4 text-sm" data-testid="trace-panel">
-      <p className="font-medium">Pick any piece</p>
-      <p className="text-muted-foreground">
+    <div className="border-2 border-qloo bg-popover p-4 text-sm" data-testid="trace-panel">
+      <p className="m-0 font-display text-[22px] leading-none font-extrabold uppercase">Pick any piece</p>
+      <p className="m-0 mt-2 text-sm leading-5 text-muted-foreground">
         Choose a Qloo call, a data point or a part of your busk, and its whole path lights up. Try Setlist and learn these, where four
         Qloo calls and Spotify meet.
       </p>
@@ -273,31 +293,34 @@ function TracedPanel({ selected, onClear }: { selected: NodeId; onClear: () => v
   return (
     <div
       ref={ref}
-      className="sticky bottom-(--bottom-nav) z-10 max-h-[45vh] space-y-2 overflow-auto rounded-xl border bg-background p-4 text-sm shadow-lg"
+      className="sticky bottom-(--bottom-nav) z-10 max-h-[45vh] space-y-2 overflow-auto border-2 border-qloo bg-popover p-4 text-sm text-popover-foreground shadow-lg"
       data-testid="trace-panel"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-medium">{nodeLabel(selected)}</p>
-        <Button type="button" variant="outline" size="sm" onClick={onClear}>
+        <p className="m-0 font-display text-[22px] leading-none font-extrabold text-qloo uppercase">{nodeLabel(selected)}</p>
+        <Button type="button" variant="outline" onClick={onClear}>
           Clear trace
         </Button>
       </div>
       {/* Keyboard users tabbing through the pieces get a slim bar (name and Clear trace) so the panel covers less of the
           page; the details come back when focus leaves the pieces. Mouse clicks don't match :focus-visible. */}
       <div className="space-y-2 group-has-[[data-node-id]:focus-visible]/brain:hidden" data-testid="trace-detail">
-        <p className="text-muted-foreground">{traceSummary(selected)}</p>
+        <p className="m-0 font-mono text-[13px] leading-[18px] text-muted-foreground">{traceSummary(selected)}</p>
         {reach.length > 0 && (
-          <p>
-            <span className="font-medium">{isFeature ? "Comes from:" : "Decides:"}</span> {reach.map(nodeLabel).join(" · ")}
+          <p className="m-0">
+            <b className="text-qloo">{isFeature ? "Comes from:" : "Decides:"}</b> {reach.map(nodeLabel).join(" · ")}
           </p>
         )}
-        <ul className="space-y-1">
+        <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
           {links.map((l) => (
-            <li key={`${l.dir}-${l.name}`}>
-              <span className="font-medium">
-                {l.dir} {l.name}
+            <li key={`${l.dir}-${l.name}`} className="flex gap-2">
+              <span aria-hidden="true" className="mt-[3px] h-3.5 w-2 shrink-0 bg-primary [clip-path:polygon(0_0,50%_0,100%_50%,50%_100%,0_100%)]" />
+              <span>
+                <b>
+                  {l.dir} {l.name}
+                </b>
+                : {l.how}
               </span>
-              : {l.how}
             </li>
           ))}
         </ul>

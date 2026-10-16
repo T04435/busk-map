@@ -272,12 +272,12 @@ export default function Home() {
             Plan a busk
           </Link>
         </div>
+        {/* The lockup, the Qloo credit and the legal line are the site footer (the root layout), dark on this page; the data sources stay here. */}
+        <p className="mx-auto m-0 max-w-[1360px] px-4 pb-8 text-xs text-muted-foreground md:px-6">
+          Data: {[SOURCES.qloo, SOURCES["melbourne-pedestrian"], SOURCES["melbourne-busking"], SOURCES.ticketmaster, SOURCES.lastfm, SOURCES["open-meteo"], SOURCES.spotify, SOURCES.osm].map((s) => s.name).join(" · ")}
+        </p>
       </section>
 
-      {/* The lockup, the Qloo credit and the legal line are the site footer (the root layout); the data sources stay here. */}
-      <p className="mx-auto m-0 max-w-[1360px] px-4 pt-6 pb-6 text-xs text-muted-foreground md:px-6">
-        Data: {[SOURCES.qloo, SOURCES["melbourne-pedestrian"], SOURCES["melbourne-busking"], SOURCES.ticketmaster, SOURCES.lastfm, SOURCES["open-meteo"], SOURCES.spotify, SOURCES.osm].map((s) => s.name).join(" · ")}
-      </p>
     </main>
   );
 }

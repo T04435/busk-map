@@ -4,7 +4,7 @@ import { Atkinson_Hyperlegible_Next, Big_Shoulders, JetBrains_Mono } from "next/
 import "./globals.css";
 import { AppHeader, AppHeaderView } from "@/components/honeycomb/app-header";
 import { MobileNav, MobileNavView } from "@/components/honeycomb/mobile-nav";
-import { SiteFooter } from "@/components/honeycomb/site-footer";
+import { SiteFooter, SiteFooterView } from "@/components/honeycomb/site-footer";
 
 // Honeycomb's three families (design-handoff/fonts.md). Google renamed "Big Shoulders Display" to "Big Shoulders" (the same
 // family, now with an optical-size axis), so next/font imports it under the new name; the CSS stack still names both. globals.css pins opsz to 72, the Display cut. globals.css reads the -src variables and adds the fallback stacks.
@@ -45,7 +45,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <AppHeader />
         </Suspense>
         {children}
-        <SiteFooter />
+        <Suspense fallback={<SiteFooterView />}>
+          <SiteFooter />
+        </Suspense>
         <Suspense fallback={<MobileNavView pathname={null} />}>
           <MobileNav />
         </Suspense>

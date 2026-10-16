@@ -44,4 +44,22 @@ test.describe("landing, as the deck draws it", () => {
     await expect(cards.nth(2)).toContainText("Sunday · 12–3 pm");
     await expect(cards.nth(2)).toContainText("Plays Big Jet Plane, Bloom, The Boxer");
   });
+
+  test("the footer has no Brand link and continues the closing band's dark ground (B-023)", async ({ page }) => {
+    await page.goto("/");
+    const footer = page.locator('[data-slot="site-footer"]');
+    await expect(footer).toHaveCount(1); // the Suspense fallback is gone once the real footer has rendered
+    await expect(footer).toBeVisible();
+    await expect(footer.getByRole("link", { name: "Brand" })).toHaveCount(0);
+    await expect(page.locator('a[href="/brand"]')).toHaveCount(0);
+    await expect(footer).toHaveAttribute("data-theme", "dark");
+    const bg = (sel: string) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(await bg('[data-slot="site-footer"]')).toBe(await bg('[aria-labelledby="cta-h"]'));
+    // Everywhere else it stays on paper (and /brand is still there by its address).
+    await page.goto("/brand");
+    await expect(page.getByRole("heading", { level: 1, name: /Honeycomb/ })).toBeVisible();
+    await expect(page.locator('[data-slot="site-footer"]')).toHaveCount(1);
+    await expect(page.locator('[data-slot="site-footer"]')).not.toHaveAttribute("data-theme", "dark");
+    await expect(page.locator('[data-slot="site-footer"]').getByRole("link", { name: "Brand" })).toHaveCount(0);
+  });
 });

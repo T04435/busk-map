@@ -8,7 +8,16 @@ import type { Plan } from "@/lib/plan-schema";
  * framed once with an orange "Your slot" tag; one unit key; 50%+ rain is bold and says so in words (never colour alone).
  * No forecast: the dashed unavailable box.
  */
-export function WeatherStrip({ weather, slot }: { weather: Plan["weather"]; slot: { startHour: number; endHour: number } }) {
+export function WeatherStrip({
+  weather,
+  slot,
+  titleAs: Title = "h2",
+}: {
+  weather: Plan["weather"];
+  slot: { startHour: number; endHour: number };
+  /** The title element: an h2 in the plan's outline; a `p` where the strip is a specimen (the /brand page, B-210). */
+  titleAs?: "h2" | "h3" | "p";
+}) {
   if (!weather)
     return (
       <div role="status" data-testid="weather-unavailable" className="flex items-center gap-3 border-[1.5px] border-dashed border-input px-4 py-3">
@@ -53,7 +62,7 @@ export function WeatherStrip({ weather, slot }: { weather: Plan["weather"]; slot
     <section aria-label="Weather" className="grid min-w-0 gap-1 border-2 border-rule bg-card px-4 py-3">
       <div className="flex flex-wrap items-baseline gap-3">
         <span className="font-mono text-[11px] leading-4 font-medium tracking-[0.06em] text-muted-foreground uppercase">Weather</span>
-        <h2 className="m-0 font-display text-lg leading-5 font-extrabold tracking-[0.01em] uppercase">{wet ? "Rain in your slot" : "Dry through your slot"}</h2>
+        <Title className="m-0 font-display text-lg leading-5 font-extrabold tracking-[0.01em] uppercase">{wet ? "Rain in your slot" : "Dry through your slot"}</Title>
         <span className="ml-auto font-mono text-[10px] leading-[14px] tracking-[0.04em] text-muted-foreground">°C · rain · wind km/h</span>
       </div>
       <div role="list" aria-label="Forecast around the slot" tabIndex={0} className="flex items-stretch overflow-x-auto pt-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">

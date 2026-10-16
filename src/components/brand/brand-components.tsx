@@ -118,7 +118,7 @@ export function ComponentGroups() {
           <PitchRow rank={1} name="Southbank Promenade" when="12–3 pm" score={91} selected badges={<DiscoveryBadge discovery="hidden-gem" />} />
           <PitchRow rank={3} name="Degraves Street" score={78} badges={<><DiscoveryBadge discovery="usual" /><BothAgreeBadge /></>} />
         </ul>
-        <WeatherStrip weather={WEATHER} slot={{ startHour: 12, endHour: 15 }} />
+        <WeatherStrip weather={WEATHER} slot={{ startHour: 12, endHour: 15 }} titleAs="p" />
         <ul className="m-0 flex list-none flex-col gap-2 p-0">
           <LeanBar label="Age 25–34" lean={0.41} />
           <LeanBar label="Age 55+" lean={-0.3} />
@@ -175,7 +175,7 @@ export function PlanStates() {
           <h4 className={SPEC_H}>FormMessage ×3</h4>
           <FormMessage>Loading your songs from Spotify…</FormMessage>
           <FormMessage tone="error" alert={false}>Pick today or a later date.</FormMessage>
-          <FormMessage tone="success">Logged A$85 at Hardware Lane.</FormMessage>
+          <FormMessage tone="success">Link copied: paste it anywhere.</FormMessage>
         </div>
         <div className={`${SPEC} sm:col-span-full`}>
           <h4 className={SPEC_H}>StatStrip · Qloo</h4>

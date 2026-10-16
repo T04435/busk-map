@@ -51,7 +51,7 @@ export function StatusCard({
         <Title>{title}</Title>
         <p className="m-0 text-[17px] leading-[26px] text-foreground">{description}</p>
         {footnote ? <p className="m-0 font-mono text-xs leading-4 font-medium text-muted-foreground">{footnote}</p> : null}
-        <div className="flex flex-wrap gap-3 max-sm:w-full max-sm:[&>*]:w-full">{actions}</div>
+        <div className="flex flex-wrap gap-3 max-sm:w-full max-sm:[&>*:not(.sr-only)]:w-full">{actions}</div>
       </section>
     </Wrapper>
   );

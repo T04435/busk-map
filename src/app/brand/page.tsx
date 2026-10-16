@@ -52,7 +52,7 @@ function Section({ id, n, title, intro, children }: { id: string; n: string; tit
 /** A table that scrolls inside its own ruled frame (and can be scrolled from the keyboard). */
 function TableFrame({ label, children, min = 640 }: { label: string; children: ReactNode; min?: number }) {
   return (
-    <div role="region" aria-label={label} tabIndex={0} className="overflow-x-auto border-2 border-rule bg-card">
+    <div role="region" aria-label={label} tabIndex={0} className="relative overflow-x-auto border-2 border-rule bg-card">
       <table className="w-full border-collapse text-left text-sm leading-5" style={{ minWidth: min }}>
         {children}
       </table>

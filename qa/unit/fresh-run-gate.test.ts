@@ -20,7 +20,7 @@ describe("QA fresh-run gate", () => {
     if (sixth.ok) return;
     expect(sixth.retryAfterS).toBeGreaterThan(0);
     expect(sixth.retryAfterS).toBeLessThanOrEqual(3600);
-    expect(sixth.message).toMatch(/^You've started 5 plans this hour\. Try again in about \d+ minutes?, or open one of your earlier plans\.$/);
+    expect(sixth.message).toMatch(/^You've started 5 plans this hour\. Try again in about \d+ minutes?\.$/);
   });
 
   it("replays and joined runs never count, before or after the limit", () => {

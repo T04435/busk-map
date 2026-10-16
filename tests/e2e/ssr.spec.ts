@@ -9,14 +9,18 @@ async function selectValues(request: import("@playwright/test").APIRequestContex
 }
 
 test.describe("server HTML (B-006)", () => {
-  test("the landing selects show their default labels before hydration", async ({ request }) => {
-    expect(await selectValues(request, "/")).toEqual(["General"]);
+  test("the /busks form has no select left to show a label, and General permit is picked before hydration", async ({ request }) => {
+    // The time is the Any time picker (no From and To selects) and the permit is a choice card.
+    expect(await selectValues(request, "/busks")).toEqual([]);
+    const html = await (await request.get("/busks")).text();
+    // The permit is a choice card now: its radio is checked in the server HTML.
+    expect(html).toMatch(/<button[^>]*role="radio"[^>]*aria-checked="true"[^>]*value="general"|<button[^>]*value="general"[^>]*aria-checked="true"/);
   });
 });
 
 test.describe("server HTML (plan inputs)", () => {
-  test("the landing time control is on Any time before hydration", async ({ request }) => {
-    const response = await request.get("/");
+  test("the /busks time control is on Any time before hydration", async ({ request }) => {
+    const response = await request.get("/busks");
     const html = await response.text();
     expect(html).toContain("Time (optional)");
     expect(html).toMatch(/<button[^>]*role="radio"[^>]*aria-checked="true"[^>]*data-testid="time-any"|<button[^>]*data-testid="time-any"[^>]*aria-checked="true"/);
@@ -25,8 +29,8 @@ test.describe("server HTML (plan inputs)", () => {
 });
 
 test.describe("server HTML (B-011)", () => {
-  test("the landing search comboboxes are closed before hydration", async ({ request }) => {
-    const response = await request.get("/");
+  test("the /busks search comboboxes are closed before hydration", async ({ request }) => {
+    const response = await request.get("/busks");
     expect(response.status()).toBe(200);
     const html = await response.text();
     const comboboxes = [...html.matchAll(/<input[^>]*role="combobox"[^>]*>/g)].map((m) => m[0]);

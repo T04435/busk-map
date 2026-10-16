@@ -1,15 +1,21 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
+import { Icon } from "@/components/honeycomb/icon"
 import { cn } from "cn"
 
+// Honeycomb alerts: the tone colours the icon and the 2px border only. The text stays `foreground` on a faint tint of
+// `card`, so it always reads. `default` is the info tone and `destructive` the error tone (shadcn's names, kept).
 const alertVariants = cva(
-  "group/alert relative grid w-full gap-0.5 rounded-lg border px-2.5 py-2 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4",
+  "group/alert relative flex w-full items-start gap-3 rounded-none border-2 border-(--tone) bg-[color-mix(in_oklab,var(--tone)_8%,var(--card))] px-4 py-3 text-left text-sm text-foreground has-data-[slot=alert-action]:pr-18",
   {
     variants: {
       variant: {
-        default: "bg-card text-card-foreground",
-        destructive:
-          "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current",
+        default: "[--tone:var(--foreground)]",
+        info: "[--tone:var(--foreground)]",
+        warning: "[--tone:var(--pitch-restricted)]",
+        destructive: "[--tone:var(--destructive)]",
+        error: "[--tone:var(--destructive)]",
+        estimate: "[--tone:var(--estimate)]",
       },
     },
     defaultVariants: {
@@ -18,18 +24,43 @@ const alertVariants = cva(
   }
 )
 
+// DS glyphs per tone (the DS ALERT_ICON table): info, warning, alert-circle for error, help-circle for estimate.
+const TONE_ICON = {
+  default: () => <Icon name="info" size={20} />,
+  info: () => <Icon name="info" size={20} />,
+  warning: () => <Icon name="warning" size={20} />,
+  destructive: () => <Icon name="alert-circle" size={20} />,
+  error: () => <Icon name="alert-circle" size={20} />,
+  estimate: () => <Icon name="help-circle" size={20} />,
+} as const
+
 function Alert({
   className,
   variant,
+  icon,
+  children,
   ...props
-}: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
+}: React.ComponentProps<"div"> &
+  VariantProps<typeof alertVariants> & {
+    /** Replace the tone's icon, or `false` for none. The icon is decoration: the title says what happened. */
+    icon?: React.ReactNode | false
+  }) {
+  const ToneIcon = TONE_ICON[variant ?? "default"]
   return (
     <div
       data-slot="alert"
+      data-variant={variant ?? "default"}
       role="alert"
       className={cn(alertVariants({ variant }), className)}
       {...props}
-    />
+    >
+      {icon === false ? null : (
+        <span aria-hidden="true" className="mt-0.5 flex-none text-(--tone)">
+          {icon ?? <ToneIcon />}
+        </span>
+      )}
+      <div className="min-w-0 flex-1 space-y-0.5">{children}</div>
+    </div>
   )
 }
 
@@ -38,7 +69,7 @@ function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="alert-title"
       className={cn(
-        "font-medium group-has-[>svg]/alert:col-start-2 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground",
+        "font-mono text-xs leading-5 font-bold tracking-[0.05em] uppercase [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:decoration-2",
         className
       )}
       {...props}
@@ -54,7 +85,7 @@ function AlertDescription({
     <div
       data-slot="alert-description"
       className={cn(
-        "text-sm text-balance text-muted-foreground md:text-pretty [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4",
+        "text-sm text-pretty text-foreground [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:decoration-2 [&_p:not(:last-child)]:mb-4",
         className
       )}
       {...props}
@@ -72,4 +103,4 @@ function AlertAction({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-export { Alert, AlertTitle, AlertDescription, AlertAction }
+export { Alert, AlertTitle, AlertDescription, AlertAction, alertVariants }

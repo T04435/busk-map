@@ -67,9 +67,9 @@ test.describe("the brain of Busk Map at three widths", () => {
       test("renders, traces a call to its features, and clears", async ({ page }) => {
         await openBrain(page);
         await expect(page.getByText("kinds of Qloo call")).toBeVisible();
-        await expect(page.getByTestId("quota-note")).toContainText("10,000 requests a month per key, at 5 a second");
-        await expect(page.getByRole("heading", { name: "Next (not built yet)" })).toBeVisible();
-        await expect(page.locator("[data-node-id]")).toHaveCount(14 + 3 + 18 + 10);
+        await expect(page.getByTestId("quota-note")).toContainText("One key's 10,000 calls a month cover roughly 300–400 new busks");
+        await expect(page.getByRole("heading", { name: "Next · not built yet" })).toBeVisible();
+        await expect(page.locator("[data-node-id]")).toHaveCount(14 + 3 + 18 + 9);
         await expectNoSidewaysScroll(page);
         await page.screenshot({ path: path.join(SCREENS, `brain-${width.name}.png`), fullPage: true });
 
@@ -86,7 +86,7 @@ test.describe("the brain of Busk Map at three widths", () => {
           if (width.stacked) await expect(nodeOf(page, off), `${off} is filtered out`).toBeHidden();
           else await expect(nodeOf(page, off), `${off} is dimmed, still shown`).toBeVisible();
         }
-        await expect(page.getByRole("status")).toContainText("Tracing. Taste heatmap feeds 1 data point and 5 parts of your busk.");
+        await expect(page.getByRole("status")).toContainText("Tracing. Taste heatmap feeds 1 data point and 4 parts of your busk.");
         const clear = page.getByRole("button", { name: "Clear trace" });
         await expectOnTop(clear, "Clear trace");
         await expectNoSidewaysScroll(page);
@@ -105,14 +105,14 @@ test.describe("the brain of Busk Map at three widths", () => {
       test("Last.fm is a dashed secondary source for the song lookups; the facts strip fits; axe is clean (R4)", async ({ page }) => {
         await openBrain(page);
         // Facts: five tiles, the fifth the learn run's call budget, none cut off.
-        const tiles = page.locator("#facts + ul li");
+        const tiles = page.locator('[data-slot="stat-strip"] li');
         await expect(tiles).toHaveCount(5);
         await expect(tiles.last()).toContainText("≤ 25");
         await expect(tiles.last()).toContainText("Qloo calls per learn run");
         await expectNoSidewaysScroll(page);
         const cut = await tiles.evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().right > window.innerWidth + 1).length);
         expect(cut, "fact tiles wider than their box or the viewport").toBe(0);
-        await expect(page.getByText("Dashed: Spotify, Ticketmaster, Last.fm, the other sources.")).toBeVisible();
+        await expect(page.getByRole("list", { name: "Legend" })).toContainText("Spotify, Ticketmaster, Last.fm");
         await expect(page.getByRole("heading", { name: "With three other sources" })).toBeVisible();
 
         // The Last.fm node: a secondary source whose label and detail are not cut off by their button.
@@ -202,12 +202,12 @@ test.describe("the brain of Busk Map at three widths", () => {
         // The slim bar stays usable: the traced name and Clear trace are readable, and the details return once focus
         // moves to Clear trace (out of the pieces).
         const panel = page.getByTestId("trace-panel");
-        await expect(panel.getByText("Suggested set", { exact: true })).toBeVisible();
+        await expect(panel.getByText("Set and songs to learn", { exact: true })).toBeVisible();
         const clearButton = page.getByRole("button", { name: "Clear trace" });
         await expect(clearButton).toBeVisible();
         await clearButton.focus();
         await expect(page.getByTestId("trace-detail")).toBeVisible();
-        await expect(page.getByRole("status")).toContainText("Tracing. Suggested set comes from");
+        await expect(page.getByRole("status")).toContainText("Tracing. Set and songs to learn comes from");
 
         // Clearing the trace drops the scroll padding again.
         await page.keyboard.press("Escape");
@@ -245,6 +245,43 @@ test.describe("the brain of Busk Map", () => {
     await page.keyboard.press("Escape");
     await expect(point).toHaveAttribute("aria-pressed", "false");
     await expect(point).toBeFocused();
+  });
+
+  test("the idle panel says Pick any piece; a trace lists its links as From and To in words", async ({ page }) => {
+    await openBrain(page);
+    const panel = page.getByTestId("trace-panel");
+    await expect(panel.getByText("Pick any piece")).toBeVisible();
+    await expect(panel.getByText("Try Set and songs to learn")).toBeVisible();
+    await expect(panel.getByText("Try Taste heatmap")).toBeVisible();
+    await expect(panel).not.toContainText("week");
+    await nodeOf(page, "d_cells").click();
+    await expect(panel).toContainText("Decides:");
+    await expect(panel.getByText(/^From Taste heatmap/)).toBeVisible();
+    await expect(panel.getByText(/^To Taste map/)).toBeVisible();
+    await expect(panel.getByText(/[←→]/)).toHaveCount(0);
+  });
+
+  test("a piece picked with Enter keeps a visible ring and stays in view above the panel (B-149, B-150)", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openBrain(page);
+    const point = nodeOf(page, "d_cells");
+    await point.scrollIntoViewIfNeeded();
+    await page.keyboard.press("Tab");
+    await point.focus();
+    await page.keyboard.press("Enter");
+    await expect(point).toHaveAttribute("aria-pressed", "true");
+    await expect(point).toBeFocused();
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const el = document.activeElement as HTMLElement;
+          const r = el.getBoundingClientRect();
+          const p = document.querySelector('[data-testid="trace-panel"]')!.getBoundingClientRect();
+          return r.top >= 0 && r.bottom <= p.top;
+        }),
+      )
+      .toBe(true);
+    expect(await point.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe("none");
   });
 
   test("has no axe violations at any impact, untraced and traced", async ({ page }) => {

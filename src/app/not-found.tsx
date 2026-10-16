@@ -13,6 +13,7 @@ export default function NotFound() {
   return (
     <StatusCard
       testId="site-not-found"
+      numeral="404"
       title="No pitch here"
       description="This page doesn't exist. It may have moved, or the link may be incomplete."
       actions={

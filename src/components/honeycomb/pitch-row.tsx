@@ -1,0 +1,87 @@
+import type { ReactNode } from "react";
+import { Icon } from "@/components/honeycomb/icon";
+import { cn } from "cn";
+import { PercentCell } from "@/components/honeycomb/percent-cell";
+import { RankTile } from "@/components/honeycomb/rank-tile";
+
+/**
+ * One pitch in two short lines: [rank] [name @ time] [score] over [badges] [Full details]. The first line is the button that
+ * selects it (`aria-pressed`, `data-pitch-name`); the second holds its badges and the Full details link. A selected row is the white card with a ruled frame, the orange offset shadow, a solid rank tile and a filled score cell; the others are tinted with quiet tiles (so selection never relies on colour alone).
+ */
+export function PitchRow({
+  rank,
+  name,
+  when,
+  window,
+  score,
+  badges,
+  selected,
+  onSelect,
+  onDetails,
+  detailsRef,
+  pitchId,
+}: {
+  rank: number;
+  name: string;
+  when?: string;
+  /** Any time: this pitch's own best hours ("Best 6 pm–9 pm"), shown in place of `when`. */
+  window?: string;
+  score: number;
+  badges?: ReactNode;
+  selected?: boolean;
+  onSelect?: () => void;
+  onDetails?: () => void;
+  detailsRef?: React.Ref<HTMLButtonElement>;
+  pitchId?: string;
+}) {
+  const main = (
+    <>
+      <RankTile n={rank} size="sm" quiet={!selected} />
+      <span className="min-w-0 flex-1 text-left">
+        <b className="block font-display text-[22px] leading-none font-extrabold uppercase break-words">{name}</b>
+        {window ? (
+          <span className="font-mono text-xs font-bold tracking-[0.04em] text-muted-foreground" data-testid="pitch-row-window">
+            {window}
+          </span>
+        ) : when ? (
+          <span className="font-mono text-xs font-bold tracking-[0.04em] text-muted-foreground">@ {when}</span>
+        ) : null}
+      </span>
+      <PercentCell value={score} size={44} tone={selected ? "primary" : "default"} label="Score" />
+    </>
+  );
+  return (
+    <li data-slot="pitch-row" data-pitch-id={pitchId} className={cn("border-2 transition-shadow", selected ? "border-rule bg-popover shadow-[5px_5px_0_var(--primary)]" : "border-border bg-secondary/60")}>
+      {onSelect ? (
+        <button
+          type="button"
+          aria-pressed={Boolean(selected)}
+          data-pitch-name={name}
+          onClick={onSelect}
+          className="flex min-h-tap w-full items-center gap-3 p-3 text-left hover:bg-secondary focus-visible:outline-offset-[-4px]"
+        >
+          {main}
+        </button>
+      ) : (
+        <div className="flex items-center gap-3 p-3">{main}</div>
+      )}
+      {badges || onDetails ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-3 py-2">
+          <span className="flex flex-wrap items-center gap-2">{badges}</span>
+          {onDetails ? (
+            <button
+              type="button"
+              ref={detailsRef}
+              onClick={onDetails}
+              data-testid="pitch-details-open"
+              className="inline-flex min-h-tap items-center gap-1 px-1 font-bold underline underline-offset-3 hover:decoration-2"
+            >
+              Full details <span className="sr-only">for {name}</span>
+              <Icon name="arrow-right" size={14} />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </li>
+  );
+}

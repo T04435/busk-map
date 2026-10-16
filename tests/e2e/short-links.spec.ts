@@ -1,4 +1,4 @@
-import { EXPLANATIONS_LABEL, expect, LOCAL, SATURDAY, test, waitForPlan } from "./fixtures";
+import { agentSteps, EXPLANATIONS_LABEL, expect, LOCAL, openDetails, REPLAY_LINE, SATURDAY, test, waitForPlan } from "./fixtures";
 
 const SHORT = /\/p\/([0-9A-Za-z]{9})$/;
 const idOf = (url: string) => SHORT.exec(new URL(url).pathname)?.[1] ?? null;
@@ -15,7 +15,7 @@ test.describe("short plan links", () => {
       await expect(page).toHaveURL(SHORT);
       const body = (await sent).postDataJSON() as Record<string, unknown>;
       await waitForPlan(page);
-      await expect(page.getByRole("list", { name: "Agent steps" }).getByText("Scoring the pitch pool").first()).toBeVisible();
+      await expect((await agentSteps(page)).getByText("Your best pitches so far").first()).toBeVisible();
       await expect(page.getByTestId("replay-label")).toHaveCount(0);
       return { id: idOf(page.url()), body };
     };
@@ -46,7 +46,7 @@ test.describe("short plan links", () => {
     for (const path of ["/p/ZZZZZZZZZ", "/p/abc", "/p/not-a-plan-id"]) {
       await page.goto(path);
       const card = page.getByTestId("plan-not-found");
-      await expect(card.getByRole("heading", { name: "Plan not found" })).toBeVisible();
+      await expect(card.getByRole("heading", { name: "We can't find this busk" })).toBeVisible();
       await expect(card.getByRole("link", { name: "Go to Busk Map home" })).toHaveAttribute("href", "/");
     }
     await page.getByRole("link", { name: "Go to Busk Map home" }).click();
@@ -59,12 +59,14 @@ test.describe("short plan links with the agent (mock model offline)", () => {
 
   test("the custom act: form → /p/<id>; the old long URL redirects to the same id; a reload replays with no new run", async ({ page }, testInfo) => {
     const name = `Short Link Trio ${testInfo.project.name}`;
-    await page.goto("/");
+    await page.goto("/busks");
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill(name);
     await form.getByLabel("Artists you sound like").fill("Paul Kelly");
     // No songs and no Repertoire: the busk asks for suggested songs (fill 6) on any time.
-    await form.getByRole("button", { name: "Plan my set" }).click();
+    const posted = page.waitForRequest((r) => r.url().endsWith("/api/plans") && r.method() === "POST");
+    await form.getByRole("button", { name: "Plan my busk" }).click();
+    const date: string = (await posted).postDataJSON().slot.date;
     await expect(page).toHaveURL(SHORT);
     const id = idOf(page.url());
     await waitForPlan(page);
@@ -73,7 +75,6 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     await expect(page.getByRole("button", { name: /Re-run|Plan with the agent/ })).toHaveCount(0);
 
     // The old long URL for the same act and slot (the form's default: today, any time, with six suggested songs) resolves to the same id.
-    const date = (await page.getByText(/^Melbourne · /).textContent())!.match(/\d{4}-\d{2}-\d{2}/)![0];
     await page.goto(`/plan?name=${encodeURIComponent(name)}&artists=Paul%20Kelly&date=${date}&time=any&fill=6&permit=general&run=1`);
     await expect(page).toHaveURL(SHORT);
     expect(idOf(page.url())).toBe(id);
@@ -83,15 +84,16 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     page.on("request", (r) => r.url().endsWith("/api/plan") && agentCalls.push(r.url()));
     await page.reload();
     await waitForPlan(page);
-    await expect(page.getByText(/^Replaying the agent's run from .* \(cached, no new model call\)$/)).toBeVisible();
-    await expect(page.getByTestId("agent-status")).toHaveText("The agent's plan, replayed.");
-    await page.getByRole("button", { name: /^Agent steps \(replayed, \d+\)$/ }).click();
-    await expect(page.getByRole("list", { name: "Agent steps" }).getByText("Scoring the pitch pool").first()).toBeVisible();
+    await expect(page.getByText(REPLAY_LINE)).toBeVisible();
+    await expect(page.getByTestId("agent-status")).toHaveText(REPLAY_LINE);
+    await expect((await agentSteps(page)).getByText("Your best pitches so far").first()).toBeVisible();
     await expect(page.getByTestId("agent-usage")).toContainText("model steps");
     expect(agentCalls).toEqual([]);
-    // Selecting a pitch keeps the short link.
-    await page.getByRole("region", { name: "Pitches", exact: true }).locator("button[data-pitch-name]").nth(1).click();
+    // Opening a pitch's details keeps the short link, and closing the sheet clears the pitch from it.
+    await openDetails(page, 1);
     await expect(page).toHaveURL(new RegExp(`/p/${id}\\?pitch=`));
+    await page.keyboard.press("Escape");
+    await expect(page).toHaveURL(new RegExp(`/p/${id}$`));
   });
 
   test("Copy link copies the short URL", async ({ page, context }) => {
@@ -114,7 +116,7 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     await page.goto(`/plan?name=Copy%20Link%20Act&artists=Paul%20Kelly&date=${SATURDAY}&from=18&to=21`);
     await expect(page).toHaveURL(SHORT);
     await page.getByRole("button", { name: "Copy link" }).click();
-    await expect(page.getByRole("textbox", { name: "Plan link" })).toHaveValue(new RegExp(`/p/${idOf(page.url())}$`));
+    await expect(page.getByRole("textbox", { name: "Copy this link" })).toHaveValue(new RegExp(`/p/${idOf(page.url())}$`));
   });
 
   test("a plan whose slot has passed: a note and a pre-filled form link, no new run", async ({ page }) => {
@@ -124,10 +126,10 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     await expect(page).toHaveURL(SHORT);
     const note = page.getByTestId("slot-passed");
     await expect(note).toContainText("This slot has passed");
-    await expect(note).toContainText("Saturday 2026-10-03, 12 pm–3 pm");
+    await expect(note).toContainText("Sat 3 Oct · 12–3 pm");
     expect(agentCalls).toEqual([]);
     await note.getByRole("link", { name: "Plan again for a new date" }).click();
-    await expect(page).toHaveURL(/\/\?again=[0-9A-Za-z]{9}#own$/);
+    await expect(page).toHaveURL(/\/busks\?again=[0-9A-Za-z]{9}$/);
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await expect(form.getByLabel("Act name")).toHaveValue("Past Slot Duo");
     await expect(form.getByRole("list", { name: "Artists you picked" })).toContainText("Paul Kelly");

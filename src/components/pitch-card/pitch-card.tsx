@@ -1,27 +1,14 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { EstimateLabel } from "@/components/plan/estimate-label";
-import type { PlanPitch } from "@/lib/plan-schema";
-import { formatHour } from "@/lib/slot";
-import { explainedByLabel, type ExplanationsModel } from "@/lib/sources";
-import { venueDetail } from "@/lib/venue";
+import { PercentCell } from "@/components/honeycomb/percent-cell";
+import type { Plan, PlanPitch } from "@/lib/plan-schema";
 
-const FACTOR_LABELS: Record<keyof PlanPitch["factors"], string> = {
-  taste: "Taste affinity (Qloo)",
-  footfall: "Foot traffic for the slot",
-  places: "Busy places open nearby",
-  events: "Event crowds",
-  discovery: "Discovery bonus (hidden gem)",
-  weatherPenalty: "Weather penalty",
-};
-
-const pct = (n: number | null) => (n === null ? "no data" : `${Math.round(n * 100)}/100`);
-
-const KIND_LABEL: Record<PlanPitch["kind"], string> = {
-  designated: "Council-designated site",
-  "public-space": "Public space, general permit",
-  footpath: "Footpath, general permit",
-};
+const FACTORS: { key: keyof PlanPitch["factors"]; weight: keyof Plan["weights"]; label: string; color: string }[] = [
+  { key: "taste", weight: "taste", label: "Taste affinity (Qloo)", color: "var(--chart-1)" },
+  { key: "footfall", weight: "footfall", label: "Foot traffic for the slot", color: "var(--chart-2)" },
+  { key: "places", weight: "places", label: "Busy places open nearby", color: "var(--chart-3)" },
+  { key: "events", weight: "events", label: "Event crowds", color: "var(--chart-4)" },
+  { key: "discovery", weight: "discovery", label: "Discovery bonus (hidden gem)", color: "var(--honey-deep)" },
+  { key: "weatherPenalty", weight: "weather", label: "Weather penalty", color: "var(--chart-5)" },
+];
 
 const FOOTFALL_NOTE: Record<NonNullable<PlanPitch["footfallSource"]>, string> = {
   sensor: "",
@@ -29,128 +16,36 @@ const FOOTFALL_NOTE: Record<NonNullable<PlanPitch["footfallSource"]>, string> = 
   "qloo-popularity": " (estimated from Qloo area popularity)",
 };
 
-/** "Hidden gem" or "Usual spot", for the card and the pitch list. */
-export function DiscoveryBadge({ discovery, className }: { discovery: PlanPitch["discovery"]; className?: string }) {
-  if (discovery === "hidden-gem") return <Badge className={className}>Hidden gem</Badge>;
-  if (discovery === "usual") return <Badge variant="outline" className={className}>Usual spot</Badge>;
-  return null;
-}
 
-/** `model`: who wrote an "ai" why, Claude or the test model offline (B-010). */
-export function PitchCard({ pitch, rank, model = null }: { pitch: PlanPitch; rank: number; model?: ExplanationsModel | null }) {
+const H3 = ({ children }: { children: React.ReactNode }) => <h4 className="m-0 font-mono text-xs font-bold tracking-[0.06em] text-muted-foreground uppercase">{children}</h4>;
+
+/**
+ * How one pitch's score adds up: each factor as a cell with its weight ("× 0.35"). The details sheet keeps
+ * it at the foot, folded: the board's sheet body is the head, why, foot traffic, facts and setlist (PitchDetails).
+ */
+export function ScoreBreakdown({ pitch, weights }: { pitch: PlanPitch; weights?: Plan["weights"] }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardDescription>Pitch {rank}</CardDescription>
-        <CardTitle className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2>{pitch.name}</h2>
-          <span aria-label={`Score ${pitch.score} out of 100`}>{pitch.score}/100</span>
-        </CardTitle>
-        <div className="flex flex-wrap gap-1">
-          <DiscoveryBadge discovery={pitch.discovery} />
-          <Badge variant="secondary">{KIND_LABEL[pitch.kind]}</Badge>
-          {pitch.amplification === "unamplified-zone" && <Badge variant="outline">Unamplified only</Badge>}
-          <Badge variant="outline">{pitch.whySource === "ai" ? explainedByLabel(model) : "Explanation from the data"}</Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4 text-sm">
-        {pitch.window && (
-          <p data-testid="pitch-window" className="text-muted-foreground">
-            {pitch.window.why}
-            {pitch.window.runnersUp.length > 0 && ` (next best: ${pitch.window.runnersUp.map((w) => `${formatHour(w.startHour)}–${formatHour(w.endHour)}`).join(", ")})`}.
-          </p>
-        )}
-        <section aria-label="Why this crowd">
-          <h3 className="font-medium">Why this crowd</h3>
-          <p className="text-muted-foreground">{pitch.why}</p>
-          {pitch.origin === "taste" && pitch.cellRank !== null && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              Found from the data: Qloo taste cell no. {pitch.cellRank} for your artists, snapped to the nearest public space.
-            </p>
-          )}
-          {pitch.discovery === "hidden-gem" && (
-            <p className="mt-1 text-xs text-muted-foreground">Hidden gem: a strong taste fit away from Melbourne&apos;s well-known busking spots.</p>
-          )}
-          {pitch.discovery === "usual" && pitch.usualSpot && (
-            <p className="mt-1 text-xs text-muted-foreground">Usual spot: at {pitch.usualSpot}, where buskers already go.</p>
-          )}
-        </section>
-
-        <section aria-label="Score breakdown">
-          <h3 className="font-medium">Score breakdown</h3>
-          <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
-            {(Object.keys(FACTOR_LABELS) as (keyof PlanPitch["factors"])[]).map((key) => (
-              <div key={key} className="contents">
-                <dt className="text-muted-foreground">
-                  {FACTOR_LABELS[key]}
-                  {key === "footfall" && pitch.footfallSource ? FOOTFALL_NOTE[pitch.footfallSource] : ""}
-                  {key === "footfall" && pitch.discovery === "usual" ? " (shared with other buskers)" : ""}
-                </dt>
-                <dd>{key === "discovery" && pitch.factors.discovery === 0 ? "none" : pct(pitch.factors[key])}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-
-        {(pitch.evidence.sensor || pitch.evidence.places.length > 0 || pitch.evidence.events.length > 0) && (
-          <section aria-label="Evidence" className="space-y-2">
-            <h3 className="font-medium">Evidence</h3>
-            {pitch.evidence.sensor && (
-              <p className="flex flex-wrap items-center gap-2">
-                {pitch.footfallSource === "nearby-sensors"
-                  ? `Roughly ${pitch.evidence.sensor.avgHourly.toLocaleString("en-AU")} people an hour on recent same weekdays, from sensors nearby (nearest: ${pitch.evidence.sensor.name})`
-                  : `About ${pitch.evidence.sensor.avgHourly.toLocaleString("en-AU")} people an hour at ${pitch.evidence.sensor.name} on recent same weekdays`}{" "}
-                <EstimateLabel />
-              </p>
-            )}
-            {pitch.evidence.places.length > 0 && (
-              <ul className="list-disc pl-5">
-                {pitch.evidence.places.map((place) => (
-                  <li key={place.name}>
-                    {place.name}, {place.distanceM} m {place.open === "open" ? "(open in your slot)" : "(hours not confirmed)"}
-                    {venueDetail(place) && <span className="block text-muted-foreground">Qloo: {venueDetail(place)}</span>}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {pitch.evidence.events.map((event, i) => (
-              // The same show can run twice in a slot (e.g. 6 pm and 8:30 pm sessions): the name alone isn't a unique key.
-              <p key={`${event.name}-${event.localTime}-${i}`} className="flex flex-wrap items-center gap-2">
-                {event.name} at {event.venue}: crowd {event.moment === "leaving" ? "leaves" : "arrives"} around {event.localTime}
-                {event.endEstimated && event.moment === "leaving" && <EstimateLabel>Estimated end</EstimateLabel>}
-                {event.tasteMatch && (
-                  <span className="text-muted-foreground" data-testid="event-taste-match">
-                    Qloo: {event.tasteMatch.artist}&apos;s fans match your taste {Math.round(event.tasteMatch.affinity * 100)}/100
-                  </span>
-                )}
-                {event.url && (
-                  <a className="underline" href={event.url} target="_blank" rel="noreferrer">
-                    Ticketmaster
-                  </a>
-                )}
-              </p>
-            ))}
-          </section>
-        )}
-
-        <section aria-label="Rules" className="space-y-1">
-          <h3 className="font-medium">Rules to check</h3>
-          <p className="text-muted-foreground">{pitch.rules}</p>
-          {pitch.cautions.length > 0 && (
-            <ul className="list-disc pl-5">
-              {pitch.cautions.map((c) => (
-                <li key={c}>{c}</li>
-              ))}
-            </ul>
-          )}
-          {pitch.rulesUrl && (
-            <a className="underline" href={pitch.rulesUrl} target="_blank" rel="noreferrer">
-              Site rules and contact
-            </a>
-          )}
-          <p className="text-muted-foreground">Busk Map never confirms a pitch is legal. Check your permit conditions on the day.</p>
-        </section>
-      </CardContent>
-    </Card>
+    <section aria-label="Score breakdown" className="space-y-3">
+      <H3>Score breakdown</H3>
+      <ul className="m-0 flex list-none flex-col gap-2 p-0">
+        {FACTORS.map(({ key, weight, label, color }) => {
+          const v = pitch.factors[key];
+          const none = key === "discovery" && v === 0;
+          return (
+            <li key={key} className="flex items-center gap-3">
+              <PercentCell value={v === null || none ? null : v * 100} size={40} label={label} />
+              <span className="min-w-0 flex-1 text-sm">
+                <span aria-hidden="true" className="mr-2 inline-block size-2.5" style={{ background: color }} />
+                {label}
+                {key === "footfall" && pitch.footfallSource ? FOOTFALL_NOTE[pitch.footfallSource] : ""}
+                {key === "footfall" && pitch.discovery === "usual" ? " (shared with other buskers)" : ""}
+                {none ? <span className="text-muted-foreground"> · none</span> : null}
+              </span>
+              {weights ? <span className="font-mono text-xs text-muted-foreground" title="Weight">× {weights[weight].toFixed(2)}</span> : null}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

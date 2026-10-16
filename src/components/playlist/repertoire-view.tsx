@@ -31,11 +31,11 @@ function SongRow({ song, children }: { song: PlaylistSongView; children: React.R
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium">{song.title}</span>
+        <span className="block truncate font-bold">{song.title}</span>
         <span className="block truncate text-sm text-muted-foreground">{song.artist}</span>
       </span>
       {song.own && <Badge variant="secondary">{COPY.yourSong}</Badge>}
-      {song.durationMs !== null && <span className="text-xs text-muted-foreground tabular-nums">{formatDuration(song.durationMs)}</span>}
+      {song.durationMs !== null && <span className="font-mono text-xs text-muted-foreground tabular-nums">{formatDuration(song.durationMs)}</span>}
       <span className="flex gap-2">{children}</span>
     </li>
   );
@@ -138,7 +138,7 @@ export function RepertoireView() {
   return (
     <div className="space-y-8">
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">{COPY.pageTitle}</h1>
+        <h1 className="m-0 font-display text-[clamp(44px,6vw,72px)] leading-[0.92] font-extrabold uppercase">{COPY.pageTitle}</h1>
         <p className="text-muted-foreground">{COPY.pageIntro}</p>
         <p className="text-sm text-muted-foreground">{COPY.deviceNote}</p>
       </header>
@@ -153,7 +153,7 @@ export function RepertoireView() {
       )}
 
       <section aria-labelledby="add-heading" className="max-w-2xl space-y-4">
-        <h2 id="add-heading" className="text-xl font-semibold">
+        <h2 id="add-heading" className="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
           {COPY.searchLabel}
         </h2>
         <RepertoireAdd
@@ -179,7 +179,7 @@ export function RepertoireView() {
         <>
           <section aria-labelledby="can-sing-heading" className="max-w-2xl space-y-2">
             <div className="flex items-baseline justify-between gap-4">
-              <h2 id="can-sing-heading" className="text-xl font-semibold">
+              <h2 id="can-sing-heading" className="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
                 {COPY.canSing}
               </h2>
               <span className="text-sm text-muted-foreground tabular-nums">{COPY.count(songs.length, max)}</span>
@@ -187,7 +187,7 @@ export function RepertoireView() {
             {canSing.length === 0 ? (
               <p className="text-sm text-muted-foreground">{COPY.empty}</p>
             ) : (
-              <ul aria-label={COPY.canSing} className="divide-y">
+              <ul aria-label={COPY.canSing} className="m-0 list-none divide-y divide-border border-2 border-rule bg-card px-3">
                 {canSing.map((song) => (
                   <SongRow key={song.id} song={song}>
                     <Button variant="outline" size="sm" disabled={busy} data-focus-id={`remove-${song.id}`} aria-label={`${COPY.remove} ${song.title}`} onClick={() => { focusAfter.current = focusTargetAfter(canSing, song.id, "remove"); void run(() => removeSong(song.id), `Removed ${song.title}.`); }}>
@@ -200,13 +200,13 @@ export function RepertoireView() {
           </section>
 
           <section aria-labelledby="learned-heading" className="max-w-2xl space-y-2">
-            <h2 id="learned-heading" className="text-xl font-semibold">
+            <h2 id="learned-heading" className="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
               {COPY.learned}
             </h2>
             {learned.length === 0 ? (
               <p className="text-sm text-muted-foreground">{COPY.emptyLearned}</p>
             ) : (
-              <ul aria-label={COPY.learned} className="divide-y">
+              <ul aria-label={COPY.learned} className="m-0 list-none divide-y divide-border border-2 border-rule bg-card px-3">
                 {learned.map((song) => (
                   <SongRow key={song.id} song={song}>
                     <Button variant="outline" size="sm" disabled={busy} data-focus-id={`move-${song.id}`} aria-label={`${COPY.moveToCanSing}: ${song.title}`} onClick={() => { focusAfter.current = focusTargetAfter(learned, song.id, "move"); void run(() => moveSong(song.id, "can_sing"), `${song.title} moved to ${COPY.canSing}.`); }}>

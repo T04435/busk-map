@@ -1,11 +1,11 @@
-import { EXPLANATIONS_LABEL, expect, isoDay, LOCAL, pickDate, SATURDAY, SUNDAY, test, waitForPlan } from "./fixtures";
+import { EXPLANATIONS_LABEL, expect, isoDay, LOCAL, openDetails, pickDate, SATURDAY, shortDay, SUNDAY, test, waitForPlan } from "./fixtures";
 import { serverDay } from "./clock";
 
 test.describe("own act", () => {
   test.skip(!LOCAL, "Starts the agent automatically; local offline server only");
 
   test("a typed performer and songs open a plan and start the agent", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/busks");
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill("Jess on guitar");
     await form.getByLabel("Artists you sound like").fill("Paul Kelly, Missy Higgins");
@@ -16,17 +16,37 @@ test.describe("own act", () => {
     await form.getByRole("combobox", { name: "Search songs on Spotify" }).pressSequentially("My Laneway Song - Jess");
     await form.getByTestId("type-it-in").getByRole("button", { name: "Add as typed" }).click();
     await form.getByRole("button", { name: "Done" }).click();
-    await form.getByRole("button", { name: "Plan my set" }).click();
+    await form.getByRole("button", { name: "Plan my busk" }).click();
 
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await expect(page.getByRole("heading", { level: 1, name: "Jess on guitar" })).toBeVisible();
     await waitForPlan(page);
     await expect(page.getByText(EXPLANATIONS_LABEL)).toBeVisible();
-    await expect(page.getByRole("list").filter({ hasText: "My Laneway Song" }).first()).toBeVisible();
+    // The song typed just for this busk is in the pitch's suggested set (in the details sheet).
+    await expect((await openDetails(page)).getByText("My Laneway Song").first()).toBeVisible();
+  });
+
+  test("B-036: a pick closes the song list and keeps focus in the cleared search; the artists hint", async ({ page }) => {
+    await page.goto("/busks");
+    const form = page.getByRole("form", { name: "Plan for your own act" });
+    await expect(form.getByTestId("artists-hint")).toHaveText(/^0 of 10\. Type a comma to add a name that isn.t on Spotify\.$/);
+    await form.getByRole("button", { name: "Edit for this busk" }).click();
+    await form.getByText("+ Add a song just for this busk").click();
+    const box = form.getByPlaceholder("Search songs, e.g. Riptide");
+    await expect(async () => {
+      await box.fill("");
+      await box.fill("Riptide");
+      await expect(form.getByRole("option").first()).toBeVisible({ timeout: 1500 });
+    }).toPass();
+    await form.getByRole("option").first().click();
+    await expect(form.getByRole("option")).toHaveCount(0);
+    await expect(box).toBeFocused();
+    await expect(box).toHaveValue("");
+    await expect(form.getByRole("list", { name: "Songs for this busk" }).getByRole("listitem")).toHaveCount(1);
   });
 
   test("live search: artist chips, a picked song ranked by the act's artists, and the date picker", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/busks");
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill("Search Tester");
 
@@ -79,17 +99,18 @@ test.describe("own act", () => {
     // Any time is the default; pick the evening so the plan's slot is the fixed 6-9 pm.
     await form.getByRole("radio", { name: /Evening/ }).click();
 
-    await form.getByRole("button", { name: "Plan my set" }).click();
+    await form.getByRole("button", { name: "Plan my busk" }).click();
     // The plan opens on its short link; the request (artists with Spotify ids, songs with lengths, the date) is stored behind it.
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
-    await expect(page.getByText(new RegExp(`${day}, 6 pm–9 pm`))).toBeVisible();
+    await expect(page.getByText(`${shortDay(day)} · 6–9 pm · General permit`).first()).toBeVisible();
     await waitForPlan(page);
     // Qloo matched the picked artist (by Spotify id first); the setlist shows lengths. The act's own songs get no Learn it;
     // only "Learn these" suggestions do (opening external searches).
     await expect(page.getByTestId("unmatched-artists")).toContainText("This plan uses the artists Qloo did match: Paul Kelly.");
-    await expect(page.getByTestId("set-length")).toHaveText("Set length: 3:07 (1 song).");
+    const sheet = await openDetails(page);
+    await expect(sheet.getByTestId("set-length")).toHaveText("Set length 3:07 · 1 song");
     await expect(page.getByRole("button", { name: "Learn it: Gravy (synthetic result 1)" })).toHaveCount(0);
-    const learn = page.getByRole("region", { name: "Songs you should learn" }).getByRole("button", { name: /^Learn it: / }).first();
+    const learn = sheet.getByRole("region", { name: "Songs you should learn" }).getByRole("button", { name: /^Learn it: / }).first();
     await learn.click();
     const menu = page.getByRole("menu");
     await expect(menu.getByRole("menuitem", { name: /Karaoke/ })).toHaveAttribute("href", /youtube\.com\/results\?search_query=.+karaoke/);
@@ -101,30 +122,60 @@ test.describe("own act", () => {
   });
 
   test("an artist picked from offline search (a made-up artist) opens a plan (B-003)", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/busks");
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill("Synthetic Pick");
     await form.getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Nobody Band Zzq");
     await page.getByRole("option", { name: /Nobody Band Zzq \(synthetic\)/ }).click();
     await expect(form.getByRole("list", { name: "Artists you picked" })).toContainText("Nobody Band Zzq (synthetic)");
-    await form.getByRole("button", { name: "Plan my set" }).click();
+    await form.getByRole("button", { name: "Plan my busk" }).click();
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/, { timeout: 10_000 });
   });
 
   test("asks for an artist before planning", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/busks");
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill("No artists");
-    await form.getByRole("button", { name: "Plan my set" }).click();
-    await expect(form.getByRole("alert")).toHaveText("Add at least one artist you sound like.");
-    await expect(page).toHaveURL(/\/$/);
+    await form.getByRole("button", { name: "Plan my busk" }).click();
+    // One alert, naming the field (B-003), and the same words under the field.
+    await expect(form.getByRole("alert")).toContainText("Artists you sound like");
+    await expect(form.getByRole("alert")).toContainText("Add at least one artist you sound like.");
+    await expect(form.locator("#err-artists")).toHaveText("Add at least one artist you sound like.");
+    await expect(page).toHaveURL(/\/busks$/);
+  });
+
+  test("a failed submit focuses the first invalid field and wires it to its error (B-220)", async ({ page }) => {
+    await page.goto("/busks");
+    const form = page.getByRole("form", { name: "Plan for your own act" });
+    await form.getByLabel("Act name").fill("No artists");
+    await form.getByRole("button", { name: "Plan my busk" }).click();
+    await expect(form.locator("#err-artists")).toBeVisible();
+    const field = form.locator("[data-field=artists] input").first();
+    await expect(field).toBeFocused();
+    await expect(field).toHaveAttribute("aria-invalid", "true");
+    await expect(field).toHaveAttribute("aria-describedby", "err-artists");
+  });
+
+  test("while planning, the button reads Planning and the form is busy (B-221)", async ({ page }) => {
+    await page.route("**/api/plans", async (route) => {
+      await new Promise((r) => setTimeout(r, 1500));
+      await route.continue();
+    });
+    await page.goto("/busks");
+    const form = page.getByRole("form", { name: "Plan for your own act" });
+    await form.getByLabel("Act name").fill("Busy Duo");
+    await form.getByLabel("Artists you sound like").fill("Paul Kelly");
+    await form.getByRole("button", { name: "Plan my busk" }).click();
+    const pending = form.getByRole("button", { name: /Planning/ });
+    await expect(pending).toBeDisabled();
+    await expect(form).toHaveAttribute("aria-busy", "true");
   });
 
   test("a typed plan link (deep link) opens the same plan", async ({ page }) => {
     await page.goto(`/plan?name=Deep%20Link%20Duo&artists=Angus%20%26%20Julia%20Stone&songs=Big%20Jet%20Plane~Angus%20%26%20Julia%20Stone&date=${SUNDAY}&from=12&to=15&permit=general`);
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await expect(page.getByRole("heading", { level: 1, name: "Deep Link Duo" })).toBeVisible();
-    await expect(page.getByText(`Sunday ${SUNDAY}, 12 pm–3 pm`, { exact: false })).toBeVisible();
+    await expect(page.getByText(`${shortDay(SUNDAY)} · 12–3 pm · General permit`).first()).toBeVisible();
     await waitForPlan(page);
   });
 
@@ -151,10 +202,39 @@ test.describe("artists Qloo can't match", () => {
     await page.goto(`/plan?name=Nobody%20Knows&artists=Zzyzx%20Nobody|Qqq%20Unknown&date=${SATURDAY}&from=18&to=21`);
     await waitForPlan(page);
     const alert = page.getByTestId("unmatched-artists");
-    await expect(alert).toContainText("Qloo couldn't match Zzyzx Nobody and Qqq Unknown");
-    await expect(alert).toContainText("taste is left out");
-    await expect(page.getByText("Qloo couldn't match any of your artists, so the agent wasn't run")).toBeVisible();
-    // The plan shown isn't Claude's: said so once the run ends.
-    await expect(page.getByTestId("agent-fallback")).toContainText("template ones");
+    // ONE alert (B-045): taste is left out, with the way to pick artists from Spotify.
+    await expect(alert).toContainText("Qloo couldn't match any of your artists");
+    await expect(alert).toContainText("Taste is left out of this plan");
+    await expect(page.getByRole("link", { name: "Pick your artists from Spotify" })).toBeVisible();
+    // Claude had nothing to research: said once, and no research funnel or feed is drawn.
+    await expect(page.getByTestId("agent-fallback")).toContainText("Claude didn't research this busk");
+    await expect(page.getByTestId("plan-funnel")).toHaveCount(0);
+    await expect(page.getByTestId("agent-stream")).toHaveCount(0);
+  });
+});
+
+test.describe("F25: a song Spotify doesn't have is one row in the song search", () => {
+  test.skip(!LOCAL, "Relies on the mock's catalogue");
+
+  test("splits Title - Artist, says what it saves, and adds it just for this busk", async ({ page }) => {
+    await page.goto("/busks");
+    const form = page.getByRole("form", { name: "Plan for your own act" });
+    await form.getByRole("button", { name: "Edit for this busk" }).click();
+    await form.getByText("+ Add a song just for this busk").click();
+    const box = form.getByPlaceholder("Search songs, e.g. Riptide");
+    await expect(async () => {
+      await box.fill("");
+      await box.fill("Wild Song - The Nobodies");
+      await expect(form.getByRole("option", { name: "Add “Wild Song” by The Nobodies as typed" })).toBeVisible({ timeout: 1500 });
+    }).toPass();
+    await expect(form.getByText("It's saved without a length, tagged Typed. Edit the title or artist any time.")).toBeVisible();
+    await form.getByRole("option", { name: /as typed/ }).last().click();
+    const picked = form.getByRole("list", { name: "Songs for this busk" });
+    await expect(picked).toContainText("Wild Song");
+    await expect(picked).toContainText("The Nobodies");
+    await expect(picked).toContainText("Just for this busk");
+    // A title with no dash has no "by".
+    await box.fill("Mystery Tune");
+    await expect(form.getByRole("option", { name: "Add “Mystery Tune” as typed" })).toBeVisible();
   });
 });

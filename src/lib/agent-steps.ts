@@ -14,7 +14,7 @@ export type AgentStep = {
   label: string;
   source?: string;
   input?: unknown;
-  status: "running" | "done" | "failed" | "notes";
+  status: "running" | "done" | "failed" | "notes" | "cut";
   summary?: string;
   output?: unknown;
   notes: StepNote[];
@@ -42,7 +42,7 @@ export function applyStreamEvent(steps: AgentStep[], event: PlanStreamEvent | Le
 }
 
 export const scalar = (v: unknown): string => {
-  if (v === null || v === undefined) return "–";
+  if (v === null || v === undefined) return "none";
   if (typeof v === "string") return v;
   if (typeof v === "number" || typeof v === "boolean") return String(v);
   if (Array.isArray(v) && v.every((x) => x === null || typeof x !== "object")) return v.map(scalar).join(", ");

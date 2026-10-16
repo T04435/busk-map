@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Busks · review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f1ea;--card:#fff;--fg:#17191c;--muted:#5d6168;--line:#d9d4c8;--ok:#1d7a3a;--okbg:#e2f3e7;--bad:#b3141b;--badbg:#fbe3e4;--warn:#8a5a00;--warnbg:#fdf0d3;--held:#4b4f86;--heldbg:#e7e7f6;--accent:#c2410c}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#111416;--card:#1a1e21;--fg:#eceae4;--muted:#a3a8ad;--line:#2d3337;--ok:#6fd38f;--okbg:#14301e;--bad:#ff8c8f;--badbg:#3a1416;--warn:#f2c160;--warnbg:#33280f;--held:#b9b9f0;--heldbg:#25253d;--accent:#ff7a3d}}
+:root[data-theme="dark"]{--bg:#111416;--card:#1a1e21;--fg:#eceae4;--muted:#a3a8ad;--line:#2d3337;--ok:#6fd38f;--okbg:#14301e;--bad:#ff8c8f;--badbg:#3a1416;--warn:#f2c160;--warnbg:#33280f;--held:#b9b9f0;--heldbg:#25253d;--accent:#ff7a3d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.wrap{max-width:1600px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:24px;margin:0} .ver{font-weight:800;margin:6px 0 2px} .chg{color:var(--muted);margin:0 0 12px}
+.strip{display:flex;flex-wrap:wrap;gap:8px;align-items:center;position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0;border-bottom:1px solid var(--line)}
+.stat{padding:6px 12px;border:1px solid var(--line);background:var(--card);font-weight:800}
+.stat.ok{color:var(--ok)} .stat.bad{color:var(--bad)} .stat.warn{color:var(--warn)} .stat.held{color:var(--held)}
+.filter{font:inherit;padding:6px 12px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer;min-height:40px} .filter[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.row{display:grid;grid-template-columns:150px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,.55fr) minmax(0,1.3fr);gap:12px;background:var(--card);border:1px solid var(--line);margin:12px 0;padding:12px;scroll-margin-top:70px}
+.row:target{outline:3px solid var(--accent)}
+.id a{display:inline-block;font-size:22px;font-weight:800;color:var(--fg);text-decoration:none;border:2px solid var(--fg);padding:0 8px} .id span{display:block;margin-top:6px;font-weight:600}
+figure{margin:0;min-width:0} figcaption{font-size:12px;color:var(--muted);margin-bottom:4px}
+img{display:block;max-width:100%;height:auto;max-height:520px;object-fit:contain;object-position:top left;border:1px solid var(--line);background:#fff}
+.box img{max-height:none}
+dl{margin:0;display:grid;gap:6px} dt{font-size:12px;color:var(--muted)} dd{margin:0} .call{font-weight:800;color:var(--accent)} .spec{font-size:12px;color:var(--muted)}
+.chip{font-weight:800;padding:1px 8px} .chip.ok{background:var(--okbg);color:var(--ok)} .chip.bad{background:var(--badbg);color:var(--bad)} .chip.warn{background:var(--warnbg);color:var(--warn)} .chip.held{background:var(--heldbg);color:var(--held)}
+.ph{border:2px dashed var(--muted);color:var(--muted);padding:24px 8px;text-align:center;font-weight:800}
+body.action .row[data-action="false"]{display:none}
+.ready{border:2px solid var(--line);background:var(--card);padding:12px 16px;margin:8px 0 14px} .ready.ready{border-color:var(--ok)} .ready.ready-with-notes{border-color:var(--warn)} .ready.not-ready{border-color:var(--bad)}
+.box{background:var(--card);border:1px solid var(--line);padding:12px 16px;margin-top:20px;overflow-x:auto} .box h2{font-size:16px;margin:0 0 6px}
+.prov{border-left:4px solid var(--accent);padding:6px 10px;background:var(--bg);font-size:13px} .synth{border:2px solid var(--fg);padding:8px 12px;margin:10px 0} .synth h3{margin:0 0 4px;font-size:14px} .box details{margin-top:10px} .box summary{font-weight:800;cursor:pointer;min-height:32px} .box h3,.box h4,.box h5,.box h6{font-size:14px;margin:12px 0 4px} .box table{margin:6px 0} .box code{font-size:12px}
+table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top}
+@media (max-width:1100px){.row{grid-template-columns:1fr 1fr} .id{grid-column:1/-1} dl{grid-column:1/-1}}
+@media (max-width:600px){.row{grid-template-columns:1fr}}
+</style></head>
+<body><div class="wrap">
+<h1>Busks · review</h1>
+<p class="ver">v4 · design/honeycomb ＠ f83f1a1 · 17 Oct 2026 · route /busks</p>
+<p class="chg">The one full pass at DEV&#x27;s closing commit f83f1a1: every row re-judged at 1440 and 390 (768 for breakage); new captures in inv/v4/. Fixed since v3 and now Present: B02 (F20: the eyebrow reads “Your act, your hours”, no Melbourne), B39 and B50 (B-134 fixed at f83f1a1: buttons focus with one 2px outline 2px outside, so at night the orange ring sits on the dark ground with a gap, not on the orange fill; the choice card now carries the focus, a 3px outline at 4px, the radio draws none, BRAND&#x27;s ruling), B53 (B-096 fixed at f83f1a1: every transition is 0s under reduced motion), B49 (retired with Tips: the takings line is gone, B-093 moot), B07/B08 (B-032 accepted by the user, judged against that call). B20: BRAND&#x27;s copy landed (“+ Add “Laneway Light” by The Larkspur Two as typed” and the Typed helper; B-143 copy part fixed) but the row still shows under Spotify results, while searching and on error. Now Held: B30 (F27 held by DEV). Worse: B24/B56 (B-142): the new edit pencil leaves an “(own)” typed song with no visible title or artist at 390 (title 0px wide). Still open: B-080, B-081, B-082, B-085..B-092, B-094, B-095, B-097, B-144. New: B-172 (B11 artists hint sits above the field), B-173 (B14 artist typed row has no plus icon); both were already so at 8207373. Tips: nothing of it remains on /busks (no nav item, no /tips link, no tip or takings copy). DS parity and glyph rule applied (user rule, same commit): every component judged against BRAND&#x27;s DS specimen. Now Different: B07/B08 (DS ExampleActCard, B-163), B12 (DS ArtistPicker chips, B-175), B22 (DS PickedSongs, B-176), B26 (DS Input/RepertoirePicker Spotify icon, B-174), B30 stays Held (F27, DEV) with a DS TimeSlotPicker note (B-177), B32 (DS CityPicker badge icon, B-181), B40 (DS Alert icon, B-179). DS notes added to rows already Different: B11, B14, B15 (ArtistPicker), B19 (SongSearch, B-182), B34/B35 (DatePicker), B38 (PermitPicker counts, B-178), B41/B42 (Alert), B44 (Banner, B-180), B52 (Loader). Glyph rule: no text glyph icons on /busks (arrows, plus, check and x are SVG icons), so no row cites B-162. The impeccable critique and audit were run for real this round (skill v4.4.0, dual-agent, at f83f1a1, 390/768/1440; provenance at the top of both sections), replacing v3&#x27;s hand-written sections. New from impeccable, verified by QA: B-220 (form errors not tied to fields, focus left on submit), B-221 (no pending state), B-231.</p>
+<section class="ready not-ready" aria-label="Ready for design-approve"><b>Ready for the user's design-approve? Not ready.</b> Under the DS-parity rule several components visibly differ from their DS specimens: the example act cards are a different layout from DS ExampleActCard (B07, B08), Time of day selects in dark, not DS TimeSlotPicker&#x27;s orange (B30), and the artist chips, picks header, permit counts and alert icon differ (B12, B22, B38, B40). Plan again is still the whole prefilled form (B44, B45, B46; B-092), and at 390 an “(own)” typed song shows no title (B24, B56; B-142). Impeccable adds B-220 and B-221.</section>
+<div class="strip" role="group" aria-label="Summary"><span class="stat ok">24 Present</span><span class="stat warn">30 Different</span><span class="stat bad">2 Missing</span><span class="stat bad">0 Broken</span><span class="stat held">1 Held</span><button class="filter" type="button" aria-pressed="false" id="flt">Needs action only</button></div>
+<p class="chg">Deck: BRAND&#x27;s crops from inventory/busks (spec-only parts show the spec text; crops unchanged since v3). Build: QA&#x27;s own clean export of f83f1a1, offline (synthetic Spotify results, so “Synthetic …” names and the “Offline test mode” notes appear; they are not judged). The no-match, loading and search-error states were reached by answering the page&#x27;s own /api/repertoire calls in the browser; the error state by submitting the empty form; plan again with /busks?again=&lt;id&gt; (Q76ceKvWT) taken from /plan?example=sax&amp;date=2026-10-12. Focus crops are keyboard focus (Tab). The row id is the ticket.</p>
+<article class="row" id="B01" data-action="true">
+<div class="id"><a href="#B01">B01</a><span>Header</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B01.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B01.jpg" alt="B01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B01-1440.jpg" alt="B01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>8207373: the design system&#x27;s lockup files as images (header 36px, footer 34px)</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> The lockup [hex mark][new wordmark] as an image (busk-map-lockup-dark.svg, 36px). Nav Busks · Week · Brain, Busks current, from 721px. No Tips item (Tips removed); Repertoire comes with the brandv1 merge, as the inventory says. The board&#x27;s wordmark-only header and “Setlist” are superseded.</dd></div>
+<div><dt>User's call</dt><dd class="call">F12 (corrected 17 Oct): the ONE logo is the lockup, hex mark + new wordmark, in header, footer and every asset; F12 only retired the old wordmark lettering. Wordmark-only or mark-only in a header fails. Supersedes the inventory&#x27;s “wordmark only”. Tips removed by the user (17 Oct): nothing of it may remain on this page.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B02" data-action="true">
+<div class="id"><a href="#B02">B02</a><span>Eyebrow</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B02.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B02.jpg" alt="B02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B02-1440.jpg" alt="B02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B02-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B02-390.jpg" alt="B02 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>f137b9a: no Melbourne eyebrow on /busks</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Now reads “YOUR ACT, YOUR HOURS” (mono, bold, uppercase, muted), as F20 asks. The only “Melbourne” left on the page is the city picker&#x27;s choice (B32, real data). DS PageHeader: matches (mono muted meta, display title, subtitle; no back link on this page).</dd></div>
+<div><dt>User's call</dt><dd class="call">F20: no “Melbourne” in an eyebrow or default text; city names only where the data really is that city&#x27;s (DEV: the city picker, time zone, example pitch names, City of Melbourne sources and compare verdict are real data).</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B03" data-action="false">
+<div class="id"><a href="#B03">B03</a><span>Page title</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B03.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B03.jpg" alt="B03 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B03-1440.jpg" alt="B03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B03-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B03-390.jpg" alt="B03 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> h1 “PLAN YOUR BUSK”, Big Shoulders 800, uppercase. (Plan again keeps it: B44.)</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B04" data-action="true">
+<div class="id"><a href="#B04">B04</a><span>Intro line</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B04.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B04.jpg" alt="B04 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B04-1440.jpg" alt="B04 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B04-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B04-390.jpg" alt="B04 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Copy matches. Still 16/24 with no max width: one 915px line at 1440 (board 18/27, max 760px).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-080</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B05" data-action="false">
+<div class="id"><a href="#B05">B05</a><span>Or try a made-up act</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B05.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B05.jpg" alt="B05 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B05-1440.jpg" alt="B05 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B05-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B05-390.jpg" alt="B05 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Heading plus 3 cards in an auto-fit grid (min 260px, board 280px); 3 across at 1440, 2+1 at 768, stacked at 390; hidden in the plan-again state.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B06" data-action="false">
+<div class="id"><a href="#B06">B06</a><span>“Or try a made-up act” heading</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B06.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B06.jpg" alt="B06 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B06-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B06-1440.jpg" alt="B06 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B06-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B06-390.jpg" alt="B06 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> h2, Big Shoulders 800 26px, uppercase.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B07" data-action="true">
+<div class="id"><a href="#B07">B07</a><span>Example act cards ×3</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B07.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B07.jpg" alt="B07 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B07-1440.jpg" alt="B07 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B07-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B07-390.jpg" alt="B07 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> As the user kept them: filled orange hexes (AS, SA, FD), a blurb (“Guitar and voice, Australian songbook covers. Saturday evening.”) and “Sounds like …”; no “day · hours” line and no “Plays …” (board). Judged against the user&#x27;s call. DS parity: differs from DS ExampleActCard: the DS card is a full-width row (orange hex initials on the left, name, blurb, “Sounds like …” in mono, an arrow at the right edge, cards stacked); the build is a tall card in a 3-column grid with a sans bold “Sounds like” label and a separate dark foot row. The user accepted the board difference (B-032); this is the DS mismatch, for the user to rule on.</dd></div>
+<div><dt>User's call</dt><dd class="call">Kept as built (the user&#x27;s call on landing L13, B-032 accepted by the user): filled hexes, a blurb, a dark action row.</dd></div>
+<div><dt>Defect</dt><dd>B-032 (accepted by the user); B-163</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B08" data-action="true">
+<div class="id"><a href="#B08">B08</a><span>“Watch Busk Map plan this act →”</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B08.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B08.jpg" alt="B08 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B08-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B08-1440.jpg" alt="B08 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B08-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B08-390.jpg" alt="B08 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> As the user kept it: the whole card is the link (/plan?example=acoustic|sax|folk-duo), its foot a dark action row with an arrow (board: signal-coloured underlined link). DS parity: DS ExampleActCard has no action text; the arrow sits at the right of the card row. The build adds a foot row “Watch Busk Map plan this act” with the arrow.</dd></div>
+<div><dt>User's call</dt><dd class="call">Kept as built (the user&#x27;s call on landing L13, B-032 accepted by the user): filled hexes, a blurb, a dark action row.</dd></div>
+<div><dt>Defect</dt><dd>B-032 (accepted by the user); B-163</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B09" data-action="true">
+<div class="id"><a href="#B09">B09</a><span>Plan your own busk (form)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B09.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B09.jpg" alt="B09 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B09-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B09-1440.jpg" alt="B09 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B09-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B09-390.jpg" alt="B09 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> form “Plan for your own act”, card background, 2px rule border, 28px padding (16px at 390), groups in order Your act, Songs you can play, When and where, buttons. Still no shadow (box-shadow none). Time of day sits in When and where (B30, held).</dd></div>
+<div><dt>User's call</dt><dd class="call">F25, F26, F27</dd></div>
+<div><dt>Defect</dt><dd>B-081</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B10" data-action="false">
+<div class="id"><a href="#B10">B10</a><span>Act name</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B10.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B10.jpg" alt="B10 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B10-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B10-1440.jpg" alt="B10 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B10-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B10-390.jpg" alt="B10 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Label “Act name”, placeholder “e.g. Jess on acoustic guitar”, maxLength 80, no hint. Focus: one 2px border plus one 2px ring, no paper gap.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B11" data-action="true">
+<div class="id"><a href="#B11">B11</a><span>Artists you sound like</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B11.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B11.jpg" alt="B11 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B11-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B11-1440.jpg" alt="B11 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B11-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B11-390.jpg" alt="B11 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>Fix claimed in 527a502</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> One InputGroup border with the search icon only, placeholder “Search Spotify, e.g. Paul Kelly”, live hint “2 of 10. Type a comma to add a name that isn’t on Spotify.” Chips sit above the field as drawn. The hint sits between the chips and the field (above the search), the board draws it under the field; already so at 8207373. DS ArtistPicker also puts the hint under the field.</dd></div>
+<div><dt>User's call</dt><dd class="call">F13: a normal input with the search icon only (shadcn InputGroup), one border, one focus ring.</dd></div>
+<div><dt>Defect</dt><dd>B-172 (DS ArtistPicker)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B12" data-action="true">
+<div class="id"><a href="#B12">B12</a><span>Artist chips</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B12.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B12.jpg" alt="B12 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B12-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B12-1440.jpg" alt="B12 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B12-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B12-390.jpg" alt="B12 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> ul “Artists you picked”: 26px hex with initials, name, “(TYPED)” tag for typed names, ghost x “Remove &lt;name&gt;”; wraps to one chip a row at 390. DS parity: differs from DS ArtistPicker&#x27;s chips: DS stacks one chip per row, the tag reads “TYPED” (no brackets) and a divider rule separates the name from the x; the build wraps chips side by side (2 a row at 1440), writes “(TYPED)” and has no divider.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-175</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B13" data-action="false">
+<div class="id"><a href="#B13">B13</a><span>Artist search: results</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B13-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B13-1440.jpg" alt="B13 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B13-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B13-390.jpg" alt="B13 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">Listbox “Artist results”, group “Spotify”: 32px hex, name, “N releases · N Last.fm listeners”; a picked artist shows a check and “Added”. Arrow keys move, Enter picks, Esc clears.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Listbox “Artist results”, group “SPOTIFY”: 32px hex, name, “26 releases · 184k Last.fm listeners”. After a pick the list closes and the field keeps focus. DS ArtistPicker results: matches (hex image or initials, name, mono meta, active row tinted with an orange edge).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B14" data-action="true">
+<div class="id"><a href="#B14">B14</a><span>Artist not on Spotify: add as typed</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B14-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B14-1440.jpg" alt="B14 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B14-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B14-390.jpg" alt="B14 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">While text is typed, a group “Not on Spotify?” offers “Add “&lt;name&gt;” as typed” (plus icon). A comma or new line also adds it. A later Spotify pick upgrades the typed chip.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Group “NOT ON SPOTIFY?” with “Add “Zzyzx Nobody” as typed”; a comma also adds the name. The item has no plus icon (spec draws one; the song search&#x27;s typed row has it). DS ArtistPicker draws the typed row with a plus and the tinted active style.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-173 (DS ArtistPicker)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B15" data-action="true">
+<div class="id"><a href="#B15">B15</a><span>Artist search status lines</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B15-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B15-1440.jpg" alt="B15 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B15-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B15-390.jpg" alt="B15 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">“Type 3 or more letters to search Spotify.”; “Searching Spotify…” with a spinner (role status); “No artists on Spotify match “&lt;query&gt;”.”; error (role alert): “Search isn&#x27;t working right now. Try again in a moment.”</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Type 3 or more letters to search Spotify.”, “Searching Spotify…” (role status, no spinner), “No artists on Spotify match “…”.” as specified. Error still “Search isn&#x27;t working right now. Type it in instead.” (spec: “… Try again in a moment.”), no warning icon. DS ArtistPicker: “Searching Spotify…” with the hex Loader, and the error with a warning triangle: “Spotify search isn&#x27;t answering. Type the name and press comma to add it anyway.”; the build has neither the Loader nor the icon.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-082; DS ArtistPicker; B-095</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B16" data-action="false">
+<div class="id"><a href="#B16">B16</a><span>Artist limit reached (10)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B16-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B16-1440.jpg" alt="B16 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B16-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B16-390.jpg" alt="B16 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">At 10 artists the field is disabled, placeholder “Up to 10 artists”, hint “That’s the most. Remove one to add another.”</dd></div>
+<div><dt>DEV status</dt><dd>Fix claimed in 527a502</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> At 10 chips the field is disabled, placeholder “Up to 10 artists”, hint “That’s the most. Remove one to add another.”</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-038 fixed at 8207373</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B17" data-action="true">
+<div class="id"><a href="#B17">B17</a><span>Songs you can play</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B17.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B17.jpg" alt="B17 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B17-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B17-1440.jpg" alt="B17 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B17-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B17-390.jpg" alt="B17 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>Fix claimed in 4e26406 / f9bff52</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> fieldset “Songs you can play”: song search, “Your picks” header and list, the artist link; no textarea, no Load my songs (F25, F26 met). Still shown in the plan-again state (B44). Time of day is not in this group (F27, held by DEV).</dd></div>
+<div><dt>User's call</dt><dd class="call">F25: remove the textarea; typing a song in is the fallback inside the song search, prefilled from the query, shown when there&#x27;s no match. F26: remove “Load my songs”; load on Enter, or on blur when the field isn&#x27;t empty. F27: time of day is shown with the song inputs; “Any time · Busk Map picks” waits for the user&#x27;s architecture approval. Keep “Lunch” (as built and in the user&#x27;s screenshot), not the board&#x27;s “Midday”. HELD BY DEV.</dd></div>
+<div><dt>Defect</dt><dd>B-092</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B18" data-action="true">
+<div class="id"><a href="#B18">B18</a><span>Song search</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B18.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B18.jpg" alt="B18 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B18-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B18-1440.jpg" alt="B18 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B18-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B18-390.jpg" alt="B18 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> One InputGroup border with the search icon only, placeholder “Search songs, e.g. Riptide”; focus is one border plus one ring. Label is a visually hidden “Search songs on Spotify” (the board&#x27;s repeated legend isn&#x27;t built). DS SongSearch field: matches.</dd></div>
+<div><dt>User's call</dt><dd class="call">F13: a normal input with the search icon only (shadcn InputGroup), one border, one focus ring.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B19" data-action="true">
+<div class="id"><a href="#B19">B19</a><span>Song search: results</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B19.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B19.jpg" alt="B19 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B19-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B19-1440.jpg" alt="B19 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B19-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B19-390.jpg" alt="B19 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>Fix claimed in 527a502</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Listbox “Song results”, group “SPOTIFY”: muted music hex, title, “artist · album”, length in mono, “BY YOUR ARTIST” badge on its own line under the title (titles 177px wide at 390). After a pick the list closes, the query clears and the field keeps focus. The badge still has no users icon (board). DS parity: DS SongSearch puts “By your artist” (users icon) inline at the right of the row before the length; the build puts it on its own line under the title, no icon.</dd></div>
+<div><dt>User's call</dt><dd class="call">F13: a normal input with the search icon only (shadcn InputGroup), one border, one focus ring.</dd></div>
+<div><dt>Defect</dt><dd>B-144; B-036, B-042 fixed at 8207373; B-182</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B20" data-action="true">
+<div class="id"><a href="#B20">B20</a><span>Song not on Spotify: type it in (F25)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B20.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B20.jpg" alt="B20 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B20-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B20-1440.jpg" alt="B20 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B20-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B20-390.jpg" alt="B20 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>b39fd5f: BRAND&#x27;s typed-row copy (“+ Add “title” by artist as typed”), the Typed helper, edit in place</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> No match (answered empty): “No songs on Spotify match “Laneway Light - The Larkspur Two”.”, group “NOT ON SPOTIFY?”, one row “+ Add “Laneway Light” by The Larkspur Two as typed” (Title - Artist split) and “It&#x27;s saved without a length, tagged Typed. Edit the title or artist any time.”: BRAND&#x27;s copy, word for word. Still shown under Spotify results (“Fast Car”: groups Spotify, Not on Spotify?), while searching and on error, not only on no match as F25 says. Picking it adds the song tagged Typed, editable in place (Title, Artist, Done).</dd></div>
+<div><dt>User's call</dt><dd class="call">F25: remove the textarea; typing a song in is the fallback inside the song search, prefilled from the query, shown when there&#x27;s no match.</dd></div>
+<div><dt>Defect</dt><dd>B-143 (copy fixed at f83f1a1; visibility open)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B21" data-action="true">
+<div class="id"><a href="#B21">B21</a><span>Song search status lines</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B21-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B21-1440.jpg" alt="B21 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B21-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B21-390.jpg" alt="B21 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">“Type 3 or more letters to search Spotify.”; “Searching Spotify…” with spinner; error “Search isn&#x27;t working right now. Try again in a moment.” (role alert). The no-match line is replaced by the typed fallback (B20).</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Type 3 or more letters…” and “Searching Spotify…” (no spinner) as specified; error still “Search isn&#x27;t working right now. Type it in instead.” with the typed row under it; the no-match line stays above the typed row as B20 (decided) draws.</dd></div>
+<div><dt>User's call</dt><dd class="call">F25: remove the textarea; typing a song in is the fallback inside the song search, prefilled from the query, shown when there&#x27;s no match.</dd></div>
+<div><dt>Defect</dt><dd>B-082, B-143</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B22" data-action="true">
+<div class="id"><a href="#B22">B22</a><span>Your picks</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B22.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B22.jpg" alt="B22 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B22-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B22-1440.jpg" alt="B22 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B22-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B22-390.jpg" alt="B22 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>Fix claimed in 527a502</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Mono muted header “YOUR PICKS · 7 SONGS · AT LEAST 21:50” (“at least” when a typed song has no length), then ul “Songs you picked” in a 2px rule box. One line, not label left and total right as drawn. DS parity: differs from DS PickedSongs: the label sits on the left and the total “3 songs · 8:54” in mono on the right of one line; the build writes one mono run “YOUR PICKS · 7 SONGS · AT LEAST 21:50”.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-037 fixed at 8207373; B-176</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B23" data-action="false">
+<div class="id"><a href="#B23">B23</a><span>Picked song row (Spotify)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B23.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B23.jpg" alt="B23 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B23-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B23-1440.jpg" alt="B23 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B23-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B23-390.jpg" alt="B23 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Muted hex with music icon, title, “artist · album”, length in mono, ghost x “Remove &lt;title&gt;”. DS PickedSongs Spotify row: matches.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B24" data-action="true">
+<div class="id"><a href="#B24">B24</a><span>Picked song row (your own / typed)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B24.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B24.jpg" alt="B24 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B24-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B24-1440.jpg" alt="B24 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B24-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B24-390.jpg" alt="B24 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>b39fd5f: BRAND&#x27;s typed-row copy (“+ Add “title” by artist as typed”), the Typed helper, edit in place</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> A typed song is saved with no length, tagged “TYPED”, with an edit pencil “Edit &lt;title&gt;” (Title and Artist fields, Done) (F25 met). Typed with “(own)” it shows “YOUR SONG” and “TYPED”. The solid “YOUR SONG” badge still has no music icon. At 390 the badges plus the new pencil leave the “(own)” typed song&#x27;s title 0px wide: no title or artist shows at all (390 crop, third row of B22); a plain typed song keeps 80px. Worse than v3&#x27;s “Lan…”. DS PickedSongs/Badge: the solid “Your song” badge carries a music icon (B-097).</dd></div>
+<div><dt>User's call</dt><dd class="call">F25: remove the textarea; typing a song in is the fallback inside the song search, prefilled from the query, shown when there&#x27;s no match.</dd></div>
+<div><dt>Defect</dt><dd>B-097, B-142 (worse)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B25" data-action="true">
+<div class="id"><a href="#B25">B25</a><span>No songs picked</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B25-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B25-1440.jpg" alt="B25 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B25-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B25-390.jpg" alt="B25 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">PickedSongs empty line: “Search for songs above, or type them below.” Overridden by F25: point to the search only (copy to confirm).</dd></div>
+<div><dt>DEV status</dt><dd>Fix claimed in 4e26406 / f9bff52</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> With no picks: “Search for songs above.” (points to the search only, as F25 asks).</dd></div>
+<div><dt>User's call</dt><dd class="call">F25: the line must point to the search only (copy to confirm).</dd></div>
+<div><dt>Defect</dt><dd>B-083 fixed at 8207373</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B26" data-action="true">
+<div class="id"><a href="#B26">B26</a><span>Your Spotify artist link</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B26.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B26.jpg" alt="B26 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B26-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B26-1440.jpg" alt="B26 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B26-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B26-390.jpg" alt="B26 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>Fix claimed in 4e26406 / f9bff52</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Visible label “Your Spotify artist link (optional)”, music icon, placeholder “open.spotify.com/artist/…”, hint “Optional: adds your own songs. Press Enter to load them.”; no button; Enter loads, blur loads when the field isn&#x27;t empty (F26 met). Fills the row at 390, 768 and 1440. DS parity: differs from DS Input (Spotify link) and DS RepertoirePicker: both show the Spotify icon (circle with three arcs) at the left; the build shows a music note. DS RepertoirePicker is a whole block (link, “Add covers you can play”, a tick list, “Use these songs”); the build&#x27;s repertoire-picker.tsx is only this link field, and the board&#x27;s B17 doesn&#x27;t use DS RepertoirePicker.</dd></div>
+<div><dt>User's call</dt><dd class="call">F26: remove “Load my songs”; load on Enter, or on blur when the field isn&#x27;t empty.</dd></div>
+<div><dt>Defect</dt><dd>B-040 fixed at 8207373; B-174</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B27" data-action="true">
+<div class="id"><a href="#B27">B27</a><span>“Load my songs” button</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B27.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B27.jpg" alt="B27 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>Fix claimed in 4e26406 / f9bff52</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Removed, as F26 asks: no “Load my songs” button at 1440 or 390.</dd></div>
+<div><dt>User's call</dt><dd class="call">F26: remove “Load my songs”; load on Enter, or on blur when the field isn&#x27;t empty.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B28" data-action="true">
+<div class="id"><a href="#B28">B28</a><span>Artist link: songs loaded / bad link</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B28.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B28.jpg" alt="B28 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B28-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B28-1440.jpg" alt="B28 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B28-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B28-390.jpg" alt="B28 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>Fix claimed in 4e26406 / f9bff52</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Enter loads (offline: synthetic “Your song” rows and “Offline test mode: these songs are made up, not from Spotify.”). A bad link on blur: field error with warning icon “That isn&#x27;t a Spotify artist link. It starts with open.spotify.com/artist/.”, aria-invalid=true (390 crop). Busy: aria-busy plus a spinner line “Loading your songs…”.</dd></div>
+<div><dt>User's call</dt><dd class="call">F26: remove “Load my songs”; load on Enter, or on blur when the field isn&#x27;t empty.</dd></div>
+<div><dt>Defect</dt><dd>B-084 fixed at 8207373</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B29" data-action="true">
+<div class="id"><a href="#B29">B29</a><span>“Songs Spotify doesn&#x27;t have” textarea</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B29.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B29.jpg" alt="B29 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>b39fd5f: BRAND&#x27;s typed-row copy (“+ Add “title” by artist as typed”), the Typed helper, edit in place</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Removed, as F25 asks: no textarea on the page; typing a song in is the row inside the song search (B20).</dd></div>
+<div><dt>User's call</dt><dd class="call">F25: remove the textarea; typing a song in is the fallback inside the song search, prefilled from the query, shown when there&#x27;s no match.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B30" data-action="true">
+<div class="id"><a href="#B30">B30</a><span>Time of day with the song inputs (F27)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B30.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B30.jpg" alt="B30 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B30-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B30-1440.jpg" alt="B30 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B30-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B30-390.jpg" alt="B30 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>Held by DEV (F27)</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> Held by DEV. As built: toggle group “Time of day”: Morning 9 am–12 pm · Lunch 12 pm–3 pm · Afternoon 3 pm–6 pm · Evening 6 pm–9 pm, 4 across at 1440 and 768, 2×2 at 390, still in When and where above Date. No “Any time” (correctly held); “Lunch” kept. DS parity: differs from DS TimeSlotPicker: the selected slot is orange-filled in DS (dark by day, cream at night in the build); DS times are mono 24-hour ranges (“18–21”) and include Late 21–24 and a Day row; the build has 4 slots in 12-hour copy. Placement (F27) is still held by DEV.</dd></div>
+<div><dt>User's call</dt><dd class="call">F27: time of day is shown with the song inputs; “Any time · Busk Map picks” waits for the user&#x27;s architecture approval. Keep “Lunch” (as built and in the user&#x27;s screenshot), not the board&#x27;s “Midday”. HELD BY DEV.</dd></div>
+<div><dt>Defect</dt><dd>B-177</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B31" data-action="false">
+<div class="id"><a href="#B31">B31</a><span>When and where</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B31.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B31.jpg" alt="B31 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B31-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B31-1440.jpg" alt="B31 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B31-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B31-390.jpg" alt="B31 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> fieldset “When and where”: City, Time of day (B30), Date · From · To, permit. No sideways scroll at 390/768/1440.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B32" data-action="true">
+<div class="id"><a href="#B32">B32</a><span>City picker</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B32.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B32.jpg" alt="B32 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B32-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B32-1440.jpg" alt="B32 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B32-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B32-390.jpg" alt="B32 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Legend “City”, hex radio “Melbourne”, “Taste, foot traffic, busking rules, events and weather”, “LIVE DATA” badge. The city name is real data (allowed by F20). DS parity: DS CityPicker&#x27;s “Live data” badge has a bar-chart icon; the build&#x27;s has a footprints icon. Card, hex radio and orange offset match.</dd></div>
+<div><dt>User's call</dt><dd class="call">F20: no “Melbourne” in an eyebrow or default text; city names only where the data really is that city&#x27;s (DEV: the city picker, time zone, example pitch names, City of Melbourne sources and compare verdict are real data).</dd></div>
+<div><dt>Defect</dt><dd>B-181</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B33" data-action="true">
+<div class="id"><a href="#B33">B33</a><span>Cities and their data level</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">The city list, each city&#x27;s note and its level (live → “Live data”, otherwise “Less data”) come from the app&#x27;s city coverage. While null: no default city text (F20); the first city is selected.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Unchanged: performer-form.tsx passes one literal city to CityPicker and the request hard-codes city “melbourne”. The text shown is real data, so F20 itself is met.</dd></div>
+<div><dt>User's call</dt><dd class="call">F20: no “Melbourne” in an eyebrow or default text; city names only where the data really is that city&#x27;s (DEV: the city picker, time zone, example pitch names, City of Melbourne sources and compare verdict are real data).</dd></div>
+<div><dt>Defect</dt><dd>B-085</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B34" data-action="true">
+<div class="id"><a href="#B34">B34</a><span>Date</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B34.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B34.jpg" alt="B34 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B34-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B34-1440.jpg" alt="B34 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B34-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B34-390.jpg" alt="B34 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Field-style button “SAT 17 OCT 2026”: uppercase, no comma, the calendar icon on the right (board: “Sun, 18 Oct 2026”, icon on the left). DS DatePicker: “Sun, 18 Oct 2026”, calendar icon on the left.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-086 (DS DatePicker)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B35" data-action="true">
+<div class="id"><a href="#B35">B35</a><span>Calendar open</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B35-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B35-1440.jpg" alt="B35 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B35-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B35-390.jpg" alt="B35 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">Dialog “Choose a date”: month and year, Previous/Next month buttons, Mo–Su, day buttons (selected filled, today marked, past disabled). Picking a day closes it.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Unchanged: weeks start on Sunday (SU…SA; spec Mo–Su) and the dialog has no name (spec “Choose a date”). Past days disabled, selected day a filled hex. DS DatePicker: Mo–Su, today boxed, selected a filled hex, uppercase display month title.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-087 (DS DatePicker)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B36" data-action="true">
+<div class="id"><a href="#B36">B36</a><span>From</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B36.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B36.jpg" alt="B36 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B36-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B36-1440.jpg" alt="B36 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B36-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B36-390.jpg" alt="B36 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Select “From”, default 6 pm (plan again: 5 pm). Still offers all 24 hours 12 am … 11 pm (spec 6 am … 12 am). DS Select field: matches.</dd></div>
+<div><dt>User's call</dt><dd class="call">F14: one focus ring.</dd></div>
+<div><dt>Defect</dt><dd>B-088</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B37" data-action="true">
+<div class="id"><a href="#B37">B37</a><span>To</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B37.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B37.jpg" alt="B37 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B37-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B37-1440.jpg" alt="B37 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B37-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B37-390.jpg" alt="B37 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>Fix claimed in 527a502</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Select “To”, default 9 pm, hint “Up to 6 hours” under it. Still offers 1 am … 12 am.</dd></div>
+<div><dt>User's call</dt><dd class="call">F14: one focus ring.</dd></div>
+<div><dt>Defect</dt><dd>B-088; B-039 fixed at 8207373</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B38" data-action="true">
+<div class="id"><a href="#B38">B38</a><span>Your busking permit</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B38.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B38.jpg" alt="B38 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B38-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B38-1440.jpg" alt="B38 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B38-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B38-390.jpg" alt="B38 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>d24caef: the choice card shows the focus (focus-within 3px at 4px); the radio draws none</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Legend, three choice cards and hint as drawn; descriptions still differ from the board (“Pitches open to every permit. Keep the council&#x27;s clearances from doors, crossings and seating.”, “Adds the premium-only pitches as well.”, “For a crowd that forms a circle. You take priority at circle-act pitches.”). Keyboard focus now rings the whole card (B50). Not hidden in plan again (B-092). DS parity: DS PermitPicker shows each permit&#x27;s pitch count on the right (“24 pitches” in mono); the build shows none.</dd></div>
+<div><dt>User's call</dt><dd class="call">F13, F14, F15: one border and one focus ring per field, shadcn&#x27;s own pattern, no global CSS overriding states. BRAND&#x27;s ruling: radio choices show focus on the card (.bm-choice:focus-within, 3px at 4px).</dd></div>
+<div><dt>Defect</dt><dd>B-089; B-092; B-178</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B39" data-action="true">
+<div class="id"><a href="#B39">B39</a><span>Plan buttons</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B39.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B39.jpg" alt="B39 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B39-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B39-1440.jpg" alt="B39 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B39-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B39-390.jpg" alt="B39 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>fcf44a4 / fd3252c: every button but poster focuses with one 2px outline at 2px offset (B-134)</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Top border, primary lg “PLAN MY BUSK →”, outline lg “PLAN MY WEEK FROM THIS DATE” with calendar icon; full-width rows at 390. Focus: one 2px outline 2px outside each button: dark by day, orange at night with a ground-coloured gap, so it no longer merges with the orange fill (inv/v4/B39night-1440.jpg). DS Button primary/outline lg: matches (arrow and calendar are icons, not glyphs).</dd></div>
+<div><dt>User's call</dt><dd class="call">F14: one focus ring each.</dd></div>
+<div><dt>Defect</dt><dd>B-134 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B40" data-action="true">
+<div class="id"><a href="#B40">B40</a><span>Form error: artists</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B40.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B40.jpg" alt="B40 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B40-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B40-1440.jpg" alt="B40 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B40-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B40-390.jpg" alt="B40 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Empty submit: one role=alert Alert above the buttons, title “ARTISTS YOU SOUND LIKE”, “Add at least one artist you sound like.” The board&#x27;s Spotify-id case can&#x27;t be reached offline; the source&#x27;s sentence matches the board. Icon is a circle, not the board&#x27;s triangle. DS parity: differs from DS Alert: the destructive alert uses a warning triangle; the build uses a circle icon.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-179</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B41" data-action="true">
+<div class="id"><a href="#B41">B41</a><span>Form error: songs</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B41.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B41.jpg" alt="B41 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B41-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B41-1440.jpg" alt="B41 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B41-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B41-390.jpg" alt="B41 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Reached with a 200-character typed title. Body still “check “&lt;title&gt;” (Too big: expected string to have &lt;=120 characters).”: lower-case start and the validator&#x27;s raw text (board: “Check “Laneway Light” (the title is empty or too long).”). At 390 the unbroken test title runs past the alert&#x27;s border. Also the circle icon (DS Alert: triangle).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-090; B-179</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B42" data-action="true">
+<div class="id"><a href="#B42">B42</a><span>Form error: date and times</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B42.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B42.jpg" alt="B42 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B42-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B42-1440.jpg" alt="B42 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B42-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B42-390.jpg" alt="B42 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Body still repeats the field: “Check the date and times: the slot must end after it starts and last at most 6 hours.” From and To get aria-invalid. Also the circle icon (DS Alert: triangle).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-091; B-179</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B43" data-action="true">
+<div class="id"><a href="#B43">B43</a><span>Form error: act name</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B43.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B43.jpg" alt="B43 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Not reachable (maxLength 80); form-errors.ts would show the validator&#x27;s raw text, not “Use 80 characters or fewer.”</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-090</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B44" data-action="true">
+<div class="id"><a href="#B44">B44</a><span>Plan again: banner</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B44.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B44.jpg" alt="B44 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B44-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B44-1440.jpg" alt="B44 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B44-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B44-390.jpg" alt="B44 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Unchanged: “Planning again for Soul and funk sax player. Your act, artists, songs and permit come from your earlier busk: pick a new date and time.” (no busk date); title “Plan your busk” and the new-act intro (board: “Plan your next busk”, “Same act, same songs…”). Examples hidden; date Mon 19 Oct, 5–8 pm. Act, artists, songs and permit groups not hidden. DS parity: the build uses Banner tone “info” (a bordered peach box, plain sentence); DS Banner has no such tone: its banners are full-width strips with a bold lead phrase.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-092; B-180</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B45" data-action="true">
+<div class="id"><a href="#B45">B45</a><span>Plan again: your act</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B45.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B45.jpg" alt="B45 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B45-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B45-1440.jpg" alt="B45 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B45-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B45-390.jpg" alt="B45 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip bad">Missing</span> No “Your act · from your last busk” summary; the prefilled form shows in its place (crop: act name and 4 typed artists).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-092</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B46" data-action="true">
+<div class="id"><a href="#B46">B46</a><span>Last busk (plan again)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">Act name, sound-alike artists, song count, permit, last hours and last busk date come from the performer&#x27;s last busk. While null: the new-act form shows instead.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> ?again=&lt;id&gt; prefills name, 4 artists (typed), 6 songs, permit and hours from the stored plan; with no plan the new-act form shows. Nothing is hidden and the last busk&#x27;s date isn&#x27;t shown.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-092</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B47" data-action="false">
+<div class="id"><a href="#B47">B47</a><span>Artists rank the song search</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">The picked artists&#x27; names feed the song search, so their songs sort first with “By your artist”. Spotify results are live; while null the list is closed.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> The picked artists&#x27; songs sort first with “BY YOUR ARTIST” (B19: Gillian Welch and Zzyzx Nobody first for “Fast Car”). The list stays closed until something is typed.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B48" data-action="false">
+<div class="id"><a href="#B48">B48</a><span>Picks total and artist count</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">“N songs · m:ss” sums the known lengths of Your picks; “N of 10” counts the artist chips. Both update on every add and remove.</dd></div>
+<div><dt>DEV status</dt><dd>Fix claimed in 527a502</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “N songs · m:ss” in the picks header and “N of 10” in the artists hint, both update on add and remove (checked 0 → 2 artists, 0 → 7 songs).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-037, B-038 fixed at 8207373</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B49" data-action="false">
+<div class="id"><a href="#B49">B49</a><span>Log your takings line</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B49.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B49.jpg" alt="B49 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>ef09b5c / f137b9a: Tips removed</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Retired with Tips, and gone: no “Played a busk already?” line, no “Log your takings” link, no /tips link anywhere on the page (1440 and 390).</dd></div>
+<div><dt>User's call</dt><dd class="call">Tips removed by the user (17 Oct): nothing of it may remain on this page.</dd></div>
+<div><dt>Defect</dt><dd>B-093 moot (line removed)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B50" data-action="true">
+<div class="id"><a href="#B50">B50</a><span>Field focus (F13, F14)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B50-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B50-1440.jpg" alt="B50 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B50-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B50-390.jpg" alt="B50 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">Every input, select, search and button: one focus ring, shadcn&#x27;s pattern (border turns --ring plus --focus-ring), no white gap, no nested borders. Radio choices ring the whole choice (focus-within).</dd></div>
+<div><dt>DEV status</dt><dd>d24caef: the choice card shows the focus (focus-within 3px at 4px); the radio draws none; fcf44a4 / fd3252c: every button but poster focuses with one 2px outline at 2px offset (B-134)</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Field strip at f83f1a1 (fields9): 68 of 68 /busks states pass (17 fields × day/night × 1440/390): one border and one 2px ring, no paper gap, no nested borders. Choice cards: keyboard focus is a 3px outline at 4px on the card (dark by day, orange at night), the radio draws none (crops: 1440 day, 390 night). Buttons: B39.</dd></div>
+<div><dt>User's call</dt><dd class="call">F13, F14, F15: one border and one focus ring per field, shadcn&#x27;s own pattern, no global CSS overriding states. BRAND&#x27;s ruling: radio choices show focus on the card (.bm-choice:focus-within, 3px at 4px).</dd></div>
+<div><dt>Defect</dt><dd>B-134 fixed at f83f1a1; B-041 fixed at 8207373</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B51" data-action="true">
+<div class="id"><a href="#B51">B51</a><span>Field-level errors</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B51-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B51-1440.jpg" alt="B51 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B51-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B51-390.jpg" alt="B51 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">Each field shows its own error under it (aria-invalid, aria-describedby) in the same words as the alert title&#x27;s field.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Each error shows under its field with a warning icon. Name and slot fields get aria-invalid/aria-describedby; the artists combobox still gets neither. The field line is the whole sentence (songs: “Songs you can play: check …”), not the alert title&#x27;s words. DS FormMessage: matches (warning triangle, bold destructive text).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-094</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B52" data-action="true">
+<div class="id"><a href="#B52">B52</a><span>Searching spinner</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B52-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B52-1440.jpg" alt="B52 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B52-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B52-390.jpg" alt="B52 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">The Loader beside “Searching Spotify…” spins (0.9 s linear). Reduced motion: still.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip bad">Missing</span> “Searching Spotify…” still shows with no Loader (only the field&#x27;s search icon and the typed row&#x27;s plus). The artist link&#x27;s “Loading your songs…” does have one. DS Loader: the hex spinner beside the status line.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-095 (DS Loader)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B53" data-action="false">
+<div class="id"><a href="#B53">B53</a><span>Reduced motion</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">No other motion on this page; with prefers-reduced-motion every transition (focus, hover, calendar) is instant.</dd></div>
+<div><dt>DEV status</dt><dd>f83f1a1: a global reduced-motion transitions rule</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> With prefers-reduced-motion: reduce, #name, the submit button and the date button now have transition-duration 0s (were 0.15s); choice cards are motion-reduce:transition-none. No movement on the page.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-096 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B54" data-action="false">
+<div class="id"><a href="#B54">B54</a><span>Night theme</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B54.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B54.jpg" alt="B54 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/busks/inv/v4/B54-1440.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B54-1440.jpg" alt="B54 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B54-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B54-390.jpg" alt="B54 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night background, cards and fields on the dark tokens, orange accent and selected-card offset; axe clean at 390 and 1440 (form, error, plan again).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B55" data-action="true">
+<div class="id"><a href="#B55">B55</a><span>Phone header (≤720px)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B55.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B55.jpg" alt="B55 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B55-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B55-390.jpg" alt="B55 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>8207373: the design system&#x27;s lockup files as images (header 36px, footer 34px)</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Below 721px the nav hides and only the lockup stays (hex mark + new lettering, 36px), as F12 asks.</dd></div>
+<div><dt>User's call</dt><dd class="call">F12 (corrected 17 Oct): the ONE logo is the lockup, hex mark + new wordmark, in header, footer and every asset; F12 only retired the old wordmark lettering. Wordmark-only or mark-only in a header fails. Supersedes the inventory&#x27;s “wordmark only”.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B56" data-action="true">
+<div class="id"><a href="#B56">B56</a><span>Phone layout (≤720px)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B56.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B56.jpg" alt="B56 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B56-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B56-390.jpg" alt="B56 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Single column: cards stack, Time of day 2×2, Date/From/To stack, buttons full rows; no sideways scroll at 390 (crop: first 1800px of the filled page). In Your picks the “(own)” typed song shows only badges, pencil and x, no title (B24); the synthetic “Your song” rows cut titles to “Synthet…”.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-142 (worse)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B57" data-action="false">
+<div class="id"><a href="#B57">B57</a><span>Bottom nav (≤720px)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/busks/inv/deck/B57.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/deck/B57.jpg" alt="B57 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/busks/inv/v4/B57-390.jpg"><img loading="lazy" src="../screens/honeycomb/busks/inv/v4/B57-390.jpg" alt="B57 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Sticky bottom nav Busks · Week · Brain with icons, Busks current; no Tips. The board&#x27;s “Setlist” is stale; Repertoire comes with the brandv1 merge.</dd></div>
+<div><dt>User's call</dt><dd class="call">Tips removed by the user (17 Oct): nothing of it may remain on this page.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article>
+<section class="box" id="new-defects"><h2>New defects at f83f1a1 (placeholders for MANAGER to number)</h2><table><tr><th>Id</th><th>Severity</th><th>Rows</th><th>What differs</th></tr><tr><td>B-172</td><td>Low</td><td>B11</td><td>The artists hint (“N of 10. Type a comma to add a name that isn’t on Spotify.”) sits between the label/chips and the search field; the board and DS ArtistPicker draw it under the field. Already so at 8207373 (missed in v3).</td></tr><tr><td>B-173</td><td>Low</td><td>B14</td><td>The artist search's “Add “<name>” as typed” item has no plus icon (spec and DS ArtistPicker: plus icon; the song search's typed row has one). Already so at 8207373.</td></tr><tr><td>B-163</td><td>Medium</td><td>B07, B08</td><td>DS ExampleActCard: DS is a full-width row card (hex initials left, name, blurb, mono “Sounds like …”, arrow at the right edge, cards stacked); the build is a tall card in a 3-column grid with a sans “Sounds like” label and a dark foot row “Watch Busk Map plan this act →”. The user accepted the board difference (B-032); the DS mismatch needs the user's ruling.</td></tr><tr><td>B-174</td><td>Low</td><td>B26</td><td>DS Input / RepertoirePicker: the Spotify artist link field shows the Spotify icon in DS; the build shows a music note.</td></tr><tr><td>B-175</td><td>Low</td><td>B12</td><td>DS ArtistPicker chips: DS stacks one chip per row, tags “TYPED” without brackets and has a divider before the x; the build wraps chips side by side, writes “(TYPED)”, no divider.</td></tr><tr><td>B-176</td><td>Low</td><td>B22</td><td>DS PickedSongs: label left and the mono total right on one line; the build runs “YOUR PICKS · N SONGS · m:ss” as one mono line.</td></tr><tr><td>B-177</td><td>Medium</td><td>B30</td><td>DS TimeSlotPicker: the selected slot is orange in DS (dark by day, cream at night in the build); DS uses mono 24-hour ranges and a Late 21–24 slot plus a Day row; the build has 4 slots with 12-hour copy. Separate from F27's placement, which DEV holds.</td></tr><tr><td>B-178</td><td>Low</td><td>B38</td><td>DS PermitPicker: each permit card shows its pitch count on the right (“24 pitches”); the build shows none.</td></tr><tr><td>B-179</td><td>Low</td><td>B40, B41, B42</td><td>DS Alert: the destructive form alert uses a warning triangle; the build uses a circle icon.</td></tr><tr><td>B-180</td><td>Low</td><td>B44</td><td>DS Banner: the plan-again banner uses a tone DS doesn't have (“info”: a bordered peach box, plain sentence); DS banners are full-width strips with a bold lead phrase.</td></tr><tr><td>B-181</td><td>Low</td><td>B32</td><td>DS CityPicker: the “Live data” badge icon is a bar chart in DS, footprints in the build.</td></tr><tr><td>B-182</td><td>Low</td><td>B19</td><td>DS SongSearch: “By your artist” sits inline at the right of the result row (with the users icon, B-144); the build puts it on its own line under the title.</td></tr></table><p>Also worse than v3: B-142 (B24, B56): with the edit pencil added in b39fd5f, an “(own)” typed song's title is 0px wide at 390, so the row shows no title or artist. Worth raising to Medium.</p></section><section class="box" id="cited"><h2>Cited defects at f83f1a1</h2><table><tr><th>Defect</th><th>Rows</th><th>At f83f1a1</th></tr><tr><td>B-080</td><td>B04</td><td>Open: intro 16/24, no max width</td></tr><tr><td>B-081</td><td>B09</td><td>Open: form box-shadow none</td></tr><tr><td>B-082</td><td>B15, B21</td><td>Open: “Type it in instead.” (repertoire-api.ts:22)</td></tr><tr><td>B-085</td><td>B33</td><td>Open: one literal city in performer-form.tsx</td></tr><tr><td>B-086</td><td>B34</td><td>Open: “SAT 17 OCT 2026”, icon right</td></tr><tr><td>B-087</td><td>B35</td><td>Open: Sunday first, dialog unnamed</td></tr><tr><td>B-088</td><td>B36, B37</td><td>Open: 24 hours offered</td></tr><tr><td>B-089</td><td>B38</td><td>Open: permit descriptions</td></tr><tr><td>B-090</td><td>B41, B43</td><td>Open: validator's raw text, lower case</td></tr><tr><td>B-091</td><td>B42</td><td>Open: “Check the date and times: …”</td></tr><tr><td>B-092</td><td>B17, B38, B44–B46</td><td>Open: plan again is the whole prefilled form</td></tr><tr><td>B-093</td><td>B49</td><td>Moot: the line is removed with Tips</td></tr><tr><td>B-094</td><td>B51</td><td>Open: artists combobox has no aria-invalid / aria-describedby</td></tr><tr><td>B-095</td><td>B52</td><td>Open: no spinner</td></tr><tr><td>B-096</td><td>B53</td><td>Fixed at f83f1a1: transitions 0s under reduced motion</td></tr><tr><td>B-097</td><td>B24</td><td>Open: “Your song” badge has no music icon</td></tr><tr><td>B-134</td><td>B39, B50</td><td>Fixed at f83f1a1: 2px outline 2px outside; at night orange on the dark ground with a gap</td></tr><tr><td>B-142</td><td>B24, B56</td><td>Open and worse: “(own)” typed title 0px at 390</td></tr><tr><td>B-143</td><td>B20, B21</td><td>Copy fixed at f83f1a1; still shown under results, while searching and on error</td></tr><tr><td>B-144</td><td>B19</td><td>Open: no users icon on “By your artist”</td></tr></table></section><section class="box" id="ds-parity"><h2>DS parity (user rule): components on /busks against BRAND&#x27;s DS specimens</h2><table><tr><th>DS component</th><th>Rows</th><th>Result</th></tr><tr><td>PageHeader</td><td>B02–B04</td><td>Matches (meta, title, subtitle; B04 size is B-080)</td></tr><tr><td>ExampleActCard</td><td>B07, B08</td><td>Different: row card with arrow in DS vs tall grid card with a foot action row (B-163)</td></tr><tr><td>ArtistPicker</td><td>B11–B16</td><td>Different: hint above the field (B-172), chips wrap and “(TYPED)”, no divider (B-175), typed row no plus (B-173), error copy and icon, no Loader (B-082, B-095). Results match</td></tr><tr><td>SongSearch</td><td>B18–B21</td><td>Field matches; “By your artist” under the title, no icon (B-182, B-144); error copy (B-082). The DS no-match line predates F25 (the B20 decision rules)</td></tr><tr><td>PickedSongs</td><td>B22–B24</td><td>Different: header layout (B-176), “Your song” badge without icon (B-097), titles lost at 390 (B-142)</td></tr><tr><td>RepertoirePicker</td><td>B26</td><td>Different: Spotify icon (B-174). DS RepertoirePicker's tick list and “Use these songs” are not on the busks board (B17 uses SongSearch + PickedSongs + the link)</td></tr><tr><td>PerformerPicker</td><td>B10</td><td>Not on this page: the busks board uses an Act name Input for a new performer (B10); the build matches that. Nothing to compare</td></tr><tr><td>CityPicker</td><td>B32</td><td>Different: Live data badge icon (B-181); card, hex radio, offset match</td></tr><tr><td>DatePicker</td><td>B34, B35</td><td>Different: field text and icon side (B-086), Sunday first, no dialog name (B-087)</td></tr><tr><td>Select</td><td>B36, B37</td><td>Field matches; hour range is B-088</td></tr><tr><td>TimeSlotPicker</td><td>B30</td><td>Different: selected colour, time format, Late slot and Day row (B-177)</td></tr><tr><td>PermitPicker</td><td>B38</td><td>Different: no pitch counts (B-178), descriptions (B-089)</td></tr><tr><td>FormMessage</td><td>B28, B51</td><td>Matches (triangle, bold destructive)</td></tr><tr><td>Alert</td><td>B40–B42</td><td>Different: circle icon, DS triangle (B-179)</td></tr><tr><td>Banner</td><td>B44</td><td>Different: “info” tone not in DS (B-180)</td></tr><tr><td>Button</td><td>B39</td><td>Matches (primary and outline lg, SVG icons, focus B-134 fixed)</td></tr><tr><td>Input</td><td>B10, B11, B18, B26</td><td>Matches except the Spotify link icon (B-174)</td></tr><tr><td>Chip</td><td>—</td><td>Not used on /busks (artist chips are ArtistPicker's own, above)</td></tr><tr><td>Badge</td><td>B19, B24, B32</td><td>Different: “By your artist” and “Your song” lack their icons (B-144, B-097); Live data icon (B-181). “Typed” matches the neutral tone</td></tr><tr><td>Loader</td><td>B52</td><td>Missing beside “Searching Spotify…” (B-095); present on “Loading your songs…”</td></tr><tr><td>Glyph rule (B-162)</td><td>all</td><td>None on /busks: arrows, plus, check and x are SVG icons; “–” only in time ranges, “·” only in copy</td></tr></table></section><section class="box" id="field-strip"><h2>Field strip (F13, F14): every field on /busks, unfocused | focused</h2><p>Columns: day 1440, night 1440, day 390, night 390; each pair unfocused then focused. Rule: one border and one focus ring per field. Result at f83f1a1 (fields9): <b>68 of 68 /busks states pass</b> (17 fields × 4), the three choice-card radios measured on the card (BRAND's ruling: focus on .bm-choice:focus-within, 3px at 4px). Rows: B10, B11, B18, B39, B50.</p><a href="../screens/honeycomb/busks/inv/v4/field-strip.jpg"><img src="../screens/honeycomb/busks/inv/v4/field-strip.jpg" alt="Busks field strip at f83f1a1"></a></section><section class="box" id="critique"><h2>Impeccable critique</h2><p class="prov"><b>How this was produced.</b> The impeccable skill v4.4.0 (<code>impeccable:impeccable</code>), verb <code>critique</code>, run on design/honeycomb <code>f83f1a1</code> from QA's clean export, offline, at 390, 768, 1440 px. Method: dual-agent (A: <code>ac3d6f56379d8536e</code> · B: <code>a6c0957dcdf3ccb6c</code>), each an isolated sub-agent that did not read the QA report or the other assessment. A and B are reproduced as the skill wrote them (<code>qa/impeccable/busks-A.md</code>, <code>busks-B.md</code>). The block marked “QA synthesis” is QA's, not the skill's.</p><div class="synth"><h3>QA synthesis</h3>
+<p><b>Scores.</b> Critique (A): Nielsen 27/40 (68%, Acceptable). Audit (B): 15/20, Good; Implementation Integrity <b>Pass</b>. CLI detector: 0 findings; overlay 4 hits, 2 false positives.</p>
+<p><b>Verified by QA and filed.</b></p><ul>
+<li><b>B-220 · Medium</b> (A P1 + B P2): after an empty submit, focus stays on “Plan my busk” and nothing scrolls; at 390 the only invalid field is about 1,100–1,800 px above. The artist and song errors aren't tied to their inputs: no <code>aria-invalid</code>, no <code>aria-describedby</code> (performer-form.tsx:152, artist-picker.tsx:128, repertoire-picker.tsx:196 puts it on the fieldset).</li>
+<li><b>B-221 · Low</b> (B P2): no visible pending state after “Plan my busk”; only the primary button is disabled and the second action stays live while the request runs.</li>
+<li><b>B-231 · Low</b> (shared): the footer's Qloo link is 44×15 at 390.</li></ul>
+<p><b>Dismissed.</b> <code>side-tab</code> (the header's full-width rule), <code>dark-glow</code> (the overlay's colour). <code>kicker-above-heading</code> and <code>cream-palette</code> are true by the rule but are the Honeycomb page header and the Paper token (board).</p>
+<p><b>Conflicts with the board: asked of MANAGER.</b> A P1 “put the form before the example acts”: the board (and B07/B08) put the examples first. A P2 “blank act name becomes My act”: a product call. A P3 “one-option City picker”: the board draws it (B32). A's “weak focus on inputs” is not reproduced: B and the field strip measure a 2 px ring on every input (F13).</p>
+<p><b>Next round.</b> A and B both name “Plan my week”; the no-week check (removed by the user) covers it at DEV's next closing commit.</p></div><details open><summary>Assessment A · design review (as written)</summary><h3>Assessment A · /busks (busk form) · Operate · f83f1a1</h3>
+<p>Evidence: scratchpad/imp/busks-A/ (390/768/1440, light + dark, fold/full, after empty submit; flow at 390: artist pick, submit).</p>
+<h4>Design specificity verdict</h4>
+<p><b>Mostly authored, with a generic middle.</b> Honeycomb shows up where it counts: Big Shoulders uppercase title, hex monogram badges on example acts, hex radio marks on permit and city cards, a signal-orange offset shadow on the selected card, and mono time ranges in the Time of day tiles (1440 light/dark). The middle of the form (Act name, Artists, Songs, Spotify link) is stock shadcn: label, then a 2px-ruled input, repeated four times with nothing that says "busking." The single-option Melbourne card with a yellow LIVE DATA chip is branded but has no job.</p>
+<h4>Nielsen heuristics (Operate: all 10 apply)</h4>
+<table><thead><tr><th>#</th><th>Heuristic</th><th>Score</th><th>Finding</th></tr></thead><tbody><tr><td>1</td><td>System status</td><td>3</td><td>"0 of 10" artist counter, picks header with song count and length, Spotify-link loading text; the submit gives no feedback beyond the disabled button.</td></tr><tr><td>2</td><td>Real-world match</td><td>3</td><td>Busker vocabulary (pitch, permit, circle act, "sounds like"). "Live data" on the city and "Plan my week from this date" need context.</td></tr><tr><td>3</td><td>User control</td><td>3</td><td>Remove/edit per song, quick slots override cleanly. No way to clear all picks.</td></tr><tr><td>4</td><td>Consistency</td><td>3</td><td>Card-radio pattern is shared by City and Permit. Time of day uses a third selected style (solid fill; cream in dark) next to the shadowed cards.</td></tr><tr><td>5</td><td>Error prevention</td><td>2</td><td>Date picker has <code>min</code>, but From/To both offer 24 hours with only an "Up to 6 hours" hint. A blank Act name is silently submitted as "MY ACT" (seen on the result page at 390).</td></tr><tr><td>6</td><td>Recognition</td><td>3</td><td>Examples, typeahead with "Add as typed," and quick slots. The inline error sits ~1,100px above the summary at 390, so the user has to remember which field it means.</td></tr><tr><td>7</td><td>Flexibility</td><td>3</td><td>Comma-to-add artists, Enter to load a Spotify link, example acts as a shortcut, week planning from the same form.</td></tr><tr><td>8</td><td>Minimalist</td><td>2</td><td>A one-option city picker, three example cards before the form, and two helper lines under Songs.</td></tr><tr><td>9</td><td>Error recovery</td><td>2</td><td>Plain text ("Add at least one artist you sound like.") shown both inline and as a summary. But only the first issue is shown, focus stays on the submit button, and the summary does not link to the field.</td></tr><tr><td>10</td><td>Help</td><td>3</td><td>Hints sit next to each field (comma tip, Spotify link format, permit note, offline-mode notes).</td></tr><tr><td></td><td><b>Total</b></td><td><b>27/40 (68%)</b></td><td><b>Acceptable</b> (close to Good)</td></tr></tbody></table>
+<h4>Cognitive load</h4>
+<p>Checklist failures: <b>3 (moderate)</b>.</p>
+<ul><li><b>Single focus:</b> fails. "Or try a made-up act" (three cards) comes before the form. At 390 the form starts around y≈1,000, below three stacked cards.</li><li><b>Visual hierarchy:</b> fails. The form has no heading, and the "Or…" heading has nothing before it to be the alternative to.</li><li><b>Working memory:</b> fails. On error, the message is at the bottom while the field it names is far up the page.</li></ul>
+<p>Decision points with more than 4 options: the From and To selects have 24 options each (they are bounded, so this is acceptable). The bottom bar shows 2 primary-weight submit buttons. Time of day (4) and Permit (3) are within limits.</p>
+<h4>Emotional journey</h4>
+<p>The start is confident (big title, playful example acts). The low point is the empty submit: nothing visibly happens at the button except a pink box, and at 390 the field in error is off-screen. The finish is strong: one artist gets you a full "YOUR BUSK" plan with data provenance. That makes the empty-state error the most memorable friction.</p>
+<h4>Strengths</h4>
+<ol><li>Typeahead is honest and forgiving: a Spotify match card with releases and listeners, "Not on Spotify? Add 'Paul Kelly' as typed," and a clear offline-mode notice (390 light).</li><li>The Time of day tiles turn a 2×24 select problem into one tap and keep the exact selects as the source of truth.</li><li>Permit cards explain the consequence ("Adds the premium-only pitches") right where you choose. Dark mode keeps contrast and the orange shadow (1440 dark).</li></ol>
+<h4>Priority issues</h4>
+<ul><li><b>[P1] Empty submit strands the user away from the problem.</b> <i>Why:</i> focus stays on "Plan my busk" and the page does not scroll. At 390 the only field in error ("Artists you sound like") is ~1,100px up. Screen-reader users hear nothing tied to the field. <i>Fix:</i> on error, focus the first invalid field (or a summary with anchor links), list every issue, and announce the summary with role=alert. <i>Command:</i> /impeccable harden</li><li><b>[P1] The form is not the first thing on its own page.</b> <i>Why:</i> "Or try a made-up act" comes before the thing it is the "or" to. On phones, three cards push the form below the fold, so first-timers may treat the example cards as the product. <i>Fix:</i> put the form first with a heading ("Your act"), and move the examples below it or into a single "No act yet? Try an example" row. <i>Command:</i> /impeccable layout</li><li><b>[P2] Blank act name is silently replaced with "My act."</b> <i>Why:</i> the result page reads "MY ACT," which feels like a bug and appears in shared links. <i>Fix:</i> mark the field "(optional)" like the Spotify field and show the fallback name as its placeholder, or require it. <i>Command:</i> /impeccable clarify</li><li><b>[P2] Weak focus indicator.</b> <i>Why:</i> the focused input (Songs, 390 light) only darkens its 2px rule, which is barely different from rest. Keyboard users lose their place in a long form. <i>Fix:</i> add a 2px signal-orange outline with an offset on all inputs and cards. <i>Command:</i> /impeccable polish</li><li><b>[P3] A one-option City picker.</b> <i>Why:</i> it takes about 70px and adds a "Live data" chip with no decision behind it. <i>Fix:</i> replace it with a one-line "Melbourne · live data" statement until a second city exists. <i>Command:</i> /impeccable distill</li></ul>
+<h4>Persona red flags</h4>
+<ul><li><b>Jordan (first-timer):</b> sees examples first, so may not know whether "Watch Busk Map plan this act" is the main path. "Plan my week from this date" vs "Plan my busk" has no explanation. After the empty submit, the pink box says "Artists you sound like," but that field is off-screen at 390.</li><li><b>Sam (keyboard/screen reader):</b> must Tab through skip link, logo and three example cards before reaching Act name. Focus is not moved on error. Focus rings on inputs are low-contrast. Radix select IDs (<code>radix-_R_…</code>) show up as focus targets with no label in the tab trace.</li><li><b>Casey (mobile):</b> the primary action is at the very bottom of a ~3,000px form. The fixed bottom nav covers the bottom 60px, so error text near the buttons can sit under it.</li></ul>
+<h4>Minor observations</h4>
+<ul><li>"When and where" legend and "City" label stack with no spacing between them (all widths).</li><li>Evening's selected state is a solid dark fill in light mode and cream in dark mode, which is a different selection language from the shadowed cards.</li><li>"Search for songs above." sits under the search box and reads like a leftover.</li><li>The error summary repeats the inline text exactly. Use it for the full list instead.</li></ul>
+<h4>Questions to consider</h4>
+<ul><li>What if the only required input, "who do you sound like," were the hero field, with everything else defaulted and collapsible?</li><li>Does a busker need the picker for 24 starting hours, or just the four tiles plus "custom"?</li><li>Should the examples be a teaser after the form rather than the gateway before it?</li></ul></details></section><section class="box" id="audit"><h2>Impeccable audit</h2><p class="prov"><b>How this was produced.</b> The impeccable skill v4.4.0 (<code>impeccable:impeccable</code>), verb <code>audit</code>, run on design/honeycomb <code>f83f1a1</code> from QA's clean export, offline, at 390, 768, 1440 px. Method: dual-agent (A: <code>ac3d6f56379d8536e</code> · B: <code>a6c0957dcdf3ccb6c</code>), each an isolated sub-agent that did not read the QA report or the other assessment. A and B are reproduced as the skill wrote them (<code>qa/impeccable/busks-A.md</code>, <code>busks-B.md</code>). The block marked “QA synthesis” is QA's, not the skill's.</p><details open><summary>Assessment B · detector, browser evidence and audit /20 (as written)</summary><h3>/busks · Assessment B (detector + browser evidence) and audit</h3>
+<p>Build: design/honeycomb f83f1a1, offline at http://localhost:3213/busks. Commands ran from the export (scratchpad/hc9). Raw evidence is in scratchpad/imp/busks-B/: cli.json, overlay.json, audit.json, focus.json, the overlay-<i>.png, busks-</i>.png and focus-*.png captures, and the scripts overlay.cjs, audit.cjs and focus.cjs. I did not read any QA report or Assessment A output.</p>
+<h4>1. CLI scan</h4>
+<p><code>impeccable detect --json</code> over src/app/busks/page.tsx, landing/{performer-form, artist-picker, song-search, repertoire-picker, warmup}.tsx, src/components/forms/ (whole dir) and honeycomb/{example-act-card, banner, page-header, form-message}.tsx</p>
+<ul><li><b>Exit code 0. Output <code>[]</code>.</b> No findings: 0 rules and 0 file:line hits.</li><li>Note: the source scan sees no computed styles, so the one finding that appears in the browser scan (the kicker) did not show up here.</li></ul>
+<h4>2. Browser overlay (detect.js)</h4>
+<p>Each width ran in a new Playwright Chromium context and page, at 1440×900 and at 390×900.</p>
+<table><thead><tr><th>Step</th><th>1440</th><th>390</th></tr></thead><tbody><tr><td>navigate (<code>waitUntil: networkidle</code>)</td><td><b>timed out at 30 s.</b> The page had loaded: <code>Warmup</code> fires <code>POST /api/warm</code> (keepalive), so the network never goes idle</td><td>same</td></tr><tr><td>mutation preflight (document.title set to <code>[Human] Plan your busk · Busk Map</code>)</td><td>ok</td><td>ok</td></tr><tr><td><code>page.addScriptTag({ path: detect.js })</code>, wait 3 s</td><td>ok, ran in the page</td><td>ok</td></tr><tr><td>console <code>[impeccable]</code></td><td><code>3 anti-patterns found</code> (group)</td><td>same</td></tr><tr><td><code>window.impeccableDetectAsync()</code></td><td>4 findings across 3 elements</td><td>same 4</td></tr></tbody></table>
+<table><thead><tr><th>Rule</th><th>Element</th><th>Detail</th><th>Verdict</th></tr></thead><tbody><tr><td><code>kicker-above-heading</code></td><td><code>span.font-mono.text-xs</code> (PageHeader meta, honeycomb/page-header.tsx:45; text from busks/page.tsx:25)</td><td>"Your act, your hours" above h1 "Plan your busk"</td><td><b>True positive</b> under the rule. It is the shared PageHeader pattern, so it repeats on every app page</td></tr><tr><td><code>side-tab</code></td><td><code>header.flex.h-16</code> (honeycomb/app-header.tsx:17)</td><td><code>border-b-4 border-primary</code></td><td><b>False positive in intent.</b> It is a full-width rule under the site header, not a one-sided accent on a card. It is global chrome, not part of this route</td></tr><tr><td><code>cream-palette</code></td><td>body</td><td><code>rgb(242,238,230)</code> = <code>--background: #f2eee6</code> (globals.css:24)</td><td><b>True by rule.</b> It comes from a token and is a deliberate theme value, so this is a design call, not a code defect. Dark mode replaces it with #0f1416</td></tr><tr><td><code>dark-glow</code></td><td>body</td><td>zero-offset box-shadow <code>#ffba00</code></td><td><b>False positive (self-detection).</b> #ffba00 matches the detector's own <code>BRAND_COLOR oklch(84% 0.19 80.46)</code> used for its overlay <code>GLOW</code> (detect.js:2859, :2893). It does not appear anywhere in src. A computed-style sweep of the page found no zero-offset coloured shadow at rest</td></tr></tbody></table>
+<p>No live-server was started; detect.js was injected from the saved file. Nothing was left to stop.</p>
+<h4>3. Audit</h4>
+<h5>Audit Health Score</h5>
+<table><thead><tr><th>#</th><th>Dimension</th><th>Score</th><th>Key Finding</th></tr></thead><tbody><tr><td>1</td><td>Accessibility</td><td>3</td><td>axe: 0 violations in all 4 runs. On submit, the artists error is not tied to its combobox (no aria-invalid or describedby) and focus does not move</td></tr><tr><td>2</td><td>Performance</td><td>3</td><td>Lean form with no images. The /api/warm keepalive request keeps the network busy for more than 30 s</td></tr><tr><td>3</td><td>Responsive Design</td><td>3</td><td>No horizontal scroll at 390, 768 or 1440. Route controls are at least 44 px. Footer "Qloo" link hit area is 44×15</td></tr><tr><td>4</td><td>Theming</td><td>3</td><td>Route sources use tokens throughout; dark mode is verified. App header hard-codes 5 hex values</td></tr><tr><td>5</td><td>Implementation Integrity</td><td>3</td><td>CLI clean. 4 overlay findings: 1 true (kicker), 1 token judgment call (cream), 2 false positives</td></tr><tr><td><b>Total</b></td><td></td><td><b>15/20</b></td><td><b>Good</b></td></tr></tbody></table>
+<h5>Implementation Integrity Verdict: <b>Pass</b></h5>
+<p>The route is built from the honeycomb system: ChoiceGroup/ChoiceCard, which mark the picked card by both shape and fill; TimeSlotPicker; DatePicker; and the shadcn Command comboboxes. Colours, the hard poster shadows, focus rings and the 44 px control height (<code>--size-control</code>) all come from tokens. The CLI scan is clean. Of the 4 browser findings, one is a true pattern hit: the kicker, which comes from the shared PageHeader. The cream background is a token decision. The side-tab and glow hits are false positives.</p>
+<h5>Executive Summary</h5>
+<ul><li>Score: <b>15/20 (Good)</b>. Issues: P0 0 · P1 0 · P2 3 · P3 5.</li><li>Top issues:<ol><li>The artists and songs errors are not programmatically tied to their inputs.</li><li>Submitting does not move focus to the error.</li><li>There is no visible pending state after "Plan my busk".</li><li>A kicker eyebrow sits above the h1.</li><li>The app header hard-codes hex colours.</li></ol><li>Next: run <code>/impeccable harden</code> on the error flow, then <code>/impeccable polish</code>.</li></ul>
+<h5>Evidence</h5>
+<ul><li><b>axe</b> (@axe-core/playwright with tags wcag2a/aa, 21a/aa, 22aa and best-practice) at 390 and 1440, in day and night: <b>0 violations</b> in every run, 47 passes each. Each run has 1 incomplete item: color-contrast on the three example cards' hex initials (AS/SA/FD) over an image or gradient hex fill.</li><li><b>Contrast</b> (computed). Light:<ul><li>muted text (#56606a) on bg: 5.54:1; on card: 6.09:1</li><li>placeholder: 6.09:1</li><li>primary button: #141c21 on #ff5a1f = 5.53:1</li><li>badge: 11.69:1</li><li>h1: 14.9:1</li></ul></li></ul>
+<p>Dark:</p>
+<ul><li>muted text: 8.41 (on bg) and 7.48 (on card)</li><li>primary button: #0f1416 on #ff6a2b = 6.49:1</li></ul>
+<p>All pass AA, including the 11–12 px mono labels.</p>
+<ul><li><b>Keyboard</b>: tab order follows reading order:<ol><li>skip link</li><li>logo</li><li>3 example cards</li><li>Act name</li><li>artist combobox</li><li>song combobox</li><li>Spotify link</li><li>city radio</li><li>time-of-day group (one stop, roving)</li><li>Date</li><li>From</li><li>To</li><li>permit group (one stop)</li><li>Plan my busk</li><li>Plan my week</li><li>footer</li></ol></li></ul>
+<p>Every stop showed a 2 px ring: #141c21 in light, #ff6a2b in dark. Choice cards add a 3 px focus-within outline. Captures are in busks-B/focus-*.png. No traps.</p>
+<ul><li><b>Headings</b>: H1 "Plan your busk" → H2 "Or try a made-up act". The form has no heading; it is named by <code>aria-label</code> and its sections use legends. Landmarks are present: header, nav, main, form, footer.</li><li><b>Targets at 390</b>: Act name, the input groups, Date, From and To are 44 px high. Quick slots are 56; choice cards 110; primary button 52. The radios measure 22×25, but the whole card label is the hit area (false positive). Off-route footer links: Terms/Brain/Brand are 32–37 px wide × 48 high, and Qloo is 44×15.</li><li><b>Overflow</b>: scrollWidth equals clientWidth at 390, 768 and 1440.</li><li><b>Reduced motion</b>: with <code>reducedMotion: reduce</code>, transitions are 0 s and no animations run. Normally there is a 150 ms colour transition and nothing animates at rest. Only transitions are removed, so every state change still happens instantly. The global rule (globals.css:367) covers transitions only, so it is acceptable here.</li><li><b>Dark mode</b>: tokens switch fully (busks-1440-dark.png). The header stays bluestone in both themes.</li><li><b>Gestures</b>: the route has no custom drag or slider surfaces. Evidence comes from emulated viewports in Chromium only; touch was not synthesized.</li></ul>
+<h5>Findings by severity</h5>
+<p><b>[P2] Artist and song errors not associated with their inputs</b></p>
+<ul><li>Location: performer-form.tsx:152–157 (ArtistPicker gets no <code>invalid</code> or <code>describedBy</code>); artist-picker.tsx:128–142 (CommandInput has no aria-invalid or aria-describedby); repertoire-picker.tsx:196 (the describedby sits on the fieldset, not on the song combobox).</li><li>Category: Accessibility.</li><li>Impact: After submitting an empty form, the browser showed <code>[aria-invalid=true]</code> count = 0. A screen-reader user who moves back to the artist field hears no error. The bottom Alert (role=alert) does announce it once.</li><li>WCAG: 3.3.1, 1.3.1.</li><li>Recommendation: Pass <code>invalid</code> and <code>describedBy</code> to ArtistPicker and RepertoirePicker and put them on the CommandInputs. TimeSlotPicker already does this.</li><li>Suggested command: <code>/impeccable harden</code>.</li></ul>
+<p><b>[P2] Focus stays on the submit button after a validation error</b></p>
+<ul><li>Location: performer-form.tsx:123–126 (<code>setError</code> with no focus).</li><li>Category: Accessibility.</li><li>Impact: At 390 the inline error sits about 1,800 px above the button. The user sees only the bottom Alert and has to scroll and find the field.</li><li>WCAG: 3.3.1 (advisory), 2.4.3.</li><li>Recommendation: Focus the first invalid field, or the Alert, on error.</li><li>Suggested command: <code>/impeccable harden</code>.</li></ul>
+<p><b>[P2] No pending feedback after "Plan my busk"</b></p>
+<ul><li>Location: performer-form.tsx:90–95 and :193–200.</li><li>Category: Accessibility / Implementation.</li><li>Impact: <code>submitting</code> only disables the primary button, with no text, spinner or live status, while POST /api/plans runs. The second "Plan my week" button stays live during that time.</li><li>WCAG: 4.1.3.</li><li>Recommendation: Give the button a busy label and <code>aria-busy</code>, and disable both submits.</li><li>Suggested command: <code>/impeccable harden</code>.</li></ul>
+<p><b>[P3] Kicker above the h1</b></p>
+<ul><li>Location: honeycomb/page-header.tsx:45, used from busks/page.tsx:25.</li><li>Category: Implementation Integrity (detector <code>kicker-above-heading</code>).</li><li>Impact: A generic eyebrow line that repeats on every page.</li><li>Recommendation: Fold "your act, your hours" into the subtitle or drop it.</li><li>Suggested command: <code>/impeccable distill</code>.</li></ul>
+<p><b>[P3] Hard-coded hex in app header</b></p>
+<ul><li>Location: honeycomb/app-header.tsx:17, :18, :30, :31 (#f2ede4, #a7b0b5, #232d33).</li><li>Category: Theming.</li><li>Impact: These bypass the tokens, so a palette change will drift. The values duplicate existing tokens.</li><li>Recommendation: Map them to header tokens.</li><li>Suggested command: <code>/impeccable colorize</code>.</li></ul>
+<p><b>[P3] Double stacked labels "When and where" / "City"</b></p>
+<ul><li>Location: performer-form.tsx:170–171 with forms/choice-cards.tsx:37.</li><li>Category: Implementation.</li><li>Impact: Two bold labels on consecutive lines (seen in busks-390-error.png and busks-1440-dark.png), and the City group has a single non-choice card.</li><li>Recommendation: Drop one label, or show the city as static text until there is a second city.</li><li>Suggested command: <code>/impeccable distill</code>.</li></ul>
+<p><b>[P3] Section order versus headings</b></p>
+<ul><li>Location: busks/page.tsx:50–61.</li><li>Category: Accessibility / IA.</li><li>Impact: The only H2, "Or try a made-up act", comes before the primary form, which has no heading. The heading outline reads as if the examples were the main task.</li><li>Recommendation: Give the form a heading, or reword or move the examples heading.</li><li>Suggested command: <code>/impeccable layout</code>.</li></ul>
+<p><b>[P3] Small footer hit areas (global, off-route)</b></p>
+<ul><li>Location: the footer component.</li><li>Category: Responsive.</li><li>Impact: Qloo is 44×15 and Terms/Brain/Brand are under 44 px wide. They pass WCAG 2.5.8 (24 px) only through the spacing exception.</li><li>Recommendation: Pad to <code>h-tap</code>.</li><li>Suggested command: <code>/impeccable adapt</code>.</li></ul>
+<h5>Patterns &amp; systemic issues</h5>
+<ul><li>Errors are wired to their fields one by one. TimeSlotPicker and Act name get <code>aria-invalid</code> and <code>describedby</code>; the combobox fields (artists, songs) do not. Whenever a new field type is added, its error wiring has to be added separately.</li><li>Global chrome (header, footer) carries the off-system values: the hex colours and the small links. The route's own sources are clean.</li></ul>
+<h5>Positive findings</h5>
+<ul><li>axe is clean in day and night at both widths, and every measured text pair is at least 5.5:1.</li><li>There is one focus language: a 2 px ring that changes with the theme, plus a 3 px card outline. It was verified visible on every stop.</li><li>The 44 px control height comes from a token (<code>--size-control</code>). Choice cards mark selection by shape and fill, not colour alone. Radix roving focus keeps groups to one tab stop.</li><li>The page works without horizontal scroll at all three widths. Reduced motion is handled per animation, and the loader spinner gets <code>motion-reduce:animate-none</code>.</li><li>FormMessage and Alert avoid double announcement through <code>alert={false}</code>.</li></ul>
+<h4>Recommended Actions</h4>
+<ol><li><b>[P2] <code>/impeccable harden</code></b>: wire errors to the artist and song comboboxes, focus the first invalid field on submit, and add a busy state that disables both submit buttons.</li><li><b>[P3] <code>/impeccable distill</code></b>: remove the PageHeader kicker and the redundant "When and where"/"City" double label.</li><li><b>[P3] <code>/impeccable layout</code></b>: give the form its own heading and reconsider whether the examples should come first.</li><li><b>[P3] <code>/impeccable colorize</code></b>: tokenise the app-header hex values.</li><li><b>[P3] <code>/impeccable adapt</code></b>: increase footer link hit areas.</li><li><b><code>/impeccable polish</code></b>: final pass.</li></ol>
+<p>You can ask me to run these one at a time, all at once, or in any order you prefer.</p>
+<p>Re-run <code>/impeccable audit</code> after fixes to see your score improve.</p></details></section><section class="box" id="brand-issues"><h2>BRAND&#x27;s build issues for /busks</h2><table><tr><th>Issue</th><th>Result</th><th>Evidence</th></tr><tr><td>The Spotify link field doesn't grow (placeholder cut off)</td><td>Not reproduced</td><td>The field fills the row at 390, 768 and 1440 with a visible label and the music icon (B26 crops).</td></tr><tr><td>The song-search label repeats the legend</td><td>Not reproduced</td><td>The search label is a visually hidden “Search songs on Spotify”; on screen only the legend shows (B18).</td></tr><tr><td>The error alert sits inside a second role="alert"</td><td>Not reproduced</td><td>After an empty submit there is one role=alert (the form Alert), no alert or live-region ancestor, none inside it.</td></tr><tr><td>The nav says “Setlist”</td><td>Not reproduced</td><td>Header and bottom nav read Busks · Week · Brain (B01, B57).</td></tr></table></section><section class="box" id="v1"><h2>Older images (kept)</h2><p>v3 crops (8207373) stay under <code>qa/screens/honeycomb/busks/inv/v3/</code>, v2 crops (7b1521e) under <code>inv/build/</code>; v1 crops under <code>qa/screens/honeycomb/busks/</code>. Mapping of the v1 defects to BRAND ids: B-036 → B19 · B-037 → B17, B22, B48 · B-038 → B11, B16, B48 · B-039 → B37 · B-040 → B26 · B-041 → B38, B50 · B-042 → B19. All seven are fixed at 8207373.</p></section>
+<section class="box"><h2>Versions</h2><ul><li><b>v4</b> · design/honeycomb ＠ <code>f83f1a1</code> · 17 Oct 2026: The one full pass at DEV&#x27;s closing commit f83f1a1: every row re-judged at 1440 and 390 (768 for breakage); new captures in inv/v4/. Fixed since v3 and now Present: B02 (F20: the eyebrow reads “Your act, your hours”, no Melbourne), B39 and B50 (B-134 fixed at f83f1a1: buttons focus with one 2px outline 2px outside, so at night the orange ring sits on the dark ground with a gap, not on the orange fill; the choice card now carries the focus, a 3px outline at 4px, the radio draws none, BRAND&#x27;s ruling), B53 (B-096 fixed at f83f1a1: every transition is 0s under reduced motion), B49 (retired with Tips: the takings line is gone, B-093 moot), B07/B08 (B-032 accepted by the user, judged against that call). B20: BRAND&#x27;s copy landed (“+ Add “Laneway Light” by The Larkspur Two as typed” and the Typed helper; B-143 copy part fixed) but the row still shows under Spotify results, while searching and on error. Now Held: B30 (F27 held by DEV). Worse: B24/B56 (B-142): the new edit pencil leaves an “(own)” typed song with no visible title or artist at 390 (title 0px wide). Still open: B-080, B-081, B-082, B-085..B-092, B-094, B-095, B-097, B-144. New: B-172 (B11 artists hint sits above the field), B-173 (B14 artist typed row has no plus icon); both were already so at 8207373. Tips: nothing of it remains on /busks (no nav item, no /tips link, no tip or takings copy). DS parity and glyph rule applied (user rule, same commit): every component judged against BRAND&#x27;s DS specimen. Now Different: B07/B08 (DS ExampleActCard, B-163), B12 (DS ArtistPicker chips, B-175), B22 (DS PickedSongs, B-176), B26 (DS Input/RepertoirePicker Spotify icon, B-174), B30 stays Held (F27, DEV) with a DS TimeSlotPicker note (B-177), B32 (DS CityPicker badge icon, B-181), B40 (DS Alert icon, B-179). DS notes added to rows already Different: B11, B14, B15 (ArtistPicker), B19 (SongSearch, B-182), B34/B35 (DatePicker), B38 (PermitPicker counts, B-178), B41/B42 (Alert), B44 (Banner, B-180), B52 (Loader). Glyph rule: no text glyph icons on /busks (arrows, plus, check and x are SVG icons), so no row cites B-162.</li><li><b>v3</b> · design/honeycomb ＠ <code>8207373</code> · 17 Oct 2026: Recheck at 8207373, every row re-judged at 1440 and 390 (768 for breakage). Fixed and now Present: B01/B55 (F12 lockup, new lettering), B11/B18 (F13 one border, one ring; B-038 hint), B16 (limit hint), B22/B48 (B-037 picks header and total, “N of 10”), B25 (B-083 “Search for songs above.”), B26 (B-040 visible label, icon, hint), B27 and B29 removed (F26, F25), B28 (B-084 field error with aria-invalid). Fixed on rows still Different for other reasons: B-036 and B-042 (B19), B-039 (B37), B-041 (B38). Still Different: B20 (F25 single row, DEV&#x27;s declared deviation, but not BRAND&#x27;s copy: B-143), B24 (B-097; B-142 squeeze at 390), B30 (F27 not done), B44-B46 (B-092), B41 (B-090), B50 (radio ring on the radio, declared deviation). New: B-134 night focus on the default button (B39, B50), B-142 picked-song titles squeezed by badges at 390 (B24, B56), B-143 typed-song row copy and visibility (B20, B21), B-144 no users icon on “By your artist” (B19). Deck crops B01, B20, B44, B45, B54, B55, B57 re-copied from BRAND&#x27;s updated inventory.</li><li><b>v2</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: Re-keyed to BRAND&#x27;s inventory: 57 parts B01-B57 (15 spec-only) replace v1&#x27;s 20 provisional ids. Every part checked at 1440 and 390 (768 for breakage) against BRAND&#x27;s crop or spec and the user&#x27;s calls (F12 as corrected: the lockup is the one logo; F13-F15, F20, F25-F27). Same commit as v1; v1 defects B-036..B-042 are cited on the matching rows; B-080..B-097 are new placeholders for MANAGER to number.</li><li><b>v1</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: First version: 20 provisional parts from the deck&#x27;s Busks board (BRAND&#x27;s inventory not yet in), the user&#x27;s calls F13, F14, F20, F25, F26, F27, field strip, site checks, impeccable critique and audit.</li></ul></section>
+</div>
+<script>
+const f=document.getElementById('flt');f.addEventListener('click',()=>{const on=!document.body.classList.contains('action');document.body.classList.toggle('action',on);f.setAttribute('aria-pressed',String(on));});
+</script></body></html>

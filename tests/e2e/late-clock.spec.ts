@@ -16,18 +16,18 @@ test.describe("@late any time at Friday 21:30", () => {
   test.skip(!LOCAL || FAKE_NOW !== LATE, "Needs the frozen clock at Friday 21:30: run pnpm e2e:late");
 
   test("the busk form defaults to Saturday, on Any time", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/busks");
     const f = page.getByRole("form", { name: "Plan for your own act" });
     await expect(f.locator("#date")).toHaveAttribute("data-date", SATURDAY);
     await expect(f.getByRole("radio", { name: /Any time/ })).toBeChecked();
   });
 
   test("an any-time busk rolls to Saturday and gives every pitch a window", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/busks");
     const f = page.getByRole("form", { name: "Plan for your own act" });
     await f.getByLabel("Artists you sound like").fill("Paul Kelly");
     const posted = page.waitForRequest((r) => r.url().endsWith("/api/plans") && r.method() === "POST");
-    await f.getByRole("button", { name: "Plan my set" }).click();
+    await f.getByRole("button", { name: "Plan my busk" }).click();
     expect((await posted).postDataJSON().slot).toEqual({ date: SATURDAY, any: true });
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await waitForPlan(page);

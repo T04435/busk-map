@@ -22,9 +22,16 @@ describe("global-error.tsx", () => {
     expect(html.startsWith("<html")).toBe(true);
     expect(html).toContain("<body");
     expect(html).toContain("<h1>Something went wrong</h1>");
-    expect(html).toContain("while setting up the pitch");
+    expect(html).toContain("Something went wrong loading Busk Map");
     expect(html).toContain(">Try again</button>");
     expect(html).toMatch(/<a [^>]*href="\/"[^>]*>Go home<\/a>/);
+  });
+
+  it("is self-contained: system fonts for every family token and a plain link home (no router, no brand faces)", () => {
+    expect(html).toMatch(/<html[^>]*--font-display:system-ui/);
+    expect(html).toMatch(/<html[^>]*--font-mono:ui-monospace/);
+    expect(html).not.toContain("font-display-src");
+    expect(html).not.toContain("/_next/static/media");
   });
 
   it("shows the digest as a reference, never the message or stack", () => {

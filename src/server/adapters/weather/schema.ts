@@ -24,4 +24,5 @@ export type WeatherHour = {
   weatherCode: number | null;
 };
 
-export type WeatherData = { date: string; hours: WeatherHour[] } | null;
+/** `hours` are the slot's hours (they feed the score); `around` are the hours just before and after, shown by the weather strip only. */
+export type WeatherData = { date: string; hours: WeatherHour[]; around?: WeatherHour[] } | null;

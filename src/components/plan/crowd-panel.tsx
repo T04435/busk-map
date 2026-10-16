@@ -1,175 +1,171 @@
+import type { ReactNode } from "react";
+import { Chip } from "@/components/honeycomb/chip";
+import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
+import { EvidenceLine } from "@/components/honeycomb/evidence-line";
+import { HexCell } from "@/components/honeycomb/hex-cell";
+import { Icon } from "@/components/honeycomb/icon";
+import { LeanBar } from "@/components/honeycomb/lean-bar";
+import { QlooWordmark } from "@/components/honeycomb/logo";
+import { MeterBar, PercentCell } from "@/components/honeycomb/percent-cell";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ageLabel } from "@/lib/age";
 import type { Plan } from "@/lib/plan-schema";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
 const list = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
 
-/** Where a line's evidence comes from: the Qloo call behind it. */
-function Evidence({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs text-muted-foreground">Evidence: {children}</p>;
-}
-
-/** A signed lean (−1…1) as a bar either side of a centre line. */
-function LeanBar({ label, lean }: { label: string; lean: number }) {
-  const width = `${Math.min(50, Math.round(Math.abs(lean) * 50))}%`;
+/** A block: a condensed-caps heading, its content, and the Qloo call behind it (the DS CrowdBlock). */
+function Block({ title, label, evidence, children }: { title: string; label?: string; evidence: ReactNode; children: ReactNode }) {
   return (
-    <li className="grid grid-cols-[minmax(0,7rem)_1fr_3.5rem] items-center gap-2">
-      <span className="truncate">{label}</span>
-      <span className="relative h-1.5 rounded-full bg-muted" aria-hidden>
-        <span className="absolute inset-y-0 left-1/2 w-px bg-border" />
-        <span className={`absolute inset-y-0 rounded-full ${lean >= 0 ? "left-1/2 bg-foreground" : "right-1/2 bg-muted-foreground"}`} style={{ width }} />
-      </span>
-      <span className="text-right tabular-nums text-muted-foreground">
-        {lean > 0 ? "+" : ""}
-        {Math.round(lean * 100)}
-      </span>
-    </li>
+    <section aria-label={label ?? title} className="grid gap-2 border-t border-border py-4 first-of-type:border-t-0 first-of-type:pt-0">
+      <h4 className="m-0 font-display text-[17px] leading-5 font-extrabold uppercase">{title}</h4>
+      {children}
+      <EvidenceLine>{evidence}</EvidenceLine>
+    </section>
   );
 }
 
+const Hint = ({ children }: { children: ReactNode }) => <p className="m-0 text-sm leading-5 text-muted-foreground">{children}</p>;
+const Why = ({ children }: { children: ReactNode }) => <p className="m-0 mt-0.5 text-sm leading-5 text-muted-foreground">{children}</p>;
+const Caption = ({ children }: { children: ReactNode }) => <span className="mb-1 block font-mono text-[11px] leading-4 font-medium tracking-[0.06em] text-muted-foreground uppercase">{children}</span>;
+const meters = "m-0 flex list-none flex-wrap gap-x-4 gap-y-2 p-0";
+
 /**
- * Why this crowd: what central Melbourne's crowd likes given the performer's
- * taste (Qloo local artists with explainability), what drives the match, the
- * performer's fans against the usual hotspot crowd, the genres at the top
- * pitch, and the fans' age and gender lean. Every block names its Qloo source.
+ * Why this crowd: what the crowd around the plan area likes given the performer's taste (Qloo local artists with explainability),
+ * what drives the match, the performer's fans against the usual hotspot crowd, the genres at the top pitch, and the fans'
+ * age and gender lean. Every block ends with the Qloo call behind it. Ported from the DS CrowdPanel.
  */
-export function CrowdPanel({ crowd, resolved, topPitch }: { crowd: Plan["crowd"]; resolved: Plan["resolvedArtists"]; topPitch: string | null }) {
+export function CrowdPanel({ crowd, resolved, topPitch, qlooMode = "live" }: { crowd: Plan["crowd"]; resolved: Plan["resolvedArtists"]; topPitch: string | null; qlooMode?: Plan["qlooMode"] }) {
   const unmatched = resolved.filter((r) => !r.matched).map((r) => r.query);
   const ages = (crowd.demographics?.age ?? []).filter((a) => a.lean > 0.05).sort((a, b) => b.lean - a.lean).slice(0, 2);
+  const leanMax = Math.max(0.05, ...(crowd.demographics ? [...crowd.demographics.age, ...crowd.demographics.gender].map((d) => Math.abs(d.lean)) : []));
   const usualNames = new Set((crowd.usualCrowd?.artists ?? []).map((a) => a.name));
-  const empty =
-    crowd.localArtists.length === 0 && crowd.drivers.length === 0 && crowd.genres.length === 0 && !crowd.contrast && !crowd.demographics && !crowd.usualCrowd;
+  const empty = crowd.localArtists.length === 0 && crowd.drivers.length === 0 && crowd.genres.length === 0 && !crowd.contrast && !crowd.demographics && !crowd.usualCrowd;
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <h2>Who this crowd likes</h2>
-        </CardTitle>
-        <CardDescription>From Qloo&apos;s taste graph: aggregate taste around central Melbourne, never data about individuals.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5 text-sm">
-        {empty && (
-          <p className="text-muted-foreground" data-testid="crowd-empty">
-            No crowd data for this plan
-            {resolved.length > 0 && unmatched.length === resolved.length ? ": Qloo matched none of your artists" : ""}. The pitches still use foot
-            traffic, events and weather.
+    <section aria-label="Who this crowd likes" className="border-2 border-rule bg-card p-4 md:p-6">
+      <header className="mb-4 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="m-0 font-display text-2xl leading-[26px] font-extrabold tracking-[0.01em] uppercase">Who this crowd likes</h3>
+          <p className="m-0 mt-0.5 text-sm leading-5 text-muted-foreground">From Qloo&apos;s taste graph: aggregate taste around your pitches, never data about individuals.</p>
+        </div>
+        <span className="inline-flex shrink-0 items-center gap-2">
+          <QlooWordmark width={44} />
+          <DataStatusBadge status={qlooMode === "live" ? "live" : "test"} />
+        </span>
+      </header>
+      {empty && (
+        <div role="status" data-testid="crowd-empty" className="grid justify-items-center gap-3 px-4 py-8 text-center">
+          <HexCell size={64} lift>
+            <Icon name="users" size={28} />
+          </HexCell>
+          <h4 className="m-0 font-display text-xl leading-[26px] font-extrabold tracking-[0.01em] uppercase">No crowd data for this plan</h4>
+          <p className="m-0 max-w-[36ch] text-[15px] leading-[22px] text-muted-foreground">
+            {resolved.length > 0 && unmatched.length === resolved.length ? "Qloo matched none of your artists. " : ""}The pitches still use foot traffic, events and weather.
           </p>
-        )}
+        </div>
+      )}
 
-        {crowd.drivers.length > 0 && (
-          <section aria-label="What drives the match" className="space-y-1">
-            <h3 className="font-medium">What Qloo matched on</h3>
-            <p className="text-muted-foreground">Share of the crowd&apos;s picks explained by each of your artists:</p>
-            <ul className="space-y-1">
-              {crowd.drivers.map((d) => (
-                <li key={d.name} className="grid grid-cols-[minmax(0,10rem)_1fr_auto] items-center gap-2">
-                  <span className="truncate">{d.name}</span>
-                  <span className="h-1.5 rounded-full bg-muted" aria-hidden>
-                    <span className="block h-1.5 rounded-full bg-foreground" style={{ width: `${Math.min(100, Math.round(d.share * 100))}%` }} />
-                  </span>
-                  <span className="tabular-nums text-muted-foreground">{Math.round(d.share * 100)}%</span>
-                </li>
-              ))}
-            </ul>
-            <Evidence>Qloo insights explainability: each artist&apos;s average effect on the crowd&apos;s top 10 picks.</Evidence>
-          </section>
-        )}
+      {crowd.drivers.length > 0 && (
+        <Block title="What Qloo matched on" label="What drives the match" evidence="Qloo insights explainability: each of your artists' average effect on the crowd's top 10 picks.">
+          <Hint>Share of the crowd&apos;s picks explained by each of your artists</Hint>
+          <ul className={meters}>
+            {crowd.drivers.map((d) => (
+              <MeterBar key={d.name} label={d.name} value={Math.min(1, d.share)} />
+            ))}
+          </ul>
+        </Block>
+      )}
 
-        {crowd.localArtists.length > 0 && (
-          <section aria-label="Local artists" className="space-y-1">
-            <h3 className="font-medium">Artists this crowd likes</h3>
-            <ul className="space-y-2">
-              {crowd.localArtists.map((a) => (
-                <li key={a.name}>
-                  <span className="font-medium">{a.name}</span>
-                  {a.affinity !== null && <span className="text-muted-foreground"> · affinity {Math.round(a.affinity * 100)}/100</span>}
+      {crowd.localArtists.length > 0 && (
+        <Block title="Artists this crowd likes" label="Local artists" evidence="Qloo insights: artists liked around the plan area by fans of your artists, with each of your artists' explainability score.">
+          <ul className="m-0 grid list-none gap-2 p-0">
+            {crowd.localArtists.map((a) => (
+              <li key={a.name}>
+                <div className="flex flex-wrap items-center gap-2">
+                  {a.affinity !== null && <PercentCell value={a.affinity * 100} size={34} label="Affinity" />}
+                  <b>{a.name}</b>
                   {a.trend !== null && a.trend >= 1 && (
-                    <Badge variant="outline" className="ml-2">
-                      Rising +{a.trend.toFixed(1)} pts
+                    <Badge variant="neutral">
+                      <Icon name="trending" size={14} />
+                      Rising +{a.trend.toFixed(1)}
                     </Badge>
                   )}
                   {usualNames.has(a.name) && (
-                    <Badge variant="secondary" className="ml-2">
+                    <Badge variant="usual">
+                      <Icon name="usual" size={14} />
                       Usual crowd too
                     </Badge>
                   )}
-                  {a.because.length > 0 && (
-                    <span className="block text-muted-foreground">
-                      Because your fans like{" "}
-                      {list(a.explained.length > 0 ? a.explained.map((e) => `${e.name} (${Math.round(e.score * 100)}/100)`) : a.because)}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <Evidence>
-              Qloo insights: artists liked in central Melbourne by fans of your artists, with each of your artists&apos; explainability score.
-            </Evidence>
-          </section>
-        )}
+                </div>
+                {a.because.length > 0 && <Why>Because your fans like {a.explained.length > 0 ? list(a.explained.map((e) => `${e.name} (${Math.round(e.score * 100)})`)) : list(a.because)}</Why>}
+              </li>
+            ))}
+          </ul>
+        </Block>
+      )}
 
-        {(crowd.contrast || crowd.usualCrowd) && (
-          <section aria-label="Compared with the usual crowd" className="space-y-1">
-            <h3 className="font-medium">Your fans vs the usual crowd</h3>
-            {crowd.usualCrowd && (
-              <p className="text-muted-foreground">
-                The crowd at {crowd.usualCrowd.hotspot}, with no taste signal, likes {list(crowd.usualCrowd.artists.map((a) => a.name))}.
-              </p>
-            )}
-            {crowd.contrast && (
-              <p className="text-muted-foreground">
-                Compared with them
-                {crowd.contrast.more.length > 0 ? `, your fans lean more towards ${list(crowd.contrast.more)}` : ""}
-                {crowd.contrast.less.length > 0 ? `${crowd.contrast.more.length > 0 ? " and" : ","} less towards ${list(crowd.contrast.less)}` : ""}. That
-                is why the best pitches for you are not always the famous ones.
-              </p>
-            )}
-            <Evidence>
-              Qloo insights for the hotspot&apos;s area with no performer signal
-              {crowd.contrast ? "; Qloo compare: each genre's share of your artists and of theirs" : ""}.
-            </Evidence>
-          </section>
-        )}
-
-        {crowd.genres.length > 0 && (
-          <section aria-label="Genres at the top pitch" className="space-y-1">
-            <h3 className="font-medium">Genres around {topPitch ?? "the top pitch"}</h3>
-            <div className="flex flex-wrap gap-1">
-              {crowd.genres.map((g) => (
-                <Badge key={g.name} variant="secondary">
-                  {g.name}
-                  {g.affinity !== null ? ` ${Math.round(g.affinity * 100)}` : ""}
-                </Badge>
-              ))}
+      {(crowd.contrast || crowd.usualCrowd) && (
+        <Block
+          title="Your fans vs the usual crowd"
+          label="Compared with the usual crowd"
+          evidence={`Qloo insights for the hotspot's area with no performer signal${crowd.contrast ? "; Qloo compare: each genre's share of your artists and of theirs." : "."}`}
+        >
+          {crowd.usualCrowd && <Why>The crowd at {crowd.usualCrowd.hotspot}, with no taste signal, likes {list(crowd.usualCrowd.artists.map((a) => a.name))}.</Why>}
+          {crowd.contrast && (
+            <div className="grid gap-2">
+              {crowd.contrast.more.length > 0 && (
+                <div>
+                  <Caption>Your fans lean more to</Caption>
+                  <div className="flex flex-wrap gap-2">
+                    {crowd.contrast.more.map((g) => (
+                      <Chip key={g} icon={<Icon name="plus" size={16} />}>
+                        {g}
+                      </Chip>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {crowd.contrast.less.length > 0 && (
+                <div>
+                  <Caption>Less to</Caption>
+                  <div className="flex flex-wrap gap-2">
+                    {crowd.contrast.less.map((g) => (
+                      <Chip key={g}>{g}</Chip>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-            <Evidence>Qloo taste analysis (music genres) within 400 m of the pitch, given your artists; the number is the affinity.</Evidence>
-          </section>
-        )}
+          )}
+          <Hint>That&apos;s why the best pitches for you aren&apos;t always the famous ones.</Hint>
+        </Block>
+      )}
 
-        {crowd.demographics && (crowd.demographics.age.length > 0 || crowd.demographics.gender.length > 0) && (
-          <section aria-label="Age and gender lean" className="space-y-1">
-            <h3 className="font-medium">Who your fans are</h3>
-            {ages.length > 0 && (
-              <p className="text-muted-foreground">
-                Your fans skew {list(ages.map((a) => ageLabel(a.band)))}: the {PLAYLIST_COPY.suggestedSetNoun} favours songs from their era. Pitch your banter to suit.
-              </p>
-            )}
-            <ul className="space-y-1" aria-label="Lean by age band and gender, against the average audience">
-              {crowd.demographics.age.map((a) => (
-                <LeanBar key={a.band} label={ageLabel(a.band)} lean={a.lean} />
-              ))}
-              {crowd.demographics.gender.map((g) => (
-                <LeanBar key={g.band} label={g.band[0].toUpperCase() + g.band.slice(1)} lean={g.lean} />
-              ))}
-            </ul>
-            <Evidence>Qloo demographics for fans of your artists; + is above the average audience, − below.</Evidence>
-          </section>
-        )}
+      {crowd.genres.length > 0 && (
+        <Block title={`Genres around ${topPitch ?? "the top pitch"}`} label="Genres at the top pitch" evidence="Qloo taste analysis (music genres) within 400 m of the pitch, given your artists; the number is the affinity.">
+          <ul className={meters}>
+            {crowd.genres.map((g) => (
+              <MeterBar key={g.name} label={g.name} value={g.affinity} />
+            ))}
+          </ul>
+        </Block>
+      )}
 
-        {unmatched.length > 0 && <p className="text-muted-foreground">Qloo couldn&apos;t match: {unmatched.join(", ")}.</p>}
-      </CardContent>
-    </Card>
+      {crowd.demographics && (crowd.demographics.age.length > 0 || crowd.demographics.gender.length > 0) && (
+        <Block title="Who your fans are" label="Age and gender lean" evidence="Qloo demographics for fans of your artists; + is above the average audience, − below.">
+          {ages.length > 0 && <Why>Your fans skew {list(ages.map((a) => ageLabel(a.band)))}: the {PLAYLIST_COPY.suggestedSetNoun} favours songs from their era. Pitch your banter to suit.</Why>}
+          <ul className="m-0 grid list-none gap-1.5 p-0" aria-label="Lean by age band and gender, against the average audience">
+            {crowd.demographics.age.map((a) => (
+              <LeanBar key={a.band} label={ageLabel(a.band)} lean={a.lean} max={leanMax} />
+            ))}
+            {crowd.demographics.gender.map((g) => (
+              <LeanBar key={g.band} label={g.band[0].toUpperCase() + g.band.slice(1)} lean={g.lean} max={leanMax} />
+            ))}
+          </ul>
+        </Block>
+      )}
+
+      {unmatched.length > 0 && !empty && <p className="m-0 mt-2 text-sm leading-5 text-muted-foreground">Qloo couldn&apos;t match: {unmatched.join(", ")}.</p>}
+    </section>
   );
 }

@@ -34,7 +34,7 @@ export type DataPointId =
   | "d_taste_artists"
   | "d_tracks"
   | "d_plays";
-export type FeatureId = "f_rank" | "f_map" | "f_events" | "f_week" | "f_crowd" | "f_fans" | "f_setlist" | "f_plain" | "f_agent" | "f_learn";
+export type FeatureId = "f_rank" | "f_map" | "f_events" | "f_crowd" | "f_fans" | "f_setlist" | "f_plain" | "f_agent" | "f_learn";
 export type NodeId = CallId | SourceId | DataPointId | FeatureId;
 export type NodeKind = "call" | "source" | "dataPoint" | "feature";
 
@@ -323,7 +323,6 @@ export const dataPoints: readonly DataPoint[] = [
       { id: "f_rank", how: "every taste question signals with your artists" },
       { id: "f_map", how: "the heatmap is signalled with your artists" },
       { id: "f_crowd", how: "an artist Qloo can’t match is named in a warning" },
-      { id: "f_week", how: "the week planner signals with your artists too" },
       { id: "f_learn", how: "every look in a learn run signals with your Repertoire’s artists" },
     ],
   },
@@ -335,7 +334,6 @@ export const dataPoints: readonly DataPoint[] = [
     features: [
       { id: "f_map", how: "the coloured taste cells" },
       { id: "f_rank", how: "picks the candidate pitches and sets the taste score" },
-      { id: "f_week", how: "taste for each slot of the week" },
       { id: "f_plain", how: "scores the plain AI’s spots the same way" },
       { id: "f_agent", how: "the taste_map tool, which can zoom in" },
     ],
@@ -347,7 +345,6 @@ export const dataPoints: readonly DataPoint[] = [
     fields: ["entity_id", "name", "location.lat", "location.lon", "popularity", "query.affinity", "properties.hours"],
     features: [
       { id: "f_rank", how: "busy places open in your slot" },
-      { id: "f_week", how: "opening hours for each slot" },
       { id: "f_plain", how: "scores the plain AI’s spots the same way" },
       { id: "f_agent", how: "the busy_places tool, at any point" },
     ],
@@ -505,14 +502,6 @@ export const features: readonly Feature[] = [
     how: "combined",
     with: ["Ticketmaster"],
   },
-  {
-    id: "f_week",
-    label: "Week planner",
-    sub: "the best slots this week",
-    location: "/week: the week grid",
-    how: "combined",
-    with: ["City of Melbourne sensors", "the council’s busking layers", "OSM spots"],
-  },
   { id: "f_crowd", label: "Crowd panel", sub: "who this crowd likes, and why", location: "Plan page: the crowd panel", how: "direct" },
   {
     id: "f_fans",
@@ -524,7 +513,7 @@ export const features: readonly Feature[] = [
   },
   {
     id: "f_setlist",
-    label: PLAYLIST_COPY.suggestedSet,
+    label: "Set and songs to learn",
     sub: "what to play, what to learn",
     location: `Pitch card: the ${PLAYLIST_COPY.suggestedSetNoun}, and ${PLAYLIST_COPY.toLearn}`,
     how: "combined",
@@ -552,7 +541,7 @@ export const features: readonly Feature[] = [
 /** Planned, not built (docs/qloo-data-map.md §3). Only items with built: false. */
 export const next: readonly NextItem[] = [
   { id: "genre-signals", label: "Taste from genres as well as artists, for the taste map", built: false },
-  { id: "genre-search", label: "Searching Qloo’s genre list directly (/v2/tags)", built: false },
+  { id: "genre-search", label: "Searching Qloo’s genre list directly", built: false },
   { id: "nearest-locality", label: "A nearest-neighbourhood retry when a city area comes back empty", built: false },
 ];
 

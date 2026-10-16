@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, LOCAL, test, waitForPlan } from "./fixtures";
+import { expect, LOCAL, openDetails, test, waitForPlan } from "./fixtures";
 
 /** Stage R2: the planners read the Repertoire (docs/playlist-architecture.md §3). Offline, memory store, one cookie per context. */
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
@@ -27,7 +27,7 @@ test.describe("planners read the Repertoire (offline)", () => {
     // with no plan request, and so records no usual pitch.
     const act = `Jess ${Math.random().toString(36).slice(2, 8)}`;
     await seed(page, SONGS, act);
-    await page.goto("/");
+    await page.goto("/busks");
     const f = form(page);
     await expect(f.getByTestId("repertoire-summary")).toContainText("Your Repertoire · 3 songs");
     await expect(f.getByLabel("Act name")).toHaveValue(act);
@@ -39,7 +39,7 @@ test.describe("planners read the Repertoire (offline)", () => {
     await expect(f.getByRole("list", { name: "Artists you picked" })).toContainText("Paul Kelly");
 
     const posted = page.waitForRequest((r) => r.url().endsWith("/api/plans") && r.method() === "POST");
-    await f.getByRole("button", { name: "Plan my set" }).click();
+    await f.getByRole("button", { name: "Plan my busk" }).click();
     const body = (await posted).postDataJSON();
     expect(body.performer.songs.map((s: { title: string }) => s.title)).toEqual(SONGS.map((s) => s.title));
     // The request holds the act and its songs, never a Repertoire id, revision or cookie.
@@ -47,8 +47,10 @@ test.describe("planners read the Repertoire (offline)", () => {
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await waitForPlan(page);
     // The plan's songs match the Repertoire's, and "Save these songs" is not offered to a device that has one.
-    for (const s of SONGS) await expect(page.getByRole("heading", { name: /Suggested set for/ }).locator("xpath=ancestor::*[@data-slot='card'][1]")).toContainText(s.title);
     await expect(page.getByTestId("save-as-repertoire")).toHaveCount(0);
+    const set = (await openDetails(page)).getByRole("region", { name: "Suggested set" });
+    for (const s of SONGS) await expect(set).toContainText(s.title);
+    await page.keyboard.press("Escape");
     // The top pitch of this busk is now a usual pitch; the revision did not move.
     await expect.poll(async () => (await state(page)).usualPitches.length).toBe(1);
   });
@@ -56,13 +58,13 @@ test.describe("planners read the Repertoire (offline)", () => {
   test("edit for this busk only leaves the Repertoire as it was; Save writes it, with the revision check", async ({ page }) => {
     await seed(page);
     const before = await state(page);
-    await page.goto("/");
+    await page.goto("/busks");
     const f = form(page);
     await f.getByRole("button", { name: "Edit for this busk" }).click();
     await f.getByRole("checkbox", { name: /Scar/ }).click();
     await expect(f.getByText("Edited for this busk").first()).toBeVisible();
     await f.getByRole("button", { name: "Done" }).click();
-    await f.getByRole("button", { name: "Plan my set" }).click();
+    await f.getByRole("button", { name: "Plan my busk" }).click();
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await waitForPlan(page);
     const after = await state(page);
@@ -72,7 +74,7 @@ test.describe("planners read the Repertoire (offline)", () => {
     expect(after.usualPitches).toEqual([]);
 
     // Back on the form the Repertoire is whole again; edit and save explicitly.
-    await page.goto("/");
+    await page.goto("/busks");
     await form(page).getByRole("button", { name: "Edit for this busk" }).click();
     await expect(form(page).getByRole("list", { name: "Songs for this busk" }).getByRole("listitem")).toHaveCount(3);
     await form(page).getByRole("checkbox", { name: /Scar/ }).click();
@@ -93,7 +95,7 @@ test.describe("planners read the Repertoire (offline)", () => {
   });
 
   test("with no Repertoire the form is as it was, and the planned busk offers to save its songs", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/busks");
     const f = form(page);
     await expect(f.getByTestId("repertoire-empty")).toBeVisible();
     await f.getByLabel("Act name").fill("Jess on guitar");
@@ -110,7 +112,7 @@ test.describe("planners read the Repertoire (offline)", () => {
       await expect(f.getByRole("list", { name: "Songs for this busk" })).toContainText(song.split(" - ")[0]);
     }
     await f.getByRole("button", { name: "Done" }).click();
-    await f.getByRole("button", { name: "Plan my set" }).click();
+    await f.getByRole("button", { name: "Plan my busk" }).click();
     await waitForPlan(page);
     expect(await state(page)).toBeNull();
     const nudge = page.getByTestId("save-as-repertoire");
@@ -120,16 +122,16 @@ test.describe("planners read the Repertoire (offline)", () => {
     const saved = await state(page);
     expect(saved.songs.map((s: { title: string }) => s.title)).toEqual(["How to Make Gravy", "My Laneway Song"]);
     expect(saved.actName).toBe("Jess on guitar");
-    await page.goto("/");
+    await page.goto("/busks");
     await expect(form(page).getByTestId("repertoire-summary")).toContainText("Your Repertoire · 2 songs");
   });
 
   test("Add to Repertoire from Songs you should learn: a pending suggestion, and a second add is refused politely", async ({ page }) => {
     await seed(page);
-    await page.goto("/");
-    await form(page).getByRole("button", { name: "Plan my set" }).click();
+    await page.goto("/busks");
+    await form(page).getByRole("button", { name: "Plan my busk" }).click();
     await waitForPlan(page);
-    const learn = page.getByRole("region", { name: "Songs you should learn" });
+    const learn = (await openDetails(page)).getByRole("region", { name: "Songs you should learn" });
     const first = learn.getByRole("button", { name: /^Add to Repertoire: / }).first();
     await first.scrollIntoViewIfNeeded();
     const name = (await first.getAttribute("aria-label"))!;
@@ -141,24 +143,27 @@ test.describe("planners read the Repertoire (offline)", () => {
     expect(after.songs).toEqual(before.songs);
     expect(after.revision).toBe(before.revision);
     // Again (a fresh page, so a fresh button): refused, kindly, with no error.
-    await page.reload();
+    await page.goto(page.url().split("?")[0]);
     await waitForPlan(page);
-    await page.getByRole("region", { name: "Songs you should learn" }).getByRole("button", { name }).click();
-    await expect(page.getByRole("region", { name: "Songs you should learn" }).getByRole("status").filter({ hasText: "Already on your list of songs to learn." })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Songs you should learn" }).getByRole("alert")).toHaveCount(0);
+    const again = (await openDetails(page)).getByRole("region", { name: "Songs you should learn" });
+    await again.getByRole("button", { name }).click();
+    await expect(again.getByRole("status").filter({ hasText: "Already on your list of songs to learn." })).toBeVisible();
+    await expect(again.getByRole("alert")).toHaveCount(0);
   });
 
   test("an example never reads or writes the Repertoire", async ({ page }) => {
     await seed(page);
     const before = await state(page);
-    await page.goto("/");
+    await page.goto("/busks");
     // The form is the only place that reads it; the example card is a plain link.
     await page.getByRole("link", { name: /Acoustic/i }).first().click();
     await expect(page).toHaveURL(/\/plan\?example=|\/p\//);
     await waitForPlan(page);
-    await expect(page.getByRole("button", { name: /^Add to Repertoire/ })).toHaveCount(0);
     await expect(page.getByTestId("save-as-repertoire")).toHaveCount(0);
-    await expect(page.getByRole("switch")).toHaveCount(0);
+    // No Repertoire switch (the plan's only switch is the research's "Raw data").
+    await expect(page.getByRole("switch", { name: /Repertoire/ })).toHaveCount(0);
+    await expect((await openDetails(page)).getByRole("button", { name: /^Add to Repertoire/ })).toHaveCount(0);
+    await page.keyboard.press("Escape");
     // A moment for any stray write to land, then compare.
     await page.waitForTimeout(500);
     expect(await state(page)).toEqual(before);
@@ -177,7 +182,7 @@ test.describe("planners read the Repertoire (offline)", () => {
       if (SHOTS && info.project.name === "desktop") await page.screenshot({ path: `${SHOTS}/r2-${name}-${width}.png`, fullPage: true });
     };
     const widths = [390, 768, 1440];
-    await page.goto("/");
+    await page.goto("/busks");
     await form(page).getByRole("button", { name: "Edit for this busk" }).click();
     await form(page).getByRole("checkbox", { name: /Scar/ }).click();
     await expect(form(page).getByText("Edited for this busk").first()).toBeVisible();
@@ -187,11 +192,12 @@ test.describe("planners read the Repertoire (offline)", () => {
       await form(page).scrollIntoViewIfNeeded();
       await shot("busk-form", width);
     }
-    await page.goto("/");
-    await form(page).getByRole("button", { name: "Plan my set" }).click();
+    await page.goto("/busks");
+    await form(page).getByRole("button", { name: "Plan my busk" }).click();
     await waitForPlan(page);
-    await page.getByRole("region", { name: "Songs you should learn" }).getByRole("button", { name: /^Add to Repertoire: / }).first().click();
-    await expect(page.getByRole("region", { name: "Songs you should learn" }).getByRole("status").filter({ hasText: "Added to Songs you should learn." })).toBeVisible();
+    const learnHere = (await openDetails(page)).getByRole("region", { name: "Songs you should learn" });
+    await learnHere.getByRole("button", { name: /^Add to Repertoire: / }).first().click();
+    await expect(learnHere.getByRole("status").filter({ hasText: "Added to Songs you should learn." })).toBeVisible();
     for (const width of widths) {
       await page.setViewportSize({ width, height: 900 });
       await check(`plan-${width}`);
@@ -215,10 +221,11 @@ test.describe("planners read the Repertoire (offline)", () => {
   test("R4 words: the plan says Suggested set and Songs you should learn, never Setlist or Learn these (3 widths, axe, screenshots)", async ({ page }, info) => {
     await page.goto("/plan?name=Words%20Duo&artists=Paul%20Kelly&songs=Gravy~Paul%20Kelly&date=2099-01-03&from=18&to=21");
     await waitForPlan(page);
-    const heading = page.getByRole("heading", { name: /^Suggested set for / });
+    const sheet = await openDetails(page);
+    const heading = sheet.getByRole("heading", { name: /^Suggested set for / });
     await expect(heading).toBeVisible();
-    const card = heading.locator("xpath=ancestor::*[@data-slot='card'][1]");
-    const learn = page.getByRole("region", { name: "Songs you should learn" });
+    const card = sheet.getByRole("region", { name: "Suggested set" });
+    const learn = sheet.getByRole("region", { name: "Songs you should learn" });
     await expect(learn.getByRole("heading", { name: "Songs you should learn" })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Setlist|Learn these/ })).toHaveCount(0);
     await expect(page.getByText(/\bsetlist\b|learn these|playlist/i)).toHaveCount(0);

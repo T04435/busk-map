@@ -35,7 +35,7 @@ describe("plainStep: the learn tools' results in plain words (arch §7.1)", () =
 
   it("rising shows arrows, and says so when nothing moved or the data is stale", () => {
     const moving = plainStep(step("rising", { window: { start: "a", end: "b" }, artists: [{ name: "Up", trendDelta: 4.2 }, { name: "Down", trendDelta: -1 }, { name: "Flat", trendDelta: null }] }));
-    expect(moving).toMatchObject({ headline: "Checked who's rising with those crowds", lines: ["Up ↑, Down ↓"] });
+    expect(moving).toMatchObject({ headline: "Checked who's rising with those crowds", lines: ["Up (rising), Down (falling)"] });
     expect(plainStep(step("rising", { window: { start: "a", end: "b" }, artists: [{ name: "Flat", trendDelta: null }] })).lines).toEqual(["No movement in Qloo's latest trending data"]);
     expect(plainStep(step("rising", { window: null, artists: [] })).headline).toBe("Qloo has no recent trending data for these artists");
   });

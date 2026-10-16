@@ -1,5 +1,6 @@
 import "server-only";
 import { formatHour, describeSlot, DEFAULT_SLOT_HOURS } from "@/lib/slot";
+import { noBuskingCells } from "./zone-cells";
 import { titleCase } from "@/lib/text";
 import { venueDetail } from "@/lib/venue";
 import { planSchema, type Plan, type PlanPitch } from "@/lib/plan-schema";
@@ -82,6 +83,7 @@ function toPlanPitch(
   whySource: PlanPitch["whySource"],
   setlist: PlanPitch["setlist"],
   weather: { hour: number; precipitationProbability: number | null }[] | null,
+  hourly: (number | null)[] | null = null,
 ): PlanPitch {
   return {
     window: pitch.window
@@ -113,7 +115,7 @@ function toPlanPitch(
     why,
     whySource,
     evidence: {
-      sensor: pitch.evidence.sensor ? { name: pitch.evidence.sensor.name, avgHourly: pitch.evidence.sensor.avgHourly } : null,
+      sensor: pitch.evidence.sensor ? { name: pitch.evidence.sensor.name, avgHourly: pitch.evidence.sensor.avgHourly, hourly } : null,
       places: pitch.evidence.places.map((p) => ({
         name: p.name,
         distanceM: p.distanceM,
@@ -221,12 +223,20 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
   const genres = top[0] ? await context.crowdGenres(top[0]) : [];
 
   const aiWhy = new Map(valid ? aiPicks.filter((p) => traceable(p.why)).map((p) => [p.pitchId, clip(p.why.trim(), 500)]) : []);
+  const profiles = qlooDown ? new Map<number, (number | null)[]>() : await context.hourlyProfiles();
   const pitches = await Promise.all(
     (qlooDown ? [] : top).map(async (pitch) => {
       const fromAi = aiWhy.get(pitch.id);
       const slotOf = context.slotFor(pitch);
       const why = fromAi || templateWhy(pitch, context.weekday, slotOf.startHour, slotOf.endHour);
-      return toPlanPitch(pitch, why, fromAi ? "ai" : "template", await context.setlistFor(pitch), weather?.hours ?? null);
+      return toPlanPitch(
+        pitch,
+        why,
+        fromAi ? "ai" : "template",
+        await context.setlistFor(pitch),
+        weather?.hours ?? null,
+        pitch.evidence.sensor ? (profiles.get(pitch.evidence.sensor.id) ?? null) : null,
+      );
     }),
   );
   const topIds = new Set(top.map((p) => p.id));
@@ -287,6 +297,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
         tooCloseTo: spacing.has(p.id) ? { id: spacing.get(p.id)!.id, name: spacing.get(p.id)!.name } : null,
       })),
     funnel,
+    zones: qlooDown ? [] : noBuskingCells(await context.pitchData(), [...pitches, ...ranked.slice(0, 40)]),
     tasteCells: cells.map((c) => ({
       lat: c.lat,
       lon: c.lon,
@@ -326,7 +337,10 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     learnThese: learn.map((l) => ({ artist: l.artist, title: l.title, playcount: l.playcount, reason: l.reason, audienceGrowth: l.audienceGrowth })),
     ageLean: leadingAgeBand(profile?.age ?? null),
     weather: weather
-      ? { hours: weather.hours.map((h) => ({ hour: h.hour, temperatureC: h.temperatureC, precipitationProbability: h.precipitationProbability, windKmh: h.windKmh })) }
+      ? {
+          hours: weather.hours.map((h) => ({ hour: h.hour, temperatureC: h.temperatureC, precipitationProbability: h.precipitationProbability, windKmh: h.windKmh })),
+          around: (weather.around ?? []).map((h) => ({ hour: h.hour, temperatureC: h.temperatureC, precipitationProbability: h.precipitationProbability, windKmh: h.windKmh })),
+        }
       : null,
     resolvedArtists: artists.map((a) => ({ query: a.query, matched: a.entity?.name ?? null })),
     dataStatus: context.dataStatus(),

@@ -1,130 +1,429 @@
+/* Honeycomb: the Busk Map theme for Tailwind v4 + shadcn/ui.
+   From the design handoff's globals.css (design system tokens.json). Day is :root, night follows the system
+   setting (prefers-color-scheme) and is also forced by .dark, [data-theme="dark"] or .bm-night (surfaces pinned dark whatever the OS theme); [data-theme="light"]
+   pins day. Every text pair passes WCAG AA in both themes. */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./ds-compat.css";
 
-@custom-variant dark (&:is(.dark *));
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+/* dark: matches .dark / [data-theme="dark"] ancestors, or the system setting unless the page is pinned to day. */
+@custom-variant dark {
+  &:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *, .bm-night, .bm-night *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]):not(.light) *) {
+      @slot;
+    }
+  }
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  color-scheme: light;
+  --radius: 0px;
+  --background: #f2eee6;
+  --foreground: #141c21;
+  --card: #fbf9f5;
+  --card-foreground: #141c21;
+  --popover: #ffffff;
+  --popover-foreground: #141c21;
+  --primary: #ff5a1f;
+  --primary-foreground: #141c21;
+  --secondary: #e6e0d4;
+  --secondary-foreground: #141c21;
+  --muted: #e9e4da;
+  --muted-foreground: #56606a;
+  --accent: #ffe2d1;
+  --accent-foreground: #141c21;
+  --destructive: #b0152f;
+  --destructive-foreground: #ffffff;
+  --border: #cfc7b8;
+  --input: #7a7266;
+  --ring: #141c21;
+  --chart-1: #dd6322;
+  --chart-2: #7a4d00;
+  --chart-3: #2f5fbf;
+  --chart-4: #a8164f;
+  --chart-5: #4f6577;
+  --bluestone: #141c21;
+  --honey: #ffcf3a;
+  --honey-deep: #d99a00;
+  --qloo: #5b5ba3;
+  --qloo-brand: #8C8CC8;
+  --signal-text: #b13a00;
+  --zone-pink: #e0337a;
+  --rule: #141c21;
+  --taste-1: #fbe3d2;
+  --taste-2: #f9b98e;
+  --taste-3: #f28644;
+  --taste-4: #dd6322;
+  --taste-5: #7f2d0c;
+  --footfall: #7a4d00;
+  --pitch-legal: #1f5fae;
+  --pitch-restricted: #a8164f;
+  --hidden-gem: #7a5a00;
+  --usual-spot: #56606a;
+  --event: #256489;
+  --map-land: #ece6da;
+  --map-street: #fbf9f5;
+  --map-street-major: #ffffff;
+  --map-street-edge: #d8d0c2;
+  --map-park: #d9e0c8;
+  --map-water: #9fc0d6;
+  --map-label: #7a7266;
+  --weather: #4f6577;
+  --estimate: #6d5a00;
+}
+.dark,
+[data-theme="dark"],
+.bm-night {
+  color-scheme: dark;
+  --background: #0f1416;
+  --foreground: #f2ede4;
+  --card: #182025;
+  --card-foreground: #f2ede4;
+  --popover: #1d262c;
+  --popover-foreground: #f2ede4;
+  --primary: #ff6a2b;
+  --primary-foreground: #0f1416;
+  --secondary: #232d33;
+  --secondary-foreground: #f2ede4;
+  --muted: #1f282d;
+  --muted-foreground: #a7b0b5;
+  --accent: #3a2519;
+  --accent-foreground: #ffc7a6;
+  --destructive: #ff8a8a;
+  --destructive-foreground: #0f1416;
+  --border: #2e3a41;
+  --input: #76828a;
+  --ring: #ff6a2b;
+  --chart-1: #ff7a2e;
+  --chart-2: #f0b73d;
+  --chart-3: #8fb0ff;
+  --chart-4: #ff7fb2;
+  --chart-5: #9db4c6;
+  --bluestone: #141c21;
+  --honey: #ffcf3a;
+  --honey-deep: #d99a00;
+  --qloo: #8C8CC8;
+  --qloo-brand: #8C8CC8;
+  --signal-text: #ff7f45;
+  --zone-pink: #ff5c9d;
+  --rule: #f2ede4;
+  --taste-1: #33221a;
+  --taste-2: #6a3215;
+  --taste-3: #a8460f;
+  --taste-4: #ff7a2e;
+  --taste-5: #ffc595;
+  --footfall: #f0b73d;
+  --pitch-legal: #86b4ff;
+  --pitch-restricted: #ff7fb2;
+  --hidden-gem: #ffcf3a;
+  --usual-spot: #a7b0b5;
+  --event: #7cc0e6;
+  --map-land: #161e23;
+  --map-street: #222c33;
+  --map-street-major: #2c3940;
+  --map-street-edge: #0f1416;
+  --map-park: #1c2a24;
+  --map-water: #1f3a4d;
+  --map-label: #76828a;
+  --weather: #9db4c6;
+  --estimate: #e6cf6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not(.light) {
+    color-scheme: dark;
+    --background: #0f1416;
+    --foreground: #f2ede4;
+    --card: #182025;
+    --card-foreground: #f2ede4;
+    --popover: #1d262c;
+    --popover-foreground: #f2ede4;
+    --primary: #ff6a2b;
+    --primary-foreground: #0f1416;
+    --secondary: #232d33;
+    --secondary-foreground: #f2ede4;
+    --muted: #1f282d;
+    --muted-foreground: #a7b0b5;
+    --accent: #3a2519;
+    --accent-foreground: #ffc7a6;
+    --destructive: #ff8a8a;
+    --destructive-foreground: #0f1416;
+    --border: #2e3a41;
+    --input: #76828a;
+    --ring: #ff6a2b;
+    --chart-1: #ff7a2e;
+    --chart-2: #f0b73d;
+    --chart-3: #8fb0ff;
+    --chart-4: #ff7fb2;
+    --chart-5: #9db4c6;
+    --bluestone: #141c21;
+    --honey: #ffcf3a;
+    --honey-deep: #d99a00;
+    --qloo: #8C8CC8;
+    --qloo-brand: #8C8CC8;
+    --signal-text: #ff7f45;
+    --zone-pink: #ff5c9d;
+    --rule: #f2ede4;
+    --taste-1: #33221a;
+    --taste-2: #6a3215;
+    --taste-3: #a8460f;
+    --taste-4: #ff7a2e;
+    --taste-5: #ffc595;
+    --footfall: #f0b73d;
+    --pitch-legal: #86b4ff;
+    --pitch-restricted: #ff7fb2;
+    --hidden-gem: #ffcf3a;
+    --usual-spot: #a7b0b5;
+    --event: #7cc0e6;
+    --map-land: #161e23;
+    --map-street: #222c33;
+    --map-street-major: #2c3940;
+    --map-street-edge: #0f1416;
+    --map-park: #1c2a24;
+    --map-water: #1f3a4d;
+    --map-label: #76828a;
+    --weather: #9db4c6;
+    --estimate: #e6cf6b;
+  }
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+/* Spacing, sizes, strokes and motion (theme-independent) */
+:root {
+  --font-display: var(--font-display-src), "Big Shoulders Display", "Big Shoulders", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-sans: var(--font-sans-src), "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-mono-src), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --size-tap: 48px;
+  --size-control: 44px;
+  --size-control-sm: 36px;
+  --size-pin: 40px;
+  --size-nav: 64px;
+  --stroke-hair: 1px;
+  --stroke-rule: 2px;
+  --stroke-heavy: 4px;
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --shadow-sm: 2px 2px 0 #141c21;
+  --shadow-md: 4px 4px 0 #141c21;
+  --shadow-lg: 6px 6px 0 #141c21;
+  --focus-ring: 0 0 0 2px var(--ring);
 }
+/* Tokens composed from var() resolve where they are declared, so a dark-pinned scope must redeclare them to pick up its own --ring (QA P1). */
+.dark,
+[data-theme="dark"],
+.bm-night {
+  --shadow-sm: 2px 2px 0 #05080a;
+  --shadow-md: 4px 4px 0 #ff6a2b;
+  --shadow-lg: 6px 6px 0 #ff6a2b;
+  --focus-ring: 0 0 0 2px var(--ring);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not(.light) {
+    --shadow-sm: 2px 2px 0 #05080a;
+    --shadow-md: 4px 4px 0 #ff6a2b;
+    --shadow-lg: 6px 6px 0 #ff6a2b;
+    --focus-ring: 0 0 0 2px var(--ring);
+  }
+}
+
+@theme inline {
+  /* The poster shadows: hard offsets, per theme (set on :root and .dark above). Without these keys Tailwind's soft default blur wins (QA: shadow tokens). */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-bluestone: var(--bluestone);
+  --color-honey: var(--honey);
+  --color-honey-deep: var(--honey-deep);
+  --color-qloo: var(--qloo);
+  --color-qloo-brand: var(--qloo-brand);
+  --color-signal-text: var(--signal-text);
+  --color-zone-pink: var(--zone-pink);
+  --color-rule: var(--rule);
+  --color-taste-1: var(--taste-1);
+  --color-taste-2: var(--taste-2);
+  --color-taste-3: var(--taste-3);
+  --color-taste-4: var(--taste-4);
+  --color-taste-5: var(--taste-5);
+  --color-footfall: var(--footfall);
+  --color-pitch-legal: var(--pitch-legal);
+  --color-pitch-restricted: var(--pitch-restricted);
+  --color-hidden-gem: var(--hidden-gem);
+  --color-usual-spot: var(--usual-spot);
+  --color-event: var(--event);
+  --color-weather: var(--weather);
+  --color-estimate: var(--estimate);
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
+  --font-display: var(--font-display-src), "Big Shoulders Display", "Big Shoulders", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-sans: var(--font-sans-src), "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-mono-src), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --spacing-tap: var(--size-tap);
+  --spacing-control: var(--size-control);
+  --spacing-control-sm: var(--size-control-sm);
+  --spacing-nav: var(--size-nav);
+}
+
+/* Honeycomb type scale (tokens.json "type"). Display styles are always set uppercase. */
+@utility text-hero { font-family: var(--font-display); font-variation-settings: "opsz" 72; font-weight: 800; font-size: 52px; line-height: 48px; letter-spacing: 0.005em; text-transform: uppercase; @media (min-width: 400px) { font-size: 72px; line-height: 64px; } }
+@utility text-title { font-family: var(--font-display); font-variation-settings: "opsz" 72; font-weight: 800; font-size: 40px; line-height: 38px; letter-spacing: 0.01em; text-transform: uppercase; }
+@utility text-heading { font-family: var(--font-display); font-variation-settings: "opsz" 72; font-weight: 800; font-size: 24px; line-height: 26px; letter-spacing: 0.01em; text-transform: uppercase; }
+@utility text-subheading { font-family: var(--font-display); font-variation-settings: "opsz" 72; font-weight: 800; font-size: 18px; line-height: 22px; letter-spacing: 0.03em; text-transform: uppercase; }
+@utility text-rank { font-family: var(--font-display); font-variation-settings: "opsz" 72; font-weight: 800; font-size: 28px; line-height: 28px; }
+@utility text-score { font-family: var(--font-display); font-variation-settings: "opsz" 72; font-weight: 800; font-size: 56px; line-height: 52px; }
+@utility text-body-lg { font-size: 18px; line-height: 27px; }
+@utility text-body { font-size: 16px; line-height: 24px; }
+@utility text-label { font-size: 15px; line-height: 20px; font-weight: 700; letter-spacing: 0.03em; }
+@utility text-small { font-size: 14px; line-height: 20px; }
+@utility text-meta { font-family: var(--font-mono); font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+@utility text-data { font-family: var(--font-mono); font-size: 14px; line-height: 20px; font-weight: 500; font-variant-numeric: tabular-nums; }
+@utility text-data-lg { font-family: var(--font-mono); font-size: 20px; line-height: 24px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+/* Display caps use the 72 optical size of Big Shoulders (what Google called "Big Shoulders Display"). */
+.font-display { font-variation-settings: "opsz" 72; }
+
+/* Strokes, focus, opacity */
+@utility border-rule-2 { border-width: var(--stroke-rule); border-color: var(--rule); }
+@utility opacity-taste { opacity: 0.85; }
+@utility opacity-disabled { opacity: 0.5; }
+
+/* Height of the fixed bottom nav (phones, under 768px): sticky bars and scroll padding sit above it. */
+:root { --bottom-nav: 0px; }
+/* The bar shows under 721px now that the main nav has two items (Busks, Repertoire): keep scroll targets clear of it. */
+@media (max-width: 720px) { :root { --bottom-nav: calc(var(--size-nav) + env(safe-area-inset-bottom)); } }
+html { scroll-padding-bottom: var(--bottom-nav); }
+
+/* Orange fills carry a 2px rule by day; at night the rule drops (the fill is its own edge). */
+:root { --fill-rule: var(--rule); }
+.dark, [data-theme="dark"], .bm-night { --fill-rule: transparent; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not(.light) { --fill-rule: transparent; } }
+
+/* Texture: the grain on hero grounds, the pink hatch for no-busking zones and test data, and the placeholder field. */
+.bm-grain {
+  background-image: radial-gradient(color-mix(in oklab, var(--foreground) 9%, transparent) 0.8px, transparent 1.2px);
+  background-size: 6px 6px;
+}
+.bm-hatch {
+  background: repeating-linear-gradient(45deg, var(--zone-pink) 0 2px, transparent 2px 5px);
+}
+.bm-hatch-test {
+  background: repeating-linear-gradient(-45deg, var(--accent), var(--accent) 10px, color-mix(in oklab, var(--accent) 80%, var(--foreground)) 10px, color-mix(in oklab, var(--accent) 80%, var(--foreground)) 12px);
+}
+.bm-hatch-off {
+  background: repeating-linear-gradient(-45deg, color-mix(in oklab, var(--muted-foreground) 30%, transparent) 0 2px, transparent 2px 7px);
+}
+.bm-hatch-field {
+  background: repeating-linear-gradient(60deg, var(--muted) 0 22px, color-mix(in oklab, var(--muted) 70%, var(--background)) 22px 25px);
+}
+.bm-hatch-ink { fill: var(--zone-pink); }
+
+/* Skeleton shimmer: the only gradient allowed. Stopped under reduced motion. */
+@keyframes bm-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.bm-skeleton {
+  background-color: var(--muted);
+  background-image: linear-gradient(90deg, transparent 0%, color-mix(in oklab, var(--foreground) 7%, transparent) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: bm-shimmer 2.4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) { .bm-skeleton { animation: none; } }
+
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
+  }
+  /* Focus. shadcn components own their focus-visible styles in their own classes (utilities layer, so they win over this): fields
+     turn their border to --ring and add one 2px ring, buttons, toggles, switches and radios one 2px ring (ring-2 ring-ring, no offset). This rule is only
+     the fallback for plain elements (links, bare buttons, scrollable regions, tooltip triggers): one 2px ring (--focus-ring),
+     never a second one; it never touches fields (inputs are not in the list). */
+  :where(a, button, summary, [tabindex]):not([tabindex="-1"], input, textarea, select):focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+  @media (forced-colors: active) {
+    :where(a, button, summary, [tabindex]):not([tabindex="-1"], input, textarea, select):focus-visible { outline: 2px solid CanvasText; }
   }
   body {
     @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Reduced motion: no transitions anywhere. Animations keep their own rules (the Loader keeps moving). */
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after { transition-duration: 0ms !important; }
   }
 }
+
+/* The landing page's ticker: two copies side by side, rolled left by one copy's width. Still under reduced motion. */
+@keyframes hc-roll { from { transform: translateX(0); } to { transform: translateX(calc(-50% - 20px)); } }
+@keyframes hc-glow { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.9; } }
+.hc-glow { animation: hc-glow 3.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .hc-glow { animation: none; opacity: 0.5; } }
+.hc-ticker { width: max-content; animation: hc-roll 40s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .hc-ticker { animation: none; } }
+
+/* The research feed folding under the busk (phones, tablets): the box shrinks and fades instead of vanishing. Only on arrival. */
+@keyframes hc-fold { from { grid-template-rows: 1fr; opacity: 1; } to { grid-template-rows: 0fr; opacity: 0; } }
+.hc-fold-arrive { animation: hc-fold 400ms var(--ease-out, ease) backwards; }
+@media (prefers-reduced-motion: reduce) { .hc-fold-arrive { animation: none; } }
+
+/* The landing hero's taste map fills in cell by cell, coolest first, then the pins drop; the hot cells breathe. Static under reduced motion. */
+@keyframes hc-cell-in { from { opacity: 0; transform: scale(0.4); } }
+@keyframes hc-pin-in { from { opacity: 0; transform: translateY(-14px) scale(0.8); } }
+@keyframes hc-breathe { 50% { opacity: 0.6; } }
+.hc-cell { transform-box: fill-box; transform-origin: center; animation: hc-cell-in 520ms var(--ease-out, ease) backwards; animation-delay: var(--d, 0ms); }
+.hc-cell-hot { animation: hc-cell-in 520ms var(--ease-out, ease) backwards, hc-breathe 3.6s ease-in-out infinite; animation-delay: var(--d, 0ms), calc(var(--d, 0ms) + 2400ms); }
+.hc-pin { transform-box: fill-box; transform-origin: center; animation: hc-pin-in 480ms cubic-bezier(0.2, 1.4, 0.4, 1) backwards; animation-delay: var(--d, 0ms); }
+@media (prefers-reduced-motion: reduce) { .hc-cell, .hc-cell-hot, .hc-pin { animation: none; } }
+
+/* MapLibre's own controls (zoom, attribution toggle) at tap-target size. */
+.maplibregl-ctrl.maplibregl-ctrl-group button { width: 44px; height: 44px; }
+.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button { width: 44px; height: 44px; }
+
+/* MapLibre's cooperative-gestures hint (B-227): "Use two fingers to move the map" on a bluestone veil, in the app's type. */
+.maplibregl-cooperative-gesture-screen { background: color-mix(in oklab, var(--bluestone) 78%, transparent) !important; color: #f2ede4 !important; font: 700 15px/22px var(--font-sans) !important; }
+

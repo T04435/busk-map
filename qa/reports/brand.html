@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brand · review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f1ea;--card:#fff;--fg:#17191c;--muted:#5d6168;--line:#d9d4c8;--ok:#1d7a3a;--okbg:#e2f3e7;--bad:#b3141b;--badbg:#fbe3e4;--warn:#8a5a00;--warnbg:#fdf0d3;--held:#4b4f86;--heldbg:#e7e7f6;--accent:#c2410c}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#111416;--card:#1a1e21;--fg:#eceae4;--muted:#a3a8ad;--line:#2d3337;--ok:#6fd38f;--okbg:#14301e;--bad:#ff8c8f;--badbg:#3a1416;--warn:#f2c160;--warnbg:#33280f;--held:#b9b9f0;--heldbg:#25253d;--accent:#ff7a3d}}
+:root[data-theme="dark"]{--bg:#111416;--card:#1a1e21;--fg:#eceae4;--muted:#a3a8ad;--line:#2d3337;--ok:#6fd38f;--okbg:#14301e;--bad:#ff8c8f;--badbg:#3a1416;--warn:#f2c160;--warnbg:#33280f;--held:#b9b9f0;--heldbg:#25253d;--accent:#ff7a3d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.wrap{max-width:1600px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:24px;margin:0} .ver{font-weight:800;margin:6px 0 2px} .chg{color:var(--muted);margin:0 0 12px}
+.strip{display:flex;flex-wrap:wrap;gap:8px;align-items:center;position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0;border-bottom:1px solid var(--line)}
+.stat{padding:6px 12px;border:1px solid var(--line);background:var(--card);font-weight:800}
+.stat.ok{color:var(--ok)} .stat.bad{color:var(--bad)} .stat.warn{color:var(--warn)} .stat.held{color:var(--held)}
+.filter{font:inherit;padding:6px 12px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer;min-height:40px} .filter[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.row{display:grid;grid-template-columns:150px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,.55fr) minmax(0,1.3fr);gap:12px;background:var(--card);border:1px solid var(--line);margin:12px 0;padding:12px;scroll-margin-top:70px}
+.row:target{outline:3px solid var(--accent)}
+.id a{display:inline-block;font-size:22px;font-weight:800;color:var(--fg);text-decoration:none;border:2px solid var(--fg);padding:0 8px} .id span{display:block;margin-top:6px;font-weight:600}
+figure{margin:0;min-width:0} figcaption{font-size:12px;color:var(--muted);margin-bottom:4px}
+img{display:block;max-width:100%;height:auto;max-height:520px;object-fit:contain;object-position:top left;border:1px solid var(--line);background:#fff}
+.box img{max-height:none}
+dl{margin:0;display:grid;gap:6px} dt{font-size:12px;color:var(--muted)} dd{margin:0} .call{font-weight:800;color:var(--accent)} .spec{font-size:12px;color:var(--muted)}
+.chip{font-weight:800;padding:1px 8px} .chip.ok{background:var(--okbg);color:var(--ok)} .chip.bad{background:var(--badbg);color:var(--bad)} .chip.warn{background:var(--warnbg);color:var(--warn)} .chip.held{background:var(--heldbg);color:var(--held)}
+.ph{border:2px dashed var(--muted);color:var(--muted);padding:24px 8px;text-align:center;font-weight:800}
+body.action .row[data-action="false"]{display:none}
+.ready{border:2px solid var(--line);background:var(--card);padding:12px 16px;margin:8px 0 14px} .ready.ready{border-color:var(--ok)} .ready.ready-with-notes{border-color:var(--warn)} .ready.not-ready{border-color:var(--bad)}
+.box{background:var(--card);border:1px solid var(--line);padding:12px 16px;margin-top:20px;overflow-x:auto} .box h2{font-size:16px;margin:0 0 6px}
+.prov{border-left:4px solid var(--accent);padding:6px 10px;background:var(--bg);font-size:13px} .synth{border:2px solid var(--fg);padding:8px 12px;margin:10px 0} .synth h3{margin:0 0 4px;font-size:14px} .box details{margin-top:10px} .box summary{font-weight:800;cursor:pointer;min-height:32px} .box h3,.box h4,.box h5,.box h6{font-size:14px;margin:12px 0 4px} .box table{margin:6px 0} .box code{font-size:12px}
+table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top}
+@media (max-width:1100px){.row{grid-template-columns:1fr 1fr} .id{grid-column:1/-1} dl{grid-column:1/-1}}
+@media (max-width:600px){.row{grid-template-columns:1fr}}
+</style></head>
+<body><div class="wrap">
+<h1>Brand · review</h1>
+<p class="ver">v4 · design/honeycomb ＠ f83f1a1 · 17 Oct 2026 · route /brand</p>
+<p class="chg">Full pass at f83f1a1 (v3 was 8207373). DS parity and glyph rule applied (same commit): 13 more rows Different (21 in all), judged against their DS specimens (B-211..B-214, B-206/5/7 extended) and BD06/BD20 cite B-162 for “Tokens → shadcn”; READY now Not ready. Fixed: B-070 eyebrow v66 (BD03); B-071 hero line, 8-link nav, Screens, kit table and Handoff (BD05, BD06, BD42, BD52); B-072 Iconography, 40 tiles (BD19); B-073 type label and Loader “Working” cell (BD16, BD55; the honeycomb line still differs, BD17); B-074 eight component groups, summed count, Plan states block with 9 cards, QlooWordmark (BD22-BD41); B-075 StatStrip 3 items (BD39); B-076 ExampleActCard copy and height (BD40); B-077 “Download” links (BD50); B-079 0 transitions and 0 animations under reduced motion (BD58); B-134 night button ring 2 px outside the fill (BD24); B-135 lockup P offset whole (BD07); B-151 no ground-coloured gap in the --ring row (BD21); B-152 Logos shows only the lockup, mark and wordmark labelled “Not a logo” (BD44-BD46); B-153 Qloo&#x27;s linked logo in the partner card and the assets (BD09, BD47); B-154 social and kit images redrawn (new lettering, hatched cells, Qloo&#x27;s logo, no city), except the screenshots. B-078 partly: 768 open, 390 still folds. Tips: none left except the “Logged A$85” form message (B-204). New: B-204..B-214 (all Low except B-177, B-178, B-165, B-188, B-164 Medium). The impeccable critique and audit were run for real this round (skill v4.4.0, dual-agent, at f83f1a1, 390/768/1440; provenance at the top of both sections), replacing v3&#x27;s hand-written sections. New from impeccable, verified by QA: B-223 (tokens table unusable at 390), B-224 (handoff path not in the repo), B-225 (heading outline and landmark names), B-231.</p>
+<section class="ready not-ready" aria-label="Ready for design-approve"><b>Ready for the user's design-approve? Not ready.</b> DS parity and glyph rule applied: many specimens on the design system&#x27;s own showcase do not match their DS components: the pickers (BD26: PermitPicker, TimeSlotPicker, PickedSongs), the map (BD27: TasteMap, TasteMapLegend, PitchPin), the busk card (BD28: PitchRow, DiscoveryBadge, WeatherStrip, LeanBar), ResearchFunnel (BD29), StatusCard (BD31), PlanAlert (BD33-BD36), AgentStatusLine (BD37), ExampleActCard (BD40), Loader (BD17, BD55), Badge/Alert/Banner (BD25); “Tokens → shadcn” is a glyph (BD06, BD20, B-162). Also for the user&#x27;s eye: the kit screenshots are placeholders (BD51, B-154) and phones fold all 28 blocks (BD56, B-078). Impeccable adds B-223, B-224 and B-225.</section>
+<div class="strip" role="group" aria-label="Summary"><span class="stat ok">37 Present</span><span class="stat warn">21 Different</span><span class="stat bad">0 Missing</span><span class="stat bad">0 Broken</span><button class="filter" type="button" aria-pressed="false" id="flt">Needs action only</button></div>
+<p class="chg">Deck: BRAND&#x27;s crops of the Brand board (BrandTablet/BrandMobile), refreshed from the inventory on 17 Oct. Build: QA&#x27;s own offline production export of f83f1a1 (scratchpad/hc9, .next-qa), 1440 and 390 (768 checked); at 390 the folded blocks were opened for the crops and the bottom nav hidden. v4 build images are in inv/v4/. The row id is the ticket.</p>
+<article class="row" id="BD01" data-action="true">
+<div class="id"><a href="#BD01">BD01</a><span>Header</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD01.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD01.jpg" alt="BD01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD01-1440.jpg" alt="BD01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD01-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD01-390.jpg" alt="BD01 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Busks · Week · Brain, none current (no Tips). Logo is the lockup busk-map-lockup-dark.svg at 36 px, new lettering, M level.</dd></div>
+<div><dt>User's call</dt><dd class="call">F12 (corrected 17 Oct) + F29: the ONE logo is the lockup [hex mark][new stencil wordmark], dark and light, in the app and every asset; the mark alone only at icon size (favicon, app icon); no other logo variant. Tips retired by the user (17 Oct): no tip copy, badges or links.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD02" data-action="false">
+<div class="id"><a href="#BD02">BD02</a><span>Hero band</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD02.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD02.jpg" alt="BD02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD02-1440.jpg" alt="BD02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD02-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD02-390.jpg" alt="BD02 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night band with grain, 6 px orange bottom rule, text left, logo right at 1440 and under the text at 390.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD03" data-action="false">
+<div class="id"><a href="#BD03">BD03</a><span>Hero eyebrow</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD03.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD03.jpg" alt="BD03 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD03-1440.jpg" alt="BD03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD03-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD03-390.jpg" alt="BD03 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “Busk Map design deck · design system v66”, as the fixed board.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-070 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD04" data-action="false">
+<div class="id"><a href="#BD04">BD04</a><span>Title “Honeycomb”</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD04.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD04.jpg" alt="BD04 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD04-1440.jpg" alt="BD04 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD04-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD04-390.jpg" alt="BD04 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “Honey” + orange “comb”, display caps, as the board.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD05" data-action="false">
+<div class="id"><a href="#BD05">BD05</a><span>Hero line</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD05.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD05.jpg" alt="BD05 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD05-1440.jpg" alt="BD05 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD05-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD05-390.jpg" alt="BD05 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Board line verbatim except “every screen” drops “at 390, 768 and 1440” (the Screens table drops those columns too, B-207).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-071 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD06" data-action="true">
+<div class="id"><a href="#BD06">BD06</a><span>On this page nav</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD06.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD06.jpg" alt="BD06 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD06-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD06-1440.jpg" alt="BD06 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD06-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD06-390.jpg" alt="BD06 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Eight links: Brand book · Words · Foundations · Tokens → shadcn · Components · Screens · Assets · Handoff; wraps on three lines at 390. Glyph rule: the link “Tokens → shadcn” uses a text arrow as an icon.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-071 fixed at f83f1a1; B-162</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD07" data-action="true">
+<div class="id"><a href="#BD07">BD07</a><span>Hero logo</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD07.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD07.jpg" alt="BD07 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD07-1440.jpg" alt="BD07 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD07-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD07-390.jpg" alt="BD07 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> The lockup (dark file), 56 px high (board 64 px), right of the text at 1440, under it at 390. The P&#x27;s orange offset is whole (viewBox 239.04 × 48; see logo-p-offset.jpg).</dd></div>
+<div><dt>User's call</dt><dd class="call">F12 (corrected 17 Oct) + F29: the ONE logo is the lockup [hex mark][new stencil wordmark], dark and light, in the app and every asset; the mark alone only at icon size (favicon, app icon); no other logo variant.</dd></div>
+<div><dt>Defect</dt><dd>B-135 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD08" data-action="false">
+<div class="id"><a href="#BD08">BD08</a><span>01 Brand book</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD08.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD08.jpg" alt="BD08 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD08-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD08-1440.jpg" alt="BD08 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD08-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD08-390.jpg" alt="BD08 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “01”, h2, the line verbatim, 8 principle cards and Voice.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD09" data-action="true">
+<div class="id"><a href="#BD09">BD09</a><span>Principle cards ×8</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD09.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD09.jpg" alt="BD09 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD09-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD09-1440.jpg" alt="BD09 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD09-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD09-390.jpg" alt="BD09 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> All 8 titles and lines as the board. “Qloo, our partner” now carries Qloo&#x27;s wordmark, linked to qloo.com (new tab, noopener noreferrer, “Qloo (opens qloo.com in a new tab)”). “The pitch ring … It is the logo” holds: the ring sits in the lockup&#x27;s hex mark.</dd></div>
+<div><dt>User's call</dt><dd class="call">F18 + F09: Qloo&#x27;s logo, linked to qloo.com.</dd></div>
+<div><dt>Defect</dt><dd>B-153 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD10" data-action="false">
+<div class="id"><a href="#BD10">BD10</a><span>Voice ×4</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD10.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD10.jpg" alt="BD10 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD10-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD10-1440.jpg" alt="BD10 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD10-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD10-390.jpg" alt="BD10 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> h3 Voice and four cards: Pitch, busk · Plain words · Honest numbers · Qloo first.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD11" data-action="false">
+<div class="id"><a href="#BD11">BD11</a><span>02 The words</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD11.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD11.jpg" alt="BD11 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD11-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD11-1440.jpg" alt="BD11 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD11-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD11-390.jpg" alt="BD11 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “02”, h2, the line verbatim.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD12" data-action="false">
+<div class="id"><a href="#BD12">BD12</a><span>Words table</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD12.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD12.jpg" alt="BD12 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD12-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD12-1440.jpg" alt="BD12 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD12-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD12-390.jpg" alt="BD12 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Word · Means, 10 rows in board order; row 6 reads “Hidden gem / Usual pitch” (board “Usual spot”; the app&#x27;s badge says USUAL PITCH). Scrolls inside its frame at 390.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD13" data-action="false">
+<div class="id"><a href="#BD13">BD13</a><span>03 Foundations</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD13.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD13.jpg" alt="BD13 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD13-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD13-1440.jpg" alt="BD13 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD13-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD13-390.jpg" alt="BD13 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Colour, Type, The honeycomb, Iconography, Space size shape and motion (Iconography sits before Space; board has it last).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-072 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD14" data-action="false">
+<div class="id"><a href="#BD14">BD14</a><span>Colour swatches ×9</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD14.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD14.jpg" alt="BD14 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD14-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD14-1440.jpg" alt="BD14 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD14-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD14-390.jpg" alt="BD14 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Nine swatches with names, tokens and uses as the board; 2 per row at 390.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD15" data-action="false">
+<div class="id"><a href="#BD15">BD15</a><span>Taste ramp</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD15.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD15.jpg" alt="BD15 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD15-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD15-1440.jpg" alt="BD15 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD15-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD15-390.jpg" alt="BD15 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Five steps in one ruled bar, role img. Caption ends “Every colour has a night value.” (board: “a dark-theme value”), same meaning.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD16" data-action="false">
+<div class="id"><a href="#BD16">BD16</a><span>Type specimens ×3</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD16.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD16.jpg" alt="BD16 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD16-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD16-1440.jpg" alt="BD16 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD16-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD16-390.jpg" alt="BD16 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “Big Shoulders Display 800”, Atkinson Hyperlegible Next, JetBrains Mono with the board&#x27;s samples and uses.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-073 (type label) fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD17" data-action="true">
+<div class="id"><a href="#BD17">BD17</a><span>The honeycomb row</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD17.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD17.jpg" alt="BD17 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD17-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD17-1440.jpg" alt="BD17 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD17-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD17-390.jpg" alt="BD17 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Cells now as the board: 1, GW, music, error with warning, PercentCell 91 and 64, no-data dash, dashed Loader cell with “Working”, RankTile 2. The line still ends “a cell that is waiting is dashed” instead of the board&#x27;s “links between steps are half a cell turned on its side”. DS parity: differs from DS Loader: the Working cell&#x27;s spinner is a plain arc icon; the DS Loader is the pitch ring (ring and paper dot) turning.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-073 (line) open; B-214</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD18" data-action="true">
+<div class="id"><a href="#BD18">BD18</a><span>Space, size, shape and motion</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD18.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD18.jpg" alt="BD18 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD18-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD18-1440.jpg" alt="BD18 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD18-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD18-390.jpg" alt="BD18 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Five token cards as the board. Focus-ring row: “one 2px ring in ring … buttons keep a 2px gap. Never a second ring.”, which matches the build (2 px outline, 2 px offset). Motion: “Under prefers-reduced-motion, everything drops to 0 ms except progress.” now holds for transitions (BD58); the spinners stop too, as BD58 asks. The --ring row says the opposite about the gap (B-205).</dd></div>
+<div><dt>User's call</dt><dd class="call">F13-F15 (F14): one focus ring, shadcn&#x27;s own pattern; no ground gap plus ring.</dd></div>
+<div><dt>Defect</dt><dd>B-079 fixed at f83f1a1; B-205</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD19" data-action="false">
+<div class="id"><a href="#BD19">BD19</a><span>Iconography grid</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD19.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD19.jpg" alt="BD19 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD19-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD19-1440.jpg" alt="BD19 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD19-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD19-390.jpg" alt="BD19 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> The line verbatim and 40 tiles: the board&#x27;s 39 in order plus play (F22). 11 per row at 1440.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD20" data-action="true">
+<div class="id"><a href="#BD20">BD20</a><span>04 Tokens → shadcn</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD20.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD20.jpg" alt="BD20 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD20-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD20-1440.jpg" alt="BD20 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD20-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD20-390.jpg" alt="BD20 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “04”, h2 “Tokens → shadcn”, the one-to-one line. Glyph rule: the h2 “Tokens → shadcn” uses a text arrow.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-162</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD21" data-action="true">
+<div class="id"><a href="#BD21">BD21</a><span>Token table</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD21.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD21.jpg" alt="BD21 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD21-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD21-1440.jpg" alt="BD21 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD21-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD21-390.jpg" alt="BD21 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Token · Layer · Day · Night · Use with swatches; 45 rows (24 shadcn + 21 Honeycomb; board 24 + 23). Day/Night aliases wrap in their cells (0 overflowing cells at 390/768/1440). The --ring row is one ring now but reads “buttons keep a 2px ring with no gap”, which contradicts the focus-ring row and the build (2 px offset).</dd></div>
+<div><dt>User's call</dt><dd class="call">F14: the --ring row becomes one ring.</dd></div>
+<div><dt>Defect</dt><dd>B-151 fixed at f83f1a1; B-205</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD22" data-action="false">
+<div class="id"><a href="#BD22">BD22</a><span>05 Components</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD22.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD22.jpg" alt="BD22 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD22-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD22-1440.jpg" alt="BD22 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD22-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD22-390.jpg" alt="BD22 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “05”, h2, the line, and 8 group cards: Controls · Feedback and honesty · Plan your busk · Map · The busk · Research · Week · States and app shell (3 per row at 1440, 2 at 768, 1 at 390). At 1440 cards stretch to the row&#x27;s tallest, leaving up to 490 px empty (B-209).</dd></div>
+<div><dt>User's call</dt><dd class="call">Tips retired by the user (17 Oct): no tip copy, badges or links.</dd></div>
+<div><dt>Defect</dt><dd>B-074 fixed at f83f1a1; B-209</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD23" data-action="false">
+<div class="id"><a href="#BD23">BD23</a><span>Component count</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD23.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD23.jpg" alt="BD23 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD23-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD23-1440.jpg" alt="BD23 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD23-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD23-390.jpg" alt="BD23 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “72 reusable components in the design system, grouped by …”: one comma; the number is summed from the page&#x27;s own group lists (8+11+9+5+15+5+3+16). Board 90 sums the DS groups, which name more pieces (Tips ones retired).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-074 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD24" data-action="true">
+<div class="id"><a href="#BD24">BD24</a><span>Controls card</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD24.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD24.jpg" alt="BD24 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD24-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD24-1440.jpg" alt="BD24 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD24-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD24-390.jpg" alt="BD24 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Plan my busk →, Week with calendar, Cancel, plus Secondary, Delete, Disabled; Input “Act name” and an error state; chips Folk (selected) and Americana (no music icon); the list verbatim. Focus: one ring everywhere; the night Plan my busk button now shows a 2 px orange outline 2 px outside its fill, on the card ground (focus-day-night.jpg). Card has 490 px empty at its foot at 1440 (B-209).</dd></div>
+<div><dt>User's call</dt><dd class="call">F13-F15: a shadcn Input with one border and one focus ring.</dd></div>
+<div><dt>Defect</dt><dd>B-134 fixed at f83f1a1; B-209</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD25" data-action="true">
+<div class="id"><a href="#BD25">BD25</a><span>Feedback and honesty card</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD25.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD25.jpg" alt="BD25 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD25-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD25-1440.jpg" alt="BD25 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD25-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD25-390.jpg" alt="BD25 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Badges (Neutral, Event, Weather, Example data, Permit pitch, Restricted, Error), DataStatusBadge Qloo Live, Weather Cached, Foot traffic Estimated, Events Unavailable; the sensors warning Alert verbatim; Info alert and banners; component list. DS parity: differs from DS Badge (DS badges each carry an icon: ticket, cloud, shield, ban, warning; the build&#x27;s Event, Weather, Permit pitch, Restricted, Error have none), DS Alert (DS: 1px tinted border, small mono title, smaller body; build 2px border, larger type) and DS Banner (DS: full-width one-line strip, bold lead, “Why?” action; build: boxed 2px panels, two-line sans).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-074 fixed at f83f1a1; B-211</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD26" data-action="true">
+<div class="id"><a href="#BD26">BD26</a><span>Plan your busk card</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD26.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD26.jpg" alt="BD26 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD26-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD26-1440.jpg" alt="BD26 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD26-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD26-390.jpg" alt="BD26 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> PickedSongs “Your picks”, 2 songs · 4:56, Fast Car (Tracy Chapman) and Laneway Light (The Larkspur Two, YOUR SONG), plus permit choice cards, the time-of-day toggle and chips; component list. DS parity: differs from DS PermitPicker (DS cards end in a pitch count “24 pitches”; the build drops the counts and adds a LIVE DATA badge), DS TimeSlotPicker (DS: a day row of date tiles and five slots Morning…Late in one row, 24 h ranges “07–10”, picked slot orange; build: no day row, four slots 2 × 2, “9 am–12 pm”, picked slot bluestone) and DS PickedSongs (DS: one ruled list with dividers, YOUR SONG badge with a music icon; build: separate grey boxes, no icon, titles wrap).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-177, B-178</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD27" data-action="true">
+<div class="id"><a href="#BD27">BD27</a><span>Map card</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD27.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD27.jpg" alt="BD27 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD27-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD27-1440.jpg" alt="BD27 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD27-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD27-390.jpg" alt="BD27 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> A schematic: no streets, a cluster of cells with pins 2 1 3, a river and four hatched no-busking cells (F16 met), the one-line legend Taste match · Top pitch · No busking · Other pitch. The cells include pale (taste 1-2) and dark brown (taste 5) steps, which the app&#x27;s maps no longer draw (F05: orange cells only). No event marker (held by DEV). DS parity: differs from DS TasteMap (full honeycomb field over the city with hidden-gem and event diamonds), DS TasteMapLegend (5 numbered steps Low…High plus Event nearby; build two swatches, F03 one line) and DS PitchPin (pitch-ring mark in a hex with a number tab and name label; build numbered cells). F05 still rules out the dark cells.</dd></div>
+<div><dt>User's call</dt><dd class="call">F16: hatched honeycomb cells. F05: only the orange cells, no dark cells.</dd></div>
+<div><dt>Defect</dt><dd>B-208</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD28" data-action="true">
+<div class="id"><a href="#BD28">BD28</a><span>The busk card</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD28.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD28.jpg" alt="BD28 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD28-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD28-1440.jpg" alt="BD28 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD28-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD28-390.jpg" alt="BD28 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> PitchRows 1 Southbank Promenade @ 12–3 pm 91 Hidden gem (selected) and 3 Degraves Street 78 Usual pitch, Both agree; no “Your tips +3” (Tips retired). WeatherStrip “Dry through your slot”, Your slot 12–15, plus crowd leans and evidence; component list. The WeatherStrip&#x27;s title is an h2 in the page outline (B-210). DS parity: differs from DS PitchRow (DS compact: small outlined rank hex, name and “@ 12–3 pm” on one line, “Full details” link, Found by Claude badge; build about twice the size, slot on its own line, no Full details), DS DiscoveryBadge (DS “Usual spot” with a target icon; build “Usual pitch” with a dot), DS WeatherStrip (DS compact type, slot frame on the card ground; build about twice the size, grey slot fill) and DS LeanBar (DS inline “25–34 | +41” bars; build full-width bar rows).</dd></div>
+<div><dt>User's call</dt><dd class="call">Tips retired by the user (17 Oct): no tip copy, badges or links.</dd></div>
+<div><dt>Defect</dt><dd>B-210; B-165, B-188</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD29" data-action="true">
+<div class="id"><a href="#BD29">BD29</a><span>Research card</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD29.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD29.jpg" alt="BD29 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD29-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD29-1440.jpg" alt="BD29 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD29-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD29-390.jpg" alt="BD29 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> ResearchFunnel with the board&#x27;s ten totals (412 taste cells mapped … 3 pitches), no Qloo calls cell; component list. DS parity: differs from DS ResearchFunnel: DS is one inline row, small hex cells with the label beside each, joined by connectors; build wraps into a 3-column grid, labels under the cells, short dash connectors (glyph-style dashes).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-164; B-162</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD30" data-action="false">
+<div class="id"><a href="#BD30">BD30</a><span>Week card</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD30.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD30.jpg" alt="BD30 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD30-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD30-1440.jpg" alt="BD30 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD30-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD30-390.jpg" alt="BD30 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> SessionCard Sat 18 Oct · 6–9 pm, Southbank Promenade, 88, “The footy crowd walks the river after the game.”, Hidden gem; no tips line or TipBonusNote (Tips retired); WeekGrid · WeekDayCard · SessionCard. 282 px empty at 1440 (B-209).</dd></div>
+<div><dt>User's call</dt><dd class="call">Tips retired by the user (17 Oct): no tip copy, badges or links.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD31" data-action="true">
+<div class="id"><a href="#BD31">BD31</a><span>States and app shell card</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD31.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD31.jpg" alt="BD31 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD31-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD31-1440.jpg" alt="BD31 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD31-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD31-390.jpg" alt="BD31 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> StatusCard “No pitch here” / “This page doesn&#x27;t exist.”, Busk Map home, Reference a1b2c3; list ends BrandHoneycomb (the board issue is fixed). DS parity: differs from DS StatusCard: DS is left-aligned with a dashed-outline hex icon, a very large title, bold body and two buttons (primary “Go to Busk Map home” + outline); build is centred with a solid hex, smaller title, muted body, one outline button and the reference under a rule (the board&#x27;s version, as on the errors pages).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-212</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD32" data-action="false">
+<div class="id"><a href="#BD32">BD32</a><span>Plan states, research and the shell</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD32.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD32.jpg" alt="BD32 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD32-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD32-1440.jpg" alt="BD32 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD32-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD32-390.jpg" alt="BD32 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> h3, 9 specimen cards in a 3-column grid, and the closing line verbatim except “on their own pages” (board “on the screens below”); “Busk Map · Honeycomb” is plain text, not a link.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-074 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD33" data-action="true">
+<div class="id"><a href="#BD33">BD33</a><span>PlanAlert · limit</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD33.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD33.jpg" alt="BD33 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD33-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD33-1440.jpg" alt="BD33 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD33-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD33-390.jpg" alt="BD33 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Plan limit reached” and the board&#x27;s sentence; “Back to Busk Map home” is an underlined link, not the board&#x27;s outlined button. DS parity: differs from DS PlanAlert: DS alerts have a 1px tinted border, small mono title and small outlined action buttons (“Back to Busk Map home”); build 2px borders, larger type, actions as underlined links.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-213</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD34" data-action="true">
+<div class="id"><a href="#BD34">BD34</a><span>PlanAlert · Qloo unavailable</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD34.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD34.jpg" alt="BD34 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD34-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD34-1440.jpg" alt="BD34 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD34-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD34-390.jpg" alt="BD34 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Qloo is unavailable” / “Busk Map needs Qloo&#x27;s taste data to plan. Please try again in a few minutes.” DS parity: differs from DS PlanAlert: DS alerts have a 1px tinted border, small mono title and small outlined action buttons (“Back to Busk Map home”); build 2px borders, larger type, actions as underlined links.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-213</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD35" data-action="true">
+<div class="id"><a href="#BD35">BD35</a><span>PlanAlert · from the data alone</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD35.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD35.jpg" alt="BD35 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD35-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD35-1440.jpg" alt="BD35 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD35-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD35-390.jpg" alt="BD35 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Reads the app&#x27;s own alert: “Planned from the data alone” / “Claude is taking too long, so this is Busk Map&#x27;s plan from the scores. Claude&#x27;s explanations are left out.” (board: “Shown: the engine&#x27;s plan”, “The agent …”); brand words as on the plan page. DS parity: differs from DS PlanAlert: DS alerts have a 1px tinted border, small mono title and small outlined action buttons (“Back to Busk Map home”); build 2px borders, larger type, actions as underlined links. DS copy “Shown: the engine&#x27;s plan”.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-213</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD36" data-action="true">
+<div class="id"><a href="#BD36">BD36</a><span>PlanAlert · no legal pitch</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD36.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD36.jpg" alt="BD36 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD36-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD36-1440.jpg" alt="BD36 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD36-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD36-390.jpg" alt="BD36 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “No pitch to recommend”, the sentence and “Read the council&#x27;s busking rules” as a link. DS parity: differs from DS PlanAlert: DS alerts have a 1px tinted border, small mono title and small outlined action buttons (“Back to Busk Map home”); build 2px borders, larger type, actions as underlined links.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-213</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD37" data-action="true">
+<div class="id"><a href="#BD37">BD37</a><span>AgentStatusLine ×3</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD37.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD37.jpg" alt="BD37 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD37-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD37-1440.jpg" alt="BD37 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD37-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD37-390.jpg" alt="BD37 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Three states, with Claude named: “Claude is researching with Qloo and the other sources. Your busk replaces the research here in about half a minute.”, “Claude&#x27;s plan, replayed.”, “No new plan was started.” The replayed line drops the board&#x27;s run line “13 model steps · 21,480 input and 2,610 output tokens (1,840 thinking) · 31.4 s”. DS parity: differs from DS AgentStatusLine: DS lines are JetBrains Mono at body size with the run line under the replayed state; build is small sans.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-206</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD38" data-action="true">
+<div class="id"><a href="#BD38">BD38</a><span>FormMessage ×3</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD38.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD38.jpg" alt="BD38 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD38-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD38-1440.jpg" alt="BD38 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD38-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD38-390.jpg" alt="BD38 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Loading your songs from Spotify…”, “Pick today or a later date.” and “Logged A$85 at Hardware Lane.” The third is the retired tip log&#x27;s success message.</dd></div>
+<div><dt>User's call</dt><dd class="call">Tips retired by the user (17 Oct): no tip copy, badges or links.</dd></div>
+<div><dt>Defect</dt><dd>B-204</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD39" data-action="false">
+<div class="id"><a href="#BD39">BD39</a><span>StatStrip · Qloo</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD39.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD39.jpg" alt="BD39 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD39-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD39-1440.jpg" alt="BD39 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD39-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD39-390.jpg" alt="BD39 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Three items: 11 kinds of Qloo call · 24–33 Qloo calls for a new busk · 0 on a rerun; one row of 3 at 768 and 1440; at 390, 2 + 1 with the last item filling its row (no grey cell).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-075 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD40" data-action="true">
+<div class="id"><a href="#BD40">BD40</a><span>ExampleActCard · NoteCard next</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD40.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD40.jpg" alt="BD40 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD40-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD40-1440.jpg" alt="BD40 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD40-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD40-390.jpg" alt="BD40 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Folk duo, “Fiddle and guitar, Sunday afternoon”, “Sounds like Gillian Welch”, as the app&#x27;s card (stacked, with “Watch Busk Map plan this act →”), 198 px tall at every width; NoteCard next matches. DS parity: differs from DS ExampleActCard: DS is one horizontal row (initials hex, name, line, mono “Sounds like”, arrow at the right edge); build is a stacked card with a separate “Watch Busk Map plan this act” row.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-076 fixed at f83f1a1; B-163</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD41" data-action="true">
+<div class="id"><a href="#BD41">BD41</a><span>QlooWordmark</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD41.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD41.jpg" alt="BD41 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD41-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD41-1440.jpg" alt="BD41 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD41-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD41-390.jpg" alt="BD41 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Qloo&#x27;s wordmark at 160 px, linked to qloo.com (new tab, noopener noreferrer), with “Every Qloo logo links to qloo.com in a new tab.”</dd></div>
+<div><dt>User's call</dt><dd class="call">F09: every Qloo logo links to qloo.com in a new tab.</dd></div>
+<div><dt>Defect</dt><dd>B-074 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD42" data-action="false">
+<div class="id"><a href="#BD42">BD42</a><span>06 Screens</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD42.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD42.jpg" alt="BD42 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD42-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD42-1440.jpg" alt="BD42 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD42-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD42-390.jpg" alt="BD42 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “06”, h2 Screens and the line naming the Plan Screens canvas (not a link).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-071 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD43" data-action="true">
+<div class="id"><a href="#BD43">BD43</a><span>Screens table</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD43.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD43.jpg" alt="BD43 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD43-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD43-1440.jpg" alt="BD43 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD43-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD43-390.jpg" alt="BD43 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> 23 rows (the board&#x27;s 22 + Terms + Privacy − Tip log), Landing row in the F06/F23 order (beyond buskers, Thanks to, Brain and Honeycomb teasers); routes link. Only three columns: Screen · Route · What it shows; the board&#x27;s 390 · 768 · 1440 frame columns are gone.</dd></div>
+<div><dt>User's call</dt><dd class="call">F06, F23: Landing row order; F10, F11: Terms and Privacy rows.</dd></div>
+<div><dt>Defect</dt><dd>B-207</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD44" data-action="true">
+<div class="id"><a href="#BD44">BD44</a><span>07 Assets</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD44.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD44.jpg" alt="BD44 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD44-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD44-1440.jpg" alt="BD44 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD44-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD44-390.jpg" alt="BD44 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “07”, h2 Assets: “The logo is the hex mark beside the Busk Map wordmark … The mark alone is only for icon sizes … the logo is never under 24 px high.”</dd></div>
+<div><dt>User's call</dt><dd class="call">F12 (corrected 17 Oct) + F29: the ONE logo is the lockup [hex mark][new stencil wordmark], dark and light, in the app and every asset; the mark alone only at icon size (favicon, app icon); no other logo variant.</dd></div>
+<div><dt>Defect</dt><dd>B-152 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD45" data-action="true">
+<div class="id"><a href="#BD45">BD45</a><span>Logos</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD45.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD45.jpg" alt="BD45 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD45-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD45-1440.jpg" alt="BD45 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD45-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD45-390.jpg" alt="BD45 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Two tiles only, the lockup light and dark, each with its file name and Download. This is THE logo.</dd></div>
+<div><dt>User's call</dt><dd class="call">F12 (corrected 17 Oct) + F29: the ONE logo is the lockup [hex mark][new stencil wordmark], dark and light, in the app and every asset; the mark alone only at icon size (favicon, app icon); no other logo variant.</dd></div>
+<div><dt>Defect</dt><dd>B-152 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD46" data-action="true">
+<div class="id"><a href="#BD46">BD46</a><span>Wordmark files (added by F12)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD46-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD46-1440.jpg" alt="BD46 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD46-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD46-390.jpg" alt="BD46 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">Not on the board. Corrected 17 Oct: the logo is the lockup, never the wordmark alone.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Superseded by the corrected F12: the wordmark files sit in “Other brand files (not logos)” with the mark files, each captioned “… Not a logo.” File names break mid-word in the narrow tiles (“busk-map-mark-li ght.svg”).</dd></div>
+<div><dt>User's call</dt><dd class="call">F12 (corrected 17 Oct) + F29: the ONE logo is the lockup [hex mark][new stencil wordmark], dark and light, in the app and every asset; the mark alone only at icon size (favicon, app icon); no other logo variant.</dd></div>
+<div><dt>Defect</dt><dd>B-152 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD47" data-action="true">
+<div class="id"><a href="#BD47">BD47</a><span>Qloo&#x27;s logo in the kit (added by F18)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD47-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD47-1440.jpg" alt="BD47 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD47-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD47-390.jpg" alt="BD47 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">Not on the board. Qloo&#x27;s official logo shown with the assets; linked to qloo.com in the app (F09).</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> h3 “Qloo&#x27;s logo”: the wordmark, linked to qloo.com in a new tab, and “Qloo&#x27;s own logo, shown wherever Busk Map names Qloo as its partner. It always links to qloo.com in a new tab.”</dd></div>
+<div><dt>User's call</dt><dd class="call">F18: Qloo&#x27;s logo wherever Qloo is mentioned; linked (F09).</dd></div>
+<div><dt>Defect</dt><dd>B-153 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD48" data-action="true">
+<div class="id"><a href="#BD48">BD48</a><span>App icons</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD48.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD48.jpg" alt="BD48 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD48-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD48-1440.jpg" alt="BD48 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD48-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD48-390.jpg" alt="BD48 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> favicon.svg, favicon-32.png, apple-touch-icon-180.png, app-icon-512.png with Download; the mark alone at icon size.</dd></div>
+<div><dt>User's call</dt><dd class="call">F12: the mark alone only at icon size.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD49" data-action="true">
+<div class="id"><a href="#BD49">BD49</a><span>Social</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD49.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD49.jpg" alt="BD49 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD49-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD49-1440.jpg" alt="BD49 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD49-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD49-390.jpg" alt="BD49 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> og-image, devpost-cover, devpost-thumbnail, social-banner: the lockup with the new lettering, a map with streets and river, orange cells, hatched pink no-busking cells, numbered pins, Qloo&#x27;s logo in the credit line, no city in the caption (kit-sheet.jpg).</dd></div>
+<div><dt>User's call</dt><dd class="call">F12/F29 lockup; F16 hatched; F18 Qloo&#x27;s logo; F19 full-bleed map; F20 no “Melbourne”.</dd></div>
+<div><dt>Defect</dt><dd>B-154 fixed at f83f1a1 (social)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD50" data-action="false">
+<div class="id"><a href="#BD50">BD50</a><span>Download links</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD50.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD50.jpg" alt="BD50 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD50-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD50-1440.jpg" alt="BD50 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD50-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD50-390.jpg" alt="BD50 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Every tile says “Download” with a download icon, download attribute and aria-label “Download &lt;file&gt;”.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-077 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD51" data-action="true">
+<div class="id"><a href="#BD51">BD51</a><span>Submission and video kit</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD51.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD51.jpg" alt="BD51 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD51-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD51-1440.jpg" alt="BD51 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD51-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD51-390.jpg" alt="BD51 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> h3, the line and the Asset · Size · File table (8 rows; README hero 1600 × 640, board 2400 × 1000; thumbnail is devpost-thumbnail-512.png). Images redrawn with the lockup and Qloo&#x27;s logo. But screenshot-desktop and screenshot-phone are still “[DESKTOP SCREENSHOT]” / “[PHONE SCREENSHOT]” placeholders, while the line says “the screenshots are real captures of the app at 1440 and 390”. The File links sit ~9 px below the row text (48 px tap boxes).</dd></div>
+<div><dt>User's call</dt><dd class="call">F21: real captures at 1440 and 390 (BRAND); F22 play triangle; F29 lockup.</dd></div>
+<div><dt>Defect</dt><dd>B-154 open (screenshots only)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD52" data-action="false">
+<div class="id"><a href="#BD52">BD52</a><span>08 Handoff</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD52.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD52.jpg" alt="BD52 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD52-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD52-1440.jpg" alt="BD52 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD52-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD52-390.jpg" alt="BD52 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Night panel with grain and orange offset: “08”, h2 Handoff, the line and the four bullets verbatim.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-071 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD53" data-action="true">
+<div class="id"><a href="#BD53">BD53</a><span>Site footer (added by F07–F11)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD53-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD53-1440.jpg" alt="BD53 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD53-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD53-390.jpg" alt="BD53 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">Not on the board. SiteFooter at the bottom of /brand, with Brand in its links (chrome inventory FT01-FT11).</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Lockup “with” Qloo&#x27;s linked logo; Privacy · Terms · Brain · Brand; Built by T04435. Judged in full on the Site review.</dd></div>
+<div><dt>User's call</dt><dd class="call">F07-F11.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD54" data-action="false">
+<div class="id"><a href="#BD54">BD54</a><span>Bottom nav (phone)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD54.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD54.jpg" alt="BD54 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD54-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD54-390.jpg" alt="BD54 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> At 390 the bottom nav shows Busks · Week · Brain with none current (no Tips); header nav hidden.</dd></div>
+<div><dt>User's call</dt><dd class="call">Tips retired by the user (17 Oct): no tip copy, badges or links.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD55" data-action="true">
+<div class="id"><a href="#BD55">BD55</a><span>Loader specimen</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD55.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD55.jpg" alt="BD55 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD55-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD55-1440.jpg" alt="BD55 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD55-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD55-390.jpg" alt="BD55 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> The dashed cell&#x27;s Loader with “Working”, the Loader · Numbers card and AgentStatusLine “researching” spin (3 spin animations, 1 s) without a motion preference; nothing else animates. DS parity: differs from DS Loader: the build&#x27;s spinner is an arc icon; the DS Loader turns the pitch ring.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-073 (Loader cell) fixed at f83f1a1; B-214</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD56" data-action="true">
+<div class="id"><a href="#BD56">BD56</a><span>Phone layout</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD56.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD56.jpg" alt="BD56 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD56-768.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD56-768.jpg" alt="BD56 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD56-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD56-390.jpg" alt="BD56 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> No sideways scroll at 390/768/1440; hero logo under the text; one card per row; swatches 2 per row; tables scroll in their frame. 768 is now open (no folds). At 390 all 28 blocks still fold into closed disclosures (the board draws them open). Build images: the folded page at 390, the open page at 768.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-078 partly fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD57" data-action="false">
+<div class="id"><a href="#BD57">BD57</a><span>Night theme</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brand/inv/deck/BD57.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/deck/BD57.jpg" alt="BD57 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD57-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD57-1440.jpg" alt="BD57 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brand/inv/v4/BD57-390.jpg"><img loading="lazy" src="../screens/honeycomb/brand/inv/v4/BD57-390.jpg" alt="BD57 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Paper sections switch to night tokens; hero and Handoff night already; lockup and Qloo logos switch files; axe clean at night (390 and 1440).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="BD58" data-action="false">
+<div class="id"><a href="#BD58">BD58</a><span>Reduced motion</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">prefers-reduced-motion: the Loader and status spinners stop (progress only); no other movement.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Measured with prefers-reduced-motion: reduce at 1440: 0 elements with a transition (45 without the preference: 120-320 ms) and 0 running animations (3 spinners without it). The global 0 ms rule in globals.css works. Note: the spinners stop as well (BD58&#x27;s spec), so f83f1a1&#x27;s “the Loader still moves” does not hold, and the page&#x27;s “except progress” has nothing left that moves.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-079 fixed at f83f1a1</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article>
+<section class="box" id="field-strip"><h2>Field strip (F14): /brand</h2><p>fields9 at f83f1a1 (1440, day and night): 24 fields, 48 states, 46 pass. The 2 fails are the “DISABLED” specimen button (it can't take focus): exempt. Every other link, field, summary and button shows one ring; the night Plan my busk ring now sits 2 px outside its fill (B-134 fixed).</p><a href="../screens/honeycomb/brand/inv/v4/field-strip.jpg"><img src="../screens/honeycomb/brand/inv/v4/field-strip.jpg" alt="Brand field strip at f83f1a1"></a></section><section class="box" id="logo"><h2>F12 logo check</h2><p>Header (36 px), hero (56 px) and footer show the lockup; Logos lists only the lockup light and dark; the mark and wordmark files are under “Other brand files (not logos)”, each captioned “Not a logo”. The P's orange offset is whole in both lockup files (B-135 fixed). Every social and kit image carries the lockup with the new lettering and Qloo's logo; the two screenshots are still placeholders (B-154, BD51).</p><a href="../screens/honeycomb/brand/inv/v4/logo-p-offset.jpg"><img src="../screens/honeycomb/brand/inv/v4/logo-p-offset.jpg" alt="Lockup P offset whole, dark and light"></a><a href="../screens/honeycomb/brand/inv/v4/kit-sheet.jpg"><img src="../screens/honeycomb/brand/inv/v4/kit-sheet.jpg" alt="Kit and social images at f83f1a1"></a></section><section class="box" id="ds-parity"><h2>DS parity (user rule, 17 Oct)</h2><p>Each specimen on /brand compared with its DS specimen (qa/screens/honeycomb/ds, light 1440). Match: Button, Input, Chip, DataStatusBadge (content), EvidenceLine, FormMessage (apart from B-204), StatStrip, NoteCard, PercentCell, RankTile, QlooWordmark, Disclosure (phone folds). Differ: Badge, Alert, Banner (BD25); PermitPicker, TimeSlotPicker, PickedSongs (BD26); TasteMap, TasteMapLegend, PitchPin (BD27); PitchRow, DiscoveryBadge, WeatherStrip, LeanBar (BD28); ResearchFunnel (BD29); StatusCard (BD31); PlanAlert (BD33-BD36); AgentStatusLine (BD37); ExampleActCard (BD40); Loader (BD17, BD55). Sheets: DS on the left, build on the right.</p><a href="../screens/honeycomb/brand/inv/v4/ds-g2.jpg"><img src="../screens/honeycomb/brand/inv/v4/ds-g2.jpg" alt="DS vs build sheet g2"></a><a href="../screens/honeycomb/brand/inv/v4/ds-g3.jpg"><img src="../screens/honeycomb/brand/inv/v4/ds-g3.jpg" alt="DS vs build sheet g3"></a><a href="../screens/honeycomb/brand/inv/v4/ds-g4.jpg"><img src="../screens/honeycomb/brand/inv/v4/ds-g4.jpg" alt="DS vs build sheet g4"></a><a href="../screens/honeycomb/brand/inv/v4/ds-g5.jpg"><img src="../screens/honeycomb/brand/inv/v4/ds-g5.jpg" alt="DS vs build sheet g5"></a><a href="../screens/honeycomb/brand/inv/v4/ds-g6.jpg"><img src="../screens/honeycomb/brand/inv/v4/ds-g6.jpg" alt="DS vs build sheet g6"></a><a href="../screens/honeycomb/brand/inv/v4/ds-g7.jpg"><img src="../screens/honeycomb/brand/inv/v4/ds-g7.jpg" alt="DS vs build sheet g7"></a><a href="../screens/honeycomb/brand/inv/v4/ds-g8.jpg"><img src="../screens/honeycomb/brand/inv/v4/ds-g8.jpg" alt="DS vs build sheet g8"></a></section><section class="box" id="critique"><h2>Impeccable critique</h2><p class="prov"><b>How this was produced.</b> The impeccable skill v4.4.0 (<code>impeccable:impeccable</code>), verb <code>critique</code>, run on design/honeycomb <code>f83f1a1</code> from QA's clean export, offline, at 390, 768, 1440 px. Method: dual-agent (A: <code>a35c0f2eee6964d63</code> · B: <code>aee988ee4b6d3e8d2</code>), each an isolated sub-agent that did not read the QA report or the other assessment. A and B are reproduced as the skill wrote them (<code>qa/impeccable/brand-A.md</code>, <code>brand-B.md</code>). The block marked “QA synthesis” is QA's, not the skill's.</p><div class="synth"><h3>QA synthesis</h3>
+<p><b>Scores.</b> Critique (A): Nielsen 23/36 (64%, Acceptable). Audit (B): 16/20, Good; Implementation Integrity <b>Pass</b> (real components, token-only colour). CLI detector: 0 findings; overlay 34 (1440) / 44 (390), most from the showcase's own nesting.</p>
+<p><b>Verified by QA and filed.</b></p><ul>
+<li><b>B-223 · Medium</b> (A P1): the tokens table at 390 is 860 px wide in a 322 px frame inside a fold; the Day, Night and Use columns start off-screen and each row is 97 px tall (QA measured).</li>
+<li><b>B-224 · Low</b> (A P1): §08 Handoff points to <code>hackathons/qloo-2026/design-handoff/</code>, which isn't in this repo and isn't linked (QA checked the export).</li>
+<li><b>B-225 · Low</b> (B P2 ×2): heading outline: WeatherStrip's h2 inside an h3 group (weather-strip.tsx:36), NoteCard's h3 under an h4 (note-card.tsx:10), and at 390 the phone folds turn 28 sub-headings into summary text (50 → 22); two landmark names used twice (“The words”, “Screens”).</li>
+<li><b>B-231 · Low</b> (shared): legend keys 32 px, chips 40 px, Screens-table route links 16 px tall, header Qloo link 33 px.</li></ul>
+<p><b>Same as filed defects.</b> A P2 “the ResearchFunnel specimen's orphan dashes” is B-162 (glyph connectors) and B-164 (DS ResearchFunnel).</p>
+<p><b>Dismissed.</b> <code>dark-glow</code>, <code>em-dash-overuse</code> (0 em-dashes on the page), <code>text-occlusion</code>, <code>side-tab</code>; cream ground, hatch stripes and the 01–08 numbering are the brand's own.</p>
+<p><b>Recorded, not filed.</b> B P3: the reduced-motion row says the Loader keeps turning but it stops (page.tsx:281); 63 arbitrary type values; an underlined <code>&lt;b&gt;</code> that reads as a link (brand-components.tsx:236). A P2/P3: no section rail on a 16–23k px page; grid orphans; night swatches all near-black.</p>
+<p><b>Question for the user (via MANAGER).</b> A: who is the page for: a judge, a studio or the team?</p></div><details open><summary>Assessment A · design review (as written)</summary><h3>/brand · Assessment A (design review) · mode Read</h3>
+<p>Build f83f1a1 at localhost:3213/brand. Viewed at 390, 768 and 1440, day and night. Screenshots are in scratchpad/imp/brand-A/. The page heights are 5,677 px at 390 (folded), 22,866 px at 768 and 16,299 px at 1440. There were no console errors, no 4xx responses and no horizontal page scroll.</p>
+<h4>Design specificity verdict</h4>
+<p><b>Authored, not interchangeable.</b> The page makes its case with the product's own material: a live specimen map with hex heat cells and hatched no-busking zones, PitchRows, the weather strip with "YOUR SLOT 12–15", PlanAlerts and the Qloo StatStrip. It is a working brand book, not a set of swatches. The hero (dark grain, a 144 px "HONEY<b>COMB</b>", a 6 px signal rule) and the 2 px-ruled cards carry the street-poster idea all the way through.</p>
+<p><b>Where it slips:</b> the page structure (eyebrow number, giant heading, intro, card grid) repeats eight times with no change of pace. Sections 02, 04 and 06 are plain data tables that any design-system site could have.</p>
+<h4>Nielsen heuristics</h4>
+<table><thead><tr><th>#</th><th>Heuristic</th><th>Score</th><th>Key issue</th></tr></thead><tbody><tr><td>1</td><td>Visibility of status</td><td>2</td><td>There is no sticky or active-section nav on a 16–23k px page. Once you scroll past the hero, you cannot tell where you are.</td></tr><tr><td>2</td><td>Match real world</td><td>3</td><td>The domain words (pitch, busk) are strong. The jargon is aimed at insiders: "design system v66", "Tokens → shadcn", PascalCase component lists.</td></tr><tr><td>3</td><td>User control</td><td>2</td><td>There is no back-to-top link and no in-page day/night toggle, even though the copy says "Switch your system to night".</td></tr><tr><td>4</td><td>Consistency</td><td>3</td><td>The ruled-card system holds. Principle titles are display caps but Voice titles are bold sans. "Honest numbers" appears twice, once in Principles and once in Voice.</td></tr><tr><td>5</td><td>Error prevention</td><td>3</td><td>Downloads name their files. The Handoff section points to <code>hackathons/qloo-2026/design-handoff/</code>, which does not exist in the repo and has no link.</td></tr><tr><td>6</td><td>Recognition vs recall</td><td>2</td><td>The Colour swatches show no hex values; the reader has to find them in the tokens table about 2,000 px further down. On phone, that table's Day and Night columns are off screen.</td></tr><tr><td>7</td><td>Flexibility</td><td>2</td><td>There are anchors, but no search, no copy-token buttons and no fold on tablet.</td></tr><tr><td>8</td><td>Aesthetic / minimalist</td><td>3</td><td>Strong, but the page is dense: orphan cards, a broken funnel specimen and a duplicated hero logo.</td></tr><tr><td>9</td><td>Error recovery</td><td>n/a</td><td>The page has no errors, inputs or failure states.</td></tr><tr><td>10</td><td>Help &amp; docs</td><td>3</td><td>The page is the documentation, and every section has an intro. The handoff reference is dead.</td></tr><tr><td><b>Total</b></td><td></td><td><b>23/36 (64%)</b></td><td><b>Acceptable</b></td></tr></tbody></table>
+<h4>Cognitive load</h4>
+<p><b>4 checklist failures, so the load is high.</b></p>
+<ul><li><b>Chunking:</b> some groups are far larger than the four-item guideline: 8 principles, 9 colours, 41 icons, 45 token rows and a 72-component list.</li><li><b>Minimal choices:</b> the hero has 8 anchor links. At 390 these wrap into three rows with about 47 px gaps.</li><li><b>Working memory:</b> colour values have to be looked up in the tokens table (see heuristic 6).</li><li><b>Progressive disclosure:</b> the PhoneFold breakpoint is 719 px, so 768 gets everything open. That makes the tablet page 22,866 px, the longest of the three widths.</li></ul>
+<p><b>Decision points with more than 4 options:</b> the hero nav (8), the phone fold stack (14 or more disclosures), and the Plan your busk specimen (choice cards, time toggles and chips together).</p>
+<h4>Emotional journey</h4>
+<ul><li><b>Peak:</b> the hero, and the Components section at 1440. The live PitchRow with its offset shadow and the night grain read as real craft.</li><li><b>Valley 1:</b> Tokens → shadcn on phone. Opening "Colour tokens (45)" shows a frame inside a frame. The rows are about 100 px tall and the swatches are clipped at the right edge, so the token colours are not visible without sideways scrolling.</li><li><b>Valley 2:</b> Assets. The cards are tall and repetitive, and filenames break mid-word.</li><li><b>End:</b> the Handoff block looks good but points at a folder you cannot reach. The page ends on a promise it does not keep.</li></ul>
+<h4>Strengths</h4>
+<ol><li><b>Real components as specimens.</b> Every state shown (PlanAlert limit, Qloo unavailable, data-only, AgentStatusLine ×3) is the app's own component, so the book cannot drift from the product.</li><li><b>Honest-data language made visible.</b> The DataStatusBadge row (Qloo: Live, Weather: Cached, Foot traffic: Estimated) and the "Next · not built yet" NoteCard turn the "Honest numbers" principle into UI you can see.</li><li><b>The phone fold.</b> At 390 the 23k px page becomes about 5.7k px of clearly labelled disclosures, with counts in mono.</li></ol>
+<h4>Priority issues</h4>
+<ol><li><b>[P1] The tokens table is unusable at 390.</b><ul><li><i>Why:</i> it has a fixed <code>min-width: 860</code> inside a 318 px region inside a disclosure card. The colour columns are hidden and the Use column makes rows about 100 px tall. This is the page's single most reusable reference.</li><li><i>Fix:</i> below 720 px, render each token as a stacked card showing the name, day and night swatches with hex values, then the use. Drop the nested frame.</li><li><i>/impeccable adapt</i></li></ul><li><b>[P1] Dead handoff reference.</b><ul><li><i>Why:</i> section 08 says "everything a team needs" lives in a path that does not exist in this repo, and nothing links to it. A studio reader acting on this hits a wall.</li><li><i>Fix:</i> link to the real files (<code>globals.css</code>, <code>public/brand</code>), or say where the handoff folder is published.</li><li><i>/impeccable clarify</i></li></ul><li><b>[P2] The ResearchFunnel specimen looks broken.</b><ul><li><i>Where:</i> the Research card at 1440 day.</li><li><i>Why:</i> the connector dashes float as orphan "–" marks after the funnel wraps into a narrow card, so the funnel reads as a rendering bug.</li><li><i>Fix:</i> give the group <code>wide</code>, or hide connectors when the funnel wraps.</li><li><i>/impeccable polish</i></li></ul><li><b>[P2] No wayfinding on a 16–23k px page.</b><ul><li><i>Fix:</i> add a sticky section rail or top bar from 768 up, with the active section marked and a back-to-top link. Also fold, or two-column, the page at tablet width.</li><li><i>/impeccable layout</i></li></ul><li><b>[P3] Grid orphans and night-swatch naming.</b><ul><li><i>Grid orphans:</i> auto-fit grids leave lone cards in 8 principles, 4 voice items, 9 colours and the Social row.</li><li><i>Night swatches:</i> at 768 night the "Paper" swatch is near-black, and Bluestone, Paper and Ground look almost identical.</li><li><i>Fix:</i> size the grids to their counts, and show a day/night split on each swatch.</li><li><i>/impeccable polish</i></li></ul></li></ol>
+<h4>Persona red flags</h4>
+<ul><li><b>Sam (accessibility):</b><ul><li>Each scrollable <code>role=region</code> table frame is focusable, which is good, but on phone it sits inside a <code>&lt;details&gt;</code> and only scrolls sideways.</li><li>The swatches are <code>aria-hidden</code>, so hex values are announced as text, but the Colour section has no values at all.</li><li>At 390, the two-letter "GW" hex and the 11 px mono captions are small.</li></ul><li><b>Alex (power user, a dev implementing from the deck):</b><ul><li>There is no copy button on tokens or filenames.</li><li>The 72 component names are a dot-separated plain string, with no links to source.</li><li>Getting the colour hex values takes a long scroll down to the tokens table.</li></ul><li><b>Casey (mobile):</b><ul><li>The hero takes the whole first screen. The Busk Map lockup repeats directly under the header, which already shows it.</li><li>Jumping to #tokens lands on a closed fold that needs another tap.</li><li>The bottom nav covers the last row of every opened fold.</li></ul></li></ul>
+<h4>Minor observations</h4>
+<ul><li>Asset filenames break mid-token at 1440 ("favicon.sv / g", "apple-touc / h-icon-18 / 0.png"). The favicon cards could be wider, or the filename could wrap above the Download link.</li><li>The Controls card at 1440 day has about 400 px of empty space below its specimens.</li><li>Screens says each screen "is drawn … in the design deck's Plan Screens canvas", which is a reference the reader cannot open.</li><li>Under night, Disabled renders as brown-orange, which reads as a colour of its own rather than "off".</li></ul>
+<h4>Questions to consider</h4>
+<ul><li>Who is this page for: a judge, a studio, or the team? The hero copy says a studio, but "v66" and the shadcn mapping say the team.</li><li>Should the book use its own logic and break its sameness, so that each of the eight sections gets one distinct composition, as a poster would?</li><li>If honest numbers are the brand's core, why do the colour specimens hide their numbers?</li></ul></details></section><section class="box" id="audit"><h2>Impeccable audit</h2><p class="prov"><b>How this was produced.</b> The impeccable skill v4.4.0 (<code>impeccable:impeccable</code>), verb <code>audit</code>, run on design/honeycomb <code>f83f1a1</code> from QA's clean export, offline, at 390, 768, 1440 px. Method: dual-agent (A: <code>a35c0f2eee6964d63</code> · B: <code>aee988ee4b6d3e8d2</code>), each an isolated sub-agent that did not read the QA report or the other assessment. A and B are reproduced as the skill wrote them (<code>qa/impeccable/brand-A.md</code>, <code>brand-B.md</code>). The block marked “QA synthesis” is QA's, not the skill's.</p><details open><summary>Assessment B · detector, browser evidence and audit /20 (as written)</summary><h3>/brand · Assessment B (detector + browser evidence) and audit</h3>
+<p>Build: Busk Map design/honeycomb f83f1a1, served at http://localhost:3213/brand (not started or stopped by me). Source: scratchpad/hc9 (the export). Every command ran from the export dir. Scratch files are in scratchpad/imp/brand-B/: run.cjs, results.json, overlay-findings.txt, detect-cli*.json, plus the screenshots overlay-1440.png, overlay-390.png, p1440-light.png, p1440-dark.png, p390-light.png and focus-<i>.png / radio-</i>.png.</p>
+<p>I read no QA reports and no Assessment A output.</p>
+<p>---</p>
+<h4>1. CLI scan (<code>impeccable detect --json</code>)</h4>
+<table><thead><tr><th>Run</th><th>Targets</th><th>Exit</th><th>Findings</th></tr></thead><tbody><tr><td>A</td><td><code>src/app/brand</code> + <code>src/components/brand</code> (page.tsx and the 5 brand component files)</td><td><b>0</b></td><td><code>[]</code>, 0 findings</td></tr><tr><td>B</td><td>A plus the 33 shared components the page renders (honeycomb/*, ui/{alert,badge,button,input,label,toggle-group}, forms/{choice-cards,permit-picker,time-slot-picker}, map/map-legend, plan/weather-strip, status/status-card)</td><td><b>0</b></td><td><code>[]</code>, 0 findings</td></tr></tbody></table>
+<p>The deterministic source scan is clean: no rule names and no file:line results. Stderr was empty. (A first attempt at run B passed the file list as one string because of shell quoting. That is not a detector fault, and the corrected re-run is the one reported.)</p>
+<h4>2. Browser overlay (detect.js injected)</h4>
+<p>Flow, run separately at 1440×900 and 390×844 in a new Playwright Chromium context each time: navigate (networkidle) → set <code>document.title</code> to "[Human] Brand · Busk Map" (the mutation preflight passed) → scroll to top → <code>page.addScriptTag({ path: imp/detect.js })</code> → wait 3 s → collect console output, then read <code>window.impeccableDetectAsync()</code>.</p>
+<ul><li><b>Every step succeeded at both widths.</b> The script exposes <code>impeccableDetect</code>, <code>impeccableDetectAsync</code>, <code>impeccableScan</code>, <code>impeccableScanAsync</code>, <code>impeccableMeasureHiddenText</code>, <code>impeccableCollectVisualContrastCandidates</code>, <code>impeccableAnalyzeVisualContrast</code>, <code>impeccableGetLastVisualContrastAnalyses</code>, <code>impeccableSnapshotCapture</code> and <code>impeccableDetectFromSnapshot</code>. The overlay drew 67 nodes at 1440 and 87 at 390 (see overlay-390.png).</li><li><b>Console:</b> <code>[impeccable] 34 anti-patterns found</code> at 1440 and <code>[impeccable] 44 anti-patterns found</code> at 390. Only the group header contains the word "impeccable". The per-finding lines are <code>%c</code> logs, so I took the detail from <code>impeccableDetectAsync()</code>. No other console errors or page errors appeared.</li><li><b>Note:</b> the second scan, run after the auto-scan, also picked up the overlay's own labels and outlines (text-occlusion and dark-glow below). The deduplicated counts are listed per rule.</li></ul>
+<table><thead><tr><th>Rule</th><th>1440</th><th>390</th><th>Where</th><th>Verdict</th></tr></thead><tbody><tr><td>nested-cards</td><td>11</td><td>30 (all inside closed folds)</td><td>specimen cards inside group cards (Alerts in SPEC cards, StatusCard, PitchRow list, ChoiceCards), and at 390 every PhoneFold <code>&lt;details&gt;</code> card</td><td><b>Mostly a false positive for a component showcase.</b> A specimen has to sit in a frame. At 390 the Disclosure frame wrapping a CARD grid makes it two ruled boxes deep. Real but minor (P3).</td></tr><tr><td>line-length</td><td>8</td><td>0</td><td>hero p (page.tsx:119, ~91 ch), section intros <code>max-w-3xl</code> at 18px (page.tsx:45, 93–99 ch), Components intro, Assets intro (368), token-table Use cells, component-name lists (brand-components.tsx:40, ~103 ch)</td><td><b>True.</b> <code>max-w-3xl</code> at 18px gives about 90+ characters. P3.</td></tr><tr><td>tiny-text</td><td>8</td><td>8</td><td>colour-swatch captions <code>text-[11px]</code> (page.tsx:214)</td><td><b>True</b>, but deliberate mono metadata at 6.09:1 day and 7.48:1 night. P3.</td></tr><tr><td>numbered-section-labels</td><td>8</td><td>8</td><td>"01"…"08" (page.tsx:41, 432)</td><td>The deck idiom, so intentional. It is a recognisable template tell, though. Judgment, not a defect.</td></tr><tr><td>side-tab</td><td>2</td><td>2</td><td>header 4px bottom rule (layout), hero <code>border-b-[6px] border-primary</code> (page.tsx:112)</td><td><b>False positive.</b> These are full-width print rules, not side accents on cards.</td></tr><tr><td>all-caps-body</td><td>2</td><td>2</td><td>hero eyebrow, 40 ch (page.tsx:115); PlanAlert mono line, 32 ch</td><td>Short labels, so borderline. P3 at most.</td></tr><tr><td>hero-eyebrow-chip</td><td>1</td><td>1</td><td>"Busk Map design deck · design system v66" above the H1 (page.tsx:115)</td><td><b>True pattern.</b> Assessment A should judge whether it is earned.</td></tr><tr><td>kicker-above-heading</td><td>1</td><td>1</td><td>WeatherStrip "Weather" kicker above its own <code>&lt;h2&gt;</code></td><td>Specimen of the shared component. It also exposes the stray h2 (see A11y).</td></tr><tr><td>undersized-ui-text</td><td>1</td><td>0</td><td>EvidenceLine "Evidence" chip at 10px (<code>src/components/honeycomb/evidence-line.tsx:8</code>)</td><td><b>True</b>, below the 11px floor. P3, but in a shared component.</td></tr><tr><td>cream-palette</td><td>1</td><td>1</td><td>page ground rgb(242,238,230)</td><td>Intentional (warm paper is the brand). Not a defect.</td></tr><tr><td>repeating-stripes-gradient</td><td>1</td><td>1</td><td><code>globals.css:321–330</code> hatch fills (no-busking zones, estimate stripes)</td><td>Intentional map semantics. False positive as decoration.</td></tr><tr><td>dark-glow</td><td>1</td><td>1</td><td>"zero-offset glow #ffba00"</td><td><b>False positive.</b> No element on the page has a zero-offset blurred shadow at rest (checked every computed <code>box-shadow</code>). #ffba00 is not in the source; it is the overlay's own highlight colour.</td></tr><tr><td>em-dash-overuse</td><td>1</td><td>0</td><td>"80 em-dashes"</td><td><b>False positive.</b> <code>document.body.innerText</code> contains 0 em-dashes and 14 en-dashes (time ranges).</td></tr><tr><td>text-occlusion</td><td>2</td><td>0</td><td>spans reading "line length too long" over the H1/H2</td><td><b>False positive.</b> These are the overlay's own labels, picked up by the re-scan.</td></tr></tbody></table>
+<p>The CLI scan is clean, and the browser overlay holds the real signal: line length, 11/10px text, and the eyebrow-plus-numbered-label template look. Roughly 40% of the browser hits are false positives or intentional brand choices.</p>
+<p>---</p>
+<h4>3. Audit (audit.md)</h4>
+<h5>Evidence gathered (Chromium via @playwright/test from the export; @axe-core/playwright with tags wcag2a/aa, 21a/aa, 22aa and best-practice)</h5>
+<ul><li><b>axe</b><ul><li>390 day and 390 night (folds closed): <b>0 violations</b>.</li><li>390 with every fold opened: 1 violation, <b>landmark-unique</b> (moderate, 2 nodes).</li><li>1440 day and 1440 night: the same single violation, <b>landmark-unique</b> ×2 (<code>#words</code>, <code>#screens</code>).</li><li>Incomplete <code>color-contrast</code>: 24 nodes at 390 and 52 at 1440. These are text over grain backgrounds and images, so I checked them manually.</li></ul><li><b>Contrast</b>, computed against the composited background:</li></ul>
+<table><thead><tr><th>Text</th><th>Day</th><th>Night</th></tr></thead><tbody><tr><td>H1</td><td>15.91 (hero is forced dark)</td><td>15.91</td></tr><tr><td>"comb" signal-text</td><td>7.4</td><td>7.4</td></tr><tr><td>Hero nav links</td><td>7.4</td><td>7.4</td></tr><tr><td>Section number (signal-text on paper)</td><td>5.22</td><td>7.4</td></tr><tr><td>H2 / intro</td><td>14.9</td><td>15.91</td></tr><tr><td>Muted 11–12px (th, captions, lists)</td><td>6.09</td><td>7.48</td></tr><tr><td>Handoff body on dark</td><td>15.91</td><td>15.91</td></tr></tbody></table>
+<p>Every sampled pair passes AA, and most pass AAA.</p>
+<ul><li><b>Horizontal scroll:</b> none at 390, 768 or 1440 (scrollWidth equals clientWidth), and none at 390 with every fold opened. Wide tables scroll inside their own <code>role=region tabIndex=0</code> frames.</li><li><b>Page height:</b> 390 with folds closed is 5,677px (the PhoneFold works: 28 <code>&lt;details&gt;</code>, all closed); 390 with folds open is 32,162px; 768 is 22,866px; 1440 is 16,299px.</li><li><b>Keyboard (1440):</b><ul><li>The skip link is the first stop and is visible on focus.</li><li>Order: header nav → on-page nav (8 links) → Qloo → the words table region → tokens region → buttons → inputs → chips → radio group (one stop, roving) → toggle group → chips → legend buttons → StatusCard link → ExampleActCard → Screens region → route links. The order is logical.</li><li>Focus is visible everywhere I checked: a 2px ring (box-shadow <code>0 0 0 2px</code> foreground) on links, inputs, toggles and legend buttons, and an outer frame on ChoiceCards (radio-tabfocus.png).</li><li>Arrow keys move the radio choice and select it (verified with a real keydown/keyup).</li><li><b>Keyboard (390):</b> skip → logo → 8 anchors → 28 fold summaries. Logical.</li></ul><li><b>Heading outline (1440):</b> H1 → 8 H2 → H3/H4. Breaks:<ul><li>(a) <b><code>&lt;h2&gt;</code> "Dry through your slot"</b> sits inside the H3 "The busk" group. It comes from WeatherStrip (<code>src/components/plan/weather-strip.tsx:36</code>).</li><li>(b) <b><code>&lt;h3&gt;</code> "Next · not built yet"</b> sits under an H4 (NoteCard, <code>src/components/honeycomb/note-card.tsx:10</code>).</li><li>(c) At 390 the outline drops from 50 headings to 22. Every PhoneFold <code>&lt;h3&gt;</code> becomes plain <code>&lt;summary&gt;</code> text (<code>src/components/brand/phone-fold.tsx:25-31</code>).</li></ul><li><b>Touch targets below 44px</b>, measured at 390 with folds open:</li></ul>
+<table><thead><tr><th>Target</th><th>Size (px)</th><th>Location</th></tr></thead><tbody><tr><td>Map legend buttons ×4</td><td>73–100 × 32</td><td>MapLegend</td></tr><tr><td>Chips</td><td>53–92 × 40</td><td></td></tr><tr><td>Screens-table route links ×15</td><td>7–58 × 16</td><td>page.tsx:354; "/" is 7×16</td></tr><tr><td>Footer Qloo link</td><td>44 × 15</td><td>layout, outside this route</td></tr><tr><td>On-page nav "Words"</td><td>42 × 48</td><td>page.tsx:133, width only</td></tr><tr><td>Header Qloo wordmark link</td><td>96 × 33</td><td></td></tr></tbody></table>
+<p>The 22×25 radio buttons are a false positive: the whole <code>&lt;label&gt;</code> card (min-h-16) is the hit area. axe target-size (24px, with the spacing exception) passed.</p>
+<ul><li><b>Reduced motion:</b> under <code>reduce</code>, <b>0</b> elements animate or transition. Without it, only 3 Loader SVGs spin (<code>motion-safe:animate-spin</code>). The page's own copy says "Under prefers-reduced-motion, everything drops to 0 ms except progress" (page.tsx:281), and <code>globals.css:366</code> says "the Loader keeps moving". In practice the Loader <b>stops</b> (<code>loader.tsx</code>: "It stops under reduced motion but stays visible"). The spec page contradicts the implementation.</li><li><b>Dark mode:</b> follows <code>prefers-color-scheme</code>, and the hero and Handoff are pinned dark with <code>data-theme</code>. Every pair re-measured at night passes (above), and the night screenshot is clean (p1440-dark.png).</li><li><b>Hard-coded colour:</b><ul><li>No hex, rgb or oklch values in page.tsx or any brand/* file.</li><li>Swatches use <code>var(--token)</code>.</li><li>The token table's swatch hexes (<code>src/lib/brand-data.ts:60+</code>) are documented values, not styling.</li><li>Type sizes do drift: <b>63 arbitrary <code>-[...]</code> values</b> (page.tsx 49, brand-components 8, brand-demos 4, brand-icons 2). These include <code>text-[26px]</code>×3, <code>[22px]</code>×2, <code>[30px]</code>×2, <code>[13px]</code>×3, <code>[11px]</code>×4, <code>[19px]</code> and <code>[56px]</code>. Only <code>text-label</code> is a utility, so the design system page bypasses its own type scale.</li></ul><li><b>Performance (390 load):</b><ul><li>DCL 58ms, load 85ms, 36 requests, about 544KB transferred.</li><li>DOM: 2,712 nodes at 390 and 2,560 at 1440.</li><li>21 of 26 images are lazy.</li><li>CLS is 0 at both 390 and 1440, even though PhoneFold folds after hydration.</li><li>Asset images use <code>next/image unoptimized</code>, which is deliberate: they are download files shown as is.</li></ul></li></ul>
+<h5>Audit Health Score</h5>
+<table><thead><tr><th>#</th><th>Dimension</th><th>Score</th><th>Key Finding</th></tr></thead><tbody><tr><td>1</td><td>Accessibility</td><td>3</td><td>Duplicate landmark names (#words, #screens) and a broken heading outline (stray h2 from WeatherStrip; at 390, 28 sub-headings become summaries). Contrast and keyboard are solid.</td></tr><tr><td>2</td><td>Performance</td><td>3</td><td>Lean (about 544KB, CLS 0, lazy images). The 32k px DOM at 390 is fully rendered even when folded.</td></tr><tr><td>3</td><td>Responsive Design</td><td>3</td><td>No overflow at any width; the phone fold cuts 22.8k → 5.7k px. Several targets under 44px: legend 32, chips 40, table links 16.</td></tr><tr><td>4</td><td>Theming</td><td>4</td><td>Colour is token-only in both themes, and every sampled pair is ≥5.2:1 day and ≥7.4:1 night.</td></tr><tr><td>5</td><td>Implementation Integrity</td><td>3</td><td>CLI clean. The page drifts from its own type scale (63 arbitrary values) and states a reduced-motion rule the code does not follow.</td></tr><tr><td><b>Total</b></td><td></td><td><b>16/20</b></td><td><b>Good</b></td></tr></tbody></table>
+<h5>Implementation Integrity Verdict: <b>Pass</b></h5>
+<p>/brand renders the app's real components (Button, ChoiceGroup, PitchRow, WeatherStrip, ResearchFunnel, StatusCard) instead of mock-ups. Colour is token-driven, with dark mode verified pair by pair, and the source detector is clean across all 38 files. The verified gaps are isolated:</p>
+<ul><li>arbitrary type sizes where the scale should be used;</li><li>two on-page claims the code does not match: the reduced-motion "except progress" line, and an underlined <code>&lt;b&gt;</code> presented as the council-rules link (brand-components.tsx:236);</li><li>shared components leaking the wrong heading levels into the deck.</li></ul>
+<h5>Executive Summary</h5>
+<ul><li>Audit Health Score: <b>16/20 (Good)</b>.</li><li>Issues by severity: <b>P0 0 · P1 0 · P2 4 · P3 6</b>.</li><li>Top issues:<ul><li>The heading outline is broken by shared components, and at 390 it loses its sub-headings.</li><li>Duplicate landmark names (the section and the table region are both called "The words" / "Screens").</li><li>Touch targets under 44px on the map legend, chips and Screens-table links.</li><li>The reduced-motion copy contradicts the code.</li><li>The page bypasses its own type scale.</li></ul><li>Next steps: /impeccable harden (headings, landmarks), /impeccable adapt (targets), /impeccable typeset (scale and line length), then /impeccable polish.</li></ul>
+<h5>Findings by Severity</h5>
+<p><b>[P2] Heading outline broken by embedded specimens</b></p>
+<ul><li><b>Location:</b> <code>src/components/plan/weather-strip.tsx:36</code> (<code>&lt;h2&gt;</code> inside the H3 group at brand-components.tsx:178); <code>src/components/honeycomb/note-card.tsx:10</code> (<code>&lt;h3&gt;</code> under the H4 at brand-components.tsx:255-257).</li><li><b>Category:</b> Accessibility.</li><li><b>Impact:</b> Screen-reader heading navigation shows "Dry through your slot" as a top-level section of the deck, and "Next · not built yet" outranks its parent.</li><li><b>WCAG:</b> 1.3.1 Info and Relationships (best practice for heading order).</li><li><b>Recommendation:</b> Give WeatherStrip and NoteCard a heading-level prop, the way StatusCard has <code>embedded</code>, and pass level 4 or 5 on /brand.</li><li><b>Suggested command:</b> /impeccable harden.</li></ul>
+<p><b>[P2] Phone fold removes 28 sub-headings from the outline</b></p>
+<ul><li><b>Location:</b> <code>src/components/brand/phone-fold.tsx:25-31</code>.</li><li><b>Category:</b> Accessibility.</li><li><b>Impact:</b> At 390 the outline goes from 50 headings to 22. "Colour", "Type", "Controls" and the rest exist only as summary text, so H-key navigation skips them.</li><li><b>WCAG:</b> 1.3.1, 2.4.6.</li><li><b>Recommendation:</b> Render the <code>&lt;h3&gt;</code> inside the <code>&lt;summary&gt;</code> (<code>&lt;summary&gt;&lt;h3 className=…&gt;</code>), or pass a heading element as the Disclosure label.</li><li><b>Suggested command:</b> /impeccable harden.</li></ul>
+<p><b>[P2] Duplicate landmark names</b></p>
+<ul><li><b>Location:</b> page.tsx:39 with :181, and :339 with :341.</li><li><b>Category:</b> Accessibility.</li><li><b>Impact:</b> Two landmarks named "The words" and two named "Screens" make the landmark list ambiguous. This is the only axe violation at 1440, and at 390 when folds are open.</li><li><b>WCAG:</b> axe landmark-unique (best practice), related to 2.4.1.</li><li><b>Recommendation:</b> Rename the table regions, for example "Word list table" and "Screens table".</li><li><b>Suggested command:</b> /impeccable harden.</li></ul>
+<p><b>[P2] Touch targets under 44px at 390</b></p>
+<ul><li><b>Location:</b><ul><li>MapLegend buttons, 32px high (brand-components.tsx:170 → <code>src/components/map/map-legend.tsx</code>)</li><li>Chips, 40px (brand-demos.tsx:64; <code>honeycomb/chip.tsx</code>)</li><li>Screens-table route links, 16px high; "/" is 7×16 (page.tsx:354)</li><li>Header Qloo wordmark link, 33px high</li></ul><li><b>Category:</b> Responsive.</li><li><b>Impact:</b> These are hard to hit on a phone held in one hand, the stated use context.</li><li><b>WCAG:</b> Passes 2.5.8 (AA) through spacing; fails 2.5.5 (AAA, 44px).</li><li><b>Recommendation:</b> Apply <code>min-h-tap</code> to legend buttons and chips. Give the table links <code>inline-flex min-h-tap items-center</code>, as the Download links have.</li><li><b>Suggested command:</b> /impeccable adapt.</li></ul>
+<p><b>[P3] Reduced-motion copy contradicts the code</b></p>
+<ul><li><b>Location:</b> page.tsx:281; <code>globals.css:366</code> comment; <code>honeycomb/loader.tsx</code>.</li><li><b>Category:</b> Implementation Integrity.</li><li><b>Impact:</b> A studio building from "this deck alone" would ship a moving Loader under reduce. The code (correctly) stops it.</li><li><b>Recommendation:</b> Change the line to "everything drops to 0 ms; the Loader stops but stays visible", and fix the globals comment.</li><li><b>Suggested command:</b> /impeccable clarify.</li></ul>
+<p><b>[P3] Type scale bypassed on the design-system page</b></p>
+<ul><li><b>Location:</b> 63 arbitrary values across page.tsx, brand-components.tsx, brand-demos.tsx and brand-icons.tsx (for example page.tsx:22-23, 62, 115, 119, 214, 371, 393, 399).</li><li><b>Category:</b> Implementation Integrity / Theming.</li><li><b>Impact:</b> H3 sizes vary (30/26/22px) with no named step, so the deck documents a scale it does not use.</li><li><b>Recommendation:</b> Add <code>@utility</code> type steps (display-xl/l/m/s, mono-xs) next to <code>text-label</code> and use them.</li><li><b>Suggested command:</b> /impeccable typeset.</li></ul>
+<p><b>[P3] Measure too long</b></p>
+<ul><li><b>Location:</b> page.tsx:45 (<code>max-w-3xl</code> at 18px), :119 (19px hero p), brand-components.tsx:40.</li><li><b>Category:</b> Implementation Integrity (readability).</li><li><b>Impact:</b> Lines run 91–103 characters (detector line-length ×8).</li><li><b>Recommendation:</b> Use <code>max-w-[65ch]</code>.</li><li><b>Suggested command:</b> /impeccable typeset.</li></ul>
+<p><b>[P3] 10–11px text</b></p>
+<ul><li><b>Location:</b> <code>honeycomb/evidence-line.tsx:8</code> (10px "Evidence"); page.tsx:62 and :214, brand-icons.tsx:26 (11px).</li><li><b>Category:</b> Accessibility.</li><li><b>Impact:</b> Contrast passes, but small text is hard to read in sunlight.</li><li><b>Recommendation:</b> Raise to at least 12px, and the Evidence chip to 11–12px.</li><li><b>Suggested command:</b> /impeccable typeset.</li></ul>
+<p><b>[P3] Underlined non-link in the "no legal pitch" specimen</b></p>
+<ul><li><b>Location:</b> brand-components.tsx:236.</li><li><b>Category:</b> Implementation Integrity.</li><li><b>Impact:</b> <code>&lt;b className="underline"&gt;</code> looks like a link but does nothing. It misrepresents the real PlanAlert, which links out.</li><li><b>Recommendation:</b> Render the real <code>PlanAlert kind="no-legal"</code>, or a real link.</li><li><b>Suggested command:</b> /impeccable polish.</li></ul>
+<p><b>[P3] Nested ruled boxes at 390</b></p>
+<ul><li><b>Location:</b> PhoneFold Disclosure around the CARD grids (page.tsx:154-176 and others).</li><li><b>Category:</b> Implementation Integrity.</li><li><b>Impact:</b> Ruled boxes sit two deep (detector nested-cards ×30 at 390).</li><li><b>Recommendation:</b> Inside a fold, drop the inner card borders, or let the fold body carry no frame.</li><li><b>Suggested command:</b> /impeccable distill.</li></ul>
+<h5>Patterns &amp; Systemic Issues</h5>
+<ul><li><b>Shared components assume they own the page heading level.</b> WeatherStrip uses h2 and NoteCard uses h3. StatusCard already solved this with <code>embedded</code>; apply the same pattern to the others.</li><li><b>Small interactive pieces skip <code>min-h-tap</code>.</b> Legend buttons, chips and inline table links do, while the Download links and nav anchors use it correctly.</li><li><b>Arbitrary type sizes instead of named steps.</b> This repeats across every brand file.</li></ul>
+<h5>Positive Findings</h5>
+<ul><li>AA contrast holds everywhere sampled, in both themes. Signal-text is a separate readable orange (5.22:1 on paper, 7.4:1 at night), as the brand book promises.</li><li>Real components are live and interactive: the radio group uses roving tabindex and arrow-to-select, and the toggle group and chips work. Focus rings are visible on every control I tested, and there is a skip link.</li><li>Wide tables scroll inside labelled, focusable regions, so there is no page-level overflow at 390, 768 or 1440.</li><li>PhoneFold cuts the phone page from about 32k to 5.7k px with native <code>&lt;details&gt;</code>, with zero layout shift.</li><li>Reduced motion is honoured completely (0 animations or transitions).</li><li>The page is lean: about 544KB, lazy images and fast load.</li><li>The CLI anti-pattern scan is clean across the page and all 33 shared components.</li></ul>
+<h5>Recommended Actions</h5>
+<ol><li><b>[P2] <code>/impeccable harden</code></b>: heading-level props for WeatherStrip and NoteCard on /brand; <code>&lt;h3&gt;</code> inside the PhoneFold summaries; unique names for the "The words" and "Screens" table regions.</li><li><b>[P2] <code>/impeccable adapt</code></b>: <code>min-h-tap</code> on MapLegend buttons, chips, Screens-table route links and the header Qloo link.</li><li><b>[P3] <code>/impeccable typeset</code></b>: named type steps replacing the 63 arbitrary sizes; 65ch measure; no text under 12px (Evidence chip, swatch captions).</li><li><b>[P3] <code>/impeccable clarify</code></b>: correct the reduced-motion line (page.tsx:281) and the globals.css:366 comment.</li><li><b>[P3] <code>/impeccable distill</code></b>: flatten the double ruled frames inside phone folds.</li><li><b><code>/impeccable polish</code></b>: a real link in the no-legal-pitch specimen, then a final pass.</li></ol>
+<p>You can ask me to run these one at a time, all at once, or in any order you prefer.</p>
+<p>Re-run <code>/impeccable audit</code> after fixes to see your score improve.</p></details></section><section class="box" id="brand-issues"><h2>BRAND&#x27;s build issues</h2><table><tr><th>Issue</th><th>Result</th><th>Evidence</th></tr><tr><td>Stale “v60” eyebrow</td><td>Not reproduced (fixed)</td><td>“Busk Map design deck · design system v66” (BD03).</td></tr><tr><td>Double comma “design system,, grouped”</td><td>Not reproduced</td><td>“72 reusable components in the design system, grouped …” (BD23).</td></tr><tr><td>Empty StatStrip cell</td><td>Not reproduced</td><td>3 items; one row at 768/1440; at 390 the third fills its row (BD39).</td></tr><tr><td>Token cells overflowing</td><td>Not reproduced</td><td>0 cells with scrollWidth &gt; clientWidth at 390/768/1440 (BD21).</td></tr><tr><td>Logos group: the lockup is THE logo</td><td>Fixed</td><td>Logos = lockup light and dark only; mark and wordmark files labelled “Not a logo” in their own group (BD45, BD46; B-152).</td></tr><tr><td>Social and kit assets</td><td>Fixed except screenshots</td><td>New lettering, hatched cells, Qloo's logo, no city; screenshot-desktop/-phone still placeholders (BD49, BD51; B-154).</td></tr><tr><td>Reduced motion (f83f1a1 “a global reduced-motion transitions rule”)</td><td>Confirmed</td><td>0 transitions under reduce (was 37); spinners stop too (BD58).</td></tr></table></section><section class="box" id="recheck"><h2>B-070..B-079, B-134, B-135, B-151..B-154 at f83f1a1</h2><table><tr><th>Defect</th><th>Status</th></tr><tr><td>B-070 eyebrow</td><td>Fixed (v66)</td></tr><tr><td>B-071 Screens / kit table / Handoff</td><td>Fixed (Screens table columns: B-207)</td></tr><tr><td>B-072 Iconography</td><td>Fixed</td></tr><tr><td>B-073 Foundations drift, Loader cell</td><td>Mostly fixed; the honeycomb line still differs (BD17)</td></tr><tr><td>B-074 Components</td><td>Fixed (8 groups, count, Plan states, QlooWordmark)</td></tr><tr><td>B-075 StatStrip</td><td>Fixed</td></tr><tr><td>B-076 ExampleActCard</td><td>Fixed (198 px, board copy)</td></tr><tr><td>B-077 “Open file”</td><td>Fixed (“Download”)</td></tr><tr><td>B-078 folds</td><td>Partly fixed: 768 open, 390 folds all 28</td></tr><tr><td>B-079 reduced motion</td><td>Fixed (0 transitions)</td></tr><tr><td>B-134 night button ring</td><td>Fixed on /brand (outline 2px outside the fill)</td></tr><tr><td>B-135 lockup P clip</td><td>Fixed</td></tr><tr><td>B-151 --ring row gap</td><td>Fixed as logged; new wording wrong (B-205)</td></tr><tr><td>B-152 Logos group</td><td>Fixed</td></tr><tr><td>B-153 Qloo logo in body</td><td>Fixed</td></tr><tr><td>B-154 social and kit images</td><td>Partly fixed: screenshots still placeholders</td></tr></table></section><section class="box" id="new"><h2>New defects to log (QA)</h2><ol><li>B-204 Low · BD38: the FormMessage success specimen is the retired tip log's “Logged A$85 at Hardware Lane.”</li><li>B-205 Low · BD18, BD21: the --ring row says “buttons keep a 2px ring with no gap”; the focus-ring row says “buttons keep a 2px gap”; the build has a 2px offset (gap).</li><li>B-206 Low · BD37: the replayed AgentStatusLine drops the run line “13 model steps · 21,480 input and 2,610 output tokens (1,840 thinking) · 31.4 s”.</li><li>B-207 Low · BD43 (BD05): the Screens table has 3 columns; the board's 390 · 768 · 1440 frame columns are missing.</li><li>B-208 Low · BD27: the Map specimen draws pale (taste 1-2) and dark brown (taste 5) cells with no streets; the app's maps draw only orange cells (F05).</li><li>B-209 Low · BD22, BD24, BD25, BD30: at 1440 component cards stretch to the row's tallest: 490, 436, 285 and 282 px empty at the foot of Controls, Feedback, Map and Week.</li><li>B-210 Low · BD28: the WeatherStrip specimen's “Dry through your slot” is an h2 between Components and Screens; specimen h3s “No pitch here” and “Next · not built yet” also enter the outline.</li><li>B-211 Low · BD25: differs from DS Badge (no icons on Event, Weather, Permit pitch, Restricted, Error), DS Alert (2px border, larger title/body vs 1px tinted border, small mono title) and DS Banner (boxed 2px panels vs one-line full-width strip with bold lead and “Why?”).</li><li>B-177, B-178 Medium · BD26: differs from DS PermitPicker (no pitch counts, extra LIVE DATA badge), DS TimeSlotPicker (no day row; 4 slots 2 × 2 with 12 h labels and a bluestone pick vs 5 in a row, 24 h, orange pick) and DS PickedSongs (separate grey boxes vs one ruled list; no music icon on YOUR SONG).</li><li>B-165, B-188 Medium · BD28: differs from DS PitchRow (twice the size, slot on its own line, no Full details link or Found by Claude badge), DS DiscoveryBadge (“Usual pitch” with a dot vs “Usual spot” with a target icon), DS WeatherStrip (twice the size, grey slot fill) and DS LeanBar (bar rows vs inline compact bars).</li><li>B-164 Medium · BD29: differs from DS ResearchFunnel: a wrapping 3-column grid with labels under the cells and dash connectors vs one inline row, labels beside the cells (dashes also B-162).</li><li>B-212 Low · BD31: differs from DS StatusCard: centred, solid hex, small title, muted body, one outline button vs left-aligned, dashed hex, large title, bold body, primary + outline buttons.</li><li>B-213 Low · BD33-BD36: differs from DS PlanAlert: 2px borders and larger type vs 1px tinted border and small mono title; actions are links, not small outlined buttons.</li><li>B-163 Low · BD40: differs from DS ExampleActCard: stacked card with a separate “Watch Busk Map plan this act” row vs one horizontal row with the arrow at the edge.</li><li>B-214 Low · BD17, BD55: differs from DS Loader: an arc spinner icon vs the turning pitch ring.</li><li>Extended: B-206 (BD37) also DS AgentStatusLine's mono type; B-208 (BD27) also DS TasteMap, TasteMapLegend and PitchPin. Glyphs: BD06, BD20 (“Tokens → shadcn”) and BD29 (dash connectors) cite B-162.</li></ol></section>
+<section class="box"><h2>Versions</h2><ul><li><b>v4</b> · design/honeycomb ＠ <code>f83f1a1</code> · 17 Oct 2026: Full pass at f83f1a1 (v3 was 8207373). DS parity and glyph rule applied (same commit): 13 more rows Different (21 in all), judged against their DS specimens (B-211..B-214, B-206/5/7 extended) and BD06/BD20 cite B-162 for “Tokens → shadcn”; READY now Not ready. Fixed: B-070 eyebrow v66 (BD03); B-071 hero line, 8-link nav, Screens, kit table and Handoff (BD05, BD06, BD42, BD52); B-072 Iconography, 40 tiles (BD19); B-073 type label and Loader “Working” cell (BD16, BD55; the honeycomb line still differs, BD17); B-074 eight component groups, summed count, Plan states block with 9 cards, QlooWordmark (BD22-BD41); B-075 StatStrip 3 items (BD39); B-076 ExampleActCard copy and height (BD40); B-077 “Download” links (BD50); B-079 0 transitions and 0 animations under reduced motion (BD58); B-134 night button ring 2 px outside the fill (BD24); B-135 lockup P offset whole (BD07); B-151 no ground-coloured gap in the --ring row (BD21); B-152 Logos shows only the lockup, mark and wordmark labelled “Not a logo” (BD44-BD46); B-153 Qloo&#x27;s linked logo in the partner card and the assets (BD09, BD47); B-154 social and kit images redrawn (new lettering, hatched cells, Qloo&#x27;s logo, no city), except the screenshots. B-078 partly: 768 open, 390 still folds. Tips: none left except the “Logged A$85” form message (B-204). New: B-204..B-214 (all Low except B-177, B-178, B-165, B-188, B-164 Medium).</li><li><b>v3</b> · design/honeycomb ＠ <code>8207373</code> · 17 Oct 2026: v3 to align with the round (no v2 for this page). Re-judged all 58 rows at 8207373 against the corrected F12 (the lockup is THE logo); BD01, BD07, BD53 Present; B-070..B-079 still open; new B-134, B-135, B-151..B-154.</li><li><b>v1</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: First version: BRAND&#x27;s 58 parts, the user&#x27;s calls F09, F12-F18, F20-F22, BRAND&#x27;s four build issues, field strip, impeccable critique and audit; B-070..B-079 to log.</li></ul></section>
+</div>
+<script>
+const f=document.getElementById('flt');f.addEventListener('click',()=>{const on=!document.body.classList.contains('action');document.body.classList.toggle('action',on);f.setAttribute('aria-pressed',String(on));});
+</script></body></html>

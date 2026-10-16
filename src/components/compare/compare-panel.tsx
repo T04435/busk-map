@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
+import { BothAgreeBadge } from "@/components/honeycomb/both-agree-badge";
+import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
+import { PercentCell } from "@/components/honeycomb/percent-cell";
+import { WithCells } from "@/components/honeycomb/with-cells";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { baselineViewSchema, type BaselineView, type PlanPitch, type PlanRequest } from "@/lib/plan-schema";
 import { modelName, type ExplanationsModel } from "@/lib/sources";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
@@ -45,7 +50,7 @@ export function useBaseline(request: PlanRequest, faults: string | null, enabled
   return state;
 }
 
-const pct = (n: number | null) => (n === null ? "n/a" : `${Math.round(n * 100)}/100`);
+const pct = (n: number | null) => (n === null ? "n/a" : String(Math.round(n * 100)));
 
 const STATUS_LABEL: Record<BaselineView["plain"][number]["status"], string> = {
   ours: "Both agree",
@@ -53,13 +58,14 @@ const STATUS_LABEL: Record<BaselineView["plain"][number]["status"], string> = {
   "not-legal": "Not a legal pitch",
   "no-data": "No data for this spot",
 };
+const STATUS_VARIANT = { ours: "neutral", scored: "neutral", "not-legal": "restricted", "no-data": "estimate" } as const;
 
 type Pitch = Pick<PlanPitch, "id" | "name" | "score" | "discovery" | "factors" | "footfallSource" | "cellRank" | "evidence" | "amplification">;
 
 /** What Busk Map knows about a pitch that a plain AI can't. */
 function evidenceLines(pitch: Pitch): string[] {
   const lines: string[] = [];
-  if (pitch.factors.taste !== null) lines.push(`Qloo taste ${pct(pitch.factors.taste)}${pitch.cellRank ? ` (your no. ${pitch.cellRank} area on Qloo's heatmap)` : ""}`);
+  if (pitch.factors.taste !== null) lines.push(`Qloo taste match ${pct(pitch.factors.taste)} out of 100${pitch.cellRank ? ` (your no. ${pitch.cellRank} area on Qloo's heatmap)` : ""}`);
   if (pitch.evidence.sensor) {
     lines.push(`${pitch.footfallSource === "sensor" ? "About" : "Roughly"} ${pitch.evidence.sensor.avgHourly.toLocaleString("en-AU")} people an hour (city sensors, estimate)`);
   } else if (pitch.footfallSource === "qloo-popularity") lines.push("Busyness from Qloo's area popularity (estimate)");
@@ -68,32 +74,50 @@ function evidenceLines(pitch: Pitch): string[] {
   return lines;
 }
 
+const Section = ({ label, title, count, children }: { label: string; title: string; count: number; children: React.ReactNode }) => (
+  <section aria-label={label} className="space-y-3">
+    <h3 className="m-0 flex items-baseline gap-2 font-display text-[22px] leading-none font-extrabold uppercase">
+      {title}
+      <span className="font-mono text-sm font-normal text-muted-foreground">({count})</span>
+    </h3>
+    {children}
+  </section>
+);
+
 /**
- * The plain-AI baseline beside Busk Map's picks, in three buckets: both
- * agree, only Busk Map (with the evidence a plain AI can't know), and only
- * plain AI (with Busk Map's own score for the spot where it can score it).
- * Agreement is a badge only: the baseline never changes a score.
+ * The plain-AI baseline beside Busk Map's picks, in three buckets: both agree, only Busk Map (with the evidence a plain AI
+ * can't know), and only plain AI (with Busk Map's own score for the pitch where it can score it). Agreement is a badge only:
+ * the baseline never changes a score.
  */
 /** `model`: the model this server runs; offline the plain AI is the test model, not Claude Haiku (B-010). */
 export function ComparePanel({ state, pitches, model = null }: { state: BaselineState; pitches: Pitch[]; model?: ExplanationsModel | null }) {
   const mock = state.status === "done" ? state.baseline.model === "mock" : model === "mock";
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <h2>Busk Map vs a plain AI</h2>
-        </CardTitle>
-        <CardDescription>
+    <section aria-label="Busk Map vs a plain AI" data-testid="compare-panel" className="space-y-4 border-2 border-rule bg-card p-4 md:p-6">
+      <header className="space-y-1">
+        <h2 className="m-0 font-display text-[32px] leading-none font-extrabold uppercase">Busk Map vs a plain AI</h2>
+        <p className="m-0 text-sm text-muted-foreground">
           The same question (your act, songs, city, day and slot) sent to {mock ? `${modelName("mock")} (offline)` : "Claude Haiku"} with no tools and no data: no Qloo, no sensors, no rules.
           It runs alongside every plan as a control and never changes a score.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5 text-sm" aria-live="polite">
-        {state.status === "loading" && <p className="text-muted-foreground">Asking a plain AI the same question…</p>}
-        {state.status === "unavailable" && <p className="text-muted-foreground">{state.message}</p>}
+        </p>
+      </header>
+      <div className="space-y-5" aria-live="polite">
+        {state.status === "loading" && (
+          <div className="space-y-2">
+            <p className="m-0 text-muted-foreground">Asking a plain AI the same question…</p>
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        )}
+        {state.status === "unavailable" && (
+          <div className="space-y-2" data-testid="compare-unavailable">
+            <DataStatusBadge status="unavailable" source="Plain AI" />
+            <p className="m-0 text-muted-foreground">{state.message}</p>
+          </div>
+        )}
         {state.status === "done" && <Buckets baseline={state.baseline} pitches={pitches} />}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
@@ -108,81 +132,84 @@ function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch
     return pitch ? [pitch] : [];
   });
   const onlyPlain = baseline.plain.filter((p) => p.status !== "ours");
-  // Scored higher than a pick: either left out by the 250 m spacing (tooCloseTo), or a spot the plan missed.
+  // Scored higher than a pick: either left out by the 250 m spacing (tooCloseTo), or a pitch the plan missed.
   const better = onlyPlain.filter((p) => p.beatsOurs && !p.tooCloseTo);
   const spaced = onlyPlain.filter((p) => p.beatsOurs && p.tooCloseTo);
   const usual = baseline.plain.filter((p) => p.usualSpot).length;
   return (
     <>
-      <p className="font-medium" data-testid="compare-verdict">
+      <p className="m-0 font-bold" data-testid="compare-verdict">
         {onlyOurs.length} of Busk Map&apos;s {pitches.length} picks {onlyOurs.length === 1 ? "is" : "are"} one the plain AI didn&apos;t name
         {agreed.length > 0 ? `; ${agreed.length} ${agreed.length === 1 ? "is" : "are"} in both answers` : ""}.
-        {usual > 0 ? ` The plain AI named ${usual} of Melbourne's usual busking spots, where other buskers already are.` : ""}
+        {usual > 0 ? ` The plain AI named ${usual} of Melbourne's usual busking pitches, where other buskers already are.` : ""}
         {better.length > 0 ? ` Busk Map itself scores ${better.map((p) => p.name).join(" and ")} higher than one of its own picks: worth a look.` : ""}
         {spaced.length > 0
-          ? ` Busk Map scores ${spaced.map((p) => `${p.name} (within 250 m of ${p.tooCloseTo})`).join(" and ")} higher than one of its picks, but the top 3 are kept 250 m apart, so the plan picked a spot further away.`
+          ? ` Busk Map scores ${spaced.map((p) => `${p.name} (within 250 m of ${p.tooCloseTo})`).join(" and ")} higher than one of its picks, but the top 3 are kept 250 m apart, so the plan picked a pitch further away.`
           : ""}
       </p>
 
       {agreed.length > 0 && (
-        <section aria-label="Both agree" className="space-y-2">
-          <h3 className="font-medium">Both agree</h3>
-          <ul className="space-y-1">
+        <Section label="Both agree" title="Both agree" count={agreed.length}>
+          <ul className="m-0 flex list-none flex-col gap-3 p-0">
             {agreed.map((a) => (
-              <li key={a.pitchId} className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline">Both agree</Badge>
-                <span>
-                  {a.pitch.name} ({a.pitch.score}/100): the plain AI named &ldquo;{a.plainName}&rdquo;
-                </span>
+              <li key={a.pitchId} className="flex flex-wrap items-center gap-3">
+                <PercentCell value={a.pitch.score} size={36} label="Score" />
+                <b>{a.pitch.name}</b>
+                <BothAgreeBadge />
+                <span className="text-sm text-muted-foreground">the plain AI named &ldquo;{a.plainName}&rdquo;</span>
               </li>
             ))}
           </ul>
-        </section>
+        </Section>
       )}
 
-      <section aria-label="Only Busk Map" className="space-y-2">
-        <h3 className="font-medium">Only Busk Map</h3>
+      <Section label="Only Busk Map" title="Only Busk Map" count={onlyOurs.length}>
         {onlyOurs.length === 0 ? (
-          <p className="text-muted-foreground">The plain AI named every one of Busk Map&apos;s picks.</p>
+          <p className="m-0 text-muted-foreground">The plain AI named every one of Busk Map&apos;s picks.</p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="m-0 flex list-none flex-col gap-4 p-0">
             {onlyOurs.map((pitch) => (
-              <li key={pitch.id}>
-                <span className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{pitch.name}</span>
-                  <span className="text-muted-foreground">{pitch.score}/100</span>
-                  {pitch.discovery === "hidden-gem" && <Badge>Hidden gem</Badge>}
+              <li key={pitch.id} className="space-y-2">
+                <span className="flex flex-wrap items-center gap-3">
+                  <PercentCell value={pitch.score} size={36} label="Score" />
+                  <b>{pitch.name}</b>
+                  {pitch.discovery === "hidden-gem" && <DiscoveryBadge discovery="hidden-gem" />}
                 </span>
-                <ul className="list-disc pl-5 text-muted-foreground">
+                <ul className="m-0 flex list-none flex-col gap-1 p-0 text-sm text-muted-foreground">
                   {evidenceLines(pitch).map((line) => (
-                    <li key={line}>{line}</li>
+                    <li key={line} className="flex items-start gap-2">
+                      <span aria-hidden="true" className="mt-1.5 size-2 shrink-0 bg-primary [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]" />
+                      {line}
+                    </li>
                   ))}
                 </ul>
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </Section>
 
-      <section aria-label="Only plain AI" className="space-y-2">
-        <h3 className="font-medium">Only plain AI (unverified, no data)</h3>
+      <Section label="Only plain AI" title="Only plain AI (unverified, no data)" count={onlyPlain.length}>
         {onlyPlain.length === 0 ? (
-          <p className="text-muted-foreground">Every place the plain AI named is one of Busk Map&apos;s picks.</p>
+          <p className="m-0 text-muted-foreground">Every place the plain AI named is one of Busk Map&apos;s picks.</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="m-0 flex list-none flex-col gap-4 p-0">
             {onlyPlain.map((spot, i) => (
-              <li key={`${spot.name}-${i}`}>
-                <span className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{spot.name}</span>
-                  <Badge variant={spot.status === "scored" ? "secondary" : "outline"}>{STATUS_LABEL[spot.status]}</Badge>
-                  {spot.usualSpot && <Badge variant="outline">Usual spot</Badge>}
+              <li key={`${spot.name}-${i}`} className="space-y-1">
+                <span className="flex flex-wrap items-center gap-3">
+                  {spot.status === "scored" && <PercentCell value={spot.score} size={36} label="Busk Map's score" />}
+                  <b>{spot.name}</b>
+                  <Badge variant={STATUS_VARIANT[spot.status]}>{STATUS_LABEL[spot.status]}</Badge>
+                  {spot.usualSpot && <DiscoveryBadge discovery="usual" />}
+                  {spot.beatsOurs && !spot.tooCloseTo && <Badge variant="solid">Beats one of ours</Badge>}
+                  {spot.tooCloseTo && <Badge variant="neutral">Too close to {spot.tooCloseTo}</Badge>}
                 </span>
-                <span className="block text-muted-foreground">{spot.why}</span>
-                <span className="block text-muted-foreground">
+                <span className="block text-sm text-muted-foreground">{spot.why}</span>
+                <span className="block text-sm text-muted-foreground">
                   {spot.status === "scored"
-                    ? `Busk Map's score here: ${spot.score}/100${spot.pitchName && spot.pitchName !== spot.name ? ` (as ${spot.pitchName})` : ""}${
+                    ? `Busk Map's score here${spot.pitchName && spot.pitchName !== spot.name ? ` (as ${spot.pitchName})` : ""}${
                         spot.tooCloseTo
-                          ? `. Scored higher, but within 250 m of ${spot.tooCloseTo}, so the plan picked a spot further away`
+                          ? `. Scored higher, but within 250 m of ${spot.tooCloseTo}, so the plan picked a pitch further away`
                           : spot.beatsOurs
                             ? ", higher than one of Busk Map's picks"
                             : ""
@@ -195,8 +222,12 @@ function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch
             ))}
           </ul>
         )}
-        {baseline.setlist.length > 0 && <p className="text-muted-foreground">Plain AI {PLAYLIST_COPY.suggestedSetNoun}: {baseline.setlist.join(", ")}</p>}
-      </section>
+        {baseline.setlist.length > 0 && (
+          <p className="m-0 text-sm text-muted-foreground">
+            Plain AI {PLAYLIST_COPY.suggestedSetNoun}: <WithCells text={baseline.setlist.join(", ")} />
+          </p>
+        )}
+      </Section>
     </>
   );
 }

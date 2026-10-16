@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { XIcon } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ export type SourceSong = { key: string; title: string; artist: string; durationM
  * RepertoireSource (BRAND playlist components.md): ONE block on the busk form. The summary reads "Your Repertoire · N songs" with
  * "Edit for this busk". Editing shows a checklist (Select all, Remove all), "+ Add a song just for this busk", and an explicit save.
  * What you remove is filled by suggested songs for each crowd; after Remove all the busk gets suggested songs only.
- * The parent owns the state; this draws it. Plain shadcn: the Honeycomb look arrives with the brand sync.
+ * The parent owns the state; this draws it, in the Honeycomb look (ruled block, mono summary, DS badges and icons).
  */
 export function RepertoireSource<T extends SourceSong>({
   heading,
@@ -54,13 +54,13 @@ export function RepertoireSource<T extends SourceSong>({
   const allGone = sent.length === 0 && !empty;
 
   return (
-    <section aria-label={heading} data-testid="repertoire-source" className="space-y-3 rounded-lg border p-3">
+    <section aria-label={heading} data-testid="repertoire-source" className="flex flex-col gap-3 border-2 border-rule bg-card p-3.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-medium" data-testid="repertoire-summary">
+        <h3 className="m-0 text-label font-bold" data-testid="repertoire-summary">
           {heading} · {COPY.source.summary(base.length, length)}
         </h3>
         <div className="flex flex-wrap items-center gap-2">
-          {edited && <Badge variant="secondary">{COPY.editedForBusk}</Badge>}
+          {edited && <Badge variant="neutral">{COPY.editedForBusk}</Badge>}
           {!editing && (
             <Button type="button" variant="outline" size="sm" aria-expanded={false} onClick={() => onEditingChange(true)}>
               {COPY.source.edit}
@@ -108,7 +108,7 @@ export function RepertoireSource<T extends SourceSong>({
             </Button>
           </div>
           {base.length + added.length > 0 && (
-            <ul aria-label={COPY.source.listLabel} className="divide-y rounded-lg border text-sm">
+            <ul aria-label={COPY.source.listLabel} className="m-0 list-none divide-y divide-border border-2 border-rule bg-card p-0 text-sm">
               {base.map((song) => (
                 <li key={song.key} className="flex items-center gap-2 px-2 py-1.5">
                   <Checkbox
@@ -122,24 +122,24 @@ export function RepertoireSource<T extends SourceSong>({
                     }}
                   />
                   <Label htmlFor={`rep-${song.key}`} className="min-w-0 flex-1 cursor-pointer font-normal">
-                    <span className="block truncate font-medium">{song.title}</span>
+                    <span className="block truncate font-bold">{song.title}</span>
                     <span className="block truncate text-xs text-muted-foreground">{song.artist}</span>
                   </Label>
-                  {song.own && <Badge variant="secondary">{COPY.yourSong}</Badge>}
-                  {song.durationMs !== null && <span className="text-xs text-muted-foreground tabular-nums">{formatDuration(song.durationMs)}</span>}
+                  {song.own && <Badge variant="solid">{COPY.yourSong}</Badge>}
+                  {song.durationMs !== null && <span className="text-xs text-muted-foreground font-mono tabular-nums">{formatDuration(song.durationMs)}</span>}
                 </li>
               ))}
               {added.map((song) => (
                 <li key={song.key} className="flex items-center gap-2 px-2 py-1.5">
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{song.title}</span>
+                    <span className="block truncate font-bold">{song.title}</span>
                     <span className="block truncate text-xs text-muted-foreground">{song.artist}</span>
                   </span>
-                  <Badge variant="outline">{COPY.source.justForBusk}</Badge>
-                  {song.own && <Badge variant="secondary">{COPY.yourSong}</Badge>}
-                  {song.durationMs !== null && <span className="text-xs text-muted-foreground tabular-nums">{formatDuration(song.durationMs)}</span>}
+                  <Badge variant="neutral">{COPY.source.justForBusk}</Badge>
+                  {song.own && <Badge variant="solid">{COPY.yourSong}</Badge>}
+                  {song.durationMs !== null && <span className="text-xs text-muted-foreground font-mono tabular-nums">{formatDuration(song.durationMs)}</span>}
                   <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${song.title}`} onClick={() => onAddedChange(added.filter((a) => a.key !== song.key))}>
-                    <XIcon aria-hidden />
+                    <Icon name="x" size={16} />
                   </Button>
                 </li>
               ))}
@@ -152,8 +152,8 @@ export function RepertoireSource<T extends SourceSong>({
           )}
           <p className="text-sm text-muted-foreground">{COPY.source.fillHint}</p>
 
-          <details className="group rounded-lg border p-3" data-testid="add-for-busk">
-            <summary className="cursor-pointer text-sm font-medium">{COPY.source.addJustForBusk}</summary>
+          <details className="group border-2 border-dashed border-border p-3" data-testid="add-for-busk">
+            <summary className="cursor-pointer text-sm font-bold">{COPY.source.addJustForBusk}</summary>
             <div className="mt-3">{addSlot}</div>
           </details>
 

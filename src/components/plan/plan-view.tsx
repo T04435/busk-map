@@ -1,32 +1,56 @@
 "use client";
 
-import { ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ComparePanel, useBaseline } from "@/components/compare/compare-panel";
+import { AgentStatusLine, type AgentState } from "@/components/honeycomb/agent-status-line";
+import { Banner } from "@/components/honeycomb/banner";
+import { FoundByBadge } from "@/components/honeycomb/found-by-badge";
+import { BothAgreeBadge } from "@/components/honeycomb/both-agree-badge";
+import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
+import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
+import { PageHeader } from "@/components/honeycomb/page-header";
+import { PitchRow } from "@/components/honeycomb/pitch-row";
+import { PlanAlert } from "@/components/honeycomb/plan-alert";
+import { ResearchFunnel } from "@/components/honeycomb/research-funnel";
+import { UnmatchedAlert } from "@/components/honeycomb/unmatched-alert";
+import { WithCells } from "@/components/honeycomb/with-cells";
 import { LazyPlanMap } from "@/components/map/lazy-plan-map";
-import { MapLegend } from "@/components/map/map-legend";
-import { DiscoveryBadge, PitchCard } from "@/components/pitch-card/pitch-card";
-import { SaveAsRepertoire } from "@/components/playlist/save-as-repertoire";
-import { SetlistPanel } from "@/components/setlist/setlist-panel";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { creditsClaude, explanationsLabel, modelName, QLOO_TEST_LABEL, type ExplanationsModel } from "@/lib/sources";
-import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { creditsClaude, explanationsLabel, modelName, QLOO_TEST_LABEL, type ExplanationsModel } from "@/lib/sources";
+import { ArrowDown, Clock, MapPin, Search } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { FRESH_HEADER, PLAN_ID_HEADER } from "@/lib/plan-id";
 import { planStreamEventSchema, type Plan, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
-import { PLAYLIST_COPY } from "@/lib/playlist-copy";
-import { agentVsEngineLines } from "@/lib/agent-vs-engine";
-import { AgentSteps, applyStreamEvent, type AgentStep, type RunUsage } from "./agent-steps";
+import type { ResearchTotals } from "@/lib/research-totals";
+import { formatHour, isAnyTime, nightWord, slotEyebrow } from "@/lib/slot";
+import { AgentStepStream, applyStreamEvent, type AgentStep, type FeedPhase, type RunUsage } from "./agent-steps";
+import { AgentVsEngine } from "./agent-vs-engine";
 import { CopyLink } from "./copy-link";
-import { CrowdPanel } from "./crowd-panel";
-import { DataSources } from "./data-sources";
+import { DataSources, sourcesTouched, statusText } from "./data-sources";
+import { NoPitchPanel } from "./no-pitch-panel";
+import { QlooDownPanel } from "./qloo-down-panel";
+import { PitchSheet } from "./pitch-sheet";
+import { SaveAsRepertoire } from "@/components/playlist/save-as-repertoire";
+import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import { WeatherStrip } from "./weather-strip";
-import { WeightsPanel } from "./weights-panel";
+
+/** From 1024 px the busk's research sits around the busk (funnel on top, feed at the foot); below it the busk comes first and the research is folded. */
+const WIDE_QUERY = "(min-width: 1024px)";
+function useWide(): boolean {
+  return useSyncExternalStore(
+    (notify) => {
+      const mq = window.matchMedia(WIDE_QUERY);
+      mq.addEventListener("change", notify);
+      return () => mq.removeEventListener("change", notify);
+    },
+    () => window.matchMedia(WIDE_QUERY).matches,
+    () => true,
+  );
+}
 
 type RunState =
   | { status: "idle" | "running" | "done" }
@@ -63,40 +87,20 @@ const replayState = (replay: Props["replay"]) => {
   if (!replay) return null;
   const plan = replay.events.findLast((e) => e.type === "plan");
   const usage = replay.events.findLast((e) => e.type === "usage");
+  const totals = replay.events.findLast((e) => e.type === "totals");
   return {
     plan: plan?.type === "plan" ? plan.plan : null,
     usage: usage?.type === "usage" ? usage : null,
+    totals: totals?.type === "totals" ? totals.totals : null,
     steps: replay.events.reduce<AgentStep[]>((steps, event) => applyStreamEvent(steps, event), []),
   };
 };
 
 /** If a live run hasn't ended by now, show the engine's plan anyway (the agent itself times out at 90 s). */
 const AGENT_WAIT_MS = 110_000;
-const templateNote = (model: ExplanationsModel | null) => `The reasons below are the template ones from the data, not ${modelName(model)}'s.`;
-
-/** Agent vs engine: whether the model kept the engine's top 3, or what it picked over what, and why. No design yet. */
-function AgentVsEngine({ agent, model }: { agent: NonNullable<Plan["agent"]>; model: ExplanationsModel | null }) {
-  const lines = agentVsEngineLines(agent, model);
-  return (
-    <div className="space-y-1 text-sm" data-testid="agent-vs-engine">
-      <p className="font-medium">Agent vs engine</p>
-      {lines.length === 1 && agent.changes.length === 0 ? (
-        <p>{lines[0]}</p>
-      ) : (
-        <ul className="list-disc space-y-1 pl-5">
-          {lines.map((line) => (
-            <li key={line} data-testid="agent-vs-engine-change">
-              {line}
-            </li>
-          ))}
-        </ul>
-      )}
-      {agent.added.length > 0 && <p className="text-muted-foreground">Added by {modelName(model)} and scored by the engine: {agent.added.join(", ")}.</p>}
-    </div>
-  );
-}
-
-const list = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
+/** Brand words (B-049): Claude, and Busk Map's scores; never "agent" or "engine" in what a busker reads. */
+const ranOutNote = (model: ExplanationsModel | null) => `${modelName(model, "start")} ran out of time, so these pitches come straight from Busk Map's scores. The reasons are standard ones.`;
+const couldntNote = (model: ExplanationsModel | null) => `${modelName(model, "start")} couldn't finish, so these pitches come straight from Busk Map's scores. The reasons are standard ones.`;
 
 export function PlanView({ initialPlan, heading, request, center, autoRun, exampleId, faults, shareId = null, replay = null, fresh = false }: Props) {
   // A stored run starts the view finished: its plan, its steps (collapsed, as a replay) and its totals.
@@ -117,6 +121,11 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   const [revealed, setRevealed] = useState(Boolean(stored?.plan) || !autoRun || initialPlan?.qlooFailed === true);
   /** Run totals from the server (steps, tokens, time). */
   const [usage, setUsage] = useState<RunUsage | null>(stored?.usage ?? null);
+  /** The running research totals (the funnel): the latest `totals` event; the plan's own totals replace them once it arrives. */
+  const [liveTotals, setLiveTotals] = useState<ResearchTotals | null>(stored?.totals ?? null);
+  /** The page-level "Show raw data" switch: tool names, inputs and the returned data show only when it is on. */
+  const [showRaw, setShowRaw] = useState(false);
+  const wide = useWide();
   /** The run was replayed from the cache: its steps are collapsed. */
   const [replayed, setReplayed] = useState(Boolean(stored?.plan));
   /** Why the plan shown isn't Claude's (agent failed, timed out or fell back to templates). */
@@ -125,23 +134,35 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const pitchList = plan?.pitches ?? [];
-  const selectedId = searchParams.get("pitch") ?? pitchList[0]?.id ?? null;
-  const selected = pitchList.find((p) => p.id === selectedId) ?? pitchList[0] ?? null;
-  // A stored run counts as started: a changed request then plans again.
+  // `?pitch=<id>` is the deep link to a pitch's details sheet. The list and the map's pins select a pitch on their own (not in the URL).
+  const sheetId = searchParams.get("pitch");
+  const sheetPitch = pitchList.find((p) => p.id === sheetId) ?? null;
+  const [pickedId, setPickedId] = useState<string | null>(() => sheetId);
+  const selectedId = sheetPitch?.id ?? pickedId ?? pitchList[0]?.id ?? null;
+  // A stored run counts as started.
   const started = useRef(Boolean(stored?.plan));
   // The plain-AI baseline (a control: agreement is a badge, never a score change).
   // Asked once the plan is shown: during the agent's run the server starts it after the agent's data is in.
   const baseline = useBaseline(request, faults, revealed);
   const agreedWith = new Map(baseline.status === "done" ? baseline.baseline.bothAgree.map((a) => [a.pitchId, a.plainName]) : []);
 
-  const select = useCallback(
+  const opener = useRef<HTMLElement | null>(null);
+  const openDetails = useCallback(
     (pitchId: string) => {
+      opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setPickedId(pitchId);
       const params = new URLSearchParams(searchParams.toString());
       params.set("pitch", pitchId);
       router.replace(`${pathname}?${params}`, { scroll: false });
     },
     [pathname, router, searchParams],
   );
+  const closeDetails = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("pitch");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   /** No plan arrived (the agent failed before assembling one): load the engine's plan from the server (run=0). */
   const showEnginePlan = useCallback(() => {
@@ -158,10 +179,11 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     setRunNote(null);
     setReplayed(false);
     setUsage(null);
+    setLiveTotals(null);
     // Whatever ends the run, a plan is shown: Claude's, or the engine's with a note.
     const fail = (message: string) => {
       setRun({ status: "error", message });
-      setFallbackNote(templateNote(heading.model));
+      setFallbackNote(couldntNote(heading.model));
       setRevealed(true);
       if (!hasPlan.current) showEnginePlan();
     };
@@ -204,11 +226,12 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
           if (event.type === "status" && event.message !== "Planning started") setRunNote(event.message);
           if (event.type === "status" && event.replay) setReplayed(true);
           if (event.type === "usage") setUsage(event);
+          if (event.type === "totals") setLiveTotals(event.totals);
           if (event.type === "plan") {
             setPlan(event.plan);
             setRun({ status: "done" });
             const by = event.plan.explanationsModel ?? heading.model;
-            setFallbackNote(event.plan.explanations === "ai" ? null : `The agent couldn't add ${modelName(by)}'s explanations. ${templateNote(by)}`);
+            setFallbackNote(event.plan.explanations === "ai" ? null : couldntNote(by));
             setRevealed(true);
             finished = true;
           } else if (event.type === "error") {
@@ -230,7 +253,8 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     }
   }, [autoRun, runAgent]);
 
-  // A refresh with a changed request re-plans with the agent: agent-first pages get no engine plan from the server.
+  // A refresh with a changed request re-plans with the agent:
+  // agent-first pages get no engine plan from the server, and a changed request is a new run.
   const requestKey = JSON.stringify(request);
   const lastRequestKey = useRef(requestKey);
   useEffect(() => {
@@ -244,7 +268,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   useEffect(() => {
     if (!waiting) return;
     const timer = setTimeout(() => {
-      setFallbackNote(`The agent is taking too long, so this is the engine's plan. ${templateNote(heading.model)}`);
+      setFallbackNote(ranOutNote(heading.model));
       setRevealed(true);
       if (!hasPlan.current) showEnginePlan();
     }, AGENT_WAIT_MS);
@@ -253,299 +277,335 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   // Before the run starts (first render, server and client alike) and while it runs, the plan is pending; so is a fallback plan still loading.
   const pending = !revealed || plan === null;
 
-  // Who wrote the notes and explanations: the plan says once it exists; until then, the model this server runs (B-010).
   const model = plan?.explanationsModel ?? heading.model;
   const qlooDown = plan?.qlooFailed === true || (run.status === "error" && run.message.startsWith("Qloo"));
   const unmatched = qlooDown || !plan ? [] : plan.resolvedArtists.filter((a) => a.matched === null).map((a) => a.query);
   const matched = (plan?.resolvedArtists ?? []).filter((a) => a.matched !== null).map((a) => a.matched!);
+  /** No artist matched: taste is left out, Claude had nothing to research (M01 to M04). */
+  const noTaste = !pending && unmatched.length > 0 && matched.length === 0;
+  const limited = run.status === "limited";
+  /** Whether the model wrote this plan's reasons (false on the fallback and with no taste: the rows then say "From the data"). */
+  const written = plan ? plan.explanations === "ai" : true;
+
+  // The research feed: its phase, mode and totals.
+  const lastStep = steps.filter((s) => s.tool).at(-1);
+  const phase: FeedPhase | null =
+    run.status === "running"
+      ? steps.length === 0 || (steps.at(-1)?.tool === null && !lastStep)
+        ? "starting"
+        : lastStep?.status === "running"
+          ? "working"
+          : "thinking"
+      : run.status === "done"
+        ? plan?.explanations === "ai" || !plan ? "done" : "fallback"
+        : run.status === "error"
+          ? qlooDown ? "error" : "fallback"
+          : null;
+  const live = phase === "starting" || phase === "working" || phase === "thinking";
+  const mode = replayed ? "replay" : runNote?.startsWith("Joining") ? "joined" : "live";
+  const totals: Partial<ResearchTotals> | null = plan?.researchTotals ?? liveTotals;
+  const running = steps.filter((s) => s.status === "running" && s.tool).map((s) => s.tool!);
+  const dataPoints = totals ? Object.entries(totals).reduce((sum, [k, v]) => (k === "qlooCalls" || k === "qlooCacheHits" ? sum : sum + (v ?? 0)), 0) : 0;
+  const hasFeed = !limited && !noTaste && (steps.length > 0 || live || qlooDown);
+  const secs = usage ? usage.ms / 1000 : null;
+  const slotShort = plan ? `${formatHour(plan.slot.startHour)}–${formatHour(plan.slot.endHour)}` : "";
+  const agentState: AgentState | null = limited
+    ? "none"
+    : qlooDown || noTaste
+      ? null
+      : pending
+        ? "researching"
+        : run.status === "idle"
+          ? "engine"
+          : run.status === "running"
+            ? "rerun"
+            : run.status === "done"
+              ? replayed
+                ? "replayed"
+                : "done"
+              : null;
+  const statusLine = <AgentStatusLine state={agentState} usage={usage} model={model} note={replayed ? replayNote(replay?.note ?? runNote) : null} />;
+
+  const sourcesDown = plan ? plan.dataStatus.filter((s) => s.mode === "fallback" && s.source !== "qloo") : [];
+  const DOWN: Record<string, { title: string; effect: string }> = {
+    "melbourne-pedestrian": { title: "The city's pedestrian sensors didn't answer", effect: "Foot traffic at each pitch is estimated from busy places and events, and marked \"est.\"." },
+    ticketmaster: { title: "Ticketmaster didn't answer", effect: "Event crowds are left out of the scores." },
+    "open-meteo": { title: "The weather forecast didn't answer", effect: "The weather is left out of the scores." },
+    lastfm: { title: "Last.fm didn't answer", effect: "Song play counts are left out; the suggested set still orders your songs." },
+  };
+
+  const funnelSentence =
+    plan?.funnel && plan.funnel.topCells > 0 && !live ? (
+      <p className="m-0 text-sm text-muted-foreground" data-testid="funnel-sentence">
+        How this plan was found: Qloo mapped your taste over {plan.funnel.cells} areas of the city. Your top {plan.funnel.topCells} areas gave {plan.funnel.considered} public
+        spaces, footpaths and council sites; the council&apos;s busking rules ruled out {plan.funnel.excluded}, and {plan.funnel.candidates} were scored on foot traffic,
+        nearby places, events and weather for your slot.
+      </p>
+    ) : null;
+  const funnel =
+    noTaste || (!qlooDown && !totals && !live) ? null : (
+      <div data-testid="plan-funnel">
+        <ResearchFunnel layout="landing" totals={qlooDown ? null : totals} running={running} live={live} picks={!live && !qlooDown && plan && plan.pitches.length > 0 ? plan.pitches.length : null} />
+      </div>
+    );
+
+  /** Plan again with the same act (Try again on Qloo down): clears the failed plan and asks again. Whether the failed run counted is the server's call. */
+  const retry = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("run");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    hasPlan.current = false;
+    setPlan(null);
+    setRevealed(false);
+    setFallbackNote(null);
+    void runAgent();
+  };
+
+  const dataSources = plan && !pending && !qlooDown ? <DataSources status={plan.dataStatus} showAi={creditsClaude(plan)} /> : null;
+  const stream = hasFeed ? (
+    <AgentStepStream
+      steps={steps}
+      model={model}
+      phase={phase ?? "done"}
+      mode={mode}
+      modeText={replayed ? "Showing the research from earlier. Nothing new was asked." : runNote}
+      seconds={secs}
+      endNote={null}
+      endCode={qlooDown ? "qloo" : null}
+      onRetry={qlooDown ? retry : undefined}
+      when={slotShort}
+      pins={plan ? plan.pitches.map((p, i) => ({ id: p.id, name: p.name, lat: p.lat, lon: p.lon, rank: i + 1 })) : undefined}
+      collapsed={!wide && !pending && !qlooDown}
+      showRaw={showRaw}
+      onShowRawChange={setShowRaw}
+      subtitle={!wide && !live && !qlooDown ? `Each check ${modelName(model)} ran for the busk above, and what it found.` : undefined}
+      footer={live ? <DataSources status={[]} showAi={false} soFar={sourcesTouched(steps.map((s) => s.tool))} /> : dataSources}
+    />
+  ) : null;
+
+  const eyebrow = `${replay ? "Shared busk · " : ""}${slotEyebrow(request.slot, request.permit)}`;
+  const tags = (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1" data-testid="plan-tags">
+      <DataStatusBadge status={heading.qlooMode === "live" ? "live" : "test"} label={heading.qlooMode === "live" ? "Live Qloo data" : QLOO_TEST_LABEL} />
+      {plan && !qlooDown ? (
+        <DataStatusBadge status={plan.footfallLevel === "city-sensors" ? "live" : "unavailable"} label={plan.footfallLevel === "city-sensors" ? "Foot traffic: city sensors" : "Foot traffic: unavailable"} />
+      ) : null}
+      {!pending && plan && !qlooDown ? <DataStatusBadge status={plan.explanations === "ai" ? "live" : "estimated"} label={explanationsLabel(plan)} /> : null}
+      {replayed ? (
+        <Badge variant="neutral" data-testid="replay-label">
+          <Clock aria-hidden="true" />
+          Replay of an earlier run (no new model call)
+        </Badge>
+      ) : null}
+    </div>
+  );
+  const header = (
+    <PageHeader
+      meta={eyebrow}
+      title={heading.performerName}
+      subtitle={qlooDown || limited ? undefined : `Sounds like ${request.performer.artists.slice(0, 3).join(", ")}`}
+      below={limited ? undefined : tags}
+      end={
+        noTaste ? (
+          <Button asChild>
+            <Link href={shareId ? `/busks?again=${shareId}` : "/busks"}>
+              <Search aria-hidden="true" />
+              Pick your artists from Spotify
+            </Link>
+          </Button>
+        ) : shareId && !pending && !qlooDown ? (
+          <CopyLink id={shareId} />
+        ) : undefined
+      }
+    />
+  );
+
+  const alerts = (
+    <div className="flex flex-col gap-3 empty:hidden">
+      {heading.qlooMode === "synthetic" && (
+        <Banner tone="test">
+          <b className="font-bold uppercase">Qloo test data</b>
+        </Banner>
+      )}
+      {limited && <PlanAlert kind="limit" message={run.status === "limited" ? run.message : undefined}>{statusLine}</PlanAlert>}
+      {/* B-184: with no legal pitch the NoPitchPanel says it all; a note about "these pitches" would point at nothing. */}
+      {plan && !pending && plan.pitches.length === 0 ? null : noTaste ? (
+        <Banner testId="agent-fallback">Claude didn&apos;t research this busk: with no taste to go on there&apos;s nothing for it to check. Your pitches come straight from the city&apos;s data.</Banner>
+      ) : fallbackNote && !qlooDown ? (
+        <Banner testId="agent-fallback">{fallbackNote}</Banner>
+      ) : null}
+      {!pending && unmatched.length > 0 && <UnmatchedAlert unmatched={unmatched} matched={matched} mock={plan?.qlooMode === "synthetic"} />}
+      {!pending && plan && plan.pitches.length > 0 && sourcesDown.length > 0 ? (
+        <div className="flex flex-col gap-3" data-testid="source-down">
+          {sourcesDown.map((s) => (
+            <Alert key={s.adapter} variant="warning">
+              <AlertTitle>{DOWN[s.source]?.title ?? `${s.source} didn't answer`}</AlertTitle>
+              <AlertDescription>
+                {DOWN[s.source]?.effect ?? ""} The rest of your busk is unaffected.{" "}
+                <DataStatusBadge status="unavailable" label={statusText(s)} />
+              </AlertDescription>
+            </Alert>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const pitchesList = plan ? (
+    <section aria-label="Pitches" className="space-y-3 p-4 pt-0 md:p-6 md:pt-0 lg:col-start-1 lg:row-start-2">
+      <h3 className="sr-only">Top pitches</h3>
+      <ol className="m-0 flex list-none flex-col gap-3 p-0">
+        {plan.pitches.map((pitch, i) => (
+          <PitchRow
+            key={pitch.id}
+            pitchId={pitch.id}
+            rank={i + 1}
+            name={pitch.name}
+            when={pitch.window ? undefined : slotShort}
+            window={pitch.window ? `Best ${pitch.window.label}` : undefined}
+            score={pitch.score}
+            selected={pitch.id === selectedId}
+            onSelect={() => setPickedId(pitch.id)}
+            onDetails={() => openDetails(pitch.id)}
+            badges={
+              <>
+                <DiscoveryBadge discovery={pitch.discovery} />
+                <FoundByBadge origin={pitch.origin} written={written} model={model} />
+                {agreedWith.has(pitch.id) && <BothAgreeBadge title={`The plain AI also named ${agreedWith.get(pitch.id)}`} />}
+              </>
+            }
+          />
+        ))}
+      </ol>
+      {plan.others.length > 0 && (
+        <p className="m-0 flex items-start gap-2 text-sm text-muted-foreground" data-testid="others-note">
+          <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          <span>
+            {plan.others.length} more pitches scored. They&apos;re the small markers on the map: pick one for its summary. The top 3 are kept 250 m apart.
+          </span>
+        </p>
+      )}
+      <p className="m-0 text-sm font-bold">Busk Map never confirms a pitch is legal. Check your permit conditions on the day.</p>
+    </section>
+  ) : null;
 
   return (
     <div className="space-y-6">
-      <header className="space-y-2">
-        <p className="text-sm text-muted-foreground">
-          {heading.cityName} · {heading.slotLabel} · {heading.permit} permit
-        </p>
-        <h1 className="text-3xl font-semibold tracking-tight">{heading.performerName}</h1>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant={heading.qlooMode === "live" ? "outline" : "secondary"}>
-            {heading.qlooMode === "live" ? "Live Qloo data" : QLOO_TEST_LABEL}
-          </Badge>
-          {plan && <Badge variant="outline">{plan.footfallLevel === "city-sensors" ? "Foot traffic: city sensors" : "Foot traffic: unavailable"}</Badge>}
-          {!pending && plan && <Badge variant="outline">{explanationsLabel(plan)}</Badge>}
-          {/* A stored run reopened from its link says so at the top, not only in the collapsed steps. */}
-          {replayed && (
-            <Badge variant="secondary" data-testid="replay-label">
-              Replay of an earlier run (no new model call)
-            </Badge>
-          )}
-        </div>
-        <p className="flex flex-wrap gap-x-4 text-sm">
-          <Link className="underline" href="/repertoire">
-            {PLAYLIST_COPY.link}
-          </Link>
-        </p>
-        {shareId && <CopyLink id={shareId} />}
-      </header>
+      {header}
+      {pending && !limited ? statusLine : null}
+      {alerts}
 
-      {heading.qlooMode === "synthetic" && (
-        <Alert>
-          <AlertTitle>{QLOO_TEST_LABEL}</AlertTitle>
-          <AlertDescription>
-            The taste map, crowd and trends on this page come from Busk Map&apos;s local mock of the Qloo API, which runs when no Qloo key is
-            configured (and in tests). It is test data, not Qloo data. Venue and street names are real (OpenStreetMap); foot traffic,
-            busking rules, events and weather are real wherever the sources below say Live.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {!pending && unmatched.length > 0 && (
-        <Alert data-testid="unmatched-artists">
-          <AlertTitle>
-            Qloo couldn&apos;t match {list(unmatched)}
-          </AlertTitle>
-          <AlertDescription>
-            {matched.length > 0
-              ? `This plan uses the artists Qloo did match: ${list(matched)}.`
-              : "Without a matched artist Busk Map can't map where your crowd's taste is, so taste is left out: the pitches below are ranked on foot traffic, events and weather only. Try better-known artists you sound like."}
-            {plan.qlooMode === "synthetic" ? " (Qloo test data: the local mock knows about 130 artists.)" : ""}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {qlooDown && (
-        <Alert variant="destructive">
-          <AlertTitle>Qloo is unavailable</AlertTitle>
-          <AlertDescription>Busk Map needs Qloo&apos;s taste data to plan. Please try again in a few minutes.</AlertDescription>
-        </Alert>
-      )}
-
-      <section aria-label="Agent" className="space-y-3">
-        {/* No re-run for buskers: a reload replays the stored run. Developers can add ?fresh=1 (outside production). */}
-        <div className="flex flex-wrap items-center gap-3">
-          <p className="text-sm text-muted-foreground" data-testid="agent-status">
-            {run.status === "limited"
-              ? "No new plan was started."
-              : pending
-              ? "The agent is researching with Qloo and the other sources. The plan appears when it finishes."
-              : run.status === "idle"
-                ? "Shown: the engine's plan from the data, without the agent."
-                : run.status === "running"
-                  ? "The agent is running again. The plan below stays until it finishes."
-                  : run.status === "done"
-                    ? replayed
-                      ? "The agent's plan, replayed."
-                      : "The agent's plan."
-                    : null}
-          </p>
-        </div>
-        {runNote && <p className="text-sm text-muted-foreground">{runNote}</p>}
-        {usage && (
-          <p className="text-sm text-muted-foreground" data-testid="agent-usage">
-            {usage.steps} model steps · {usage.inputTokens.toLocaleString("en-AU")} input and {usage.outputTokens.toLocaleString("en-AU")} output tokens
-            {usage.reasoningTokens ? ` (${usage.reasoningTokens.toLocaleString("en-AU")} thinking)` : ""} · {(usage.ms / 1000).toFixed(1)} s
-          </p>
-        )}
-        {!pending && plan?.agent && <AgentVsEngine agent={plan.agent} model={model} />}
-        {run.status === "limited" && (
-          <Alert data-testid="fresh-limit">
-            <AlertTitle>Plan limit reached</AlertTitle>
-            <AlertDescription>
-              <p>{run.message}</p>
-              <p>
-                <Link className="underline" href="/">
-                  Back to Busk Map home
-                </Link>
-              </p>
-            </AlertDescription>
-          </Alert>
-        )}
-        {run.status === "error" && !qlooDown ? (
-          <Alert variant="destructive">
-            <AlertTitle>The agent could not finish</AlertTitle>
-            <AlertDescription>
-              {run.message} The plan below is the engine&apos;s, from the data. {templateNote(model)}
-            </AlertDescription>
-          </Alert>
-        ) : (
-          fallbackNote &&
-          !qlooDown && (
-            <Alert data-testid="agent-fallback">
-              <AlertTitle>Shown: the engine&apos;s plan</AlertTitle>
-              <AlertDescription>{fallbackNote}</AlertDescription>
-            </Alert>
-          )
-        )}
-        {replayed && steps.length > 0 ? (
-          <Collapsible className="text-sm">
-            <CollapsibleTrigger asChild>
-              <Button variant="link" size="sm" className="group h-auto px-0 text-muted-foreground">
-                <ChevronRightIcon aria-hidden className="transition-transform group-data-[state=open]:rotate-90" />
-                Agent steps (replayed, {steps.filter((s) => s.tool).length})
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2">
-              <AgentSteps steps={steps} model={model} />
-            </CollapsibleContent>
-          </Collapsible>
-        ) : (
-          <AgentSteps steps={steps} model={model} />
-        )}
-      </section>
-
-      {run.status === "limited" ? null : pending || !plan ? (
-        <PendingPlan />
+      {limited ? null : qlooDown ? (
+        <>
+          {funnel}
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)]">
+            {stream}
+            <QlooDownPanel onRetry={retry} busy={run.status === "running"} />
+          </div>
+        </>
+      ) : pending || !plan ? (
+        <>
+          {funnel}
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,760px)_minmax(0,1fr)]">
+            {stream}
+            <PendingPlan />
+          </div>
+        </>
       ) : (
         <>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <h2>Plan</h2>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>{plan.summary}</p>
-            {plan.funnel && plan.funnel.topCells > 0 && (
-              <p className="text-muted-foreground" data-testid="plan-funnel">
-                How this plan was found: Qloo mapped your taste over {plan.funnel.cells} areas of the city. Your top {plan.funnel.topCells} areas gave{" "}
-                {plan.funnel.considered} public spaces, footpaths and council sites; the council&apos;s busking rules ruled out {plan.funnel.excluded},
-                and {plan.funnel.candidates} were scored on foot traffic, nearby places, events and weather for your slot.
+          {wide ? (
+            funnel
+          ) : (
+            totals &&
+            !noTaste && (
+              <p className="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-sm text-muted-foreground" data-testid="found-from">
+                <span>Found from {dataPoints.toLocaleString("en-AU")} data points</span>
+                <a className="inline-flex min-h-tap items-center font-bold text-foreground underline underline-offset-3" href="#research">
+                  See the research
+                  <ArrowDown aria-hidden="true" className="ml-1.5 size-4" strokeWidth={2} />
+                </a>
               </p>
-            )}
-            {plan.notes.length > 0 && (
-              <ul className="list-disc pl-5 text-muted-foreground">
-                {plan.notes.map((note) => (
-                  <li key={note}>{note}</li>
-                ))}
-              </ul>
-            )}
-            <WeatherStrip weather={plan.weather} />
-          </CardContent>
-        </Card>
+            )
+          )}
 
-        {qlooDown ? null : plan.pitches.length === 0 ? (
-          <Alert>
-            <AlertTitle>No pitch to recommend</AlertTitle>
-            <AlertDescription>
-              The busking rules or the data for this slot left no candidate pitches.{" "}
-              <a className="underline" href={plan.rulesUrl} target="_blank" rel="noreferrer">
-                Read the council&apos;s busking rules
-              </a>
-              .
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-            <div className="space-y-2">
-              <div className="h-[22rem] sm:h-[28rem]">
-                <LazyPlanMap plan={plan} center={center} selectedId={selected?.id ?? null} onSelect={select} />
-              </div>
-              <MapLegend testData={plan.qlooMode === "synthetic"} />
-            </div>
-            <section aria-label="Pitches" className="space-y-2">
-              <h2 className="text-lg font-semibold">Top pitches</h2>
-              <ol className="space-y-2">
-                {plan.pitches.map((pitch, i) => (
-                  <li key={pitch.id}>
-                    <Button
-                      variant={pitch.id === selected?.id ? "default" : "outline"}
-                      className="h-auto w-full justify-between whitespace-normal text-left"
-                      aria-pressed={pitch.id === selected?.id}
-                      data-pitch-name={pitch.name}
-                      onClick={() => select(pitch.id)}
-                    >
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span>
-                          {i + 1}. {pitch.name}
-                        </span>
-                        <DiscoveryBadge discovery={pitch.discovery} className="border-current bg-transparent text-current" />
-                        {agreedWith.has(pitch.id) && (
-                          <Badge variant="outline" className="border-current bg-transparent text-current" title={`The plain AI also named ${agreedWith.get(pitch.id)}`}>
-                            Both agree
-                          </Badge>
-                        )}
-                      </span>
-                      <span className="shrink-0">{pitch.score}/100</span>
-                    </Button>
-                    {pitch.window && (
-                      <p className="px-3 pt-1 text-xs text-muted-foreground" data-testid="pitch-row-window">
-                        Best {pitch.window.label}
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ol>
-              {plan.others.length > 0 && (
-                <Collapsible className="text-sm">
-                  <CollapsibleTrigger asChild>
-                    <Button variant="link" size="sm" className="group h-auto px-0 text-muted-foreground">
-                      <ChevronRightIcon aria-hidden className="transition-transform group-data-[state=open]:rotate-90" />
-                      Other scored pitches ({plan.others.length})
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <ul className="mt-2 space-y-1">
-                      {plan.others.map((p) => (
-                        <li key={p.id} className="flex justify-between gap-2">
-                          <span>
-                            {p.name}
-                            {p.discovery === "hidden-gem" ? " · hidden gem" : p.discovery === "usual" ? " · usual spot" : ""}
-                            {p.tooCloseTo ? ` · too close to ${p.tooCloseTo.name}` : ""}
-                          </span>
-                          <span className="text-muted-foreground">{p.score}/100</span>
-                        </li>
-                      ))}
+          {plan.pitches.length === 0 ? (
+            <NoPitchPanel permit={request.permit} when={nightWord(request.slot)} againHref={shareId ? `/busks?again=${shareId}` : "/busks"} rulesHref={plan.rulesUrl} />
+          ) : (
+            <>
+              {wide && plan.agent && !noTaste && <AgentVsEngine agent={plan.agent} model={model} level={2} />}
+              <section aria-label="Your busk" className="grid border-2 border-rule bg-card lg:grid-cols-[400px_minmax(0,1fr)] lg:grid-rows-[auto_1fr]">
+                <div className="space-y-2 p-4 md:p-6 lg:col-start-1 lg:row-start-1">
+                  <h2 className="m-0 font-display text-[clamp(36px,4vw,40px)] leading-none font-extrabold uppercase">Your busk</h2>
+                  <p className="m-0 font-mono text-xs leading-4 font-medium text-muted-foreground">{slotEyebrow(request.slot, request.permit)}</p>
+                  {isAnyTime(request.slot) && (
+                    <p className="m-0 text-sm leading-5 text-muted-foreground" data-testid="any-time-line">
+                      {heading.slotLabel}: each pitch below has its own best hours.
+                    </p>
+                  )}
+                  <p className="m-0 text-base leading-6">
+                    <WithCells text={plan.summary} />
+                  </p>
+                  {plan.notes.filter((note) => !(noTaste && /couldn't match any/i.test(note))).length > 0 && (
+                    <ul className="m-0 list-disc pl-5 text-sm text-muted-foreground">
+                      {plan.notes
+                        .filter((note) => !(noTaste && /couldn't match any/i.test(note)))
+                        .map((note) => (
+                          <li key={note}>
+                            <WithCells text={note} />
+                          </li>
+                        ))}
                     </ul>
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
+                  )}
+                </div>
+                <div className="flex min-w-0 flex-col p-3 md:p-4 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:border-l-2 lg:border-rule">
+                  <LazyPlanMap plan={plan} center={center} selectedId={selectedId} onSelect={setPickedId} />
+                </div>
+                {pitchesList}
+              </section>
+
+              {!exampleId && <SaveAsRepertoire performer={request.performer} />}
+              <WeatherStrip weather={plan.weather} slot={plan.slot} />
+              <ComparePanel state={baseline} pitches={plan.pitches} model={heading.model} />
+            </>
+          )}
+
+          {stream || dataSources || funnelSentence ? (
+            <section id="research" aria-label="The research" className="scroll-mt-20 space-y-4">
+              {!wide && stream && <h2 className="m-0 font-display text-[32px] leading-none font-extrabold uppercase">The research</h2>}
+              {!wide && funnel}
+              {!wide && plan.agent && !noTaste && <AgentVsEngine agent={plan.agent} model={model} level={3} />}
+              {!pending && !noTaste ? statusLine : null}
+              {funnelSentence}
+              {stream ?? dataSources}
+              {stream && heading.qlooMode === "synthetic" && !live ? <PlanAlert kind="test-data" /> : null}
             </section>
-          </div>
-        )}
-
-        {selected && !qlooDown && (
-          <div className="grid gap-6 lg:grid-cols-2">
-            <PitchCard pitch={selected} rank={plan.pitches.indexOf(selected) + 1} model={model} />
-            <SetlistPanel pitch={selected} learnThese={plan.learnThese} ageLean={plan.ageLean} canAddToRepertoire={!exampleId} repertoireTotal={request.performer.songs.length} />
-          </div>
-        )}
-
-        {!exampleId && !qlooDown && selected && <SaveAsRepertoire performer={request.performer} />}
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          <CrowdPanel crowd={plan.crowd} resolved={plan.resolvedArtists} topPitch={plan.pitches[0]?.name ?? null} />
-          <WeightsPanel weights={plan.weights} />
-        </div>
-
-        {!qlooDown && <ComparePanel state={baseline} pitches={plan.pitches} model={heading.model} />}
-
-        <DataSources status={plan.dataStatus} showAi={creditsClaude(plan)} />
+          ) : null}
         </>
       )}
+
+      {plan && <PitchSheet plan={plan} pitch={sheetPitch} model={model} when={heading.slotLabel} canAddToRepertoire={!exampleId} repertoireTotal={request.performer.songs.length} onClose={closeDetails} returnFocus={() => opener.current?.focus()} />}
     </div>
   );
 }
 
+/** The replay line: when the research was done, and that opening it again asked nothing new. */
+const replayNote = (note: string | null | undefined) => (note && /^Researched at/.test(note) ? note : null);
+
 /** Where the plan, map, pitches, crowd, setlist and comparison will go while the agent works. */
 function PendingPlan() {
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="Plan pending" data-testid="plan-pending">
-      <p className="text-sm text-muted-foreground">The plan, map, crowd, {PLAYLIST_COPY.suggestedSetNoun} and comparison appear here when the agent finishes.</p>
-      <Skeleton className="h-32 w-full" />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <Skeleton className="h-[22rem] w-full sm:h-[28rem]" />
-        <div className="space-y-2">
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
+    <div className="min-w-0 space-y-4" aria-busy="true" aria-label="Plan pending" data-testid="plan-pending">
+      <p className="m-0 text-sm text-muted-foreground">The plan, map, crowd, {PLAYLIST_COPY.suggestedSetNoun} and comparison appear here when the agent finishes.</p>
+      {[1, 2, 3].map((n) => (
+        <div key={n} className="flex items-center gap-3 border-2 border-border bg-card p-3">
+          <Skeleton className="h-[46px] w-10 [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]" />
+          <Skeleton className="h-5 flex-1" />
+          <Skeleton className="h-11 w-[38px] [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]" />
         </div>
-      </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Skeleton className="h-64 w-full" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-      <Skeleton className="h-48 w-full" />
+      ))}
+      <Skeleton className="h-64 w-full" />
+      <Skeleton className="h-24 w-full" />
     </div>
   );
 }

@@ -14,8 +14,9 @@ import {
 import {
   InputGroup,
   InputGroupAddon,
+  InputGroupInput,
 } from "@/components/ui/input-group"
-import { SearchIcon, CheckIcon } from "lucide-react"
+import { Icon } from "@/components/honeycomb/icon"
 
 function Command({
   className,
@@ -25,7 +26,7 @@ function Command({
     <CommandPrimitive
       data-slot="command"
       className={cn(
-        "flex size-full flex-col overflow-hidden rounded-xl! bg-popover p-1 text-popover-foreground",
+        "flex size-full flex-col overflow-hidden rounded-none! border-2 border-rule bg-popover p-1 text-popover-foreground",
         className
       )}
       {...props}
@@ -87,22 +88,21 @@ function CommandInput({
   /** Whether the CommandList is rendered (for an inline list shown only while there is a query). */
   expanded?: boolean
 }) {
+  // A normal search field: shadcn's InputGroup, the search icon as its addon and an InputGroupInput. The group draws the one
+  // border and the one focus ring; the input inside draws neither.
   return (
-    <div data-slot="command-input-wrapper" className="p-1 pb-0">
-      <InputGroup className="h-8! rounded-lg! border-input/30 bg-input/30 shadow-none! *:data-[slot=input-group-addon]:pl-2! has-[[data-slot=command-input]:focus-visible]:border-ring has-[[data-slot=command-input]:focus-visible]:ring-3 has-[[data-slot=command-input]:focus-visible]:ring-ring/50">
+    <div data-slot="command-input-wrapper">
+      <InputGroup className="has-[>[data-align=inline-start]]:[&>input]:pl-10">
+        <InputGroupAddon className="pointer-events-none absolute inset-y-0 left-0 z-10 pl-3">
+          <Icon name="search" size={16} />
+        </InputGroupAddon>
         <CommandPrimitive.Input {...props} asChild>
-          <input
-            data-slot="command-input"
-            className={cn(
-              "w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
-              className
-            )}
+          <InputGroupInput
+            data-slot="input-group-control"
+            className={cn("text-base", className)}
             {...comboboxAria(expanded)}
           />
         </CommandPrimitive.Input>
-        <InputGroupAddon>
-          <SearchIcon className="size-4 shrink-0 opacity-50" />
-        </InputGroupAddon>
       </InputGroup>
     </div>
   )
@@ -145,7 +145,7 @@ function CommandGroup({
     <CommandPrimitive.Group
       data-slot="command-group"
       className={cn(
-        "overflow-hidden p-1 text-foreground **:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:py-1.5 **:[[cmdk-group-heading]]:text-xs **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-muted-foreground",
+        "overflow-hidden p-1 text-foreground **:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:py-1.5 **:[[cmdk-group-heading]]:font-mono **:[[cmdk-group-heading]]:text-[11px] **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:tracking-[0.06em] **:[[cmdk-group-heading]]:uppercase **:[[cmdk-group-heading]]:text-muted-foreground",
         className
       )}
       {...props}
@@ -175,13 +175,13 @@ function CommandItem({
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        "group/command-item relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none in-data-[slot=dialog-content]:rounded-lg! data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-muted data-selected:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-selected:*:[svg]:text-foreground",
+        "group/command-item relative flex min-h-tap cursor-default items-center gap-2 rounded-none px-3 py-2 text-sm outline-hidden select-none in-data-[slot=dialog-content]:rounded-lg! data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-accent data-selected:text-accent-foreground data-selected:shadow-[inset_4px_0_0_var(--primary)] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-selected:*:[svg]:text-foreground",
         className
       )}
       {...props}
     >
       {children}
-      <CheckIcon className="ml-auto opacity-0 group-has-data-[slot=command-shortcut]/command-item:hidden group-data-[checked=true]/command-item:opacity-100" />
+      <Icon name="check" className="ml-auto opacity-0 group-has-data-[slot=command-shortcut]/command-item:hidden group-data-[checked=true]/command-item:opacity-100" />
     </CommandPrimitive.Item>
   )
 }

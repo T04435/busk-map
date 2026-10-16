@@ -26,6 +26,6 @@ describe("agent steps", () => {
   it("show inputs as short key: value pairs", () => {
     expect(formatInput({})).toBe("(defaults)");
     expect(formatInput({ at: { pitchId: "spot:x" }, radiusM: 400, signals: ["A", "B"] })).toBe("at: pitchId spot:x · radiusM: 400 · signals: A, B");
-    expect(formatInput(undefined)).toBe("–");
+    expect(formatInput(undefined)).toBe("none");
   });
 });

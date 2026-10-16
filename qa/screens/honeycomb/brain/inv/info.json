@@ -1,0 +1,113 @@
+{
+ "390": {
+  "facts": "176px 176px",
+  "notes": "358px",
+  "side": false
+ },
+ "768": {
+  "cols": "720px",
+  "lists": "356px 356px",
+  "svg": "none",
+  "side": false
+ },
+ "BR01-1440": "ok",
+ "BR02-1440": "ok",
+ "BR03-1440": "ok",
+ "BR04-1440": "ok",
+ "BR05-1440": "ok",
+ "BR06-1440": "ok",
+ "BR08-1440": "ok",
+ "BR09-1440": "ok",
+ "BR11-1440": "ok",
+ "BR12-1440": "ok",
+ "BR14-1440": "ok",
+ "BR15-1440": "ok",
+ "BR18-1440": "ok",
+ "BR19-1440": "ok",
+ "BR20-1440": "ok",
+ "BR21-1440": "ok",
+ "BR22-1440": "ok",
+ "BR23-1440": "ok",
+ "BR38-1440": "ok",
+ "BR07-1440": "ok",
+ "BR13-1440": "ok",
+ "BR10-1440": "ok",
+ "BR26-1440": "ok",
+ "panel-1440": {
+  "top": 830.671875,
+  "bottom": 1080.671875,
+  "vh": 1100,
+  "navTop": -924
+ },
+ "fold-1440": {
+  "focused": "d_crowd",
+  "nodeBottom": 196.671875,
+  "panelTop": 830.671875,
+  "panelH": 88,
+  "detailHidden": "none",
+  "pad": "104px"
+ },
+ "c3-sub-1440": "block/visible h=14",
+ "BR01-390": "ok",
+ "BR02-390": "ok",
+ "BR03-390": "ok",
+ "BR04-390": "ok",
+ "BR05-390": "ok",
+ "BR06-390": "ok",
+ "BR08-390": "ok",
+ "BR09-390": "ok",
+ "BR11-390": "ok",
+ "BR12-390": "ok",
+ "BR14-390": "ok",
+ "BR15-390": "ok",
+ "BR18-390": "ok",
+ "BR19-390": "ok",
+ "BR20-390": "ok",
+ "BR21-390": "ok",
+ "BR22-390": "ok",
+ "BR23-390": "ok",
+ "BR38-390": "ok",
+ "BR07-390": "ok",
+ "BR13-390": "ok",
+ "BR10-390": "ok",
+ "BR39-390": "ok",
+ "BR26-390": "ok",
+ "panel-390": {
+  "top": 438,
+  "bottom": 836,
+  "vh": 900,
+  "navTop": 836
+ },
+ "fold-390": {
+  "focused": "d_crowd",
+  "nodeBottom": 54.8125,
+  "panelTop": 461.8125,
+  "panelH": 118,
+  "detailHidden": "none",
+  "pad": "198px"
+ },
+ "c3-sub-390": "none/visible h=0",
+ "768-trace": {
+  "hiddenDim": 27,
+  "dim": 27,
+  "side": false
+ },
+ "c3-sub-768": "none/visible h=0",
+ "day-1440": {
+  "html": "_3pR-5q_variable J2o1YG_variable _3RcMDW_variable h-full antialiased",
+  "main": "rgb(15, 20, 22)",
+  "header": "rgb(20, 28, 33)",
+  "footer": "rgba(0, 0, 0, 0)"
+ },
+ "day-390": {
+  "html": "_3pR-5q_variable J2o1YG_variable _3RcMDW_variable h-full antialiased",
+  "main": "rgb(15, 20, 22)",
+  "header": "rgb(20, 28, 33)",
+  "footer": "rgba(0, 0, 0, 0)"
+ },
+ "reduce": {
+  "node": "0.15s",
+  "wire": "0.15s",
+  "anims": 0
+ }
+}

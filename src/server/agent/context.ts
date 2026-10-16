@@ -174,6 +174,27 @@ export class PlanContext {
     return this.track(key, load);
   }
 
+  /**
+   * The slot weekday's 24-hour foot traffic at each sensor, for the details sheet's sparkline (display only: never scored, and its
+   * failure never marks the sensors down). Empty when the typical counts are unavailable.
+   */
+  hourlyProfiles(): Promise<Map<number, (number | null)[]>> {
+    return this.once("footfallHourly", async () => {
+      try {
+        const typical = await getTypicalFootfall(this.request.city, 0, 24, this.adapters, this.today);
+        const out = new Map<number, (number | null)[]>();
+        if (typical.data.level !== "city-sensors") return out;
+        for (const sensor of typical.data.sensors) {
+          const day = sensor.byWeekdayHour[this.weekday];
+          if (day) out.set(sensor.id, Array.from({ length: 24 }, (_, h) => (day[h] === undefined ? null : Math.round(day[h]))));
+        }
+        return out;
+      } catch {
+        return new Map<number, (number | null)[]>();
+      }
+    });
+  }
+
   /** Typical foot traffic by weekday and hour (for the agent's footfall_at), loaded once. */
   trackFootfallTypical<T>(load: () => Promise<AdapterResult<T>>): Promise<T> {
     return this.track("footfallTypical", load);

@@ -1,6 +1,6 @@
 import { EXAMPLES } from "../../src/lib/examples";
 import { SERVER_TODAY } from "./clock";
-import { agentSteps, expect, LOCAL, SATURDAY, test, waitForPlan } from "./fixtures";
+import { agentSteps, expect, LOCAL, openDetails, SATURDAY, test, waitForPlan } from "./fixtures";
 
 /**
  * Any time (plan-inputs-architecture.md 2, S2+S3): the engine picks each pitch's window, best_hours explains it, and the
@@ -22,15 +22,17 @@ test.describe("any time (mock model offline)", () => {
     await waitForPlan(page);
     await expect(page.getByText(/any time, Busk Map picks the hours/).first()).toBeVisible();
     const steps = await agentSteps(page);
-    await expect(steps.getByText("Finding the best hours").first()).toBeVisible();
-    const window = page.getByTestId("pitch-window");
+    await expect(steps.getByText("The best hours at each pitch").first()).toBeVisible();
+    // Each pitch row says its own best hours; the details sheet says why.
+    await expect(page.getByTestId("pitch-row-window")).toHaveCount(3);
+    const window = (await openDetails(page)).getByTestId("pitch-window");
     await expect(window).toBeVisible();
     await expect(window).toContainText(/^Best \d+ [ap]m–\d+ [ap]m/);
     // A reload replays the saved run, with the same windows.
     const before = await window.innerText();
-    await page.reload();
+    await page.goto(path);
     await waitForPlan(page);
-    await expect(page.getByTestId("pitch-window")).toHaveText(before);
+    await expect((await openDetails(page)).getByTestId("pitch-window")).toHaveText(before);
   });
 
   test("an any-time link for a day that has passed offers Plan again on any time, on today's date", async ({ page, request }) => {

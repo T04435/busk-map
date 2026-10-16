@@ -55,7 +55,8 @@ export const FORCED_LIMIT_RETRY_S = 45 * 60;
  */
 export function freshLimitMessage(retryAfterS: number): string {
   const minutes = Math.max(1, Math.ceil(retryAfterS / 60));
-  return `You've started ${FRESH_RUNS_PER_HOUR} plans this hour. Try again in about ${minutes} minute${minutes === 1 ? "" : "s"}, or open one of your earlier plans.`;
+  const limit: number = FRESH_RUNS_PER_HOUR;
+  return `You've started ${limit} plan${limit === 1 ? "" : "s"} this hour. Try again in about ${minutes} minute${minutes === 1 ? "" : "s"}.`;
 }
 
 /**

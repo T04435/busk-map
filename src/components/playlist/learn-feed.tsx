@@ -1,6 +1,10 @@
 "use client";
 
 import { ChevronRightIcon } from "lucide-react";
+import { Fragment } from "react";
+import { cn } from "cn";
+import { HexCell } from "@/components/honeycomb/hex-cell";
+import { Loader } from "@/components/honeycomb/loader";
 import { StepData } from "@/components/plan/agent-steps";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,35 +20,56 @@ import { modelName } from "@/lib/sources";
 const COPY = PLAYLIST_COPY.learn;
 
 /**
- * The research funnel in its learn mode (inventory F04, sketch §2): Qloo calls › artists matched › crowds read › artists
- * liked › songs checked › left out (dashed; ONE count: suggested before + dismissed + already sung) › new songs, which
- * shows a loader until the picks are accepted. The plan's funnel is a sentence (plan-funnel), so the learn mode has its own
- * markup. Plain shadcn; the look comes later.
+ * The research funnel in its learn mode (inventory F04; the DS ResearchFunnel's LearnFunnel): Qloo calls, artists matched,
+ * crowds read, artists liked, songs checked, left out (a dashed cell; ONE count: suggested before + dismissed + already sung),
+ * then new songs, which shows a loader until the picks are accepted. Honeycomb cells joined by the signal half-hex link.
  */
 export function ResearchFunnel({ kind, totals, running }: { kind: "learn"; totals: LearnLive["totals"]; running: boolean }) {
   const items = funnelOf(totals);
   return (
-    <div data-testid="learn-totals" data-kind={kind} className="space-y-1">
-      <h4 className="text-sm font-medium">{COPY.totalsHeading}</h4>
-      <ol className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm" aria-label={COPY.totalsHeading}>
-        {items.map((item, i) => (
-          <li key={item.key} className={`flex items-baseline gap-1.5 ${item.key === "leftOut" ? "rounded-md border border-dashed px-1.5" : ""}`} data-total={item.key}>
-            {item.key === "newSongs" && running && item.value === 0 ? (
-              <>
-                <Skeleton aria-hidden className="h-4 w-5 self-center" />
-                <span className="sr-only">choosing songs</span>
-              </>
-            ) : (
-              <span className="font-semibold tabular-nums" data-part="value">
-                {item.value}
-              </span>
-            )}
-            <span className="text-muted-foreground">{item.label}</span>
-            {i < items.length - 1 && <ChevronRightIcon aria-hidden className="size-3.5 self-center text-muted-foreground" />}
-          </li>
-        ))}
+    <section data-testid="learn-totals" data-kind={kind} aria-live={running ? "polite" : "off"} className="space-y-2">
+      <h4 className="m-0 font-mono text-[11px] leading-4 font-bold tracking-[0.06em] text-muted-foreground uppercase">{COPY.totalsHeading}</h4>
+      <ol className="m-0 flex list-none flex-wrap items-center gap-x-1 gap-y-1.5 p-0" aria-label={COPY.totalsHeading}>
+        {items.map((item, i) => {
+          const last = item.key === "newSongs";
+          const choosing = last && running && item.value === 0;
+          const text = String(item.value);
+          return (
+            <Fragment key={item.key}>
+              <li
+                data-total={item.key}
+                className={cn(
+                  "inline-flex items-center gap-1.5 text-[13px] leading-4 whitespace-nowrap text-muted-foreground",
+                  last && "text-sm font-bold text-foreground",
+                )}
+              >
+                <HexCell
+                  size={last ? 34 : 30}
+                  tone={item.key === "leftOut" || choosing ? "dashed" : last ? "primary" : "default"}
+                  fontSize={text.length > 3 ? 10 : 12}
+                  className={cn("font-mono font-bold tabular-nums", !(last && !choosing) && "text-foreground")}
+                >
+                  {choosing ? (
+                    <>
+                      <Loader size={14} label="Choosing" className="bm-loader-think text-primary" />
+                      <span className="sr-only">choosing songs</span>
+                    </>
+                  ) : (
+                    <span data-part="value">{item.value}</span>
+                  )}
+                </HexCell>
+                <span className={last && !choosing ? "text-signal-text" : undefined}>{item.label}</span>
+              </li>
+              {i < items.length - 1 && (
+                <li aria-hidden="true" className="px-1">
+                  <span className="block h-[18px] w-3 bg-primary [clip-path:polygon(0_0,50%_0,100%_50%,50%_100%,0_100%)]" />
+                </li>
+              )}
+            </Fragment>
+          );
+        })}
       </ol>
-    </div>
+    </section>
   );
 }
 
@@ -72,9 +97,9 @@ function RawTotals({ live }: { live: LearnLive }) {
 export function LearnFeed({ live, heading, running, raw }: { live: LearnLive; heading: string; running: boolean; raw: boolean }) {
   const steps = [...live.steps].reverse();
   return (
-    <div className="space-y-3 rounded-lg border p-4" data-testid="learn-feed">
+    <div className="space-y-3 border-2 border-rule bg-card p-4" data-testid="learn-feed">
       <div className="space-y-3" data-testid="learn-run" data-run={live.number ?? ""} data-replay={live.replay ? "true" : "false"}>
-        <h3 className="text-base font-semibold">
+        <h3 className="m-0 font-display text-xl leading-6 font-extrabold uppercase">
           {heading}
           {live.replay && <span className="ml-2 text-sm font-normal text-muted-foreground">(replay)</span>}
         </h3>
@@ -87,7 +112,7 @@ export function LearnFeed({ live, heading, running, raw }: { live: LearnLive; he
               const plain = plainStep(step);
               const rejected = step.tool === FINISH_TOOLS.learn && step.status === "failed";
               return (
-                <li key={step.id} className="space-y-2 rounded-lg border p-3" data-testid="agent-step" data-tool={step.tool ?? ""} data-status={step.status}>
+                <li key={step.id} className="space-y-2 border border-border bg-card p-3" data-testid="agent-step" data-tool={step.tool ?? ""} data-status={step.status}>
                   {step.tool ? (
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium break-words">{plain.headline}</span>

@@ -71,7 +71,8 @@ export function plainStep(step: Pick<AgentStep, "tool" | "status" | "summary" | 
     case "rising": {
       const artists = rows(out.artists);
       const moving = artists.filter((a) => num(a.trendDelta) !== 0);
-      const arrow = (a: Row) => `${text(a.name)} ${num(a.trendDelta) > 0 ? "↑" : "↓"}`;
+      // Words, not arrow glyphs (no glyph icons): "Vance Joy (rising)".
+      const arrow = (a: Row) => `${text(a.name)} (${num(a.trendDelta) > 0 ? "rising" : "falling"})`;
       if (out.window === null || out.window === undefined) return done("Qloo has no recent trending data for these artists");
       return done("Checked who's rising with those crowds", moving.length ? [moving.map(arrow).join(", ")] : ["No movement in Qloo's latest trending data"]);
     }

@@ -165,7 +165,7 @@ export async function POST(request: Request) {
         const at = new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", timeZone: CITIES[parsed.data.city].timeZone }).format(run.startedAt);
         send(
           run.done
-            ? { type: "status", message: `Replaying the agent's run from ${at} (cached, no new model call)`, replay: true }
+            ? { type: "status", message: `Researched at ${at}. Showing that research: nothing new was asked.`, replay: true }
             : { type: "status", message: "Joining the agent's run in progress" },
         );
       }

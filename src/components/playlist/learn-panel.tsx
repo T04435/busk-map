@@ -265,7 +265,7 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
   return (
     <section aria-labelledby="learn-heading" className="max-w-2xl space-y-4" data-testid="learn-section">
       <div className="space-y-1">
-        <h2 id="learn-heading" className="text-xl font-semibold">
+        <h2 id="learn-heading" className="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
           {PLAYLIST_COPY.toLearn}
         </h2>
         <p className="text-sm text-muted-foreground">{COPY.intro}</p>
@@ -379,7 +379,7 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
         return (
           <div key={group.key} className="space-y-1" data-testid="learn-group" data-run={run?.number ?? group.key}>
             <div className="space-y-1">
-              <h3 className="text-base font-semibold">{group.title}</h3>
+              <h3 className="m-0 font-display text-xl leading-6 font-extrabold uppercase">{group.title}</h3>
               {run && <p className="text-sm text-muted-foreground">{runMeta(run)}</p>}
               {run && run.status !== "running" && (
                 <Button type="button" variant="link" size="sm" className="h-auto px-0" aria-expanded={open?.state === "open"} onClick={() => void replay(run)} disabled={!run.stepsKept}>

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { PlanScreen, PlanSkeleton, SlotPassedNote } from "@/components/plan/plan-screen";
-import { describeSlot } from "@/lib/slot";
+import { PageHeader } from "@/components/honeycomb/page-header";
+import { SlotPassed } from "@/components/honeycomb/slot-passed";
+import { PlanScreen, PlanSkeleton } from "@/components/plan/plan-screen";
+import { isAnyTime, shortDay, shortHours, slotEyebrow } from "@/lib/slot";
 import { CITIES } from "@/server/cities";
 import { freshRunsAllowed, loadStoredPlan, slotPassed, snapshotEvents, snapshotFor, viewerRequest } from "@/server/plans";
 import { adapterContextFor, pageFaultsFor } from "@/server/request";
@@ -19,12 +20,7 @@ const first = (value: string | string[] | undefined) => (Array.isArray(value) ? 
 
 export default function ShortPlanPage({ params, searchParams }: PageProps<"/p/[id]">) {
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
-      <nav className="mb-6 text-sm">
-        <Link className="underline" href="/">
-          Busk Map home
-        </Link>
-      </nav>
+    <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:py-8">
       <Suspense fallback={<PlanSkeleton />}>
         <ShortPlan params={params} searchParams={searchParams} />
       </Suspense>
@@ -55,19 +51,14 @@ async function ShortPlan({ params, searchParams }: Pick<PageProps<"/p/[id]">, "p
   const engineOnly = first(query.run) === "0";
   const snapshot = fresh || engineOnly || testFaults.length > 0 ? null : snapshotFor(stored, request, adapters.offline);
   const passed = slotPassed(request.slot, city.timeZone);
-  const againHref = `/?again=${stored.id}#own`;
-  const slotLabel = describeSlot(request.slot);
+  const againHref = `/busks?again=${stored.id}`;
+  const slotLabel = `${shortDay(request.slot.date)} · ${isAnyTime(request.slot) ? "any time" : shortHours(request.slot.startHour, request.slot.endHour)}`;
 
   if (passed && !snapshot) {
     return (
       <div className="space-y-6">
-        <header className="space-y-2">
-          <p className="text-sm text-muted-foreground">
-            {city.name} · {slotLabel} · {request.permit} permit
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight">{request.performer.name}</h1>
-        </header>
-        <SlotPassedNote slotLabel={slotLabel} againHref={againHref} />
+        <PageHeader meta={`Shared busk · ${slotEyebrow(request.slot, request.permit)}`} title={request.performer.name} />
+        <SlotPassed slotLabel={slotLabel} againHref={againHref} alone />
       </div>
     );
   }
@@ -81,11 +72,11 @@ async function ShortPlan({ params, searchParams }: Pick<PageProps<"/p/[id]">, "p
       minute: "2-digit",
       timeZone: city.timeZone,
     }).format(snapshot.startedAt);
-    replay = { events: snapshotEvents(snapshot), note: `Replaying the agent's run from ${at} (cached, no new model call)` };
+    replay = { events: snapshotEvents(snapshot), note: `Researched at ${at}${sameDay ? " today" : ""}. Opening it again shows that research: nothing new was asked.` };
   }
   return (
     <div className="space-y-6">
-      {passed && <SlotPassedNote slotLabel={slotLabel} againHref={againHref} />}
+      {passed && <SlotPassed slotLabel={slotLabel} againHref={againHref} />}
       <PlanScreen
         request={request}
         exampleId={stored.exampleId}

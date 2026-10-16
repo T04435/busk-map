@@ -3,10 +3,11 @@
  * Code names stay `playlist`; a later rename ("Songbook") is an edit to this one file.
  */
 const USE_MINE = "Use my Repertoire";
+const CAN_SING = "Songs you can sing";
 
 export const PLAYLIST_COPY = {
   name: "Repertoire",
-  canSing: "Songs you can sing",
+  canSing: CAN_SING,
   toLearn: "Songs to learn",
   learned: "Learned",
   suggestedSet: "Suggested set",
@@ -93,6 +94,68 @@ export const PLAYLIST_COPY = {
     runStarted: "Looking for songs to learn",
     replaying: (n: number) => `Replaying run ${n} from your list (stored steps, no new model call)`,
     stepsPruned: "This run's steps are no longer kept. Its songs are still on your list.",
+
+    // The Songs to learn section of the Repertoire page (docs §7.4)
+    intro: "Find songs to learn from the artists your fans, and the crowds where you busk, like. Each run looks at your Repertoire, takes about 30 seconds, and never suggests a song twice.",
+    firstTime: "No runs yet. Press the button and we'll look for songs you could learn next.",
+    runsLeft: (n: number) => `${n} ${n === 1 ? "run" : "runs"} left this hour`,
+    lastRun: (when: string, n: number) => `Last run ${when}: ${n} new ${n === 1 ? "song" : "songs"}.`,
+    running: "Looking for songs to learn…",
+    starting: "Starting a run",
+    runningHint: "The steps appear below as they happen. You can leave this page: the run carries on and its songs will be on your list.",
+    finding: "Finding songs…",
+    needSongs: (min: number) => `Add at least ${min} songs you can sing, then find songs to learn.`,
+    needRepertoire: "Save your Repertoire by adding a song above, then find songs to learn.",
+    /** The run limit's words (docs §2.10): relative, and the network's version doesn't blame the performer. */
+    limitMessage: (scope: "repertoire" | "ip", minutes: number, max = 3): string => {
+      const wait = `Try again in about ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`;
+      return scope === "repertoire" ? `You've started ${max} runs this hour. ${wait}` : `A lot of runs have started from this network in the last hour. ${wait}`;
+    },
+    limitTitle: { repertoire: "Run limit reached", ip: "Lots of runs from this network" },
+    qlooDownTitle: "Qloo isn't answering",
+    fallbackTitle: "Picked from the data",
+    errorTitle: "The run didn't finish",
+    nothingNewTitle: "Nothing new this time",
+    retry: "Try again",
+    runHeading: (n: number) => `Run ${n}`,
+    stepsHeading: "Steps",
+    showSteps: "Show steps",
+    hideSteps: "Hide steps",
+    replay: "Replay steps",
+    replayLoading: "Loading the steps…",
+    replayFailed: "The steps couldn't be loaded.",
+    earlierRuns: "Earlier runs",
+    looked: (songs: number, pitches: number) => `looked at ${songs} ${songs === 1 ? "song" : "songs"}${pitches ? `, ${pitches} ${pitches === 1 ? "pitch" : "pitches"}` : ""}`,
+    newCount: (n: number) => `${n} new`,
+    modelLabel: { claude: "Claude", mock: "test model", template: "from the data" },
+    statusLabel: { running: "running", done: "done", fallback: "from the data", failed: "didn't finish" },
+    learnedBtn: "Learned",
+    notForMe: "Not for me",
+    undo: "Undo",
+    learnedBadge: "Learned",
+    dismissedGroup: (n: number) => `Not for me (${n})`,
+    movedToSung: (title: string) => `${title} is now in ${CAN_SING}.`,
+    dismissedDone: (title: string) => `${title} won't be suggested again. Undo it from Not for me.`,
+    undone: (title: string) => `${title} is back on your list.`,
+    buildsOn: (title: string) => `Builds on ${title}`,
+    crowdAt: (pitch: string) => `Crowd at ${pitch}`,
+    growth: (n: number) => `Audience growth ${n}`,
+    rising: (n: number) => `Rising ${n}%`,
+    source: { spotify: "Spotify", lastfm: "Last.fm", plan: "Added from a plan" },
+    learnIt: "Learn it",
+    totals: {
+      artists: "artists matched",
+      crowds: "crowds read",
+      liked: "artists liked",
+      songsChecked: "songs checked",
+      alreadySuggested: "suggested before",
+      dismissedSkipped: "you dismissed",
+      alreadyKnown: "you already sing",
+      newSongs: "new songs",
+      qlooCalls: "Qloo requests",
+      qlooCacheHits: "Qloo answers from cache",
+    },
+    totalsHeading: "What this run looked at",
     errors: {
       suggestionNotFound: "That song isn't on your list any more. Reload to see the latest.",
       badMove: "That change isn't possible for this song.",

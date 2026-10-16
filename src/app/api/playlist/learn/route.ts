@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   if (isResponse(session)) return session;
   if (!session.playlist) return json(emptyLearnList());
   try {
-    return json(await learnListView(learnStore(testSwitches().offline, session.store), session.playlist.id));
+    return json(await learnListView(learnStore(testSwitches().offline, session.store), session.playlist.id, Date.now(), testSwitches().offline));
   } catch {
     return json({ error: { code: "unavailable", message: PLAYLIST_COPY.learn.errors.unavailable } }, { status: 503 });
   }

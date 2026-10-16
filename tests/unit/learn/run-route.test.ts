@@ -104,7 +104,7 @@ describe("POST /api/playlist/learn: a run", () => {
     const body = await list(m, cookie);
     expect(body.runs[0]).toMatchObject({ runId: run.runId, number: 1, status: "done", model: "mock", newCount: suggestions.length, stepsKept: true });
     expect(body.suggestions.map((s: { id: string }) => s.id)).toEqual(suggestions.map((s) => s.id));
-    expect(body.limit.remaining).toBe(2);
+    expect(body.limit.remaining).toBe(3); // offline: never counted down
   });
 
   it("a second run gets the first run's items as history, returns none of them, and marks its own as new", async () => {
@@ -157,8 +157,8 @@ describe("POST /api/playlist/learn: a run", () => {
     expect(replay.filter((e) => e.type === "suggestion").map((e) => (e as { id: string }).id)).toEqual(live.filter((e) => e.type === "suggestion").map((e) => (e as { id: string }).id));
     expect(replay.at(-1)).toEqual(live.at(-1));
     expect(replay.map((e) => e.type).slice(-3)).toEqual(["totals", "usage", "end"]);
-    // not counted: still two runs left in the hour per Repertoire
-    expect((await list(m, cookie)).limit.remaining).toBe(2);
+    // a replay starts no run: the Repertoire still has the one
+    expect((await list(m, cookie)).runs).toHaveLength(1);
   });
 
   it("a replay shows each suggestion's current status; a run whose steps were pruned replays without steps", async () => {
@@ -300,7 +300,6 @@ describe("when the data sources fail", () => {
     expect(m.mock.mockLearnerCalls).toHaveLength(0);
     const body = await list(m, cookie);
     expect(body.runs[0]).toMatchObject({ status: "failed" });
-    expect(body.limit.remaining).toBe(3);
     // and the next run can start straight away
     expect((await start(m, cookie)).status).toBe(200);
   });

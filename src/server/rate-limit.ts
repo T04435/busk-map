@@ -1,5 +1,6 @@
 import "server-only";
 import type { LearnLimitScope } from "@/lib/learn-schema";
+import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import { LEARN_RUNS_PER_HOUR_PER_IP, LEARN_RUNS_PER_HOUR_PER_PLAYLIST, LEARN_WINDOW_MINUTES, PLAYLIST_CREATIONS_PER_HOUR } from "@/server/playlist/config";
 
 /**
@@ -127,11 +128,7 @@ const minutesOf = (retryAfterS: number) => Math.max(1, Math.ceil(retryAfterS / 6
  * The refusal text (docs §2.10), relative like the plan limit's (B-013). The network's own message doesn't blame the performer.
  */
 export function learnLimitMessage(scope: LearnLimitScope, retryAfterS: number): string {
-  const minutes = minutesOf(retryAfterS);
-  const wait = `Try again in about ${minutes} minute${minutes === 1 ? "" : "s"}.`;
-  return scope === "repertoire"
-    ? `You've started ${LEARN_RUNS_PER_HOUR_PER_PLAYLIST} runs this hour. ${wait}`
-    : `A lot of runs have started from this network in the last hour. ${wait}`;
+  return PLAYLIST_COPY.learn.limitMessage(scope, minutesOf(retryAfterS), LEARN_RUNS_PER_HOUR_PER_PLAYLIST);
 }
 
 /** Where the Repertoire stands against its own limit, from its stored runs (counted in the database, so every instance agrees). */

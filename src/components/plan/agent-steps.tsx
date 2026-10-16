@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatInput, scalar, type AgentStep } from "@/lib/agent-steps";
+import { FINISH_TOOLS, toolLabel, type StreamKind } from "@/lib/learn-tools";
 import { modelName, type ExplanationsModel } from "@/lib/sources";
 
 /**
@@ -78,19 +79,23 @@ export function StepData({ value }: { value: unknown }) {
 
 const STATUS: Record<AgentStep["status"], string> = { running: "running", done: "done", failed: "failed", notes: "note" };
 
-/** `model` names who wrote each note: Claude, or the test model offline (B-010). */
-export function AgentSteps({ steps, model = null }: { steps: AgentStep[]; model?: ExplanationsModel | null }) {
+/**
+ * `model` names who wrote each note: Claude, or the test model offline (B-010). `kind` is the stream the steps came from:
+ * labels are looked up by kind and tool (`crowd_at` is in both agents, with different outputs), and the "rejected" badge
+ * is on each agent's own finishing tool (finish_plan, finish_suggestions).
+ */
+export function AgentSteps({ steps, model = null, kind = "plan", label = "Agent steps" }: { steps: AgentStep[]; model?: ExplanationsModel | null; kind?: StreamKind; label?: string }) {
   if (steps.length === 0) return null;
   const numbers = new Map<string, number>();
   for (const step of steps) if (step.tool) numbers.set(step.id, numbers.size + 1);
   return (
-    <ol className="space-y-3 text-sm" aria-live="polite" aria-label="Agent steps">
+    <ol className="space-y-3 text-sm" aria-live="polite" aria-label={label}>
       {steps.map((step) => (
         <li key={step.id} className="space-y-2 rounded-lg border p-3" data-testid="agent-step" data-tool={step.tool ?? ""}>
           <div className="flex flex-wrap items-center gap-2">
             {step.tool && <span className="text-muted-foreground">{numbers.get(step.id)}.</span>}
-            <span className="font-medium">{step.label}</span>
-            <Badge variant="outline">{step.tool === "finish_plan" && step.status === "failed" ? "rejected" : STATUS[step.status]}</Badge>
+            <span className="font-medium">{step.tool ? toolLabel(kind, step.tool, step.label) : step.label}</span>
+            <Badge variant="outline">{step.tool === FINISH_TOOLS[kind] && step.status === "failed" ? "rejected" : STATUS[step.status]}</Badge>
           </div>
           {step.notes.map((note, i) => (
             <p key={i} className="whitespace-pre-line text-muted-foreground" data-testid={`agent-note-${note.kind}`}>

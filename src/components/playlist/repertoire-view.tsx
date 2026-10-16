@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDuration } from "@/lib/live-search";
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import { parseTypedSong, playlistSongKey, type PlaylistSongView, type PlaylistView } from "@/lib/playlist-schema";
+import { LearnPanel } from "./learn-panel";
 import { addSong, forgetPlaylist, loadPlaylist, moveSong, removeSong, type PlaylistResult } from "./playlist-api";
 
 const NO_ARTISTS: never[] = [];
@@ -81,6 +82,13 @@ export function RepertoireView() {
     }
     setMessage({ kind: "error", text: result.message });
     return false;
+  }, []);
+
+  // A song marked learned (or its Undo) changes Songs you can sing: reload them and the revision.
+  const refreshPlaylist = useCallback(() => {
+    void loadPlaylist().then((result) => {
+      if (result.ok) setPlaylist(result.playlist);
+    });
   }, []);
 
   const songs = useMemo(() => playlist?.songs ?? [], [playlist]);
@@ -215,6 +223,8 @@ export function RepertoireView() {
               </ul>
             )}
           </section>
+
+          <LearnPanel songCount={songs.length} hasPlaylist={Boolean(playlist)} onSongsChanged={refreshPlaylist} />
 
           {playlist && (
             <section className="max-w-2xl">

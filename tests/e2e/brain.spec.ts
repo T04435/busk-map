@@ -65,7 +65,7 @@ test.describe("the brain of Busk Map at three widths", () => {
         await expect(page.getByText("kinds of Qloo call")).toBeVisible();
         await expect(page.getByTestId("quota-note")).toContainText("10,000 requests a month per key, at 5 a second");
         await expect(page.getByRole("heading", { name: "Next (not built yet)" })).toBeVisible();
-        await expect(page.locator("[data-node-id]")).toHaveCount(12 + 2 + 15 + 9);
+        await expect(page.locator("[data-node-id]")).toHaveCount(14 + 2 + 17 + 10);
         await expectNoSidewaysScroll(page);
         await page.screenshot({ path: path.join(SCREENS, `brain-${width.name}.png`), fullPage: true });
 

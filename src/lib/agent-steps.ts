@@ -2,6 +2,7 @@
  * Folding the agent's stream into steps (shared by the live view and the
  * replay). Pure, client-safe.
  */
+import type { LearnStreamEvent } from "./learn-schema";
 import type { PlanStreamEvent } from "./plan-schema";
 
 export type StepNote = { kind: "reasoning" | "text"; text: string };
@@ -22,7 +23,7 @@ export type AgentStep = {
 export type RunUsage = Extract<PlanStreamEvent, { type: "usage" }>;
 
 /** Fold stream events into a list of steps. Notes attach to the next tool call. */
-export function applyStreamEvent(steps: AgentStep[], event: PlanStreamEvent): AgentStep[] {
+export function applyStreamEvent(steps: AgentStep[], event: PlanStreamEvent | LearnStreamEvent): AgentStep[] {
   const last = steps.at(-1);
   if (event.type === "note") {
     const note = { kind: event.kind, text: event.text };

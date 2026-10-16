@@ -56,7 +56,8 @@ describe("GET /api/playlist/learn", () => {
     const { list, cookie } = await seeded();
     const body = await (await list.GET(req("GET", "/learn", undefined, cookie))).json();
     expect(body.running).toBeNull();
-    expect(body.limit).toEqual({ max: 3, windowMinutes: 60, remaining: 2, retryInMinutes: null });
+    // Offline test mode is never limited: the list reports the full allowance.
+    expect(body.limit).toEqual({ max: 3, windowMinutes: 60, remaining: 3, retryInMinutes: null });
     expect(body.runs).toHaveLength(1);
     expect(body.runs[0]).toMatchObject({ number: 1, status: "done", model: "mock", inputs: { songs: 1, soundsLike: [], pitches: [] }, newCount: 2, skippedCount: 0, stepsKept: true });
     expect(Object.keys(body.runs[0]).sort()).toEqual(["finishedAt", "inputs", "model", "newCount", "number", "runId", "skippedCount", "startedAt", "status", "stepsKept"]);

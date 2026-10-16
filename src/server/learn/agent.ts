@@ -122,12 +122,14 @@ export async function runLearnAgent(ctx: LearnContext, events: LearnAgentEvents 
   }
 
   // 1. Match the Repertoire's artists on Qloo. Without Qloo's taste data there is nothing to scout.
+  const match = { status: "qloo_unavailable" as "ok" | "qloo_unavailable" | "no_match" };
   const matched = await serverStep("match_playlist", {}, async () => {
     const m = await ctx.matchPlaylist();
-    return { ...m.output, status: m.status };
+    match.status = m.status;
+    return m.output;
   });
-  if (!matched || matched.status !== "ok") {
-    const code = matched?.status === "no_match" ? "no_match" : "qloo_unavailable";
+  if (!matched || match.status !== "ok") {
+    const code = match.status === "no_match" ? "no_match" : "qloo_unavailable";
     return result({ status: "failed", endCode: code, mode: "none", model: offline ? "mock" : "claude", picks: [], summary: null });
   }
 

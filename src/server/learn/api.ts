@@ -25,11 +25,12 @@ export const runView = (r: RunListItem): LearnRunView => ({
   stepsKept: r.stepsKept,
 });
 
-/** The Learn list for a Repertoire; sweeps a stuck run first. */
-export async function learnListView(store: LearnStore, playlistId: string, now = Date.now()): Promise<LearnListView> {
+/** The Learn list for a Repertoire; sweeps a stuck run first. `unlimited` (offline test mode) reports the full allowance. */
+export async function learnListView(store: LearnStore, playlistId: string, now = Date.now(), unlimited = false): Promise<LearnListView> {
   await store.sweepStale(playlistId, now);
   const [{ runs, suggestions, pending }, recent] = await Promise.all([store.list(playlistId), store.recentRuns(playlistId, now - LEARN_WINDOW_MINUTES * 60_000)]);
-  const limit = repertoireLimitState(recent, now);
+  // Offline test mode is never limited (the gate lets every run through), so the list doesn't count down either.
+  const limit = unlimited ? repertoireLimitState({ count: 0, oldestStartedAt: null }, now) : repertoireLimitState(recent, now);
   const running = runs.find((r) => r.status === "running");
   return {
     running: running ? { runId: running.id, number: running.number, startedAt: new Date(running.startedAt).toISOString() } : null,

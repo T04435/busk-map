@@ -64,7 +64,8 @@ export function replayEvents(record: RunRecord, suggestions: LearnSuggestionView
       stepsKept: steps !== null,
     },
     { type: "status", message: steps !== null ? PLAYLIST_COPY.learn.replaying(record.number) : PLAYLIST_COPY.learn.stepsPruned, replay: true },
-    ...(steps ?? []),
+    // The run's own "started" line gives way to the replay line above.
+    ...(steps ?? []).filter((e) => e.type !== "status"),
     ...suggestions.map((s) => suggestionEvent(record.id, s)),
     { type: "totals", totals: record.totals ?? ZERO_LEARN_TOTALS },
   ];

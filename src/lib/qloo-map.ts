@@ -163,7 +163,7 @@ export const calls: readonly QlooCall[] = [
   {
     id: "c5c",
     num: "5c",
-    label: "Crowd at your usual pitches",
+    label: "Your usual pitches",
     endpoint: "/v2/insights",
     urnType: "urn:entity:artist",
     keyParams: ["signal.location=<WKT POLYGON around a usual pitch, 400 m>", "signal.interests.entities=<Repertoire ids>", "feature.explainability=true", "take=10"],
@@ -240,7 +240,7 @@ export const calls: readonly QlooCall[] = [
   {
     id: "c12",
     num: "12",
-    label: "Artists like your Repertoire",
+    label: "Artists like yours",
     endpoint: "/v2/insights",
     urnType: "urn:entity:artist",
     keyParams: ["signal.interests.entities=<Repertoire ids>", "feature.explainability=true", "take=20", "no location"],
@@ -422,15 +422,15 @@ export const dataPoints: readonly DataPoint[] = [
   },
   {
     id: "d_taste_artists",
-    label: "Artists to learn songs from",
-    sub: "your Repertoire’s fans, and the crowd at your pitches",
+    label: "Artists to learn from",
+    sub: "fans of your songs",
     fields: ["entity_id", "name", "query.affinity", "query.explainability", "query.measurements.audience_growth"],
     features: [{ id: "f_learn", how: "the artists a learn run chooses songs from, each with who explains it" }],
   },
   {
     id: "d_tracks",
     label: "Songs by those artists",
-    sub: "from Spotify, Last.fm as backup",
+    sub: "from Spotify",
     fields: ["track title", "artist", "release year", "duration"],
     features: [{ id: "f_learn", how: "the songs a run picks from; earlier suggestions are left out here" }],
   },
@@ -491,7 +491,7 @@ export const features: readonly Feature[] = [
   {
     id: "f_learn",
     label: "Songs to learn",
-    sub: "a run that scouts new songs",
+    sub: "a scouting run",
     location: "Repertoire page: Songs to learn",
     how: "combined",
     with: ["Spotify", "Last.fm", "Claude Sonnet (the learn agent)"],

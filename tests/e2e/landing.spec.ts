@@ -32,4 +32,16 @@ test.describe("landing, as the deck draws it", () => {
     await expect(numbers.nth(2)).toHaveText("0on a rerun");
     await expect(page.getByTestId("brain-teaser").getByText("parts of your plan")).toHaveCount(0);
   });
+
+  test("each act card says when it plays, who it sounds like and what it plays (B-022)", async ({ page }) => {
+    await page.goto("/");
+    const cards = page.locator('[data-slot="example-act-card"]');
+    await expect(cards).toHaveCount(3);
+    await expect(cards.nth(0)).toContainText("Saturday · 6–9 pm");
+    await expect(cards.nth(0)).toContainText("Sounds like Paul Kelly, Courtney Barnett, Vance Joy");
+    await expect(cards.nth(0)).toContainText("Plays How to Make Gravy, Dumb Things, Depreston");
+    await expect(cards.nth(1)).toContainText("Friday · 5–8 pm");
+    await expect(cards.nth(2)).toContainText("Sunday · 12–3 pm");
+    await expect(cards.nth(2)).toContainText("Plays Big Jet Plane, Bloom, The Boxer");
+  });
 });

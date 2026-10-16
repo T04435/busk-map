@@ -8,7 +8,7 @@ import { OwnRedirect } from "@/components/landing/own-redirect";
 import { Warmup } from "@/components/landing/warmup";
 import { WhatYouGet } from "@/components/landing/what-you-get";
 import { Badge } from "@/components/ui/badge";
-import { EXAMPLES } from "@/lib/examples";
+import { EXAMPLES, exampleWhen, examplePlays } from "@/lib/examples";
 import { CALLS_ON_RERUN, CALLS_PER_NEW_BUSK, callKinds } from "@/lib/qloo-map";
 import { SOURCES } from "@/lib/sources";
 
@@ -135,7 +135,13 @@ export default function Home() {
             {EXAMPLES.map((example) => (
               <li key={example.id}>
                 {/* No prefetch (ExampleActCard): each click makes a new plan link and starts a fresh agent run (presets are inputs only). */}
-                <ExampleActCard name={example.label} blurb={example.blurb} soundsLike={example.performer.artists.slice(0, 3).join(", ")} href={`/plan?example=${example.id}`} />
+                <ExampleActCard
+                  name={example.label}
+                  when={exampleWhen(example)}
+                  soundsLike={example.performer.artists.slice(0, 3).join(", ")}
+                  plays={examplePlays(example)}
+                  href={`/plan?example=${example.id}`}
+                />
               </li>
             ))}
           </ul>

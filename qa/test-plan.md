@@ -12,7 +12,8 @@ QA verifies independently of DEV's tests. QA reports facts; the user decides sco
 |---|---|---|
 | Static + unit + build | `pnpm check` | typecheck, lint, vitest with coverage, fixture provenance, build |
 | Offline e2e (DEV's suite) | `CI=1 PORT=<free port> pnpm exec playwright test --reporter=list` | `CI=1` turns `reuseExistingServer` off, so the run fails instead of reusing a server it didn't start. DEV's global setup also aborts unless `GET /api/health` reports `offline: true` (B-001). |
-| QA e2e | `CI=1 PORT=<free port> pnpm exec playwright test tests/e2e/qa/` | The QA money specs assert offline mode, memory stores and no `live` data source. |
+| QA e2e at 390/768/1440 | `CI=1 PORT=<free port> pnpm exec playwright test --config qa/playwright.config.ts` (add `QA_SHOTS=<scratch dir>` to keep every screenshot) | Every QA spec runs at all three widths (projects `w390`, `w768`, `w1440`). `layout.spec.ts` renders each screen, fails on horizontal scroll, content cut off at the right edge, or console errors, and saves a full-page screenshot that QA looks at. |
+| QA e2e (DEV config) | `CI=1 PORT=<free port> pnpm exec playwright test tests/e2e/qa/` | The QA money specs assert offline mode, memory stores and no `live` data source. |
 | Clean-export build (every round) | `git archive HEAD \| tar -x -C <scratch>/export-<sha>`, then in it `pnpm install --offline --frozen-lockfile && pnpm typecheck && pnpm build` | Proves the committed tree builds without untracked or local files (no env files are in the export). Delete the export afterwards |
 | QA unit (pure logic) | `pnpm exec vitest run --config qa/vitest.config.mts` | Standalone config; only `qa/unit/**` |
 | Manual walk | `NEXT_DIST_DIR=.next-qa pnpm build`, then `NEXT_DIST_DIR=.next-qa BUSKMAP_OFFLINE=1 BUSKMAP_ALLOW_FAULTS=1 PORT=3110 pnpm start --port 3110` (own build dir, so DEV's builds can't break it) | Desktop 1440×900 and phone (Pixel 7 / 375×812). Stop the server when done. |
@@ -95,8 +96,8 @@ Never: copy env files, print secrets, point anything at production, enter creden
 - Buckets show where plain AI agrees/differs; scores unchanged.
 - `/api/baseline-stats` reports agent-vs-engine divergence and plain-AI uniqueness (live store only).
 
-## 7. Mobile and desktop
-- Every judge path at 1440×900 and 375×812 (Pixel 7 in Playwright).
+## 7. Screen widths (user rule)
+- Every screen at **390, 768 and 1440 px**, actually rendered and looked at. A screen that breaks at any of the three fails the round.
 - No horizontal scroll, tap targets ≥ 24 px, map usable or list alternative reachable, no overlapping sticky UI.
 
 ## 8. Accessibility (WCAG 2.2 AA)

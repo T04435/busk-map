@@ -26,8 +26,12 @@ export type ComparisonStats = {
   agentRuns: number;
   /** Runs where Claude's top 3 isn't the engine's top 3: a different set or a different order (the divergence). */
   agentDiffersRuns: number;
-  /** agentDiffersRuns / agentRuns, 0–1 (null with no agent runs): the divergence rate. */
+  /** The divergence rate, 0–1: differing runs over agentSampleSize (null when the sample is empty). */
   agentDiffersRate: number | null;
+  /** n for agentDiffersRate: agent runs that have both an engine top 3 and an agent top 3 (each non-empty). */
+  agentSampleSize: number;
+  /** ISO dates (UTC) of the earliest and latest runs in that sample; null when it is empty. */
+  agentDateRange: { from: string; to: string } | null;
   /** Runs where Claude's set differs (a pick outside the engine's top 3); the rest of agentDiffersRuns only reorder. */
   agentDifferentSetRuns: number;
   /** Positions (of 3) where Claude's pick isn't the engine's pick there, averaged over agent runs. */
@@ -44,6 +48,8 @@ export type ComparisonStats = {
  * (run key). Ids and engine scores only.
  */
 export type AgentRecord = {
+  /** When it was recorded (ms). Postgres uses the row's created_at. */
+  at?: number;
   runKey: string;
   performerKey: string;
   city: string;
@@ -88,17 +94,33 @@ const averages = (r: ComparisonRecord) => {
 
 type AgentStats = Pick<
   ComparisonStats,
-  "agentRuns" | "agentDiffersRuns" | "agentDiffersRate" | "agentDifferentSetRuns" | "averagePositionsChanged" | "agentPicks" | "agentDifferentPicks" | "averageAgentScoreDelta"
+  | "agentRuns"
+  | "agentDiffersRuns"
+  | "agentDiffersRate"
+  | "agentSampleSize"
+  | "agentDateRange"
+  | "agentDifferentSetRuns"
+  | "averagePositionsChanged"
+  | "agentPicks"
+  | "agentDifferentPicks"
+  | "averageAgentScoreDelta"
 >;
 
+const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+
 /** Agent v2 against the engine, from the recorded top 3s (both stores compute it here). */
-export function agentStatsOf(agents: Pick<AgentRecord, "engineTop" | "agentTop">[]): AgentStats {
+export function agentStatsOf(agents: Pick<AgentRecord, "engineTop" | "agentTop" | "at">[]): AgentStats {
   const records = agents.map((r) => ({ ...r, runKey: "", performerKey: "", city: "", slot: "" }));
   const differs = records.filter(agentDiffers).length;
+  // The divergence rate's sample: runs with both top 3s recorded.
+  const sample = records.filter((r) => r.engineTop.length > 0 && r.agentTop.length > 0);
+  const times = sample.flatMap((r) => (typeof r.at === "number" && Number.isFinite(r.at) ? [r.at] : []));
   return {
     agentRuns: records.length,
     agentDiffersRuns: differs,
-    agentDiffersRate: records.length === 0 ? null : differs / records.length,
+    agentDiffersRate: sample.length === 0 ? null : sample.filter(agentDiffers).length / sample.length,
+    agentSampleSize: sample.length,
+    agentDateRange: times.length === 0 ? null : { from: isoDay(Math.min(...times)), to: isoDay(Math.max(...times)) },
     agentDifferentSetRuns: records.filter(differentSet).length,
     averagePositionsChanged: mean(records.map(positionsChanged)),
     agentPicks: records.reduce((n, r) => n + r.agentTop.length, 0),
@@ -143,9 +165,10 @@ export class MemoryComparisonStore implements ComparisonStore {
     }
   }
   async recordAgent(record: AgentRecord) {
+    const stamped = { ...record, at: record.at ?? Date.now() };
     const at = this.agents.findIndex((a) => a.runKey === record.runKey);
-    if (at === -1) this.agents.push(record);
-    else this.agents[at] = record;
+    if (at === -1) this.agents.push(stamped);
+    else this.agents[at] = stamped;
   }
   async stats() {
     return statsOf(this.records, this.agents);
@@ -213,7 +236,9 @@ export class PostgresComparisonStore implements ComparisonStore {
          FROM baseline_comparisons WHERE ours IS NOT NULL`,
     )) as { runs: number; picks: number; unique_picks: number; average_overlap: number | null; average_score_delta: number | null; runs_with_scored: number }[];
     // The agent part is computed from the recorded top 3s (ids and engine scores only; one row per plan).
-    const agentRows = (await this.sql.query(`SELECT agent FROM baseline_comparisons WHERE agent IS NOT NULL`)) as { agent: Pick<AgentRecord, "engineTop" | "agentTop"> }[];
+    const agentRows = (await this.sql.query(
+      `SELECT agent, (extract(epoch FROM created_at) * 1000)::float8 AS at FROM baseline_comparisons WHERE agent IS NOT NULL`,
+    )) as { agent: Pick<AgentRecord, "engineTop" | "agentTop">; at: number }[];
     const r = rows[0];
     return {
       runs: r.runs,
@@ -223,7 +248,7 @@ export class PostgresComparisonStore implements ComparisonStore {
       averageOverlap: r.average_overlap,
       averageScoreDelta: r.average_score_delta,
       runsWithScoredPlainSpots: r.runs_with_scored,
-      ...agentStatsOf(agentRows.map((row) => row.agent)),
+      ...agentStatsOf(agentRows.map((row) => ({ ...row.agent, at: row.at }))),
     };
   }
 }

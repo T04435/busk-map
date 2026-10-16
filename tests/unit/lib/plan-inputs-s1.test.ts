@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { planFormError } from "@/lib/form-errors";
 import { planRequestSchema, type PlanRequestInput } from "@/lib/plan-schema";
 import { parsePlanParams, planSearchParams } from "@/lib/plan-url";
-import { describeSlot, fixedSlotOf, isAnyTime, requestSlotSchema } from "@/lib/slot";
+import { describeSlot, isAnyTime, requestSlotSchema } from "@/lib/slot";
 import { parseWeekParams, weekSearchParams } from "@/lib/week-url";
 import { weekRequestSchema } from "@/lib/week-schema";
 
@@ -27,11 +27,8 @@ describe("request slot union (D1)", () => {
     expect(requestSlotSchema.safeParse({ date: "2026-10-17", any: false }).success).toBe(false);
     expect(requestSlotSchema.safeParse({ date: "2026-10-17" }).success).toBe(false);
   });
-  it("helpers: describe and a safe fixed stand-in", () => {
-    expect(describeSlot({ date: "2026-10-17", any: true })).toBe("Saturday 2026-10-17, any time");
-    expect(fixedSlotOf({ date: "2026-10-17", any: true })).toEqual({ date: "2026-10-17", startHour: 18, endHour: 21 });
-    const fixed = { date: "2026-10-17", startHour: 9, endHour: 11 };
-    expect(fixedSlotOf(fixed)).toBe(fixed);
+  it("helpers: describe", () => {
+    expect(describeSlot({ date: "2026-10-17", any: true })).toBe("Saturday 2026-10-17, any time, Busk Map picks the hours");
   });
 });
 

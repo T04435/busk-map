@@ -1,5 +1,5 @@
 import "server-only";
-import { formatHour, describeSlot, fixedSlotOf } from "@/lib/slot";
+import { formatHour, describeSlot, DEFAULT_SLOT_HOURS } from "@/lib/slot";
 import { titleCase } from "@/lib/text";
 import { venueDetail } from "@/lib/venue";
 import { planSchema, type Plan, type PlanPitch } from "@/lib/plan-schema";
@@ -49,8 +49,51 @@ export function templateWhy(pitch: ScoredPitch, weekday: string, startHour: numb
   return parts.join(" ") || "Scored on the data available for this slot.";
 }
 
-function toPlanPitch(pitch: ScoredPitch, why: string, whySource: PlanPitch["whySource"], setlist: PlanPitch["setlist"]): PlanPitch {
+/** "6 pm–9 pm". */
+export const windowLabel = (w: { startHour: number; endHour: number }) => `${formatHour(w.startHour)}–${formatHour(w.endHour)}`;
+
+/**
+ * Why this pitch's best window is the best one, from the window's evidence only (no model):
+ * "Best 6 pm–9 pm: typically about 1,840 people an hour at Bourke St Mall (estimate), the Forum crowd leaving at 9:45 pm, dry".
+ */
+export function windowWhy(pitch: ScoredPitch, weather: { hour: number; precipitationProbability: number | null }[] | null): string {
+  const w = pitch.window;
+  if (!w) return "";
+  const parts: string[] = [];
+  const sensor = pitch.evidence.sensor;
+  if (sensor && pitch.footfallSource === "sensor") parts.push(`typically about ${sensor.avgHourly.toLocaleString("en-AU")} people an hour at ${sensor.name} (estimate)`);
+  else if (sensor && pitch.footfallSource === "nearby-sensors") parts.push(`roughly ${sensor.avgHourly.toLocaleString("en-AU")} people an hour, estimated from nearby sensors such as ${sensor.name}`);
+  const event = pitch.evidence.events[0];
+  if (event) {
+    const time = TIME_FORMAT.format(new Date(event.moment === "leaving" ? event.end : event.start));
+    parts.push(`the ${event.name} crowd ${event.moment === "leaving" ? "leaving" : "arriving"} at ${time}${event.endEstimated && event.moment === "leaving" ? " (estimated)" : ""}`);
+  }
+  const rain = (weather ?? []).filter((h) => h.hour >= w.startHour && h.hour < w.endHour).flatMap((h) => (h.precipitationProbability === null ? [] : [h.precipitationProbability]));
+  if (rain.length > 0) {
+    const top = Math.max(...rain);
+    parts.push(top >= 50 ? `rain likely (up to ${top}%)` : top >= 25 ? `some rain risk (up to ${top}%)` : "dry");
+  }
+  return `Best ${windowLabel(w)}${parts.length ? `: ${parts.join(", ")}` : ""}`;
+}
+
+function toPlanPitch(
+  pitch: ScoredPitch,
+  why: string,
+  whySource: PlanPitch["whySource"],
+  setlist: PlanPitch["setlist"],
+  weather: { hour: number; precipitationProbability: number | null }[] | null,
+): PlanPitch {
   return {
+    window: pitch.window
+      ? {
+          startHour: pitch.window.startHour,
+          endHour: pitch.window.endHour,
+          label: windowLabel(pitch.window),
+          score: pitch.score,
+          why: windowWhy(pitch, weather),
+          runnersUp: pitch.window.runnersUp,
+        }
+      : null,
     id: pitch.id,
     name: pitch.name,
     lat: pitch.lat,
@@ -181,8 +224,9 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
   const pitches = await Promise.all(
     (qlooDown ? [] : top).map(async (pitch) => {
       const fromAi = aiWhy.get(pitch.id);
-      const why = fromAi || templateWhy(pitch, context.weekday, fixedSlotOf(request.slot).startHour, fixedSlotOf(request.slot).endHour);
-      return toPlanPitch(pitch, why, fromAi ? "ai" : "template", await context.setlistFor(pitch));
+      const slotOf = context.slotFor(pitch);
+      const why = fromAi || templateWhy(pitch, context.weekday, slotOf.startHour, slotOf.endHour);
+      return toPlanPitch(pitch, why, fromAi ? "ai" : "template", await context.setlistFor(pitch), weather?.hours ?? null);
     }),
   );
   const topIds = new Set(top.map((p) => p.id));
@@ -199,6 +243,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
 
   // Research totals: from the agent's tool outputs when its pitches are the plan, else from the engine's own data.
   const agentPlan = valid && options.toolResults !== undefined;
+  const anyTime = context.isAnyTime;
   const researchTotals = agentPlan
     ? fromToolOutputs(options.toolResults!)
     : fromEngine({
@@ -209,12 +254,17 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
         setlists: pitches.map((p) => p.setlist),
       });
 
+  // Any time: the plan's slot is the top pitch's window, so every reader of plan.slot still gets a real slot (D1, 2.4).
+  const planSlot = anyTime ? (top[0] && !qlooDown ? context.slotFor(top[0]) : { date: request.slot.date, ...DEFAULT_SLOT_HOURS }) : context.slotFor({});
+  if (anyTime) researchTotals.windows = context.windows().length;
+
   const plan: Plan = {
     version: 1,
     city: request.city,
     cityName: city.name,
-    slot: fixedSlotOf(request.slot),
+    slot: planSlot,
     slotLabel: describeSlot(request.slot),
+    anyTime,
     performerName: request.performer.name,
     permit: request.permit,
     qlooMode: qloo.qlooMode(context.adapters),

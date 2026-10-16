@@ -8,7 +8,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Separator } from "@/components/ui/separator";
 import { EXAMPLES } from "@/lib/examples";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
-import { fixedSlotOf, nextSlotDate, weekdayOf } from "@/lib/slot";
+import { isAnyTime, nextAnyTimeDate, nextSlotDate, weekdayOf } from "@/lib/slot";
 import { loadStoredPlan } from "@/server/plans";
 import { playlistViewForCookie } from "@/server/playlist/read";
 import { SOURCES } from "@/lib/sources";
@@ -122,13 +122,17 @@ async function OwnActForm({ searchParams }: Pick<PageProps<"/">, "searchParams">
   const repertoire = await playlistViewForCookie((await headers()).get("cookie"));
   if (!stored) return <PerformerForm defaultDate={nextSlotDate("saturday", 18, 21, today, hour)} today={today} repertoire={repertoire} />;
   const { performer, permit } = stored.request;
-  const slot = fixedSlotOf(stored.request.slot);
+  const slot = stored.request.slot;
+  // A plan made for "any time" opens the form on any time, on the next date a window can still start.
+  const when = isAnyTime(slot)
+    ? { defaultDate: nextAnyTimeDate(today, hour), prefill: { performer, permit, anyTime: true as const } }
+    : { defaultDate: nextSlotDate(weekdayOf(slot.date), slot.startHour, slot.endHour, today, hour), prefill: { performer, permit, startHour: slot.startHour, endHour: slot.endHour } };
   return (
     <PerformerForm
       key={stored.id}
-      defaultDate={nextSlotDate(weekdayOf(slot.date), slot.startHour, slot.endHour, today, hour)}
+      defaultDate={when.defaultDate}
       today={today}
-      prefill={{ performer, permit, startHour: slot.startHour, endHour: slot.endHour }}
+      prefill={when.prefill}
       repertoire={repertoire}
     />
   );

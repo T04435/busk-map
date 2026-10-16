@@ -6,3 +6,4 @@ export * from "./pitch-score";
 export * from "./setlist";
 export * from "./week";
 export * from "./baseline";
+export * from "./windows";

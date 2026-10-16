@@ -2,11 +2,11 @@ import "server-only";
 import { tool } from "ai";
 import { z } from "zod";
 import { distanceM, type LatLon } from "@/lib/geo";
-import { fixedSlotOf, formatHour } from "@/lib/slot";
+import { ANY_TIME_DAY, formatHour } from "@/lib/slot";
 import { nameKey } from "@/lib/text";
 import * as qloo from "@/server/adapters/qloo";
 import { getTypicalFootfall } from "@/server/adapters/footfall";
-import { candidateAt, openDuring, pickTopPitches, scorePitch, type Candidate, type KnownPlace, type ScoredPitch } from "@/server/scoring";
+import { candidateAt, openDuring, pickTopPitches, typicalForSlot, type Candidate, type KnownPlace, type ScoredPitch } from "@/server/scoring";
 import { USUAL_HOTSPOTS } from "@/server/data/spots";
 import type { PlanContext } from "./context";
 import { NumberBag } from "./number-bag";
@@ -208,17 +208,24 @@ function buildTools(ctx: PlanContext, state: AgentState) {
     return output;
   };
 
+  /** The best window of a pitch the agent pointed at (by pitchId), when the request is any time and the pitch is scored. */
+  const windowOfPitch = async (pitchId: string | null | undefined) => {
+    if (!pitchId || !ctx.isAnyTime) return null;
+    const p = state.pool.get(pitchId) ?? (await ctx.ranked()).find((x) => x.id === pitchId);
+    return p?.window ?? null;
+  };
+
   /** The engine's pool plus the agent's additions, scored with the same inputs and weights. */
   async function scorePool(): Promise<{ ranked: ScoredPitch[]; engineTop: ScoredPitch[] }> {
-    const [ranked, inputs] = await Promise.all([ctx.ranked(), ctx.scoreInputs()]);
-    const additions = [...state.added].map((id) => scorePitch(state.checked.get(id)!, inputs, ctx.weights));
+    const [ranked, scoredAdditions] = await Promise.all([ctx.ranked(), Promise.all([...state.added].map((id) => ctx.scoreCandidate(state.checked.get(id)!)))]);
+    const additions = scoredAdditions.filter((p): p is ScoredPitch => p !== null);
     const all = [...ranked, ...additions].sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
     for (const p of all) state.pool.set(p.id, p);
     state.scored = true;
     return { ranked: all, engineTop: pickTopPitches(ranked, 3) };
   }
 
-  return {
+  const tools = {
     taste_map: tool({
       description:
         "Qloo heatmap: where in the city the act's taste concentrates. Optionally signal only some of the act's matched artists, or zoom into one part of the planning area. Returns the strongest cells with the nearest known place.",
@@ -311,13 +318,16 @@ function buildTools(ctx: PlanContext, state: AgentState) {
       inputSchema: z.object({
         near: whereSchema,
         radiusM: z.number().int().min(200).max(1500).optional().describe("Default 400."),
-        openAt: z.number().int().min(0).max(23).optional().describe("Hour of the slot's day, 0–23; default the slot's start."),
+        openAt: z.number().int().min(0).max(23).optional().describe("Hour of the slot's day, 0–23; default the slot's start (any time: the pitch's best window, else the day's 10 am to 10 pm)."),
       }),
       execute: async ({ near, radiusM, openAt }) => {
         const point = await where(near);
         const radius = snapRadius(radiusM, 400);
         const snapped = snapPoint(point);
-        const hour = openAt ?? fixedSlotOf(ctx.request.slot).startHour;
+        const best = await windowOfPitch(point.pitchId);
+        // Any time: open at the pitch's best window start; with no window known, open at any point of the day's 10 am to 10 pm.
+        const dayWide = ctx.isAnyTime && openAt === undefined && !best;
+        const hour = openAt ?? best?.startHour ?? (ctx.isAnyTime ? ANY_TIME_DAY.startHour : ctx.slotFor({}).startHour);
         const entityIds = await ids();
         const found = await ctx.trackQloo(`agent:places:${snapped.lat},${snapped.lon},${radius}`, () =>
           qloo.busyPlaces(entityIds, snapped, radius, ctx.weekday, ctx.adapters),
@@ -325,7 +335,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         const rows = found.slice(0, 10).map((p) => ({
           name: p.name,
           distanceM: Math.round(distanceM(point, p)),
-          open: openDuring(p.hours, ctx.weekday, hour, hour + 1),
+          open: dayWide ? openDuring(p.hours, ctx.weekday, ANY_TIME_DAY.startHour, ANY_TIME_DAY.endHour) : openDuring(p.hours, ctx.weekday, hour, hour + 1),
           popularity: r2(p.popularity),
           affinity: r2(p.affinity),
           liveMusic: p.liveMusic,
@@ -333,7 +343,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
           keywords: p.keywords.slice(0, 3).join(", "),
         }));
         return seen({
-          summary: `${found.length} places within ${radius} m of ${point.label} open ${ctx.weekday}; ${rows.filter((r) => r.open === "open").length} of the top ${rows.length} open at ${formatHour(hour)}`,
+          summary: `${found.length} places within ${radius} m of ${point.label} open ${ctx.weekday}; ${rows.filter((r) => r.open === "open").length} of the top ${rows.length} open ${dayWide ? `between ${formatHour(ANY_TIME_DAY.startHour)} and ${formatHour(ANY_TIME_DAY.endHour)}` : `at ${formatHour(hour)}`}`,
           at: at(point),
           radiusM: radius,
           hour,
@@ -348,14 +358,16 @@ function buildTools(ctx: PlanContext, state: AgentState) {
       inputSchema: z.object({
         near: whereSchema,
         radiusM: z.number().int().min(200).max(1500).optional().describe("Default 800."),
-        fromHour: z.number().int().min(0).max(23).optional().describe("Default one hour before the slot."),
-        toHour: z.number().int().min(1).max(24).optional().describe("Default the slot's end."),
+        fromHour: z.number().int().min(0).max(23).optional().describe("Default one hour before the slot (any time: the pitch's best window, else the whole day from 9 am)."),
+        toHour: z.number().int().min(1).max(24).optional().describe("Default the slot's end (any time: the pitch's best window, else 10 pm)."),
       }),
       execute: async ({ near, radiusM, fromHour, toHour }) => {
         const point = await where(near);
         const radius = snapRadius(radiusM, 800);
-        const from = fromHour ?? Math.max(0, fixedSlotOf(ctx.request.slot).startHour - 1);
-        const to = toHour ?? fixedSlotOf(ctx.request.slot).endHour;
+        const best = await windowOfPitch(point.pitchId);
+        const slot = best ?? (ctx.isAnyTime ? ANY_TIME_DAY : ctx.slotFor({}));
+        const from = fromHour ?? Math.max(0, slot.startHour - 1);
+        const to = toHour ?? slot.endHour;
         const [events, taste] = await Promise.all([ctx.events(), ctx.eventTaste()]);
         const hourOf = (iso: string) => Number(new Intl.DateTimeFormat("en-AU", { hour: "numeric", hour12: false, timeZone: ctx.city.timeZone }).format(new Date(iso))) % 24;
         const time = (iso: string) => new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", timeZone: ctx.city.timeZone }).format(new Date(iso));
@@ -388,15 +400,24 @@ function buildTools(ctx: PlanContext, state: AgentState) {
       description: "Typical pedestrians per hour at the sensors nearest a point, for the slot's weekday at the hour you give (average of recent weeks; an estimate).",
       inputSchema: z.object({
         at: whereSchema,
-        hour: z.number().int().min(0).max(23).optional().describe("Default the slot's start."),
+        hour: z.number().int().min(0).max(23).optional().describe("Default the slot's start (any time: the pitch's best window start, else the busiest hour of the day, 10 am to 10 pm)."),
       }),
       execute: async ({ at: w, hour }) => {
         const point = await where(w);
-        const h = hour ?? fixedSlotOf(ctx.request.slot).startHour;
+        const best = await windowOfPitch(point.pitchId);
         const [typical, slot] = await Promise.all([
           ctx.trackFootfallTypical(() => getTypicalFootfall(ctx.request.city, 0, 24, ctx.adapters, ctx.today)),
           ctx.footfall(),
         ]);
+        const nearestSensor = typical.sensors.map((s) => ({ s, d: distanceM(point, s) })).filter((x) => x.d <= 600).sort((a, b) => a.d - b.d)[0]?.s;
+        // Any time with no window known: the nearest sensor's busiest hour of the day.
+        const peakHour = nearestSensor
+          ? Array.from({ length: ANY_TIME_DAY.endHour - ANY_TIME_DAY.startHour }, (_, i) => ANY_TIME_DAY.startHour + i).reduce(
+              (top, hh) => ((nearestSensor.byWeekdayHour[ctx.weekday]?.[hh] ?? -1) > (nearestSensor.byWeekdayHour[ctx.weekday]?.[top] ?? -1) ? hh : top),
+              ANY_TIME_DAY.startHour,
+            )
+          : ANY_TIME_DAY.startHour;
+        const h = hour ?? best?.startHour ?? (ctx.isAnyTime ? peakHour : ctx.slotFor({}).startHour);
         const slotAvg = new Map(slot.sensors.map((s) => [s.id, s.avgHourly]));
         const rows = typical.sensors
           .map((s) => ({ s, d: distanceM(point, s) }))
@@ -407,7 +428,14 @@ function buildTools(ctx: PlanContext, state: AgentState) {
             sensor: s.name,
             distanceM: Math.round(d),
             peopleThisHour: s.byWeekdayHour[ctx.weekday]?.[h] !== undefined ? Math.round(s.byWeekdayHour[ctx.weekday][h]) : null,
-            slotAveragePerHour: slotAvg.get(s.id) != null ? Math.round(slotAvg.get(s.id)!) : null,
+            slotAveragePerHour: best
+              ? (() => {
+                  const v = typicalForSlot(s, ctx.weekday, best.startHour, best.endHour);
+                  return v === null ? null : Math.round(v);
+                })()
+              : slotAvg.get(s.id) != null
+                ? Math.round(slotAvg.get(s.id)!)
+                : null,
           }));
         return seen({
           summary:
@@ -583,6 +611,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
       },
     }),
   };
+  return tools;
 }
 
 type Problem = { kind: "pool" | "count" | "spacing" | "numbers"; message: string; numbers?: string[] };

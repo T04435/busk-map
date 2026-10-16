@@ -3,7 +3,7 @@ import { isPlanId, planPath } from "@/lib/plan-id";
 import { planRequestSchema, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
 import type { ParsedPlanUrl } from "@/lib/plan-url";
 import { serverNow } from "@/server/clock";
-import { isAnyTime, localToday, slotUtcRange, zonedHourToUtc, type RequestSlot } from "@/lib/slot";
+import { anyTimeWindowsLeft, isAnyTime, localHour, localToday, slotUtcRange, type RequestSlot } from "@/lib/slot";
 import { planKey } from "@/server/agent/plan-store";
 import { withFinalTotals } from "@/server/agent/runs";
 import { CITIES } from "@/server/cities";
@@ -91,9 +91,12 @@ export function snapshotEvents(s: PlanSnapshot): PlanStreamEvent[] {
 
 /** Whether the slot has ended (city time). */
 export function slotPassed(slot: RequestSlot, timeZone: string, now = serverNow().getTime()): boolean {
-  // Any time: the date's last window ends at 10 pm (S2 refines this for today).
-  const range = isAnyTime(slot) ? { end: zonedHourToUtc(slot.date, 22, timeZone) } : slotUtcRange(slot, timeZone);
-  return range.end.getTime() <= now;
+  // Any time: passed when no window is left, i.e. the date is past, or today with no window starting after the current hour (D2).
+  if (isAnyTime(slot)) {
+    const at = new Date(now);
+    return anyTimeWindowsLeft(slot.date, localToday(timeZone, at), localHour(timeZone, at)).length === 0;
+  }
+  return slotUtcRange(slot, timeZone).end.getTime() <= now;
 }
 
 /** The developer path `?fresh=1` (a new agent run, bypassing the stored one): never in production builds. */

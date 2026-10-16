@@ -100,6 +100,22 @@ export const planPitchSchema = z.object({
   }),
   why: z.string(),
   whySource: z.enum(["ai", "template"]),
+  /**
+   * Any-time plans only: the 3-hour window the engine scored this pitch best in, why (from the window's evidence), and the
+   * next two best windows. Null for a fixed slot and for plans stored before it.
+   */
+  window: z
+    .object({
+      startHour: z.number().int(),
+      endHour: z.number().int(),
+      /** "6 pm–9 pm". */
+      label: z.string(),
+      score: z.number(),
+      why: z.string(),
+      runnersUp: z.array(z.object({ startHour: z.number().int(), endHour: z.number().int(), score: z.number() })),
+    })
+    .nullable()
+    .default(null),
   evidence: z.object({
     /** With footfallSource "nearby-sensors", avgHourly is the estimate and name the nearest sensor. */
     sensor: z.object({ name: z.string(), avgHourly: z.number() }).nullable(),
@@ -169,6 +185,8 @@ export const planSchema = z.object({
   cityName: z.string(),
   slot: slotSchema,
   slotLabel: z.string(),
+  /** The request was "any time": `slot` is the top pitch's window and each pitch carries its own `window`. */
+  anyTime: z.boolean().default(false),
   performerName: z.string(),
   permit: z.enum(PERMITS),
   qlooMode: z.enum(["live", "synthetic"]),

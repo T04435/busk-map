@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EstimateLabel } from "@/components/plan/estimate-label";
 import type { PlanPitch } from "@/lib/plan-schema";
+import { formatHour } from "@/lib/slot";
 import { explainedByLabel, type ExplanationsModel } from "@/lib/sources";
 import { venueDetail } from "@/lib/venue";
 
@@ -53,6 +54,12 @@ export function PitchCard({ pitch, rank, model = null }: { pitch: PlanPitch; ran
         </div>
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
+        {pitch.window && (
+          <p data-testid="pitch-window" className="text-muted-foreground">
+            {pitch.window.why}
+            {pitch.window.runnersUp.length > 0 && ` (next best: ${pitch.window.runnersUp.map((w) => `${formatHour(w.startHour)}–${formatHour(w.endHour)}`).join(", ")})`}.
+          </p>
+        )}
         <section aria-label="Why this crowd">
           <h3 className="font-medium">Why this crowd</h3>
           <p className="text-muted-foreground">{pitch.why}</p>

@@ -122,6 +122,19 @@ describe("compareWithBaseline", () => {
     expect(result.picks[0]).toMatchObject({ status: "ours", pitchId: first.id, score: first.score, beatsOurs: false });
   });
 
+  it("any time: the plain AI's own spot is scored by the caller's best-window scorer, and a spot ruled out stays not-legal", () => {
+    const base = inputs();
+    const scoreCandidate = (c: Candidate) => ({ ...rankPitches([c], base.scoreInputs!, base.weights)[0], score: 77 });
+    const result = compareWithBaseline(
+      [
+        { name: "A brand new corner", why: "new", ...north(1500) },
+        { name: "Degraves St", why: "laneway" },
+      ],
+      { ...base, scoreInputs: undefined, scoreCandidate },
+    );
+    expect(result.picks.map((p) => [p.status, p.score])).toEqual([["scored", 77], ["not-legal", null]]);
+  });
+
   it("says plainly when the plain AI's spot scores higher than one of Busk Map's picks", () => {
     const base = inputs();
     // Pretend our picks were the two weakest: the square now beats them.

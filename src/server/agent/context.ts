@@ -2,12 +2,12 @@ import "server-only";
 import type { BBox } from "@/lib/geo";
 import type { TrendRow } from "@/server/adapters/qloo";
 import { ageLabel } from "@/lib/age";
-import { addDays, fixedSlotOf, slotUtcRange, weekdayOf } from "@/lib/slot";
+import { addDays, ANY_TIME_DAY, anyTimeWindowsLeft, DEFAULT_SLOT_HOURS, isAnyTime, slotUtcRange, weekdayOf, zonedHourToUtc, type Slot, type TimeWindow } from "@/lib/slot";
 import { nameKey, trackKey } from "@/lib/text";
 import type { PlanRequest } from "@/lib/plan-schema";
 import type { AdapterContext, AdapterName, AdapterResult } from "@/server/adapters/core";
-import { getEvents } from "@/server/adapters/events";
-import { getFootfall } from "@/server/adapters/footfall";
+import { getEvents, getEventsBetween, EVENTS_LOOKBACK_HOURS } from "@/server/adapters/events";
+import { getFootfall, getTypicalFootfall, type FootfallData } from "@/server/adapters/footfall";
 import { getPitches } from "@/server/adapters/pitches";
 import * as qloo from "@/server/adapters/qloo";
 import { findReleaseYears } from "@/server/adapters/repertoire";
@@ -22,12 +22,19 @@ import {
   normalizeWeights,
   pickTopPitches,
   rankPitches,
+  rankPitchesAnyTime,
+  scorePitch,
+  scorePitchAnyTime,
+  typicalForSlot,
+  footfallReferenceOf,
+  type AnyTimeBase,
+  type Candidate,
   type RepertoireSong,
   type ScoreInputs,
   type ScoredPitch,
   type Weights,
 } from "@/server/scoring";
-import { serverToday } from "@/server/clock";
+import { serverLocalNow, serverToday } from "@/server/clock";
 
 /** Search radius for busy places, from the city centre. Covers the planning area. */
 export const PLACES_RADIUS_M = 2000;
@@ -92,12 +99,39 @@ export class PlanContext {
   /** Things the plan should tell the performer, e.g. that a search was widened. */
   readonly notes: string[] = [];
 
-  constructor(request: PlanRequest, adapters: AdapterContext, today?: string) {
+  /** The city's current hour, for dropping any-time windows that have started (only matters on today's date). */
+  private readonly nowHour: number;
+
+  constructor(request: PlanRequest, adapters: AdapterContext, today?: string, nowHour?: number) {
     this.request = request;
     this.adapters = adapters;
     this.city = CITIES[request.city];
     this.today = today ?? serverToday(this.city.timeZone);
+    this.nowHour = nowHour ?? serverLocalNow(this.city.timeZone).hour;
     this.weights = normalizeWeights(request.weights);
+  }
+
+  /** Whether the request is "any time": the engine picks each pitch's window (plan-inputs-architecture.md 2). */
+  get isAnyTime(): boolean {
+    return isAnyTime(this.request.slot);
+  }
+
+  /** The any-time windows still ahead on the request's date (D2). Empty for a fixed slot. */
+  windows(): TimeWindow[] {
+    return isAnyTime(this.request.slot) ? anyTimeWindowsLeft(this.request.slot.date, this.today, this.nowHour) : [];
+  }
+
+  /** The fixed slot of a fixed request. Any-time code must not call it. */
+  private fixedSlot(): Slot {
+    if (isAnyTime(this.request.slot)) throw new Error("fixedSlot() on an any-time request");
+    return this.request.slot;
+  }
+
+  /** The slot a pitch is played in: its best window for any time, else the request's slot. */
+  slotFor(pitch: { window?: { startHour: number; endHour: number } }): Slot {
+    if (!isAnyTime(this.request.slot)) return this.request.slot;
+    const w = pitch.window ?? DEFAULT_SLOT_HOURS;
+    return { date: this.request.slot.date, startHour: w.startHour, endHour: w.endHour };
   }
 
   private once<T>(key: string, load: () => Promise<T>): Promise<T> {
@@ -250,8 +284,25 @@ export class PlanContext {
     return this.track("crowd", () => qloo.crowdProfile(ids, this.adapters));
   }
 
-  footfall() {
-    return this.track("footfall", () => getFootfall(this.request.city, fixedSlotOf(this.request.slot), this.adapters, this.today));
+  /** Typical foot traffic by weekday and hour, loaded once (the agent's footfall_at and any time's windows share it). */
+  typicalFootfall() {
+    return this.trackFootfallTypical(() => getTypicalFootfall(this.request.city, 0, 24, this.adapters, this.today));
+  }
+
+  footfall(): Promise<FootfallData> {
+    if (isAnyTime(this.request.slot)) {
+      // Any time: the sensors with their typical average over the 10 am to 10 pm day (one sensor request, shared with footfall_at).
+      return this.once("footfallDay", async () => {
+        const typical = await this.typicalFootfall();
+        return {
+          level: typical.level,
+          baselineDates: [],
+          liveAsOf: null,
+          sensors: typical.sensors.map((s) => ({ id: s.id, name: s.name, lat: s.lat, lon: s.lon, avgHourly: typicalForSlot(s, this.weekday, ANY_TIME_DAY.startHour, ANY_TIME_DAY.endHour), samples: 0, liveLastHour: null })),
+        };
+      });
+    }
+    return this.track("footfall", () => getFootfall(this.request.city, this.fixedSlot(), this.adapters, this.today));
   }
 
   pitchData() {
@@ -259,7 +310,14 @@ export class PlanContext {
   }
 
   events() {
-    return this.track("events", () => getEvents(this.request.city, fixedSlotOf(this.request.slot), this.adapters));
+    if (isAnyTime(this.request.slot)) {
+      // The whole day: events starting from the lookback before 10 am to an hour past the last window's end.
+      const { date } = this.request.slot;
+      const from = zonedHourToUtc(date, ANY_TIME_DAY.startHour - EVENTS_LOOKBACK_HOURS, this.city.timeZone).toISOString();
+      const to = zonedHourToUtc(date, ANY_TIME_DAY.endHour + 1, this.city.timeZone).toISOString();
+      return this.track("events", () => getEventsBetween(this.request.city, from, to, this.adapters));
+    }
+    return this.track("events", () => getEvents(this.request.city, this.fixedSlot(), this.adapters));
   }
 
   /**
@@ -294,7 +352,9 @@ export class PlanContext {
   }
 
   weather() {
-    return this.track("weather", () => getWeather(this.request.city, fixedSlotOf(this.request.slot), this.adapters, this.today));
+    // Any time: the day's hours, 10 am to 10 pm.
+    const slot = isAnyTime(this.request.slot) ? { date: this.request.slot.date, ...ANY_TIME_DAY } : this.fixedSlot();
+    return this.track("weather", () => getWeather(this.request.city, slot, this.adapters, this.today));
   }
 
   /** Last.fm top tracks for the repertoire's artists and the rising artists. */
@@ -361,7 +421,9 @@ export class PlanContext {
     });
   }
 
+  /** The engine's inputs for the fixed slot. */
   async scoreInputs(): Promise<ScoreInputs> {
+    const slot = this.fixedSlot();
     const [cells, footfall, places, rawEvents, weather, eventTaste] = await Promise.all([
       this.tasteCells(),
       this.footfall(),
@@ -371,7 +433,7 @@ export class PlanContext {
       this.eventTaste(),
     ]);
     const events = rawEvents.map((e) => ({ ...e, tasteMatch: eventTaste.get(e.id) ?? null }));
-    const { start, end } = slotUtcRange(fixedSlotOf(this.request.slot), this.city.timeZone);
+    const { start, end } = slotUtcRange(slot, this.city.timeZone);
     return {
       cells,
       sensors: footfall.sensors,
@@ -379,15 +441,57 @@ export class PlanContext {
       events,
       weather: weather?.hours ?? null,
       weekday: this.weekday,
-      startHour: fixedSlotOf(this.request.slot).startHour,
-      endHour: fixedSlotOf(this.request.slot).endHour,
+      startHour: slot.startHour,
+      endHour: slot.endHour,
       slotStartMs: start.getTime(),
       slotEndMs: end.getTime(),
     };
   }
 
+  /** Any time: the day's data every window is scored from. */
+  anyTimeBase(): Promise<AnyTimeBase> {
+    return this.once("anyTimeBase", async () => {
+      const date = this.request.slot.date;
+      const [cells, typical, places, rawEvents, weather, eventTaste] = await Promise.all([
+        this.tasteCells(),
+        this.typicalFootfall(),
+        this.places(),
+        this.events(),
+        this.weather(),
+        this.eventTaste(),
+      ]);
+      const base: AnyTimeBase = {
+        weekday: this.weekday,
+        cells,
+        sensors: typical.sensors,
+        places,
+        events: rawEvents.map((e) => ({ ...e, tasteMatch: eventTaste.get(e.id) ?? null })),
+        weather: weather?.hours ?? null,
+        hourMs: (hour) => zonedHourToUtc(date, hour, this.city.timeZone).getTime(),
+      };
+      return base;
+    });
+  }
+
+  /** The foot-traffic scale shared by every window of the day. */
+  async footfallReference(): Promise<number> {
+    return footfallReferenceOf(await this.anyTimeBase());
+  }
+
+  /** One candidate scored as the engine scores its pool: at the fixed slot, or at its best window for any time. */
+  async scoreCandidate(candidate: Candidate): Promise<ScoredPitch | null> {
+    if (isAnyTime(this.request.slot)) return scorePitchAnyTime(candidate, await this.anyTimeBase(), this.windows(), this.weights);
+    return scorePitch(candidate, await this.scoreInputs(), this.weights);
+  }
+
   ranked(): Promise<ScoredPitch[]> {
     return this.once("ranked", async () => {
+      if (isAnyTime(this.request.slot)) {
+        const [{ candidates }, base] = await Promise.all([this.candidates(), this.anyTimeBase()]);
+        const windows = this.windows();
+        if (windows.length === 0) this.notes.push("No busking hours are left on that day, so nothing was scored. Plan again for another day.");
+        return rankPitchesAnyTime(candidates, base, windows, this.weights);
+      }
       const [{ candidates }, inputs] = await Promise.all([this.candidates(), this.scoreInputs()]);
       return rankPitches(candidates, inputs, this.weights);
     });

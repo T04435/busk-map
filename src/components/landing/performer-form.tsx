@@ -59,7 +59,7 @@ const toPicked = (track: TrackResult, own: boolean): PickedSong => ({
 });
 
 /** A stored plan's act, to plan again ("Plan again for a new date"): everything but the date. */
-export type FormPrefill = Pick<PlanRequest, "performer" | "permit"> & { startHour: number; endHour: number };
+export type FormPrefill = Pick<PlanRequest, "performer" | "permit"> & ({ startHour: number; endHour: number; anyTime?: false } | { anyTime: true });
 
 const prefillArtists = (prefill: FormPrefill | undefined): PickedArtist[] =>
   (prefill?.performer.artists ?? []).map((name) => ({ name, spotifyId: prefill?.performer.spotifyArtists.find((a) => a.name === name)?.id ?? null, image: null }));
@@ -102,8 +102,10 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
   const [repBusy, setRepBusy] = useState(false);
   const [songs, setSongs] = useState("");
   const [date, setDate] = useState(defaultDate);
-  const [from, setFrom] = useState(String(prefill?.startHour ?? 18));
-  const [to, setTo] = useState(String(prefill?.endHour ?? 21));
+  const [from, setFrom] = useState(String(prefill && !prefill.anyTime ? prefill.startHour : 18));
+  const [to, setTo] = useState(String(prefill && !prefill.anyTime ? prefill.endHour : 21));
+  // Only a "Plan again" of an any-time plan starts on any time; the picker for choosing it arrives with the UI stage.
+  const [anyTime, setAnyTime] = useState(prefill?.anyTime === true);
   const [permit, setPermit] = useState<string>(prefill?.permit ?? "general");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -222,7 +224,7 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
     }
     const input: PlanRequestInput = {
       city: "melbourne",
-      slot: { date, startHour: Number(from), endHour: Number(to) },
+      slot: anyTime ? { date, any: true } : { date, startHour: Number(from), endHour: Number(to) },
       permit: permit as PlanRequestInput["permit"],
       performer: { name: clean(name) || "My act", artists: artistList, spotifyArtists, songs: parsedSongs },
     };
@@ -330,6 +332,16 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
           <Label htmlFor="date">Date</Label>
           <DatePicker id="date" value={date} onChange={setDate} min={today} />
         </div>
+        {anyTime ? (
+          <div className="space-y-1 sm:col-span-2" data-testid="any-time-note">
+            <p className="text-sm font-medium">Any time</p>
+            <p className="text-sm text-muted-foreground">Busk Map picks the best hours for each pitch.</p>
+            <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={() => setAnyTime(false)}>
+              Pick the hours myself
+            </Button>
+          </div>
+        ) : (
+          <>
         <div className="space-y-1">
           <Label htmlFor="from">From</Label>
           <Select value={from} onValueChange={setFrom}>
@@ -360,6 +372,8 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
             </SelectContent>
           </Select>
         </div>
+          </>
+        )}
         <div className="space-y-1">
           <Label htmlFor="permit">Permit</Label>
           <Select value={permit} onValueChange={setPermit}>

@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import type { TrackResult } from "@/components/forms/repertoire-api";
 import { SongSearch } from "@/components/landing/song-search";
 import { Input } from "@/components/ui/input";
+import { Icon } from "@/components/honeycomb/icon";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import type { ActArtist } from "@/lib/track-rank";
 
@@ -66,20 +68,25 @@ export function RepertoireAdd({
       <div className="space-y-1">
         <Label htmlFor="spotify-profile">1. Your Spotify artist profile (optional)</Label>
         <p className="text-sm text-muted-foreground">If you release music, paste your profile link and we add your own songs, tagged Your song. No profile? Skip to step 2.</p>
-        <Input
-          id="spotify-profile"
-          value={link}
-          onChange={(e) => setLink(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              void load();
-            }
-          }}
-          onBlur={() => void load()}
-          placeholder="Spotify artist link"
-          autoComplete="off"
-        />
+        <InputGroup>
+          <InputGroupAddon>
+            <Icon name="spotify" size={18} />
+          </InputGroupAddon>
+          <InputGroupInput
+            id="spotify-profile"
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void load();
+              }
+            }}
+            onBlur={() => void load()}
+            placeholder="Spotify artist link"
+            autoComplete="off"
+          />
+        </InputGroup>
         {note && (
           <p className="text-sm text-muted-foreground" role="status">
             {note}

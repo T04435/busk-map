@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ArrowRight, Clock, MapPin, Music, Play, Scale } from "lucide-react";
 import { ExampleActCard } from "@/components/honeycomb/example-act-card";
 import { QlooLink } from "@/components/honeycomb/logo";
 import { PercentCell } from "@/components/honeycomb/percent-cell";
@@ -11,6 +10,8 @@ import { PartnersSection } from "@/components/landing/partners-section";
 import { OwnRedirect } from "@/components/landing/own-redirect";
 import { Warmup } from "@/components/landing/warmup";
 import { ASSET_COUNT, COMPONENT_COUNT } from "@/components/brand/brand-tables";
+import { StatStrip } from "@/components/honeycomb/stat-strip";
+import { Icon } from "@/components/honeycomb/icon";
 import { WhatYouGet } from "@/components/landing/what-you-get";
 import { EXAMPLES, exampleWhen, examplePlays } from "@/lib/examples";
 import { CALLS_ON_RERUN, CALLS_PER_NEW_BUSK, callKinds } from "@/lib/qloo-map";
@@ -23,10 +24,10 @@ const LATTICE =
 const TICKER = ["Qloo taste map", "Qloo crowd at each pitch", "Qloo venue and event crowds", "Qloo audience age", "foot traffic for your hour", "3 pitches for you"];
 
 const PROBLEMS = [
-  { icon: MapPin, title: "Where?", guess: "Bourke Street Mall, like every other busker.", fix: "Southbank Promenade: the strongest folk taste area on Qloo." },
-  { icon: Clock, title: "When?", guess: "Turn up at noon and hope.", fix: "About 1,900 people an hour, and a matinee lets out at 2:45 pm." },
-  { icon: Scale, title: "Allowed?", guess: "The station steps, until a ranger moves you on.", fix: "A general-permit pitch, clear of the no-busking zones." },
-  { icon: Music, title: "What to play?", guess: "Wonderwall, again.", fix: "Open with Fast Car: the song this crowd knows best." },
+  { icon: "pin" as const, title: "Where?", guess: "Bourke Street Mall, like every other busker.", fix: "Southbank Promenade: the strongest folk taste area on Qloo." },
+  { icon: "clock" as const, title: "When?", guess: "Turn up at noon and hope.", fix: "About 1,900 people an hour, and a matinee lets out at 2:45 pm." },
+  { icon: "legal" as const, title: "Allowed?", guess: "The station steps, until a ranger moves you on.", fix: "A general-permit pitch, clear of the no-busking zones." },
+  { icon: "music" as const, title: "What to play?", guess: "Wonderwall, again.", fix: "Open with Fast Car: the song this crowd knows best." },
 ];
 
 const BEYOND = [
@@ -96,7 +97,7 @@ export default function Home() {
             <Button asChild variant="poster" size="poster-lg" className="w-full justify-between [&_svg:not([class*=size-])]:size-9">
               <Link href="/busks">
                 Plan a busk
-                <ArrowRight aria-hidden="true" className="size-9" />
+                <Icon name="arrow-right" size={36} />
               </Link>
             </Button>
           </div>
@@ -128,7 +129,7 @@ export default function Home() {
       <div className="mx-auto flex max-w-[1360px] flex-col gap-20 px-4 pt-16 pb-16 md:gap-28 md:px-6 md:pt-24">
         <figure aria-label="Demo video, coming soon" data-testid="demo-video-slot" className="bm-grain m-0 flex aspect-video max-h-[720px] w-full flex-col items-center justify-center gap-4 border-[3px] border-rule bg-background p-6 text-center text-foreground shadow-md" data-theme="dark">
           <HexCell size={96} tone="primary" fontSize={44}>
-            <Play aria-hidden="true" className="size-10 fill-current" />
+            <Icon name="play" size={40} />
           </HexCell>
           <b className="font-display text-[clamp(28px,4vw,44px)] leading-none font-extrabold uppercase">[Demo video · 60–90 s]</b>
           <figcaption className="m-0 max-w-xl font-mono text-xs leading-4 text-muted-foreground">
@@ -170,11 +171,11 @@ export default function Home() {
             </h2>
           </div>
           <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(min(260px,100%),1fr))] gap-4 p-0">
-            {PROBLEMS.map(({ icon: Icon, title, guess, fix }) => (
+            {PROBLEMS.map(({ icon, title, guess, fix }) => (
               <li key={title} className="flex flex-col border-2 border-rule bg-card">
                 <div className="flex items-center gap-3 px-5 pt-[18px] pb-3.5">
                   <HexCell size={40}>
-                    <Icon aria-hidden="true" className="size-[18px]" />
+                    <Icon name={icon} size={18} />
                   </HexCell>
                   <b className="font-display text-[26px] leading-none font-extrabold uppercase">{title}</b>
                 </div>
@@ -230,21 +231,18 @@ export default function Home() {
             <p className="m-0 max-w-xl text-lg leading-[27px]">
               Every Qloo call Busk Map makes, the data it brings back, and the part of your busk it decides. Pick any piece to light up its path.
             </p>
-            <ul aria-label="Qloo in numbers" className="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 font-mono text-sm leading-5 font-medium text-muted-foreground">
-              {[
+            <StatStrip
+              tone="qloo"
+              label="Qloo in numbers"
+              items={[
                 { n: callKinds, label: "kinds of Qloo call" },
                 { n: CALLS_PER_NEW_BUSK, label: "calls for a new busk" },
                 { n: CALLS_ON_RERUN, label: "on a rerun" },
-              ].map((item) => (
-                <li key={item.label}>
-                  <b className="mr-1.5 font-display text-[28px] leading-none font-extrabold text-qloo">{item.n}</b>
-                  {item.label}
-                </li>
-              ))}
-            </ul>
+              ]}
+            />
             <Button asChild variant="poster" size="default" className="h-auto min-h-[52px] self-start gap-2.5 border-foreground bg-qloo px-6 text-lg font-sans font-bold normal-case tracking-normal text-bluestone hover:bg-[color-mix(in_oklab,var(--qloo)_88%,var(--foreground))] shadow-[4px_4px_0_var(--foreground)] hover:shadow-[5px_5px_0_var(--foreground)]">
               <Link href="/brain">
-              Open the brain <ArrowRight aria-hidden="true" className="size-5" strokeWidth={2} />
+              Open the brain <Icon name="arrow-right" size={20} />
             </Link>
             </Button>
           </div>
@@ -265,21 +263,17 @@ export default function Home() {
               Busk Map dresses like a street poster: one honeycomb idea, signal orange on night and paper, and type you can read from across the street. Every
               screen here is built from one published design system.
             </p>
-            <ul aria-label="The brand in numbers" className="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 font-mono text-sm leading-5 font-medium text-muted-foreground">
-              {[
+            <StatStrip
+              label="The brand in numbers"
+              items={[
                 { n: COMPONENT_COUNT, label: "components" },
                 { n: 3, label: "typefaces" },
                 { n: ASSET_COUNT, label: "assets" },
-              ].map((item) => (
-                <li key={item.label}>
-                  <b className="mr-1.5 font-display text-[28px] leading-none font-extrabold text-foreground">{item.n}</b>
-                  {item.label}
-                </li>
-              ))}
-            </ul>
+              ]}
+            />
             <Button asChild variant="poster" size="default" className="h-auto min-h-[52px] self-start gap-2.5 border-rule px-6 text-lg font-sans font-bold normal-case tracking-normal shadow-[4px_4px_0_var(--foreground)] hover:shadow-[5px_5px_0_var(--foreground)]">
               <Link href="/brand">
-              See the brand <ArrowRight aria-hidden="true" className="size-5" strokeWidth={2} />
+              See the brand <Icon name="arrow-right" size={20} />
             </Link>
             </Button>
           </div>

@@ -362,9 +362,9 @@ export const TOKENS: TokenRow[] = [
     "name": "taste-3",
     "kind": "Honeycomb",
     "light": "#f28644",
-    "dark": "#a8460f",
+    "dark": "#db5e1e",
     "lightSw": "#f28644",
-    "darkSw": "#a8460f",
+    "darkSw": "#db5e1e",
     "use": "Taste affinity step 3 of 5. Hex cells and legend. Text on it: bluestone (light) or paper (dark)."
   },
   {

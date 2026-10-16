@@ -18,25 +18,15 @@ function GithubMark({ className }: { className?: string }) {
   );
 }
 
-/**
- * The Claude Code critter, recreated as a pixel shape (not the Claude logo): a squat body with two eyes, a pair of arms and
- * four legs, on a 17 by 10 grid. It marks "Built by T04435" and links to the same place.
- */
+/** BRAND's built-by mark (design-handoff/logos/built-by-mark.svg): one even-odd path in #d97757, decorative; the link's text names it. */
 function BuiltByMark({ className }: { className?: string }) {
   return (
-    <svg aria-hidden="true" focusable="false" viewBox="0 0 17 10" shapeRendering="crispEdges" className={className}>
-      <g fill="#d77f5c">
-        <rect x="2" y="0" width="13" height="7" />
-        <rect x="0" y="4" width="17" height="2" />
-        <rect x="2" y="7" width="1" height="3" />
-        <rect x="4" y="7" width="1" height="3" />
-        <rect x="12" y="7" width="1" height="3" />
-        <rect x="14" y="7" width="1" height="3" />
-      </g>
-      <g fill="#1d2125">
-        <rect x="4" y="2" width="1" height="2" />
-        <rect x="12" y="2" width="1" height="2" />
-      </g>
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 170 112" shapeRendering="crispEdges" className={className}>
+      <path
+        fill="#d97757"
+        fillRule="evenodd"
+        d="M20 0h130v92H20z M0 44h20v24H0z M150 44h20v24h-20z M20 92h10v20H20z M40 92h10v20H40z M120 92h10v20h-10z M140 92h10v20h-10z M40 22h10v22H40z M120 22h10v22h-10z"
+      />
     </svg>
   );
 }

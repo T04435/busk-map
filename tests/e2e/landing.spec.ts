@@ -85,7 +85,7 @@ test.describe("landing, as the deck draws it", () => {
     for (const name of ["Privacy", "Terms", "Brain", "Brand"]) await expect(footer.getByRole("link", { name })).toBeVisible();
     await expect(footer.getByRole("link", { name: "Busk Map on GitHub" })).toHaveAttribute("href", "https://github.com/T04435/busk-map");
     await expect(footer.getByRole("link", { name: "T04435", exact: true })).toHaveAttribute("href", "https://github.com/T04435");
-    await expect(footer.getByRole("link", { name: /^with Claude Code/ })).toHaveAttribute("href", "https://claude.com/claude-code");
+    await expect(footer.getByRole("link", { name: "Built with Claude Code (opens in a new tab)", exact: true })).toHaveAttribute("href", "https://claude.com/claude-code");
     await expect(footer.getByRole("link", { name: "Busk Map home" })).toHaveAttribute("href", "/");
     await expect(footer.getByRole("navigation", { name: "Site" })).toContainText("·");
     // Same tab everywhere except Qloo (B-159).

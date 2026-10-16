@@ -16,6 +16,7 @@ export function MobileNavView({ pathname }: { pathname: string | null }) {
     <nav
       aria-label="Main"
       data-mobile-nav=""
+      data-theme={pathname === "/brain" || pathname?.startsWith("/brain/") ? "dark" : undefined}
       className="fixed inset-x-0 bottom-0 z-40 grid h-[calc(var(--size-nav)+env(safe-area-inset-bottom))] grid-cols-3 border-t-2 border-rule bg-card pb-[env(safe-area-inset-bottom)] min-[721px]:hidden"
     >
       {NAV_ITEMS.map((item) => {

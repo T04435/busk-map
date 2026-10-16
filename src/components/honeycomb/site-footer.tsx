@@ -47,9 +47,9 @@ const LINK = "inline-flex min-h-tap items-center font-bold text-foreground under
  * lives on /terms, which the footer links to. On the landing (`dark`) it continues the closing call to action's dark band, as in
  * the deck; on every other page it sits on paper.
  */
-export function SiteFooterView({ repo = REPO, dark = false }: { repo?: string; dark?: boolean }) {
+export function SiteFooterView({ repo = REPO, dark = false, night = false }: { repo?: string; dark?: boolean; night?: boolean }) {
   return (
-    <footer data-slot="site-footer" data-theme={dark ? "dark" : undefined} className={cn(dark && "bm-grain bg-background text-foreground")}>
+    <footer data-slot="site-footer" data-theme={dark || night ? "dark" : undefined} className={cn(dark && "bm-grain bg-background text-foreground", night && !dark && "bg-background text-foreground")}>
       <div
         className={cn(
           "grid items-center gap-x-6 gap-y-4 border-t border-border text-[13px] leading-5 text-muted-foreground md:grid-cols-[1fr_auto_1fr]",
@@ -85,7 +85,7 @@ export function SiteFooterView({ repo = REPO, dark = false }: { repo?: string; d
             <a className={LINK} href={AUTHOR}>
               T04435
             </a>
-            <a href={CLAUDE_CODE} target="_blank" rel="noopener noreferrer" aria-label="with Claude Code (opens in a new tab)" className="inline-flex size-tap items-center justify-center">
+            <a href={CLAUDE_CODE} target="_blank" rel="noopener noreferrer" aria-label="Built with Claude Code (opens in a new tab)" className="inline-flex size-tap items-center justify-center">
               <BuiltByMark className="h-5 w-auto" />
             </a>
           </span>
@@ -97,5 +97,6 @@ export function SiteFooterView({ repo = REPO, dark = false }: { repo?: string; d
 
 /** The landing's footer is dark; usePathname() reads the request on dynamic routes, so the layout wraps this in Suspense with the paper footer as fallback. */
 export function SiteFooter() {
-  return <SiteFooterView dark={usePathname() === "/"} />;
+  const pathname = usePathname();
+  return <SiteFooterView dark={pathname === "/"} night={pathname === "/brain" || pathname?.startsWith("/brain/")} />;
 }

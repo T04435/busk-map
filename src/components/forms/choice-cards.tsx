@@ -56,7 +56,7 @@ export function ChoiceCard({ value, title, description, end, className }: { valu
       htmlFor={id}
       data-slot="choice-card"
       className={cn(
-        "relative grid min-h-16 cursor-pointer grid-cols-[auto_1fr_auto] items-center gap-3 border-2 border-input bg-card px-4 py-3 transition-[border-color,box-shadow] duration-(--duration-fast) hover:border-foreground has-[[data-state=checked]]:border-rule has-[[data-state=checked]]:shadow-[4px_4px_0_var(--primary)] has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-disabled motion-reduce:transition-none",
+        "relative grid min-h-16 cursor-pointer grid-cols-[auto_1fr_auto] items-center gap-3 border-2 border-input bg-card px-4 py-3 transition-[border-color,box-shadow] duration-(--duration-fast) hover:border-foreground has-[[data-state=checked]]:border-rule has-[[data-state=checked]]:shadow-[4px_4px_0_var(--primary)] has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-disabled focus-within:outline-3 focus-within:outline-offset-4 focus-within:outline-solid focus-within:outline-ring motion-reduce:transition-none",
         className
       )}
     >

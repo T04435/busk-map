@@ -5,6 +5,7 @@ import { usualFromBusks, withBusk, type RecentBusk } from "@/lib/playlist-usual"
 import { env } from "@/server/env";
 import { log } from "@/server/log";
 import { processMap } from "@/server/memo";
+import type { MemorySuggestion, RunRecord } from "@/server/learn/types";
 import { MAX_SONGS, MAX_USUAL_PITCHES, PLAYLIST_EXPIRY_MONTHS, TOUCH_INTERVAL_MS, USUAL_PITCHES_FROM_LAST_PLANS } from "./config";
 
 /**
@@ -24,7 +25,7 @@ export type PlaylistRecord = {
   lastSeenAt: number;
 };
 
-export type StoredSong = Omit<PlaylistSongView, "addedAt"> & { songKey: string; addedAt: number };
+export type StoredSong = Omit<PlaylistSongView, "addedAt"> & { songKey: string; addedAt: number; /** The learn suggestion this song came from (memory store; Postgres keeps playlist_songs.suggestion_id). */ suggestionId?: string };
 
 export type AddSongResult = { ok: true; song: StoredSong } | { ok: false; reason: "duplicate" | "full" };
 /** "Add to Repertoire" from a plan: refused when the song is already suggested (any status) or already sung. */
@@ -93,7 +94,7 @@ function planSuggestionView(id: string, input: AddPlanSuggestionInput, suggested
     songSource: "plan",
     sourceUrl: null,
     reason: input.reason,
-    because: [],
+    because: null,
     basedOn: [],
     growth: input.growth ?? null,
     trendDelta: null,
@@ -110,10 +111,15 @@ export class MemoryPlaylistStore implements PlaylistStore {
   /** Keyed by token hash. */
   readonly playlists = new Map<string, PlaylistRecord & { tokenHash: string }>();
   readonly songRows = new Map<string, StoredSong[]>();
-  /** Plan suggestions by Repertoire id (the learn runs of R3 write to the same table in Postgres). */
-  readonly suggestionRows = new Map<string, (LearnSuggestionView & { songKey: string })[]>();
-  private nextSongId = 1;
-  private nextSuggestionId = 1;
+  /** Suggestions by Repertoire id: plan suggestions and the learn runs' picks (the same table in Postgres). */
+  readonly suggestionRows = new Map<string, MemorySuggestion[]>();
+  /** Learn runs by Repertoire id (table learn_runs), oldest first. */
+  readonly runRows = new Map<string, RunRecord[]>();
+  /** Keys of dismissed suggestions removed by the size cap (playlists.dismissed_keys). */
+  readonly dismissedKeys = new Map<string, Set<string>>();
+  /** Suggestion ids; shared with the learn store. */
+  nextSuggestionId = 1;
+  nextSongId = 1;
 
   private byId(id: string) {
     for (const p of this.playlists.values()) if (p.id === id) return p;
@@ -144,8 +150,8 @@ export class MemoryPlaylistStore implements PlaylistStore {
     this.songRows.set(row.id, []);
     if (this.playlists.size > 1000) {
       const oldest = this.playlists.keys().next().value!;
-      this.songRows.delete(this.playlists.get(oldest)!.id);
-      this.suggestionRows.delete(this.playlists.get(oldest)!.id);
+      const oldId = this.playlists.get(oldest)!.id;
+      for (const map of [this.songRows, this.suggestionRows, this.runRows, this.dismissedKeys] as Map<string, unknown>[]) map.delete(oldId);
       this.playlists.delete(oldest);
     }
     return this.record(row);
@@ -180,8 +186,15 @@ export class MemoryPlaylistStore implements PlaylistStore {
       addedAt: Date.now(),
     };
     rows.push(song);
+    this.markSuggestionLearned(playlistId, songKey);
     this.bump(playlistId);
     return { ok: true, song: structuredClone(song) };
+  }
+
+  /** A song typed into Songs you can sing that matches a pending suggestion marks it learned, so the two lists agree (docs §1.2). */
+  private markSuggestionLearned(playlistId: string, songKey: string) {
+    const pending = this.suggestionRows.get(playlistId)?.find((x) => x.songKey === songKey && x.status === "pending");
+    if (pending) Object.assign(pending, { status: "learned", learnedAt: new Date().toISOString() });
   }
 
   async setSongState(playlistId: string, songId: string, state: SongState) {
@@ -256,8 +269,7 @@ export class MemoryPlaylistStore implements PlaylistStore {
     const row = this.byId(playlistId);
     if (!row) return false;
     this.playlists.delete(row.tokenHash);
-    this.songRows.delete(playlistId);
-    this.suggestionRows.delete(playlistId);
+    for (const map of [this.songRows, this.suggestionRows, this.runRows, this.dismissedKeys] as Map<string, unknown>[]) map.delete(playlistId);
     return true;
   }
 
@@ -417,6 +429,8 @@ export class PostgresPlaylistStore implements PlaylistStore {
     const rows = inserted;
     if (rows[0]) {
       await this.bump(playlistId);
+      // A song typed in that matches a pending suggestion marks it learned, so the two lists agree (docs §1.2).
+      await this.sql.query("UPDATE learn_suggestions SET status = 'learned', learned_at = now() WHERE playlist_id = $1 AND song_key = $2 AND status = 'pending'", [playlistId, songKey]);
       return { ok: true, song: toSong(rows[0]) };
     }
     const existing = (await this.sql.query("SELECT 1 AS one FROM playlist_songs WHERE playlist_id = $1 AND song_key = $2", [playlistId, songKey])) as unknown[];

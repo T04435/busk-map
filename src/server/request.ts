@@ -1,4 +1,5 @@
 import "server-only";
+import type { LearnLimitScope } from "@/lib/learn-schema";
 import { ADAPTER_NAMES, type AdapterContext, type AdapterName } from "@/server/adapters/core";
 import { testSwitches } from "@/server/env";
 
@@ -39,10 +40,24 @@ export function freshLimitFaultRequested(faults: string | null | undefined): boo
 }
 
 /**
+ * Test faults: the learn-run gate refuses (429), as the Repertoire's own limit (`learn-limit`) or the network's
+ * (`learn-limit-ip`), so both limit pages can be tested offline. Same gate as the others.
+ */
+export const LEARN_LIMIT_FAULT = "learn-limit";
+export const LEARN_LIMIT_IP_FAULT = "learn-limit-ip";
+
+export function learnLimitFaultRequested(faults: string | null | undefined): LearnLimitScope | null {
+  if (!testSwitches().allowFaults || !faults) return null;
+  const list = faults.split(",").map((s) => s.trim());
+  return list.includes(LEARN_LIMIT_FAULT) ? "repertoire" : list.includes(LEARN_LIMIT_IP_FAULT) ? "ip" : null;
+}
+
+/**
  * The test faults a page passes on to its API calls: the provider outages plus `fresh-limit`.
  * Empty unless fault injection is allowed (never in production).
  */
 export function pageFaultsFor(faults: string | null | undefined): string[] {
   if (!testSwitches().allowFaults) return [];
-  return [...parseFaults(faults), ...(freshLimitFaultRequested(faults) ? [FRESH_LIMIT_FAULT] : [])];
+  const learn = learnLimitFaultRequested(faults);
+  return [...parseFaults(faults), ...(freshLimitFaultRequested(faults) ? [FRESH_LIMIT_FAULT] : []), ...(learn ? [learn === "ip" ? LEARN_LIMIT_IP_FAULT : LEARN_LIMIT_FAULT] : [])];
 }

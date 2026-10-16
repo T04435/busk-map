@@ -69,4 +69,18 @@ export const PLAYLIST_COPY = {
     network: "We couldn't reach the server. Try again.",
     bot: "This request looked automated. Reload the page and try again.",
   },
+
+  // Songs to learn: a learn run's words (docs §7). Errors first; the page copy follows.
+  learn: {
+    errors: {
+      suggestionNotFound: "That song isn't on your list any more. Reload to see the latest.",
+      badMove: "That change isn't possible for this song.",
+      noRepertoire: "Save your Repertoire first, then find songs to learn.",
+      unavailable: "Songs to learn isn't available right now. Try again in a little while.",
+      notHere: "This run is going on another server. Its songs appear in your list when it finishes.",
+      runNotFound: "That run isn't in your list any more.",
+      emptyPlaylist: (min: number) => `Add at least ${min} songs you can sing, then find songs to learn.`,
+      listFull: (max: number) => `Your list of songs to learn is full (${max}). Mark some learned or dismiss them first.`,
+    },
+  },
 } as const;

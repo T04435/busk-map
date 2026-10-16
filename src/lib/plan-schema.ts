@@ -283,26 +283,36 @@ export type Plan = z.infer<typeof planSchema>;
 export type PlanPitch = z.infer<typeof planPitchSchema>;
 export type DataStatus = z.infer<typeof dataStatusSchema>;
 
+/**
+ * The stream events the plan and the learn run share, field for field (docs/playlist-architecture.md §2.7, §7.1).
+ * Exported by name so the learn stream reuses them; the plan stream's wire is unchanged.
+ */
+// `replay`: the run already finished and is being replayed from the cache (no new model call).
+export const streamStatusSchema = z.object({ type: z.literal("status"), message: z.string(), replay: z.boolean().optional() });
+/** Claude's words between tool calls: a reasoning summary (extended thinking) or the sentence it writes before a call. */
+export const streamNoteSchema = z.object({ type: z.literal("note"), kind: z.enum(["reasoning", "text"]), text: z.string() });
+/** `input`: the inputs Claude chose. */
+export const streamToolStartSchema = z.object({ type: z.literal("tool-start"), id: z.string(), tool: z.string(), label: z.string(), source: z.string().optional(), input: z.unknown().optional() });
+/** `output`: the data the tool returned, exactly as the model saw it. */
+export const streamToolEndSchema = z.object({ type: z.literal("tool-end"), id: z.string(), tool: z.string(), ok: z.boolean(), summary: z.string(), output: z.unknown().optional() });
+/** Run totals, sent before the plan. */
+export const streamUsageSchema = z.object({
+  type: z.literal("usage"),
+  steps: z.number().int(),
+  inputTokens: z.number().int(),
+  outputTokens: z.number().int(),
+  reasoningTokens: z.number().int(),
+  ms: z.number().int(),
+  stoppedBy: z.string(),
+});
+
 /** Events streamed from /api/plan, one JSON object per line. */
 export const planStreamEventSchema = z.discriminatedUnion("type", [
-  // `replay`: the run already finished and is being replayed from the cache (no new model call).
-  z.object({ type: z.literal("status"), message: z.string(), replay: z.boolean().optional() }),
-  /** Claude's words between tool calls: a reasoning summary (extended thinking) or the sentence it writes before a call. */
-  z.object({ type: z.literal("note"), kind: z.enum(["reasoning", "text"]), text: z.string() }),
-  /** `input`: the inputs Claude chose. */
-  z.object({ type: z.literal("tool-start"), id: z.string(), tool: z.string(), label: z.string(), source: z.string().optional(), input: z.unknown().optional() }),
-  /** `output`: the data the tool returned, exactly as the model saw it. */
-  z.object({ type: z.literal("tool-end"), id: z.string(), tool: z.string(), ok: z.boolean(), summary: z.string(), output: z.unknown().optional() }),
-  /** Run totals, sent before the plan. */
-  z.object({
-    type: z.literal("usage"),
-    steps: z.number().int(),
-    inputTokens: z.number().int(),
-    outputTokens: z.number().int(),
-    reasoningTokens: z.number().int(),
-    ms: z.number().int(),
-    stoppedBy: z.string(),
-  }),
+  streamStatusSchema,
+  streamNoteSchema,
+  streamToolStartSchema,
+  streamToolEndSchema,
+  streamUsageSchema,
   /**
    * Running research totals (the ResearchFunnel): sent after each tool-end, counted over the finished tool calls so far
    * (lib/research-totals.ts), and once more before the plan with the plan's own researchTotals.

@@ -45,3 +45,45 @@ export const LEARN_STEPS_KEPT_RUNS = 5; // PROVISIONAL (HQ card run-retention, D
 export const LEARN_STEPS_KEPT_DAYS = 30; // PROVISIONAL (HQ card run-retention, D8)
 /** A song is never suggested twice (D9), enforced by UNIQUE (playlist_id, song_key) on learn_suggestions. Confirmed by the user, 17 Oct. */
 export const NEVER_RESUGGEST = true;
+
+// --- Learn run caps (docs/playlist-architecture.md §1.4, §2.3, §2.9) ---
+
+/** A run needs at least this many songs you can sing (409 `empty_playlist` below it). */
+export const LEARN_MIN_SONGS = 3;
+/** Pending suggestions: a run is refused with `list_full` past it. */
+export const LEARN_MAX_PENDING = 40;
+/** Picks per run: 3 to 8 (fewer only if fewer valid songs exist). */
+export const LEARN_MIN_PICKS = 3;
+export const LEARN_MAX_PICKS = 8;
+/** Suggestions in all, per Repertoire; past it the oldest dismissed rows go and their keys move to dismissed_keys. */
+export const LEARN_MAX_SUGGESTIONS = 400;
+/** Runs kept per Repertoire; past it the oldest run rows go and their suggestions keep (run_id NULL). */
+export const LEARN_MAX_RUNS = 50;
+/** The stored steps of one run, in bytes of JSON; over it the tool outputs are trimmed to their summary. */
+export const LEARN_STEPS_MAX_BYTES = 256 * 1024;
+/** The window of the run limit. */
+export const LEARN_WINDOW_MINUTES = 60;
+/** Max picks that one artist may have in a run, and the songs across the Repertoire that make an artist "over-represented". */
+export const LEARN_MAX_PER_ARTIST = 2;
+export const LEARN_OVER_REPRESENTED_AT = 3;
+/** The history block in the prompt: characters ÷ 4 estimate of tokens (docs §2.8). */
+export const LEARN_HISTORY_TOKENS = 1500;
+
+/**
+ * Caps on one run (docs §2.3), next to the busk agent's `LIMITS` in agent/models.ts.
+ * `maxSteps` model steps (each may call several tools); `tokenBudget` is input + output over the whole run;
+ * `maxOutputTokensPerStep` includes thinking; `timeoutMs` stops the model, then the fallback finishes the run.
+ */
+export const LEARN_LIMITS = {
+  maxSteps: 10,
+  tokenBudget: 120_000,
+  maxOutputTokensPerStep: 4000,
+  timeoutMs: 75_000,
+  /** `finish_suggestions` rejections before the run gives up on the model's words. */
+  maxRejections: 2,
+  /** A `running` row older than timeoutMs + this is marked failed by the next request for that Repertoire. */
+  staleGraceMs: 30_000,
+} as const;
+
+/** Per-run call caps for the model's tools (a further call is a tool error the model sees). */
+export const LEARN_TOOL_CAPS = { related_artists: 2, crowd_at: 3, rising: 2, crowd_profile: 1, top_tracks: 3, finish_suggestions: 3 } as const;

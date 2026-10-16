@@ -104,8 +104,9 @@ export type LearnSuggestionView = {
   songSource: "spotify" | "lastfm" | "plan";
   sourceUrl: string | null;
   reason: string;
-  because: string[];
-  basedOn: { kind: string; name: string }[];
+  /** Plain words from Qloo explainability, or null. */
+  because: string | null;
+  basedOn: { kind: "learned" | "repertoire" | "crowd" | "soundsLike"; name: string }[];
   growth: number | null;
   trendDelta: number | null;
   isNew: boolean;

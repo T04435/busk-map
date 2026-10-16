@@ -1,5 +1,6 @@
 import "server-only";
-import { PLAYLIST_CREATIONS_PER_HOUR } from "@/server/playlist/config";
+import type { LearnLimitScope } from "@/lib/learn-schema";
+import { LEARN_RUNS_PER_HOUR_PER_IP, LEARN_RUNS_PER_HOUR_PER_PLAYLIST, LEARN_WINDOW_MINUTES, PLAYLIST_CREATIONS_PER_HOUR } from "@/server/playlist/config";
 
 /**
  * A small sliding-window limiter, per server instance. It stops one browser
@@ -9,6 +10,11 @@ import { PLAYLIST_CREATIONS_PER_HOUR } from "@/server/playlist/config";
 export function createRateLimiter(limit: number, windowMs: number) {
   const hits = new Map<string, number[]>();
   return {
+    /** Whether `check` would allow this key now, without recording a hit. */
+    peek(key: string, now = Date.now()): { ok: boolean; retryAfterS: number } {
+      const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
+      return recent.length >= limit ? { ok: false, retryAfterS: Math.ceil((windowMs - (now - recent[0])) / 1000) } : { ok: true, retryAfterS: 0 };
+    },
     check(key: string, now = Date.now()): { ok: boolean; retryAfterS: number } {
       const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
       if (recent.length >= limit) {
@@ -97,4 +103,74 @@ export function playlistCreateGate(
   if (offline) return { ok: true };
   const result = limiter.check(ip, now);
   return result.ok ? { ok: true } : { ok: false, retryAfterS: result.retryAfterS };
+}
+
+/** Learn runs: 6 an hour per IP, per instance like the other limiters (config.ts, confirmed 17 Oct). */
+export const learnIpLimiter = createRateLimiter(LEARN_RUNS_PER_HOUR_PER_IP, LEARN_WINDOW_MINUTES * 60_000);
+
+export type LearnGate =
+  | { ok: true }
+  | {
+      ok: false;
+      scope: LearnLimitScope;
+      retryAfterS: number;
+      retryAt: string;
+      message: string;
+      max: number;
+      windowMinutes: number;
+      retryInMinutes: number;
+    };
+
+const minutesOf = (retryAfterS: number) => Math.max(1, Math.ceil(retryAfterS / 60));
+
+/**
+ * The refusal text (docs §2.10), relative like the plan limit's (B-013). The network's own message doesn't blame the performer.
+ */
+export function learnLimitMessage(scope: LearnLimitScope, retryAfterS: number): string {
+  const minutes = minutesOf(retryAfterS);
+  const wait = `Try again in about ${minutes} minute${minutes === 1 ? "" : "s"}.`;
+  return scope === "repertoire"
+    ? `You've started ${LEARN_RUNS_PER_HOUR_PER_PLAYLIST} runs this hour. ${wait}`
+    : `A lot of runs have started from this network in the last hour. ${wait}`;
+}
+
+/** Where the Repertoire stands against its own limit, from its stored runs (counted in the database, so every instance agrees). */
+export function repertoireLimitState(recent: { count: number; oldestStartedAt: number | null }, now = Date.now()) {
+  const max = LEARN_RUNS_PER_HOUR_PER_PLAYLIST;
+  const full = recent.count >= max;
+  const retryAfterS = full && recent.oldestStartedAt !== null ? Math.max(1, Math.ceil((recent.oldestStartedAt + LEARN_WINDOW_MINUTES * 60_000 - now) / 1000)) : 0;
+  return { max, remaining: Math.max(0, max - recent.count), retryAfterS };
+}
+
+/**
+ * Whether this request may start a learn run. Two limits (docs §2.10): 3 an hour per Repertoire, counted from its stored
+ * runs (`recent`), and 6 an hour per IP. When both are hit, `scope` is the one that resets later. Replays and joined runs
+ * never come here. Offline test mode spends nothing and isn't limited (the e2e tests share one IP). `forced` (the test
+ * faults `learn-limit` and `learn-limit-ip`, never in production) refuses whatever the count. An allowed request records
+ * its IP hit; a refused one records nothing.
+ */
+export function learnRunGate(
+  { offline, ip, recent, forced = null }: { offline: boolean; ip: string; recent: { count: number; oldestStartedAt: number | null }; forced?: LearnLimitScope | null },
+  limiter: RateLimiter = learnIpLimiter,
+  now = Date.now(),
+): LearnGate {
+  const refuse = (scope: LearnLimitScope, retryAfterS: number): LearnGate => ({
+    ok: false,
+    scope,
+    retryAfterS,
+    retryAt: new Date(now + retryAfterS * 1000).toISOString(),
+    message: learnLimitMessage(scope, retryAfterS),
+    max: scope === "repertoire" ? LEARN_RUNS_PER_HOUR_PER_PLAYLIST : LEARN_RUNS_PER_HOUR_PER_IP,
+    windowMinutes: LEARN_WINDOW_MINUTES,
+    retryInMinutes: minutesOf(retryAfterS),
+  });
+  if (forced) return refuse(forced, FORCED_LIMIT_RETRY_S);
+  if (offline) return { ok: true };
+  const own = repertoireLimitState(recent, now);
+  const network = limiter.peek(ip, now);
+  if (own.remaining === 0 && !network.ok) return network.retryAfterS > own.retryAfterS ? refuse("ip", network.retryAfterS) : refuse("repertoire", own.retryAfterS);
+  if (own.remaining === 0) return refuse("repertoire", own.retryAfterS);
+  if (!network.ok) return refuse("ip", network.retryAfterS);
+  limiter.check(ip, now);
+  return { ok: true };
 }

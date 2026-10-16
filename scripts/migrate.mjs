@@ -4,8 +4,9 @@
  * recording each in schema_migrations; only unrecorded files run.
  *
  *   pnpm db:migrate:dev          local, reads .env.development.local (the Neon dev branch)
- *   --if-production              the `vercel-build` hook: runs only in the Vercel production build,
- *                                skips (exit 0) in preview/development builds
+ *   --if-production              the `vercel-build` hook: runs in the Vercel production build, and in a Vercel
+ *                                preview build only when its database is a Neon preview branch (not main);
+ *                                skips (exit 0) everywhere else
  *
  * Production runs ONLY with VERCEL_ENV=production and VERCEL=1 (the Vercel build env);
  * a manual run with VERCEL_ENV=production alone is refused. Any error exits non-zero,

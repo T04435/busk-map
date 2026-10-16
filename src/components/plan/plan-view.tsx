@@ -70,7 +70,7 @@ type Props = {
   request: PlanRequest;
   center: { lat: number; lon: number };
   autoRun: boolean;
-  /** The example performer this plan is for, if any (tip log key). */
+  /** The example performer this plan is for, if any. */
   exampleId: string | null;
   /** Simulated outages to pass on to the agent (e2e only; the server ignores it in production). */
   faults: string | null;
@@ -252,8 +252,8 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     }
   }, [autoRun, runAgent]);
 
-  // A refresh with a changed request (a new tip log entry changes its history) re-plans with the agent:
-  // agent-first pages get no engine plan from the server. The run key includes the history, so it's a new run.
+  // A refresh with a changed request re-plans with the agent:
+  // agent-first pages get no engine plan from the server, and a changed request is a new run.
   const requestKey = JSON.stringify(request);
   const lastRequestKey = useRef(requestKey);
   useEffect(() => {

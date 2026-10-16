@@ -70,7 +70,6 @@ function toPlanPitch(pitch: ScoredPitch, why: string, whySource: PlanPitch["whyS
     factors: pitch.factors,
     why,
     whySource,
-    tip: null,
     evidence: {
       sensor: pitch.evidence.sensor ? { name: pitch.evidence.sensor.name, avgHourly: pitch.evidence.sensor.avgHourly, hourly } : null,
       places: pitch.evidence.places.map((p) => ({
@@ -236,10 +235,9 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     others: (qlooDown ? [] : ranked)
       .filter((p) => !topIds.has(p.id))
       .slice(0, 25)
-      .map((p) => ({ id: p.id, name: p.name, lat: p.lat, lon: p.lon, score: p.score, kind: p.kind, discovery: p.discovery, tipPoints: null,
+      .map((p) => ({ id: p.id, name: p.name, lat: p.lat, lon: p.lon, score: p.score, kind: p.kind, discovery: p.discovery,
         tooCloseTo: spacing.has(p.id) ? { id: spacing.get(p.id)!.id, name: spacing.get(p.id)!.name } : null,
       })),
-    tipHistory: null,
     funnel,
     zones: qlooDown ? [] : noBuskingCells(await context.pitchData(), [...pitches, ...ranked.slice(0, 40)]),
     tasteCells: cells.map((c) => ({

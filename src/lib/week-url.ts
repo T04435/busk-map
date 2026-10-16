@@ -18,7 +18,7 @@ export const WEEK_SLOT_HOURS = 3;
 
 export type ParsedWeekUrl = { ok: true; request: WeekRequest; exampleId: string | null } | { ok: false; error: string };
 
-export function parseWeekParams(params: Params, today: string, _tipCookie?: string | null): ParsedWeekUrl {
+export function parseWeekParams(params: Params, today: string): ParsedWeekUrl {
   const example = findExample(first(params.example));
   const name = first(params.name);
   const performer = name

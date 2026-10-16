@@ -71,8 +71,8 @@ export async function loadStoredPlan(id: string): Promise<StoredPlan | null> {
   return shortPlanStore(testSwitches().offline).get(id);
 }
 
-/** The stored request, validated again. The cookie argument is a leftover of the removed tip log and is ignored. */
-export function viewerRequest(stored: StoredPlan, _tipCookie?: string | null): PlanRequest | null {
+/** The stored request, validated again. A legacy `history` in an old stored request is dropped by the schema. */
+export function viewerRequest(stored: StoredPlan): PlanRequest | null {
   const parsed = planRequestSchema.safeParse(stored.request);
   return parsed.success ? parsed.data : null;
 }

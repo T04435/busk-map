@@ -207,7 +207,6 @@ export async function buildWeekPlan(
               pitch: c.best.name,
               score: c.best.score,
               factors: c.best.factors,
-      tipPoints: null,
               typicalPeoplePerHour: c.best.evidence.sensor?.avgHourly ?? null,
               nearbyPlaces: c.best.evidence.places.slice(0, 3).map((p) => p.name),
               events: c.best.evidence.events.map((e) => ({ name: e.name, moment: e.moment, endEstimated: e.endEstimated })),
@@ -237,7 +236,6 @@ export async function buildWeekPlan(
       score: c.best.score,
       pitch: { id: c.best.id, name: c.best.name, lat: c.best.lat, lon: c.best.lon, kind: c.best.kind, discovery: c.best.discovery, amplification: c.best.amplification, cautions: c.best.cautions },
       factors: c.best.factors,
-      tipPoints: null,
       evidence: {
         typicalPerHour: c.best.evidence.sensor?.avgHourly ?? null,
         sensorName: c.best.evidence.sensor?.name ?? null,

@@ -170,7 +170,7 @@ describe("resolving links", () => {
     vi.stubEnv("DATABASE_URL", "");
     vi.stubEnv("VERCEL", "");
     const { resolvePlanLink } = await load();
-    const parsed = parsePlanParams({ example: "acoustic" }, NOWL, null);
+    const parsed = parsePlanParams({ example: "acoustic" }, NOWL);
     if (!parsed.ok) throw new Error(parsed.error);
     expect(parsed.exampleId).toBe("acoustic");
     const one = await resolvePlanLink(parsed.request, parsed.exampleId, "10.0.0.9", NOW);
@@ -241,9 +241,9 @@ describe("opening a stored plan", () => {
     const { resolvePlanLink, loadStoredPlan, viewerRequest, saveRunSnapshot, snapshotFor, snapshotEvents, planKey } = await load();
     const { id } = (await resolvePlanLink(habana(), null, "ip", NOW)) as { id: string };
     const stored = (await loadStoredPlan(id))!;
-    const request = viewerRequest(stored, null)!;
+    const request = viewerRequest(stored)!;
     expect(request).not.toHaveProperty("history");
-    expect(viewerRequest({ ...stored, request: { ...stored.request, history } as never }, "x")).toEqual(request);
+    expect(viewerRequest({ ...stored, request: { ...stored.request, history } as never })).toEqual(request);
 
     const runKey = planKey(request, false, DAY);
     expect(await saveRunSnapshot(id, request, finishedRun(), runKey, DAY, false)).toBe(true);

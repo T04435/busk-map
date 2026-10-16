@@ -49,7 +49,6 @@ export async function PlanScreen({ request, exampleId, adapters, faults = adapte
   return (
     <PlanView
       // Keyed by the request (not the selected pitch): a new request remounts the view.
-      // A changed tip log re-renders in place (PlanView adopts the new plan), so the log form keeps its message.
       key={planSearchParams(request).toString()}
       initialPlan={plan}
       heading={{

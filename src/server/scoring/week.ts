@@ -38,7 +38,6 @@ export type WeekInputs = {
   events: EventInput[];
   /** Forecast hours keyed by date; missing dates mean no forecast. */
   weather: Record<string, (WeatherHourInput & { hour: number })[]>;
-  /** The performer's logged takings, for the personal bonus. */
 };
 
 export type WeekCell = {

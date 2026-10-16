@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -7,7 +6,6 @@ import { PageHeader } from "@/components/honeycomb/page-header";
 import { SlotPassed } from "@/components/honeycomb/slot-passed";
 import { PlanScreen, PlanSkeleton } from "@/components/plan/plan-screen";
 import { shortDay, shortHours, slotEyebrow } from "@/lib/slot";
-import { TIP_COOKIE } from "@/lib/tips";
 import { CITIES } from "@/server/cities";
 import { freshRunsAllowed, loadStoredPlan, slotPassed, snapshotEvents, snapshotFor, viewerRequest } from "@/server/plans";
 import { adapterContextFor, pageFaultsFor } from "@/server/request";
@@ -42,8 +40,7 @@ async function ShortPlan({ params, searchParams }: Pick<PageProps<"/p/[id]">, "p
   await connection();
   const stored = await loadStoredPlan(id);
   if (!stored) notFound();
-  const tipCookie = (await cookies()).get(TIP_COOKIE)?.value ?? null;
-  const request = viewerRequest(stored, tipCookie);
+  const request = viewerRequest(stored);
   if (!request) notFound();
 
   const adapters = adapterContextFor(first(query.faults));

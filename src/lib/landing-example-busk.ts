@@ -14,8 +14,8 @@ export const EXAMPLE_PITCHES: (Pick<PlanPitch, "id" | "name" | "lat" | "lon" | "
 ];
 
 export const EXAMPLE_OTHERS: Plan["others"] = [
-  { id: "ex-o1", name: "Federation Square", lat: -37.8179, lon: 144.9691, score: 66, kind: "public-space", discovery: "usual", tipPoints: null, tooCloseTo: null },
-  { id: "ex-o2", name: "Howey Place", lat: -37.8151, lon: 144.9669, score: 61, kind: "footpath", discovery: null, tipPoints: null, tooCloseTo: null },
+  { id: "ex-o1", name: "Federation Square", lat: -37.8179, lon: 144.9691, score: 66, kind: "public-space", discovery: "usual", tooCloseTo: null },
+  { id: "ex-o2", name: "Howey Place", lat: -37.8151, lon: 144.9669, score: 61, kind: "footpath", discovery: null, tooCloseTo: null },
 ];
 
 // Hot spots (lat, lon, strength): where this example crowd gathers.

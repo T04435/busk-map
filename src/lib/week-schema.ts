@@ -23,8 +23,6 @@ export const weekRequestSchema = z.object({
     })
     .prefault({}),
   weights: weightsSchema.optional(),
-  /** REMOVAL STUB (Tips removed): an old stored or client request may still carry a tip history. It is accepted and dropped. */
-  history: z.unknown().optional().transform((): undefined => undefined).optional(),
 });
 
 export type WeekRequest = z.infer<typeof weekRequestSchema>;
@@ -50,8 +48,6 @@ export const weekSessionSchema = z.object({
     cautions: z.array(z.string()),
   }),
   factors: z.object({ taste: factor, footfall: factor, places: factor, events: factor, weatherPenalty: factor, discovery: z.number().min(0).max(1) }),
-  /** Points from the performer's tip log (already in the score), when it covers this pitch. */
-  tipPoints: z.number().int().nullable().default(null),
   evidence: z.object({
     typicalPerHour: z.number().nullable(),
     sensorName: z.string().nullable(),
@@ -109,8 +105,6 @@ export const weekPlanSchema = z.object({
   qlooFailed: z.boolean(),
   footfallLevel: z.enum(["city-sensors", "unavailable"]),
   dataStatus: z.array(dataStatusSchema),
-  /** The tip log behind the personal bonus, when one was used. */
-  tipHistory: z.object({ source: z.enum(["example", "yours", "mixed"]), sessions: z.number().int(), perHour: z.number() }).nullable().default(null),
 });
 
 export type WeekPlan = z.infer<typeof weekPlanSchema>;

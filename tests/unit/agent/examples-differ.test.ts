@@ -54,8 +54,8 @@ describe("example requests (offline)", () => {
     for (const request of exampleRequests({ today: TODAY, hour: 12 })) {
       expect(request).not.toHaveProperty("history");
       const plan = await buildEnginePlan(request, OFFLINE, TODAY);
-      expect(plan.tipHistory).toBeNull();
-      expect(plan.pitches.every((p) => p.tip === null)).toBe(true);
+      expect(plan).not.toHaveProperty("tipHistory");
+      expect(plan.pitches.every((p) => !("tip" in p))).toBe(true);
     }
   });
 });

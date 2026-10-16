@@ -45,8 +45,6 @@ export const planRequestSchema = z.object({
     songs: z.array(repertoireSongSchema).max(60).default([]),
   }),
   weights: weightsSchema.optional(),
-  /** REMOVAL STUB (Tips removed): an old stored or client request may still carry a tip history. It is accepted and dropped. */
-  history: z.unknown().optional().transform((): undefined => undefined).optional(),
 });
 
 export type PlanRequest = z.infer<typeof planRequestSchema>;
@@ -65,15 +63,6 @@ const factorValue = z.number().min(0).max(1).nullable();
 
 export const PITCH_KINDS = ["designated", "public-space", "footpath"] as const;
 export const discoverySchema = z.enum(["hidden-gem", "usual"]).nullable();
-
-export const tipBonusSchema = z.object({
-  /** Points added to the score (0–5). */
-  points: z.number().int().min(0).max(100),
-  sessions: z.number().int(),
-  perHour: z.number(),
-  averagePerHour: z.number(),
-  lift: z.number(),
-});
 
 export const planPitchSchema = z.object({
   id: z.string(),
@@ -104,8 +93,6 @@ export const planPitchSchema = z.object({
   }),
   why: z.string(),
   whySource: z.enum(["ai", "template"]),
-  /** The personal bonus from the tip log (already in the score), when the log covers this pitch. */
-  tip: tipBonusSchema.nullable().default(null),
   evidence: z.object({
     /** With footfallSource "nearby-sensors", avgHourly is the estimate and name the nearest sensor. */
     sensor: z.object({ name: z.string(), avgHourly: z.number(), /** The slot weekday's 24-hour counts at that sensor (typical, an estimate), for the sheet's sparkline. Null when not available. */ hourly: z.array(z.number().nullable()).length(24).nullable().default(null) }).nullable(),
@@ -194,13 +181,10 @@ export const planSchema = z.object({
       score: z.number(),
       kind: z.enum(PITCH_KINDS),
       discovery: discoverySchema,
-      tipPoints: z.number().int().nullable().default(null),
       /** Ranked above one of the picks but left out: it lies within 250 m of this pick (the top-3 spacing rule). */
       tooCloseTo: z.object({ id: z.string(), name: z.string() }).nullable().default(null),
     }),
   ),
-  /** The tip log behind the personal bonus, when one was used. */
-  tipHistory: z.object({ source: z.enum(["example", "yours", "mixed"]), sessions: z.number().int(), perHour: z.number() }).nullable().default(null),
   /** How the data narrowed down to the pitches (see scoring/candidates.ts). */
   funnel: z
     .object({ cells: z.number().int(), topCells: z.number().int(), considered: z.number().int(), excluded: z.number().int(), candidates: z.number().int() })

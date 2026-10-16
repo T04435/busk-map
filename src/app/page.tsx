@@ -3,6 +3,7 @@ import { ArrowRight, Clock, MapPin, Music, Scale } from "lucide-react";
 import { ExampleActCard } from "@/components/honeycomb/example-act-card";
 import { QlooWordmark } from "@/components/honeycomb/logo";
 import { HexCell } from "@/components/honeycomb/hex-cell";
+import { HeroGlow } from "@/components/landing/hero-glow";
 import { HeroTasteMap } from "@/components/landing/hero-taste-map";
 import { OwnRedirect } from "@/components/landing/own-redirect";
 import { Warmup } from "@/components/landing/warmup";
@@ -74,6 +75,7 @@ export default function Home() {
           </defs>
           <rect width="100%" height="100%" fill="url(#hero-lattice)" />
         </svg>
+        <HeroGlow />
         <div className="relative mx-auto flex max-w-[1360px] flex-wrap items-start gap-x-14 gap-y-10 px-4 py-12 md:px-6 md:py-16">
           {/* The headline sizes itself to its column (19cqw) so "What to play." always stays on one line, as in the deck (B-025). */}
           <div className="flex min-w-0 flex-[1.2_1_520px] flex-col gap-7 pt-4 [container-type:inline-size] md:pt-6">
@@ -93,7 +95,7 @@ export default function Home() {
             <figure className="m-0 flex flex-col gap-2.5">
               <HeroTasteMap label="An illustration of Qloo's taste map for a folk duo, with their three pitches" />
               <figcaption className="font-mono text-xs leading-4 font-medium text-muted-foreground">
-                An example of Qloo&apos;s taste map for a folk duo: the brighter the cell, the more their crowd gathers there.
+                Qloo&apos;s taste map for a folk duo, filling in as the research runs: the brighter the cell, the more their crowd gathers there. An example, not a city&apos;s data.
               </figcaption>
             </figure>
             <Link
@@ -105,7 +107,10 @@ export default function Home() {
             </Link>
           </div>
           <div className="flex basis-full flex-wrap items-center justify-center gap-x-7 gap-y-4 pt-4 text-qloo">
-            <span className="font-display text-[clamp(26px,5vw,44px)] leading-none font-extrabold tracking-[0.02em] whitespace-nowrap uppercase">In partnership with</span>
+            {/* The halo keeps the purple legible when a glowing cell pulses behind it. */}
+            <span className="font-display text-[clamp(26px,5vw,44px)] leading-none font-extrabold tracking-[0.02em] whitespace-nowrap uppercase [text-shadow:0_0_3px_var(--background),0_0_8px_var(--background),0_0_14px_var(--background)]">
+              In partnership with
+            </span>
             <QlooWordmark width={160} className="h-auto w-[clamp(96px,22vw,160px)] text-foreground" />
           </div>
         </div>

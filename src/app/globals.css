@@ -365,6 +365,9 @@ html { scroll-padding-bottom: var(--bottom-nav); }
 
 /* The landing page's ticker: two copies side by side, rolled left by one copy's width. Still under reduced motion. */
 @keyframes hc-roll { from { transform: translateX(0); } to { transform: translateX(calc(-50% - 20px)); } }
+@keyframes hc-glow { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.9; } }
+.hc-glow { animation: hc-glow 3.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .hc-glow { animation: none; opacity: 0.5; } }
 .hc-ticker { width: max-content; animation: hc-roll 40s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .hc-ticker { animation: none; } }
 

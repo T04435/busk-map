@@ -62,4 +62,21 @@ test.describe("landing, as the deck draws it", () => {
     await expect(page.locator('[data-slot="site-footer"]')).not.toHaveAttribute("data-theme", "dark");
     await expect(page.locator('[data-slot="site-footer"]').getByRole("link", { name: "Brand" })).toHaveCount(0);
   });
+
+  test("the hero ground has the deck's glowing cells and the deck's caption (B-021)", async ({ page }) => {
+    await page.goto("/");
+    const hero = page.locator('section[aria-labelledby="hero"]');
+    await expect(hero.locator("svg[aria-hidden=true] path.hc-glow")).toHaveCount(104);
+    await expect(hero.locator("figcaption")).toContainText("Qloo's taste map for a folk duo, filling in as the research runs: the brighter the cell, the more their crowd gathers there.");
+    // Pulsing by default.
+    expect(await hero.evaluate((el) => el.getAnimations({ subtree: true }).some((a) => (a as CSSAnimation).animationName === "hc-glow"))).toBe(true);
+  });
+
+  test("the glowing cells hold still under reduced motion (B-021)", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    const hero = page.locator('section[aria-labelledby="hero"]');
+    await expect(hero.locator("path.hc-glow").first()).toBeAttached();
+    expect(await hero.evaluate((el) => el.getAnimations({ subtree: true }).filter((a) => (a as CSSAnimation).animationName === "hc-glow").length)).toBe(0);
+  });
 });

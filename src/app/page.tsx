@@ -9,6 +9,8 @@ import { EXAMPLES } from "@/lib/examples";
 import { localToday, nextWeekday, weekdayOf } from "@/lib/slot";
 import { loadStoredPlan } from "@/server/plans";
 import { SOURCES } from "@/lib/sources";
+import { CALLS_PER_NEW_BUSK, callKinds, featureCount } from "@/lib/qloo-map";
+import { Button } from "@/components/ui/button";
 
 export default function Home({ searchParams }: PageProps<"/">) {
   return (
@@ -78,6 +80,21 @@ export default function Home({ searchParams }: PageProps<"/">) {
         <Suspense>
           <OwnActForm searchParams={searchParams} />
         </Suspense>
+      </section>
+
+      <section aria-labelledby="brain" className="max-w-2xl space-y-3" data-testid="brain-teaser">
+        <h2 id="brain" className="text-xl font-semibold">
+          The brain of Busk Map
+        </h2>
+        <p className="text-muted-foreground">
+          Powered by Qloo: {callKinds} kinds of Qloo call, {CALLS_PER_NEW_BUSK} of them for a new busk and none on a rerun, decide{" "}
+          {featureCount} parts of your plan. See how every answer flows into your busk.
+        </p>
+        <Button asChild variant="outline">
+          <Link href="/brain">
+            Open the brain <span aria-hidden="true">→</span>
+          </Link>
+        </Button>
       </section>
 
       <footer className="space-y-1 text-xs text-muted-foreground">

@@ -1,9 +1,10 @@
 "use client";
 
-import { CheckIcon, Loader2Icon, MusicIcon, PencilIcon, XIcon } from "lucide-react";
 import { useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { TrackResult } from "@/components/forms/repertoire-api";
 import { FormMessage } from "@/components/honeycomb/form-message";
+import { Icon } from "@/components/honeycomb/icon";
+import { Loader } from "@/components/honeycomb/loader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,28 +65,37 @@ function PickedRow({ song, onRemove, onEdit }: { song: PickedSong; onRemove: (so
         </div>
         <div>
           <Button type="button" size="sm" onClick={done}>
-            <CheckIcon aria-hidden /> Done
+            <Icon name="check" size={16} strokeWidth={2.5} /> Done
           </Button>
         </div>
       </li>
     );
   return (
-    <li className="flex items-center gap-3 px-3 py-1.5">
+    <li className="flex min-h-tap flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2.5 max-[560px]:py-2">
       <SongCover image={song.image} />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-bold">{song.title}</span>
-        <span className="block truncate text-xs text-muted-foreground">{[song.artist, song.album].filter(Boolean).join(" · ")}</span>
+      <span className="min-w-0 flex-1 basis-0">
+        <span className="block text-[15px] leading-5 font-bold max-[560px]:break-words sm:truncate">{song.title}</span>
+        <span className="block truncate text-sm leading-5 text-muted-foreground">{[song.artist, song.album].filter(Boolean).join(" · ")}</span>
       </span>
-      {song.own && <Badge variant="solid">Your song</Badge>}
-      {typed && <Badge variant="neutral">Typed</Badge>}
-      {song.durationMs !== null && <span className="font-mono text-xs text-muted-foreground tabular-nums">{formatDuration(song.durationMs)}</span>}
+      {(song.own || typed || song.durationMs !== null) && (
+        <span className="inline-flex flex-none items-center gap-3 max-[560px]:order-3 max-[560px]:basis-full max-[560px]:pl-11">
+          {song.own && (
+            <Badge variant="solid">
+              <Icon name="music" size={14} strokeWidth={2.5} />
+              Your song
+            </Badge>
+          )}
+          {typed && <Badge variant="neutral">Typed</Badge>}
+          {song.durationMs !== null && <span className="font-mono text-sm leading-5 text-muted-foreground tabular-nums">{formatDuration(song.durationMs)}</span>}
+        </span>
+      )}
       {typed && onEdit ? (
-        <Button ref={editRef} type="button" variant="ghost" size="icon-xs" data-edit-for={song.key} aria-label={`Edit ${song.title}`} onClick={() => { setTitle(song.title); setArtist(song.artist); setEditing(true); }}>
-          <PencilIcon aria-hidden />
+        <Button ref={editRef} type="button" variant="ghost" size="icon-xs" className="max-[560px]:order-2" data-edit-for={song.key} aria-label={`Edit ${song.title}`} onClick={() => { setTitle(song.title); setArtist(song.artist); setEditing(true); }}>
+          <Icon name="pencil" size={16} />
         </Button>
       ) : null}
-      <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${song.title}`} onClick={() => onRemove(song)}>
-        <XIcon aria-hidden />
+      <Button type="button" variant="ghost" size="icon-xs" className="max-[560px]:order-2" aria-label={`Remove ${song.title}`} onClick={() => onRemove(song)}>
+        <Icon name="x" size={16} />
       </Button>
     </li>
   );
@@ -98,15 +108,18 @@ export function PickedSongs({ songs, onRemove, onEdit }: { songs: PickedSong[]; 
   const unknown = songs.some((s) => s.durationMs === null);
   return (
     <div className="flex flex-col gap-1.5">
-      <p className="m-0 font-mono text-xs font-bold tracking-[0.06em] text-muted-foreground uppercase" data-testid="picks-header">
-        Your picks · {songs.length} {songs.length === 1 ? "song" : "songs"}
-        {known > 0 ? ` · ${unknown ? "at least " : ""}${formatDuration(known)}` : ""}
-      </p>
-    <ul aria-label="Songs you picked" className="m-0 list-none divide-y divide-border border-2 border-rule bg-card p-0 text-sm">
-      {songs.map((song) => (
-        <PickedRow key={song.key} song={song} onRemove={onRemove} onEdit={onEdit} />
-      ))}
-    </ul>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3" data-testid="picks-header">
+        <span className="text-[15px] leading-5 font-bold">Your picks</span>
+        <span className="font-mono text-sm leading-5 text-muted-foreground">
+          {songs.length} {songs.length === 1 ? "song" : "songs"}
+          {known > 0 ? ` · ${unknown ? "at least " : ""}${formatDuration(known)}` : ""}
+        </span>
+      </div>
+      <ul aria-label="Songs you picked" className="m-0 list-none divide-y divide-border overflow-hidden border-2 border-rule bg-card p-0 text-sm">
+        {songs.map((song) => (
+          <PickedRow key={song.key} song={song} onRemove={onRemove} onEdit={onEdit} />
+        ))}
+      </ul>
     </div>
   );
 }
@@ -201,7 +214,7 @@ export function RepertoirePicker({
         <Label htmlFor={linkId}>Your Spotify artist link (optional)</Label>
         <InputGroup className="has-[>[data-align=inline-start]]:[&>input]:pl-10">
           <InputGroupAddon className="pointer-events-none absolute inset-y-0 left-0 z-10 pl-3">
-            <MusicIcon aria-hidden="true" className="size-4" />
+            <Icon name="spotify" size={16} />
           </InputGroupAddon>
           <InputGroupInput
             id={linkId}
@@ -226,7 +239,7 @@ export function RepertoirePicker({
         <div aria-live="polite">
           {loading ? (
             <FormMessage>
-              <Loader2Icon aria-hidden className="inline size-4 animate-spin motion-reduce:animate-none" /> Loading your songs…
+              <Loader size={16} label="Loading" className="mr-1 inline-block align-middle text-primary" /> Loading your songs…
             </FormMessage>
           ) : searchNote ? (
             <FormMessage>{searchNote}</FormMessage>

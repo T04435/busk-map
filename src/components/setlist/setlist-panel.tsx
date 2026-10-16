@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import { AddToRepertoire } from "@/components/playlist/add-to-repertoire";
 import { CopySetButton } from "@/components/setlist/copy-set-button";
 import { PercentCell } from "@/components/honeycomb/percent-cell";
@@ -45,11 +45,14 @@ export function SetlistPanel({
   variant = "plan",
   canAddToRepertoire = false,
   repertoireTotal = null,
+  when,
 }: {
-  pitch: { name: string; setlist: SetlistSong[] };
+  pitch: { name: string; setlist: SetlistSong[]; window?: { label: string } | null };
   learnThese: LearnThese;
   ageLean?: string | null;
   variant?: "plan" | "preview";
+  /** The day and time of the busk ("Sat 12–3 pm"), for the subtitle "pitch · day time · best fit first". Without it the pitch's own best window shows, or nothing. */
+  when?: string;
   /** "Add to Repertoire" on each Songs to learn item. False on example runs: presets never write a Repertoire. */
   canAddToRepertoire?: boolean;
   /** How many songs the busk's Repertoire had (the request's songs): "N of M songs you can sing". Null: not known, no count shown. */
@@ -64,6 +67,7 @@ export function SetlistPanel({
       real={variant === "plan"}
       canAddToRepertoire={canAddToRepertoire}
       repertoireTotal={variant === "plan" ? repertoireTotal : null}
+      when={when}
     />
   );
 }
@@ -75,13 +79,15 @@ function SetlistPreview({
   real = false,
   canAddToRepertoire = false,
   repertoireTotal = null,
+  when,
 }: {
-  pitch: { name: string; setlist: SetlistSong[] };
+  pitch: { name: string; setlist: SetlistSong[]; window?: { label: string } | null };
   learnThese: LearnThese;
   ageLean: string | null;
   real?: boolean;
   canAddToRepertoire?: boolean;
   repertoireTotal?: number | null;
+  when?: string;
 }) {
   const length = setLength(pitch.setlist);
   // "Songs you can sing" are the act's own songs only: suggested ones are Busk Map's additions for this crowd.
@@ -100,7 +106,7 @@ function SetlistPreview({
         <div className="min-w-0 flex-1 basis-72 space-y-2">
           <h3 className="m-0 font-display text-[28px] leading-none font-extrabold uppercase">{real ? PLAYLIST_COPY.suggestedSetFor(pitch.name) : `${PLAYLIST_COPY.suggestedSet} for this pitch`}</h3>
           {real ? (
-            <p className="m-0 text-sm text-muted-foreground">Best fit first</p>
+            <p className="m-0 text-sm text-muted-foreground">{[pitch.name, when ?? pitch.window?.label, "best fit first"].filter(Boolean).join(" · ")}</p>
           ) : (
             <p className="m-0 text-sm text-muted-foreground">
               Your songs, best fit first: the crowd&apos;s affinity for each artist here (Qloo), how well-known the song is (Last.fm) and how its year suits the
@@ -174,7 +180,8 @@ function SetlistPreview({
                 </span>
                 <span className="flex items-center gap-3">
                   {song.durationMs !== null && (
-                    <span className="font-mono text-sm text-muted-foreground tabular-nums" aria-label={`Length ${formatDuration(song.durationMs)}`}>
+                    <span className="font-mono text-sm text-muted-foreground tabular-nums">
+                      <span className="sr-only">Length </span>
                       {formatDuration(song.durationMs)}
                     </span>
                   )}
@@ -190,8 +197,8 @@ function SetlistPreview({
       )}
 
       <section aria-label={PLAYLIST_COPY.toLearn} className="space-y-2 border-2 border-rule border-t-4 border-t-primary bg-card p-4">
-        <h4 className="m-0 flex items-center gap-2 font-mono text-base font-bold uppercase">
-          <BookOpen aria-hidden="true" className="size-5" />
+        <h4 className="m-0 flex items-center gap-2 font-display text-lg font-extrabold tracking-[0.02em] uppercase">
+          <Icon name="learn" size={18} />
           {PLAYLIST_COPY.toLearn}
         </h4>
         <p className="m-0 text-sm text-muted-foreground">

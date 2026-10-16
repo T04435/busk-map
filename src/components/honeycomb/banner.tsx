@@ -17,7 +17,7 @@ const STYLE: Record<BannerTone, string> = {
 /** A full-width strip of context above a page or form: planning again, test data, offline, less data. A polite status. */
 export function Banner({ tone = "info", action, children, className, testId }: { tone?: BannerTone; action?: ReactNode; children: ReactNode; className?: string; testId?: string }) {
   return (
-    <div role="status" data-slot="banner" data-testid={testId} data-tone={tone} className={cn("flex items-center gap-3 border-2 border-rule px-4 py-2.5 text-sm leading-5", STYLE[tone], className)}>
+    <div role="status" data-slot="banner" data-testid={testId} data-tone={tone} className={cn("flex items-center gap-3 px-4 py-2.5 text-sm leading-5 [&_b]:font-bold [&_b]:tracking-[0.03em] [&_b]:uppercase", STYLE[tone], className)}>
       <Icon name={ICON[tone]} size={18} />
       <span className="min-w-0 flex-1">{children}</span>
       {action}

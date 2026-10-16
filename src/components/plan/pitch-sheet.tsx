@@ -6,7 +6,7 @@ import { ScoreBreakdown } from "@/components/pitch-card/pitch-card";
 import { SetlistPanel } from "@/components/setlist/setlist-panel";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
-import { shortHours } from "@/lib/slot";
+import { shortDay, shortHours } from "@/lib/slot";
 import type { ExplanationsModel } from "@/lib/sources";
 import { CrowdPanel } from "./crowd-panel";
 import { PitchDetails } from "./pitch-details";
@@ -91,7 +91,14 @@ export function PitchSheet({
                 </p>
               )}
               <PitchDetails plan={plan} pitch={pitch} rank={rank} model={model} />
-              <SetlistPanel pitch={pitch} learnThese={plan.learnThese} ageLean={plan.ageLean} canAddToRepertoire={canAddToRepertoire} repertoireTotal={repertoireTotal} />
+              <SetlistPanel
+                pitch={pitch}
+                when={`${shortDay(plan.slot.date)} ${pitch.window ? shortHours(pitch.window.startHour, pitch.window.endHour) : shortHours(plan.slot.startHour, plan.slot.endHour)}`}
+                learnThese={plan.learnThese}
+                ageLean={plan.ageLean}
+                canAddToRepertoire={canAddToRepertoire}
+                repertoireTotal={repertoireTotal}
+              />
               <CrowdPanel crowd={plan.crowd} resolved={plan.resolvedArtists} topPitch={plan.pitches[0]?.name ?? null} qlooMode={plan.qlooMode} />
               <Disclosure label="How this score adds up" data-testid="score-details" className="[&_summary]:min-h-tap">
                 <div className="space-y-5">

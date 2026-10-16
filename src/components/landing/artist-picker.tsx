@@ -1,10 +1,12 @@
 "use client";
 
-import { XIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { cn } from "cn";
 import { loadListeners, loadReleases, searchArtists, type ArtistResult } from "@/components/forms/repertoire-api";
 import { useLiveSearch } from "@/components/forms/use-live-search";
 import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
+import { Icon } from "@/components/honeycomb/icon";
+import { Loader } from "@/components/honeycomb/loader";
 import { Button } from "@/components/ui/button";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { formatCount, MIN_QUERY_CHARS } from "@/lib/live-search";
@@ -14,6 +16,8 @@ export type PickedArtist = { name: string; spotifyId: string | null; image: stri
 
 export const MAX_PICKED_ARTISTS = 10;
 const LABEL = "Artists you sound like";
+// A status line in the results frame (DS bm-results-line).
+const LINE = "m-0 flex items-center gap-2 p-3 text-sm leading-5 text-muted-foreground";
 // "|" and "~" separate values in the plan URL.
 const clean = (s: string) => s.replace(/[|~]/g, " ").replace(/\s+/g, " ").trim();
 
@@ -36,6 +40,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
   const [listeners, setListeners] = useState<Record<string, number | null>>({});
   const [releases, setReleases] = useState<Record<string, number>>({});
   const inputRef = useRef<HTMLInputElement>(null);
+  const hintId = useId();
 
   // Release counts (Spotify) and listener counts (Last.fm) load after the results show, never blocking them.
   useEffect(() => {
@@ -97,26 +102,30 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
         {LABEL}
       </p>
       {value.length > 0 && (
-        <ul aria-label="Artists you picked" className="m-0 flex list-none flex-wrap gap-2 p-0">
+        <ul aria-label="Artists you picked" className="m-0 flex list-none flex-col items-stretch gap-2 p-0">
           {value.map((artist) => (
-            <li key={artist.name}>
-              <span className="inline-flex min-h-10 items-center gap-2 border-[1.5px] border-rule bg-card py-1 pr-0.5 pl-1.5 text-sm leading-5">
-                <HexCell size={26} image={artist.image} fontSize={10}>
-                  {initialsOf(artist.name)}
-                </HexCell>
-                <span className="font-bold">{artist.name}</span>
-                {!artist.spotifyId && <span className="font-mono text-[11px] leading-4 font-medium tracking-[0.06em] text-muted-foreground uppercase">(typed)</span>}
-                <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${artist.name}`} onClick={() => onChange(value.filter((a) => a !== artist))}>
-                  <XIcon aria-hidden />
-                </Button>
+            <li key={artist.name} className="box-border flex h-control w-full max-w-full items-center gap-2 border-2 border-rule bg-card pl-1.5 text-sm leading-5">
+              <HexCell size={26} image={artist.image} fontSize={11}>
+                {initialsOf(artist.name)}
+              </HexCell>
+              <span className="min-w-0 flex-1 truncate font-bold" title={artist.name}>
+                {artist.name}
               </span>
+              {!artist.spotifyId && <span className="shrink-0 font-mono text-[11px] leading-4 font-medium tracking-[0.06em] text-muted-foreground uppercase">Typed</span>}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                className="h-full w-10 shrink-0 rounded-none border-0 border-l border-border"
+                aria-label={`Remove ${artist.name}`}
+                onClick={() => onChange(value.filter((a) => a !== artist))}
+              >
+                <Icon name="x" size={16} strokeWidth={2.5} />
+              </Button>
             </li>
           ))}
         </ul>
       )}
-      <p className="m-0 text-sm text-muted-foreground" data-testid="artists-hint">
-        {full ? "That’s the most. Remove one to add another." : `${value.length} of ${MAX_PICKED_ARTISTS}. Type a comma to add a name that isn’t on Spotify.`}
-      </p>
       <Command
         shouldFilter={false}
         loop
@@ -132,6 +141,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
           onValueChange={setQuery}
           placeholder={full ? `Up to ${MAX_PICKED_ARTISTS} artists` : "Search Spotify, e.g. Paul Kelly"}
           disabled={full}
+          aria-describedby={hintId}
           onKeyDown={(e) => {
             if (e.key === "Backspace" && query === "" && value.length > 0) onChange(value.slice(0, -1));
             if (e.key === "Escape" && query) {
@@ -140,23 +150,28 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
             }
           }}
         />
+        <p id={hintId} className="m-0 text-sm leading-5 text-muted-foreground" data-testid="artists-hint">
+          {full ? "That’s the most. Remove one to add another." : `${value.length} of ${MAX_PICKED_ARTISTS}. Type a comma to add a name that isn’t on Spotify.`}
+        </p>
         {typed && (
           <CommandList label="Artist results" className="border-2 border-rule bg-popover p-1">
             {state.status === "idle" && typed.length < MIN_QUERY_CHARS && (
-              <p className="px-3 py-2 text-sm text-muted-foreground">Type {MIN_QUERY_CHARS} or more letters to search Spotify.</p>
+              <p className={LINE}>Type {MIN_QUERY_CHARS} or more letters to search Spotify.</p>
             )}
             {state.status === "loading" && (
-              <p role="status" className="px-3 py-2 text-sm text-muted-foreground">
+              <p role="status" className={LINE}>
+                <Loader size={18} label="Searching" className="text-primary" />
                 Searching Spotify…
               </p>
             )}
             {state.status === "error" && (
-              <p role="alert" className="px-3 py-2 text-sm text-destructive">
+              <p role="alert" className={cn(LINE, "text-destructive")}>
+                <Icon name="warning" size={16} className="shrink-0" />
                 {state.message}
               </p>
             )}
             {state.status === "done" && results.length === 0 && (
-              <p role="status" className="px-3 py-2 text-sm text-muted-foreground">
+              <p role="status" className={LINE}>
                 No artists on Spotify match “{state.query}”.
               </p>
             )}
@@ -193,7 +208,8 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
             {!has(typed) && (
               <CommandGroup heading="Not on Spotify?">
                 <CommandItem value="typed" onSelect={() => pick({ name: typed, spotifyId: null, image: null })}>
-                  Add “{typed}” as typed
+                  <Icon name="plus" size={18} />
+                  <span className="min-w-0 flex-1 break-words">Add “{typed}” as typed</span>
                 </CommandItem>
               </CommandGroup>
             )}

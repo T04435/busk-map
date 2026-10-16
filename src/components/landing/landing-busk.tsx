@@ -74,8 +74,9 @@ export function LandingBusk() {
           ))}
         </ol>
       </div>
-      <div className="min-w-0 p-3 md:p-4">
-        <LazyPlanMap plan={PLAN} center={EXAMPLE_CENTER} selectedId={selectedId} onSelect={setSelectedId} />
+      {/* The map fills its half edge to edge: the card's rule frames it, so no nested card (user, live session 17 Oct). */}
+      <div className="min-w-0 border-t-2 border-rule lg:border-t-0">
+        <LazyPlanMap plan={PLAN} center={EXAMPLE_CENTER} selectedId={selectedId} onSelect={setSelectedId} frameClassName="border-0 bg-transparent" />
       </div>
       <Sheet open={open !== null} onOpenChange={(o) => !o && setOpenId(null)}>
         <SheetContent

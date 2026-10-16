@@ -97,8 +97,8 @@ const replayState = (replay: Props["replay"]) => {
 /** If a live run hasn't ended by now, show the engine's plan anyway (the agent itself times out at 90 s). */
 const AGENT_WAIT_MS = 110_000;
 /** Brand words (B-049): Claude, and Busk Map's scores; never "agent" or "engine" in what a busker reads. */
-const ranOutNote = (model: ExplanationsModel | null) => `${modelName(model, "start")} ran out of time, so these spots come straight from Busk Map's scores. The reasons are standard ones.`;
-const couldntNote = (model: ExplanationsModel | null) => `${modelName(model, "start")} couldn't finish, so these spots come straight from Busk Map's scores. The reasons are standard ones.`;
+const ranOutNote = (model: ExplanationsModel | null) => `${modelName(model, "start")} ran out of time, so these pitches come straight from Busk Map's scores. The reasons are standard ones.`;
+const couldntNote = (model: ExplanationsModel | null) => `${modelName(model, "start")} couldn't finish, so these pitches come straight from Busk Map's scores. The reasons are standard ones.`;
 
 export function PlanView({ initialPlan, heading, request, center, autoRun, faults, shareId = null, replay = null, fresh = false }: Props) {
   // A stored run starts the view finished: its plan, its steps (collapsed, as a replay) and its totals.
@@ -427,8 +427,9 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, fault
         </Banner>
       )}
       {limited && <PlanAlert kind="limit" message={run.status === "limited" ? run.message : undefined}>{statusLine}</PlanAlert>}
-      {noTaste ? (
-        <Banner testId="agent-fallback">Claude didn&apos;t research this busk: with no taste to go on there&apos;s nothing for it to check. Your spots come straight from the city&apos;s data.</Banner>
+      {/* B-184: with no legal pitch the NoPitchPanel says it all; a note about "these pitches" would point at nothing. */}
+      {plan && !pending && plan.pitches.length === 0 ? null : noTaste ? (
+        <Banner testId="agent-fallback">Claude didn&apos;t research this busk: with no taste to go on there&apos;s nothing for it to check. Your pitches come straight from the city&apos;s data.</Banner>
       ) : fallbackNote && !qlooDown ? (
         <Banner testId="agent-fallback">{fallbackNote}</Banner>
       ) : null}

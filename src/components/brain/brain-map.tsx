@@ -61,6 +61,37 @@ function useWires(grid: React.RefObject<HTMLDivElement | null>, nodes: React.Ref
   return paths;
 }
 
+/** Space kept between the trace panel's top edge and a piece the browser scrolls into view above it. */
+const PANEL_GAP_PX = 16;
+/** The least room kept below a focused piece while tracing (the folded panel is about 63 px tall). */
+const MIN_SCROLL_PADDING_PX = 96;
+
+/**
+ * While the sticky trace panel is shown, the page's scroll-padding-bottom matches its height plus a gap (at least
+ * 96 px), so the browser scrolls a newly focused piece to just above the panel instead of under it (WCAG 2.2 2.4.11,
+ * B-015). Focus scrolling and scrollIntoView both honour scroll-padding on the scroll container, which here is <html>.
+ * The panel only ever shrinks while a piece has focus (it folds, see TracedPanel), so the padding in force when focus
+ * scrolls is never smaller than the panel that ends up over the page.
+ */
+function useScrollPaddingBelow(panel: React.RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const el = panel.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const previous = root.style.scrollPaddingBottom;
+    const set = () => {
+      root.style.scrollPaddingBottom = `${Math.max(MIN_SCROLL_PADDING_PX, Math.ceil(el.getBoundingClientRect().height) + PANEL_GAP_PX)}px`;
+    };
+    set();
+    const observer = new ResizeObserver(set);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.style.scrollPaddingBottom = previous;
+    };
+  }, [panel]);
+}
+
 export function BrainMap() {
   const [selected, setSelected] = useState<NodeId | null>(null);
   const [announcement, setAnnouncement] = useState("");
@@ -132,7 +163,7 @@ export function BrainMap() {
   const onPathSources = secondarySources.some((s) => !lit || lit.nodes.has(s.id));
 
   return (
-    <section aria-labelledby="wiring" className="space-y-4" onKeyDown={onKeyDown}>
+    <section aria-labelledby="wiring" className="group/brain space-y-4" onKeyDown={onKeyDown}>
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
         <h2 id="wiring" className="text-2xl font-semibold tracking-tight">
           The wiring
@@ -209,17 +240,28 @@ function Column({ title, note, children }: { title: string; note: string; childr
 }
 
 function TracePanel({ selected, onClear }: { selected: NodeId | null; onClear: () => void }) {
-  if (!selected) {
-    return (
-      <div className="rounded-xl border p-4 text-sm" data-testid="trace-panel">
-        <p className="font-medium">Pick any piece</p>
-        <p className="text-muted-foreground">
-          Choose a Qloo call, a data point or a part of your busk, and its whole path lights up. Try Setlist and learn these, where four
-          Qloo calls and Spotify meet.
-        </p>
-      </div>
-    );
-  }
+  return selected ? <TracedPanel selected={selected} onClear={onClear} /> : <IdlePanel />;
+}
+
+function IdlePanel() {
+  return (
+    <div className="rounded-xl border p-4 text-sm" data-testid="trace-panel">
+      <p className="font-medium">Pick any piece</p>
+      <p className="text-muted-foreground">
+        Choose a Qloo call, a data point or a part of your busk, and its whole path lights up. Try Setlist and learn these, where four
+        Qloo calls and Spotify meet.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The open trace: sticky at the bottom of the viewport, so the page keeps scroll padding for it while it's shown, and
+ * folded to the name and Clear trace while a piece has keyboard focus.
+ */
+function TracedPanel({ selected, onClear }: { selected: NodeId; onClear: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useScrollPaddingBelow(ref);
   const { nodes } = trace(selected);
   const isFeature = nodeKind(selected) === "feature";
   const reach = [...nodes].filter((id) => id !== selected && (isFeature ? ["call", "source"] : ["feature"]).includes(nodeKind(id)));
@@ -228,6 +270,7 @@ function TracePanel({ selected, onClear }: { selected: NodeId | null; onClear: (
   );
   return (
     <div
+      ref={ref}
       className="sticky bottom-0 z-10 max-h-[45vh] space-y-2 overflow-auto rounded-xl border bg-background p-4 text-sm shadow-lg"
       data-testid="trace-panel"
     >
@@ -237,22 +280,26 @@ function TracePanel({ selected, onClear }: { selected: NodeId | null; onClear: (
           Clear trace
         </Button>
       </div>
-      <p className="text-muted-foreground">{traceSummary(selected)}</p>
-      {reach.length > 0 && (
-        <p>
-          <span className="font-medium">{isFeature ? "Comes from:" : "Decides:"}</span> {reach.map(nodeLabel).join(" · ")}
-        </p>
-      )}
-      <ul className="space-y-1">
-        {links.map((l) => (
-          <li key={`${l.dir}-${l.name}`}>
-            <span className="font-medium">
-              {l.dir} {l.name}
-            </span>
-            : {l.how}
-          </li>
-        ))}
-      </ul>
+      {/* Keyboard users tabbing through the pieces get a slim bar (name and Clear trace) so the panel covers less of the
+          page; the details come back when focus leaves the pieces. Mouse clicks don't match :focus-visible. */}
+      <div className="space-y-2 group-has-[[data-node-id]:focus-visible]/brain:hidden" data-testid="trace-detail">
+        <p className="text-muted-foreground">{traceSummary(selected)}</p>
+        {reach.length > 0 && (
+          <p>
+            <span className="font-medium">{isFeature ? "Comes from:" : "Decides:"}</span> {reach.map(nodeLabel).join(" · ")}
+          </p>
+        )}
+        <ul className="space-y-1">
+          {links.map((l) => (
+            <li key={`${l.dir}-${l.name}`}>
+              <span className="font-medium">
+                {l.dir} {l.name}
+              </span>
+              : {l.how}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

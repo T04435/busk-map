@@ -10,7 +10,8 @@ import { expect, test } from "./fixtures";
  * Width tests set their own viewports (390, 768, 1440) and run in the desktop project only, like layout.spec.ts
  * (which also checks /brain for overflow and covered controls). Above 1023 px a trace dims the pieces off the path;
  * at 1023 px and below the columns stack and a trace hides them. Screenshots go to the hackathon folder
- * (screens/brain-<width>.png, full page, and brain-<width>-traced.png, the viewport at the wiring), or LAYOUT_SCREENS_DIR.
+ * (screens/brain-<width>.png, full page, brain-<width>-traced.png, the viewport at the wiring, and brain-focus-<width>.png,
+ * a piece focused by Tab just above the open trace panel), or LAYOUT_SCREENS_DIR.
  */
 const WIDTHS = [
   { name: "390", viewport: { width: 390, height: 844 }, stacked: true },
@@ -95,6 +96,73 @@ test.describe("the brain of Busk Map at three widths", () => {
         await expect(nodeOf(page, "f_fans")).toBeVisible();
         await expect(call).toBeFocused();
         await expect(page.getByRole("status")).toHaveText("Trace cleared. Every piece is shown.");
+      });
+
+      test("with a trace open, every piece focused by Tab stays clear of the folded trace panel (WCAG 2.4.11, B-015)", async ({ page }) => {
+        await openBrain(page);
+        await nodeOf(page, "f_setlist").click();
+        await expect(page.getByRole("button", { name: "Clear trace" })).toBeVisible();
+        // Start from the first piece shown, then Tab through every piece to the panel's Clear button.
+        await page.locator("[data-node-id]:visible").first().focus();
+        const shown = await page.locator("[data-node-id]:visible").count();
+        const seen: string[] = [];
+        const hidden: string[] = [];
+        const unfolded: string[] = [];
+        let shot = false;
+        for (let i = 0; i <= shown + 2; i++) {
+          if (i > 0) await page.keyboard.press("Tab");
+          const at = await page.evaluate(() => {
+            const el = document.activeElement as HTMLElement | null;
+            const panel = document.querySelector('[data-testid="trace-panel"]');
+            if (!el || !panel) return { done: true } as const;
+            if (panel.contains(el) || !el.hasAttribute("data-node-id")) return { done: true } as const;
+            const a = el.getBoundingClientRect();
+            const b = panel.getBoundingClientRect();
+            const detail = panel.querySelector('[data-testid="trace-detail"]');
+            return {
+              done: false,
+              id: el.getAttribute("data-node-id") ?? "?",
+              top: a.top,
+              bottom: a.bottom,
+              panelTop: b.top,
+              panelBottom: b.bottom,
+              folded: detail ? getComputedStyle(detail).display === "none" : false,
+              scrollY: window.scrollY,
+            } as const;
+          });
+          if (at.done) break;
+          seen.push(at.id);
+          // In the viewport and not touching the panel at all: its box ends above the panel's top edge (or starts below it).
+          const clear = at.bottom <= at.panelTop || at.top >= at.panelBottom;
+          if (!(clear && at.bottom > 0)) hidden.push(`${at.id} (${Math.round(at.top)}–${Math.round(at.bottom)}, panel ${Math.round(at.panelTop)}–${Math.round(at.panelBottom)})`);
+          // While a piece has keyboard focus the panel folds to a slim bar: the traced name and Clear trace only. (The
+          // first stop is programmatic focus right after a mouse click, which isn't :focus-visible, so it stays full.)
+          if (i > 0 && !at.folded) unfolded.push(at.id);
+          // One screenshot of a focused piece the browser had to scroll to, with the panel open below it.
+          if (!shot && i > 0 && at.scrollY > 0 && at.bottom > at.panelTop - 120) {
+            await page.screenshot({ path: path.join(SCREENS, `brain-focus-${width.name}.png`) });
+            shot = true;
+          }
+        }
+        expect(seen.length, "Tab reached every piece shown").toBe(shown);
+        expect(shot, "a scrolled-to piece was screenshotted above the panel").toBe(true);
+        expect(hidden, "focused pieces overlapping the trace panel").toEqual([]);
+        expect(unfolded, "panel still showing its details while a piece had keyboard focus").toEqual([]);
+
+        // The slim bar stays usable: the traced name and Clear trace are readable, and the details return once focus
+        // moves to Clear trace (out of the pieces).
+        const panel = page.getByTestId("trace-panel");
+        await expect(panel.getByText("Setlist and learn these", { exact: true })).toBeVisible();
+        const clearButton = page.getByRole("button", { name: "Clear trace" });
+        await expect(clearButton).toBeVisible();
+        await clearButton.focus();
+        await expect(page.getByTestId("trace-detail")).toBeVisible();
+        await expect(page.getByRole("status")).toContainText("Tracing. Setlist and learn these comes from");
+
+        // Clearing the trace drops the scroll padding again.
+        await page.keyboard.press("Escape");
+        await expect(nodeOf(page, "f_setlist")).toBeFocused();
+        await expect.poll(() => page.evaluate(() => document.documentElement.style.scrollPaddingBottom)).toBe("");
       });
     });
   }

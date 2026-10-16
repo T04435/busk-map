@@ -32,6 +32,16 @@ Risks QA sees (not defects; the user decides):
 - **Shared IPs.** The limit is per IP. Judges behind one office or VPN address share 5 fresh runs an hour (per instance). One judge who opens the 3 examples and plans 2 acts hits the limit on the next try. The throttled page has no e2e coverage, because offline is exempt (see B-013).
 - **Retry time.** The 429 message gives the retry time in Melbourne time with no zone label (**B-013**).
 
+### Rate limit tested offline (HQ request)
+The route skips the gate in offline mode, so an offline e2e can't reach it. QA tests `freshRunGate` directly instead (`qa/unit/fresh-run-gate.test.ts`, run with `pnpm exec vitest run --config qa/vitest.config.mts`). It uses `offline: false` and a private limiter, so there's no network and no spend. 5 of 5 pass:
+- 5 fresh runs are allowed. The 6th gets "You've started 5 plans this hour. Open one of your earlier plans, or try again at …" with `retryAfterS` between 1 and 3600 s.
+- Replays and joined runs (`reused: true`) never count, before or at the limit: 20 replays, then still 5 fresh, and a replay still opens at the limit.
+- A second IP has its own allowance, and the window resets after an hour.
+- Offline is never limited.
+- B-013 is pinned: a 3 pm Melbourne request gets "try again at 4:00 pm." with no zone label.
+
+**Not covered offline:** whether `/api/plan` sets `reused` for a reopened `/p/<id>`. That's integration and needs a fault switch (asked of DEV in B-013) or a live check. The 429 page's UI isn't covered either.
+
 ## 4. Other changes
 - 0e50a0a: `researchTotals` now has `qlooCalls` and `qlooCacheHits`. Covered by DEV's unit tests; QA's specs don't assert totals.
 - 7126c07: baseline-stats has `agentDiffersRate`, `n` and `dateRange`. Offline, the store is memory; not checked live.

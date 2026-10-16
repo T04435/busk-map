@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Errors · review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f1ea;--card:#fff;--fg:#17191c;--muted:#5d6168;--line:#d9d4c8;--ok:#1d7a3a;--okbg:#e2f3e7;--bad:#b3141b;--badbg:#fbe3e4;--warn:#8a5a00;--warnbg:#fdf0d3;--held:#4b4f86;--heldbg:#e7e7f6;--accent:#c2410c}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#111416;--card:#1a1e21;--fg:#eceae4;--muted:#a3a8ad;--line:#2d3337;--ok:#6fd38f;--okbg:#14301e;--bad:#ff8c8f;--badbg:#3a1416;--warn:#f2c160;--warnbg:#33280f;--held:#b9b9f0;--heldbg:#25253d;--accent:#ff7a3d}}
+:root[data-theme="dark"]{--bg:#111416;--card:#1a1e21;--fg:#eceae4;--muted:#a3a8ad;--line:#2d3337;--ok:#6fd38f;--okbg:#14301e;--bad:#ff8c8f;--badbg:#3a1416;--warn:#f2c160;--warnbg:#33280f;--held:#b9b9f0;--heldbg:#25253d;--accent:#ff7a3d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.wrap{max-width:1600px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:24px;margin:0} .ver{font-weight:800;margin:6px 0 2px} .chg{color:var(--muted);margin:0 0 12px}
+.strip{display:flex;flex-wrap:wrap;gap:8px;align-items:center;position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0;border-bottom:1px solid var(--line)}
+.stat{padding:6px 12px;border:1px solid var(--line);background:var(--card);font-weight:800}
+.stat.ok{color:var(--ok)} .stat.bad{color:var(--bad)} .stat.warn{color:var(--warn)} .stat.held{color:var(--held)}
+.filter{font:inherit;padding:6px 12px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer;min-height:40px} .filter[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.row{display:grid;grid-template-columns:150px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,.55fr) minmax(0,1.3fr);gap:12px;background:var(--card);border:1px solid var(--line);margin:12px 0;padding:12px;scroll-margin-top:70px}
+.row:target{outline:3px solid var(--accent)}
+.id a{display:inline-block;font-size:22px;font-weight:800;color:var(--fg);text-decoration:none;border:2px solid var(--fg);padding:0 8px} .id span{display:block;margin-top:6px;font-weight:600}
+figure{margin:0;min-width:0} figcaption{font-size:12px;color:var(--muted);margin-bottom:4px}
+img{display:block;max-width:100%;height:auto;max-height:520px;object-fit:contain;object-position:top left;border:1px solid var(--line);background:#fff}
+.box img{max-height:none}
+dl{margin:0;display:grid;gap:6px} dt{font-size:12px;color:var(--muted)} dd{margin:0} .call{font-weight:800;color:var(--accent)}
+.chip{font-weight:800;padding:1px 8px} .chip.ok{background:var(--okbg);color:var(--ok)} .chip.bad{background:var(--badbg);color:var(--bad)} .chip.warn{background:var(--warnbg);color:var(--warn)} .chip.held{background:var(--heldbg);color:var(--held)}
+.ph{border:2px dashed var(--muted);color:var(--muted);padding:24px 8px;text-align:center;font-weight:800}
+body.action .row[data-action="false"]{display:none}
+.box{background:var(--card);border:1px solid var(--line);padding:12px 16px;margin-top:20px;overflow-x:auto} .box h2{font-size:16px;margin:0 0 6px}
+table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top}
+@media (max-width:1100px){.row{grid-template-columns:1fr 1fr} .id{grid-column:1/-1} dl{grid-column:1/-1}}
+@media (max-width:600px){.row{grid-template-columns:1fr}}
+</style></head>
+<body><div class="wrap">
+<h1>Errors · review</h1>
+<p class="ver">v1 · design/honeycomb ＠ 7b1521e · 17 Oct 2026 · route 404 (any unknown URL), error.tsx (a render error), global-error.tsx</p>
+<p class="chg">First version: 404, error and global error against the deck at 3 widths, day and night; field strip; B-053, B-054.</p>
+<div class="strip" role="group" aria-label="Summary"><span class="stat ok">4 Present</span><span class="stat warn">2 Different</span><span class="stat bad">0 Missing</span><span class="stat bad">1 Broken</span><button class="filter" type="button" aria-pressed="false" id="flt">Needs action only</button></div>
+<p class="chg">Deck: the NotFound, Error and GlobalError boards (top of each). Build: QA&#x27;s own export; the render error comes from faults=render (test only); global error can&#x27;t be triggered offline and is judged from its source. The row id is the ticket.</p>
+<article class="row" id="E01" data-action="true">
+<div class="id"><a href="#E01">E01</a><span>404: not-found card</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/deck/E01-1440-day.jpg"><img loading="lazy" src="../screens/honeycomb/errors/deck/E01-1440-day.jpg" alt="E01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/build/E01-1440-day.jpg"><img loading="lazy" src="../screens/honeycomb/errors/build/E01-1440-day.jpg" alt="E01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/build/E01-390-day.jpg"><img loading="lazy" src="../screens/honeycomb/errors/build/E01-390-day.jpg" alt="E01 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Status 404, “No pitch here”, Go to Busk Map home (to /) and Try an example plan. Unlike the board: no large orange “404” above the card, the card&#x27;s content is left-aligned and it has no poster shadow.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-053</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="E02" data-action="true">
+<div class="id"><a href="#E02">E02</a><span>Error card (error.tsx)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/deck/E02-1440-day.jpg"><img loading="lazy" src="../screens/honeycomb/errors/deck/E02-1440-day.jpg" alt="E02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/build/E02-1440-day.jpg"><img loading="lazy" src="../screens/honeycomb/errors/build/E02-1440-day.jpg" alt="E02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/build/E02-390-day.jpg"><img loading="lazy" src="../screens/honeycomb/errors/build/E02-390-day.jpg" alt="E02 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Something went wrong”, Try again, Go home, a reference and no stack. Unlike the board: an “!” icon (board: warning triangle), left-aligned, the reference above the buttons (board: under a rule at the foot), no poster shadow, no icon on Try again.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-054</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="E03" data-action="false">
+<div class="id"><a href="#E03">E03</a><span>Global error (global-error.tsx)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/deck/E03-1440-day.jpg"><img loading="lazy" src="../screens/honeycomb/errors/deck/E03-1440-day.jpg" alt="E03 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Judged from the source: its own document, the same error card with plain links, the system font stack because the brand fonts come from the layout it replaces; matches the board&#x27;s headerless, centred card (the card itself carries E02&#x27;s differences).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="E04" data-action="false">
+<div class="id"><a href="#E04">E04</a><span>Plan not found (/p/&lt;unknown&gt;)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Not in the deck</div></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> See Plan · review P23: “We can&#x27;t find this busk”, Go to Busk Map home.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="E05" data-action="false">
+<div class="id"><a href="#E05">E05</a><span>Phone layout (390)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/deck/E01-390-day.jpg"><img loading="lazy" src="../screens/honeycomb/errors/deck/E01-390-day.jpg" alt="E05 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/build/E02-390-day.jpg"><img loading="lazy" src="../screens/honeycomb/errors/build/E02-390-day.jpg" alt="E05 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Cards fill the width, buttons stack; no sideways scroll; axe clean.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="E06" data-action="false">
+<div class="id"><a href="#E06">E06</a><span>Night theme</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/errors/deck/E01-1440-night.jpg"><img loading="lazy" src="../screens/honeycomb/errors/deck/E01-1440-night.jpg" alt="E06 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/errors/build/E01-1440-night.jpg"><img loading="lazy" src="../screens/honeycomb/errors/build/E01-1440-night.jpg" alt="E06 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/errors/build/E02-390-night.jpg"><img loading="lazy" src="../screens/honeycomb/errors/build/E02-390-night.jpg" alt="E06 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Both pages switch to night tokens; axe clean.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="E07" data-action="true">
+<div class="id"><a href="#E07">E07</a><span>Field focus</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Not in the deck</div></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip bad">Broken</span> Both buttons on the 404 fail: two ring layers when focused (Site-wide S09).</dd></div>
+<div><dt>User's call</dt><dd class="call">F14</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article>
+<section class="box" id="field-strip"><h2>Field strip (F14): 404</h2><a href="../screens/honeycomb/errors/field-strip.jpg"><img src="../screens/honeycomb/errors/field-strip.jpg" alt="404 field strip"></a></section><section class="box" id="critique"><h2>Impeccable critique</h2><ol><li><b>P3 · Recognisability.</b> The board's big “404” told people at a glance where they were; the build leans on the title alone (B-053).</li><li><b>P3 · The reference competes with the actions</b> on the error card (B-054): the board keeps it as a footnote under a rule.</li><li>Both pages always offer a way home and no stack trace: good.</li></ol></section><section class="box" id="audit"><h2>Impeccable audit</h2><table><tr><th>Check</th><th>Result</th></tr><tr><td>axe at 390 and 1440, day and night (404 and error)</td><td>Clean</td></tr><tr><td>HTTP status</td><td>404 for an unknown URL; the render error page is served with 200 (an error boundary after streaming starts), worth knowing for monitoring</td></tr><tr><td>Sideways scroll</td><td>None</td></tr><tr><td>Home links</td><td>Both go to /</td></tr></table></section>
+<section class="box"><h2>Versions</h2><ul><li><b>v1</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: First version: 404, error and global error against the deck at 3 widths, day and night; field strip; B-053, B-054.</li></ul></section>
+</div>
+<script>
+const f=document.getElementById('flt');f.addEventListener('click',()=>{const on=!document.body.classList.contains('action');document.body.classList.toggle('action',on);f.setAttribute('aria-pressed',String(on));});
+</script></body></html>

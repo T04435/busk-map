@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { RotateCw } from "lucide-react";
 import { StatusCard } from "@/components/status/status-card";
 import { Button } from "@/components/ui/button";
 
@@ -32,7 +33,10 @@ export function ErrorCard({ error, onRetry, plainLinks = false }: { error: Error
       footnote={error.digest ? <>Reference: <code>{error.digest}</code></> : null}
       actions={
         <>
-          <Button onClick={() => onRetry()}>Try again</Button>
+          <Button onClick={() => onRetry()}>
+            <RotateCw aria-hidden="true" />
+            Try again
+          </Button>
           <Button asChild variant="outline">
             {home}
           </Button>

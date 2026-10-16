@@ -346,12 +346,12 @@ html { scroll-padding-bottom: var(--bottom-nav); }
      turn their border to --ring and add one 2px ring, buttons, toggles, switches and radios one 2px ring (ring-2 ring-ring, no offset). This rule is only
      the fallback for plain elements (links, bare buttons, scrollable regions, tooltip triggers): one 2px ring (--focus-ring),
      never a second one; it never touches fields (inputs are not in the list). */
-  :where(a, button, summary, [tabindex]):not([tabindex="-1"]):focus-visible {
+  :where(a, button, summary, [tabindex]):not([tabindex="-1"], input, textarea, select):focus-visible {
     outline: none;
     box-shadow: var(--focus-ring);
   }
   @media (forced-colors: active) {
-    :where(a, button, summary, [tabindex]):not([tabindex="-1"]):focus-visible { outline: 2px solid CanvasText; }
+    :where(a, button, summary, [tabindex]):not([tabindex="-1"], input, textarea, select):focus-visible { outline: 2px solid CanvasText; }
   }
   body {
     @apply bg-background text-foreground;

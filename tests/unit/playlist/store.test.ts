@@ -120,28 +120,47 @@ describe("MemoryPlaylistStore", () => {
 describe("PostgresPlaylistStore SQL shape", () => {
   function fake(results: unknown[][]) {
     const calls: { text: string; params: unknown[] }[] = [];
-    const sql = { query: async (text: string, params: unknown[] = []) => (calls.push({ text, params }), results.shift() ?? []) };
-    return { store: new PostgresPlaylistStore(sql as never), calls };
+    const query = async (text: string, params: unknown[] = []) => (calls.push({ text, params }), results.shift() ?? []);
+    // A transaction runs its statements in order: the fake answers each from the same list.
+    const transaction = async (build: (txn: { query: (t: string, p?: unknown[]) => { text: string; params: unknown[] } }) => { text: string; params: unknown[] }[]) => {
+      const out: unknown[] = [];
+      for (const q of build({ query: (text, params = []) => ({ text, params }) })) out.push(await query(q.text, q.params));
+      return out;
+    };
+    return { store: new PostgresPlaylistStore({ query, transaction } as never), calls };
   }
   const songRow = { id: "7", song_key: "artist|song 1", state: "can_sing", source: "typed", title: "Song 1", artist: "Artist", own: false, spotify_track_id: null, year: null, duration_ms: null, added_at: new Date() };
 
-  it("adds a song with one conditional INSERT (limit + ON CONFLICT), then bumps the revision", async () => {
-    const { store, calls } = fake([[songRow], []]);
+  it("adds a song under a row lock: lock the playlist, then one conditional INSERT (limit + ON CONFLICT), then bump the revision", async () => {
+    const { store, calls } = fake([[{ id: "pid" }], [songRow], []]);
     const r = await store.addSong("pid", song(1));
     expect(r).toMatchObject({ ok: true, song: { id: "7", state: "can_sing" } });
-    expect(calls[0].text).toMatch(/INSERT INTO playlist_songs/);
-    expect(calls[0].text).toMatch(/count\(\*\) FROM playlist_songs WHERE playlist_id = \$1::uuid AND state IN \('can_sing', 'learned'\)\) < \$10/);
-    expect(calls[0].text).toMatch(/ON CONFLICT \(playlist_id, song_key\) DO NOTHING/);
-    expect(calls[0].params[1]).toBe("artist|song 1");
-    expect(calls[0].params[9]).toBe(MAX_SONGS);
-    expect(calls[1].text).toMatch(/revision = revision \+ 1/);
+    // The lock comes first, so the count in the INSERT is read after any concurrent save has committed (READ COMMITTED).
+    expect(calls[0].text).toMatch(/^SELECT id FROM playlists WHERE id = \$1::uuid FOR UPDATE$/);
+    expect(calls[0].params).toEqual(["pid"]);
+    expect(calls[1].text).toMatch(/INSERT INTO playlist_songs/);
+    expect(calls[1].text).toMatch(/count\(\*\) FROM playlist_songs WHERE playlist_id = \$1::uuid AND state IN \('can_sing', 'learned'\)\) < \$10/);
+    expect(calls[1].text).toMatch(/ON CONFLICT \(playlist_id, song_key\) DO NOTHING/);
+    expect(calls[1].params[1]).toBe("artist|song 1");
+    expect(calls[1].params[9]).toBe(MAX_SONGS);
+    expect(calls[2].text).toMatch(/revision = revision \+ 1/);
   });
 
   it("tells a repeat from a full list when the INSERT returns nothing", async () => {
-    const dup = fake([[], [{ one: 1 }]]);
+    const dup = fake([[{ id: "pid" }], [], [{ one: 1 }]]);
     expect(await dup.store.addSong("pid", song(1))).toEqual({ ok: false, reason: "duplicate" });
-    const full = fake([[], []]);
+    const full = fake([[{ id: "pid" }], [], []]);
     expect(await full.store.addSong("pid", song(1))).toEqual({ ok: false, reason: "full" });
+  });
+
+  it("the memory store lets two simultaneous saves at 59 songs land only one", async () => {
+    const store = new MemoryPlaylistStore();
+    const p = await store.create(hashToken(newToken()));
+    for (let i = 0; i < MAX_SONGS - 1; i++) await store.addSong(p.id, song(i));
+    const results = await Promise.all([store.addSong(p.id, song("x")), store.addSong(p.id, song("y"))]);
+    expect(results.filter((r) => r.ok)).toHaveLength(1);
+    expect(results.filter((r) => !r.ok)).toEqual([{ ok: false, reason: "full" }]);
+    expect(await store.songs(p.id)).toHaveLength(MAX_SONGS);
   });
 
   it("scopes every song write to the playlist id and never lets a non-numeric id reach the cast", async () => {

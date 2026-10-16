@@ -400,15 +400,21 @@ export class PostgresPlaylistStore implements PlaylistStore {
 
   async addSong(playlistId: string, s: AddSongInput): Promise<AddSongResult> {
     const songKey = playlistSongKey(s.artist, s.title);
-    // One conditional statement: the limit and the no-repeat rule are checked where the row is written.
-    const rows = (await this.sql.query(
-      `INSERT INTO playlist_songs (playlist_id, song_key, state, source, title, artist, own, spotify_track_id, year, duration_ms)
-       SELECT $1::uuid, $2::text, 'can_sing', $3::text, $4::text, $5::text, $6::boolean, $7::text, $8::smallint, $9::integer
-        WHERE (SELECT count(*) FROM playlist_songs WHERE playlist_id = $1::uuid AND state IN ('can_sing', 'learned')) < $10::integer
-       ON CONFLICT (playlist_id, song_key) DO NOTHING
-       RETURNING ${SONG_COLUMNS}`,
-      [playlistId, songKey, s.source, s.title, s.artist, s.own, s.spotifyTrackId ?? null, s.year ?? null, s.durationMs ?? null, MAX_SONGS],
-    )) as SongRow[];
+    // One transaction (one HTTP round trip): lock the Repertoire's row, then count and insert. Under READ COMMITTED the
+    // count is read after the lock is held, so two saves at 59 songs can't both land. The limit and the no-repeat rule
+    // (ON CONFLICT) are still checked where the row is written.
+    const [, inserted] = (await this.sql.transaction((txn) => [
+      txn.query("SELECT id FROM playlists WHERE id = $1::uuid FOR UPDATE", [playlistId]),
+      txn.query(
+        `INSERT INTO playlist_songs (playlist_id, song_key, state, source, title, artist, own, spotify_track_id, year, duration_ms)
+         SELECT $1::uuid, $2::text, 'can_sing', $3::text, $4::text, $5::text, $6::boolean, $7::text, $8::smallint, $9::integer
+          WHERE (SELECT count(*) FROM playlist_songs WHERE playlist_id = $1::uuid AND state IN ('can_sing', 'learned')) < $10::integer
+         ON CONFLICT (playlist_id, song_key) DO NOTHING
+         RETURNING ${SONG_COLUMNS}`,
+        [playlistId, songKey, s.source, s.title, s.artist, s.own, s.spotifyTrackId ?? null, s.year ?? null, s.durationMs ?? null, MAX_SONGS],
+      ),
+    ])) as [unknown, SongRow[]];
+    const rows = inserted;
     if (rows[0]) {
       await this.bump(playlistId);
       return { ok: true, song: toSong(rows[0]) };

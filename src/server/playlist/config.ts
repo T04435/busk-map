@@ -63,6 +63,8 @@ export const LEARN_MAX_RUNS = 50;
 export const LEARN_STEPS_MAX_BYTES = 256 * 1024;
 /** The window of the run limit. */
 export const LEARN_WINDOW_MINUTES = 60;
+/** Runs that ended before the model got any data (Qloo down, nothing matched) cost nothing and don't count towards either limit (B-028). */
+export const LEARN_UNCOUNTED_END_CODES: readonly string[] = ["qloo_unavailable", "no_match"];
 /** Max picks that one artist may have in a run, and the songs across the Repertoire that make an artist "over-represented". */
 export const LEARN_MAX_PER_ARTIST = 2;
 export const LEARN_OVER_REPRESENTED_AT = 3;

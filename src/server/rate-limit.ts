@@ -1,7 +1,7 @@
 import "server-only";
 import type { LearnLimitScope } from "@/lib/learn-schema";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
-import { LEARN_RUNS_PER_HOUR_PER_IP, LEARN_RUNS_PER_HOUR_PER_PLAYLIST, LEARN_WINDOW_MINUTES, PLAYLIST_CREATIONS_PER_HOUR } from "@/server/playlist/config";
+import { LEARN_RUNS_PER_HOUR_PER_IP, LEARN_UNCOUNTED_END_CODES, LEARN_RUNS_PER_HOUR_PER_PLAYLIST, LEARN_WINDOW_MINUTES, PLAYLIST_CREATIONS_PER_HOUR } from "@/server/playlist/config";
 
 /**
  * A small sliding-window limiter, per server instance. It stops one browser
@@ -15,6 +15,11 @@ export function createRateLimiter(limit: number, windowMs: number) {
     peek(key: string, now = Date.now()): { ok: boolean; retryAfterS: number } {
       const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
       return recent.length >= limit ? { ok: false, retryAfterS: Math.ceil((windowMs - (now - recent[0])) / 1000) } : { ok: true, retryAfterS: 0 };
+    },
+    /** Take back the latest hit of a key: a request that turned out not to count (a learn run that ended with Qloo down). */
+    release(key: string): void {
+      const recent = hits.get(key);
+      if (recent?.length) recent.pop();
     },
     check(key: string, now = Date.now()): { ok: boolean; retryAfterS: number } {
       const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
@@ -108,6 +113,13 @@ export function playlistCreateGate(
 
 /** Learn runs: 6 an hour per IP, per instance like the other limiters (config.ts, confirmed 17 Oct). */
 export const learnIpLimiter = createRateLimiter(LEARN_RUNS_PER_HOUR_PER_IP, LEARN_WINDOW_MINUTES * 60_000);
+
+/** A run that ended without counting (LEARN_UNCOUNTED_END_CODES) gives back its network hit; its stored row is already left out of the Repertoire's count. */
+export function refundLearnRun(code: string | null, ip: string, limiter: RateLimiter = learnIpLimiter): boolean {
+  if (code === null || !LEARN_UNCOUNTED_END_CODES.includes(code)) return false;
+  limiter.release(ip);
+  return true;
+}
 
 export type LearnGate =
   | { ok: true }

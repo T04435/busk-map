@@ -224,6 +224,7 @@ test.describe("Songs to learn: refusals and states (offline)", () => {
     const end = section(page).getByTestId("learn-end");
     await expect(end).toHaveAttribute("data-state", "qloo");
     await expect(end).toContainText("Qloo isn't answering");
+    await expect(end.getByTestId("learn-safe")).toHaveText("Your songs are safe. This run didn't count towards your limit.");
     await expect(section(page).getByTestId("learn-run").getByTestId("agent-step")).toHaveCount(1);
     await expect(cards(section(page))).toHaveCount(0);
     await expect(findButton(page, "Find more songs to learn")).toBeEnabled();

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createRateLimiter, FORCED_LIMIT_RETRY_S, learnLimitMessage, learnRunGate, repertoireLimitState } from "@/server/rate-limit";
+import { createRateLimiter, FORCED_LIMIT_RETRY_S, learnLimitMessage, learnRunGate, refundLearnRun, repertoireLimitState } from "@/server/rate-limit";
 
 const HOUR = 3_600_000;
 const none = { count: 0, oldestStartedAt: null };
@@ -48,6 +48,22 @@ describe("learnRunGate (docs §2.10)", () => {
     const limiter = createRateLimiter(1, HOUR);
     for (let i = 0; i < 10; i++) expect(learnRunGate({ offline: true, ip: "same", recent: { count: 9, oldestStartedAt: 1 } }, limiter)).toEqual({ ok: true });
     expect(limiter.peek("same").ok).toBe(true);
+  });
+
+  it("a run that ends with Qloo down gives its network hit back (B-028)", () => {
+    const limiter = createRateLimiter(6, HOUR);
+    const now = 7 * HOUR;
+    const go = () => learnRunGate({ offline: false, ip: "5.5.5.5", recent: none }, limiter, now);
+    // Six runs start and all end with Qloo down (or nothing matched): none of them counts, so the seventh is allowed.
+    for (let i = 0; i < 6; i++) {
+      expect(go()).toEqual({ ok: true });
+      expect(refundLearnRun(i % 2 ? "no_match" : "qloo_unavailable", "5.5.5.5", limiter)).toBe(true);
+    }
+    expect(go()).toEqual({ ok: true });
+    // Runs that did reach the model (or failed some other way) keep their hit.
+    for (const code of [null, "timeout", "stopped", "nothing_new", "model_unavailable"]) expect(refundLearnRun(code, "5.5.5.5", limiter)).toBe(false);
+    for (let i = 0; i < 5; i++) expect(go()).toEqual({ ok: true });
+    expect(go()).toMatchObject({ ok: false, scope: "ip" });
   });
 
   it("a forced fault refuses with either scope and the fixed wait, even offline", () => {

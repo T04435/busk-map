@@ -8,7 +8,7 @@ import { log } from "@/server/log";
 import { sweepExpiredLazily } from "@/server/playlist/store";
 import { ensureExisting, isResponse, json, readSession } from "@/server/playlist/api";
 import { LEARN_MAX_PENDING, LEARN_MIN_SONGS, LEARN_WINDOW_MINUTES } from "@/server/playlist/config";
-import { learnRunGate } from "@/server/rate-limit";
+import { learnRunGate, refundLearnRun } from "@/server/rate-limit";
 import { adapterContextFor, clientIp, FAULTS_HEADER, learnLimitFaultRequested } from "@/server/request";
 import { guardMutation } from "@/server/playlist/api";
 
@@ -80,6 +80,12 @@ export async function POST(request: Request) {
   }
   const run = new LearnRun(record.record.id, playlist.id);
   registerLearnRun(run);
-  void executeLearnRun({ learn, playlist, history: record.history, adapters: adapterContextFor(faults), record: record.record, run });
+  const ip = clientIp(request.headers);
+  const exempt = limitsExempt();
+  void executeLearnRun({ learn, playlist, history: record.history, adapters: adapterContextFor(faults), record: record.record, run }).then(() => {
+    // A run that ended with Qloo down didn't count: its network hit is given back (the stored row is left out of the count already).
+    const end = run.events.at(-1);
+    if (!exempt && end?.type === "end") refundLearnRun(end.code, ip);
+  });
   return runStream(run, session.cookies);
 }

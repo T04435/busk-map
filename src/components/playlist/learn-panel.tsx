@@ -81,7 +81,12 @@ function EndNotice({ end }: { end: LearnEnd }) {
     return (
       <Alert variant="destructive" className={DESTRUCTIVE} data-testid="learn-end" data-state="qloo">
         <AlertTitle>{COPY.qlooDownTitle}</AlertTitle>
-        <AlertDescription>{end.message}</AlertDescription>
+        <AlertDescription>
+          <p>{end.message}</p>
+          <p data-testid="learn-safe">
+            {COPY.songsSafe} {COPY.notCounted}
+          </p>
+        </AlertDescription>
       </Alert>
     );
   }
@@ -89,7 +94,10 @@ function EndNotice({ end }: { end: LearnEnd }) {
     return (
       <Alert variant="destructive" className={DESTRUCTIVE} data-testid="learn-end" data-state="error">
         <AlertTitle>{COPY.errorTitle}</AlertTitle>
-        <AlertDescription>{end.message}</AlertDescription>
+        <AlertDescription>
+          <p>{end.message}</p>
+          <p data-testid="learn-safe">{COPY.songsSafe}</p>
+        </AlertDescription>
       </Alert>
     );
   }
@@ -363,13 +371,21 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
           {notice?.kind === "qloo" && (
             <Alert variant="destructive" className={DESTRUCTIVE} data-testid="learn-end" data-state="qloo">
               <AlertTitle>{COPY.qlooDownTitle}</AlertTitle>
-              <AlertDescription>{notice.message}</AlertDescription>
+              <AlertDescription>
+                <p>{notice.message}</p>
+                <p data-testid="learn-safe">
+                  {COPY.songsSafe} {COPY.notCounted}
+                </p>
+              </AlertDescription>
             </Alert>
           )}
           {notice?.kind === "error" && (
             <Alert variant="destructive" className={DESTRUCTIVE} data-testid="learn-end" data-state="error">
               <AlertTitle>{COPY.errorTitle}</AlertTitle>
-              <AlertDescription>{notice.message}</AlertDescription>
+              <AlertDescription>
+                <p>{notice.message}</p>
+                <p data-testid="learn-safe">{COPY.songsSafe}</p>
+              </AlertDescription>
             </Alert>
           )}
           {notice?.kind === "info" && (

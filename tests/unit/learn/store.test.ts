@@ -5,6 +5,7 @@ import { LEARN_LIMITS, LEARN_MAX_RUNS, LEARN_MAX_SUGGESTIONS, MAX_SONGS } from "
 import { MemoryLearnStore, PostgresLearnStore } from "@/server/learn/store";
 import type { Evidence, FinishRun, NewSuggestion } from "@/server/learn/types";
 import { MemoryPlaylistStore } from "@/server/playlist/store";
+import { createRateLimiter, learnRunGate } from "@/server/rate-limit";
 import { hashToken, newToken } from "@/server/playlist/token";
 
 const DAY = 24 * 60 * 60_000;
@@ -80,6 +81,21 @@ describe("MemoryLearnStore: runs", () => {
     // A run still going counts.
     await store.startRun(id, { model: "claude", inputs }, now - 1000);
     expect((await store.recentRuns(id, now - 3_600_000)).count).toBe(2);
+  });
+});
+
+describe("the run gate counts stored runs (B-028)", () => {
+  it("three runs that ended with Qloo down leave the Repertoire's hour untouched; three real runs fill it", async () => {
+    const { store, id } = await make();
+    const now = Date.now();
+    const gate = async () => learnRunGate({ offline: false, ip: "1.2.3.4", recent: await store.recentRuns(id, now - 3_600_000) }, createRateLimiter(6, 3_600_000), now);
+    for (const [i, code] of ["qloo_unavailable", "no_match", "qloo_unavailable"].entries()) await oneRun(store, id, [], now - (10 - i) * 60_000, { status: "failed", endCode: code });
+    expect(await gate()).toEqual({ ok: true });
+    // A failure that isn't Qloo's (a stream that broke, a timeout) still counts.
+    await oneRun(store, id, [], now - 5 * 60_000, { status: "failed", endCode: null });
+    await oneRun(store, id, [], now - 4 * 60_000, { status: "failed", endCode: "timeout" });
+    await oneRun(store, id, [pick("Counted")], now - 3 * 60_000);
+    expect(await gate()).toMatchObject({ ok: false, scope: "repertoire", max: 3 });
   });
 });
 

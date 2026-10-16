@@ -4,7 +4,7 @@ import { becauseText, type LearnInputs, type LearnModel, type LearnRunStatus, ty
 import { playlistSongKey, type LearnSuggestionView, type PlaylistSongView } from "@/lib/playlist-schema";
 import { storeDatabaseUrl } from "@/server/env";
 import { processMap } from "@/server/memo";
-import { LEARN_LIMITS, LEARN_MAX_RUNS, LEARN_MAX_SUGGESTIONS, LEARN_STEPS_KEPT_DAYS, LEARN_STEPS_KEPT_RUNS, MAX_SONGS } from "@/server/playlist/config";
+import { LEARN_LIMITS, LEARN_MAX_RUNS, LEARN_MAX_SUGGESTIONS, LEARN_STEPS_KEPT_DAYS, LEARN_STEPS_KEPT_RUNS, LEARN_UNCOUNTED_END_CODES, MAX_SONGS } from "@/server/playlist/config";
 import { MemoryPlaylistStore, playlistStore, type PlaylistStore, type StoredSong } from "@/server/playlist/store";
 import type { Evidence, FinishRun, HistoryData, MemorySuggestion, NewSuggestion, RunRecord, RunUsage, SetStatusResult, StartRunResult } from "./types";
 
@@ -43,7 +43,7 @@ export interface LearnStore {
 }
 
 const DAY_MS = 24 * 60 * 60_000;
-const OUT_OF_BUDGET_CODES = ["qloo_unavailable", "no_match"];
+const OUT_OF_BUDGET_CODES = LEARN_UNCOUNTED_END_CODES;
 const staleBefore = (now: number) => now - (LEARN_LIMITS.timeoutMs + LEARN_LIMITS.staleGraceMs);
 /** Steps older than this, or beyond the last N runs, are pruned. */
 const stepsCutoff = (now: number) => now - LEARN_STEPS_KEPT_DAYS * DAY_MS;

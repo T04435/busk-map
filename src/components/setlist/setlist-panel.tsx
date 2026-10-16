@@ -7,13 +7,17 @@ import { formatDuration } from "@/lib/live-search";
 import { ageLabel } from "@/lib/age";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
 
+/** The parts of a plan's song and "learn these" entry the panel shows, so the landing can feed it labelled example data. */
+type SetlistSong = Pick<PlanPitch["setlist"][number], "songId" | "title" | "artist" | "own" | "score" | "reason" | "durationMs" | "year">;
+type LearnThese = Pick<Plan["learnThese"][number], "artist" | "title" | "reason">[];
+
 /** Total length of the songs with a known length, and how many those are. */
-export function setLength(setlist: PlanPitch["setlist"]): { ms: number; timed: number } {
+export function setLength(setlist: Pick<SetlistSong, "durationMs">[]): { ms: number; timed: number } {
   const timed = setlist.filter((s) => s.durationMs !== null);
   return { ms: timed.reduce((sum, s) => sum + (s.durationMs ?? 0), 0), timed: timed.length };
 }
 
-export function SetlistPanel({ pitch, learnThese, ageLean = null }: { pitch: PlanPitch; learnThese: Plan["learnThese"]; ageLean?: string | null }) {
+export function SetlistPanel({ pitch, learnThese, ageLean = null }: { pitch: { name: string; setlist: SetlistSong[] }; learnThese: LearnThese; ageLean?: string | null }) {
   const length = setLength(pitch.setlist);
   const songs = (n: number) => `${n} song${n === 1 ? "" : "s"}`;
   return (

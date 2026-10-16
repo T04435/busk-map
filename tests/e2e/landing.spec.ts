@@ -79,4 +79,21 @@ test.describe("landing, as the deck draws it", () => {
     await expect(hero.locator("path.hc-glow").first()).toBeAttached();
     expect(await hero.evaluate((el) => el.getAnimations({ subtree: true }).filter((a) => (a as CSSAnimation).animationName === "hc-glow").length)).toBe(0);
   });
+
+  test("What you get back shows the funnel, a taste map with pins, Learn these and the set length, labelled as an example (B-020)", async ({ page }) => {
+    await page.goto("/");
+    const get = page.getByTestId("what-you-get");
+    await expect(get.getByText("Example data").first()).toBeVisible();
+    const funnel = get.getByRole("region", { name: "The data behind your busk" });
+    await expect(funnel).toContainText("496");
+    await expect(funnel).toContainText("data points");
+    await expect(funnel.getByRole("img", { name: "496 data points" })).toBeVisible();
+    await expect(get.getByRole("img", { name: /taste map for the example busk/ })).toBeVisible();
+    await expect(get.getByRole("heading", { name: "Your busk" })).toBeVisible();
+    await expect(get.locator('[data-slot="pitch-row"]')).toHaveCount(3);
+    await expect(get.getByRole("heading", { name: /to play there/ })).toBeVisible();
+    await expect(get.getByTestId("set-length")).toHaveText("Set length: at least 13:05 (3 of 4 songs have a known length).");
+    await expect(get.getByRole("region", { name: "Learn these" })).toContainText("Edge of Town");
+    await expect(get.getByRole("region", { name: "Learn these" })).toContainText("Dinosaurs");
+  });
 });

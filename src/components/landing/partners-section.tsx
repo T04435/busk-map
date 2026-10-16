@@ -1,5 +1,4 @@
 import { cn } from "cn";
-import { Icon } from "@/components/honeycomb/icon";
 import { QlooWordmark } from "@/components/honeycomb/logo";
 
 /** A logo file, or a light and a dark one swapped by the theme (the app's own theme mechanism: the dark variant). */
@@ -80,22 +79,10 @@ export function PartnersSection({ partners = BUILT_WITH }: { partners?: Partner[
         Thanks to
       </h2>
       {/* The sponsor, first and largest (user, live session 17 Oct): a centred "Sponsored by" card with the Qloo wordmark. */}
-      <div data-testid="sponsor" className="mx-auto flex w-full max-w-3xl flex-col items-center gap-5 border-[3px] border-rule bg-card px-6 py-10 text-center shadow-[8px_8px_0_var(--qloo)] md:px-12 md:py-14">
+      <div data-testid="sponsor" className="mx-auto flex w-full max-w-3xl flex-col items-center gap-5 border-[3px] border-rule bg-card px-6 py-10 text-center shadow-[8px_8px_0_var(--qloo)] md:px-12 md:py-12">
         <span className="font-mono text-xs leading-4 font-bold tracking-[0.12em] text-qloo uppercase">Sponsored by</span>
         <QlooWordmark width={300} className="w-[clamp(180px,40vw,300px)]" wordmarkClassName="h-auto w-full text-foreground" />
-        <p className="m-0 max-w-xl text-base leading-6 text-muted-foreground">
-          Qloo&apos;s taste AI is the brain of every busk: the crowd at each pitch, the artists it likes, who&apos;s rising. The Qloo Agentic Hackathon runs on Devpost.
-        </p>
-        <a
-          href="https://qloo.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="qloo.com (opens in a new tab)"
-          className="inline-flex min-h-tap items-center gap-1.5 font-mono text-sm leading-5 font-bold text-foreground underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none"
-        >
-          qloo.com
-          <Icon name="external" size={16} />
-        </a>
+        <p className="m-0 max-w-md text-base leading-6 text-muted-foreground">The taste AI behind every busk: who&apos;s out at each pitch, and what they like.</p>
       </div>
 
       {/* Built with: a logo wall; each cell names the partner and its role for screen readers and on hover. */}

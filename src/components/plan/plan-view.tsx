@@ -284,7 +284,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
           )}
         </div>
         <p className="flex flex-wrap gap-x-4 text-sm">
-          {/* No prefetch: prefetching /week builds a whole week plan, about 47 Qloo calls, on every plan view. */}
+          {/* No prefetch: prefetching /week builds a whole week plan on every plan view, about N+2 Qloo calls (one artist lookup per act artist, one heatmap, one places; docs/qloo-data-map.md). */}
           <Link
             className="underline"
             prefetch={false}

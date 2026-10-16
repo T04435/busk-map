@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useSyncExternalStore } from "react";
+import { Disclosure } from "@/components/honeycomb/disclosure";
 import { ScoreBreakdown } from "@/components/pitch-card/pitch-card";
 import { SetlistPanel } from "@/components/setlist/setlist-panel";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -53,7 +54,7 @@ export function PitchSheet({
     <Sheet open={pitch !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side={phone ? "bottom" : "right"}
-        className="max-h-dvh w-full gap-0 bg-background p-0 data-[side=bottom]:h-[92dvh] data-[side=right]:sm:max-w-[720px]"
+        className="max-h-dvh w-full gap-0 p-0 data-[side=bottom]:h-[92dvh] data-[side=right]:sm:max-w-[720px]"
         data-testid="pitch-sheet"
         ref={content}
         // Focus starts on the sheet itself, so no tooltip opens and the first Tab reaches the first control.
@@ -70,9 +71,9 @@ export function PitchSheet({
         {pitch ? (
           <>
             {phone ? <span aria-hidden="true" data-testid="sheet-handle" className="mx-auto mt-2 mb-0 block h-1.5 w-12 shrink-0 bg-input" /> : null}
-            <SheetHeader className="border-b-2 border-rule bg-popover p-4 pr-16 md:p-6 md:pr-16">
-              <SheetTitle className="font-display text-[34px] leading-[0.95] font-extrabold uppercase">{pitch.name}</SheetTitle>
-              <SheetDescription className="font-mono text-xs font-bold tracking-[0.06em] uppercase">
+            <SheetHeader className="gap-0.5 border-b-2 border-rule p-4 pr-16 md:p-6 md:pr-16">
+              <SheetTitle className="font-display text-2xl leading-[26px] font-extrabold tracking-[0.01em] uppercase">{pitch.name}</SheetTitle>
+              <SheetDescription className="text-sm leading-5">
                 Pitch {rank} · {shortHours(plan.slot.startHour, plan.slot.endHour)}
               </SheetDescription>
             </SheetHeader>
@@ -80,13 +81,12 @@ export function PitchSheet({
               <PitchDetails plan={plan} pitch={pitch} rank={rank} model={model} />
               <SetlistPanel pitch={pitch} learnThese={plan.learnThese} ageLean={plan.ageLean} />
               <CrowdPanel crowd={plan.crowd} resolved={plan.resolvedArtists} topPitch={plan.pitches[0]?.name ?? null} qlooMode={plan.qlooMode} />
-              <details className="border-2 border-rule bg-card [&_summary]:min-h-tap" data-testid="score-details">
-                <summary className="flex cursor-pointer items-center px-4 font-bold">How this score adds up</summary>
-                <div className="space-y-5 border-t border-border p-4">
+              <Disclosure label="How this score adds up" data-testid="score-details" className="[&_summary]:min-h-tap">
+                <div className="space-y-5">
                   <ScoreBreakdown pitch={pitch} weights={plan.weights} />
                   <WeightsPanel weights={plan.weights} />
                 </div>
-              </details>
+              </Disclosure>
             </div>
           </>
         ) : null}

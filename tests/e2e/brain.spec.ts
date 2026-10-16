@@ -197,11 +197,18 @@ test.describe("the brain of Busk Map", () => {
     await expect(point).toBeFocused();
   });
 
-  test("the idle panel offers two Try prompts (B-052)", async ({ page }) => {
+  test("the idle panel says Pick any piece; a trace lists its links as From and To in words", async ({ page }) => {
     await openBrain(page);
     const panel = page.getByTestId("trace-panel");
+    await expect(panel.getByText("Pick any piece")).toBeVisible();
     await expect(panel.getByText("Try Setlist and learn these")).toBeVisible();
     await expect(panel.getByText("Try Taste heatmap")).toBeVisible();
+    await expect(panel).not.toContainText("week");
+    await nodeOf(page, "d_cells").click();
+    await expect(panel).toContainText("Decides:");
+    await expect(panel.getByText(/^From Taste heatmap/)).toBeVisible();
+    await expect(panel.getByText(/^To Taste map/)).toBeVisible();
+    await expect(panel.getByText(/[←→]/)).toHaveCount(0);
   });
 
   test("a piece picked with Enter keeps a visible ring and stays in view above the panel (B-149, B-150)", async ({ page }) => {

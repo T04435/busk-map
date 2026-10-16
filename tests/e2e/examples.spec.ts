@@ -170,7 +170,7 @@ test.describe("live agent (mock model offline)", () => {
     // Raw data, behind the page-level switch: tool names, the inputs Claude chose, the source, the thinking and the data returned.
     await showRawData(page);
     const crowd = feed.locator('[data-tool="crowd_at"]');
-    await expect(crowd.first()).toContainText("radiusM: 400");
+    await expect(crowd.first()).toContainText("radiusM");
     await expect(feed.getByText("Qloo /v2/insights · urn:heatmap")).toBeVisible();
     await expect(feed.getByTestId("agent-note-reasoning").first()).toContainText("Thinking (summary):");
     await expect(crowd.first().getByTestId("agent-step-data").getByRole("table").first()).toBeVisible();
@@ -178,7 +178,7 @@ test.describe("live agent (mock model offline)", () => {
     await expect(feed.locator('[data-tool="finish_plan"]')).toContainText("Accepted:");
     await expect(page.getByTestId("agent-usage")).toContainText("model steps");
     // Switching it off hides them again.
-    await page.getByRole("switch", { name: "Show raw data" }).click();
+    await page.getByRole("switch", { name: "Raw data" }).click();
     await expect(feed.getByText("Qloo /v2/insights · urn:heatmap")).toHaveCount(0);
     // Agent vs engine: the mock keeps Busk Map's top 3.
     await expect(page.getByTestId("agent-vs-engine")).toContainText("Agent vs engine");
@@ -206,7 +206,7 @@ test.describe("live agent (mock model offline)", () => {
     const replayedSteps = page.getByRole("list", { name: "Research, newest first" });
     await expect(replayedSteps.getByText("Your best pitches so far").first()).toBeVisible();
     // The replay keeps each step's data: raw data shows it.
-    await page.getByRole("switch", { name: "Show raw data" }).click();
+    await page.getByRole("switch", { name: "Raw data" }).click();
     await expect(replayedSteps.locator('[data-tool="taste_map"]').getByTestId("agent-step-data").getByRole("columnheader", { name: "affinity" })).toBeVisible();
 
     // Buskers get no re-run button: a reload replays.

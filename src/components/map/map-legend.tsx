@@ -2,18 +2,25 @@
 
 import type { ReactNode } from "react";
 import { cn } from "cn";
-import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const ORANGE_STEPS = ["bg-taste-3", "bg-taste-4"];
 const HEX = "[clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]";
 
-/** One legend entry: a focusable key whose tooltip (on hover and on keyboard focus) says what the symbol means. */
+/** The DS LEGEND_TIPS, word for word. */
+const TIPS = {
+  taste: "Orange cells are where Qloo says your crowd gathers: the brighter, the closer the match. No cell, no match.",
+  top: "Your top 3 pitches, numbered by rank. Pick one to see it in the list.",
+  other: "Other pitches Busk Map scored. Pick one for a summary.",
+  zone: "Hatched cells: busking isn't allowed there.",
+  event: "An event letting out near a pitch in your slot.",
+} as const;
+
+/** One legend entry (DS bm-legend-li): a focusable key with a dotted underline, its tooltip opening on hover and on keyboard focus. */
 function Key({ tip, children }: { tip: string; children: ReactNode }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button type="button" className="inline-flex min-h-8 cursor-help items-center gap-1.5 border-0 bg-transparent p-0 text-xs text-foreground">
+        <button type="button" className="inline-flex min-h-8 cursor-help items-center gap-1.5 border-0 border-b border-dotted border-muted-foreground bg-transparent p-0 font-mono text-xs leading-4 font-medium text-foreground">
           {children}
         </button>
       </TooltipTrigger>
@@ -22,47 +29,65 @@ function Key({ tip, children }: { tip: string; children: ReactNode }) {
   );
 }
 
+/** DS bm-legend-sw: a 14px box centring the swatch. */
+const Sw = ({ children }: { children: ReactNode }) => (
+  <span aria-hidden="true" className="grid size-3.5 flex-none place-items-center">
+    {children}
+  </span>
+);
+
 /**
- * The map's key (F03): ONE line along the bottom of the map, the details in tooltips that open on hover and on keyboard focus.
- * It lists only what the map draws: the taste cells (orange, steps 3 and 4) when there are any, the numbered top pitches, and the
- * quiet dots when other pitches were scored. No events or no-busking zones yet (the plan has no coordinates for them), and it
- * never says "test data".
+ * DS TasteMapLegend `line` (F03): ONE line along the bottom of the map, the details in tooltips. It lists only what the map draws:
+ * the taste ramp (orange steps 3 to 5) when there are cells, the numbered top pitches, the other-pitch cells, no-busking cells and
+ * events when there are any. It never says "test data".
  */
-export function MapLegend({ taste = true, others = true, zones = false, className }: { taste?: boolean; others?: boolean; zones?: boolean; className?: string }) {
+export function MapLegend({ taste = true, others = true, zones = false, events = false, className }: { taste?: boolean; others?: boolean; zones?: boolean; events?: boolean; className?: string }) {
   return (
     <TooltipProvider>
       <div
         data-slot="map-legend"
         aria-label="Map legend"
         role="group"
-        className={cn("flex flex-wrap items-center gap-x-4 gap-y-0 border-t-2 border-rule bg-popover px-3 py-1 text-xs text-foreground", className)}
+        className={cn("flex flex-wrap items-center gap-x-4 gap-y-1 border-t-2 border-rule bg-[color-mix(in_srgb,var(--card)_94%,transparent)] px-3 py-2 font-mono text-xs leading-4 font-medium text-foreground", className)}
       >
         {taste ? (
-          <Key tip="Taste match from Qloo's heatmap for your artists: the deeper the orange, the closer the crowd's taste is to yours. Cells with a weak match are left off, so the streets show.">
-            <span>Taste match</span>
-            <span aria-hidden="true" className="flex items-center gap-0.5">
-              {ORANGE_STEPS.map((c) => (
-                <i key={c} className={cn("block h-[16px] w-3.5 border border-rule/40", c, HEX)} />
+          <Key tip={TIPS.taste}>
+            <span aria-hidden="true" className="inline-flex gap-px">
+              {["bg-taste-3", "bg-taste-4", "bg-taste-5"].map((c) => (
+                <i key={c} className={cn("block h-[11px] w-2.5", c, HEX)} />
               ))}
             </span>
+            Taste match
           </Key>
         ) : null}
-        <Key tip="Your top three pitches, numbered by rank.">
-          <HexCell size={18} tone="primary" fontSize={10}>
-            1
-          </HexCell>
+        <Key tip={TIPS.top}>
+          <Sw>
+            <i className={cn("block h-[21px] w-[18px] [background:radial-gradient(circle_at_50%_50%,#fbf9f5_0_2.2px,var(--primary)_2.7px_5.6px,var(--bluestone)_6.1px)]", HEX)} />
+          </Sw>
           Top pitch
         </Key>
+        {others ? (
+          <Key tip={TIPS.other}>
+            <Sw>
+              <i className={cn("block h-3.5 w-3 bg-usual-spot", HEX)} />
+            </Sw>
+            Other pitch
+          </Key>
+        ) : null}
         {zones ? (
-          <Key tip="Streets where the council's rules allow no busking, drawn as hatched cells. Busk Map never confirms a pitch is legal: check the rules.">
-            <span aria-hidden="true" className={cn("block h-4 w-3.5 border border-(--zone-pink) bg-[repeating-linear-gradient(45deg,var(--zone-pink)_0_2px,transparent_2px_5px)]", HEX)} />
+          <Key tip={TIPS.zone}>
+            <Sw>
+              <i className={cn("block h-[18px] w-4 bg-[repeating-linear-gradient(45deg,var(--zone-pink)_0_2px,transparent_2px_5px)]", HEX)} />
+            </Sw>
             No busking
           </Key>
         ) : null}
-        {others ? (
-          <Key tip="Other pitches that were scored but did not make the top three. Use Browse other pitches to read them.">
-            <span aria-hidden="true" className={cn("block h-4 w-3.5 bg-usual-spot", HEX)} />
-            Other pitch
+        {events ? (
+          <Key tip={TIPS.event}>
+            <Sw>
+              <i className="block size-3 rotate-45 bg-event" />
+            </Sw>
+            Event
           </Key>
         ) : null}
       </div>

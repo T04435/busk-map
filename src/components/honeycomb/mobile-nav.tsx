@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "cn";
+import { Icon } from "@/components/honeycomb/icon";
 import { activeNavId, HAS_BOTTOM_NAV, NAV_ITEMS } from "@/components/honeycomb/nav-items";
 
 /**
@@ -38,7 +39,7 @@ export function MobileNavView({ pathname }: { pathname: string | null }) {
                 on ? "border-(--fill-rule) bg-primary text-primary-foreground" : "border-transparent"
               )}
             >
-              <item.icon aria-hidden="true" className="size-[22px]" />
+              <Icon name={item.icon} size={22} />
             </span>
             {item.label}
           </Link>

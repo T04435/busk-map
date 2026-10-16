@@ -1,11 +1,13 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
+import { Loader } from "@/components/honeycomb/loader";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CityPicker } from "@/components/forms/city-picker";
 import { PermitPicker } from "@/components/forms/permit-picker";
-import { TimeSlotPicker } from "@/components/forms/time-slot-picker";
+import { DatePicker } from "@/components/forms/date-picker";
+import { QUICK_SLOTS, TimeSlotPicker } from "@/components/forms/time-slot-picker";
 import { FormMessage } from "@/components/honeycomb/form-message";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -63,6 +65,15 @@ function fieldOf(path: string): Field {
   return "artists";
 }
 
+/** What takes focus for each field when its error shows. */
+const FOCUS_TARGET: Record<Field, string> = {
+  name: "#name",
+  artists: "[data-field=artists] input",
+  songs: "[data-field=songs] input, [data-field=songs] button",
+  slot: "#date",
+  permit: "[data-field=permit] [role=radio][tabindex='0']",
+};
+
 const FIELD_LABEL: Record<Field, string> = { name: "Act name", artists: "Artists you sound like", songs: "Songs you can play", slot: "Date and times", permit: "Permit" };
 
 function errorFor(issues: { path: PropertyKey[]; message: string }[], input: PlanRequestInput): FormError {
@@ -84,6 +95,27 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
   const [permit, setPermit] = useState<string>(prefill?.permit ?? "general");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<FormError | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  /** Bumped on each failed submit, so the focus moves again even when the same field fails twice (B-220). */
+  const [failures, setFailures] = useState(0);
+
+  // B-220: a failed submit moves focus to the first invalid field and wires that field to its error message.
+  useEffect(() => {
+    if (!error || !failures) return;
+    const root = formRef.current;
+    const target = root?.querySelector<HTMLElement>(FOCUS_TARGET[error.field]);
+    if (!target) return;
+    target.setAttribute("aria-invalid", "true");
+    target.setAttribute("aria-describedby", `err-${error.field}`);
+    target.focus();
+    return () => {
+      // Only the pickers we do not own get their attributes set by hand; the owned fields render theirs.
+      if (error.field === "artists" || error.field === "songs") {
+        target.removeAttribute("aria-invalid");
+        target.removeAttribute("aria-describedby");
+      }
+    };
+  }, [error, failures]);
 
   /** The plan's short link (/p/<id>), or the long URL if no link could be made. */
   async function openPlan(request: PlanRequest) {
@@ -95,6 +127,7 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting) return; // B-221: no double submit
     const parsedSongs = [
       ...picked.map((p) => ({ title: p.title, artist: p.artist, own: p.own, ...(p.durationMs ? { durationMs: p.durationMs } : {}) })),
     ];
@@ -109,6 +142,7 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
     if (slot.date < today) {
       const message = "Pick today or a later date.";
       setError({ field: "slot", label: FIELD_LABEL.slot, message, detail: message });
+      setFailures((n) => n + 1);
       return;
     }
     const input: PlanRequestInput = {
@@ -120,17 +154,19 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
     const result = planRequestSchema.safeParse(input);
     if (!result.success) {
       setError(errorFor(result.error.issues, input));
+      setFailures((n) => n + 1);
       return;
     }
     setError(null);
     void openPlan(result.data);
   }
 
+  const pickedSlot = QUICK_SLOTS.find((q) => String(q.from) === slot.from && String(q.to) === slot.to)?.id ?? "";
   const errorId = (field: Field) => (error?.field === field ? `err-${field}` : undefined);
   const hasError = (field: Field) => error?.field === field;
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-7 border-2 border-rule bg-card p-4 md:p-7" aria-label="Plan for your own act" noValidate>
+    <form ref={formRef} onSubmit={submit} className="flex flex-col gap-7 border-2 border-rule bg-card p-4 md:p-7" aria-label="Plan for your own act" aria-busy={submitting || undefined} noValidate>
       <section aria-label="Your act" className="flex flex-col gap-4.5">
         <div className="space-y-1.5">
           <Label htmlFor="name">Act name</Label>
@@ -141,7 +177,7 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
             </FormMessage>
           )}
         </div>
-        <div className="space-y-1.5">
+        <div className="space-y-1.5" data-field="artists">
           <ArtistPicker value={artists} onChange={setArtists} query={artistQuery} onQueryChange={setArtistQuery} />
           {hasError("artists") && (
             <FormMessage tone="error" id="err-artists" alert={false}>
@@ -151,29 +187,31 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
         </div>
       </section>
 
-      <RepertoirePicker
-        artists={artists}
-        picked={picked}
-        setPicked={setPicked}
-        errorId="err-songs"
-        error={hasError("songs") ? error!.message : null}
-      />
+      <div data-field="songs">
+        <RepertoirePicker artists={artists} picked={picked} setPicked={setPicked} errorId="err-songs" error={hasError("songs") ? error!.message : null} />
+      </div>
 
-      <fieldset className="m-0 flex min-w-0 flex-col gap-4.5 border-0 p-0">
-        <legend className="mb-1 p-0 text-label font-bold">When and where</legend>
+      <fieldset className="m-0 flex min-w-0 flex-col gap-5 border-0 p-0">
+        <legend className="mb-1 p-0 font-display text-[26px] leading-none font-extrabold uppercase">When and where</legend>
         <CityPicker cities={[{ id: "melbourne", name: "Melbourne", level: "live", note: "Taste, foot traffic, busking rules, events and weather" }]} value="melbourne" onValueChange={() => {}} />
-        <TimeSlotPicker value={slot} onChange={setSlot} today={today} invalid={hasError("slot")} describedBy={errorId("slot")} />
-        {hasError("slot") && (
-          <FormMessage tone="error" id="err-slot" alert={false}>
-            {error!.message}
-          </FormMessage>
-        )}
-        <PermitPicker value={permit} onValueChange={setPermit} />
-        {hasError("permit") && (
-          <FormMessage tone="error" id="err-permit" alert={false}>
-            {error!.message}
-          </FormMessage>
-        )}
+        <div className="flex max-w-80 flex-col gap-1.5" data-field="slot">
+          <DatePicker id="date" label="Date" value={slot.date} onChange={(date) => setSlot({ ...slot, date })} min={today} invalid={hasError("slot")} aria-describedby={errorId("slot")} />
+          {hasError("slot") && (
+            <FormMessage tone="error" id="err-slot" alert={false}>
+              {error!.message}
+            </FormMessage>
+          )}
+        </div>
+        {/* anyTime stays off on this branch: dev/core turns it on at the merge (B-177). */}
+        <TimeSlotPicker value={pickedSlot} onChange={(id) => { const q = QUICK_SLOTS.find((s) => s.id === id); if (q) setSlot({ ...slot, from: String(q.from), to: String(q.to) }); }} />
+        <div className="flex flex-col gap-1.5" data-field="permit">
+          <PermitPicker value={permit} onValueChange={setPermit} />
+          {hasError("permit") && (
+            <FormMessage tone="error" id="err-permit" alert={false}>
+              {error!.message}
+            </FormMessage>
+          )}
+        </div>
       </fieldset>
 
       {error && (
@@ -182,10 +220,10 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
           <AlertDescription>{error.detail}</AlertDescription>
         </Alert>
       )}
-      <div className="flex flex-wrap gap-3 border-t border-border pt-5 max-sm:[&>button]:w-full">
-        <Button type="submit" value="plan" size="lg" disabled={submitting}>
-          Plan my busk
-          <ArrowRight aria-hidden="true" />
+      <div className="flex flex-wrap gap-3 border-t-2 border-rule pt-5 max-sm:[&>button]:w-full">
+        <Button type="submit" value="plan" size="lg" disabled={submitting} aria-disabled={submitting || undefined}>
+          {submitting ? "Planning…" : "Plan my busk"}
+          {submitting ? <span aria-hidden="true"><Loader size={16} /></span> : <Icon name="arrow-right" size={18} />}
         </Button>
       </div>
     </form>

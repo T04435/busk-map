@@ -53,7 +53,8 @@ describe("the research feed", () => {
   it("shows tool names, inputs and returned data with raw data on", () => {
     const html = render({ steps: two, showRaw: true });
     expect(html).toContain("<code>taste_map</code>");
-    expect(html).toContain("zoom: x");
+    // DS raw inputs: the key in a muted span, then the value.
+    expect(html).toMatch(/zoom<\/span>x/);
     expect(html).toContain("Thinking (summary): ");
     expect(html).toContain("agent-step-data");
   });

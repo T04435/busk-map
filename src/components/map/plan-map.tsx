@@ -3,20 +3,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getVersion, LngLatBounds, Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl, type GeoJSONSource, type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { PercentCell } from "@/components/honeycomb/percent-cell";
 import { Button } from "@/components/ui/button";
 import { geohashBounds } from "@/lib/geo";
-import { MAP_FRAME, orangeCells } from "@/components/map/taste-cells";
+import { MAP_FRAME, MAP_GESTURES, TASTE_STEP_FROM, orangeCells } from "@/components/map/taste-cells";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
 
 /**
- * THE map: the landing's preview and the plan page draw the same one (F02, F03, F05, F16 as far as the data goes). MapLibre with OpenFreeMap tiles. The taste grid is a layer of pointy-top honeycomb cells in the five-step taste ramp
- * (read from the theme's CSS variables, repainted when the theme changes). The top pitches are focusable hexagon pins; every
- * other scored pitch is a quiet dot (also a button, so it is keyboard reachable) that opens a summary: name, score and, when it
+ * THE map: the landing's preview and the plan page draw the same one (F02, F03, F05, F16 as far as the data goes). MapLibre with OpenFreeMap tiles. The taste grid is a layer of pointy-top honeycomb cells in the orange steps (3 to 5) of the taste ramp
+ * (read from the theme's CSS variables, repainted when the theme changes). The top pitches are DS PitchPin buttons (hex puck, ring, rank badge); every
+ * other scored pitch is a quiet hex dot (also a button, so it is keyboard reachable) that opens a summary: name, score and, when it
  * was left out by the 250 m spacing rule, the pick it is too close to. The pitch list beside the map is the keyboard-first
- * alternative for the top three. Taste draws as bare orange cells only (see taste-cells.ts). No events or no-busking zones are drawn: the plan carries no coordinates for them.
+ * alternative for the top three. Taste draws as bare orange cells only (see taste-cells.ts). No-busking zones draw as hatched honeycomb cells. Events are not drawn: the plan carries no coordinates for them.
  */
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
@@ -38,12 +38,13 @@ function themeColor(variable: string, fallback: string): string {
   return `rgb(${r}, ${g}, ${b})`;
 }
 
-const RAMP_FALLBACK = ["#fbe3d2", "#f9b98e", "#f28644", "#dd6322", "#7f2d0c"];
-const rampColors = () => [1, 2, 3, 4, 5].map((n, i) => themeColor(`--taste-${n}`, RAMP_FALLBACK[i]));
-/** Affinity (0–1) to the ramp step, as the legend's five cells. */
-const fillExpression = (colors: string[]) => ["step", ["get", "affinity"], colors[2], 0.78, colors[3]] as never;
+const RAMP_FALLBACK = ["#f28644", "#dd6322", "#7f2d0c"];
+/** The orange steps only: --taste-3, --taste-4, --taste-5. */
+const rampColors = () => [3, 4, 5].map((n, i) => themeColor(`--taste-${n}`, RAMP_FALLBACK[i]));
+/** Affinity (0–1) to the orange step, as in the DS TasteMap (3 from the orange threshold, 4 from 0.68, 5 from 0.88). */
+const fillExpression = (colors: string[]) => ["step", ["get", "affinity"], colors[0], TASTE_STEP_FROM[4], colors[1], TASTE_STEP_FROM[5], colors[2]] as never;
 
-/** The no-busking hatch (F16): pink diagonal stripes on a 12px tile, in the zone colour. */
+/** The no-busking hatch (F16): the DS hatch, 3px pink diagonal stripes on a 12px tile, in the zone colour. */
 function hatchImage(): ImageData | null {
   if (typeof document === "undefined") return null;
   const canvas = document.createElement("canvas");
@@ -51,7 +52,7 @@ function hatchImage(): ImageData | null {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) return null;
   ctx.strokeStyle = themeColor("--zone-pink", "#e0337a");
-  ctx.lineWidth = 2.2;
+  ctx.lineWidth = 3;
   ctx.beginPath();
   for (const k of [-12, 0, 12]) {
     ctx.moveTo(k, 12);
@@ -61,11 +62,11 @@ function hatchImage(): ImageData | null {
   return ctx.getImageData(0, 0, 12, 12);
 }
 
-/** No tiles (offline, blocked, or the style host is down): a plain paper base, so the taste cells and pins still draw. */
+/** No tiles (offline, blocked, or the style host is down): a plain land base (--map-land when the theme has it, else --muted), so the taste cells and pins still draw. */
 const baseStyle = (): StyleSpecification => ({
   version: 8,
   sources: {},
-  layers: [{ id: "base", type: "background", paint: { "background-color": themeColor("--muted", "#ebe6dc") } }],
+  layers: [{ id: "base", type: "background", paint: { "background-color": themeColor("--map-land", themeColor("--muted", "#ebe6dc")) } }],
 });
 
 /** Run `fn` once the current style is usable (the tiles' style, or the plain base after it failed to load). */
@@ -74,7 +75,7 @@ function whenStyle(instance: MapLibreMap, fn: () => void) {
   else instance.once("style.load", fn);
 }
 
-const HEX_PTS = "50,2 97,26 97,74 50,98 3,74 3,26";
+const HEX_FULL = "50,0 100,25 100,75 50,100 0,75 0,25";
 
 /** A pointy-top hexagon around a cell centre, as wide as the geohash cell it replaces. */
 function hexagon(lat: number, lon: number, halfWidthDeg: number) {
@@ -97,13 +98,27 @@ type Props = {
   frame?: { maxZoom: number; padding: number };
 };
 
-const SVG = (inner: string) => `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true" focusable="false" style="position:absolute;inset:0;overflow:visible">${inner}</svg>`;
+/** The DS Hex: a pointy-top cell filling its box, the stroke drawn inside the edge (clipped, so doubled). `cls` sets fill, stroke and stroke-width. */
+let hexSeq = 0;
+const hexSvg = (cls: string, svgCls = "absolute inset-0 size-full overflow-visible") => {
+  const id = `pmhx${(hexSeq += 1)}`;
+  return `<svg class="${svgCls}" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><defs><clipPath id="${id}"><polygon points="${HEX_FULL}"/></clipPath></defs><polygon points="${HEX_FULL}" clip-path="url(#${id})" vector-effect="non-scaling-stroke" class="${cls}"/></svg>`;
+};
 
-/** A ranked pin: a dark hex puck with the orange ring and its rank number. Every ranked pitch is numbered, hidden gems included (they are marked in the list). */
+/** The DS pitch ring: a 306-degree arc (the crowd) around one cell (the performer). The core is the DS paper colour. */
+const RING = `<svg class="relative text-primary" width="28" height="28" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M38.554 20.371A15 15 0 1 1 27.629 9.446" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round"/><polygon points="24.00,17.40 29.72,20.70 29.72,27.30 24.00,30.60 18.28,27.30 18.28,20.70" fill="#fbf9f5"/></svg>`;
+
+/** DS PitchPin kind="top": a bluestone hex puck edged in card (primary when selected), the ring, and the hex rank badge. Ranks 2 and 3 are quieter (is-minor). */
 function topPin(rank: number): string {
-  const shape = SVG(`<polygon points="${HEX_PTS}" style="fill:var(--bluestone);stroke:var(--primary);stroke-width:7"/><polygon points="50,30 70,41 70,63 50,74 30,63 30,41" style="fill:var(--background)"/>`);
-  return `${shape}<span style="position:absolute;right:-6px;top:-8px;min-width:20px;height:22px;padding:0 4px;display:grid;place-items:center;background:var(--primary);color:var(--primary-foreground);border:2px solid var(--fill-rule);font:800 14px/1 var(--font-display)" aria-hidden="true">${rank}</span>`;
+  const puck = hexSvg(
+    "fill-bluestone stroke-card [stroke-width:4px] dark:stroke-foreground group-aria-pressed:stroke-primary group-aria-pressed:[stroke-width:7px] dark:group-aria-pressed:stroke-primary",
+  );
+  const badge = `<span class="absolute -top-2 -right-2.5 grid h-6 w-[21px] place-items-center font-display text-sm leading-none font-extrabold text-primary-foreground" aria-hidden="true">${hexSvg("fill-primary stroke-bluestone [stroke-width:3px]")}<span class="relative top-px">${rank}</span></span>`;
+  return `${puck}<span class="relative grid size-full place-items-center">${RING}</span>${badge}`;
 }
+
+/** DS PitchPin kind="other": the quiet usual-spot hex dot (foreground when open). */
+const otherDot = () => hexSvg("fill-usual-spot stroke-card [stroke-width:3px] group-data-[open=true]:fill-foreground");
 
 export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: Props) {
   const container = useRef<HTMLDivElement>(null);
@@ -140,6 +155,7 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
       center: [center.lon, center.lat],
       zoom: 13.4,
       attributionControl: { compact: true },
+      ...MAP_GESTURES,
     });
     instance.addControl(new NavigationControl({ showCompass: false }), "top-right");
     map.current = instance;
@@ -201,11 +217,12 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
       if (source) {
         source.setData(data);
         instance.setPaintProperty("taste", "fill-color", fillExpression(colors));
+        instance.setPaintProperty("taste-outline", "line-color", themeColor("--card", "#fbf9f5"));
         return;
       }
       instance.addSource("taste", { type: "geojson", data });
       instance.addLayer({ id: "taste", type: "fill", source: "taste", paint: { "fill-color": fillExpression(colors), "fill-opacity": 0.85 } });
-      instance.addLayer({ id: "taste-outline", type: "line", source: "taste", paint: { "line-color": themeColor("--rule", "#141c21"), "line-opacity": 0.25, "line-width": 1 } });
+      instance.addLayer({ id: "taste-outline", type: "line", source: "taste", paint: { "line-color": themeColor("--card", "#fbf9f5"), "line-width": 1.5 } });
     };
     whenStyle(instance, apply);
   }, [plan.tasteCells, themeTick]);
@@ -222,13 +239,16 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
       const source = instance.getSource("zones") as GeoJSONSource | undefined;
       if (source) {
         source.setData(data);
+        instance.setPaintProperty("zones-outline", "line-color", themeColor("--zone-pink", "#e0337a"));
+        const next = hatchImage();
+        if (next && instance.hasImage("hatch")) instance.updateImage("hatch", next);
         return;
       }
       const hatch = hatchImage();
       if (hatch && !instance.hasImage("hatch")) instance.addImage("hatch", hatch);
       instance.addSource("zones", { type: "geojson", data });
       instance.addLayer({ id: "zones", type: "fill", source: "zones", paint: hatch ? { "fill-pattern": "hatch" } : { "fill-color": themeColor("--zone-pink", "#e0337a"), "fill-opacity": 0.4 } });
-      instance.addLayer({ id: "zones-outline", type: "line", source: "zones", paint: { "line-color": themeColor("--zone-pink", "#e0337a"), "line-opacity": 0.6, "line-width": 1 } });
+      instance.addLayer({ id: "zones-outline", type: "line", source: "zones", paint: { "line-color": themeColor("--zone-pink", "#e0337a"), "line-width": 1.5 } });
     };
     whenStyle(instance, apply);
   }, [plan.zones, themeTick]);
@@ -247,7 +267,7 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
       el.setAttribute("data-testid", "other-dot");
       el.setAttribute("aria-hidden", "true");
       el.className = "group relative z-0 block size-6 cursor-pointer";
-      el.innerHTML = `<span class="absolute top-1/2 left-1/2 block h-[17px] w-[15px] -translate-x-1/2 -translate-y-1/2 transition-transform group-hover:scale-125 group-data-[open=true]:scale-150" style="background:var(--usual-spot);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)"></span>`;
+      el.innerHTML = `<span class="absolute top-1/2 left-1/2 block h-4 w-3.5 -translate-x-1/2 -translate-y-1/2 transition-transform group-hover:scale-125 group-data-[open=true]:scale-150">${otherDot()}</span>`;
       el.addEventListener("click", () => {
         setDotId((cur) => (cur === o.id ? null : o.id));
       });
@@ -261,10 +281,10 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
       const tag = p.discovery === "hidden-gem" ? ", hidden gem" : p.discovery === "usual" ? ", usual pitch" : "";
       el.setAttribute("aria-label", `Pitch ${rank}: ${p.name}, score ${p.score}${tag}`);
       el.className = "group relative z-10 block size-12 cursor-pointer";
-      // The first pitch is the largest; 2 and 3 are smaller. The selected pin grows and shows its name.
-      const size = rank === 1 ? "size-10" : "size-8";
+      // DS PitchPin: 40px wide hex (ratio 1.1547), pitch 1 the largest, 2 and 3 quieter (is-minor); selected grows and shows its caption.
+      const minor = rank > 1 ? "scale-[.82] opacity-90 group-aria-pressed:opacity-100" : "";
       const label = p.name.replace(/&/g, "&amp;").replace(/</g, "&lt;");
-      el.innerHTML = `<span data-shape class="absolute top-1/2 left-1/2 block ${size} -translate-x-1/2 -translate-y-1/2 transition-transform group-aria-pressed:scale-110">${topPin(rank)}</span><span data-caption aria-hidden="true" class="pointer-events-none absolute top-[calc(50%+1.5rem)] left-1/2 hidden -translate-x-1/2 border-2 border-rule bg-card px-1.5 py-0.5 font-mono text-[11px] leading-4 font-bold tracking-[0.04em] whitespace-nowrap text-foreground uppercase group-aria-pressed:block">${label}</span>`;
+      el.innerHTML = `<span data-shape class="absolute top-1/2 left-1/2 block h-[46.2px] w-10 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_2px_0_color-mix(in_oklab,var(--bluestone)_35%,transparent)] transition-transform duration-200 group-aria-pressed:scale-[1.18] ${minor}">${topPin(rank)}</span><span data-caption aria-hidden="true" class="pointer-events-none absolute top-[calc(50%+33px)] left-1/2 hidden -translate-x-1/2 bg-card px-1.5 py-0.5 font-mono text-[11px] leading-4 tracking-[0.04em] whitespace-nowrap text-foreground uppercase shadow-[0_0_0_1.5px_var(--rule)] group-aria-pressed:block">${label}</span>`;
       el.addEventListener("click", () => {
         setDotId(null);
         onSelectRef.current(p.id);
@@ -342,35 +362,36 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
           role="dialog"
           aria-label={`${dot.name}, summary`}
           data-testid="other-pitch-popover"
-          className="absolute top-3 left-3 z-20 w-[min(19rem,calc(100%-4rem))] space-y-2 border-2 border-rule bg-popover p-3 text-sm shadow-md"
+          className="absolute top-3 left-3 z-20 grid w-[min(19rem,calc(100%-4rem))] gap-1.5 border-2 border-rule bg-popover p-3 text-sm leading-5 shadow-md"
         >
-          <div className="flex items-start gap-2">
-            <b className="min-w-0 flex-1 text-base leading-5">{dot.name}</b>
-            <PercentCell value={dot.score} size={40} label="Score" />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <DiscoveryBadge discovery={dot.discovery} />
+          <div className="flex items-center gap-2">
+            <b className="min-w-0 flex-1 font-display text-lg leading-5 font-extrabold uppercase">{dot.name}</b>
+            <PercentCell value={dot.score} size={34} label="Score" />
+            <Button type="button" variant="ghost" size="icon-sm" aria-label="Close summary" onClick={closeSummary}>
+              <Icon name="x" size={16} />
+            </Button>
           </div>
           {dot.tooCloseTo ? (
-            <p className="m-0" data-testid="too-close">
-              <b>Too close to {dot.tooCloseTo.name}</b>: scored higher, but it&apos;s within 250 m, so the plan kept its picks apart.
+            <p className="m-0 flex items-start gap-2 text-muted-foreground" data-testid="too-close">
+              <Icon name="pin" size={16} className="mt-0.5" />
+              <span>
+                <b>Too close to {dot.tooCloseTo.name}</b>: scored higher, but it&apos;s within 250 m, so the plan kept its picks apart.
+              </span>
             </p>
           ) : (
             <p className="m-0 text-muted-foreground">Scored, but not in the top three.</p>
           )}
+          <DiscoveryBadge discovery={dot.discovery} />
           <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
             <span className="font-mono text-xs text-muted-foreground">
               {others.findIndex((o) => o.id === dot.id) + 1} of {others.length}
             </span>
             <span className="flex gap-1">
               <Button type="button" variant="outline" size="icon-sm" aria-label="Previous pitch" onClick={() => step(-1)}>
-                <ChevronLeft aria-hidden="true" />
+                <Icon name="arrow-left" size={16} />
               </Button>
               <Button ref={nextRef} type="button" variant="outline" size="icon-sm" aria-label="Next pitch" onClick={() => step(1)}>
-                <ChevronRight aria-hidden="true" />
-              </Button>
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="Close summary" onClick={closeSummary}>
-                <X aria-hidden="true" />
+                <Icon name="arrow-right" size={16} />
               </Button>
             </span>
           </div>

@@ -15,6 +15,7 @@ import { Icon } from "@/components/honeycomb/icon";
 import { WhatYouGet } from "@/components/landing/what-you-get";
 import { EXAMPLES, exampleWhen, examplePlays } from "@/lib/examples";
 import { CALLS_ON_RERUN, CALLS_PER_NEW_BUSK, callKinds } from "@/lib/qloo-map";
+import { BrainSketch } from "@/components/honeycomb/brain-sketch";
 
 const H2 = "m-0 font-display text-[clamp(44px,5vw,72px)] leading-[0.92] font-extrabold uppercase";
 // The hex lattice behind the hero and the dark bands: a honeycomb in hairlines, one cell wide at 48.5px.
@@ -35,33 +36,6 @@ const BEYOND = [
   { title: "Council pitch plans", body: "Councils see which licensed pitches suit which kinds of act, and where a new pitch would draw a crowd." },
   { title: "Coffee carts and food trucks", body: "Mobile traders with street permits: where and when their kind of customer walks past." },
 ];
-
-const HEX = "[clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]";
-/** The three columns of the brain, as cells: Qloo calls, then data points, then features. A sketch, not data (hidden from screen readers). */
-const SKETCH = [
-  { label: "Qloo calls", cells: ["bg-qloo", "bg-primary", "bg-qloo", "bg-muted"] },
-  { label: "Data points", cells: ["bg-muted", "bg-primary", "bg-primary", "bg-muted"] },
-  { label: "Features", cells: ["bg-primary", "bg-muted", "bg-primary", "bg-muted"] },
-];
-function BrainSketch() {
-  return (
-    <div aria-hidden="true" className="box-border flex max-w-full min-w-0 flex-[0_1_340px] justify-center gap-2.5 border-[1.5px] border-border bg-card p-4">
-      {SKETCH.map((col, i) => (
-        <div key={col.label} className="contents">
-          {i > 0 ? <span className="mt-[22px] h-[18px] w-3 self-center bg-primary [clip-path:polygon(0_0,50%_0,100%_50%,50%_100%,0_100%)]" /> : null}
-          <div className="flex min-w-0 flex-1 flex-col items-center gap-2">
-            <span className="min-h-7 text-center font-mono text-[11px] leading-[14px] font-bold tracking-[0.08em] text-muted-foreground uppercase">{col.label}</span>
-            <div className="flex flex-col gap-1.5">
-              {col.cells.map((c, j) => (
-                <span key={j} className={`h-[34px] w-[30px] ${HEX} ${c}`} />
-              ))}
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 export default function Home() {
   return (

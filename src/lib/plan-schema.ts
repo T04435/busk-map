@@ -145,6 +145,18 @@ export const planPitchSchema = z.object({
       year: z.number().int().nullable().default(null),
       /** 0–1 fit of the song's era with the crowd's age lean (Qloo demographics), when known. */
       eraFit: z.number().min(0).max(1).nullable().default(null),
+      /** "suggested": Busk Map added it from the crowd's taste (suggested fill); "repertoire": the act's own song. Old plans: repertoire. */
+      origin: z.enum(["repertoire", "suggested"]).default("repertoire"),
+      /** Why a suggested song is here and where it was found; null for the act's own songs. */
+      suggestion: z
+        .object({
+          because: z.string(),
+          source: z.enum(["spotify", "lastfm"]),
+          sourceUrl: z.string().nullable(),
+          spotifyTrackId: z.string().nullable(),
+        })
+        .nullable()
+        .default(null),
     }),
   ),
 });

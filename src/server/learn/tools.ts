@@ -7,10 +7,9 @@ import { playlistSongKey } from "@/lib/playlist-schema";
 import { nameKey, songKey } from "@/lib/text";
 import type { AdapterResult } from "@/server/adapters/core";
 import * as qloo from "@/server/adapters/qloo";
-import { findArtistTracks } from "@/server/adapters/repertoire";
-import { getSongs } from "@/server/adapters/songs";
 import { NumberBag } from "@/server/agent/number-bag";
 import { boxAround } from "@/server/agent/where";
+import { catalogueOf } from "@/server/songs/catalogue";
 import { LEARN_LIMITS, LEARN_MAX_PER_ARTIST, LEARN_MAX_PICKS, LEARN_MIN_PICKS, LEARN_OVER_REPRESENTED_AT, LEARN_TOOL_CAPS } from "@/server/playlist/config";
 import type { LearnContext } from "./context";
 import { leftOutReason } from "./history";
@@ -308,8 +307,6 @@ type Row = {
   alreadyInPlaylist: boolean;
 };
 
-const SPOTIFY_ID = /^[A-Za-z0-9]{22}$/;
-
 export type TopTracksOutput = {
   summary: string;
   songs: { songId: string; title: string; artist: string; artistId: string; year: number | null; durationMs: number | null; source: "spotify" | "lastfm"; popularity: number | null }[];
@@ -344,7 +341,7 @@ export async function runTopTracks(ctx: LearnContext, state: LearnState, artistI
       state.coveredSeen++;
       continue;
     }
-    const catalogue = await catalogueOf(ctx, info.name);
+    const catalogue = await catalogueOf(info.name, ctx.market, ctx.adapters);
     if (catalogue.tracks.length === 0) {
       out.noSongs.push(info.name);
       continue;
@@ -390,35 +387,6 @@ export async function runTopTracks(ctx: LearnContext, state: LearnState, artistI
   out.summary = `Picked top tracks on ${via}${out.songs.length ? ` for ${plural(new Set(out.songs.map((s) => s.artistId)).size, "artist")}` : ""}.${left.length ? ` Left out ${left.join(" and ")}` : ""}`.trim();
   if (out.songs.length === 0 && out.checked === 0) out.summary = out.overRepresented.length ? `Left out ${out.overRepresented.join(", ")}: already well covered in your Repertoire` : "No songs found for those artists";
   return out;
-}
-
-type CatalogueSong = { title: string; artist: string; spotifyTrackId: string | null; year: number | null; durationMs: number | null; image: string | null; url: string | null; popularity: number | null };
-
-/** An artist's songs: Spotify first, Last.fm for an artist Spotify has nothing for (or when Spotify is down). */
-async function catalogueOf(ctx: LearnContext, artist: string): Promise<{ source: "spotify" | "lastfm"; tracks: CatalogueSong[] }> {
-  const spotify = await findArtistTracks(artist, ctx.market, ctx.adapters);
-  const tracks = spotify.mode === "fallback" ? [] : spotify.data;
-  if (tracks.length > 0) {
-    return {
-      source: "spotify",
-      tracks: tracks.map((t) => ({
-        title: t.title,
-        artist: t.artists.find((a) => nameKey(a.name) === nameKey(artist))?.name ?? t.artists[0]?.name ?? artist,
-        spotifyTrackId: SPOTIFY_ID.test(t.id) ? t.id : null,
-        year: t.year,
-        durationMs: t.durationMs,
-        image: t.image,
-        url: t.url ?? (SPOTIFY_ID.test(t.id) ? `https://open.spotify.com/track/${t.id}` : null),
-        popularity: null,
-      })),
-    };
-  }
-  const lastfm = await getSongs([artist], ctx.adapters);
-  const list = lastfm.mode === "fallback" ? [] : (Object.values(lastfm.data)[0] ?? []);
-  return {
-    source: "lastfm",
-    tracks: list.map((t) => ({ title: t.title, artist: t.artist || artist, spotifyTrackId: null, year: null, durationMs: null, image: null, url: t.url, popularity: t.listeners ?? t.playcount ?? null })),
-  };
 }
 
 export function createLearnTools(ctx: LearnContext, state: LearnState) {

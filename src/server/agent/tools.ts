@@ -548,7 +548,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         return seen({
           summary: setlist.length ? `${setlist.length} songs for ${pitch.name}; open with ${setlist[0].title}` : "No songs given",
           pitch: pitch.name,
-          songs: setlist.slice(0, 10).map((s, i) => ({ order: i + 1, song: s.title, artist: s.artist, year: s.year, score: s.score, why: s.reason })),
+          songs: setlist.slice(0, 10).map((s, i) => ({ order: i + 1, song: s.title, artist: s.artist, year: s.year, score: s.score, why: s.reason, ...(s.origin === "suggested" ? { suggested: true } : {}) })),
         });
       },
     }),

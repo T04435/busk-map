@@ -253,12 +253,38 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
     );
   }
 
+  // The pending state belongs to one click. Coming back to this page (Back, the bfcache, or the router keeping this
+  // page mounted while hidden, which re-runs effects when it shows again) starts it fresh, never stuck on "Planning…".
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setSubmitting(false));
+    const onPageShow = () => setSubmitting(false);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, []);
+
   /** The plan's short link (/p/<id>), or the long URL if no link could be made. */
   async function openPlan(request: PlanRequest) {
     setSubmitting(true);
-    const res = await fetch("/api/plans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) }).catch(() => null);
-    const body = res?.ok ? await res.json().catch(() => null) : null;
-    router.push(typeof body?.path === "string" ? body.path : `/plan?${planSearchParams(request, { run: "1" })}`);
+    try {
+      const res = await fetch("/api/plans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) }).catch(() => null);
+      const body = res?.ok ? await res.json().catch(() => null) : null;
+      router.push(typeof body?.path === "string" ? body.path : `/plan?${planSearchParams(request, { run: "1" })}`);
+    } catch {
+      setSubmitting(false);
+      return;
+    }
+    // If the navigation never happens (for example it was blocked), the button comes back instead of spinning forever.
+    window.setTimeout(() => setSubmitting(false), 10_000);
+  }
+
+  /** Enter in a text field does that field's own job (search, load a link), never plans the busk: only the button does. */
+  function keepEnterInFields(event: React.KeyboardEvent<HTMLFormElement>) {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+    const target = event.target as HTMLElement;
+    if (target instanceof HTMLInputElement && !["submit", "button", "checkbox", "radio"].includes(target.type)) event.preventDefault();
   }
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -319,7 +345,7 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
   );
 
   return (
-    <form ref={formRef} onSubmit={submit} className="flex flex-col gap-7 border-2 border-rule bg-card p-4 md:p-7" aria-label="Plan for your own act" aria-busy={submitting || undefined} noValidate>
+    <form ref={formRef} onSubmit={submit} onKeyDown={keepEnterInFields} className="flex flex-col gap-7 border-2 border-rule bg-card p-4 md:p-7" aria-label="Plan for your own act" aria-busy={submitting || undefined} noValidate>
       <section aria-label="Your act" className="flex flex-col gap-4.5">
         <div className="space-y-1.5">
           <Label htmlFor="name">Act name</Label>

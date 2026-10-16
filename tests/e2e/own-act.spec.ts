@@ -171,6 +171,49 @@ test.describe("own act", () => {
     await expect(form).toHaveAttribute("aria-busy", "true");
   });
 
+  test("after planning, Back shows the form ready again, not stuck on Planning (user bug, 17 Oct)", async ({ page }) => {
+    await page.goto("/busks");
+    const form = page.getByRole("form", { name: "Plan for your own act" });
+    await form.getByLabel("Act name").fill("Back Again Duo");
+    await form.getByLabel("Artists you sound like").fill("Paul Kelly");
+    await form.getByRole("button", { name: "Plan my busk" }).click();
+    await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/busks/);
+    const again = page.getByRole("form", { name: "Plan for your own act" });
+    await expect(again.getByRole("button", { name: "Plan my busk" })).toBeEnabled();
+    await expect(again.getByRole("button", { name: /Planning/ })).toHaveCount(0);
+    await expect(again).not.toHaveAttribute("aria-busy", "true");
+  });
+
+  test("Enter in the act name, artist search, song search or Spotify link field never starts a plan (user bug, 17 Oct)", async ({ page }) => {
+    let posted = 0;
+    await page.route("**/api/plans", async (route) => {
+      posted += 1;
+      await route.continue();
+    });
+    await page.goto("/busks");
+    const form = page.getByRole("form", { name: "Plan for your own act" });
+    await form.getByLabel("Act name").fill("Enter Key Duo");
+    await form.getByLabel("Act name").press("Enter");
+    await form.getByLabel("Artists you sound like").fill("Paul Kelly");
+    await form.getByLabel("Artists you sound like").press("Enter");
+    await form.getByRole("button", { name: "Edit for this busk" }).click();
+    await form.getByText("+ Add a song just for this busk").click();
+    const link = form.getByLabel(/Your Spotify artist profile/);
+    if (await link.count()) {
+      await link.fill("https://open.spotify.com/artist/0000000000000000000000");
+      await link.press("Enter");
+    }
+    const search = form.getByPlaceholder("Search songs, e.g. Riptide");
+    await search.fill("Riptide");
+    await search.press("Enter");
+    await page.waitForTimeout(800);
+    expect(posted).toBe(0);
+    await expect(page).toHaveURL(/\/busks/);
+    await expect(form.getByRole("button", { name: /Planning/ })).toHaveCount(0);
+  });
+
   test("a typed plan link (deep link) opens the same plan", async ({ page }) => {
     await page.goto(`/plan?name=Deep%20Link%20Duo&artists=Angus%20%26%20Julia%20Stone&songs=Big%20Jet%20Plane~Angus%20%26%20Julia%20Stone&date=${SUNDAY}&from=12&to=15&permit=general`);
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);

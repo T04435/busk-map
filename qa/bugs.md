@@ -46,18 +46,18 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-040 | Low | Honeycomb /busks B09: Spotify artist link has no visible label; “(optional)” lives in the placeholder (WCAG 3.3.2) | Fixed (527a502, f9bff52), verified at 8207373 |
 | B-041 | Low | Honeycomb /busks B11/B14: a focused choice card shows a 2 px dark outline flush on its 2 px dark border, barely visible on the selected card | Fixed (527a502), verified at 8207373 |
 | B-042 | Low | Honeycomb /busks B07 at 390: the “By your artist” badge and the time squeeze the song title in the results to one letter | Fixed (527a502), verified at 8207373 |
-| B-043 | Medium | Honeycomb plan P17: Qloo down shows only an alert; no “No plan without taste data” panel and no Try again (board) | Open (design/honeycomb; Try again vs HQ default 8 is the user's call) |
-| B-044 | Medium | Honeycomb plan P19: no legal pitch has no recovery actions (board: Plan with a general permit · Try another day) | Open (design/honeycomb) |
-| B-045 | Low | Honeycomb plan P18: no artist matched stacks three alerts and has no “Pick your artists from Spotify” action | Open (design/honeycomb) |
-| B-046 | Low | Honeycomb plan P20: a source down shows only a chip; no alert saying what is estimated | Open (design/honeycomb) |
-| B-047 | Low | Honeycomb plan P06: weather shows only the slot's hours; no hours either side, slot bracket or updated line | Open (design/honeycomb) |
-| B-048 | Low | Honeycomb plan: at 1440 the heading outline skips h1 → h3 (the h2 is hidden when wide) | Open (design/honeycomb) |
-| B-049 | Low | Honeycomb plan P15/P18: fallback copy says “agent” and “engine” where the board says Claude and Busk Map's scores | Open (design/honeycomb) |
-| B-050 | Medium | Honeycomb plan P24: “Your busk” starts 871 px down at 390 (987 px at 1440): header stack, chips and funnel push the payoff below the fold | Open (design/honeycomb) |
-| B-051 | Low | Honeycomb plan P02/P03: the plan page keeps the boxed funnel and full-width Agent vs engine rows, unlike the board | Open (design/honeycomb) |
-| B-052 | Low | Honeycomb /brain BR08: the Pick any piece panel lost the board's two “Try …” prompts (Setlist and learn these; Taste heatmap); one run-on sentence instead | Open (design/honeycomb) |
-| B-053 | Low | Honeycomb 404 E01: no large “404” above the card; content left-aligned; no poster shadow (board) | Partly fixed (573a599, 3d59083): numeral and centring in; poster shadow still soft (B-138) |
-| B-054 | Low | Honeycomb error card E02: “!” icon instead of the warning triangle, left-aligned, reference above the buttons instead of under a rule at the foot, no poster shadow | Partly fixed (573a599): triangle, centring, reference at the foot; poster shadow still soft (B-138) |
+| B-043 | Medium | Honeycomb plan P17: Qloo down shows only an alert; no “No plan without taste data” panel and no Try again (board) | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-044 | Medium | Honeycomb plan P19: no legal pitch has no recovery actions (board: Plan with a general permit · Try another day) | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-045 | Low | Honeycomb plan P18: no artist matched stacks three alerts and has no “Pick your artists from Spotify” action | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-046 | Low | Honeycomb plan P20: a source down shows only a chip; no alert saying what is estimated | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-047 | Low | Honeycomb plan P06: weather shows only the slot's hours; no hours either side, slot bracket or updated line | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-048 | Low | Honeycomb plan: at 1440 the heading outline skips h1 → h3 (the h2 is hidden when wide) | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-049 | Low | Honeycomb plan P15/P18: fallback copy says “agent” and “engine” where the board says Claude and Busk Map's scores | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-050 | Medium | Honeycomb plan P24: “Your busk” starts 871 px down at 390 (987 px at 1440): header stack, chips and funnel push the payoff below the fold | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-051 | Low | Honeycomb plan P02/P03: the plan page keeps the boxed funnel and full-width Agent vs engine rows, unlike the board | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-052 | Low | Honeycomb /brain BR08: the Pick any piece panel lost the board's two “Try …” prompts (Setlist and learn these; Taste heatmap); one run-on sentence instead | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-053 | Low | Honeycomb 404 E01: no large “404” above the card; content left-aligned; no poster shadow (board) | Partly fixed at f83f1a1 (v4): the shadow half is fixed (B-138); the rest is open |
+| B-054 | Low | Honeycomb error card E02: “!” icon instead of the warning triangle, left-aligned, reference above the buttons instead of under a rule at the foot, no poster shadow | Partly fixed at f83f1a1 (v4): the shadow half is fixed (B-138); the rest is open |
 | B-055 | Low | Honeycomb tips T03/T05/T06/T18–T21/T29/T34: copy says “sessions” where the brand word is “busks” (also page metadata and form messages); eyebrow, intro, disclaimer, storage note and How-it copy differ | Won't fix: removed (the user removed Tips, 17 Oct) |
 | B-056 | Medium | Honeycomb tips T06/T24/T34/T36: one 896 px column with the form first at 1440 and 768; the board has two columns, and the phone order differs | Won't fix: removed (the user removed Tips, 17 Oct) |
 | B-057 | Low | Honeycomb tips T07/T08: the own act's card has no “Open a plan” | Won't fix: removed (the user removed Tips, 17 Oct) |
@@ -73,16 +73,16 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-067 | Low | Honeycomb tips T33b: no Saving state | Won't fix: removed (the user removed Tips, 17 Oct) |
 | B-068 | Medium | Honeycomb tips T33d: when the log can't be read the page says “No sessions logged in this browser yet.” | Won't fix: removed (the user removed Tips, 17 Oct) |
 | B-069 | Low | Honeycomb tips T05/T24/T34: line lengths about 93–136 characters at 1440 | Won't fix: removed (the user removed Tips, 17 Oct) |
-| B-070 | Low | Honeycomb brand BD03: eyebrow reads “Busk Map brand · design system v62” (board: “Busk Map design deck · design system v66”) | Open (design/honeycomb) |
-| B-071 | Medium | Honeycomb brand BD05/06/42/43/51/52: no Screens section or table, no Submission kit table, no Handoff panel; hero line and On-this-page nav trimmed to match | Open (design/honeycomb) |
-| B-072 | Low | Honeycomb brand BD13/19: no Iconography block (board: 39 icons) | Open (design/honeycomb) |
-| B-073 | Low | Honeycomb brand BD16/17/55: Foundations specimens drift from the board; no Loader “Working” cell | Open (design/honeycomb) |
-| B-074 | Medium | Honeycomb brand BD22–BD37/BD41: Components regrouped into 7 cards: 5 of the board's 8 groups, the “90 reusable components” line, the Plan states block, the QlooWordmark specimen and the component lists are missing | Open (design/honeycomb) |
-| B-075 | Low | Honeycomb brand BD39: StatStrip drops “24–33 Qloo calls for a new busk” | Open (design/honeycomb) |
-| B-076 | Low | Honeycomb brand BD40: at 1440 the ExampleActCard stretches to 406 px tall with an empty middle | Open (design/honeycomb) |
-| B-077 | Low | Honeycomb brand BD50: asset links say “Open file” with an external-link icon but download | Open (design/honeycomb) |
-| B-078 | Low | Honeycomb brand BD56: below 1024 px (including 768) all 21 blocks fold into closed disclosures | Open (design/honeycomb) |
-| B-079 | Low | Honeycomb brand BD18/58: under reduced motion 37 elements keep 150–320 ms transitions while the page says “everything drops to 0 ms” | Open (design/honeycomb) |
+| B-070 | Low | Honeycomb brand BD03: eyebrow reads “Busk Map brand · design system v62” (board: “Busk Map design deck · design system v66”) | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-071 | Medium | Honeycomb brand BD05/06/42/43/51/52: no Screens section or table, no Submission kit table, no Handoff panel; hero line and On-this-page nav trimmed to match | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-072 | Low | Honeycomb brand BD13/19: no Iconography block (board: 39 icons) | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-073 | Low | Honeycomb brand BD16/17/55: Foundations specimens drift from the board; no Loader “Working” cell | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-074 | Medium | Honeycomb brand BD22–BD37/BD41: Components regrouped into 7 cards: 5 of the board's 8 groups, the “90 reusable components” line, the Plan states block, the QlooWordmark specimen and the component lists are missing | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-075 | Low | Honeycomb brand BD39: StatStrip drops “24–33 Qloo calls for a new busk” | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-076 | Low | Honeycomb brand BD40: at 1440 the ExampleActCard stretches to 406 px tall with an empty middle | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-077 | Low | Honeycomb brand BD50: asset links say “Open file” with an external-link icon but download | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-078 | Low | Honeycomb brand BD56: below 1024 px (including 768) all 21 blocks fold into closed disclosures | Partly fixed at f83f1a1 (v4): 768 is open; 390 still folds |
+| B-079 | Low | Honeycomb brand BD18/58: under reduced motion 37 elements keep 150–320 ms transitions while the page says “everything drops to 0 ms” | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
 | B-080 | Low | Honeycomb busks B04: intro at body size on one ~930 px line (board 18/27, max 760 px) | Open (design/honeycomb) |
 | B-081 | Low | Honeycomb busks B09: form card has no shadow | Open (design/honeycomb) |
 | B-082 | Low | Honeycomb busks B15/B21: search error reads “…Type it in instead.” (spec: “Try again in a moment.”) | Open (design/honeycomb) |
@@ -96,75 +96,148 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-090 | Medium | Honeycomb busks B41/B43: the songs error shows the validator's raw text in lower case (“check “…” (Too big: expected string to have <=120 characters)”), from form-errors.ts:37 | Open (design/honeycomb) |
 | B-091 | Low | Honeycomb busks B42: the slot error repeats its title (“Check the date and times: …”) | Open (design/honeycomb) |
 | B-092 | Medium | Honeycomb busks B44–B46: plan again shows the whole prefilled form, not the “Your act” summary; the title stays “Plan your busk” and the banner has no busk date | Open (design/honeycomb) |
-| B-093 | Low | Honeycomb busks B49: takings line adds “they stay in this browser” and the link isn't signal-coloured | Open (design/honeycomb) |
+| B-093 | Low | Honeycomb busks B49: takings line adds “they stay in this browser” and the link isn't signal-coloured | Won't fix: Tips removed by the user (the takings line is gone) |
 | B-094 | Low | Honeycomb busks B51: the artists combobox gets no aria-invalid or aria-describedby on error | Open (design/honeycomb) |
 | B-095 | Low | Honeycomb busks B52: no spinner beside “Searching Spotify…” | Open (design/honeycomb) |
-| B-096 | Low | Honeycomb busks B53: under reduced motion the 0.15 s colour transitions remain | Open (design/honeycomb) |
+| B-096 | Low | Honeycomb busks B53: under reduced motion the 0.15 s colour transitions remain | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
 | B-097 | Low | Honeycomb busks B24: the “Your song” badge has no music icon | Open (design/honeycomb) |
-| B-098 | Low | Honeycomb plan B03/Y01/N01/L01/S02: eyebrow date is ISO (“SUNDAY 2026-10-18”); the replay eyebrow has no “Shared busk” | Open (design/honeycomb) |
-| B-099 | Low | Honeycomb plan B04: no act line under the H1 | Open (design/honeycomb) |
-| B-100 | Low | Honeycomb plan B11: no day · slot · permit line under “Your busk” | Open (design/honeycomb) |
-| B-101 | Low | Honeycomb plan B12/B18: the selected row only gets a heavier border: no white card, orange shadow or filled score cell | Open (design/honeycomb) |
-| B-102 | Low | Honeycomb plan B14: no caption on the selected pin; pins 2 and 3 aren't smaller | Open (design/honeycomb) |
-| B-103 | Low | Honeycomb plan B45/R08: “Where your crowd gathers” has no mini map | Open (design/honeycomb) |
-| B-104 | Low | Honeycomb plan B54: the sheet is 512 px wide (board 720); at 390 it opens from the top with no grab handle | Open (design/honeycomb) |
-| B-105 | Medium | Honeycomb plan B55–B59: the sheet body is the old pitch card: no foot-traffic sparkline, no Copy on its setlist | Open (design/honeycomb) |
-| B-106 | Low | Honeycomb plan B62: lean bars draw as 3–6 px stubs | Open (design/honeycomb) |
+| B-098 | Low | Honeycomb plan B03/Y01/N01/L01/S02: eyebrow date is ISO (“SUNDAY 2026-10-18”); the replay eyebrow has no “Shared busk” | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-099 | Low | Honeycomb plan B04: no act line under the H1 | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-100 | Low | Honeycomb plan B11: no day · slot · permit line under “Your busk” | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-101 | Low | Honeycomb plan B12/B18: the selected row only gets a heavier border: no white card, orange shadow or filled score cell | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-102 | Low | Honeycomb plan B14: no caption on the selected pin; pins 2 and 3 aren't smaller | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-103 | Low | Honeycomb plan B45/R08: “Where your crowd gathers” has no mini map | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-104 | Low | Honeycomb plan B54: the sheet is 512 px wide (board 720); at 390 it opens from the top with no grab handle | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-105 | Medium | Honeycomb plan B55–B59: the sheet body is the old pitch card: no foot-traffic sparkline, no Copy on its setlist | Partly fixed at f83f1a1 (v4): the council-rules link row (plan B58) is still missing |
+| B-106 | Low | Honeycomb plan B62: lean bars draw as 3–6 px stubs | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
 | B-107 | Low | Honeycomb plan B71: the sheet's slide and fade ignore reduced motion | Open (design/honeycomb) |
-| B-108 | Low | Honeycomb plan R01/Y03: “The agent…” copy while running and on replay; Copy link shows while running | Open (design/honeycomb) |
-| B-109 | Low | Honeycomb plan R09: no “Data used so far” while the run is live | Open (design/honeycomb) |
+| B-108 | Low | Honeycomb plan R01/Y03: “The agent…” copy while running and on replay; Copy link shows while running | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-109 | Low | Honeycomb plan R09: no “Data used so far” while the run is live | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
 | B-110 | Low | Honeycomb plan N03: the no-pitch run shows eight “Sent back” cards (limit 2); may be the offline mock only | Open (design/honeycomb) |
-| B-111 | Low | Honeycomb plan X01: plan not found is a small boxed card aligned left | Partly fixed at 8207373: centred with a large title, still drawn inside a box |
-| B-112 | Low | Honeycomb plan M04: the no-match map shows the taste legend with no taste cells | Open (design/honeycomb) |
+| B-111 | Low | Honeycomb plan X01: plan not found is a small boxed card aligned left | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-112 | Low | Honeycomb plan M04: the no-match map shows the taste legend with no taste cells | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
 | B-113 | Low | Honeycomb plan B64: no event diamonds or event popover on the map | Open (design/honeycomb) |
-| B-114 | Low | Honeycomb brain BR02: background has only the dot grain; the board's faint hex lattice is missing | Open (design/honeycomb) |
-| B-115 | Low | Honeycomb brain BR05/10/20–22: wording differs from the board (“11 kinds”, “trace its path”, “9 parts it decides”, “a plan that cites”, quota card, “(/v2/tags)”) | Open (design/honeycomb) |
-| B-116 | Low | Honeycomb brain BR11: call sub-lines show the URN type, so calls 5–8 all read “urn:entity:artist” | Open (design/honeycomb) |
-| B-117 | Low | Honeycomb brain BR16/17/25/26: trace styling: rest wires 60% (board 45%), lit 3 px (2.5), others 15% (10); lit nodes no outline; picked node orange-brown fill | Open (design/honeycomb) |
-| B-118 | Low | Honeycomb brain BR23: back link is paper-coloured and underlined, not orange | Open (design/honeycomb) |
-| B-119 | Low | Honeycomb brain BR27–BR30/BR33: trace panel: purple title (board orange), “comes from…/feeds…” instead of “Lights up…”, From/To instead of ← →, shadow points down | Open (design/honeycomb) |
-| B-120 | Low | Honeycomb brain BR29: at 1440 “With two other sources” stays lit when no source is on the path | Open (design/honeycomb) |
-| B-121 | Low | Honeycomb brain BR40: in the day theme the footer and bottom nav turn light while the page stays night | Open (design/honeycomb) |
+| B-114 | Low | Honeycomb brain BR02: background has only the dot grain; the board's faint hex lattice is missing | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-115 | Low | Honeycomb brain BR05/10/20–22: wording differs from the board (“11 kinds”, “trace its path”, “9 parts it decides”, “a plan that cites”, quota card, “(/v2/tags)”) | Partly fixed at f83f1a1 (v4): only “11” for “eleven” is left (brain BR05) |
+| B-116 | Low | Honeycomb brain BR11: call sub-lines show the URN type, so calls 5–8 all read “urn:entity:artist” | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-117 | Low | Honeycomb brain BR16/17/25/26: trace styling: rest wires 60% (board 45%), lit 3 px (2.5), others 15% (10); lit nodes no outline; picked node orange-brown fill | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-118 | Low | Honeycomb brain BR23: back link is paper-coloured and underlined, not orange | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-119 | Low | Honeycomb brain BR27–BR30/BR33: trace panel: purple title (board orange), “comes from…/feeds…” instead of “Lights up…”, From/To instead of ← →, shadow points down | Partly fixed at f83f1a1 (v4): the trace panel's label colours differ (B-197) |
+| B-120 | Low | Honeycomb brain BR29: at 1440 “With two other sources” stays lit when no source is on the path | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-121 | Low | Honeycomb brain BR40: in the day theme the footer and bottom nav turn light while the page stays night | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
 | B-122 | Low | Honeycomb errors N02/G01: cards sit at the top of main instead of centred vertically | Fixed, verified in Errors · review v3 at 8207373 |
-| B-123 | Low | Honeycomb errors N05–N07/E04: the shared StatusCard differs: 72 px dashed hex on the 404 (board 64 px solid), 56 px title (board small), body not muted | Open (design/honeycomb) |
-| B-124 | Low | Honeycomb errors G03/E05: “while setting up the pitch” on every route error and on the global error | Partly fixed at 8207373: the global error's copy is its own; the route error still says “setting up the pitch” |
-| B-125 | Low | Honeycomb errors E06/G04/U06: missing icons: refresh on Try again, arrow on the plan not-found home link | Partly fixed at 8207373: refresh icon on Try again; the plan not-found arrow still missing |
-| B-126 | Low | Honeycomb errors U02/U04/U05/U08: plan not found is boxed and left-aligned (board: no card, centred, max 520 px, 44 px title) | Open (design/honeycomb) |
-| B-127 | Medium | Honeycomb errors R05/R07/R08/R11: run limit alert is full width (board max 760 px) and starts 672 px down at 390; status line above it; home is an outline button inside the alert, not a bold link below | Open (design/honeycomb) |
+| B-123 | Low | Honeycomb errors N05–N07/E04: the shared StatusCard differs: 72 px dashed hex on the 404 (board 64 px solid), 56 px title (board small), body not muted | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-124 | Low | Honeycomb errors G03/E05: “while setting up the pitch” on every route error and on the global error | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-125 | Low | Honeycomb errors E06/G04/U06: missing icons: refresh on Try again, arrow on the plan not-found home link | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-126 | Low | Honeycomb errors U02/U04/U05/U08: plan not found is boxed and left-aligned (board: no card, centred, max 520 px, 44 px title) | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-127 | Medium | Honeycomb errors R05/R07/R08/R11: run limit alert is full width (board max 760 px) and starts 672 px down at 390; status line above it; home is an outline button inside the alert, not a bold link below | Partly fixed at f83f1a1 (v4): the run limit's R07 type still differs |
 | B-128 | Low | Honeycomb errors R06: “plans” is never pluralised (“1 plans” in the template) | Fixed (pluralises), verified at 8207373 |
-| B-129 | Low | Honeycomb site H08/N01: the nav switches at 768 px, not 721: from 721 to 767 px the bottom bar shows and the header has no nav | Open (design/honeycomb) |
+| B-129 | Low | Honeycomb site H08/N01: the nav switches at 768 px, not 721: from 721 to 767 px the bottom bar shows and the header has no nav | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
 | B-130 | Low | Honeycomb site H03/N02: no Repertoire item (/repertoire is 404 on design/honeycomb) | Open (design/honeycomb) |
 | B-131 | Low | Honeycomb site H07: plan headers have no end slot (no Live data badge, no Share) | Open (design/honeycomb) |
-| B-132 | Low | Honeycomb site N06: the current tab has no fade transition | Open (design/honeycomb) |
-| B-133 | Low | Honeycomb site H02: the home link is named “Busk Map”, not “Busk Map home” | Open (design/honeycomb) |
-| B-134 | Medium | Honeycomb site-wide (busks B39/B50, plan B70/X01, errors N10/E10, tips T30/T37, brand BD24, site): at night the default (orange) button's focus ring is the same orange as its fill: 1.00:1 against the button (5.8:1 against the ground), so focus shows only as the button growing 2 px; outline buttons' ring is 1.38:1 against their border. DEV's open item “night ring not verified” | Open (design/honeycomb) |
-| B-135 | Low | Honeycomb site H02/H08/FT02, brand BD07: the lockup files clip the orange offset on the right of the P (paths reach x 325 in a 322-wide viewBox); BRAND's own files have it too | Open (design/honeycomb) |
+| B-132 | Low | Honeycomb site N06: the current tab has no fade transition | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-133 | Low | Honeycomb site H02: the home link is named “Busk Map”, not “Busk Map home” | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-134 | Medium | Honeycomb site-wide (busks B39/B50, plan B70/X01, errors N10/E10, tips T30/T37, brand BD24, site): at night the default (orange) button's focus ring is the same orange as its fill: 1.00:1 against the button (5.8:1 against the ground), so focus shows only as the button growing 2 px; outline buttons' ring is 1.38:1 against their border. DEV's open item “night ring not verified” | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-135 | Low | Honeycomb site H02/H08/FT02, brand BD07: the lockup files clip the orange offset on the right of the P (paths reach x 325 in a 322-wide viewBox); BRAND's own files have it too | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
 | B-136 | Low | Honeycomb landing L18, plan B20/B13/M04: the map's attribution “i” control is 44 px inside a 24 px box: the icon tiles 2×2 and is cut off | Open (design/honeycomb) |
 | B-137 | Low | Honeycomb landing L18, plan B19: at 390 the one-line map legend (F03) wraps to two lines | Open (design/honeycomb) |
-| B-138 | Medium | Honeycomb site-wide (errors N04/E02/G03/U02 and every shadow-md/lg): the honeycomb --shadow-sm/md/lg tokens live on :root (globals.css:197–212) but aren't mapped in @theme, so shadow-md/shadow-lg render Tailwind's soft blur, not the poster offset shadow | Open (design/honeycomb) |
-| B-139 | Medium | Honeycomb landing L08/L24: both “Plan a busk” poster buttons render 44 px tall (hero 76, closing 64): the Button's default size overrides the poster height; the closing one is now 24 px Big Shoulders caps | Open (design/honeycomb) |
+| B-138 | Medium | Honeycomb site-wide (errors N04/E02/G03/U02 and every shadow-md/lg): the honeycomb --shadow-sm/md/lg tokens live on :root (globals.css:197–212) but aren't mapped in @theme, so shadow-md/shadow-lg render Tailwind's soft blur, not the poster offset shadow | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-139 | Medium | Honeycomb landing L08/L24: both “Plan a busk” poster buttons render 44 px tall (hero 76, closing 64): the Button's default size overrides the poster height; the closing one is now 24 px Big Shoulders caps | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
 | B-140 | Low | Honeycomb landing L23: the brand teaser's specimen card lost its app icon | Open (design/honeycomb) |
-| B-141 | Low | Honeycomb landing L18: at 1440 the map is 544 px tall in a 699 px column, leaving ~155 px empty below | Open (design/honeycomb) |
-| B-142 | Low | Honeycomb busks B24/B56: at 390 the “Your song” and “Typed” badges squeeze picked-song titles to “Lan…” | Open (design/honeycomb) |
-| B-143 | Low | Honeycomb busks B20/B21: typed-row copy isn't BRAND's (“Add “<query>” as typed”, “Write it as…”) and the row shows under results, while searching and on error, not only on no match | Open (design/honeycomb) |
+| B-141 | Low | Honeycomb landing L18: at 1440 the map is 544 px tall in a 699 px column, leaving ~155 px empty below | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-142 | Medium | Honeycomb busks B24/B56: at 390 the “Your song” and “Typed” badges squeeze picked-song titles to “Lan…” | Open (design/honeycomb) |
+| B-143 | Low | Honeycomb busks B20/B21: typed-row copy isn't BRAND's (“Add “<query>” as typed”, “Write it as…”) and the row shows under results, while searching and on error, not only on no match | Partly fixed at f83f1a1 (v4): BRAND's copy landed; the row still shows under results, while searching and on error |
 | B-144 | Low | Honeycomb busks B19: the “By your artist” badge has no users icon | Open (design/honeycomb) |
-| B-145 | Low | Honeycomb plan B19: the legend's Taste tooltip still says “(test data)” with the mock | Open (design/honeycomb) |
-| B-146 | Medium | Honeycomb plan B10/B13/B69: the plan map breaks F05: all five shades including the dark ones, not zoomed out (the landing map already filters and zooms out) | Open (design/honeycomb) |
-| B-147 | Low | Honeycomb plan B49/B61: where the plan names Qloo as a source there is no Qloo logo (F09/F18) | Open (design/honeycomb) |
-| B-148 | Medium | Honeycomb plan B15: no hatched no-busking honeycomb cells on the plan map (F16) | Open (design/honeycomb) |
-| B-149 | Medium | Honeycomb brain BR24: a node picked with Enter shows no focus ring while focused: its 4 px orange offset shadow replaces the ring (WCAG 2.4.7) | Open (design/honeycomb) |
-| B-150 | Medium | Honeycomb brain BR34: picking a node with Enter doesn't keep it in view: at 1440 node 1 ends under the folded panel; at 390 “Taste cells” jumps to −425 px (WCAG 2.4.11) | Open (design/honeycomb) |
-| B-151 | Low | Honeycomb brand BD21: the --ring token row still describes the old “ground-coloured gap” ring | Open (design/honeycomb) |
-| B-152 | Medium | Honeycomb brand BD44–46: the Logos group lists the mark and wordmark-only files beside the lockup as unlabelled logo tiles (corrected F12) | Open (design/honeycomb) |
-| B-153 | Low | Honeycomb brand BD09/BD47: no Qloo logo anywhere in the brand page body (F18/F09) | Open (design/honeycomb) |
-| B-154 | Medium | Honeycomb brand BD49/BD51: social and kit images unchanged: old tall-M lettering, pink rectangles, Qloo as text, “Melbourne” in the OG caption, placeholder screenshots (F12, F16–F22) | Open (design/honeycomb) |
+| B-145 | Low | Honeycomb plan B19: the legend's Taste tooltip still says “(test data)” with the mock | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-146 | Medium | Honeycomb plan B10/B13/B69: the plan map breaks F05: all five shades including the dark ones, not zoomed out (the landing map already filters and zooms out) | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-147 | Low | Honeycomb plan B49/B61: where the plan names Qloo as a source there is no Qloo logo (F09/F18) | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-148 | Medium | Honeycomb plan B15: no hatched no-busking honeycomb cells on the plan map (F16) | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-149 | Medium | Honeycomb brain BR24: a node picked with Enter shows no focus ring while focused: its 4 px orange offset shadow replaces the ring (WCAG 2.4.7) | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-150 | Medium | Honeycomb brain BR34: picking a node with Enter doesn't keep it in view: at 1440 node 1 ends under the folded panel; at 390 “Taste cells” jumps to −425 px (WCAG 2.4.11) | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-151 | Low | Honeycomb brand BD21: the --ring token row still describes the old “ground-coloured gap” ring | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-152 | Medium | Honeycomb brand BD44–46: the Logos group lists the mark and wordmark-only files beside the lockup as unlabelled logo tiles (corrected F12) | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-153 | Low | Honeycomb brand BD09/BD47: no Qloo logo anywhere in the brand page body (F18/F09) | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-154 | Medium | Honeycomb brand BD49/BD51: social and kit images unchanged: old tall-M lettering, pink rectangles, Qloo as text, “Melbourne” in the OG caption, placeholder screenshots (F12, F16–F22) | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
 | B-155 | Low | Honeycomb errors N14/E13/G09/U08: at phone width the buttons stretch full width with 16 px gutters (board: natural-width centred, 24 px gutters) | Open (design/honeycomb) |
 | B-156 | Low | Honeycomb errors E08/G06: “Reference:” label is mono; the board uses sans for the label, mono only for the number | Open (design/honeycomb) |
-| B-157 | Low | Honeycomb site FT02: the footer lockup is not a link home | Open (design/honeycomb) |
-| B-158 | Low | Honeycomb site FT03: no mid-dot separators; the footer nav is named “Footer”, not “Site” | Open (design/honeycomb) |
-| B-159 | Low | Honeycomb site FT04/FT05: GitHub, “Built by T04435” and the critter open in the same tab | Open (design/honeycomb) |
-| B-160 | Low | Honeycomb site FT05: the critter links to github.com/T04435, not claude.com/claude-code, and all of “Built by T04435” is the link | Open (design/honeycomb) |
-| B-161 | Low | Honeycomb site FT06: the critter is DEV's 17×10 approximation, not BRAND's 170×112 path (DEV replaced it in 865999d, after the commit under test) | Open (design/honeycomb) |
+| B-157 | Low | Honeycomb site FT02: the footer lockup is not a link home | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-158 | Low | Honeycomb site FT03: no mid-dot separators; the footer nav is named “Footer”, not “Site” | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-159 | Low | Honeycomb site FT04/FT05: GitHub, “Built by T04435” and the critter open in the same tab | Partly fixed at f83f1a1 (v4): the GitHub cell still opens in the same tab (site FT04) |
+| B-160 | Low | Honeycomb site FT05: the critter links to github.com/T04435, not claude.com/claude-code, and all of “Built by T04435” is the link | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-161 | Low | Honeycomb site FT06: the critter is DEV's 17×10 approximation, not BRAND's 170×112 path (DEV replaced it in 865999d, after the commit under test) | Fixed at design/honeycomb f83f1a1, verified by QA (v4) |
+| B-162 | Low | Honeycomb site-wide (user's glyph rule): text glyphs used as icons: “▸” funnel connectors (landing L17, plan B07/R02), “→” in Open the brain / See the brand (L22, L23), “← Back to Busk Map” and ← → trace lines (brain BR23, BR27, BR29–BR31), “Tokens → shadcn” (brand BD06/BD20), “See the research ↓” (plan B66), lone “–” connectors (brand, plan); source: brain/page.tsx:75, brand/page.tsx:127/290, page.tsx:255/290, brain-map.tsx:341, research-funnel.tsx:49, plan-view.tsx:535, week-view.tsx:246 (qa/tools/glyph-icons.mjs: 26 fail) | Open (design/honeycomb f83f1a1) |
+| B-163 | Medium | DS ExampleActCard: build is a tall grid card with day, hours, Plays and a “Watch Busk Map plan this act” foot row; DS is one compact row with hex initials and an arrow at the edge (landing L13, busks B07/B08, brand BD40). Conflicts with the user's keep call (B-032): user's choice | Open (design/honeycomb f83f1a1) |
+| B-164 | Medium | DS ResearchFunnel: Big Shoulders numerals, a wrapping grid with labels under the cells; DS is one inline row with small numerals and labels beside the cells (landing L17, brand BD29) | Open (design/honeycomb f83f1a1) |
+| B-165 | Medium | DS PitchRow: build rows about twice as tall (slot on its own line, inner rule, sans “Full details”); DS is one compact line with badges and mono caps FULL DETAILS (landing L18, plan B12/B18, brand BD28) | Open (design/honeycomb f83f1a1) |
+| B-166 | Medium | DS PitchPin: black hex with a white hex centre and a square rank badge; DS is a dark hex with an orange ring and target dot, hex rank badge, and a Hidden gem pin (landing L18, plan B14) | Open (design/honeycomb f83f1a1) |
+| B-167 | Low | DS TasteMapLegend: DS is a boxed panel (TASTE MATCH, a 1–5 ramp, then the symbols); build has the user's F03 one-line bar (landing L18): user's choice | Open (design/honeycomb f83f1a1) |
+| B-168 | Low | DS OtherPitches / PlanMap: DS lists the other scored pitches under the list; build only has a “Browse other pitches” button and the popover (landing L18, plan B63) | Open (design/honeycomb f83f1a1) |
+| B-169 | Low | DS SetlistPanel: method paragraph subtitle, mono LEARN THESE and Copy, an extra “How the order is worked out” fold, Copy below it at 390 (landing L20, plan B59) | Open (design/honeycomb f83f1a1) |
+| B-170 | Medium | DS StatStrip: the landing teasers' numbers sit inline beside mono labels; DS is a framed row of ruled cells, number above label (landing L22, L23) | Open (design/honeycomb f83f1a1) |
+| B-171 | Low | Honeycomb landing L27: at 390 and 768 the hero stacks the full-bleed map first, so the headline starts about 375 px down; the board stacks headline, map, CTA | Open (design/honeycomb f83f1a1) |
+| B-172 | Low | Honeycomb busks B11: the artists hint sits between the chips and the search field; board and DS ArtistPicker put it under the field | Open (design/honeycomb f83f1a1) |
+| B-173 | Low | Honeycomb busks B14: the artist search's “Add … as typed” item has no plus icon (spec, DS ArtistPicker and the song search have one) | Open (design/honeycomb f83f1a1) |
+| B-174 | Low | DS Input / RepertoirePicker: the Spotify link field shows a music note, not the Spotify icon (busks B26) | Open (design/honeycomb f83f1a1) |
+| B-175 | Low | DS ArtistPicker chips: build wraps chips side by side, writes “(TYPED)”, no divider before the x; DS stacks one per row (busks B12) | Open (design/honeycomb f83f1a1) |
+| B-176 | Low | DS PickedSongs: build runs one mono line “YOUR PICKS · N SONGS · m:ss”; DS has the label left and the mono total right (busks B22) | Open (design/honeycomb f83f1a1) |
+| B-177 | Medium | DS TimeSlotPicker: selected slot dark/cream not orange; 12-hour copy, no Late slot or Day row (busks B30, held with F27; brand BD26) | Held with F27 (DEV); Open (design/honeycomb f83f1a1) |
+| B-178 | Low | DS PermitPicker: no pitch count on each permit card; extra LIVE DATA badge (busks B38, brand BD26) | Open (design/honeycomb f83f1a1) |
+| B-179 | Low | DS Alert: the destructive form alert uses a circle icon; DS uses a warning triangle (busks B40–B42) | Open (design/honeycomb f83f1a1) |
+| B-180 | Low | DS Banner: the plan-again banner uses a tone the DS doesn't have (a bordered peach box) (busks B44) | Open (design/honeycomb f83f1a1) |
+| B-181 | Low | DS CityPicker: the Live data badge icon is footprints; DS uses a bar chart (busks B32) | Open (design/honeycomb f83f1a1) |
+| B-182 | Low | DS SongSearch: “By your artist” sits on its own line under the title; DS puts it inline at the right with the users icon (busks B19) | Open (design/honeycomb f83f1a1) |
+| B-183 | Low | Honeycomb plan B69: the night ramp's step 3 (#a8460f) reads as the dark cells F05 removed; needs the user's eye | Open (design/honeycomb f83f1a1) |
+| B-184 | Low | Honeycomb plan N01: the no-legal-pitch page shows a fallback alert about “these spots” where there are no spots | Open (design/honeycomb f83f1a1) |
+| B-185 | Low | Honeycomb plan R09: Data used so far marks every source Live during an offline mock run (the finished plan says test data) | Open (design/honeycomb f83f1a1) |
+| B-186 | Low | DS PageHeader: no “Busk Map home” link above the eyebrow; run status is a dot line, not outlined mono badges (plan B02) | Open (design/honeycomb f83f1a1) |
+| B-187 | Low | DS CopyLinkButton: chain icon where DS and the board use the copy icon (plan B05) | Open (design/honeycomb f83f1a1) |
+| B-188 | Low | DS DiscoveryBadge: Usual pitch uses a dot icon, DS a ringed target (plan B12/B55, brand BD28) | Open (design/honeycomb f83f1a1) |
+| B-189 | Low | DS WeatherStrip: at 390 the hours stack as rows; DS keeps a horizontally scrolling strip (plan B21) | Open (design/honeycomb f83f1a1) |
+| B-190 | Medium | DS ScoreBreakdown: an unboxed list; DS is a bordered “How this score adds up” card with total, icons, weights and bonus rows (plan B54) | Open (design/honeycomb f83f1a1) |
+| B-191 | Low | DS FootfallSparkline: thin black dotted line; DS is a 3 px ochre line on a tan fill (plan B57) | Open (design/honeycomb f83f1a1) |
+| B-192 | Medium | DS LeanBar: eight full-width bars; DS is one inline line of group | tick value. Conflicts with BRAND's “bare ticks” issue: user's call (plan B62) | Open (design/honeycomb f83f1a1) |
+| B-193 | Low | DS AgentStatusLine: muted sans line without the DS's leading hex state cell in mono (plan R01, Y03) | Open (design/honeycomb f83f1a1) |
+| B-194 | Low | DS SourceAttribution / DataStatusBadge: a two-column tile grid with inline dot status; DS is one list with a boxed badge (plan B49, Q03, B61) | Open (design/honeycomb f83f1a1) |
+| B-195 | Low | DS SlotPassed: a thin dashed box with a small title; DS is a solid 2 px card with a display title (plan S01, S02) | Open (design/honeycomb f83f1a1) |
+| B-196 | Low | Honeycomb brain BR18: the idle panel title is paper (board Qloo purple) and its lead line is in the body face (board mono) | Open (design/honeycomb f83f1a1) |
+| B-197 | Low | Honeycomb brain BR27, BR29–BR31: “Comes from:” / “Decides:” labels are orange (board Qloo purple) | Open (design/honeycomb f83f1a1) |
+| B-198 | Low | Honeycomb brain BR28: Clear trace border is 1px (board 1.5px) | Open (design/honeycomb f83f1a1) |
+| B-199 | Medium | DS BrainMap: Your busk nodes in uppercase Big Shoulders; DS uses the node face in sentence case (brain BR15) | Open (design/honeycomb f83f1a1) |
+| B-200 | Low | DS BrainMap: lit and picked nodes' outline sits flush; DS shows a gap between border and outline (brain BR25, BR26) | Open (design/honeycomb f83f1a1) |
+| B-201 | Low | DS BrainMap: trace panel lines use orange arrow markers; DS uses plain bullets (brain BR27, BR29–BR31) | Open (design/honeycomb f83f1a1) |
+| B-202 | Low | DS Button outline: Clear trace is mono 12px with a 1px border; DS is Atkinson 14px with a 2px border (brain BR28) | Open (design/honeycomb f83f1a1) |
+| B-203 | Low | DS NoteCard next: grey bullets on a transparent card; DS has paper bullets on a page fill (brain BR22) | Open (design/honeycomb f83f1a1) |
+| B-204 | Low | Honeycomb brand BD38: the FormMessage success specimen is the retired tip log's “Logged A$85 at Hardware Lane.” | Open (design/honeycomb f83f1a1) |
+| B-205 | Low | Honeycomb brand BD18, BD21: the --ring and focus-ring rows contradict each other about the gap | Open (design/honeycomb f83f1a1) |
+| B-206 | Low | Honeycomb brand BD37: the replayed AgentStatusLine drops the run line (steps, tokens, seconds) | Open (design/honeycomb f83f1a1) |
+| B-207 | Low | Honeycomb brand BD43: the Screens table lacks the board's 390 · 768 · 1440 columns | Open (design/honeycomb f83f1a1) |
+| B-208 | Low | Honeycomb brand BD27: the Map specimen draws pale and dark brown cells with no streets; the app draws orange cells only (F05) | Open (design/honeycomb f83f1a1) |
+| B-209 | Low | Honeycomb brand BD22–BD30: component cards stretch to the row's tallest at 1440 (up to 490 px empty) | Open (design/honeycomb f83f1a1) |
+| B-210 | Low | Honeycomb brand BD28: WeatherStrip's h2 and specimen h3s enter the page outline | Open (design/honeycomb f83f1a1) |
+| B-211 | Low | DS Badge / Alert / Banner on brand BD25: no badge icons, 2px alert borders and larger titles | Open (design/honeycomb f83f1a1) |
+| B-212 | Low | DS StatusCard: centred, solid hex, small title, one outline button; DS is left-aligned, dashed hex, large title, primary + outline (errors N04–N08, E02–E05, E08, G03, G06; brand BD31). The board (centred) and the DS disagree: user's call | Open (design/honeycomb f83f1a1) |
+| B-213 | Low | DS Alert / PlanAlert: full-tone 2px borders, larger type, actions as links; DS is a tinted 1px border, small mono title, outline buttons inside (errors R05, R08; brand BD33–BD36) | Open (design/honeycomb f83f1a1) |
+| B-214 | Low | DS Loader: an arc spinner icon; DS is the turning pitch ring (brand BD17, BD55) | Open (design/honeycomb f83f1a1) |
+| B-215 | Low | DS AppHeader: the header lockup is 36 px tall against the DS's ≈24 px (site H02) | Open (design/honeycomb f83f1a1) |
+| B-216 | Low | DS SiteFooter: the footer lockup is 34 px tall against ≈24 px (site FT02) | Open (design/honeycomb f83f1a1) |
+| B-217 | Low | DS AppHeader: nav items are 48 px tall (DS 40 px), so the current item's fill nearly fills the bar (site H04) | Open (design/honeycomb f83f1a1) |
+| B-218 | High | Honeycomb site-wide (impeccable, verified): in the day OS scheme the focus ring inside pinned-dark areas (/brain, the landing's dark bands and footer) is #141c21 on the dark ground, 1.08:1 (WCAG 2.4.7, 1.4.11); --focus-ring is resolved on :root (globals.css:200), so data-theme=dark never reaches it | Open (design/honeycomb f83f1a1) |
+| B-219 | High | Honeycomb plan (impeccable, verified): 1,848 px of blank scroll after the footer at 390 (1,168 at 768): positioned spans inside the closed “Every check” fold escape its overflow clip (honeycomb/fold.tsx) | Open (design/honeycomb f83f1a1) |
+| B-220 | Medium | Honeycomb busks (impeccable, verified): after an empty submit focus stays on Plan my busk, far from the error; artist and song errors aren't tied to their inputs (no aria-invalid / aria-describedby) | Open (design/honeycomb f83f1a1) |
+| B-221 | Low | Honeycomb busks (impeccable): no visible pending state after Plan my busk; the second action stays live during the request | Open (design/honeycomb f83f1a1) |
+| B-222 | Medium | Honeycomb brain (impeccable, verified): the traced panel covers lit pieces (two parts at 1440×900; Pitch ranking at 390, panel 45vh plus the nav) | Open (design/honeycomb f83f1a1) |
+| B-223 | Medium | Honeycomb brand (impeccable, verified): at 390 the tokens table is 860 px in a 322 px frame; Day, Night and Use start off-screen, rows 97 px tall | Open (design/honeycomb f83f1a1) |
+| B-224 | Low | Honeycomb brand §08 (impeccable, verified): the Handoff points to hackathons/qloo-2026/design-handoff/, which isn't in the repo or linked | Open (design/honeycomb f83f1a1) |
+| B-225 | Low | Honeycomb brand (impeccable): heading outline: WeatherStrip h2 in an h3 group, NoteCard h3 under an h4, phone folds turn 28 sub-headings into text; two landmark names repeated | Open (design/honeycomb f83f1a1) |
+| B-226 | Medium | Honeycomb landing (impeccable, verified): the ticker scrolls forever with no pause or stop, also on hover; only reduced motion stops it (WCAG 2.2.2) | Open (design/honeycomb f83f1a1) |
+| B-227 | Medium | Honeycomb plan (impeccable): on a phone the map takes one-finger vertical drags (touch-action none, no cooperative gestures), so the page can't scroll over it; synthesised touch, not a device | Open (design/honeycomb f83f1a1) |
+| B-228 | Low | (not used: the plan heading skip h2 → h4 is inside the feed cards held by DEV, B-048) | Not used |
+| B-229 | Medium | Honeycomb errors (impeccable): Try again on the route error gives no pending state, returns the identical card and drops focus to body (WCAG 2.4.3, 4.1.3) | Open (design/honeycomb f83f1a1) |
+| B-230 | Low | Honeycomb errors (impeccable, verified): plan-not-found draws an orange ghost pin behind the dashed hex; tab title “Plan · Busk Map”; noindex meta twice. (HTTP 200 is DEV's accepted limit.) | Open (design/honeycomb f83f1a1) |
+| B-231 | Low | Honeycomb site-wide (impeccable): targets under 44 px at 390: map-legend keys 32 px, Qloo wordmark links 44×15 / 33 px, inline Week links 18 px, brand Screens links 16 px, chips 40 px | Open (design/honeycomb f83f1a1) |
+| B-232 | Low | Honeycomb site FT05 (impeccable): the critter, the only visible content of the Claude Code link, is 2.68:1 on paper (WCAG 1.4.11) | Open (design/honeycomb f83f1a1) |
+| B-233 | Low | Honeycomb site (impeccable): the phone bottom nav comes after the footer in the DOM: 12–38 Tabs to reach it at 390 | Open (design/honeycomb f83f1a1) |
+| B-234 | Low | Honeycomb site-wide (impeccable): app-header.tsx hard-codes #f2ede4, #a7b0b5, #232d33 and logo.tsx #8C8CC8; brain-map.tsx trace states hard-code 5 hexes | Open (design/honeycomb f83f1a1) |
 
 ---
 
@@ -324,6 +397,10 @@ Each defect is on its row in the living report: `qa/reports/<page>.html` on desi
 
 ### B-134 to B-161 · v3 recheck at design/honeycomb 8207373 (17 Oct)
 All eight living reports re-judged at 8207373 (landing v5; busks, plan, brain, tips, brand, errors, site v3). Findings that appear on several pages carry one number (B-134 night focus ring, B-135 lockup P clip, B-136 map “i” icon, B-137 legend wrap, B-138 shadow tokens). Fixed or partly fixed defects are updated in the table above.
+
+
+### B-162 to B-234 · v4 recheck at design/honeycomb f83f1a1 (17 Oct)
+The one full pass at DEV's closing commit, from QA's clean export, offline. Seven living reports re-judged (landing v6; busks, plan, brain, brand, errors, site v4); tips stays retired. Three new rules applied: the user's **glyph rule** (one defect, B-162, listing every text glyph used as an icon, from `qa/tools/glyph-icons.mjs`), **DS parity** (a component that visibly differs from BRAND's DS specimen is Different, citing the DS component; shared DS issues carry one number: B-163 to B-170, B-177, B-178, B-188, B-212, B-213), and the **real impeccable critique and audit** (skill v4.4.0, dual-agent, 390/768/1440; outputs in `qa/impeccable/` on design/honeycomb; B-218 to B-234 come from it and each was re-measured by QA where marked verified). B-228 is unused. DEV's declared limit (HTTP 200 for /p/&lt;unknown&gt; and the render error, /p noindex) is accepted; only its visible parts are B-230.
 
 ### Tips retired (17 Oct)
 The user removed Tips from the app for now (a “rate your busks” feature replaces it later). `qa/reports/tips.html` is marked retired and kept as history; B-055 to B-069 are closed as won't fix (removed). From the v4 round, `qa/tools/no-tips-checks.mjs` checks that no /tips route, nav item, link, tip copy or tip factor remains, in the rendered pages and in the source. Baseline at 8207373: 50 of 58 checks fail (route 200, Tips in every nav, /tips links, tip copy on /, /busks, /week, /privacy and plans, and the tips route, components, scoring and example data in src). The nav should read Busks · Week · Brain, plus Repertoire after the merge.

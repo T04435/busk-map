@@ -30,11 +30,11 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-024 | Low | Honeycomb landing: Brain teaser 4th number "parts of your plan" | Fixed (e2e3240), verified by QA |
 | B-025 | Low | Honeycomb landing: H1 orphans "PLAY." at 1440 | Fixed (29695f7), verified by QA |
 | B-026 | Low | "For judges" link from decision 104 never designed | Open (BRAND/MANAGER) |
-| B-027 | Medium | /repertoire learn feed: tool names, raw UUIDs and finish_suggestions JSON in the default view; oldest first; stays above the list; 10-count grid, not the funnel | Open (pending Learn* boards) |
-| B-028 | Low | /repertoire Qloo down: no "Your songs are safe." and nothing says the run did not count | Open |
-| B-029 | Low | /repertoire nothing new: copy says everything was suggested before while the run shows songs checked 0, suggested before 0; no left-out count or next-step hint | Open |
-| B-030 | Low | /repertoire Learn list: older runs do not fold | Open |
-| B-031 | Low | /repertoire Learn list: no filter chips (All · New · To learn · Learned · Not for me) | Open |
+| B-027 | Medium | /repertoire learn feed: tool names, raw UUIDs and finish_suggestions JSON in the default view; oldest first; stays above the list; 10-count grid, not the funnel | Fixed (373ea1c, 524456e, 43343f6), verified by QA (functional) on df3c80c |
+| B-028 | Low | /repertoire Qloo down: no "Your songs are safe." and nothing says the run did not count | Fixed (9d374f5), verified by QA (functional + qa/unit) on df3c80c |
+| B-029 | Low | /repertoire nothing new: copy says everything was suggested before while the run shows songs checked 0, suggested before 0; no left-out count or next-step hint | Fixed (f15688f), verified by QA on df3c80c |
+| B-030 | Low | /repertoire Learn list: older runs do not fold | Deferred to R6 (3034133 reverted in 524456e; absent, checked) |
+| B-031 | Low | /repertoire Learn list: no filter chips (All · New · To learn · Learned · Not for me) | Deferred to R6 (dc7c09f reverted in 524456e; absent, checked) |
 | B-032 | Low | Honeycomb landing L13: act cards: filled orange initials hex reading "SA" (board: outline, "SX"); action is a plain dark row, not the orange underlined link; Plays lists differ from the board | Open (design/honeycomb) |
 | B-033 | Low | Honeycomb landing L17: research funnel labels under the hexes, dashes instead of ▸ chevrons, boxed in a card | Open (design/honeycomb) |
 | B-034 | Low | Honeycomb landing L20: setlist panel marked built but Learn these is a tan panel (board: bordered box, orange top rule, mono title); set-length line sans; rows 1–4 not 01–04; heading names the pitch; no Copy | Open (design/honeycomb) |
@@ -164,4 +164,16 @@ Spec: BRAND's `learn-run-sketch.md` v3 and DEV's contract (`docs/playlist-archit
 
 ### B-032 to B-034 · Honeycomb landing recheck (design/honeycomb at 91b220e)
 Checked part by part against BRAND's 29-part inventory (`design-handoff/inventory/landing/`). Evidence at 390/768/1440 is on the `design/honeycomb` branch: `qa/reports/honeycomb-landing-recheck.html`, indexed by `qa/reports/honeycomb-landing-recheck.md`. All three are visual differences from the part's crop that DEV's fix report didn't declare (lost at DEV self-check). The recheck also verified B-018 and B-020 to B-025 (statuses above). After 8 pm the sax example shows "This slot has passed": that's the known evening-slot bug (fixed on dev/core in e220abd, being ported), not a new defect.
+
+**B-027 to B-031 recheck (16 Oct, dev/core df3c80c, functional only per §0 of the test plan).** Offline probe: 46 of 46 checks at 390/768/1440.
+- B-027:
+  - The default view has no tool names, /v2/, urn:, JSON, ids or step numbers. The steps fold closed under "How we found these songs", newest first, opened with Enter.
+  - The funnel's "artists matched" and "new songs" agree with the cards and the end line.
+  - "Show raw data" is absent while a run is going, toggles with Space afterwards, and shows the tool names. axe is clean with the fold open and raw on.
+- B-028: the Qloo-down and no_match copy match the fix, and the allowance stays full. The next run is allowed.
+  - Offline runs are exempt from the limits, so the counting itself is shown by `qa/unit/learn-uncounted-runs.test.ts`. Four uncounted runs leave both limits untouched, three real runs still fit, and timeout and stopped do count.
+- B-029: with 0 songs checked (run 7), the copy reads "Couldn't find songs to check this time.". The checked > 0 branch is covered by DEV's unit test.
+- B-030 and B-031: no filter chips and no per-run folds in the tree.
+- Regression spec: `tests/e2e/qa/learn-feed.spec.ts`. The QA suite passes 225 of 225 at Wednesday 12:00, Friday 21:30 and Saturday 00:15.
+- DEV's Postgres smoke log is now committed: `docs/smoke/learn-db-373ea1c.log`, 39 of 39.
 

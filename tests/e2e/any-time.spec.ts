@@ -39,11 +39,12 @@ test.describe("any time (mock model offline)", () => {
     await expect(page.getByTestId("slot-passed")).toBeVisible();
     await expect(page.getByTestId("slot-passed")).toContainText("any time");
     await page.getByRole("link", { name: "Plan again for a new date" }).click();
-    await expect(page.getByTestId("any-time-note")).toContainText("Busk Map picks the best hours for each pitch");
+    await expect(page.getByRole("radio", { name: /Any time/ })).toBeChecked();
+    await expect(page.getByTestId("any-time-note")).toContainText("Busk Map finds the best hours that day");
     await expect(page.locator("#date")).toHaveAttribute("data-date", SERVER_TODAY);
-    // The hours are not asked for, until the performer chooses to pick them.
-    await expect(page.getByLabel("From")).toHaveCount(0);
-    await page.getByRole("button", { name: "Pick the hours myself" }).click();
-    await expect(page.getByLabel("From")).toBeVisible();
+    // The hours are not asked for; the named slots are the other choices.
+    await expect(page.getByRole("form", { name: "Plan for your own act" }).getByLabel("From", { exact: true })).toHaveCount(0);
+    await page.getByRole("radio", { name: /Evening/ }).click();
+    await expect(page.getByRole("radio", { name: /Evening/ })).toBeChecked();
   });
 });

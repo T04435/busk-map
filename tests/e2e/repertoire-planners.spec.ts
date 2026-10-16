@@ -29,12 +29,13 @@ test.describe("planners read the Repertoire (offline)", () => {
     await seed(page, SONGS, act);
     await page.goto("/");
     const f = form(page);
-    await expect(f.getByRole("switch", { name: "Use my Repertoire (3 songs)" })).toBeChecked();
+    await expect(f.getByTestId("repertoire-summary")).toContainText("Your Repertoire · 3 songs");
     await expect(f.getByLabel("Act name")).toHaveValue(act);
-    await expect(f.getByText("From your Repertoire")).toBeVisible();
-    const picked = f.getByRole("list", { name: "Songs you picked" });
+    await f.getByRole("button", { name: "Edit for this busk" }).click();
+    const picked = f.getByRole("list", { name: "Songs for this busk" });
     await expect(picked.getByRole("listitem")).toHaveCount(3);
     await expect(picked).toContainText("How to Make Gravy");
+    await f.getByRole("button", { name: "Done" }).click();
     await expect(f.getByRole("list", { name: "Artists you picked" })).toContainText("Paul Kelly");
 
     const posted = page.waitForRequest((r) => r.url().endsWith("/api/plans") && r.method() === "POST");
@@ -57,8 +58,10 @@ test.describe("planners read the Repertoire (offline)", () => {
     const before = await state(page);
     await page.goto("/");
     const f = form(page);
-    await f.getByRole("button", { name: "Remove Scar" }).click();
-    await expect(f.getByText("Edited for this busk")).toBeVisible();
+    await f.getByRole("button", { name: "Edit for this busk" }).click();
+    await f.getByRole("checkbox", { name: /Scar/ }).click();
+    await expect(f.getByText("Edited for this busk").first()).toBeVisible();
+    await f.getByRole("button", { name: "Done" }).click();
     await f.getByRole("button", { name: "Plan my set" }).click();
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await waitForPlan(page);
@@ -70,31 +73,43 @@ test.describe("planners read the Repertoire (offline)", () => {
 
     // Back on the form the Repertoire is whole again; edit and save explicitly.
     await page.goto("/");
-    await expect(form(page).getByRole("list", { name: "Songs you picked" }).getByRole("listitem")).toHaveCount(3);
-    await form(page).getByRole("button", { name: "Remove Scar" }).click();
+    await form(page).getByRole("button", { name: "Edit for this busk" }).click();
+    await expect(form(page).getByRole("list", { name: "Songs for this busk" }).getByRole("listitem")).toHaveCount(3);
+    await form(page).getByRole("checkbox", { name: /Scar/ }).click();
     await form(page).getByRole("button", { name: "Save these changes to my Repertoire" }).click();
     await expect(form(page).getByRole("status").filter({ hasText: "Saved to your Repertoire." })).toBeVisible();
-    await expect(form(page).getByText("From your Repertoire")).toBeVisible();
+    await expect(form(page).getByTestId("repertoire-summary")).toContainText("2 songs");
     expect((await state(page)).songs.map((s: { title: string }) => s.title)).toEqual(["How to Make Gravy", "My Laneway Song"]);
 
     // Another tab changed it meanwhile: a stale save says so, kindly, and Reload brings the latest.
-    await form(page).getByRole("button", { name: "Remove My Laneway Song" }).click();
+    await form(page).getByRole("checkbox", { name: /My Laneway Song/ }).click();
     const latest = await state(page);
     expect((await page.request.patch("/api/playlist", { data: { revision: latest.revision, actName: "Changed elsewhere" } })).ok()).toBe(true);
     await form(page).getByRole("button", { name: "Save these changes to my Repertoire" }).click();
     await expect(form(page).getByRole("alert")).toContainText("changed in another tab");
     await form(page).getByRole("button", { name: "Reload" }).click();
     await expect(form(page).getByLabel("Act name")).toHaveValue("Changed elsewhere");
-    await expect(form(page).getByRole("list", { name: "Songs you picked" }).getByRole("listitem")).toHaveCount(2);
+    await expect(form(page).getByRole("list", { name: "Songs for this busk" }).getByRole("listitem")).toHaveCount(2);
   });
 
   test("with no Repertoire the form is as it was, and the planned busk offers to save its songs", async ({ page }) => {
     await page.goto("/");
     const f = form(page);
-    await expect(f.getByRole("switch")).toHaveCount(0);
+    await expect(f.getByTestId("repertoire-empty")).toBeVisible();
     await f.getByLabel("Act name").fill("Jess on guitar");
     await f.getByLabel("Artists you sound like").fill("Paul Kelly");
-    await f.getByLabel("Song list").fill("How to Make Gravy - Paul Kelly\nMy Laneway Song - Jess (own)");
+    // Two songs, typed in under the search (Spotify has no match), just for this busk.
+    await page.route("**/api/repertoire?type=tracks*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ mode: "synthetic", tracks: [] }) }));
+    await f.getByRole("button", { name: "Edit for this busk" }).click();
+    await f.getByText("+ Add a song just for this busk").click();
+    for (const song of ["How to Make Gravy - Paul Kelly", "My Laneway Song - Jess"]) {
+      const box = f.getByRole("combobox", { name: "Search songs on Spotify" });
+      await box.fill("");
+      await box.pressSequentially(song);
+      await f.getByTestId("type-it-in").getByRole("button", { name: "Add as typed" }).click();
+      await expect(f.getByRole("list", { name: "Songs for this busk" })).toContainText(song.split(" - ")[0]);
+    }
+    await f.getByRole("button", { name: "Done" }).click();
     await f.getByRole("button", { name: "Plan my set" }).click();
     await waitForPlan(page);
     expect(await state(page)).toBeNull();
@@ -106,7 +121,7 @@ test.describe("planners read the Repertoire (offline)", () => {
     expect(saved.songs.map((s: { title: string }) => s.title)).toEqual(["How to Make Gravy", "My Laneway Song"]);
     expect(saved.actName).toBe("Jess on guitar");
     await page.goto("/");
-    await expect(form(page).getByRole("switch", { name: "Use my Repertoire (2 songs)" })).toBeChecked();
+    await expect(form(page).getByTestId("repertoire-summary")).toContainText("Your Repertoire · 2 songs");
   });
 
   test("Add to Repertoire from Songs you should learn: a pending suggestion, and a second add is refused politely", async ({ page }) => {
@@ -163,8 +178,9 @@ test.describe("planners read the Repertoire (offline)", () => {
     };
     const widths = [390, 768, 1440];
     await page.goto("/");
-    await form(page).getByRole("button", { name: "Remove Scar" }).click();
-    await expect(form(page).getByText("Edited for this busk")).toBeVisible();
+    await form(page).getByRole("button", { name: "Edit for this busk" }).click();
+    await form(page).getByRole("checkbox", { name: /Scar/ }).click();
+    await expect(form(page).getByText("Edited for this busk").first()).toBeVisible();
     for (const width of widths) {
       await page.setViewportSize({ width, height: 900 });
       await check(`form-${width}`);

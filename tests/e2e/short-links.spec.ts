@@ -63,7 +63,7 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill(name);
     await form.getByLabel("Artists you sound like").fill("Paul Kelly");
-    await form.getByLabel("Song list").fill("Dumb Things - Paul Kelly");
+    // No songs and no Repertoire: the busk asks for suggested songs (fill 6) on any time.
     await form.getByRole("button", { name: "Plan my set" }).click();
     await expect(page).toHaveURL(SHORT);
     const id = idOf(page.url());
@@ -72,9 +72,9 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     // No re-run for buskers.
     await expect(page.getByRole("button", { name: /Re-run|Plan with the agent/ })).toHaveCount(0);
 
-    // The old long URL for the same act and slot (the form's default: next Saturday 6–9 pm) resolves to the same id.
+    // The old long URL for the same act and slot (the form's default: today, any time, with six suggested songs) resolves to the same id.
     const date = (await page.getByText(/^Melbourne · /).textContent())!.match(/\d{4}-\d{2}-\d{2}/)![0];
-    await page.goto(`/plan?name=${encodeURIComponent(name)}&artists=Paul%20Kelly&songs=Dumb%20Things~Paul%20Kelly&date=${date}&from=18&to=21&permit=general&run=1`);
+    await page.goto(`/plan?name=${encodeURIComponent(name)}&artists=Paul%20Kelly&date=${date}&time=any&fill=6&permit=general&run=1`);
     await expect(page).toHaveURL(SHORT);
     expect(idOf(page.url())).toBe(id);
 
@@ -131,7 +131,8 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await expect(form.getByLabel("Act name")).toHaveValue("Past Slot Duo");
     await expect(form.getByRole("list", { name: "Artists you picked" })).toContainText("Paul Kelly");
-    await expect(form.getByRole("list", { name: "Songs you picked" })).toContainText("Dumb Things");
+    await expect(form.getByTestId("repertoire-summary")).toContainText("Songs from your last busk · 1 song");
+    await expect(form.getByRole("radio", { name: /Lunch/ })).toBeChecked();
     // A new date: the next Saturday from today, not the old one.
     await expect(form.getByLabel("Date")).not.toHaveAttribute("data-date", "2026-10-03");
   });

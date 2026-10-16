@@ -462,7 +462,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
             pitchId={pitch.id}
             rank={i + 1}
             name={pitch.name}
-            when={pitch.window ? undefined : slotShort}
             window={pitch.window ? `Best ${pitch.window.label}` : undefined}
             score={pitch.score}
             selected={pitch.id === selectedId}

@@ -115,7 +115,7 @@ export function ComponentGroups() {
 
       <Group title="The busk" names={COMPONENT_GROUPS.busk} wide>
         <ul className="m-0 flex list-none flex-col gap-2 p-0">
-          <PitchRow rank={1} name="Southbank Promenade" when="12–3 pm" score={91} selected badges={<DiscoveryBadge discovery="hidden-gem" />} />
+          <PitchRow rank={1} name="Southbank Promenade" score={91} selected badges={<DiscoveryBadge discovery="hidden-gem" />} />
           <PitchRow rank={3} name="Degraves Street" score={78} badges={<><DiscoveryBadge discovery="usual" /><BothAgreeBadge /></>} />
         </ul>
         <WeatherStrip weather={WEATHER} slot={{ startHour: 12, endHour: 15 }} titleAs="p" />

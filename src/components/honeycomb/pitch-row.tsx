@@ -5,13 +5,13 @@ import { PercentCell } from "@/components/honeycomb/percent-cell";
 import { RankTile } from "@/components/honeycomb/rank-tile";
 
 /**
- * The DS compact row, two lines and no rule between them: [rank hex] [NAME @ time] [score] over [badges] [Full details]. The first line is the button that
+ * The DS compact row, two lines and no rule between them: [rank hex] [NAME] [score] over [badges] [Full details]. The busk's time is not repeated on every row
+ * (it is in the busk's header; user, live session 17 Oct); only an Any time plan shows each pitch's own window under the name. The first line is the button that
  * selects it (`aria-pressed`, `data-pitch-name`). A selected row is white with a ruled frame, the orange offset shadow, a solid rank tile and a filled score cell; the others have a quiet outlined tile (so selection never relies on colour alone).
  */
 export function PitchRow({
   rank,
   name,
-  when,
   window,
   score,
   badges,
@@ -23,8 +23,7 @@ export function PitchRow({
 }: {
   rank: number;
   name: string;
-  when?: string;
-  /** Any time: this pitch's own best hours ("Best 6 pm–9 pm"), shown in place of `when`. */
+  /** Any time: this pitch's own best hours ("Best 6 pm–9 pm"), under the name. */
   window?: string;
   score: number;
   badges?: ReactNode;
@@ -39,14 +38,12 @@ export function PitchRow({
     <span className="flex-none font-mono text-xs leading-4 font-medium text-muted-foreground" data-testid="pitch-row-window">
       {window}
     </span>
-  ) : when ? (
-    <span className="flex-none font-mono text-xs leading-4 font-medium text-muted-foreground">@ {when}</span>
   ) : null;
   const main = (
     <>
       <RankTile n={rank} size="sm" quiet={!selected} />
-      {/* The name is never cut (QA RC1: "FOOTPATH NE…" made the top pitches indistinguishable): it wraps, balanced, and the
-          time or the picked window sits on its own line under it. */}
+      {/* The name is never cut (QA RC1: "FOOTPATH NE…" made the top pitches indistinguishable): it wraps, balanced, and an
+          Any time window sits on its own line under it. */}
       <span className="flex min-w-0 flex-col gap-0.5 text-left">
         <b className="font-display text-[19px] leading-[22px] font-extrabold text-balance uppercase [overflow-wrap:anywhere]">{name}</b>
         {time}

@@ -12,16 +12,17 @@ import { SetlistPanel } from "@/components/setlist/setlist-panel";
 const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
 
 describe("PitchRow (DS compact row)", () => {
-  const row = (extra = {}) => html(createElement(PitchRow, { rank: 1, name: "Southbank", when: "12–3 pm", score: 91, badges: "B", onSelect: () => {}, onDetails: () => {}, ...extra }));
-  it("puts the name and the time on one line, with no rule between the lines", () => {
+  const row = (extra = {}) => html(createElement(PitchRow, { rank: 1, name: "Southbank", score: 91, badges: "B", onSelect: () => {}, onDetails: () => {}, ...extra }));
+  it("shows the name without the busk's time, with no rule between the lines", () => {
     const out = row();
-    expect(out).toMatch(/<b[^>]*>Southbank<\/b><span[^>]*>@ 12–3 pm<\/span>/);
+    expect(out).toMatch(/<b[^>]*>Southbank<\/b><\/span>/);
+    expect(out).not.toContain("@ ");
     expect(out).not.toContain("border-t");
     expect(out).toContain("Full details");
     expect(out).toContain('data-testid="pitch-details-open"');
   });
-  it("shows the any-time window in place of the time, with its test id", () => {
-    const out = row({ when: undefined, window: "Best 6 pm–9 pm" });
+  it("shows the any-time window under the name, with its test id", () => {
+    const out = row({ window: "Best 6 pm–9 pm" });
     expect(out).toContain('data-testid="pitch-row-window"');
     expect(out).toContain("Best 6 pm–9 pm");
   });

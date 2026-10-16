@@ -40,7 +40,13 @@ export function PercentCell({
     );
   }
   return (
-    <HexCell size={size} tone={tone} label={spoken} className={cn("tabular-nums", className)}>
+    <HexCell
+      size={size}
+      tone={tone}
+      label={spoken}
+      // In a primary (selected or top) cell the ring inverts: ink on orange, with a faint ink track, so it never vanishes into the fill.
+      className={cn("tabular-nums", tone === "primary" && "[--ring-fill:var(--primary-foreground)] [--ring-track:color-mix(in_srgb,var(--primary-foreground)_22%,transparent)]", className)}
+    >
       <ScoreRing value={value} size={Math.round(size * 0.86)} label={false} />
     </HexCell>
   );

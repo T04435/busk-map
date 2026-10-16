@@ -352,7 +352,6 @@ export const TOOL_UI: Record<string, ToolUi> = {
                 key={str(p.pitchId) ?? i}
                 rank={i + 1}
                 name={str(p.name) ?? "Pitch"}
-                when={ctx.when}
                 score={num(p.score) ?? 0}
                 selected={i === 0}
                 badges={

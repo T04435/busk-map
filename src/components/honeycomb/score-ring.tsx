@@ -7,7 +7,8 @@ export function toPercent(value: number): number {
 
 /**
  * The pitch ring as a gauge: an open 306-degree ring filling clockwise, the number in its core in condensed caps.
- * Prefer PercentCell, which puts this in a honeycomb cell and names the value for screen readers.
+ * Prefer PercentCell, which puts this in a honeycomb cell and names the value for screen readers. `--ring-fill` and `--ring-track`
+ * recolour it (PercentCell inverts it in a primary cell, where an orange ring on orange would vanish).
  */
 export function ScoreRing({ value, size = 72, label = true, className }: { value: number; size?: number; label?: boolean; className?: string }) {
   const v = toPercent(value);
@@ -21,7 +22,7 @@ export function ScoreRing({ value, size = 72, label = true, className }: { value
     <span className={cn("relative inline-grid flex-none place-items-center", className)} style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="block">
         <g transform={`rotate(-14 ${size / 2} ${size / 2})`}>
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${length} ${circumference}`} className="stroke-muted" />
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${length} ${circumference}`} className="stroke-[var(--ring-track,var(--muted))]" />
           <circle
             cx={size / 2}
             cy={size / 2}
@@ -30,7 +31,7 @@ export function ScoreRing({ value, size = 72, label = true, className }: { value
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={`${filled} ${circumference}`}
-            className="stroke-primary transition-[stroke-dasharray] duration-[var(--duration-slow)]"
+            className="stroke-[var(--ring-fill,var(--primary))] transition-[stroke-dasharray] duration-[var(--duration-slow)]"
           />
         </g>
       </svg>

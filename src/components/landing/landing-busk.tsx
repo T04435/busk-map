@@ -55,7 +55,6 @@ export function LandingBusk() {
               pitchId={pitch.id}
               rank={i + 1}
               name={pitch.name}
-              when={pitch.when}
               score={pitch.score}
               selected={pitch.id === selectedId}
               onSelect={() => setSelectedId(pitch.id)}

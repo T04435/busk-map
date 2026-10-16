@@ -54,9 +54,13 @@ export const envSchema = z.object({
    * - BUSKMAP_ALLOW_FAULTS lets a request simulate provider outages (e2e).
    * - BUSKMAP_OFFLINE serves every provider from synthetic fixtures and swaps
    *   the gateway model for a deterministic mock (e2e, CI).
+   * - BUSKMAP_OFFLINE_DB (with BUSKMAP_OFFLINE) keeps the mocks but uses DATABASE_URL for the Repertoire and learn stores,
+   *   and applies the learn run limits, so the Postgres SQL can be smoke-tested without any model or Qloo cost. Point it at
+   *   a Neon dev branch only (pnpm smoke:db does).
    */
   BUSKMAP_ALLOW_FAULTS: flag,
   BUSKMAP_OFFLINE: flag,
+  BUSKMAP_OFFLINE_DB: flag,
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -92,7 +96,18 @@ export function testSwitchesOf(env: Env) {
   return {
     allowFaults: allowed && env.BUSKMAP_ALLOW_FAULTS,
     offline: allowed && env.BUSKMAP_OFFLINE,
+    /** Offline mocks with the real database and the real learn run limits (a smoke test). Needs offline. */
+    offlineDb: allowed && env.BUSKMAP_OFFLINE && env.BUSKMAP_OFFLINE_DB,
   };
+}
+
+/**
+ * The database for the Repertoire and learn stores: DATABASE_URL, except in offline test mode, which keeps everything in
+ * memory unless BUSKMAP_OFFLINE_DB is also set.
+ */
+export function storeDatabaseUrlOf(env: Env, offline: boolean): string | undefined {
+  const { offlineDb } = testSwitchesOf(env);
+  return offline && !offlineDb ? undefined : env.DATABASE_URL;
 }
 
 export type QlooBackend = "live" | "mock";
@@ -126,4 +141,8 @@ export function qlooBackend(offline: boolean): QlooBackend {
 
 export function testSwitches() {
   return testSwitchesOf(env());
+}
+
+export function storeDatabaseUrl(offline: boolean): string | undefined {
+  return storeDatabaseUrlOf(env(), offline);
 }

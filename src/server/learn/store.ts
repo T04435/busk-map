@@ -2,7 +2,7 @@ import "server-only";
 import { neon } from "@neondatabase/serverless";
 import { becauseText, type LearnInputs, type LearnModel, type LearnRunStatus, type LearnTotals, type StoredLearnStep } from "@/lib/learn-schema";
 import { playlistSongKey, type LearnSuggestionView, type PlaylistSongView } from "@/lib/playlist-schema";
-import { env } from "@/server/env";
+import { storeDatabaseUrl } from "@/server/env";
 import { processMap } from "@/server/memo";
 import { LEARN_LIMITS, LEARN_MAX_RUNS, LEARN_MAX_SUGGESTIONS, LEARN_STEPS_KEPT_DAYS, LEARN_STEPS_KEPT_RUNS, MAX_SONGS } from "@/server/playlist/config";
 import { MemoryPlaylistStore, playlistStore, type PlaylistStore, type StoredSong } from "@/server/playlist/store";
@@ -681,7 +681,7 @@ const memoryStores = new WeakMap<PlaylistStore, LearnStore>();
 
 /** The same choice as the Repertoire's store: memory offline or without DATABASE_URL, Postgres with it. */
 export function learnStore(offline: boolean, playlists: PlaylistStore = playlistStore(offline)): LearnStore {
-  const url = offline ? undefined : env().DATABASE_URL;
+  const url = storeDatabaseUrl(offline);
   if (url) {
     let store = dbStore.get("db");
     if (!store) dbStore.set("db", (store = new PostgresLearnStore(neon(url))));

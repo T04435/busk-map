@@ -71,7 +71,7 @@ describe("providerStatusOf", () => {
 describe("testSwitchesOf", () => {
   it("honours the switches outside production", () => {
     const env = parseEnv({ BUSKMAP_ALLOW_FAULTS: "1", BUSKMAP_OFFLINE: "true" });
-    expect(testSwitchesOf(env)).toEqual({ allowFaults: true, offline: true });
+    expect(testSwitchesOf(env)).toEqual({ allowFaults: true, offline: true, offlineDb: false });
   });
 
   it("ignores them in production", () => {
@@ -80,6 +80,6 @@ describe("testSwitchesOf", () => {
       BUSKMAP_OFFLINE: "1",
       VERCEL_ENV: "production",
     });
-    expect(testSwitchesOf(env)).toEqual({ allowFaults: false, offline: false });
+    expect(testSwitchesOf(env)).toEqual({ allowFaults: false, offline: false, offlineDb: false });
   });
 });

@@ -2,7 +2,7 @@ import "server-only";
 import { neon } from "@neondatabase/serverless";
 import { playlistSongKey, type AddPlanSuggestionInput, type AddSongInput, type LearnSuggestionView, type PatchPlaylistInput, type PlaylistSongView, type PlaylistView, type SongSource, type SongState, type SoundsLike, type UsualPitch } from "@/lib/playlist-schema";
 import { usualFromBusks, withBusk, type RecentBusk } from "@/lib/playlist-usual";
-import { env } from "@/server/env";
+import { storeDatabaseUrl } from "@/server/env";
 import { log } from "@/server/log";
 import { processMap } from "@/server/memo";
 import type { MemorySuggestion, RunRecord } from "@/server/learn/types";
@@ -47,7 +47,7 @@ export interface PlaylistStore {
   /** Act name, sounds like, usual pitches. A stale `revision` is refused. */
   update(playlistId: string, patch: PatchPlaylistInput): Promise<UpdateResult>;
   /**
-   * A song from a plan's Learn these becomes a pending suggestion with no run (docs §3.3). The unique key on
+   * A song from a plan's Songs to learn becomes a pending suggestion with no run (docs §3.3). The unique key on
    * (playlist, song key) is the no-repeat rule. Does not bump the revision: it is not an edit of the Repertoire.
    */
   addPlanSuggestion(playlistId: string, input: AddPlanSuggestionInput): Promise<AddSuggestionResult>;
@@ -543,7 +543,7 @@ const stores = processMap<"db" | "memory", PlaylistStore>("playlist-stores");
 
 /** Offline (tests): memory. With DATABASE_URL (pooled): Postgres. Without it: memory, said once in the log. One of each per process. */
 export function playlistStore(offline: boolean): PlaylistStore {
-  const url = offline ? undefined : env().DATABASE_URL;
+  const url = storeDatabaseUrl(offline);
   const kind = url ? "db" : "memory";
   let store = stores.get(kind);
   if (!store) {

@@ -1,5 +1,5 @@
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
-import { emptyLearnList, learnListView, limitResponse, refusal, runStream } from "@/server/learn/api";
+import { emptyLearnList, learnListView, limitResponse, limitsExempt, refusal, runStream } from "@/server/learn/api";
 import { executeLearnRun } from "@/server/learn/run";
 import { LearnRun, registerLearnRun } from "@/server/learn/runs";
 import { learnStore } from "@/server/learn/store";
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   if (isResponse(session)) return session;
   if (!session.playlist) return json(emptyLearnList());
   try {
-    return json(await learnListView(learnStore(testSwitches().offline, session.store), session.playlist.id, Date.now(), testSwitches().offline));
+    return json(await learnListView(learnStore(testSwitches().offline, session.store), session.playlist.id, Date.now(), limitsExempt()));
   } catch {
     return json({ error: { code: "unavailable", message: PLAYLIST_COPY.learn.errors.unavailable } }, { status: 503 });
   }
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   const offline = testSwitches().offline;
   const forced = learnLimitFaultRequested(faults);
   if (forced) {
-    const gate = learnRunGate({ offline, ip: clientIp(request.headers), recent: { count: 0, oldestStartedAt: null }, forced });
+    const gate = learnRunGate({ offline: limitsExempt(), ip: clientIp(request.headers), recent: { count: 0, oldestStartedAt: null }, forced });
     if (!gate.ok) return limitResponse(gate);
   }
   const session = await ensureExisting(request);
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       return refusal(409, "list_full", PLAYLIST_COPY.learn.errors.listFull(LEARN_MAX_PENDING), { pending: list.pending, max: LEARN_MAX_PENDING }, session.cookies);
     }
     const recent = await learn.recentRuns(playlist.id, Date.now() - LEARN_WINDOW_MINUTES * 60_000);
-    const gate = learnRunGate({ offline, ip: clientIp(request.headers), recent });
+    const gate = learnRunGate({ offline: limitsExempt(), ip: clientIp(request.headers), recent });
     if (!gate.ok) return limitResponse(gate, session.cookies);
     const started = await learn.startRun(playlist.id, {
       model: offline ? "mock" : "claude",

@@ -73,6 +73,9 @@ export function limitResponse(gate: Extract<LearnGate, { ok: false }>, cookies: 
 
 export const offline = () => testSwitches().offline;
 
+/** Offline test mode isn't limited (the e2e tests share one IP), unless BUSKMAP_OFFLINE_DB asks for the real limits. */
+export const limitsExempt = () => testSwitches().offline && !testSwitches().offlineDb;
+
 export { errorResponse, PLAYLIST_COPY };
 
 /** A refusal before a run starts: a plain JSON error with the contract's extra fields (§7.2), never a stream. */

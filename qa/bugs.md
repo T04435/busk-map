@@ -19,6 +19,7 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-013 | Low | Fresh-run limit message gives the retry time in Melbourne time with no zone | Fixed (4b6237b), verified by QA |
 | B-014 | Low | docs/qloo-data-map.md still calls the week-prefetch comment "about 47 Qloo calls" | Fixed (b88e174), verified by QA |
 | B-015 | Medium | /brain: the sticky trace panel hides the focused node while tabbing (WCAG 2.2 AA 2.4.11) | Fixed (2b26dc5), verified by QA |
+| B-016 | Low | /repertoire: after Remove, keyboard focus falls to <body> | Open |
 
 ---
 
@@ -116,3 +117,10 @@ DEV found and fixed it (8afd14d): at 390 px the landing's "Your Spotify artist l
 - **Actual:** the browser scrolls each newly focused piece to the bottom edge of the viewport, where the trace panel (`sticky bottom-0`, up to 45vh) sits on top of it. At 390 px, 20 Tab stops landed on fully hidden pieces (c5, c6, Spotify, d_crowd, d_pitchaff, d_trend, f_setlist and others); at 1440, c4 onwards. At 1440 the open panel also covers about half the wiring.
 - **Suggestion:** while a trace is open, set `scroll-padding-bottom` on the page (or the scroll container) to the panel's height, so focus scrolling clears it. Or make the panel non-sticky at narrow widths, or scroll the focused piece to the centre on focus.
 - **Regression test:** marked `test.fail` in `tests/e2e/qa/brain.spec.ts` until it's fixed.
+
+### B-016 · Low · /repertoire: after Remove, keyboard focus falls to `<body>`
+- **Found:** Repertoire R1 retest (dev/core cbda583), `tests/e2e/qa/repertoire.spec.ts` at 390, 768 and 1440.
+- **Steps:** on `/repertoire`, add three songs, Tab to "Remove Scar", press Enter.
+- **Expected:** focus stays in context: the next song's Remove button, the previous one, or the list heading when it's the last song (WCAG 2.4.3 focus order). The status line already says "Removed Scar.".
+- **Actual:** the removed row's button goes away and `document.activeElement` is `<body>`, for any song, not just the last one. Keyboard and screen-reader users have to Tab again from the top of the page. "Move to Songs you can sing" removes its own button the same way, so it likely has the same problem (not separately tested).
+- **Regression test:** the 2 specs in `tests/e2e/qa/repertoire.spec.ts` are marked `test.fail` until it's fixed.

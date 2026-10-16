@@ -21,7 +21,8 @@ test.describe("pitch details sheet", () => {
     await expect(sheet.getByTestId("pitch-card")).toBeVisible();
     await expect(sheet.getByRole("region", { name: "Suggested set" })).toBeVisible();
     await expect(sheet.getByRole("region", { name: "Who this crowd likes" })).toBeVisible();
-    await sheet.getByText("How this score adds up").click();
+    // The pitch card's ScoreBreakdown also heads itself "How this score adds up"; open the weights disclosure by its summary.
+    await sheet.getByTestId("score-details").locator("summary").filter({ hasText: "How this score adds up" }).click();
     await expect(sheet.getByRole("region", { name: "How pitches are scored" })).toBeVisible();
     await expect(sheet.getByRole("region", { name: "Foot traffic by hour" })).toBeVisible();
     // Focus is inside the sheet and stays there while tabbing.

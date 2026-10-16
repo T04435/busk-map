@@ -114,6 +114,34 @@ export function nextWeekday(weekday: Weekday, today: string): string {
   return addDays(today, (target - current + 7) % 7);
 }
 
+/** The hour of day (0-23) in `timeZone` at `now`. */
+export function localHour(timeZone: string, now: Date = new Date()): number {
+  const hour = new Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", hour: "2-digit" }).formatToParts(now).find((p) => p.type === "hour");
+  return Number(hour?.value ?? 0) % 24;
+}
+
+/** The city's current local date and hour: what a page needs to pick the next slot that hasn't ended. */
+export function localNow(timeZone: string, now: Date = new Date()): { today: string; hour: number } {
+  return { today: localToday(timeZone, now), hour: localHour(timeZone, now) };
+}
+
+/**
+ * The next date on `weekday` whose slot has not ENDED yet, in the city's time zone: today if today is that weekday and
+ * the slot is still on (or hasn't started), otherwise the next one. `endHour` at or before `startHour`, or past 24,
+ * means the slot runs over midnight, so the evening before's slot is still live after midnight.
+ */
+export function nextSlotDate(weekday: Weekday, startHour: number, endHour: number, today: string, nowHour: number): string {
+  const end = endHour <= startHour ? endHour + 24 : endHour;
+  const nowAbs = nowHour; // hours since the start of `today`
+  for (let k = -1; k <= 7; k++) {
+    const date = addDays(today, k);
+    if (weekdayOf(date) !== weekday) continue;
+    // Hours from the start of `today` to the end of this date's slot.
+    if (k * 24 + end > nowAbs) return date;
+  }
+  return nextWeekday(weekday, today);
+}
+
 export function formatHour(hour: number): string {
   const h = hour % 24;
   const suffix = h < 12 ? "am" : "pm";

@@ -47,7 +47,7 @@ describe("plain-AI baseline against the plan", () => {
     const { comparisonStore } = await import("@/server/comparisons/store");
     const OFFLINE = { offline: true, faults: [] };
     const day = "2026-10-15";
-    const request = exampleRequests(day)[0];
+    const request = exampleRequests({ today: day, hour: 12 })[0];
     const before = await buildEnginePlan(planRequestSchema.parse(request), OFFLINE, day);
     const scores = before.pitches.map((p) => [p.id, p.score]);
 

@@ -57,6 +57,8 @@ export const envSchema = z.object({
    */
   BUSKMAP_ALLOW_FAULTS: flag,
   BUSKMAP_OFFLINE: flag,
+  /** A fixed ISO instant for the server clock (e2e). Honoured only with BUSKMAP_ALLOW_FAULTS; see server/clock.ts. */
+  BUSKMAP_FAKE_NOW: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

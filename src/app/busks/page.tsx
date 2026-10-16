@@ -7,8 +7,9 @@ import { PageHeader } from "@/components/honeycomb/page-header";
 import { PerformerForm } from "@/components/landing/performer-form";
 import { Warmup } from "@/components/landing/warmup";
 import { EXAMPLES } from "@/lib/examples";
-import { localToday, nextWeekday, weekdayOf } from "@/lib/slot";
+import { nextSlotDate, weekdayOf } from "@/lib/slot";
 import { loadStoredPlan } from "@/server/plans";
+import { serverLocalNow } from "@/server/clock";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -44,7 +45,7 @@ async function OwnAct({ searchParams }: Pick<PageProps<"/busks">, "searchParams"
   const again = (await searchParams).again;
   // The default date depends on today, so render it at request time.
   await connection();
-  const today = localToday("Australia/Melbourne");
+  const { today, hour } = serverLocalNow("Australia/Melbourne");
   const stored = typeof again === "string" ? await loadStoredPlan(again).catch(() => null) : null;
   if (!stored) {
     return (
@@ -61,7 +62,7 @@ async function OwnAct({ searchParams }: Pick<PageProps<"/busks">, "searchParams"
             ))}
           </ul>
         </section>
-        <PerformerForm defaultDate={nextWeekday("saturday", today)} today={today} />
+        <PerformerForm defaultDate={nextSlotDate("saturday", 18, 21, today, hour)} today={today} />
       </>
     );
   }
@@ -73,7 +74,7 @@ async function OwnAct({ searchParams }: Pick<PageProps<"/busks">, "searchParams"
       </Banner>
       <PerformerForm
         key={stored.id}
-        defaultDate={nextWeekday(weekdayOf(slot.date), today)}
+        defaultDate={nextSlotDate(weekdayOf(slot.date), slot.startHour, slot.endHour, today, hour)}
         today={today}
         prefill={{ performer, permit, startHour: slot.startHour, endHour: slot.endHour }}
       />

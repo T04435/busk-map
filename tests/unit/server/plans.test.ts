@@ -15,6 +15,7 @@ async function load() {
 
 const NOW = new Date("2026-10-16T02:00:00Z"); // 1 pm in Melbourne, 16 Oct
 const DAY = "2026-10-16";
+const NOWL = { today: DAY, hour: 13 };
 
 const habana = (extra: Partial<PlanRequest> = {}): PlanRequest =>
   planRequestSchema.parse({
@@ -169,7 +170,7 @@ describe("resolving links", () => {
     vi.stubEnv("DATABASE_URL", "");
     vi.stubEnv("VERCEL", "");
     const { resolvePlanLink } = await load();
-    const parsed = parsePlanParams({ example: "acoustic" }, DAY, null);
+    const parsed = parsePlanParams({ example: "acoustic" }, NOWL, null);
     if (!parsed.ok) throw new Error(parsed.error);
     expect(parsed.exampleId).toBe("acoustic");
     const one = await resolvePlanLink(parsed.request, parsed.exampleId, "10.0.0.9", NOW);
@@ -205,24 +206,24 @@ describe("resolving links", () => {
       permit: "general",
       run: "1",
     };
-    const parsed = parsePlanParams(params, DAY);
+    const parsed = parsePlanParams(params, NOWL);
     const target = await longUrlTarget(parsed, params, [], "ip", NOW);
     expect(target).toMatch(/^\/p\/[0-9A-Za-z]{9}$/);
     // The same long URL (a reload, or a share) maps to the same id.
-    expect(await longUrlTarget(parsePlanParams(params, DAY), params, [], "ip", NOW)).toBe(target);
+    expect(await longUrlTarget(parsePlanParams(params, NOWL), params, [], "ip", NOW)).toBe(target);
     const stored = await loadStoredPlan(target!.slice(3));
     expect(stored!.request.performer.songs[0]).toMatchObject({ title: "Quimbara", artist: "Celia Cruz", durationMs: 326_000 });
     // pitch and run=0 are view state: kept. run=1 is the default: dropped.
     const withView = { ...params, pitch: "fed-square", run: "0" };
-    expect(await longUrlTarget(parsePlanParams(withView, DAY), withView, [], "ip", NOW)).toBe(`${target}?pitch=fed-square&run=0`);
+    expect(await longUrlTarget(parsePlanParams(withView, NOWL), withView, [], "ip", NOW)).toBe(`${target}?pitch=fed-square&run=0`);
     // Examples get their own id (with the example id).
-    const example = parsePlanParams({ example: "sax" }, DAY);
+    const example = parsePlanParams({ example: "sax" }, NOWL);
     const exampleTarget = await longUrlTarget(example, { example: "sax" }, [], "ip", NOW);
     expect(exampleTarget).toMatch(/^\/p\/[0-9A-Za-z]{9}$/);
     expect((await loadStoredPlan(exampleTarget!.slice(3)))!.exampleId).toBe("sax");
     // Simulated outages (tests) and unreadable URLs stay on the long URL.
     expect(await longUrlTarget(parsed, params, ["qloo"], "ip", NOW)).toBeNull();
-    expect(await longUrlTarget(parsePlanParams({ name: "Nobody" }, DAY), { name: "Nobody" }, [], "ip", NOW)).toBeNull();
+    expect(await longUrlTarget(parsePlanParams({ name: "Nobody" }, NOWL), { name: "Nobody" }, [], "ip", NOW)).toBeNull();
   });
 
   it("loads only well-formed ids", async () => {

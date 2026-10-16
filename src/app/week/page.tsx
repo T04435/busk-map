@@ -9,11 +9,11 @@ import { DataSources } from "@/components/plan/data-sources";
 import { creditsClaude } from "@/lib/sources";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { localToday } from "@/lib/slot";
 import { parseWeekParams, weekSearchParams } from "@/lib/week-url";
 import { buildWeekPlan, WeekQlooUnavailableError } from "@/server/agent/week";
 import { CITIES } from "@/server/cities";
 import { adapterContextFor } from "@/server/request";
+import { serverNow, serverToday } from "@/server/clock";
 
 export const metadata: Metadata = {
   title: "Plan my week · Busk Map",
@@ -41,7 +41,7 @@ export default function WeekPage({ searchParams }: PageProps<"/week">) {
 async function WeekContent({ searchParams }: Pick<PageProps<"/week">, "searchParams">) {
   const params = await searchParams;
   await connection();
-  const today = localToday(CITIES.melbourne.timeZone);
+  const today = serverToday(CITIES.melbourne.timeZone);
   const tipCookie = (await cookies()).get(TIP_COOKIE)?.value ?? null;
   const parsed = parseWeekParams(params, today, tipCookie);
   if (!parsed.ok) {
@@ -63,7 +63,7 @@ async function WeekContent({ searchParams }: Pick<PageProps<"/week">, "searchPar
   }
   const faults = typeof params.faults === "string" ? params.faults : null;
   const adapters = adapterContextFor(faults);
-  const plan = await buildWeekPlan(parsed.request, adapters, today, false).catch((error: unknown) => {
+  const plan = await buildWeekPlan(parsed.request, adapters, today, false, serverNow()).catch((error: unknown) => {
     if (error instanceof WeekQlooUnavailableError) return null;
     throw error;
   });

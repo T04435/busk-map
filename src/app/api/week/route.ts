@@ -6,7 +6,7 @@ import { testSwitches } from "@/server/env";
 import { log } from "@/server/log";
 import { planLimiter } from "@/server/rate-limit";
 import { adapterContextFor, clientIp, FAULTS_HEADER } from "@/server/request";
-import { localToday } from "@/lib/slot";
+import { serverNow, serverToday } from "@/server/clock";
 
 export const maxDuration = 60;
 
@@ -30,8 +30,9 @@ export async function POST(request: Request) {
     const plan = await buildWeekPlan(
       parsed.data,
       adapterContextFor(request.headers.get(FAULTS_HEADER)),
-      localToday(CITIES[parsed.data.city].timeZone),
+      serverToday(CITIES[parsed.data.city].timeZone),
       true,
+      serverNow(),
     );
     return Response.json({ plan }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

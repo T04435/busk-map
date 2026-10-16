@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { EXAMPLES } from "@/lib/examples";
 import { planRequestSchema, type Plan, type PlanRequest } from "@/lib/plan-schema";
-import { nextWeekday } from "@/lib/slot";
+import { nextSlotDate } from "@/lib/slot";
 import { mockFetch, OFFLINE } from "../../helpers";
 
 const TODAY = "2026-10-15";
@@ -12,7 +12,7 @@ async function planFor(id: string): Promise<Plan> {
   const example = EXAMPLES.find((e) => e.id === id)!;
   const request = planRequestSchema.parse({
     city: "melbourne",
-    slot: { date: nextWeekday(example.weekday, TODAY), startHour: example.startHour, endHour: example.endHour },
+    slot: { date: nextSlotDate(example.weekday, example.startHour, example.endHour, TODAY, 12), startHour: example.startHour, endHour: example.endHour },
     performer: example.performer,
   });
   return buildEnginePlan(request, OFFLINE, TODAY);
@@ -51,7 +51,7 @@ describe("example tip logs (offline)", () => {
     mockFetch([]);
     vi.resetModules();
     const { buildEnginePlan, exampleRequests } = await import("@/server/agent/preload");
-    for (const [i, request] of exampleRequests(TODAY).entries()) {
+    for (const [i, request] of exampleRequests({ today: TODAY, hour: 12 }).entries()) {
       expect(request.history?.source).toBe("example");
       const withTips = await buildEnginePlan(request, OFFLINE, TODAY);
       const without = await buildEnginePlan({ ...request, history: undefined }, OFFLINE, TODAY);
@@ -79,7 +79,7 @@ describe("example tip logs (offline)", () => {
 describe("example presets (inputs only)", () => {
   it("recognises a preset by its performer, whatever the slot", async () => {
     const { exampleRequests, presetIdFor } = await import("@/server/agent/preload");
-    const requests = exampleRequests(TODAY);
+    const requests = exampleRequests({ today: TODAY, hour: 12 });
     expect(requests.map((r) => presetIdFor(r))).toEqual(["acoustic", "sax", "folk-duo"]);
     const otherSlot: PlanRequest = { ...requests[0], slot: { ...requests[0].slot, startHour: 12, endHour: 14 } };
     expect(presetIdFor(otherSlot)).toBe("acoustic");

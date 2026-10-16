@@ -2,12 +2,13 @@ import "server-only";
 import { exampleHistory } from "@/lib/example-tips";
 import { EXAMPLES } from "@/lib/examples";
 import { planRequestSchema, type Plan, type PlanRequest } from "@/lib/plan-schema";
-import { localToday, nextWeekday } from "@/lib/slot";
+import { nextSlotDate } from "@/lib/slot";
 import type { AdapterContext } from "@/server/adapters/core";
 import { CITIES } from "@/server/cities";
 import { processMap } from "@/server/memo";
 import { assemblePlan } from "./assemble";
 import { PlanContext } from "./context";
+import { serverLocalNow, serverToday } from "@/server/clock";
 
 /**
  * The engine's plan without the model: instant, free, and shown first. The
@@ -37,7 +38,7 @@ const contexts = processMap<string, { at: number; context: PlanContext }>("engin
  * plan and the plain-AI baseline comparison read the same data once.
  */
 export function engineContext(request: PlanRequest, adapters: AdapterContext, today?: string): PlanContext {
-  const day = today ?? localToday(CITIES[request.city].timeZone);
+  const day = today ?? serverToday(CITIES[request.city].timeZone);
   const key = memoKey(request, adapters, day);
   const hit = contexts.get(key);
   // A plan built while a source was down is retried sooner (see buildEnginePlan); so is its context.
@@ -65,7 +66,7 @@ export function presetIdFor(request: Pick<PlanRequest, "performer">): string | n
 }
 
 export async function buildEnginePlan(request: PlanRequest, adapters: AdapterContext, today?: string): Promise<Plan> {
-  const day = today ?? localToday(CITIES[request.city].timeZone);
+  const day = today ?? serverToday(CITIES[request.city].timeZone);
   const key = memoKey(request, adapters, day);
   const hit = memo.get(key);
   if (hit && Date.now() - hit.at < hit.ttl) return hit.plan;
@@ -83,11 +84,11 @@ export async function buildEnginePlan(request: PlanRequest, adapters: AdapterCon
 }
 
 /** The example requests as the landing page links them (next matching weekday, with their example tip log). */
-export function exampleRequests(today: string): PlanRequest[] {
+export function exampleRequests(now: { today: string; hour: number }): PlanRequest[] {
   return EXAMPLES.map((example) =>
     planRequestSchema.parse({
       city: "melbourne",
-      slot: { date: nextWeekday(example.weekday, today), startHour: example.startHour, endHour: example.endHour },
+      slot: { date: nextSlotDate(example.weekday, example.startHour, example.endHour, now.today, now.hour), startHour: example.startHour, endHour: example.endHour },
       performer: example.performer,
       history: exampleHistory(example.id),
     }),
@@ -101,10 +102,11 @@ export function exampleRequests(today: string): PlanRequest[] {
  */
 export async function warmExamples(adapters: AdapterContext): Promise<{ plans: number; ms: number }> {
   const started = Date.now();
-  const today = localToday(CITIES.melbourne.timeZone);
+  const now = serverLocalNow(CITIES.melbourne.timeZone);
+  const today = now.today;
   // One at a time: the first warms the shared sources (sensors, rules), the rest reuse them.
   let plans = 0;
-  for (const request of exampleRequests(today)) {
+  for (const request of exampleRequests(now)) {
     try {
       await buildEnginePlan(request, adapters, today);
       plans++;

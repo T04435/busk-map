@@ -8,7 +8,7 @@ import { PlanScreen, PlanSkeleton } from "@/components/plan/plan-screen";
 import { PageHeader } from "@/components/honeycomb/page-header";
 import { PlanAlert } from "@/components/honeycomb/plan-alert";
 import { parsePlanParams } from "@/lib/plan-url";
-import { localToday } from "@/lib/slot";
+import { serverLocalNow } from "@/server/clock";
 import { CITIES } from "@/server/cities";
 import { longUrlTarget } from "@/server/plans";
 import { adapterContextFor, clientIp, pageFaultsFor, renderFaultRequested } from "@/server/request";
@@ -40,7 +40,7 @@ async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchPar
   await connection();
   // The tip log's summary (this browser's cookie), for the personal bonus. Never in the URL.
   const tipCookie = (await cookies()).get(TIP_COOKIE)?.value ?? null;
-  const parsed = parsePlanParams(params, localToday(CITIES.melbourne.timeZone), tipCookie);
+  const parsed = parsePlanParams(params, serverLocalNow(CITIES.melbourne.timeZone), tipCookie);
   if (!parsed.ok) {
     return (
       <div className="space-y-6">

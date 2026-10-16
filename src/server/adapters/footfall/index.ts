@@ -1,10 +1,11 @@
 import "server-only";
-import { addDays, baselineDates, localToday, type Slot } from "@/lib/slot";
+import { addDays, baselineDates, type Slot } from "@/lib/slot";
 import { CITIES, type CityId } from "@/server/cities";
 import { runAdapter, type AdapterContext, type AdapterResult } from "../core";
 import { fetchLiveCounts, fetchSensors, fetchSlotAverages, fetchTypicalByWeekdayHour } from "./client";
 import { syntheticFootfall, syntheticTypical } from "./fixtures/synthetic";
 import type { FootfallData, TypicalFootfallData } from "./schema";
+import { serverToday } from "@/server/clock";
 
 export type { FootfallData, SensorFootfall, TypicalFootfallData } from "./schema";
 
@@ -27,7 +28,7 @@ export async function getFootfall(
   cityId: CityId,
   slot: Slot,
   context: AdapterContext,
-  today: string = localToday(CITIES[cityId].timeZone),
+  today: string = serverToday(CITIES[cityId].timeZone),
 ): Promise<AdapterResult<FootfallData>> {
   const dates = baselineDates(slot.date, today, BASELINE_WEEKS);
   return runAdapter({
@@ -70,7 +71,7 @@ export async function getTypicalFootfall(
   startHour: number,
   endHour: number,
   context: AdapterContext,
-  today: string = localToday(CITIES[cityId].timeZone),
+  today: string = serverToday(CITIES[cityId].timeZone),
 ): Promise<AdapterResult<TypicalFootfallData>> {
   const from = addDays(today, -7 * BASELINE_WEEKS);
   return runAdapter({

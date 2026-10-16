@@ -6,11 +6,12 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/honeycomb/page-header";
 import { SlotPassed } from "@/components/honeycomb/slot-passed";
 import { PlanScreen, PlanSkeleton } from "@/components/plan/plan-screen";
-import { describeSlot, localToday } from "@/lib/slot";
+import { describeSlot } from "@/lib/slot";
 import { TIP_COOKIE } from "@/lib/tips";
 import { CITIES } from "@/server/cities";
 import { freshRunsAllowed, loadStoredPlan, slotPassed, snapshotEvents, snapshotFor, viewerRequest } from "@/server/plans";
 import { adapterContextFor, pageFaultsFor } from "@/server/request";
+import { serverToday } from "@/server/clock";
 
 export const metadata: Metadata = {
   title: "Plan · Busk Map",
@@ -67,7 +68,7 @@ async function ShortPlan({ params, searchParams }: Pick<PageProps<"/p/[id]">, "p
 
   let replay = null;
   if (snapshot) {
-    const sameDay = snapshot.runDay === localToday(city.timeZone);
+    const sameDay = snapshot.runDay === serverToday(city.timeZone);
     const at = new Intl.DateTimeFormat("en-AU", {
       ...(sameDay ? {} : { day: "numeric", month: "short" }),
       hour: "numeric",

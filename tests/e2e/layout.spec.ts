@@ -81,6 +81,26 @@ const PAGES: PageCase[] = [
     },
   },
   {
+    name: "terms",
+    open: async (page) => {
+      await page.goto("/terms");
+      await expect(page.getByText(/^Busk Map never confirms a pitch is legal/)).toBeVisible();
+    },
+    controls: async (page) => {
+      await expectOnTop(page.locator('[data-slot="site-footer"]').getByRole("link", { name: "Privacy" }), "Privacy link");
+    },
+  },
+  {
+    name: "privacy",
+    open: async (page) => {
+      await page.goto("/privacy");
+      await expect(page.getByRole("heading", { level: 1, name: /keeps/i })).toBeVisible();
+    },
+    controls: async (page) => {
+      await expectOnTop(page.locator('[data-slot="site-footer"]').getByRole("link", { name: "Terms" }), "Terms link");
+    },
+  },
+  {
     name: "brand",
     open: async (page) => {
       await page.goto("/brand");

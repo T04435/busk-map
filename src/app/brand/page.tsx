@@ -207,7 +207,7 @@ export default function BrandPage() {
               ))}
             </nav>
           </div>
-          <Logo variant="lockup" size={64} className="text-foreground" />
+          <Logo size={44} className="text-foreground" />
         </div>
       </section>
 

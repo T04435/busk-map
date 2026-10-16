@@ -1,13 +1,5 @@
 import { cn } from "cn";
 
-/** Pointy-top hexagon points, like Qloo's H3 cells. */
-function hexPoints(cx: number, cy: number, r: number): string {
-  return Array.from({ length: 6 }, (_, i) => {
-    const a = (Math.PI / 180) * (60 * i - 90);
-    return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
-  }).join(" ");
-}
-
 // Stencil caps, chamfered on a 26-unit grid; the word gap is tightened to 22 units.
 const STENCIL: Record<string, string> = {
   B: "M0 0H18L24 6V14L19 20H0M19 20L26 26V34L19 40H0M0 0V40",
@@ -37,81 +29,26 @@ function Word() {
   );
 }
 
-/** The pitch ring: a 306-degree arc (the crowd) around one honeycomb cell (the performer). */
-function Ring({ core = "fill-card dark:fill-foreground" }: { core?: string }) {
-  return (
-    <>
-      <path d="M38.554 20.371A15 15 0 1 1 27.629 9.446" fill="none" stroke="currentColor" strokeWidth={6.5} strokeLinecap="round" />
-      <polygon points={hexPoints(24, 24, 6.6)} className={core} />
-    </>
-  );
-}
-
-function Tile({ bare }: { bare?: boolean }) {
-  return (
-    <>
-      <polygon points={hexPoints(24, 24, 22.75)} className={cn("fill-primary stroke-[var(--fill-rule)]", bare && "stroke-none")} strokeWidth={2.5} strokeLinejoin="miter" />
-      <g className="text-primary-foreground" transform="translate(4.8 4.8) scale(0.8)">
-        <Ring />
-      </g>
-    </>
-  );
-}
-
-export type LogoProps = { variant?: "lockup" | "mark" | "wordmark" | "ring"; size?: number; className?: string; /** Drop the 2px rule on the tile: for the bluestone header, where the tile is its own edge. */ bare?: boolean };
+export type LogoProps = { size?: number; className?: string };
 
 /**
- * The Busk Map logo, drawn in the page's colours: the orange cell, the ring and the stencil word. Inherits `color`
- * for the word, so on the bluestone header set a light text colour.
+ * The Busk Map logo, and the only one the app shows (F12): the stencil wordmark, drawn in the page's colours. Its letters
+ * take `color` (so it reads on paper and on the bluestone header) and the offset takes the signal orange. The lockup and the
+ * mark stay in /brand as downloadable assets and are never part of the app's own UI.
  */
-export function Logo({ variant = "lockup", size = 32, className, bare }: LogoProps) {
-  const title = <title>Busk Map</title>;
-  const base = cn("inline-flex items-center text-foreground", className);
-  if (variant === "ring") {
-    return (
-      <span className={base}>
-        <svg width={size} height={size} viewBox="0 0 48 48" role="img" aria-label="Busk Map">
-          {title}
-          <Ring core="fill-signal-text" />
-        </svg>
-      </span>
-    );
-  }
-  if (variant === "mark") {
-    return (
-      <span className={base}>
-        <svg width={size} height={size} viewBox="0 0 48 48" role="img" aria-label="Busk Map">
-          {title}
-          <Tile bare={bare} />
-        </svg>
-      </span>
-    );
-  }
-  if (variant === "wordmark") {
-    return (
-      <span className={base}>
-        <svg height={size} viewBox="0 0 322 52" role="img" aria-label="Busk Map">
-          {title}
-          <Word />
-        </svg>
-      </span>
-    );
-  }
+export function Logo({ size = 32, className }: LogoProps) {
   return (
-    <span className={base}>
-      <svg height={size} viewBox="2 0 256 48" role="img" aria-label="Busk Map" className="w-auto">
-        {title}
-        <Tile bare={bare} />
-        <g transform="translate(58 8) scale(0.615)">
-          <Word />
-        </g>
+    <span className={cn("inline-flex items-center text-foreground", className)}>
+      <svg height={size} viewBox="0 0 322 52" role="img" aria-label="Busk Map" className="w-auto">
+        <title>Busk Map</title>
+        <Word />
       </svg>
     </span>
   );
 }
 
 /** Qloo's wordmark: letters in the current colour, the bar in Qloo's purple. */
-export function QlooWordmark({ width = 48, className }: { width?: number; className?: string }) {
+function QlooSvg({ width = 48, className }: { width?: number; className?: string }) {
   return (
     <svg role="img" aria-label="Qloo" viewBox="0 0 64 22" width={width} height={Math.round((width * 22) / 64)} fill="none" className={cn("block", className)}>
       <path d="M29.34 0H25.67V22H29.34V0Z" fill="currentColor" />
@@ -122,3 +59,24 @@ export function QlooWordmark({ width = 48, className }: { width?: number; classN
     </svg>
   );
 }
+
+/**
+ * Every Qloo logo in the app is this link (F09): it goes to qloo.com in a new tab, with rel="noopener noreferrer", and its
+ * name says that it opens in a new tab. The logo inside is decorative, so the link has one name, not two.
+ */
+export function QlooWordmark({ width = 48, className, wordmarkClassName }: { width?: number; className?: string; wordmarkClassName?: string }) {
+  return (
+    <a
+      href="https://qloo.com"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Qloo (opens qloo.com in a new tab)"
+      className={cn("inline-flex items-center", className)}
+    >
+      <QlooSvg width={width} className={wordmarkClassName ?? "text-foreground"} />
+    </a>
+  );
+}
+
+/** Kept for callers that say "link": the Qloo wordmark is always the link. */
+export const QlooLink = QlooWordmark;

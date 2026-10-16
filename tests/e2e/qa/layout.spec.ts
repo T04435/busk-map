@@ -51,7 +51,19 @@ test.describe("QA layout at 390, 768 and 1440 px", () => {
           })
           .slice(0, 5)
           .map((el) => `${el.tagName.toLowerCase()}${el.id ? "#" + el.id : ""} "${(el.textContent ?? "").trim().slice(0, 40)}" right=${Math.round(el.getBoundingClientRect().right)}`);
-        return { width, scrollWidth: document.documentElement.scrollWidth, cut };
+        // An empty field whose placeholder is wider than the room for text: the hint is cut off (missed in the baseline walk).
+        const ctx = document.createElement("canvas").getContext("2d")!;
+        const clipped = [...document.querySelectorAll<HTMLInputElement>("input[placeholder]:not([type=hidden])")]
+          .filter((el) => {
+            const r = el.getBoundingClientRect();
+            if (el.value || r.width === 0) return false;
+            const s = getComputedStyle(el);
+            ctx.font = `${s.fontWeight} ${s.fontSize} ${s.fontFamily}`;
+            const room = el.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
+            return ctx.measureText(el.placeholder).width > room + 1;
+          })
+          .map((el) => `input "${el.placeholder}"`);
+        return { width, scrollWidth: document.documentElement.scrollWidth, cut, clipped };
       });
 
       const shot = await page.screenshot({ fullPage: true });
@@ -60,6 +72,7 @@ test.describe("QA layout at 390, 768 and 1440 px", () => {
       if (process.env.QA_SHOTS) writeFileSync(`${process.env.QA_SHOTS}/${testInfo.project.name}-${name.replace(/\W+/g, "-")}.png`, shot);
       expect(layout.scrollWidth, "horizontal page scroll").toBeLessThanOrEqual(layout.width);
       expect(layout.cut, "content cut off at the right edge").toEqual([]);
+      expect(layout.clipped, "placeholder text cut off").toEqual([]);
       // Expected by design: the forced render fault's own error, a not-found page's 404 and the limit page's 429.
       const unexpected = path.includes("faults=render") ? [] : errors.filter((e) => !/status of (404|429|503)/.test(e));
       expect(unexpected, "console errors").toEqual([]);

@@ -97,3 +97,6 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 - **Expected:** the retry time in the viewer's time zone, or labelled with its zone.
 - **Actual:** "…or try again at 3:15 pm." The time is formatted with the plan city's time zone (Australia/Melbourne) and no zone label, so a New York judge reads the wrong hour.
 - **Also:** no e2e covers the throttled page, because offline is exempt. Suggest a fault switch (for example `faults=fresh-limit`, honoured only with BUSKMAP_ALLOW_FAULTS) so the 429 UI can be tested offline.
+
+### QA miss (not a bug ID): cut-off placeholder at 390 px
+DEV found and fixed it (8afd14d): at 390 px the landing's "Your Spotify artist link (optional)" placeholder was cut off. QA's baseline phone screenshot (375 px) showed "Your Spotify artist link (opt…", but QA didn't file it. QA's layout spec now fails on any placeholder wider than its field (a canvas text measure against the field's content box). The check was proven on a deliberately cut-off field and passes on dev/core 5c6fdfd at 390, 768 and 1440.

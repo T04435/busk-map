@@ -1,12 +1,12 @@
 # Tips · review: data for qa/tools/page-review.py. Ids follow BRAND's inventory/tips (T01-T39 with T33b-T33d, 42 parts).
-TITLE = "Tips · review"
+TITLE = "Tips · review (retired)"
 ROUTE = "/tips"
-VERSION = "v3"
+VERSION = "retired"
 COMMIT = "8207373"
 DATE = "17 Oct 2026"
 IMG = "honeycomb/tips/inv/"
-CHANGES = "v3 to align with the round (there was no tips v2). All 42 parts re-judged at 8207373: T01 now Present (F12 lockup), T32 now Present (F14: one ring, field strip 10 of 10 pass), T39 now Present (F07–F11 footer); T27 Present (A$ now an input-group addon); T37 Different: at night the Log takings button's focus ring is the same orange as its fill (B-134). B-055 to B-069 all still open, re-verified (B-056, B-063, B-066, B-068 Medium)."
-HISTORY = [
+CHANGES = "RETIRED: feature removed by the user, 17 Oct. A “rate your busks” feature replaces it later. The rows below are kept as history as judged at 8207373; B-055 to B-069 are closed as won't fix (removed). Removal is checked by qa/tools/no-tips-checks.mjs (no /tips route, nav item, link, tip copy or tip factor) in the v4 round of the other reports."
+HISTORY = [("retired", "8207373", "17 Oct 2026", "Feature removed by the user; report retired; B-055–B-069 won\'t fix (removed)."), 
     (VERSION, COMMIT, DATE, CHANGES),
     ("v1", "7b1521e", "17 Oct 2026", "First version: all 42 parts of BRAND's inventory/tips judged at 1440 and 390 (768 checked), the user's calls F12-F15, F20 and the Example-data allowance, field strip, impeccable critique and audit, BRAND's two build issues."),
 ]

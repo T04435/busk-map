@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import { cn } from "cn";
 
 /**
@@ -21,7 +21,7 @@ export function Disclosure({
           {label}
           {count != null ? <span className="font-mono font-normal text-muted-foreground">{` (${count})`}</span> : null}
         </span>
-        <ChevronDown aria-hidden="true" className="size-5 shrink-0 transition-transform group-open/disclosure:rotate-180" />
+        <Icon name="chevron-down" size={20} className="transition-transform group-open/disclosure:rotate-180" />
       </summary>
       <div className="border-t border-border p-4">{children}</div>
     </details>

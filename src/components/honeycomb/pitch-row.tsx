@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowRight } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import { cn } from "cn";
 import { PercentCell } from "@/components/honeycomb/percent-cell";
 import { RankTile } from "@/components/honeycomb/rank-tile";
@@ -68,7 +68,7 @@ export function PitchRow({
               className="inline-flex min-h-tap items-center gap-1 px-1 font-bold underline underline-offset-3 hover:decoration-2"
             >
               Full details <span className="sr-only">for {name}</span>
-              <ArrowRight aria-hidden="true" className="size-3.5" />
+              <Icon name="arrow-right" size={14} />
             </button>
           ) : null}
         </div>

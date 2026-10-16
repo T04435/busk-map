@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, type ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import { cn } from "cn";
 
 /**
@@ -33,7 +33,7 @@ export function Fold({
           {label}
           {count != null ? <span className="font-mono font-normal text-muted-foreground">{` (${count})`}</span> : null}
         </span>
-        <ChevronDown aria-hidden="true" className={cn("size-5 shrink-0 transition-transform motion-reduce:transition-none", open && "rotate-180")} />
+        <Icon name="chevron-down" size={20} className={cn("transition-transform motion-reduce:transition-none", open && "rotate-180")} />
       </button>
       <div
         id={id}

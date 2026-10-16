@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Clock } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import Link from "next/link";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { QLOO_TEST_LABEL } from "@/lib/sources";
@@ -28,7 +28,7 @@ export function PlanAlert({
     case "limit":
       return (
         <div className="flex max-w-[760px] flex-col gap-3" data-testid={testId ?? "fresh-limit"}>
-          <Alert variant="warning" icon={<Clock className="size-5" />}>
+          <Alert variant="warning" icon={<Icon name="clock" size={20} />}>
             <AlertTitle>Plan limit reached</AlertTitle>
             <AlertDescription>
               <p>{message}</p>

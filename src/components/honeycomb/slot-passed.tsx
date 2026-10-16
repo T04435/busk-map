@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Calendar, Clock } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import { cn } from "cn";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ export function SlotPassed({ slotLabel, againHref, alone = false }: { slotLabel:
       className={cn("flex gap-4 border-2 border-dashed border-input bg-card p-5", alone ? "mx-auto max-w-xl flex-col items-center text-center" : "flex-col sm:flex-row sm:items-start")}
     >
       <HexCell size={alone ? 64 : 44} tone="dashed" lift={alone}>
-        <Clock aria-hidden="true" className={alone ? "size-7" : "size-5"} />
+        <Icon name="clock" size={alone ? 28 : 20} />
       </HexCell>
       <div className="flex min-w-0 flex-col gap-2">
         <span className="font-mono text-xs font-bold tracking-[0.06em] text-muted-foreground uppercase line-through">{slotLabel}</span>
@@ -26,7 +26,7 @@ export function SlotPassed({ slotLabel, againHref, alone = false }: { slotLabel:
         <div>
           <Button asChild variant="outline">
             <Link href={againHref}>
-              <Calendar aria-hidden="true" />
+              <Icon name="calendar" />
               Plan again for a new date
             </Link>
           </Button>

@@ -1,4 +1,4 @@
-import { Check, Clock } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Loader } from "@/components/honeycomb/loader";
 import type { RunUsage } from "@/lib/agent-steps";
@@ -33,7 +33,7 @@ export function AgentStatusLine({ state, note, usage, model }: { state: AgentSta
       {state ? (
         <p className="m-0 flex items-center gap-2">
           <HexCell size={24} tone={live ? "primary" : state === "none" ? "dashed" : "default"}>
-            {live ? <Loader size={12} /> : state === "none" ? <Clock aria-hidden="true" className="size-3" /> : <Check aria-hidden="true" className="size-3" />}
+            {live ? <Loader size={12} /> : state === "none" ? <Icon name="clock" size={12} /> : <Icon name="check" size={12} />}
           </HexCell>
           <span className="text-muted-foreground" data-testid="agent-status">
             {note && state === "replayed" ? note : text(state, model)}

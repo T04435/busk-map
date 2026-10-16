@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
 
 /**
@@ -56,7 +56,7 @@ export function ExampleActCard({
       ) : null}
       <span className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-3 text-[15px] font-bold">
         {action}
-        <ArrowRight aria-hidden="true" className="size-5 shrink-0" />
+        <Icon name="arrow-right" size={20} />
       </span>
     </Link>
   );

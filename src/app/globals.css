@@ -423,18 +423,20 @@ html { scroll-padding-bottom: var(--bottom-nav); }
 @media (prefers-reduced-motion: reduce) { .hc-flow-cell, .hc-flow-link { animation: none; } }
 /* The landing's one pause control (MotionPause) holds every loop where it is (WCAG 2.2.2): the ticker, the hero glow, the brain pulse. */
 :root[data-motion="paused"] :is(.hc-ticker, .hc-glow, .hc-flow-cell, .hc-flow-link) { animation-play-state: paused; }
-/* The sponsor's Qloo wordmark assembles once, when it scrolls into view (impeccable live, 17 Oct). Paths: 1 l, 2 Q, 3 and 4 the o's, 5 the purple bar. */
+/* The sponsor's Qloo wordmark assembles once, when it scrolls into view (impeccable live, 17 Oct; progressive). Paths: 1 l, 2 Q, 3 and 4 the o's, 5 the purple bar. */
 @keyframes hc-qloo-rise { 0% { opacity: 0; transform: translateY(60%) scaleY(0.6); } 100% { opacity: 1; transform: none; } }
 @keyframes hc-qloo-bar { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
-.hc-qloo-rise path { transform-box: fill-box; transform-origin: 50% 100%; animation: hc-qloo-rise 0.6s cubic-bezier(.2,.8,.2,1) both; }
-.hc-qloo-rise path:nth-child(2) { animation-delay: 0.05s; }
-.hc-qloo-rise path:nth-child(1) { animation-delay: 0.17s; }
-.hc-qloo-rise path:nth-child(4) { animation-delay: 0.29s; }
-.hc-qloo-rise path:nth-child(3) { animation-delay: 0.41s; }
-.hc-qloo-rise path:nth-child(5) { transform-origin: 0 50%; animation: hc-qloo-bar 0.5s cubic-bezier(.2,.8,.2,1) 0.75s both; }
-/* Held at its first frame until InView marks it seen, so it plays when it scrolls on screen, not on page load. */
-[data-inview="false"] .hc-qloo-rise path { animation-play-state: paused; }
-@media (prefers-reduced-motion: reduce) { .hc-qloo-rise path { animation: none; } }
+/* Progressive: with no JS (or before it runs) there is no data-inview and no animation, so the logo is always visible. InView marks an
+   off-screen wordmark "ready" (held at its first frame) and then "true" when it scrolls into view (it plays). */
+[data-inview] .hc-qloo-rise path { transform-box: fill-box; transform-origin: 50% 100%; animation: hc-qloo-rise 0.6s cubic-bezier(.2,.8,.2,1) both; }
+[data-inview] .hc-qloo-rise path:nth-child(2) { animation-delay: 0.05s; }
+[data-inview] .hc-qloo-rise path:nth-child(1) { animation-delay: 0.17s; }
+[data-inview] .hc-qloo-rise path:nth-child(4) { animation-delay: 0.29s; }
+[data-inview] .hc-qloo-rise path:nth-child(3) { animation-delay: 0.41s; }
+[data-inview] .hc-qloo-rise path:nth-child(5) { transform-origin: 0 50%; animation: hc-qloo-bar 0.5s cubic-bezier(.2,.8,.2,1) 0.75s both; }
+[data-inview="ready"] .hc-qloo-rise path { animation-play-state: paused; }
+/* Reduced motion: no rise, no bar; the nth-child(5) rule is named too, or its higher specificity would keep the bar animating. */
+@media (prefers-reduced-motion: reduce) { [data-inview] .hc-qloo-rise path, [data-inview] .hc-qloo-rise path:nth-child(5) { animation: none; } }
 
 .hc-cell { transform-box: fill-box; transform-origin: center; animation: hc-cell-in 520ms var(--ease-out, ease) backwards; animation-delay: var(--d, 0ms); }
 .hc-cell-hot { animation: hc-cell-in 520ms var(--ease-out, ease) backwards, hc-breathe 3.6s ease-in-out infinite; animation-delay: var(--d, 0ms), calc(var(--d, 0ms) + 2400ms); }

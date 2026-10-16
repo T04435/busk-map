@@ -10,15 +10,18 @@ export function SlotPassed({ slotLabel, againHref, alone = false }: { slotLabel:
     <section
       role="status"
       data-testid="slot-passed"
-      className={cn("flex gap-4 border-2 border-dashed border-input bg-card p-5", alone ? "mx-auto max-w-xl flex-col items-center text-center" : "flex-col sm:flex-row sm:items-start")}
+      className={cn(
+        "grid items-start gap-4 bg-card",
+        alone ? "mx-auto max-w-xl grid-cols-1 justify-items-center border-2 border-rule px-5 py-12 text-center" : "grid-cols-[auto_minmax(0,1fr)] border-[1.5px] border-dashed border-input px-5 py-4",
+      )}
     >
-      <HexCell size={alone ? 64 : 44} tone="dashed" lift={alone}>
+      <HexCell size={alone ? 64 : 40} tone="dashed" lift={alone}>
         <Icon name="clock" size={alone ? 28 : 20} />
       </HexCell>
-      <div className="flex min-w-0 flex-col gap-2">
+      <div className={cn("grid min-w-0 gap-1.5", alone && "justify-items-center")}>
         <span className="font-mono text-xs font-bold tracking-[0.06em] text-muted-foreground uppercase line-through">{slotLabel}</span>
-        <h2 className="m-0 font-display text-[28px] leading-none font-extrabold uppercase">This slot has passed</h2>
-        <p className="m-0">
+        <h2 className={cn("m-0 font-display leading-none font-extrabold uppercase", alone ? "text-[40px]" : "text-[26px]")}>This slot has passed</h2>
+        <p className="m-0 max-w-[60ch] text-[15px] leading-[22px] text-muted-foreground">
           {alone
             ? "There's no stored research for this busk. Plan again with the same act for a new date."
             : "This busk was for a time that's gone, so it's shown as it was. Plan again with the same act for a new date."}

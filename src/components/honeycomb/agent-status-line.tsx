@@ -1,6 +1,5 @@
 import { Icon } from "@/components/honeycomb/icon";
 import { HexCell } from "@/components/honeycomb/hex-cell";
-import { Loader } from "@/components/honeycomb/loader";
 import type { RunUsage } from "@/lib/agent-steps";
 import { modelName, type ExplanationsModel } from "@/lib/sources";
 
@@ -33,7 +32,7 @@ export function AgentStatusLine({ state, note, usage, model }: { state: AgentSta
       {state ? (
         <p className="m-0 flex items-center gap-2 font-mono text-sm leading-5 font-medium">
           <HexCell size={24} tone={live ? "primary" : state === "none" ? "dashed" : "default"}>
-            {live ? <Loader size={12} /> : state === "none" ? <Icon name="clock" size={12} /> : <Icon name="check" size={12} />}
+            {live ? <Icon name="loader" size={12} className="animate-spin motion-reduce:animate-none" /> : state === "none" ? <Icon name="clock" size={12} /> : <Icon name="check" size={12} />}
           </HexCell>
           <span data-testid="agent-status">
             {note && state === "replayed" ? note : text(state, model)}

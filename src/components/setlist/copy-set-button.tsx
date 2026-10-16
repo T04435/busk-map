@@ -1,7 +1,7 @@
 "use client";
 
-import { CheckIcon, CopyIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/honeycomb/icon";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -56,8 +56,8 @@ export function CopySetButton({ text }: { text: string }) {
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <Button type="button" variant="outline" size="sm" className="min-h-11 font-mono" onClick={copy} data-testid="copy-set">
-        {state === "copied" ? <CheckIcon aria-hidden /> : <CopyIcon aria-hidden />}
+      <Button type="button" variant="outline" size="sm" className="min-h-11 font-sans font-bold focus-visible:shadow-none" onClick={copy} data-testid="copy-set">
+        <Icon name={state === "copied" ? "check" : "copy"} size={16} />
         {state === "copied" ? "Copied" : "Copy"}
       </Button>
       {state === "manual" && (

@@ -11,7 +11,6 @@ import { PERMITS } from "@/lib/plan-schema";
 import { nextSlotDate, weekdayOf } from "@/lib/slot";
 import { loadStoredPlan } from "@/server/plans";
 import { serverLocalNow } from "@/server/clock";
-import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Plan your busk · Busk Map",
@@ -23,20 +22,13 @@ export default function BusksPage({ searchParams }: PageProps<"/busks">) {
     <main id="main" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-8 md:py-12">
       <Warmup />
       <PageHeader
-        meta="Melbourne · your act, your hours"
+        meta="Your act, your hours"
         title="Plan your busk"
         subtitle="Tell Busk Map who you sound like and what you can play, then pick your hours. Claude researches the pitches as soon as you start."
       />
       <Suspense>
         <OwnAct searchParams={searchParams} />
       </Suspense>
-      <p className="m-0 text-sm text-muted-foreground">
-        Played a busk already?{" "}
-        <Link className="font-bold text-foreground underline underline-offset-3 hover:decoration-2" href="/tips">
-          Log your takings
-        </Link>
-        : they stay in this browser, and the pitches where you earn more get a small bonus in your next plans.
-      </p>
     </main>
   );
 }

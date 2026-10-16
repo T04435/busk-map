@@ -13,7 +13,7 @@ export type AgentStep = {
   label: string;
   source?: string;
   input?: unknown;
-  status: "running" | "done" | "failed" | "notes";
+  status: "running" | "done" | "failed" | "notes" | "cut";
   summary?: string;
   output?: unknown;
   notes: StepNote[];

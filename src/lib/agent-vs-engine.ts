@@ -45,16 +45,19 @@ export function agentChanges(engineTop: Pick[], agentTop: Pick[], engineOrder: P
 }
 
 /**
- * The line's text: one sentence when the model kept the engine's top 3, else one line per changed position.
+ * The text of the Agent vs engine block (brand book wording): one sentence when the model kept Busk Map's top 3, else one line
+ * per changed position. "Engine" is not busk-facing, so ranks read "Busk Map's no. N".
  * `model` names who did it: Claude, or the test model offline (B-010).
  */
 export function agentVsEngineLines(agent: { changes: AgentChange[] }, model?: ExplanationsModel | null): string[] {
-  const where = (p: AgentChange["pick"]) => (p.engineRank === null ? `added by ${modelName(model)}, score ${p.score}` : `engine #${p.engineRank}, score ${p.score}`);
-  if (agent.changes.length === 0) return [`${modelName(model, "start")} kept the engine's top 3.`];
+  const where = (p: AgentChange["pick"]) => (p.engineRank === null ? `added by ${modelName(model)}, score ${p.score}` : `Busk Map's no. ${p.engineRank}, score ${p.score}`);
+  if (agent.changes.length === 0) return [`${modelName(model, "start")} checked Busk Map's top 3 and kept them.`];
   return agent.changes.map(
-    (c) =>
-      `#${c.position}: ${modelName(model, "start")} picked ${c.pick.name} (${where(c.pick)})` +
-      (c.over ? ` over ${c.over.name} (${where(c.over)})` : "") +
-      (c.reason ? ` because ${becauseClause(c.reason)}.` : "."),
+    (c) => `#${c.position}: ${c.pick.name} (${where(c.pick)})` + (c.over ? ` over ${c.over.name} (${where(c.over)})` : "") + (c.reason ? ` because ${becauseClause(c.reason)}.` : "."),
   );
+}
+
+/** The headline: "Claude checked Busk Map's top 3 and kept them" or "Claude changed N of Busk Map's top 3". */
+export function agentVsEngineTitle(changes: number, model?: ExplanationsModel | null): string {
+  return changes === 0 ? `${modelName(model, "start")} checked Busk Map's top 3 and kept them` : `${modelName(model, "start")} changed ${changes} of Busk Map's top 3`;
 }

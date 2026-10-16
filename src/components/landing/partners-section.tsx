@@ -1,4 +1,8 @@
+import { cn } from "cn";
 import { QlooWordmark } from "@/components/honeycomb/logo";
+
+/** A logo file, or a light and a dark one swapped by the theme (the app's own theme mechanism: the dark variant). */
+type Logo = string | { light: string; dark: string };
 
 export type Partner = {
   name: string;
@@ -6,37 +10,64 @@ export type Partner = {
   role: string;
   /** The partner's official site. Opens in the same tab. */
   href: string;
-  /** The official logo file (a path under /public or a URL) once BRAND supplies it. Until then the slot shows the name as text. */
-  logoSrc?: string;
+  /** The official logo from /partners (BRAND's sanitised files, never recoloured). */
+  logo?: Logo;
+  /** Logo height in px (the DS's per-brand optical size). */
+  h?: number;
+  /** A white-only logo (Ticketmaster) sits on the brand's own ground by day; at night it sits on the tile. */
+  plate?: string;
+  /** A plain-text name beside the icon (Open-Meteo), or alone where there is no logo to use (OpenStreetMap: its trademark policy covers the name, not the logo). */
+  mark?: string;
 };
 
-/** "Built with" (L21b, F23-F24). Swapping in a logo is a data change: set `logoSrc` on the row. */
+/** "Built with" (L21b, F23-F24), as BRAND's PartnersSection v66 lists it. */
 export const BUILT_WITH: Partner[] = [
-  { name: "Claude", role: "Researches each busk and writes why", href: "https://www.anthropic.com/claude" },
-  { name: "Vercel", role: "Hosting and AI SDK", href: "https://vercel.com" },
-  { name: "Neon", role: "Postgres for plans, runs and Repertoires", href: "https://neon.com" },
-  { name: "Spotify", role: "Songs, artists and release years", href: "https://www.spotify.com" },
-  { name: "Last.fm", role: "Song plays and top tracks", href: "https://www.last.fm" },
-  { name: "Ticketmaster", role: "Events letting out near each pitch", href: "https://www.ticketmaster.com" },
-  { name: "Open-Meteo", role: "The forecast for your hours", href: "https://open-meteo.com" },
-  { name: "MapLibre", role: "Draws the map", href: "https://maplibre.org" },
-  { name: "OpenStreetMap", role: "Map data © OpenStreetMap contributors", href: "https://www.openstreetmap.org" },
+  { name: "Claude", role: "Researches each busk and writes why", href: "https://www.anthropic.com/claude", logo: { light: "/partners/claude-logo-slate.svg", dark: "/partners/claude-logo-ivory.svg" }, h: 27 },
+  { name: "Vercel", role: "Hosting and AI SDK", href: "https://vercel.com", logo: { light: "/partners/vercel-logotype-black.svg", dark: "/partners/vercel-logotype-white.svg" }, h: 24 },
+  { name: "Neon", role: "Postgres for plans, runs and Repertoires", href: "https://neon.com", logo: { light: "/partners/neon-logo-light-color.svg", dark: "/partners/neon-logo-dark-color.svg" }, h: 28 },
+  { name: "Spotify", role: "Songs, artists and release years", href: "https://www.spotify.com", logo: { light: "/partners/spotify-full-logo-black.svg", dark: "/partners/spotify-full-logo-white.svg" }, h: 32 },
+  { name: "Last.fm", role: "Song plays and top tracks", href: "https://www.last.fm", logo: "/partners/lastfm-logo.svg", h: 25 },
+  { name: "Ticketmaster", role: "Events letting out near each pitch", href: "https://www.ticketmaster.com", logo: "/partners/ticketmaster-logo-white.svg", plate: "#024DDF" },
+  { name: "Open-Meteo", role: "The forecast for your hours", href: "https://open-meteo.com", logo: { light: "/partners/open-meteo-icon-light.svg", dark: "/partners/open-meteo-icon-dark.svg" }, mark: "Open-Meteo" },
+  { name: "MapLibre", role: "Draws the map", href: "https://maplibre.org", logo: { light: "/partners/maplibre-logo-for-light-bg.svg", dark: "/partners/maplibre-logo-for-dark-bg.svg" }, h: 28 },
+  { name: "OpenStreetMap", role: "Map data © OpenStreetMap contributors", href: "https://www.openstreetmap.org", mark: "OpenStreetMap" },
 ];
 
-/** The logo slot: the logo file when there is one, else a labelled placeholder (the official files are pending). */
-function LogoSlot({ partner }: { partner: Partner }) {
-  if (partner.logoSrc) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={partner.logoSrc} alt="" aria-hidden="true" className="block h-8 w-auto max-w-full self-start object-contain" />;
+/* eslint-disable @next/next/no-img-element -- fixed SVG files from /public/partners */
+function Img({ src, className, h }: { src: string; className?: string; h?: number }) {
+  return <img src={src} alt="" height={h ?? 32} style={h ? { height: h } : undefined} className={cn("block h-8 w-auto max-w-full", className)} />;
+}
+
+/** The logo slot, ported from the DS's PartnerLogo: light and dark files swapped by theme, a plate for a white-only logo, a text mark beside an icon or alone. The link carries the name; the images are decorative. */
+function LogoSlot({ partner: p }: { partner: Partner }) {
+  const lg = p.logo;
+  const imgs = !lg ? null : typeof lg === "string" ? (
+    <Img src={lg} h={p.h} className={p.plate ? "h-[18px] dark:h-[22px]" : undefined} />
+  ) : (
+    <>
+      <Img src={lg.light} h={p.h} className="dark:hidden" />
+      <Img src={lg.dark} h={p.h} className="hidden dark:block" />
+    </>
+  );
+  if (!imgs && !p.mark) {
+    return (
+      <span aria-hidden="true" data-testid="logo-pending" className="inline-flex h-8 items-center border-[1.5px] border-dashed border-border px-2.5 font-mono text-[11px] leading-none font-medium tracking-[0.04em] text-muted-foreground uppercase">
+        {p.name} logo
+      </span>
+    );
   }
-  return (
-    <span
-      aria-hidden="true"
-      data-testid="logo-pending"
-      className="inline-block self-start border border-dashed border-border px-2 py-1 font-mono text-[11px] leading-4 tracking-[0.06em] text-muted-foreground uppercase"
-    >
-      {partner.name} logo
+  const body = (
+    <span className="inline-flex min-w-0 items-center gap-2">
+      {imgs}
+      {p.mark ? <span className={cn("font-sans text-[20px] leading-none font-bold tracking-[-0.01em] whitespace-nowrap text-foreground", !imgs && "text-[22px]")}>{p.mark}</span> : null}
     </span>
+  );
+  return p.plate ? (
+    <span className="inline-flex h-10 items-center px-3 dark:bg-transparent dark:px-0" style={{ backgroundColor: p.plate }}>
+      {body}
+    </span>
+  ) : (
+    body
   );
 }
 
@@ -72,7 +103,9 @@ export function PartnersSection({ partners = BUILT_WITH }: { partners?: Partner[
                 href={p.href}
                 className="flex w-full flex-col gap-3 border-2 border-rule bg-card p-4 no-underline hover:shadow-[4px_4px_0_var(--foreground)]"
               >
-                <LogoSlot partner={p} />
+                <span className="flex h-10 items-center">
+                  <LogoSlot partner={p} />
+                </span>
                 <b className="font-display text-xl leading-none font-extrabold uppercase">{p.name}</b>
                 <span className="text-sm leading-5 text-muted-foreground">{p.role}</span>
               </a>

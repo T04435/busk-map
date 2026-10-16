@@ -204,4 +204,22 @@ test.describe("landing: Thanks to (L21b)", () => {
       await expect(link).not.toHaveAttribute("target", "_blank");
     }
   });
+
+  test("each Built with tile carries its logo as a decorative image (OpenStreetMap stays text), and the theme picks one variant", async ({ page }) => {
+    await page.goto("/");
+    const list = page.getByTestId("partners").getByRole("list", { name: "Built with" });
+    await expect(page.getByTestId("logo-pending")).toHaveCount(0);
+    for (const [name] of BUILT_WITH) {
+      const imgs = list.getByRole("link", { name: new RegExp(`^${name.replace(/[.]/g, "\\.")}`) }).locator("img");
+      if (name === "OpenStreetMap") await expect(imgs).toHaveCount(0);
+      else expect(await imgs.count(), name).toBeGreaterThan(0);
+      for (const alt of await imgs.evaluateAll((els) => els.map((e) => e.getAttribute("alt")))) expect(alt).toBe("");
+    }
+    // Day shows the light file of a pair, night the dark one (never both).
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      const shown = await list.getByRole("link", { name: /^Vercel/ }).locator("img").evaluateAll((els) => els.filter((e) => getComputedStyle(e).display !== "none").map((e) => e.getAttribute("src")));
+      expect(shown).toEqual([scheme === "light" ? "/partners/vercel-logotype-black.svg" : "/partners/vercel-logotype-white.svg"]);
+    }
+  });
 });

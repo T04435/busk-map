@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSetlist, eraFit, leadingAgeBand, learnThese } from "@/server/scoring";
+import { buildSetlist, eraFit, eraFitWords, leadingAgeBand, learnThese } from "@/server/scoring";
 import type { RepertoireSong } from "@/server/scoring";
 import { trackKey } from "@/lib/text";
 
@@ -181,6 +181,18 @@ describe("era matching", () => {
     expect(leadingAgeBand(null)).toBeNull();
   });
 
+  it("puts era fit into words by band, never as a score", () => {
+    expect(eraFitWords(1)).toBe("a strong");
+    expect(eraFitWords(0.75)).toBe("a strong");
+    expect(eraFitWords(0.74)).toBe("a good");
+    expect(eraFitWords(0.5)).toBe("a good");
+    expect(eraFitWords(0.49)).toBe("a fair");
+    expect(eraFitWords(0.25)).toBe("a fair");
+    expect(eraFitWords(0.24)).toBe("a weak");
+    expect(eraFitWords(0)).toBe("a weak");
+    expect(eraFitWords(-1)).toBe("a weak");
+  });
+
   it("blends era fit into the song score and says why", () => {
     const songs = [song("1", "Superstition", "Stevie Wonder", "sw"), song("2", "Valerie", "Amy Winehouse", "aw"), song("3", "Untimed", "Amy Winehouse", "aw")];
     const affinity = { sw: 0.9, aw: 0.9 };
@@ -192,7 +204,9 @@ describe("era matching", () => {
     expect(valerie.score).toBeGreaterThan(superstition.score);
     expect(valerie).toMatchObject({ year: 2007 });
     expect(valerie.eraFit).toBeGreaterThan(0.3);
-    expect(valerie.reason).toMatch(/from 2007: era fit \d+\/100 for a crowd leaning 24 and under$/);
+    expect(valerie.reason).toMatch(/from 2007: a (strong|good|fair|weak) era fit for a crowd leaning 24 and under$/);
+    expect(valerie.reason).toContain(`from 2007: ${eraFitWords(valerie.eraFit!)} era fit`);
+    expect(valerie.reason).not.toMatch(/era fit \d/);
     expect(set.find((s) => s.title === "Untimed")).toMatchObject({ year: null, eraFit: null, score: 100 });
 
     // A year with no age lean: shown, not scored. No label function: the band id.

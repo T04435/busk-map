@@ -88,6 +88,21 @@ export function eraFit(year: number, ageLean: AgeLean, currentYear: number): num
   return total === 0 ? null : weighted / total;
 }
 
+/**
+ * Era fit in words for the setlist reason (the number stays in `eraFit`). Bands of the 0–1 fit:
+ * ≥ 0.75 "a strong", ≥ 0.5 "a good", ≥ 0.25 "a fair", below 0.25 "a weak".
+ */
+export const ERA_FIT_WORDS: readonly (readonly [min: number, words: string])[] = [
+  [0.75, "a strong"],
+  [0.5, "a good"],
+  [0.25, "a fair"],
+  [0, "a weak"],
+];
+
+export function eraFitWords(fit: number): string {
+  return ERA_FIT_WORDS.find(([min]) => fit >= min)?.[1] ?? "a weak";
+}
+
 /** The crowd's most over-represented age band, for labels ("25_to_29"), or null. */
 export function leadingAgeBand(ageLean: AgeLean | null): string | null {
   const known = Object.entries(ageLean ?? {}).filter(([band, lean]) => AGE_BAND_MIDPOINTS[band] !== undefined && lean > 0);
@@ -163,7 +178,7 @@ export function buildSetlist(
     if (year !== null && fit !== null) {
       // A fit implies at least one over-represented, known age band.
       const band = leadingAgeBand(era!.ageLean)!;
-      why.push(`from ${year}: era fit ${Math.round(fit * 100)}/100 for a crowd leaning ${era!.ageLabel?.(band) ?? band}`);
+      why.push(`from ${year}: ${eraFitWords(fit)} era fit for a crowd leaning ${era!.ageLabel?.(band) ?? band}`);
     } else if (year !== null) why.push(`from ${year}`);
     return {
       songId: song.id,

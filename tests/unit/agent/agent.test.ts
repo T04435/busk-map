@@ -250,7 +250,7 @@ describe("what to play", () => {
     expect(plan.ageLean).not.toBeNull();
     const setlist = plan.pitches[0].setlist;
     expect(setlist.every((s) => s.year !== null && s.eraFit !== null)).toBe(true);
-    expect(setlist[0].reason).toMatch(/from \d{4}: era fit \d+\/100 for a crowd leaning /);
+    expect(setlist[0].reason).toMatch(/from \d{4}: a (strong|good|fair|weak) era fit for a crowd leaning /);
     expect(plan.learnThese.every((l) => l.audienceGrowth === 0)).toBe(true);
     expect(plan.dataStatus.find((s) => s.adapter === "repertoire")).toMatchObject({ source: "spotify", mode: "synthetic" });
   });

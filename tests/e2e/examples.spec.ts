@@ -84,7 +84,8 @@ test.describe("data-led plans", () => {
       await expect(crowd.getByText(/^Evidence: Qloo insights/)).toBeVisible();
       await expect(page.getByRole("heading", { name: "Who your fans are" })).toBeVisible();
       // What to play: songs carry their year and era fit.
-      await expect(page.getByText(/from \d{4}: era fit \d+\/100 for a crowd leaning /).first()).toBeVisible();
+      await expect(page.getByText(/from \d{4}: a (strong|good|fair|weak) era fit for a crowd leaning /).first()).toBeVisible();
+      await expect(page.getByText(/era fit \d+\/100/)).toHaveCount(0);
     }
     expect(new Set(tops.map((t) => t.join("|"))).size).toBe(3);
     expect(new Set(tops.map((t) => t[0])).size).toBe(3);

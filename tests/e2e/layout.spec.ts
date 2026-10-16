@@ -169,6 +169,7 @@ const PAGES: PageCase[] = [
     controls: async (page) => {
       await expectOnTop(page.getByRole("link", { name: /^Soul and funk sax player / }), "example card");
       await expectOnTop(page.getByRole("button", { name: "Plan my set" }), "Plan my set");
+      await expectOnTop(page.getByRole("link", { name: "Open the brain" }), "Open the brain");
     },
   },
   {
@@ -235,6 +236,19 @@ const PAGES: PageCase[] = [
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     },
     controls: async (page) => {
+      await expectOnTop(page.getByRole("link", { name: "Busk Map home" }), "Busk Map home");
+    },
+  },
+  {
+    name: "brain",
+    open: async (page) => {
+      await page.goto("/brain");
+      await expect(page.getByRole("heading", { level: 1, name: /Qloo/ })).toBeVisible();
+    },
+    controls: async (page) => {
+      await expectOnTop(page.locator('[data-node-id="c1"]'), "first Qloo call");
+      await expectOnTop(page.locator('[data-node-id="ticketmaster"]'), "Ticketmaster");
+      await expectOnTop(page.locator('[data-node-id="f_agent"]'), "last feature");
       await expectOnTop(page.getByRole("link", { name: "Busk Map home" }), "Busk Map home");
     },
   },

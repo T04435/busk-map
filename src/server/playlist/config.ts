@@ -31,14 +31,14 @@ export const LEARN_RUNS_PER_HOUR_PER_IP = 6;
 export const LEARN_QLOO_BUDGET = 25; // PROVISIONAL (HQ card learn-run-limit, with D3)
 /** One run at a time per Repertoire (the partial unique index on learn_runs). */
 export const LEARN_CONCURRENT_RUNS = 1; // PROVISIONAL (HQ card learn-run-limit, with D3)
-/** Usual pitches: taken from the top pitch of the last N plans made with the Repertoire (D4). */
+/** Usual pitches: taken from the top pitch of the last N plans made with the Repertoire (D4). R2 records them (server/playlist/usual.ts). */
 export const USUAL_PITCHES_FROM_LAST_PLANS = 3; // PROVISIONAL (HQ card usual-pitches, D4)
 /** A "Not for me" button with a dismissed state and Undo (D5). Confirmed by the user, 17 Oct. */
 export const DISMISSED_STATE = true;
 /** Last.fm as a third source on the Brain page (D6): yes. Confirmed by the user, 17 Oct (built in stage R4). */
 export const BRAIN_LASTFM_NODE = true;
-/** The learn model. Sonnet with medium thinking is the busk agent's setting; switching to Haiku is this one line (D7). */
-export const LEARN_MODEL = "planner" as "planner" | "haiku"; // PROVISIONAL (HQ card learn-model, D7)
+/** The learn model. Sonnet 5.5 with medium thinking is the busk agent's setting; switching to Haiku is this one line (D7). Confirmed by the user, 17 Oct. */
+export const LEARN_MODEL = "planner" as "planner" | "haiku"; // confirmed 17 Oct (HQ card learn-model, D7)
 /** Run steps are kept for the last N runs ... */
 export const LEARN_STEPS_KEPT_RUNS = 5; // PROVISIONAL (HQ card run-retention, D8)
 /** ... and for at most this many days. Suggestions are kept forever. */

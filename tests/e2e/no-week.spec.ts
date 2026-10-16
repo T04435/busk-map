@@ -17,7 +17,7 @@ test.describe("week planner removed", () => {
   test("the main nav holds Busks and Repertoire; Brain is in the footer and not current on /brain", async ({ page }) => {
     await page.goto("/brain");
     const nav = page.locator('nav[aria-label="Main"]:visible');
-    await expect(nav.getByRole("link")).toHaveText(["Busks", "Repertoire"]);
+    await expect(nav.getByRole("link")).toHaveText(["Repertoire", "Busks"]);
     await expect(nav.locator("[aria-current]")).toHaveCount(0);
     await expect(page.locator("footer").getByRole("link", { name: "Brain" })).toBeVisible();
   });

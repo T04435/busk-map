@@ -338,11 +338,14 @@ export default function BrandPage() {
 
         <Section id="screens" n="06" title="Screens" intro="Every screen of the app, with the route it lives at. Each is drawn at 390, 768 and 1440 in the design deck's Plan Screens canvas.">
           <PhoneFold heading="The screens" count={SCREENS.length} headingClassName="sr-only">
-            <TableFrame label="Screens" min={720}>
+            <TableFrame label="Screens" min={840}>
               <thead>
                 <tr>
                   <th scope="col" className={TH}>Screen</th>
                   <th scope="col" className={TH}>Route</th>
+                  {["390", "768", "1440"].map((w) => (
+                    <th key={w} scope="col" className={`${TH} text-center`}>{w}</th>
+                  ))}
                   <th scope="col" className={TH}>What it shows</th>
                 </tr>
               </thead>
@@ -353,6 +356,15 @@ export default function BrandPage() {
                     <td className={`${TD} ${MONO} break-all`}>
                       {r.route.startsWith("/") && !/[<?]/.test(r.route) ? <Link href={r.route} className="underline underline-offset-3 hover:decoration-2">{r.route}</Link> : r.route}
                     </td>
+                    {["390", "768", "1440"].map((w) => (
+                      <td key={w} className={`${TD} ${MONO} text-center`}>
+                        {r.drawn === false ? (
+                          <span className="text-muted-foreground">Not yet<span className="sr-only"> drawn at {w}</span></span>
+                        ) : (
+                          <Icon name="check" size={16} strokeWidth={2.5} label={`Drawn at ${w}`} />
+                        )}
+                      </td>
+                    ))}
                     <td className={TD}>{r.shows}</td>
                   </tr>
                 ))}

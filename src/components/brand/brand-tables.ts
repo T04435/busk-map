@@ -1,9 +1,10 @@
 /** Static lists behind /brand: the Screens table, the Submission kit, the icon names and the component groups. */
 
-export type ScreenRow = { name: string; route: string; shows: string; drawn?: boolean };
+export type ScreenRow = { name: string; route: string; shows: string; /** Drawn in the deck at 390, 768 and 1440; false until it is. Default true. */ drawn?: boolean };
 export const SCREENS: ScreenRow[] = [
   { name: "Landing", route: "/", shows: "Main explains the product: hero, try an act, guesswork, what you get back, beyond buskers, Thanks to (Qloo as sponsor, then built with), the Brain and Honeycomb teasers, closing call." },
   { name: "Busks: plan your busk", route: "/busks", shows: "The form for your own act" },
+  { name: "Repertoire", route: "/repertoire", shows: "Your songs: search, pick and suggested fill", drawn: true },
   { name: "Busks: plan again", route: "/busks?again=<id>", shows: "Pre-filled from an earlier busk, date and hours left" },
   { name: "Busks: a form error", route: "/busks", shows: "Each error names its field" },
   { name: "Plan: researching", route: "/plan", shows: "The research feed is the page" },
@@ -18,8 +19,8 @@ export const SCREENS: ScreenRow[] = [
   { name: "Plan: slot passed", route: "/p/<id>", shows: "\"This slot has passed\", above the stored busk or alone" },
   { name: "Plan: link not found", route: "/p/<id>", shows: "\"Plan not found\"" },
   { name: "The brain of Busk Map", route: "/brain", shows: "Every Qloo call and what it decides, with the trace" },
-  { name: "Terms", route: "/terms", shows: "A plain page: the legal line moved out of the footer. \"Busk Map never confirms a pitch is legal: check your permit conditions.\"" },
-  { name: "Privacy", route: "/privacy", shows: "A plain page: what stays in this browser, what the server keeps, and for how long" },
+  { name: "Terms", route: "/terms", shows: "A plain page: the legal line moved out of the footer. \"Busk Map never confirms a pitch is legal: check your permit conditions.\"", drawn: false },
+  { name: "Privacy", route: "/privacy", shows: "A plain page: what stays in this browser, what the server keeps, and for how long", drawn: false },
   { name: "Not found", route: "any unknown URL", shows: "\"No pitch here\"" },
   { name: "Route error", route: "error.tsx", shows: "\"Something went wrong\", with its reference" },
   { name: "Global error", route: "global-error.tsx", shows: "No layout and no brand fonts" },

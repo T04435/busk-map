@@ -88,6 +88,17 @@ test.describe("own act", () => {
     await expect(menu).toHaveCount(0);
   });
 
+  test("an artist picked from offline search (a made-up artist) opens a plan (B-003)", async ({ page }) => {
+    await page.goto("/");
+    const form = page.getByRole("form", { name: "Plan for your own act" });
+    await form.getByLabel("Act name").fill("Synthetic Pick");
+    await form.getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Nobody Band Zzq");
+    await page.getByRole("option", { name: /Nobody Band Zzq \(synthetic\)/ }).click();
+    await expect(form.getByRole("list", { name: "Artists you picked" })).toContainText("Nobody Band Zzq (synthetic)");
+    await form.getByRole("button", { name: "Plan my set" }).click();
+    await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/, { timeout: 10_000 });
+  });
+
   test("asks for an artist before planning", async ({ page }) => {
     await page.goto("/");
     const form = page.getByRole("form", { name: "Plan for your own act" });

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SYNTHETIC_RAW } from "@/server/adapters/repertoire/fixtures/synthetic";
+import { spotifyIdSchema } from "@/lib/plan-schema";
+import { SYNTHETIC_RAW, syntheticScopedTrackSearch, syntheticSpotifyId } from "@/server/adapters/repertoire/fixtures/synthetic";
 import { json, LIVE, mockFetch, OFFLINE, route } from "../../helpers";
 
 async function fresh() {
@@ -132,9 +133,9 @@ describe("repertoire (Spotify)", () => {
     await findReleaseCounts(Array.from({ length: 15 }, (_, i) => `id${i}`), "AU", LIVE);
     expect(many.calls.filter((c) => c.url.pathname.endsWith("/albums"))).toHaveLength(MAX_RELEASE_IDS);
 
-    const offline = await findReleaseCounts(["syn-artist-1"], "AU", OFFLINE);
+    const offline = await findReleaseCounts([syntheticSpotifyId("x")], "AU", OFFLINE);
     expect(offline.mode).toBe("synthetic");
-    expect(offline.data["syn-artist-1"]).toBeGreaterThan(0);
+    expect(offline.data[syntheticSpotifyId("x")]).toBeGreaterThan(0);
   });
 
   it("picks a cover near 64 px, else the only one", async () => {
@@ -182,11 +183,18 @@ describe("repertoire (Spotify)", () => {
   it("is synthetic offline", async () => {
     const { findTracks, findArtists, getArtistCatalogue } = await fresh();
     expect((await findTracks("x", "AU", OFFLINE)).mode).toBe("synthetic");
-    expect((await findArtists("zzq", "AU", OFFLINE)).data).toEqual([{ id: "syn-artist-1", name: "zzq (synthetic)", image: null, releases: null, url: null }]);
+    // An unknown name gets a made-up artist whose id passes spotifyIdSchema, the same on every search (B-003).
+    const [made] = (await findArtists("zzq", "AU", OFFLINE)).data;
+    expect(made).toEqual({ id: syntheticSpotifyId("zzq (synthetic)"), name: "zzq (synthetic)", image: null, releases: null, url: null });
+    expect(spotifyIdSchema.safeParse(made.id).success).toBe(true);
+    expect((await findArtists("ZZQ ", "AU", OFFLINE)).data[0].id).toBe(made.id);
+    expect((await findArtists("zzr", "AU", OFFLINE)).data[0].id).not.toBe(made.id);
+    for (const track of (await findTracks("x", "AU", OFFLINE)).data) expect(spotifyIdSchema.safeParse(track.artists[0].id).success).toBe(true);
     // Offline artists come from the Qloo mock's catalogue, with its Spotify-shaped ids.
     const paul = (await findArtists("paul ke", "AU", OFFLINE)).data;
     expect(paul[0]).toMatchObject({ name: "Paul Kelly", id: expect.stringMatching(/^[A-Za-z0-9]{22}$/) });
     expect((await getArtistCatalogue("nope", "AU", OFFLINE)).data).toHaveLength(4);
+    expect(spotifyIdSchema.safeParse(syntheticScopedTrackSearch("Song", "Qa Nobody Band")[0].artists[0].id).success).toBe(true);
   });
 
   it("reads release years from Spotify dates", async () => {

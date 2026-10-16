@@ -2,11 +2,29 @@
 import { CATALOG, normalizeName } from "@/server/qloo-mock/catalog";
 import type { CatalogueArtist, CatalogueTrack } from "../schema";
 
+const BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+/** A made-up Spotify-shaped id (22 base-62 characters), stable per seed, so offline picks pass spotifyIdSchema. */
+export function syntheticSpotifyId(seed: string): string {
+  let h = 2166136261;
+  for (const ch of seed) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+  let id = "";
+  for (let i = 0; i < 22; i++) {
+    // xorshift32 over the seed's FNV-1a hash.
+    h ^= h << 13;
+    h ^= h >>> 17;
+    h ^= h << 5;
+    h >>>= 0;
+    id += BASE62[h % 62];
+  }
+  return id;
+}
+
 export function syntheticTrackSearch(query: string): CatalogueTrack[] {
   return [1, 2, 3].map((n) => ({
     id: `syn-track-${n}`,
     title: `${query} (synthetic result ${n})`,
-    artists: [{ id: `syn-artist-${n}`, name: `Synthetic Artist ${n}` }],
+    artists: [{ id: syntheticSpotifyId(`Synthetic Artist ${n}`), name: `Synthetic Artist ${n}` }],
     album: "Synthetic Album",
     image: null,
     durationMs: 150_000 + n * 37_000,
@@ -26,7 +44,7 @@ export function syntheticScopedTrackSearch(query: string, artist: string): Catal
     {
       id: `syn-scoped-${slug}`,
       title: query,
-      artists: [{ id: known?.spotifyId ?? `syn-artist-${normalizeName(artist).replace(/\s+/g, "-")}`, name: known?.name ?? artist }],
+      artists: [{ id: known?.spotifyId ?? syntheticSpotifyId(normalizeName(artist)), name: known?.name ?? artist }],
       album: "Synthetic Album",
       image: null,
       durationMs: 200_000,
@@ -44,7 +62,7 @@ export function syntheticScopedTrackSearch(query: string, artist: string): Catal
 export function syntheticArtistSearch(query: string): CatalogueArtist[] {
   const q = normalizeName(query);
   const matches = q ? CATALOG.filter((a) => normalizeName(a.name).includes(q)).slice(0, 10) : [];
-  if (matches.length === 0) return [{ id: "syn-artist-1", name: `${query} (synthetic)`, image: null, releases: null, url: null }];
+  if (matches.length === 0) return [{ id: syntheticSpotifyId(`${q} (synthetic)`), name: `${query} (synthetic)`, image: null, releases: null, url: null }];
   return matches.map((a) => ({ id: a.spotifyId, name: a.name, image: null, releases: null, url: null }));
 }
 

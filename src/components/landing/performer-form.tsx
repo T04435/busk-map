@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { planRequestSchema, type PlanRequest } from "@/lib/plan-schema";
+import { planFormError } from "@/lib/form-errors";
+import { planRequestSchema, type PlanRequest, type PlanRequestInput } from "@/lib/plan-schema";
 import { planSearchParams } from "@/lib/plan-url";
 import { weekSearchParams } from "@/lib/week-url";
 import { formatHour } from "@/lib/slot";
@@ -140,21 +141,15 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
       setError("Pick today or a later date.");
       return;
     }
-    const result = planRequestSchema.safeParse({
+    const input: PlanRequestInput = {
       city: "melbourne",
       slot: { date, startHour: Number(from), endHour: Number(to) },
-      permit,
+      permit: permit as PlanRequestInput["permit"],
       performer: { name: clean(name) || "My act", artists: artistList, spotifyArtists, songs: parsedSongs },
-    });
+    };
+    const result = planRequestSchema.safeParse(input);
     if (!result.success) {
-      const fields = result.error.issues.map((i) => i.path.join("."));
-      setError(
-        fields.some((f) => f.startsWith("performer.artists"))
-          ? "Add at least one artist you sound like."
-          : fields.some((f) => f.startsWith("slot"))
-            ? "Check the date and times: the slot must end after it starts and last at most 6 hours."
-            : "Check the form and try again.",
-      );
+      setError(planFormError(result.error.issues, input));
       return;
     }
     setError(null);

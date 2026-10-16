@@ -224,3 +224,36 @@ test.describe("landing: Thanks to (L21b)", () => {
     }
   });
 });
+
+test.describe("the sponsor wordmark (RC3.1)", () => {
+  test("is visible with JavaScript off, as crawlers and prerender see it", async ({ browser }) => {
+    const ctx = await browser.newContext({ javaScriptEnabled: false });
+    const page = await ctx.newPage();
+    await page.goto("/");
+    const mark = page.locator(".hc-qloo-rise").first();
+    await mark.scrollIntoViewIfNeeded();
+    expect(await mark.evaluate((el) => el.closest("[data-inview]")?.getAttribute("data-inview") ?? null)).toBeNull();
+    expect(await mark.locator("path").first().evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+    await ctx.close();
+  });
+
+  test("rises when scrolled into view and settles fully visible", async ({ page }) => {
+    await page.goto("/");
+    const mark = page.locator(".hc-qloo-rise").first();
+    await mark.scrollIntoViewIfNeeded();
+    await expect.poll(() => mark.evaluate((el) => el.closest("[data-inview]")?.getAttribute("data-inview") ?? "static")).toMatch(/^(true|static)$/);
+    await expect.poll(() => mark.locator("path").first().evaluate((el) => getComputedStyle(el).opacity), { timeout: 5000 }).toBe("1");
+  });
+
+  test("with reduced motion, every part of it is still, the purple bar included (QA blocker)", async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: "reduce" });
+    const page = await ctx.newPage();
+    await page.goto("/");
+    const mark = page.locator(".hc-qloo-rise").first();
+    await mark.scrollIntoViewIfNeeded();
+    const names = await mark.locator("path").evaluateAll((els) => els.map((el) => getComputedStyle(el).animationName));
+    expect(names.length).toBeGreaterThan(0);
+    for (const n of names) expect(n).toBe("none");
+    await ctx.close();
+  });
+});

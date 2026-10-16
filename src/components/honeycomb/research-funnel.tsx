@@ -45,7 +45,7 @@ export function ResearchFunnel({
   const items: React.ReactNode[] = [];
   const link = (k: string) =>
     landing ? (
-      <li key={`${k}-l`} aria-hidden="true" className="text-[11px] leading-none text-muted-foreground">
+      <li key={`${k}-l`} aria-hidden="true" className="text-sm leading-none text-muted-foreground">
         ▸
       </li>
     ) : (
@@ -53,14 +53,14 @@ export function ResearchFunnel({
     );
   const cellCls = cn(
     "text-[13px] leading-4",
-    landing ? "flex items-center gap-2 text-left" : "flex min-w-[88px] flex-col items-center gap-1 text-center",
+    landing ? "flex items-center gap-1.5 text-left" : "flex min-w-[88px] flex-col items-center gap-1 text-center",
   );
   stages.forEach((s) => {
     const n = t[s.key] ?? 0;
     const busy = running.includes(s.tool) && n === 0;
     items.push(
       <li key={s.key} title={s.src} className={cellCls}>
-        <HexCell size={36} tone={busy ? "dashed" : "default"} fontSize={String(n).length > 3 ? 11 : 14} label={busy ? `${s.many}: checking` : `${n} ${n === 1 ? s.one : s.many} (${s.src})`}>
+        <HexCell size={landing ? 32 : 36} tone={busy ? "dashed" : "default"} fontSize={String(n).length > 3 ? 11 : 14} label={busy ? `${s.many}: checking` : `${n} ${n === 1 ? s.one : s.many} (${s.src})`}>
           {busy ? <Loader size={14} /> : fmt(n)}
         </HexCell>
         <span aria-hidden="true">{n === 1 ? s.one : s.many}</span>
@@ -70,14 +70,14 @@ export function ResearchFunnel({
   });
   items.push(
     <li key="total" className={cn(cellCls, "font-bold")}>
-      <HexCell size={42} fontSize={14} label={`${total} data points`}>
+      <HexCell size={landing ? 36 : 42} fontSize={14} label={`${total} data points`}>
         {fmt(total)}
       </HexCell>
       <span aria-hidden="true">data points</span>
     </li>,
     link("total"),
     <li key="picks" className={cn(cellCls, "font-bold")}>
-      <HexCell size={42} tone={done ? "primary" : "dashed"} fontSize={16} label={done ? `${picks} pitches for your busk` : "Choosing your pitches"}>
+      <HexCell size={landing ? 36 : 42} tone={done ? "primary" : "dashed"} fontSize={16} label={done ? `${picks} pitches for your busk` : "Choosing your pitches"}>
         {done ? picks : <Loader size={16} />}
       </HexCell>
       <span aria-hidden="true" className={landing && done ? "text-signal-text" : undefined}>{done ? (picks === 1 ? "pitch" : "pitches") : "choosing pitches"}</span>
@@ -85,7 +85,7 @@ export function ResearchFunnel({
   );
   return (
     <section aria-label="The data behind your busk" aria-live={live ? "polite" : "off"} className={cn(!landing && "border-2 border-rule bg-card p-4", className)}>
-      <ol className={cn("m-0 flex list-none flex-wrap p-0", landing ? "items-center gap-x-3 gap-y-3" : "items-start justify-start gap-x-2 gap-y-4")}>{items}</ol>
+      <ol className={cn("m-0 flex list-none flex-wrap p-0", landing ? "items-center gap-x-2 gap-y-3" : "items-start justify-start gap-x-2 gap-y-4")}>{items}</ol>
     </section>
   );
 }

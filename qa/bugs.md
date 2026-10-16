@@ -39,6 +39,13 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-033 | Low | Honeycomb landing L17: research funnel labels under the hexes, dashes instead of ▸ chevrons, boxed in a card | Fixed (2d8dc86, d74ccd2), verified in v4 at 7b1521e |
 | B-034 | Low | Honeycomb landing L20: setlist panel marked built but Learn these is a tan panel (board: bordered box, orange top rule, mono title); set-length line sans; rows 1–4 not 01–04; heading names the pitch; no Copy | Fixed (4b9bff1, fe89b0e), verified in v4 at 7b1521e |
 | B-035 | High | design/honeycomb 4b9bff1 doesn't build from a clean export: setlist-panel.tsx imports components/setlist/copy-set-button, which was never committed (untracked in DEV's worktree) | Fixed (fe89b0e), verified: 7b1521e builds from a clean export |
+| B-036 | Low | Honeycomb /busks B07: after a song is picked the search results stay open under the field until the query is cleared | Open (design/honeycomb) |
+| B-037 | Low | Honeycomb /busks B08: picks list has no “Your picks · N songs · total time” header | Open (design/honeycomb) |
+| B-038 | Low | Honeycomb /busks B06: the artists hint “N of 10. Type a comma to add a name that isn't on Spotify.” is missing | Open (design/honeycomb) |
+| B-039 | Low | Honeycomb /busks B12: no “Up to 6 hours” hint under To | Open (design/honeycomb) |
+| B-040 | Low | Honeycomb /busks B09: Spotify artist link has no visible label; “(optional)” lives in the placeholder (WCAG 3.3.2) | Open (design/honeycomb; F26 reshapes it) |
+| B-041 | Low | Honeycomb /busks B11/B14: a focused choice card shows a 2 px dark outline flush on its 2 px dark border, barely visible on the selected card | Open (design/honeycomb) |
+| B-042 | Low | Honeycomb /busks B07 at 390: the “By your artist” badge and the time squeeze the song title in the results to one letter | Open (design/honeycomb) |
 
 ---
 
@@ -182,4 +189,7 @@ Checked part by part against BRAND's 29-part inventory (`design-handoff/inventor
 - **How found:** `git archive HEAD` of design/honeycomb (6bc169e, on top of DEV's 4b9bff1), then `next build` fails with "Module not found: Can't resolve '@/components/setlist/copy-set-button'" (src/components/setlist/setlist-panel.tsx:2).
 - **Cause:** the file exists only as an untracked file in DEV's worktree. Anything that builds from git (a deploy, CI, another checkout) breaks.
 - **Also checked:** bbd1111 (the evening-slot port) builds, and QA's honeycomb suite passes there 153 of 153 at Wednesday 12:00, Friday 21:30 and Saturday 00:15.
+
+### B-036 to B-042 · Busks · review v1 (design/honeycomb at 7b1521e)
+Evidence, side by side with the deck at 390/768/1440: `qa/reports/busks.html` on design/honeycomb (rows B06–B14). Parts are provisional until BRAND's busks inventory lands. The user's calls F13, F14, F20, F25, F26 and F27 are tracked in that report, not here.
 

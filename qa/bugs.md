@@ -56,6 +56,8 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-050 | Medium | Honeycomb plan P24: “Your busk” starts 871 px down at 390 (987 px at 1440): header stack, chips and funnel push the payoff below the fold | Open (design/honeycomb) |
 | B-051 | Low | Honeycomb plan P02/P03: the plan page keeps the boxed funnel and full-width Agent vs engine rows, unlike the board | Open (design/honeycomb) |
 | B-052 | Low | Honeycomb /brain BR08: the Pick any piece panel lost the board's two “Try …” prompts (Setlist and learn these; Taste heatmap); one run-on sentence instead | Open (design/honeycomb) |
+| B-053 | Low | Honeycomb 404 E01: no large “404” above the card; content left-aligned; no poster shadow (board) | Open (design/honeycomb) |
+| B-054 | Low | Honeycomb error card E02: “!” icon instead of the warning triangle, left-aligned, reference above the buttons instead of under a rule at the foot, no poster shadow | Open (design/honeycomb) |
 
 ---
 
@@ -207,3 +209,5 @@ Evidence, side by side with the deck at 390/768/1440: `qa/reports/busks.html` on
 Evidence, side by side with the deck's 11 Plan boards: `qa/reports/plan.html` on design/honeycomb (rows P01–P26; provisional until BRAND's plan inventory lands). axe is clean on the ready plan and every reachable state; the engine fallback (P15) has no offline switch and is judged from the source.
 
 B-052 evidence: `qa/reports/brain.html` on design/honeycomb, row BR08.
+
+B-053, B-054 evidence: `qa/reports/errors.html` on design/honeycomb, rows E01, E02.

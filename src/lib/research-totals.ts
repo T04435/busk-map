@@ -1,7 +1,7 @@
 /**
  * Research totals: how much data a plan's research used, for the design's
  * ResearchFunnel. Computed once when the plan is assembled and kept on the
- * plan itself, so they survive the 7-day strip of raw step data (retention).
+ * plan itself, so replays and stored plans return them as they were.
  *
  * Agent plans count from the run's tool outputs (`fromToolOutputs`); engine-only
  * plans (no agent, the agent failed or fell back, run=0) count from the

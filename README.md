@@ -47,7 +47,7 @@ pnpm test:e2e          # builds and starts an offline server, then runs the judg
 - City of Melbourne pedestrian counting system and busking locations (CC BY)
 - Ticketmaster Discovery API, Last.fm, Open-Meteo
 
-No Qloo response data is stored in this repository. At runtime, raw Qloo-derived step data is kept 7 days; plans and links persist (a daily job strips each run's raw tool output after 7 days, keeping the plan, the step labels, inputs, summaries and notes; see [docs/deploy.md](docs/deploy.md#retention-raw-step-data-7-days)).
+Plans keep their full step data: a stored plan or run holds every step the agent took, with the data each tool returned. That Qloo-derived data is stored privately server-side (Postgres) and is never committed to this repository.
 
 ## Licence
 MIT. See [LICENSE](LICENSE).

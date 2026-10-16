@@ -28,12 +28,4 @@ describe("agent steps", () => {
     expect(formatInput({ at: { pitchId: "spot:x" }, radiusM: 400, signals: ["A", "B"] })).toBe("at: pitchId spot:x · radiusM: 400 · signals: A, B");
     expect(formatInput(undefined)).toBe("–");
   });
-
-  it("a step whose raw data was pruned (retention) keeps its summary and says so", () => {
-    const steps = ([
-      { type: "tool-start", id: "1", tool: "taste_map", label: "Taste", input: {} },
-      { type: "tool-end", id: "1", tool: "taste_map", ok: true, summary: "42 cells", pruned: true },
-    ] as PlanStreamEvent[]).reduce<AgentStep[]>(applyStreamEvent, []);
-    expect(steps[0]).toMatchObject({ status: "done", summary: "42 cells", output: undefined, pruned: true });
-  });
 });

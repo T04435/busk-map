@@ -16,8 +16,6 @@ export type AgentStep = {
   status: "running" | "done" | "failed" | "notes";
   summary?: string;
   output?: unknown;
-  /** The raw output was removed under the retention rule (7 days). */
-  pruned?: boolean;
   notes: StepNote[];
 };
 
@@ -37,7 +35,7 @@ export function applyStreamEvent(steps: AgentStep[], event: PlanStreamEvent): Ag
     return [...steps, step];
   }
   if (event.type === "tool-end") {
-    return steps.map((s) => (s.id === event.id ? { ...s, status: event.ok ? "done" : "failed", summary: event.summary, output: event.output, ...(event.pruned ? { pruned: true } : {}) } : s));
+    return steps.map((s) => (s.id === event.id ? { ...s, status: event.ok ? "done" : "failed", summary: event.summary, output: event.output } : s));
   }
   return steps;
 }

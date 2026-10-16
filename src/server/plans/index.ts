@@ -11,7 +11,6 @@ import { CITIES } from "@/server/cities";
 import { testSwitches } from "@/server/env";
 import { log } from "@/server/log";
 import { planLinkLimiter } from "@/server/rate-limit";
-import { hasRawStepData, pastRetention, RAW_STEP_RETENTION_MS, stripStepOutputs } from "./retention-core";
 import { canonicalJson, createPlanId, findPlanId, linksDurable, shortPlanStore, storedRequestOf, type PlanSnapshot, type StoredPlan } from "./store";
 
 export type PlanLink = { id: string } | { id: null; reason: "rate_limited" | "not_durable" | "error" };
@@ -65,22 +64,10 @@ export async function longUrlTarget(
   return `${planPath(link.id)}${query ? `?${query}` : ""}`;
 }
 
-/**
- * The stored plan for a well-formed id, or null. A store error throws (it is
- * not a missing plan). Retention, lazily: a run past RAW_STEP_RETENTION_MS is
- * returned without its raw step output, and the stored row is stripped too
- * (best effort; the daily cron catches the rest).
- */
-export async function loadStoredPlan(id: string, now = Date.now()): Promise<StoredPlan | null> {
+/** The stored plan for a well-formed id, or null. A store error throws (it is not a missing plan). */
+export async function loadStoredPlan(id: string): Promise<StoredPlan | null> {
   if (!isPlanId(id)) return null;
-  const store = shortPlanStore(testSwitches().offline);
-  const stored = await store.get(id);
-  const s = stored?.snapshot;
-  if (!stored || !s || !pastRetention(s.finishedAt, now) || !hasRawStepData(s.events)) return stored;
-  void store.pruneRawSteps(now - RAW_STEP_RETENTION_MS, id).catch((error) => {
-    log.warn("plan steps not pruned on read", { store: store.kind, error: error instanceof Error ? error.message : "unknown" });
-  });
-  return { ...stored, snapshot: { ...s, events: stripStepOutputs(s.events) } };
+  return shortPlanStore(testSwitches().offline).get(id);
 }
 
 /** The stored request with this viewer's tip history (from their cookie), validated again. */

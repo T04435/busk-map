@@ -288,8 +288,7 @@ export const planStreamEventSchema = z.discriminatedUnion("type", [
   /** `input`: the inputs Claude chose. */
   z.object({ type: z.literal("tool-start"), id: z.string(), tool: z.string(), label: z.string(), source: z.string().optional(), input: z.unknown().optional() }),
   /** `output`: the data the tool returned, exactly as the model saw it. */
-  /** `pruned`: the raw output was removed under the retention rule (7 days); the summary stays. */
-  z.object({ type: z.literal("tool-end"), id: z.string(), tool: z.string(), ok: z.boolean(), summary: z.string(), output: z.unknown().optional(), pruned: z.boolean().optional() }),
+  z.object({ type: z.literal("tool-end"), id: z.string(), tool: z.string(), ok: z.boolean(), summary: z.string(), output: z.unknown().optional() }),
   /** Run totals, sent before the plan. */
   z.object({
     type: z.literal("usage"),

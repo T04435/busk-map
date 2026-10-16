@@ -6,8 +6,6 @@ import { newPlanId } from "@/lib/plan-id";
 import { env } from "@/server/env";
 import { log } from "@/server/log";
 import { processMap } from "@/server/memo";
-import { hasRawStepData, stripStepOutputs } from "./retention-core";
-import { hasRawSql, stripEventsSql } from "./sql";
 
 /**
  * Plans behind short ids (/p/<id>), table `plans` from migrations/003_plans.sql.
@@ -55,13 +53,7 @@ export interface ShortPlanStore {
   get(id: string): Promise<StoredPlan | null>;
   /** Store the finished run. Without `overwrite`, only when the plan has none yet. */
   saveSnapshot(id: string, snapshot: PlanSnapshot, overwrite: boolean): Promise<boolean>;
-  /**
-   * Retention: remove the raw tool output from the steps of runs finished before `cutoffMs` (all plans, or one).
-   * Returns how many plans changed; idempotent.
-   */
-  pruneRawSteps(cutoffMs: number, id?: string): Promise<number>;
 }
-
 
 /** JSON with object keys sorted at every level (arrays keep their order). */
 export function canonicalJson(value: unknown): string {
@@ -108,15 +100,6 @@ export class MemoryShortPlanStore implements ShortPlanStore {
     if (!row || (row.snapshot && !overwrite)) return false;
     row.snapshot = structuredClone(snapshot);
     return true;
-  }
-  async pruneRawSteps(cutoffMs: number, id?: string) {
-    let changed = 0;
-    for (const row of id ? [this.rows.get(id)].filter((r) => r !== undefined) : this.rows.values()) {
-      if (!row.snapshot || row.snapshot.finishedAt >= cutoffMs || !hasRawStepData(row.snapshot.events)) continue;
-      row.snapshot.events = stripStepOutputs(row.snapshot.events);
-      changed++;
-    }
-    return changed;
   }
 }
 
@@ -187,16 +170,6 @@ export class PostgresShortPlanStore implements ShortPlanStore {
       [id, JSON.stringify(s.plan), JSON.stringify(s.events), s.explanations, s.runKey, s.runDay, s.startedAt, s.finishedAt, overwrite],
     )) as { id: string }[];
     return rows.length > 0;
-  }
-
-  async pruneRawSteps(cutoffMs: number, id?: string) {
-    const rows = (await this.sql.query(
-      `UPDATE plans SET steps = ${stripEventsSql("steps")}
-        WHERE steps IS NOT NULL AND finished_at < to_timestamp($1::double precision / 1000) AND ($2::text IS NULL OR id = $2) AND ${hasRawSql("steps")}
-        RETURNING id`,
-      [cutoffMs, id ?? null],
-    )) as { id: string }[];
-    return rows.length;
   }
 }
 

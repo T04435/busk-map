@@ -14,7 +14,6 @@ Set these for **Production** (and Preview, if previews should use live data) und
 | `LASTFM_API_KEY` | song popularity and "learn these" | setlists keep the performer's songs, without popularity |
 | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | song search and own-catalogue import on the landing page | the performer types songs instead |
 | `DATABASE_URL` | comparison stats, stored runs, short plan links (see below) | nothing is recorded; runs and links are kept in memory |
-| `CRON_SECRET` | the daily retention job, `GET /api/cron/prune` (Vercel Cron sends it as a bearer token) | the route refuses to run (503), so raw step data is only stripped lazily when an old plan is opened |
 
 Must **not** be set in Production: `BUSKMAP_OFFLINE`, `BUSKMAP_ALLOW_FAULTS`, `QLOO_MOCK`, `QLOO_MOCK_ROUTE` (the test switches are ignored when `VERCEL_ENV=production`, but leave them unset anyway).
 
@@ -97,10 +96,6 @@ Every plan runs a plain-AI baseline (Claude Haiku, no tools, no data) in paralle
 - Locally, `next dev` uses the dev branch (`.env.development.local` wins over `.env.local`). `next start` reads `.env.local`, which may point at main: run it with `DATABASE_URL=` in the shell to keep local runs out of the production database.
 - Rows hold no personal data: an example id or "custom", the city and slot, pitch ids, scores, the plain AI's pick statuses and the overlap.
 
-## Retention: raw step data 7 days
+## Stored step data
 
-Raw Qloo-derived step data is kept 7 days; plans and links persist. A finished run stores its steps, and each step holds the data the tool returned (much of it derived from Qloo). After 7 days that output is removed from the `plans` rows and from any `plan_store` run, and the step is marked `pruned`. The plan, the step labels, the inputs Claude chose, the summaries and the notes stay, so a link keeps working and shows "raw data removed" under each step.
-
-- `vercel.json` schedules `GET /api/cron/prune` daily (17:30 UTC, early morning in Melbourne). It needs `CRON_SECRET` (any long random value) in Production. The job is idempotent, also deletes expired `plan_store` rows, and returns counts.
-- The plan page also strips a run older than 7 days when it is opened (and writes the stripped steps back), so nothing older is ever shown even if the cron hasn't run.
-- No migration is needed: it updates the existing `steps` and `value` columns.
+Plans keep their full step data. A finished run stores its steps, and each step holds the data the tool returned (much of it derived from Qloo), in the `plans` rows and the `plan_store` runs. It is stored privately server-side and never committed to the repository. The `plan_store` replay cache keeps its own expiry (6 h for example plans, 15 min for other runs); the `plans` rows behind short links persist.

@@ -15,8 +15,8 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-009 | Low | e2e guard treats this machine's other addresses (0.0.0.0, 127.0.0.2, LAN IP, .local) as a deploy | Fixed (e42ab30), verified by QA |
 | B-010 | Low | Offline: steps, Agent vs engine and pitch cards still say Claude wrote them | Fixed (222cf92), verified by QA |
 | B-011 | Low | Landing search comboboxes say `aria-expanded="true"` in the server HTML until hydration | Fixed (868c371), verified by QA |
-| B-012 | Low | Flaky e2e: example-card test reads the plan stream body after navigating | Open |
-| B-013 | Low | Fresh-run limit message gives the retry time in Melbourne time with no zone | Open |
+| B-012 | Low | Flaky e2e: example-card test reads the plan stream body after navigating | Fixed (1950bd2), verified by QA |
+| B-013 | Low | Fresh-run limit message gives the retry time in Melbourne time with no zone | Fixed (4b6237b), verified by QA |
 
 ---
 

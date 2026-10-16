@@ -20,7 +20,7 @@ describe("QA fresh-run gate", () => {
     if (sixth.ok) return;
     expect(sixth.retryAfterS).toBeGreaterThan(0);
     expect(sixth.retryAfterS).toBeLessThanOrEqual(3600);
-    expect(sixth.message).toMatch(/^You've started 5 plans this hour\. Open one of your earlier plans, or try again at .+\.$/);
+    expect(sixth.message).toMatch(/^You've started 5 plans this hour\. Try again in about \d+ minutes?, or open one of your earlier plans\.$/);
   });
 
   it("replays and joined runs never count, before or after the limit", () => {
@@ -44,13 +44,14 @@ describe("QA fresh-run gate", () => {
     for (let i = 0; i < 10; i++) expect(freshRunGate({ reused: false, offline: true, ip: IP, timeZone: "Australia/Melbourne" }, limiter, NOW).ok).toBe(true);
   });
 
-  it("B-013 (open): the retry time is local to the plan city and has no zone label", () => {
+  it("B-013 (fixed): the retry hint is relative, so it reads the same in every time zone", () => {
     const limiter = createRateLimiter(FRESH_RUNS_PER_HOUR, 60 * 60_000);
     for (let i = 0; i < 5; i++) live(false, limiter, NOW);
-    const sixth = live(false, limiter, NOW);
-    if (sixth.ok) throw new Error("expected the limit");
-    // Documents current behaviour: 3 pm Melbourne + about 1 h → "4:00 pm" with no zone. Flip when B-013 is fixed.
-    expect(sixth.message).toMatch(/try again at 4:00\s?pm\.$/i);
-    expect(sixth.message).not.toMatch(/AEDT|Melbourne|UTC|GMT/);
+    const melbourne = live(false, limiter, NOW);
+    const newYork = freshRunGate({ reused: false, offline: false, ip: IP, timeZone: "America/New_York" }, limiter, NOW);
+    if (melbourne.ok || newYork.ok) throw new Error("expected the limit");
+    expect(melbourne.message).toMatch(/Try again in about 60 minutes/);
+    expect(newYork.message).toBe(melbourne.message);
+    expect(melbourne.message).not.toMatch(/\d:\d\d|am\b|pm\b|AEDT|UTC/i);
   });
 });

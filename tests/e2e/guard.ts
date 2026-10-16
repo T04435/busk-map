@@ -1,34 +1,39 @@
 /**
- * The e2e cost guard's decision (B-001, B-008), pure so it can be unit-tested.
+ * The e2e cost guard's decision (B-001, B-008, B-009), pure so it can be unit-tested.
  *
- * - A local server (Playwright's own, a reused one, or PLAYWRIGHT_BASE_URL on localhost, 127.0.0.1, [::1] or
- *   *.localhost) is checked: GET /api/health must report offline: true, or the run aborts.
- * - E2E_ALLOW_LIVE=1 skips the abort for a local server, with a loud cost warning.
- * - A remote PLAYWRIGHT_BASE_URL (a deploy) only warns: those runs are deliberate.
+ * The hostname plays no part: localhost, 0.0.0.0, a LAN IP, <machine>.local and a remote deploy are all treated
+ * the same, because any of them can be a live server that spends money.
+ *
+ * - Every run first calls GET `${baseURL}/api/health`.
+ * - It reports offline: true → run.
+ * - Otherwise (not offline, unreachable, no health route) → abort, unless E2E_ALLOW_LIVE=1, which runs with a loud
+ *   cost warning. So a run against a deploy (PLAYWRIGHT_BASE_URL) needs E2E_ALLOW_LIVE=1 as well.
  */
-export type GuardMode = "check" | "allow-live" | "warn";
 export type GuardVerdict = "run" | "warn" | "abort";
 
-export function isLocalHost(hostname: string): boolean {
-  const host = hostname.toLowerCase();
-  return host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host === "::1" || host.endsWith(".localhost");
+/** What /api/health said: "offline" (offline: true), "live" (answered, not offline), "unreachable" (no answer, error or no route). */
+export type HealthResult = "offline" | "live" | "unreachable";
+
+/** The outcome for a health result and the E2E_ALLOW_LIVE override. */
+export function guardVerdict(health: HealthResult, allowLive: boolean): GuardVerdict {
+  if (health === "offline") return "run";
+  return allowLive ? "warn" : "abort";
 }
 
-/** How to guard a run against `baseURL`; `external` when it came from PLAYWRIGHT_BASE_URL. */
-export function guardMode(baseURL: string, env: { external: boolean; allowLive: boolean }): GuardMode {
-  let local: boolean;
+/** Calls GET `${baseURL}/api/health` and classifies the answer. Never throws. */
+export async function checkHealth(baseURL: string, fetchImpl: typeof fetch = fetch): Promise<HealthResult> {
   try {
-    local = !env.external || isLocalHost(new URL(baseURL).hostname);
+    const response = await fetchImpl(new URL("/api/health", baseURL), { cache: "no-store" });
+    if (!response.ok) return "unreachable";
+    const body: unknown = await response.json().catch(() => null);
+    return body && typeof body === "object" && (body as { offline?: unknown }).offline === true ? "offline" : "live";
   } catch {
-    local = true; // An unparseable URL is never treated as a deploy.
+    return "unreachable";
   }
-  if (!local) return "warn";
-  return env.allowLive ? "allow-live" : "check";
 }
 
-/** The outcome for a mode and what /api/health said (offline: true, or null when it didn't say so). */
-export function guardVerdict(mode: GuardMode, offline: boolean | null): GuardVerdict {
-  if (mode === "check") return offline === true ? "run" : "abort";
-  if (mode === "allow-live") return offline === true ? "run" : "warn";
-  return "warn";
+/** The full decision for a base URL: health check, then the verdict. */
+export async function decideGuard(baseURL: string, env: { allowLive: boolean }, fetchImpl: typeof fetch = fetch) {
+  const health = await checkHealth(baseURL, fetchImpl);
+  return { health, verdict: guardVerdict(health, env.allowLive) };
 }

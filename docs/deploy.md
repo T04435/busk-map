@@ -76,7 +76,7 @@ On Pro you can add a second, stricter rule for the agent alone: path `^/api/plan
 ## 5. Before pointing the domain
 
 - [ ] `pnpm check` and `pnpm test:e2e` green on the commit being deployed.
-- [ ] Run the e2e tests against the preview: `PLAYWRIGHT_BASE_URL=https://<preview> VERCEL_AUTOMATION_BYPASS_SECRET=… pnpm test:e2e` (fault and mock tests skip themselves).
+- [ ] Run the e2e tests against the preview: `PLAYWRIGHT_BASE_URL=https://<preview> E2E_ALLOW_LIVE=1 VERCEL_AUTOMATION_BYPASS_SECRET=… pnpm test:e2e` (fault and mock tests skip themselves). `E2E_ALLOW_LIVE=1` is required: the e2e cost guard calls `GET /api/health` on every target, whatever the host, and aborts unless it reports `offline: true`. A deploy is live, so the run would abort without it; with it, the run prints a cost warning, because uncached example plans call Claude, Qloo and Ticketmaster.
 - [ ] The Qloo badge says "Live Qloo data" once the key is set (response shapes were verified against live Qloo on 2026-10-15; see `docs/qloo-mock.md`).
 - [ ] One live agent run and one comparison work in production (BotID passes).
 - [ ] The WAF rule shows matches in Firewall → Overview.

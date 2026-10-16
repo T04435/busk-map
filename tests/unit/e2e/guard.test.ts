@@ -1,38 +1,62 @@
 import { describe, expect, it } from "vitest";
-import { guardMode, guardVerdict, isLocalHost } from "../../e2e/guard";
+import { checkHealth, decideGuard, guardVerdict, type HealthResult } from "../../e2e/guard";
 
-describe("e2e cost guard (B-008)", () => {
-  it("knows local hosts", () => {
-    for (const host of ["localhost", "127.0.0.1", "[::1]", "::1", "busk.localhost", "LOCALHOST"]) expect(isLocalHost(host), host).toBe(true);
-    for (const host of ["busk-map.vercel.app", "localhost.example.com", "10.0.0.2"]) expect(isLocalHost(host), host).toBe(false);
-  });
+/** A fetch that answers /api/health like a server in the given state. */
+function fakeFetch(state: "offline" | "live" | "unreachable" | "no-route" | "bad-json"): typeof fetch {
+  return (async (input: RequestInfo | URL) => {
+    expect(new URL(String(input)).pathname).toBe("/api/health");
+    if (state === "unreachable") throw new TypeError("fetch failed");
+    if (state === "no-route") return new Response("Not found", { status: 404 });
+    if (state === "bad-json") return new Response("<html>", { status: 200 });
+    return Response.json({ ok: true, offline: state === "offline", faults: false });
+  }) as typeof fetch;
+}
 
-  const cases: [baseURL: string, external: boolean, allowLive: boolean, offline: boolean | null, verdict: string][] = [
-    // Playwright's own or a reused server on the e2e port: checked.
-    ["http://localhost:3100", false, false, true, "run"],
-    ["http://localhost:3100", false, false, null, "abort"],
-    // PLAYWRIGHT_BASE_URL on a local host: checked like a reused server (the B-008 hole).
-    ["http://localhost:3200", true, false, null, "abort"],
-    ["http://127.0.0.1:3200", true, false, null, "abort"],
-    ["http://[::1]:3200", true, false, null, "abort"],
-    ["http://busk.localhost:3200", true, false, null, "abort"],
-    ["http://localhost:3200", true, false, true, "run"],
-    // E2E_ALLOW_LIVE=1: no abort, a loud warning instead.
-    ["http://localhost:3200", true, true, null, "warn"],
-    ["http://localhost:3100", false, true, null, "warn"],
-    ["http://localhost:3200", true, true, true, "run"],
-    // A remote deploy: warning only, whatever the health says.
-    ["https://busk-map.vercel.app", true, false, null, "warn"],
-    ["https://busk-map.vercel.app", true, true, true, "warn"],
+describe("e2e cost guard (B-001, B-008, B-009)", () => {
+  const verdicts: [health: HealthResult, allowLive: boolean, verdict: string][] = [
+    ["offline", false, "run"],
+    ["offline", true, "run"],
+    ["live", false, "abort"],
+    ["live", true, "warn"],
+    ["unreachable", false, "abort"],
+    ["unreachable", true, "warn"],
   ];
-  it.each(cases)("%s (external %s, allow-live %s, offline %s) → %s", (baseURL, external, allowLive, offline, verdict) => {
-    expect(guardVerdict(guardMode(baseURL, { external, allowLive }), offline)).toBe(verdict);
+  it.each(verdicts)("health %s, E2E_ALLOW_LIVE %s → %s", (health, allowLive, verdict) => {
+    expect(guardVerdict(health, allowLive)).toBe(verdict);
   });
 
-  it("modes", () => {
-    expect(guardMode("http://localhost:3200", { external: true, allowLive: false })).toBe("check");
-    expect(guardMode("http://localhost:3200", { external: true, allowLive: true })).toBe("allow-live");
-    expect(guardMode("https://busk-map.vercel.app", { external: true, allowLive: false })).toBe("warn");
-    expect(guardMode("not a url", { external: true, allowLive: false })).toBe("check");
+  it("classifies the health answer", async () => {
+    expect(await checkHealth("http://localhost:3100", fakeFetch("offline"))).toBe("offline");
+    expect(await checkHealth("http://localhost:3100", fakeFetch("live"))).toBe("live");
+    expect(await checkHealth("http://localhost:3100", fakeFetch("unreachable"))).toBe("unreachable");
+    expect(await checkHealth("http://localhost:3100", fakeFetch("no-route"))).toBe("unreachable");
+    expect(await checkHealth("http://localhost:3100", fakeFetch("bad-json"))).toBe("live");
+    expect(await checkHealth("not a url", fakeFetch("offline"))).toBe("unreachable");
   });
+
+  // The hostname no longer matters: every host gets the same decision for the same health and override.
+  const hosts = [
+    "http://localhost:3100",
+    "http://127.0.0.1:3200",
+    "http://0.0.0.0:3200",
+    "http://127.0.0.2:3200",
+    "http://192.168.1.101:3200",
+    "http://t04435-mbp.local:3200",
+    "https://busk-map.vercel.app",
+  ];
+  const states = [
+    ["offline", false, "run"],
+    ["offline", true, "run"],
+    ["live", false, "abort"],
+    ["live", true, "warn"],
+    ["unreachable", false, "abort"],
+    ["unreachable", true, "warn"],
+    ["no-route", false, "abort"],
+    ["no-route", true, "warn"],
+  ] as const;
+  for (const host of hosts) {
+    it.each(states)(`${host}: %s, E2E_ALLOW_LIVE %s → %s`, async (state, allowLive, verdict) => {
+      expect((await decideGuard(host, { allowLive }, fakeFetch(state))).verdict).toBe(verdict);
+    });
+  }
 });

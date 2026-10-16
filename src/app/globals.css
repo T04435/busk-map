@@ -311,6 +311,13 @@ html { scroll-padding-bottom: var(--bottom-nav); }
 :root { --fill-rule: var(--rule); }
 .dark, [data-theme="dark"] { --fill-rule: transparent; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not(.light) { --fill-rule: transparent; } }
+/* The focus ring on a filled primary or destructive button (WCAG 1.4.11, 3:1 against every colour next to the indicator). By day the
+   ring is the rule colour. At night the fill is orange, the page is near-black and no single colour reaches 3:1 against both, so the
+   button's own 2px border turns the page colour on focus (--focus-edge: 6.5:1 against the orange fill) and the one ring outside it is
+   white (--ring-on-primary: 18:1 against the page and against that edge). Still one ring: the edge is the border, not a second ring. */
+:root { --ring-on-primary: var(--ring); --focus-edge: var(--fill-rule); }
+.dark, [data-theme="dark"] { --ring-on-primary: #ffffff; --focus-edge: var(--background); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not(.light) { --ring-on-primary: #ffffff; --focus-edge: var(--background); } }
 
 /* Texture: the grain on hero grounds, the pink hatch for no-busking zones and test data, and the placeholder field. */
 .bm-grain {

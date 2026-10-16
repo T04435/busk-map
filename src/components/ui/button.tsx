@@ -11,14 +11,14 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "focus-visible:ring-2 focus-visible:ring-ring border-(--fill-rule) bg-primary text-primary-foreground hover:bg-[color-mix(in_oklab,var(--primary)_88%,var(--foreground))]",
+          "focus-visible:ring-2 focus-visible:ring-(--ring-on-primary) border-(--fill-rule) bg-primary text-primary-foreground hover:bg-[color-mix(in_oklab,var(--primary)_88%,var(--foreground))] focus-visible:border-(--focus-edge)",
         outline:
           "focus-visible:ring-2 focus-visible:ring-ring border-input bg-transparent text-foreground hover:bg-secondary aria-expanded:bg-secondary",
         secondary:
           "focus-visible:ring-2 focus-visible:ring-ring border-rule bg-transparent text-secondary-foreground hover:bg-secondary aria-expanded:bg-secondary",
         ghost: "focus-visible:ring-2 focus-visible:ring-ring text-foreground hover:bg-secondary aria-expanded:bg-secondary",
         destructive:
-          "focus-visible:ring-2 focus-visible:ring-ring border-destructive bg-destructive text-destructive-foreground hover:bg-[color-mix(in_oklab,var(--destructive)_88%,var(--foreground))]",
+          "focus-visible:ring-2 focus-visible:ring-(--ring-on-primary) border-destructive bg-destructive text-destructive-foreground hover:bg-[color-mix(in_oklab,var(--destructive)_88%,var(--foreground))] focus-visible:border-(--focus-edge)",
         // The hero and closing calls to action: a 2px cream edge and a hard offset shadow. The focus ring is an outline 10px out, so the
         // offset shadow stays exactly as it is (B-018); no ring box-shadow competes with it.
         poster:

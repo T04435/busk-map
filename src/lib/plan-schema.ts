@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { slotSchema } from "./slot";
 import { tipHistorySchema } from "./tips";
+import { researchTotalsSchema } from "./research-totals";
 
 export const PERMITS = ["general", "premium", "circle-act"] as const;
 export const CITY_IDS = ["melbourne"] as const;
@@ -266,6 +267,12 @@ export const planSchema = z.object({
     })
     .nullable()
     .default(null),
+  /**
+   * How much data the research used (the ResearchFunnel), computed when the plan was assembled and kept with it,
+   * so it survives the 7-day strip of raw step data. Optional: plans stored before it still parse.
+   * Definitions in lib/research-totals.ts.
+   */
+  researchTotals: researchTotalsSchema.optional(),
 });
 
 export type Plan = z.infer<typeof planSchema>;

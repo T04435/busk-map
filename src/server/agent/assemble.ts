@@ -6,6 +6,7 @@ import { planSchema, type Plan, type PlanPitch } from "@/lib/plan-schema";
 import { leadingAgeBand, type ScoredPitch } from "@/server/scoring";
 import * as qloo from "@/server/adapters/qloo";
 import { agentChanges } from "@/lib/agent-vs-engine";
+import { fromEngine, fromToolOutputs, type ToolResult } from "@/lib/research-totals";
 import type { PlanContext } from "./context";
 
 /** What the model contributes: words only. Numbers and places come from the engine. */
@@ -125,6 +126,8 @@ export type AssembleOptions = {
   agentNotes?: string[];
   /** Numbers in Claude's text that no tool returned (accepted only after repeated rejections): texts with them use the template. */
   unverifiedNumbers?: string[];
+  /** The agent run's finished tool calls (tool-end, before any pruning): the research totals of an agent plan. */
+  toolResults?: ToolResult[];
 };
 
 /**
@@ -190,6 +193,18 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     const p = pitches.find((x) => x.id === id);
     return p && p.whySource === "ai" ? p.why : null;
   });
+
+  // Research totals: from the agent's tool outputs when its pitches are the plan, else from the engine's own data.
+  const agentPlan = valid && options.toolResults !== undefined;
+  const researchTotals = agentPlan
+    ? fromToolOutputs(options.toolResults!)
+    : fromEngine({
+        cells: cells.length,
+        crowdReads: (locals.length > 0 ? 1 : 0) + (usual && usual.artists.length > 0 ? 1 : 0),
+        pool: qlooDown ? [] : engineRanked,
+        sensors: footfall.sensors,
+        setlists: pitches.map((p) => p.setlist),
+      });
 
   const plan: Plan = {
     version: 1,
@@ -272,6 +287,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
             changes,
           }
         : null,
+    researchTotals,
   };
   return planSchema.parse(plan);
 }

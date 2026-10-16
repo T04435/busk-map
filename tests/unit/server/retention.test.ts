@@ -126,4 +126,47 @@ describe("retention: strip raw step data after 7 days", () => {
     expect(await ok.json()).toMatchObject({ plans: 0, runs: 0, expired: 0, stores: { plans: "memory", runs: "memory" } });
     vi.unstubAllEnvs();
   });
+
+  it("pruning keeps the plan's research totals: stored plans, stored runs and the lazy strip on read", async () => {
+    const { MemoryShortPlanStore, MemoryPlanStore, createPlanId, shortPlanStore, loadStoredPlan, snapshotEvents } = await load();
+    const { planRequestSchema } = await import("@/lib/plan-schema");
+    const { EXAMPLES } = await import("@/lib/examples");
+    const researchTotals = { taste: 51, crowds: 2, places: 3, events: 2, sensors: 2, rules: 24, scored: 22, songs: 3 };
+    const plan = { pitches: [], researchTotals } as unknown as Plan;
+    const request = planRequestSchema.parse({ city: "melbourne", slot: { date: "2026-10-01", startHour: 18, endHour: 21 }, performer: EXAMPLES[0].performer });
+
+    const plans = new MemoryShortPlanStore();
+    const id = await createPlanId(plans, request, null, "2026-10-01");
+    await plans.saveSnapshot(id, { plan, events, explanations: "ai", runKey: "k", runDay: "d", startedAt: NOW - 9 * DAY, finishedAt: NOW - 8 * DAY }, false);
+    expect(await plans.pruneRawSteps(NOW - 7 * DAY)).toBe(1);
+    const pruned = (await plans.get(id))!.snapshot!;
+    expect(pruned.plan.researchTotals).toEqual(researchTotals);
+    // The replay stream (the plan event last) carries them.
+    const replay = snapshotEvents(pruned).at(-1)!;
+    expect(replay.type === "plan" && replay.plan.researchTotals).toEqual(researchTotals);
+
+    const runs = new MemoryPlanStore();
+    await runs.put("run", "old", { events: [...events, { type: "plan", plan }], startedAt: 1, finishedAt: 2 }, 30 * DAY, NOW - 8 * DAY);
+    expect(await runs.pruneRawSteps(NOW - 7 * DAY, NOW)).toMatchObject({ runs: 1 });
+    const run = (await runs.get<{ events: PlanStreamEvent[] }>("run", "old", NOW))!.value.events.at(-1)!;
+    expect(run.type === "plan" && run.plan.researchTotals).toEqual(researchTotals);
+
+    vi.stubEnv("BUSKMAP_OFFLINE", "1");
+    const store = shortPlanStore(true);
+    const lazy = await createPlanId(store, planRequestSchema.parse({ city: "melbourne", slot: { date: "2026-10-17", startHour: 18, endHour: 21 }, performer: EXAMPLES[1].performer }), null, "2026-10-16");
+    await store.saveSnapshot(lazy, { plan, events, explanations: "ai", runKey: "k", runDay: "d", startedAt: NOW - 9 * DAY, finishedAt: NOW - 8 * DAY }, false);
+    const read = await loadStoredPlan(lazy, NOW);
+    expect(read!.snapshot!.events.some((e) => e.type === "tool-end" && e.output !== undefined)).toBe(false);
+    expect(read!.snapshot!.plan.researchTotals).toEqual(researchTotals);
+    vi.unstubAllEnvs();
+  });
+
+  it("the Postgres strip only touches tool-end outputs in steps, never the plan column", async () => {
+    const { PostgresShortPlanStore } = await load();
+    const queries: string[] = [];
+    const sql = { query: vi.fn(async (text: string): Promise<unknown[]> => (queries.push(text), [])) };
+    await new PostgresShortPlanStore(sql as never).pruneRawSteps(NOW - 7 * DAY);
+    expect(queries[0]).toMatch(/^UPDATE plans SET steps = /);
+    expect(queries[0]).not.toMatch(/\bplan\s*=/);
+  });
 });

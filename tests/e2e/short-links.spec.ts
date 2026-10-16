@@ -117,4 +117,18 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     const response = await request.post("/api/plan", { data: body, headers: { "x-buskmap-fresh": "1" } });
     expect(response.status()).toBe(403);
   });
+
+  test("the plan payload carries research totals (mock mode)", async ({ request }) => {
+    const body = { city: "melbourne", slot: { date: SATURDAY, startHour: 18, endHour: 21 }, performer: { name: "Totals Check", artists: ["Paul Kelly"] } };
+    const response = await request.post("/api/plan", { data: body });
+    expect(response.status()).toBe(200);
+    const events = (await response.text())
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as { type: string; plan?: { researchTotals?: Record<string, number> } });
+    const totals = events.find((e) => e.type === "plan")?.plan?.researchTotals;
+    expect(Object.keys(totals ?? {}).sort()).toEqual(["crowds", "events", "places", "rules", "scored", "sensors", "songs", "taste"]);
+    for (const value of Object.values(totals!)) expect(Number.isInteger(value) && value >= 0).toBe(true);
+    expect(totals!.scored).toBeGreaterThan(0);
+  });
 });

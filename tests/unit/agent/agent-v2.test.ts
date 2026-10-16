@@ -231,4 +231,34 @@ describe("Agent v2 runs (mock model)", () => {
     expect(plan.pitches.every((p) => !p.why.includes("98765"))).toBe(true);
     expect(plan.pitches.every((p) => p.whySource === "template")).toBe(true);
   });
+
+  it("research totals: an agent plan counts its tool outputs at finish; an engine-only plan counts the engine's data", async () => {
+    const { ctx, runPlanAgent, createMockPlanner } = await load();
+    const { fromToolOutputs, fromEngine } = await import("@/lib/research-totals");
+    const ends: { tool: string; ok: boolean; output: unknown }[] = [];
+    const { plan } = await runPlanAgent(ctx, { onToolEnd: (e) => ends.push(e) }, undefined, { model: createMockPlanner() });
+    expect(plan.explanations).toBe("ai");
+    expect(plan.researchTotals).toEqual(fromToolOutputs(ends));
+    const scoring = ends.filter((e) => e.tool === "score_pitches").at(-1)!.output as { poolSize: number };
+    expect(plan.researchTotals!.scored).toBe(scoring.poolSize);
+    expect(plan.researchTotals!.scored).toBeGreaterThan(0);
+    expect(plan.researchTotals!.rules).toBeGreaterThanOrEqual(plan.researchTotals!.scored);
+    expect(plan.researchTotals!.taste).toBeGreaterThan(0);
+
+    // The model fails: the engine's plan, with totals from the engine's data (never missing).
+    const failed = await load();
+    const { plan: fallback } = await failed.runPlanAgent(failed.ctx, {}, undefined, { model: failed.createMockPlanner("fail") });
+    expect(fallback.explanations).toBe("template");
+    const [ranked, cells, footfall] = await Promise.all([failed.ctx.ranked(), failed.ctx.tasteCells(), failed.ctx.footfall()]);
+    const engine = fromEngine({ cells: cells.length, crowdReads: 0, pool: ranked, sensors: footfall.sensors, setlists: fallback.pitches.map((p) => p.setlist) });
+    expect({ ...fallback.researchTotals, crowds: 0 }).toEqual(engine);
+    expect(fallback.researchTotals!.scored).toBe(ranked.length);
+    expect(fallback.researchTotals!.taste).toBe(cells.length);
+    expect(fallback.researchTotals!.crowds).toBeGreaterThanOrEqual(1);
+
+    // run=0 (engine only, no agent): the field is there too.
+    const { buildEnginePlan } = await import("@/server/agent/preload");
+    const engineOnly = await buildEnginePlan(request, OFFLINE, "2026-10-15");
+    expect(engineOnly.researchTotals).toEqual(fallback.researchTotals);
+  });
 });

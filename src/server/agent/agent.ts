@@ -2,6 +2,7 @@ import "server-only";
 import { ToolLoopAgent, type LanguageModel, type StopCondition } from "ai";
 import { describeSlot } from "@/lib/slot";
 import type { Plan } from "@/lib/plan-schema";
+import type { ToolResult } from "@/lib/research-totals";
 import { providerStatus } from "@/server/env";
 import { log } from "@/server/log";
 import { assemblePlan } from "./assemble";
@@ -136,6 +137,8 @@ export async function runPlanAgent(ctx: PlanContext, events: AgentEvents = {}, a
 
   let usage: Usage | null = null;
   const timeout = AbortSignal.timeout(limits.timeoutMs);
+  // Every finished tool call, for the plan's research totals (counted now, before any pruning of stored steps).
+  const toolResults: ToolResult[] = [];
   try {
     const agent = new ToolLoopAgent({
       model: options.model ?? (offline ? createMockPlanner() : MODELS.planner),
@@ -207,11 +210,13 @@ export async function runPlanAgent(ctx: PlanContext, events: AgentEvents = {}, a
         case "tool-result": {
           const output = part.output as { summary?: unknown; accepted?: boolean } | undefined;
           const ok = part.toolName !== "finish_plan" || output?.accepted === true;
+          toolResults.push({ tool: part.toolName, ok, output: part.output });
           events.onToolEnd?.({ id: part.toolCallId, tool: part.toolName, ok, summary: typeof output?.summary === "string" ? output.summary : "Done", output: part.output });
           break;
         }
         case "tool-error": {
           const message = part.error instanceof Error ? part.error.message : String(part.error);
+          toolResults.push({ tool: part.toolName, ok: false });
           events.onToolEnd?.({ id: part.toolCallId, tool: part.toolName, ok: false, summary: message.slice(0, 300), output: { error: message.slice(0, 600) } });
           break;
         }
@@ -251,7 +256,7 @@ export async function runPlanAgent(ctx: PlanContext, events: AgentEvents = {}, a
         : "The agent didn't give an answer the engine could accept, so this is the engine's plan with reasons generated from the data.",
     );
   }
-  const plan = await assemblePlan(ctx, state.answer, { pool: [...state.pool.values()], agentNotes: notes, unverifiedNumbers: state.unverifiedNumbers });
+  const plan = await assemblePlan(ctx, state.answer, { pool: [...state.pool.values()], agentNotes: notes, unverifiedNumbers: state.unverifiedNumbers, toolResults });
   return {
     plan,
     usage,

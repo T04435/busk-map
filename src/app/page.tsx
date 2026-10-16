@@ -114,7 +114,7 @@ async function OwnActForm({ searchParams }: Pick<PageProps<"/">, "searchParams">
   const stored = typeof again === "string" ? await loadStoredPlan(again).catch(() => null) : null;
   // This device's Repertoire (its cookie), if any: the form pre-fills from it unless ?again names an act.
   const repertoire = await playlistViewForCookie((await headers()).get("cookie"));
-  if (!stored) return <PerformerForm defaultDate={nextSlotDate("saturday", 18, 21, today, hour)} today={today} repertoire={repertoire} />;
+  if (!stored) return <PerformerForm defaultDate={nextAnyTimeDate(today, hour)} today={today} repertoire={repertoire} />;
   const { performer, permit } = stored.request;
   const slot = stored.request.slot;
   // A plan made for "any time" opens the form on any time, on the next date a window can still start.

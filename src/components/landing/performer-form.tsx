@@ -1,36 +1,41 @@
 "use client";
 
-import { XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { loadPlaylist, savePlaylist } from "@/components/playlist/playlist-api";
 import { DatePicker } from "@/components/forms/date-picker";
+import { TimeSlotPicker } from "@/components/forms/time-slot-picker";
 import type { TrackResult } from "@/components/forms/repertoire-api";
-import { Badge } from "@/components/ui/badge";
+import { RepertoireAdd } from "@/components/playlist/repertoire-add";
+import { RepertoireSource } from "@/components/playlist/repertoire-source";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { planFormError } from "@/lib/form-errors";
 import { planRequestSchema, type PlanRequest, type PlanRequestInput } from "@/lib/plan-schema";
 import { planSearchParams } from "@/lib/plan-url";
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
-import type { PlaylistView } from "@/lib/playlist-schema";
+import { playlistSongKey, type PlaylistView } from "@/lib/playlist-schema";
 import { draftOf, repertoireDraft, sameDraft } from "@/lib/repertoire-prefill";
-import { formatHour } from "@/lib/slot";
-import { formatDuration } from "@/lib/live-search";
+import { choiceForHours, hoursOf, type TimeChoice } from "@/lib/time-slots";
 import { ArtistPicker, typedArtists, type PickedArtist } from "./artist-picker";
-import { SongCover, SongSearch } from "./song-search";
 
-const HOURS = Array.from({ length: 24 }, (_, h) => h);
 // "|" and "~" separate values in the plan URL.
 const clean = (s: string) => s.replace(/[|~]/g, " ").trim();
 
-/** One song per line: "Title - Artist". Add "(own)" for your own songs. */
+/** How many suggested songs the busk asks for (plan-inputs-architecture.md D4): what was removed, at least 3 and at most 8; 6 after Remove all or with no songs. */
+export const FILL_MIN = 3;
+export const FILL_MAX = 8;
+export const FILL_WHEN_EMPTY = 6;
+export function fillCount(removed: number, sent: number): number | undefined {
+  if (sent === 0) return FILL_WHEN_EMPTY;
+  return removed > 0 ? Math.min(FILL_MAX, Math.max(FILL_MIN, removed)) : undefined;
+}
+
 const PERMIT_LABELS = { general: "General", premium: "Premium", "circle-act": "Circle act" } as const;
 
+/** One song per line: "Title - Artist". Add "(own)" for your own songs. (The planner no longer has the box; the plan-link parser tests use it.) */
 export function parseSongLines(text: string) {
   return text
     .split("\n")
@@ -44,7 +49,7 @@ export function parseSongLines(text: string) {
     });
 }
 
-/** A song picked from Spotify (search or "Load my songs"), with what the search showed. */
+/** A song in the form, with what the search showed. */
 type PickedSong = { key: string; title: string; artist: string; album: string | null; image: string | null; durationMs: number | null; own: boolean };
 
 const toPicked = (track: TrackResult, own: boolean): PickedSong => ({
@@ -56,6 +61,8 @@ const toPicked = (track: TrackResult, own: boolean): PickedSong => ({
   durationMs: track.durationMs,
   own,
 });
+
+const typedSong = (title: string, artist: string): PickedSong => ({ key: `typed-${playlistSongKey(artist, title)}`, title: clean(title), artist: clean(artist) || "Unknown artist", album: null, image: null, durationMs: null, own: false });
 
 /** A stored plan's act, to plan again ("Plan again for a new date"): everything but the date. */
 export type FormPrefill = Pick<PlanRequest, "performer" | "permit"> & ({ startHour: number; endHour: number; anyTime?: false } | { anyTime: true });
@@ -83,56 +90,45 @@ const repertoireFields = (view: PlaylistView) => ({
   ),
 });
 
+/** The time choice a prefill starts on: any time by default (also when planning again), or the hours of an old plan as the matching named slot or a custom one. */
+const initialTime = (prefill: FormPrefill | undefined): TimeChoice => (prefill && !prefill.anyTime ? choiceForHours(prefill.startHour, prefill.endHour) : { kind: "any" });
+
 /**
  * `today` is the city's local date: a plan is for today or later. `repertoire` is this device's Repertoire (read on the
- * server from its cookie), or null: with none, the form is exactly what it always was.
+ * server from its cookie), or null: with none, the block says so and the busk plans with suggested songs.
  */
 export function PerformerForm({ defaultDate, today, prefill, repertoire = null }: { defaultDate: string; today: string; prefill?: FormPrefill; repertoire?: PlaylistView | null }) {
   const router = useRouter();
-  // "Use my Repertoire" is on by default when there is one with songs; ?again (a plan's act) still wins.
-  const [saved, setSaved] = useState<PlaylistView | null>(repertoire && repertoire.songs.length > 0 ? repertoire : null);
-  const [useMine, setUseMine] = useState(Boolean(saved) && !prefill);
-  const initial = useMine && saved ? repertoireFields(saved) : null;
+  // The Repertoire is the starting point when there is one with songs; ?again (a plan's act) still wins.
+  const [saved, setSaved] = useState<PlaylistView | null>(repertoire && repertoire.songs.length > 0 && !prefill ? repertoire : null);
+  const initial = saved ? repertoireFields(saved) : null;
   const [name, setName] = useState(initial?.name ?? prefill?.performer.name ?? "");
   const [artists, setArtists] = useState<PickedArtist[]>(() => initial?.artists ?? prefillArtists(prefill));
   const [artistQuery, setArtistQuery] = useState("");
-  const [picked, setPicked] = useState<PickedSong[]>(() => initial?.picked ?? prefillSongs(prefill));
+  // The block: the Repertoire's songs (or the last busk's), the ones unticked for this busk, and the ones added just for it.
+  const [base, setBase] = useState<PickedSong[]>(() => initial?.picked ?? prefillSongs(prefill));
+  const [removed, setRemoved] = useState<Set<string>>(new Set());
+  const [added, setAdded] = useState<PickedSong[]>([]);
+  const [editing, setEditing] = useState(false);
   const [repNote, setRepNote] = useState<{ kind: "info" | "error" | "stale"; text: string } | null>(null);
   const [repBusy, setRepBusy] = useState(false);
-  const [songs, setSongs] = useState("");
   const [date, setDate] = useState(defaultDate);
-  const [from, setFrom] = useState(String(prefill && !prefill.anyTime ? prefill.startHour : 18));
-  const [to, setTo] = useState(String(prefill && !prefill.anyTime ? prefill.endHour : 21));
-  // Only a "Plan again" of an any-time plan starts on any time; the picker for choosing it arrives with the UI stage.
-  const [anyTime, setAnyTime] = useState(prefill?.anyTime === true);
+  const [time, setTime] = useState<TimeChoice>(() => initialTime(prefill));
+  // Hours from an old link that match no named slot stay on offer as a "From–To" choice, so nothing is lost.
+  const [customHours] = useState(() => {
+    const choice = initialTime(prefill);
+    return choice.kind === "custom" ? { startHour: choice.startHour, endHour: choice.endHour } : null;
+  });
   const [permit, setPermit] = useState<string>(prefill?.permit ?? "general");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchNote, setSearchNote] = useState<string | null>(null);
-  const [spotifyLink, setSpotifyLink] = useState("");
 
-  /** Fill the act, artists and songs from a source (the Repertoire, the ?again act, or nothing). */
-  function fill(fields: { name: string; artists: PickedArtist[]; picked: PickedSong[] }) {
-    setName(fields.name);
-    setArtists(fields.artists);
-    setArtistQuery("");
-    setPicked(fields.picked);
-    setSongs("");
-  }
-
-  function toggleRepertoire(on: boolean) {
-    setUseMine(on);
-    setRepNote(null);
-    if (on && saved) fill(repertoireFields(saved));
-    else fill({ name: prefill?.performer.name ?? "", artists: prefillArtists(prefill), picked: prefillSongs(prefill) });
-  }
+  const kept = base.filter((s) => !removed.has(s.key));
+  const sentSongs = [...kept, ...added];
 
   /** What the form holds now, as the request will carry it. */
   function currentFields() {
-    const parsedSongs = [
-      ...picked.map((p) => ({ title: p.title, artist: p.artist, own: p.own, ...(p.durationMs ? { durationMs: p.durationMs } : {}) })),
-      ...parseSongLines(songs),
-    ];
+    const parsedSongs = sentSongs.map((p) => ({ title: p.title, artist: p.artist, own: p.own, ...(p.durationMs ? { durationMs: p.durationMs } : {}) }));
     const chosen = [...artists];
     for (const typed of typedArtists(artistQuery)) {
       if (!chosen.some((a) => a.name.toLowerCase() === typed.toLowerCase())) chosen.push({ name: typed, spotifyId: null, image: null });
@@ -140,7 +136,18 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
     return { parsedSongs, chosen };
   }
 
-  const edited = useMine && saved !== null && !sameDraft(draftOf({ name: clean(name), artists: currentFields().chosen.map((a) => a.name), songs: currentFields().parsedSongs }), repertoireDraft(saved));
+  const edited = saved !== null && !sameDraft(draftOf({ name: clean(name), artists: currentFields().chosen.map((a) => a.name), songs: currentFields().parsedSongs }), repertoireDraft(saved));
+
+  function reset() {
+    if (!saved) return;
+    const fields = repertoireFields(saved);
+    setName(fields.name);
+    setArtists(fields.artists);
+    setArtistQuery("");
+    setBase(fields.picked);
+    setRemoved(new Set());
+    setAdded([]);
+  }
 
   /** The only thing here that writes the Repertoire: an explicit save, checked against the revision last seen. */
   async function saveToRepertoire() {
@@ -157,7 +164,13 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
     setRepBusy(false);
     if (result.ok && result.playlist) {
       setSaved(result.playlist);
-      fill(repertoireFields(result.playlist));
+      const fields = repertoireFields(result.playlist);
+      setName(fields.name);
+      setArtists(fields.artists);
+      setArtistQuery("");
+      setBase(fields.picked);
+      setRemoved(new Set());
+      setAdded([]);
       setRepNote({ kind: "info", text: COPY.saved });
     } else if (!result.ok) setRepNote({ kind: result.code === "stale" ? "stale" : "error", text: result.message });
   }
@@ -167,37 +180,29 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
     const result = await loadPlaylist();
     if (result.ok && result.playlist) {
       setSaved(result.playlist);
-      fill(repertoireFields(result.playlist));
+      const fields = repertoireFields(result.playlist);
+      setName(fields.name);
+      setArtists(fields.artists);
+      setBase(fields.picked);
+      setRemoved(new Set());
+      setAdded([]);
       setRepNote(null);
     }
   }
 
-  function addSongs(next: PickedSong[]) {
-    setPicked((current) => [...current, ...next.filter((song) => !current.some((c) => c.key === song.key))].slice(0, 60));
-  }
+  const inForm = (key: string) => base.some((s) => s.key === key) || added.some((s) => s.key === key);
+  const sameSong = (a: { title: string; artist: string }, b: { title: string; artist: string }) => playlistSongKey(a.artist, a.title) === playlistSongKey(b.artist, b.title);
 
-  async function loadOwnSongs() {
-    setSearchNote("Loading your songs from Spotify…");
-    const res = await fetch(`/api/repertoire?${new URLSearchParams({ type: "artist", link: spotifyLink })}`).catch(() => null);
-    const body = res?.ok ? await res.json() : null;
-    const tracks: TrackResult[] = body?.tracks ?? [];
-    if (!tracks.length) {
-      setSearchNote(
-        res?.status === 429
-          ? "Too many searches in a short time. Wait a moment and try again."
-          : body?.reason === "not_found"
-            ? "Spotify has no artist at that link. Open it in Spotify to check it, then copy the artist's share link again."
-            : body?.mode === "fallback"
-              ? "Spotify isn't answering right now. Try again in a minute, or type your songs below."
-              : "Couldn't load songs from that link. Paste an open.spotify.com/artist/… link, or type your songs.",
-      );
-      return;
+  /** Add songs just for this busk; a song already in the block is ticked again instead of doubled. */
+  function addSongs(next: PickedSong[]) {
+    const unticked = base.filter((s) => removed.has(s.key) && next.some((n) => sameSong(n, s)));
+    if (unticked.length > 0) {
+      const back = new Set(removed);
+      for (const s of unticked) back.delete(s.key);
+      setRemoved(back);
     }
-    addSongs(tracks.slice(0, 20).map((t) => toPicked(t, true)));
-    setSearchNote(
-      body?.mode === "synthetic"
-        ? "Offline test mode: these songs are made up, not from Spotify."
-        : `Added ${Math.min(tracks.length, 20)} of your songs from Spotify. Remove any you don't play.`,
+    setAdded((current) =>
+      [...current, ...next.filter((n) => !inForm(n.key) && !base.some((s) => sameSong(n, s)) && !current.some((c) => sameSong(n, c)))].slice(0, 60 - base.length),
     );
   }
 
@@ -217,14 +222,24 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
     ].slice(0, 10);
     const spotifyArtists = chosen.flatMap((a) => (a.spotifyId && artistList.includes(a.name) ? [{ name: a.name, id: a.spotifyId }] : []));
     if (date < today) {
-      setError("Pick today or a later date.");
+      setError("Date: Pick today or a later date.");
       return;
     }
+    const hours = hoursOf(time);
+    // Songs removed for this busk are filled by suggested ones (not the removed songs themselves); none at all plans with suggestions only.
+    const removedSongs = base.filter((s) => removed.has(s.key)).map((s) => ({ title: s.title, artist: s.artist }));
+    const fill = fillCount(removedSongs.length, parsedSongs.length);
     const input: PlanRequestInput = {
       city: "melbourne",
-      slot: anyTime ? { date, any: true } : { date, startHour: Number(from), endHour: Number(to) },
+      slot: hours ? { date, ...hours } : { date, any: true },
       permit: permit as PlanRequestInput["permit"],
-      performer: { name: clean(name) || "My act", artists: artistList, spotifyArtists, songs: parsedSongs },
+      performer: {
+        name: clean(name) || "My act",
+        artists: artistList,
+        spotifyArtists,
+        songs: parsedSongs,
+        ...(fill ? { fillSuggested: fill, ...(removedSongs.length ? { skipSongs: removedSongs.slice(0, 60) } : {}) } : {}),
+      },
     };
     const result = planRequestSchema.safeParse(input);
     if (!result.success) {
@@ -235,139 +250,58 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
     void openPlan(result.data);
   }
 
+  const noteView = repNote && (
+    <p role={repNote.kind === "info" ? "status" : "alert"} className={repNote.kind === "info" ? "text-sm text-muted-foreground" : "text-sm text-destructive"}>
+      {repNote.text}
+      {repNote.kind === "stale" && (
+        <>
+          {" "}
+          <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={() => void reloadRepertoire()}>
+            {COPY.reload}
+          </Button>
+        </>
+      )}
+    </p>
+  );
+
   return (
     <form onSubmit={submit} className="space-y-4" aria-label="Plan for your own act">
-      {saved && (
-        <section aria-label={COPY.name} className="space-y-2 rounded-lg border p-3" data-testid="use-repertoire">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <Switch id="use-repertoire" checked={useMine} onCheckedChange={toggleRepertoire} />
-            <Label htmlFor="use-repertoire">{COPY.mineWithCount(saved.songs.length)}</Label>
-            {useMine && <Badge variant={edited ? "secondary" : "outline"}>{edited ? COPY.editedForBusk : COPY.fromRepertoire}</Badge>}
-          </div>
-          {useMine && edited && (
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm text-muted-foreground">{COPY.editedHint}</p>
-              <Button type="button" variant="outline" size="sm" disabled={repBusy} onClick={() => void saveToRepertoire()}>
-                {repBusy ? COPY.saving : COPY.saveChanges}
-              </Button>
-              <Button type="button" variant="ghost" size="sm" disabled={repBusy} onClick={() => toggleRepertoire(true)}>
-                Back to my {COPY.name}
-              </Button>
-            </div>
-          )}
-          {repNote && (
-            <p role={repNote.kind === "info" ? "status" : "alert"} className={repNote.kind === "info" ? "text-sm text-muted-foreground" : "text-sm text-destructive"}>
-              {repNote.text}
-              {repNote.kind === "stale" && (
-                <>
-                  {" "}
-                  <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={() => void reloadRepertoire()}>
-                    {COPY.reload}
-                  </Button>
-                </>
-              )}
-            </p>
-          )}
-        </section>
-      )}
       <div className="space-y-1">
         <Label htmlFor="name">Act name</Label>
         <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Jess on acoustic guitar" maxLength={80} />
       </div>
       <ArtistPicker value={artists} onChange={setArtists} query={artistQuery} onQueryChange={setArtistQuery} />
 
-      <fieldset className="min-w-0 space-y-2">
-        <legend className="text-sm font-medium">Songs you can play</legend>
-        <SongSearch
-          onAdd={(track) => addSongs([toPicked(track, false)])}
-          isAdded={(track) => picked.some((p) => p.key === track.id)}
-          artists={artists}
-        />
-        {picked.length > 0 && (
-          <ul aria-label="Songs you picked" className="divide-y rounded-lg border text-sm">
-            {picked.map((song) => (
-              <li key={song.key} className="flex items-center gap-2 px-2 py-1.5">
-                <SongCover image={song.image} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{song.title}</span>
-                  <span className="block truncate text-xs text-muted-foreground">{[song.artist, song.album].filter(Boolean).join(" · ")}</span>
-                </span>
-                {song.own && <Badge variant="secondary">Your song</Badge>}
-                {song.durationMs !== null && <span className="text-xs text-muted-foreground tabular-nums">{formatDuration(song.durationMs)}</span>}
-                <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${song.title}`} onClick={() => setPicked((current) => current.filter((p) => p !== song))}>
-                  <XIcon aria-hidden />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input aria-label="Your Spotify artist link" value={spotifyLink} onChange={(e) => setSpotifyLink(e.target.value)} placeholder="Your Spotify artist link (optional)" />
-          <Button type="button" variant="outline" className="self-start sm:self-auto" onClick={() => void loadOwnSongs()} disabled={spotifyLink.trim().length < 10}>
-            Load my songs
-          </Button>
-        </div>
-        {searchNote && <p className="text-sm text-muted-foreground" aria-live="polite">{searchNote}</p>}
-        <Label htmlFor="songs" className="text-sm font-normal text-muted-foreground">
-          Song list: type songs Spotify doesn&apos;t have
-        </Label>
-        <Textarea
-          id="songs"
-          value={songs}
-          onChange={(e) => setSongs(e.target.value)}
-          rows={4}
-          placeholder={"One per line: Title - Artist\nHow to Make Gravy - Paul Kelly\nMy Song - Me (own)"}
-        />
-      </fieldset>
+      <RepertoireSource
+        heading={prefill && !saved ? COPY.source.headingLastBusk : COPY.source.heading}
+        base={base}
+        removed={removed}
+        added={added}
+        editing={editing}
+        onEditingChange={setEditing}
+        onRemovedChange={setRemoved}
+        onAddedChange={setAdded}
+        addSlot={
+          <RepertoireAdd
+            artists={artists}
+            isAdded={(track) => inForm(track.id) || sentSongs.some((s) => sameSong(s, { title: clean(track.title), artist: clean(track.artists[0]?.name ?? "") || "Unknown artist" }))}
+            onAddTrack={(track) => addSongs([toPicked(track, false)])}
+            onAddTyped={(song) => addSongs([typedSong(song.title, song.artist)])}
+            onAddOwn={(tracks) => addSongs(tracks.map((t) => toPicked(t, true)))}
+          />
+        }
+        save={saved ? { edited, busy: repBusy, onSave: () => void saveToRepertoire(), onReset: reset, note: noteView } : null}
+      />
+      {!saved && noteView}
 
-      <div className="grid gap-4 sm:grid-cols-4">
-        <div className="space-y-1">
+      <fieldset className="min-w-0 space-y-4">
+        <legend className="text-sm font-medium">When and where</legend>
+        <div className="max-w-xs space-y-1">
           <Label htmlFor="date">Date</Label>
           <DatePicker id="date" value={date} onChange={setDate} min={today} />
         </div>
-        {anyTime ? (
-          <div className="space-y-1 sm:col-span-2" data-testid="any-time-note">
-            <p className="text-sm font-medium">Any time</p>
-            <p className="text-sm text-muted-foreground">Busk Map picks the best hours for each pitch.</p>
-            <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={() => setAnyTime(false)}>
-              Pick the hours myself
-            </Button>
-          </div>
-        ) : (
-          <>
-        <div className="space-y-1">
-          <Label htmlFor="from">From</Label>
-          <Select value={from} onValueChange={setFrom}>
-            <SelectTrigger id="from" className="w-full">
-              <SelectValue>{formatHour(Number(from))}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {HOURS.map((h) => (
-                <SelectItem key={h} value={String(h)}>
-                  {formatHour(h)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="to">To</Label>
-          <Select value={to} onValueChange={setTo}>
-            <SelectTrigger id="to" className="w-full">
-              <SelectValue>{formatHour(Number(to))}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {HOURS.map((h) => (
-                <SelectItem key={h + 1} value={String(h + 1)}>
-                  {formatHour(h + 1)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-          </>
-        )}
-        <div className="space-y-1">
+        <TimeSlotPicker value={time} onChange={setTime} custom={customHours} />
+        <div className="max-w-xs space-y-1">
           <Label htmlFor="permit">Permit</Label>
           <Select value={permit} onValueChange={setPermit}>
             <SelectTrigger id="permit" className="w-full">
@@ -383,7 +317,7 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
             </SelectContent>
           </Select>
         </div>
-      </div>
+      </fieldset>
 
       {error && (
         <p role="alert" className="text-sm text-destructive">

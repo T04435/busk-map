@@ -467,6 +467,11 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
                       </span>
                       <span className="shrink-0">{pitch.score}/100</span>
                     </Button>
+                    {pitch.window && (
+                      <p className="px-3 pt-1 text-xs text-muted-foreground" data-testid="pitch-row-window">
+                        Best {pitch.window.label}
+                      </p>
+                    )}
                   </li>
                 ))}
               </ol>
@@ -501,7 +506,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
         {selected && !qlooDown && (
           <div className="grid gap-6 lg:grid-cols-2">
             <PitchCard pitch={selected} rank={plan.pitches.indexOf(selected) + 1} model={model} />
-            <SetlistPanel pitch={selected} learnThese={plan.learnThese} ageLean={plan.ageLean} canAddToRepertoire={!exampleId} />
+            <SetlistPanel pitch={selected} learnThese={plan.learnThese} ageLean={plan.ageLean} canAddToRepertoire={!exampleId} repertoireTotal={request.performer.songs.length} />
           </div>
         )}
 

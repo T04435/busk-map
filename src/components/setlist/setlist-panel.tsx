@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AddToRepertoire } from "@/components/playlist/add-to-repertoire";
 import { LearnItMenu } from "@/components/songs/learn-it-menu";
 import { Badge } from "@/components/ui/badge";
@@ -18,14 +19,20 @@ export function SetlistPanel({
   learnThese,
   ageLean = null,
   canAddToRepertoire = false,
+  repertoireTotal = null,
 }: {
   pitch: PlanPitch;
   learnThese: Plan["learnThese"];
   ageLean?: string | null;
   /** "Add to Repertoire" on each Songs to learn item. False on example runs: presets never write a Repertoire. */
   canAddToRepertoire?: boolean;
+  /** How many songs the busk's Repertoire had (the request's songs): "N of M songs you can sing". Null: not known, no count shown. */
+  repertoireTotal?: number | null;
 }) {
   const length = setLength(pitch.setlist);
+  // "Songs you can sing" are the act's own songs only: suggested ones are Busk Map's additions for this crowd.
+  const youCanSing = pitch.setlist.filter((s) => s.origin === "repertoire").length;
+  const suggested = pitch.setlist.length - youCanSing;
   const songs = (n: number) => `${n} song${n === 1 ? "" : "s"}`;
   return (
     <Card>
@@ -42,6 +49,15 @@ export function SetlistPanel({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 text-sm">
+        {repertoireTotal !== null && pitch.setlist.length > 0 && (
+          <p data-testid="you-can-sing" className="text-muted-foreground">
+            <span className="font-medium text-foreground">{youCanSing} of {repertoireTotal} songs you can sing</span>
+            {suggested > 0 ? ` · ${suggested} suggested for this crowd` : ""} ·{" "}
+            <Link className="underline" href="/repertoire">
+              Edit your {PLAYLIST_COPY.name}
+            </Link>
+          </p>
+        )}
         {pitch.setlist.length === 0 ? (
           <p className="text-muted-foreground">{PLAYLIST_COPY.suggestedSetEmpty}</p>
         ) : (
@@ -61,7 +77,24 @@ export function SetlistPanel({
                         Your song
                       </Badge>
                     )}
+                    {song.origin === "suggested" && (
+                      <Badge variant="outline" className="ml-2" data-testid="suggested-tag">
+                        Suggested
+                      </Badge>
+                    )}
                     <span className="block text-muted-foreground">{song.reason}</span>
+                    {song.origin === "suggested" && song.suggestion && (
+                      <span className="block text-muted-foreground" data-testid="suggestion-because">
+                        {song.suggestion.because}{" "}
+                        {song.suggestion.sourceUrl ? (
+                          <a className="underline" href={song.suggestion.sourceUrl} target="_blank" rel="noreferrer">
+                            {song.suggestion.source === "spotify" ? "On Spotify" : "On Last.fm"}
+                          </a>
+                        ) : (
+                          `(from ${song.suggestion.source === "spotify" ? "Spotify" : "Last.fm"})`
+                        )}
+                      </span>
+                    )}
                   </span>
                   <span className="flex items-start gap-2">
                     {song.durationMs !== null && (

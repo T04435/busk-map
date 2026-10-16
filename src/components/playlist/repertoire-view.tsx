@@ -3,17 +3,15 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TrackResult } from "@/components/forms/repertoire-api";
-import { SongSearch } from "@/components/landing/song-search";
+import { RepertoireAdd } from "./repertoire-add";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDuration } from "@/lib/live-search";
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
-import { parseTypedSong, playlistSongKey, type PlaylistSongView, type PlaylistView } from "@/lib/playlist-schema";
+import { playlistSongKey, type PlaylistSongView, type PlaylistView } from "@/lib/playlist-schema";
 import { LearnPanel } from "./learn-panel";
 import { addSong, forgetPlaylist, loadPlaylist, moveSong, removeSong, type PlaylistResult } from "./playlist-api";
 
@@ -48,7 +46,6 @@ export function RepertoireView() {
   const [playlist, setPlaylist] = useState<PlaylistView | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [message, setMessage] = useState<{ kind: "error" | "info"; text: string } | null>(null);
-  const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
   // Where focus goes once a row is gone (B-016): the next row's action, the previous one's, or the add field.
   const focusAfter = useRef<string | null>(null);
@@ -116,14 +113,21 @@ export function RepertoireView() {
     ...(track.durationMs ? { durationMs: track.durationMs } : {}),
   });
 
-  async function submitTyped(e: React.FormEvent) {
-    e.preventDefault();
-    const song = parseTypedSong(typed);
-    if (!song) {
-      setMessage({ kind: "error", text: COPY.errors.typedFormat });
-      return;
+  /** Spotify has no match: the typed fallback under the search. Saved as typed, so no length. */
+  async function addTyped(song: { title: string; artist: string }) {
+    return run(() => addSong({ ...song, source: "typed" }), `Added ${song.title}.`);
+  }
+
+  /** The songs on the artist's own Spotify profile, tagged Your song. One at a time; the first refusal (full, duplicate) stops it. */
+  async function addOwn(tracks: TrackResult[]) {
+    let count = 0;
+    for (const track of tracks) {
+      if (keys.has(playlistSongKey(track.artists[0]?.name ?? "Unknown artist", track.title))) continue;
+      const ok = await run(() => addSong({ ...trackSong(track), own: true }));
+      if (!ok) break;
+      count++;
     }
-    if (await run(() => addSong({ ...song, source: "typed" }), `Added ${song.title}.`)) setTyped("");
+    if (count > 0) setMessage({ kind: "info", text: `Added ${count} of your songs.` });
   }
 
   async function forget() {
@@ -152,20 +156,13 @@ export function RepertoireView() {
         <h2 id="add-heading" className="text-xl font-semibold">
           {COPY.searchLabel}
         </h2>
-        <SongSearch
+        <RepertoireAdd
           artists={NO_ARTISTS}
           isAdded={(track) => keys.has(playlistSongKey(track.artists[0]?.name ?? "Unknown artist", track.title))}
-          onAdd={(track) => void run(() => addSong(trackSong(track)), `Added ${track.title}.`)}
+          onAddTrack={(track) => void run(() => addSong(trackSong(track)), `Added ${track.title}.`)}
+          onAddTyped={addTyped}
+          onAddOwn={addOwn}
         />
-        <form onSubmit={submitTyped} aria-label="Type in a song" className="space-y-2">
-          <Label htmlFor="typed-song">{COPY.typedLabel}</Label>
-          <div className="flex gap-2">
-            <Input id="typed-song" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={COPY.typedPlaceholder} maxLength={210} autoComplete="off" />
-            <Button type="submit" disabled={busy || !typed.trim()}>
-              {COPY.typedAdd}
-            </Button>
-          </div>
-        </form>
       </section>
 
       <Separator />

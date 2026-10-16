@@ -1,0 +1,54 @@
+# Busk Map bug log (QA)
+
+Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. **Medium**: a judge would notice something wrong or misleading. **Low**: polish, offline-only, or minor a11y.
+
+| ID | Sev | Title | Status |
+|---|---|---|---|
+| B-001 | High | Playwright could reuse a live server and call paid APIs | Fixed (e3b85fb), verified by QA |
+| B-002 | Medium | Plan doesn't say why higher-scored spots aren't in the top 3 (250 m spacing) | Open |
+| B-003 | Low | Offline own act: picking a searched artist fails with a generic form error | Open |
+| B-004 | Medium | Landing search comboboxes: `aria-expanded="true"` and `aria-controls` points at a missing listbox (axe critical) | Open |
+| B-005 | Low | Artist and song search inputs show no focus ring | Open |
+| B-006 | Low | Select values are blank in the server HTML until hydration | Open |
+| B-007 | Low | Offline: "Explanations: Claude" chip and credit while the mock model wrote them | Open |
+
+---
+
+### B-001 · High · Playwright could reuse a live server and call paid APIs
+- **Found:** baseline, 16 Oct 2026, by reading `playwright.config.ts`.
+- **Steps:** with a live server (no `BUSKMAP_OFFLINE`) on the e2e port, for example `PORT=3200 pnpm test:e2e` while the user's `next dev` runs on 3200.
+- **Expected:** the run refuses, or starts its own offline server.
+- **Actual (before the fix):** `reuseExistingServer: !process.env.CI` reused it, so the specs drove real Claude, Qloo and Ticketmaster calls.
+- **Status:** fixed by DEV in e3b85fb (`tests/e2e/global-setup.ts` checks `GET /api/health` for `offline: true`). **Verified by QA:** `PORT=3200 pnpm exec playwright test tests/e2e/health.spec.ts` aborted in global setup with "e2e aborted: the server on port 3200 is not in offline mode", before any spec ran. Against a deploy (`PLAYWRIGHT_BASE_URL`) it only warns, which is deliberate.
+
+### B-002 · Medium · Plan doesn't say why higher-scored spots aren't in the top 3
+- **Steps:** open the acoustic example (offline). Scroll to "Busk Map vs a plain AI".
+- **Expected:** if a pitch with a higher score is left out of the top 3, the plan says why (`hotspot-policy`: "the score decides").
+- **Actual:** the top 3 are Centre Place 77, Flinders Lane east 74, Alfred Place 60. The plain-AI panel says Busk Map scores Federation Square 65 and Flinders Street Station 63 "higher than one of Busk Map's picks: worth a look". The cause is `pickTopPitches(…, minSpacingM = 250)` in `src/server/scoring/pitch-score.ts`: Federation Square is about 190 m from Flinders Lane east. "How pitches are scored" never mentions the spacing rule, so a judge sees a ranking that contradicts its own scores.
+- **Suggestion (DEV/user decide):** one line in "How pitches are scored" and on the plain-AI row ("within 250 m of pick no. 2, so not listed separately").
+
+### B-003 · Low · Offline own act: picking a searched artist fails with a generic form error
+- **Steps:** offline server, landing → "Or plan for your own act": type an act name, search "Buena Vista" in "Artists you sound like", pick "Buena Vista (synthetic)", add songs, press "Plan my set".
+- **Expected:** a plan opens on `/p/<id>`.
+- **Actual:** "Check the form and try again." and no request is sent. The synthetic fixture gives the artist the id `syn-artist-1` (`src/server/adapters/repertoire/fixtures/synthetic.ts`), which fails `spotifyIdSchema` (22 base62 characters) in `src/lib/plan-schema.ts`. Live Spotify ids are 22 characters, so this is offline only. The generic message also names no field, so any other schema failure would leave a user stuck too.
+- **Regression test:** `tests/e2e/qa/baseline.spec.ts` "B-003" (marked `test.fail` until fixed).
+
+### B-004 · Medium · Landing search comboboxes have broken ARIA (axe critical)
+- **Steps:** axe-core 4.14 (WCAG 2.0–2.2 A/AA tags) on `/`, desktop and Pixel 7.
+- **Expected:** 0 violations.
+- **Actual:** `aria-valid-attr-value` (critical) on both cmdk inputs ("Search Spotify, e.g. Paul Kelly" and "Search songs, e.g. Riptide"): `aria-expanded="true"` while no list is shown, and `aria-controls` points at an id that isn't in the DOM. A screen reader announces an open list that doesn't exist. Every other page scanned had 0 violations.
+
+### B-005 · Low · Artist and song search inputs show no focus ring
+- **Steps:** on `/`, Tab to "Search Spotify, e.g. Paul Kelly", then to "Search songs, e.g. Riptide".
+- **Expected:** a visible focus indicator like every other control (WCAG 2.4.7).
+- **Actual:** only the text caret shows; neither the input nor its wrapper gets an outline or ring. All 57 other focus stops on `/`, and all 88 on the example plans, have one.
+
+### B-006 · Low · Select values are blank in the server HTML until hydration
+- **Steps:** `curl` `/` and `/week?example=folk-duo`, or load them on a slow phone.
+- **Expected:** "6 pm", "9 pm", "General", "5", "1" in the select triggers on first paint.
+- **Actual:** `<span data-slot="select-value"></span>` is empty in the server HTML. The landing From/To/Permit and the week's "Sessions this week"/"Per day" show empty boxes until JavaScript runs (seen for about 3 s in the walk).
+
+### B-007 · Low · Offline: "Explanations: Claude" while the mock model wrote them
+- **Steps:** any plan on the offline server.
+- **Expected:** the header chip and the "Data sources" credit say the explanations are mock or test output (as the Qloo and Spotify labels do).
+- **Actual:** the chip says "Explanations: Claude" and the credit says "Plan explanations written by Claude (Anthropic) via Vercel AI Gateway". The plan text itself does say "Mock planner summary (offline test mode)". Offline only, but this is the case the learning "never leave a test-mode server running" warns about.

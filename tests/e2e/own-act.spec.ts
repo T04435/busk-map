@@ -39,7 +39,7 @@ test.describe("own act", () => {
     // A bad value shows an error under the field.
     await link.fill("nope");
     await link.blur();
-    await expect(form.getByText(/Paste your artist link/)).toBeVisible();
+    await expect(form.getByText(/That isn.t a Spotify artist link/)).toBeVisible();
   });
 
   test("B-036..B-040: a pick closes the list and keeps focus; picks header; hints; visible link label", async ({ page }) => {

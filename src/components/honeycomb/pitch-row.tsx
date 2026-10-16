@@ -66,7 +66,6 @@ export function PitchRow({
               ref={detailsRef}
               onClick={onDetails}
               data-testid="pitch-details-open"
-              data-pitch-id={pitchId}
               className="inline-flex min-h-tap items-center gap-1 px-1 font-bold underline underline-offset-3 hover:decoration-2"
             >
               Full details <span className="sr-only">for {name}</span>

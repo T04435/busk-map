@@ -29,19 +29,44 @@ function Word() {
   );
 }
 
-export type LogoProps = { size?: number; className?: string };
+/** Pointy-top hexagon points, like Qloo's H3 cells. */
+function hexPoints(cx: number, cy: number, r: number): string {
+  return Array.from({ length: 6 }, (_, i) => {
+    const a = (Math.PI / 180) * (60 * i - 90);
+    return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
+  }).join(" ");
+}
+
+/** The hex mark: the orange cell with the pitch ring (a 306-degree arc, the crowd) around one cell (the performer). */
+function Mark({ bare }: { bare?: boolean }) {
+  return (
+    <>
+      <polygon points={hexPoints(24, 24, 22.75)} className={cn("fill-primary stroke-[var(--fill-rule)]", bare && "stroke-none")} strokeWidth={2.5} strokeLinejoin="miter" />
+      <g transform="translate(4.8 4.8) scale(0.8)">
+        <path d="M38.554 20.371A15 15 0 1 1 27.629 9.446" fill="none" className="stroke-primary-foreground" strokeWidth={6.5} strokeLinecap="round" />
+        <polygon points={hexPoints(24, 24, 6.6)} className="fill-card dark:fill-foreground" />
+      </g>
+    </>
+  );
+}
+
+export type LogoProps = { size?: number; className?: string; /** Drop the 2px rule on the mark: for the bluestone header, where the mark is its own edge. */ bare?: boolean };
 
 /**
- * The Busk Map logo, and the only one the app shows (F12): the stencil wordmark, drawn in the page's colours. Its letters
- * take `color` (so it reads on paper and on the bluestone header) and the offset takes the signal orange. The lockup and the
- * mark stay in /brand as downloadable assets and are never part of the app's own UI.
+ * THE Busk Map logo, and the only one the app shows (F12, as corrected): the lockup [hex mark][wordmark], drawn in the
+ * page's colours so one component serves day and night, the bluestone header and the dark landing bands. The letters take
+ * `color`, the offset takes the signal orange, the mark takes the primary fill. One accessible name, "Busk Map". Every
+ * place that shows the logo uses this component, so swapping in the design system's lockup file is a change here only.
  */
-export function Logo({ size = 32, className }: LogoProps) {
+export function Logo({ size = 32, className, bare }: LogoProps) {
   return (
     <span className={cn("inline-flex items-center text-foreground", className)}>
-      <svg height={size} viewBox="0 0 322 52" role="img" aria-label="Busk Map" className="w-auto">
+      <svg height={size} viewBox="2 0 256 48" role="img" aria-label="Busk Map" className="w-auto">
         <title>Busk Map</title>
-        <Word />
+        <Mark bare={bare} />
+        <g transform="translate(58 8) scale(0.615)">
+          <Word />
+        </g>
       </svg>
     </span>
   );

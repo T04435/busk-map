@@ -207,7 +207,7 @@ export default function BrandPage() {
               ))}
             </nav>
           </div>
-          <Logo size={44} className="text-foreground" />
+          <Logo size={56} className="text-foreground" />
         </div>
       </section>
 

@@ -8,6 +8,7 @@ import { Logo, QlooWordmark } from "@/components/honeycomb/logo";
 
 const REPO = "https://github.com/T04435/busk-map";
 const AUTHOR = "https://github.com/T04435";
+const CLAUDE_CODE = "https://claude.com/claude-code";
 
 /** GitHub's mark, as a single path (24-unit grid). */
 function GithubMark({ className }: { className?: string }) {
@@ -31,6 +32,13 @@ function BuiltByMark({ className }: { className?: string }) {
   );
 }
 
+const SITE_LINKS = [
+  { label: "Privacy", href: "/privacy" },
+  { label: "Terms", href: "/terms" },
+  { label: "Brain", href: "/brain" },
+  { label: "Brand", href: "/brand" },
+] as const;
+
 const LINK = "inline-flex min-h-tap items-center font-bold text-foreground underline underline-offset-3 hover:decoration-2";
 
 /**
@@ -49,24 +57,22 @@ export function SiteFooterView({ repo = REPO, dark = false }: { repo?: string; d
         )}
       >
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Logo size={34} />
+          <Link href="/" aria-label="Busk Map home" className="inline-flex h-tap items-center">
+            <Logo size={34} />
+          </Link>
           <span className="inline-flex items-center gap-2">
             with <QlooWordmark width={44} />
           </span>
         </div>
-        <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-5 md:justify-center">
-          <Link className={LINK} href="/privacy">
-            Privacy
-          </Link>
-          <Link className={LINK} href="/terms">
-            Terms
-          </Link>
-          <Link className={LINK} href="/brain">
-            Brain
-          </Link>
-          <Link className={LINK} href="/brand">
-            Brand
-          </Link>
+        <nav aria-label="Site" className="flex flex-wrap items-center gap-x-2 md:justify-center">
+          {SITE_LINKS.map((l, i) => (
+            <span key={l.href} className="inline-flex items-center gap-2">
+              {i > 0 && <span aria-hidden="true">·</span>}
+              <Link className={LINK} href={l.href}>
+                {l.label}
+              </Link>
+            </span>
+          ))}
         </nav>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:justify-end">
           <a href={repo} aria-label="Busk Map on GitHub" className="inline-flex size-tap items-center justify-center text-foreground">
@@ -75,10 +81,11 @@ export function SiteFooterView({ repo = REPO, dark = false }: { repo?: string; d
             </HexCell>
           </a>
           <span className="inline-flex items-center gap-2">
+            <span>Built by</span>
             <a className={LINK} href={AUTHOR}>
-              Built by T04435
+              T04435
             </a>
-            <a href={AUTHOR} aria-label="T04435 on GitHub" className="inline-flex size-tap items-center justify-center">
+            <a href={CLAUDE_CODE} target="_blank" rel="noopener noreferrer" aria-label="with Claude Code (opens in a new tab)" className="inline-flex size-tap items-center justify-center">
               <BuiltByMark className="h-5 w-auto" />
             </a>
           </span>

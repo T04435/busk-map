@@ -169,11 +169,7 @@ export default function Home() {
             <Link className="font-bold text-foreground underline underline-offset-3 hover:decoration-2" href="/busks">
               Plan your busk
             </Link>
-            . Played a session? Log your takings in the{" "}
-            <Link className="text-foreground underline underline-offset-3 hover:decoration-2" href="/tips">
-              tip log
-            </Link>
-            : it stays in this browser, and pitches where you earn more get a small bonus in your next plans.
+            .
           </p>
         </section>
 

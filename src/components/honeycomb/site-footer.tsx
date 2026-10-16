@@ -59,7 +59,7 @@ export function SiteFooterView({ repo = REPO, dark = false }: { repo?: string; d
         )}
       >
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Logo size={28} />
+          <Logo size={34} />
           <span className="inline-flex items-center gap-2">
             with <QlooWordmark width={44} />
           </span>

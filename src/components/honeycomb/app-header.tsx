@@ -16,7 +16,7 @@ export function AppHeaderView({ pathname }: { pathname: string | null }) {
   return (
     <header data-slot="app-header" className="flex h-16 shrink-0 items-center gap-6 border-b-4 border-primary bg-bluestone px-4 text-[#f2ede4] md:px-6">
       <Link href="/" className="flex h-tap items-center rounded-none focus-visible:ring-2 focus-visible:ring-[#f2ede4]">
-        <Logo size={32} bare className="text-[#f2ede4]" />
+        <Logo size={36} ground="dark" />
       </Link>
       <nav aria-label="Main" className="hidden gap-1 md:flex">
         {NAV_ITEMS.map((item) => {

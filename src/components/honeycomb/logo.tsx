@@ -1,73 +1,29 @@
 import { cn } from "cn";
 
-// Stencil caps, chamfered on a 26-unit grid; the word gap is tightened to 22 units.
-const STENCIL: Record<string, string> = {
-  B: "M0 0H18L24 6V14L19 20H0M19 20L26 26V34L19 40H0M0 0V40",
-  U: "M0 0V34L6 40H20L26 34V0",
-  S: "M26 0H6L0 6V14L6 20H20L26 26V34L20 40H0",
-  K: "M0 0V40M24 0L5 20L24 40",
-  M: "M0 40V0L13 18L26 0V40",
-  A: "M0 40V8L8 0H18L26 8V40M0 22H26",
-  P: "M0 40V0H20L26 6V16L20 22H0",
+export type LogoProps = {
+  /** Height in px: 36 in the header, 34 in the footer. */
+  size?: number;
+  className?: string;
+  /** "dark" always uses the dark-ground file (the bluestone header); "auto" picks by theme. */
+  ground?: "auto" | "dark";
 };
-const WORD_X = [0, 44, 88, 132, 198, 242, 286];
-
-function WordPaths() {
-  return "BUSKMAP".split("").map((c, i) => <path key={i} transform={`translate(${5.5 + WORD_X[i]} 5.5)`} d={STENCIL[c]} />);
-}
-
-function Word() {
-  return (
-    <>
-      <g className="stroke-primary" transform="translate(3 3)" fill="none" strokeWidth={9} strokeLinejoin="miter" strokeLinecap="square">
-        <WordPaths />
-      </g>
-      <g className="stroke-current" fill="none" strokeWidth={9} strokeLinejoin="miter" strokeLinecap="square">
-        <WordPaths />
-      </g>
-    </>
-  );
-}
-
-/** Pointy-top hexagon points, like Qloo's H3 cells. */
-function hexPoints(cx: number, cy: number, r: number): string {
-  return Array.from({ length: 6 }, (_, i) => {
-    const a = (Math.PI / 180) * (60 * i - 90);
-    return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
-  }).join(" ");
-}
-
-/** The hex mark: the orange cell with the pitch ring (a 306-degree arc, the crowd) around one cell (the performer). */
-function Mark({ bare }: { bare?: boolean }) {
-  return (
-    <>
-      <polygon points={hexPoints(24, 24, 22.75)} className={cn("fill-primary stroke-[var(--fill-rule)]", bare && "stroke-none")} strokeWidth={2.5} strokeLinejoin="miter" />
-      <g transform="translate(4.8 4.8) scale(0.8)">
-        <path d="M38.554 20.371A15 15 0 1 1 27.629 9.446" fill="none" className="stroke-primary-foreground" strokeWidth={6.5} strokeLinecap="round" />
-        <polygon points={hexPoints(24, 24, 6.6)} className="fill-card dark:fill-foreground" />
-      </g>
-    </>
-  );
-}
-
-export type LogoProps = { size?: number; className?: string; /** Drop the 2px rule on the mark: for the bluestone header, where the mark is its own edge. */ bare?: boolean };
 
 /**
- * THE Busk Map logo, and the only one the app shows (F12, as corrected): the lockup [hex mark][wordmark], drawn in the
- * page's colours so one component serves day and night, the bluestone header and the dark landing bands. The letters take
- * `color`, the offset takes the signal orange, the mark takes the primary fill. One accessible name, "Busk Map". Every
- * place that shows the logo uses this component, so swapping in the design system's lockup file is a change here only.
+ * THE Busk Map logo, and the only one the app shows (F12, as corrected): the design system's lockup [hex mark][new wordmark],
+ * as an image file so the wordmark is clipped to its own box (inline, its M rises above the viewBox and shows the old tall M).
+ * The dark or light file is picked by theme. One accessible name, "Busk Map". Every place that shows the logo uses this
+ * component. The mark alone is only the favicon and the app icon.
  */
-export function Logo({ size = 32, className, bare }: LogoProps) {
+export function Logo({ size = 34, className, ground = "auto" }: LogoProps) {
+  const width = Math.round((size * 234.7) / 48);
   return (
-    <span className={cn("inline-flex items-center text-foreground", className)}>
-      <svg height={size} viewBox="2 0 256 48" role="img" aria-label="Busk Map" className="w-auto">
-        <title>Busk Map</title>
-        <Mark bare={bare} />
-        <g transform="translate(58 8) scale(0.615)">
-          <Word />
-        </g>
-      </svg>
+    <span className={cn("inline-flex items-center", className)}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/brand/busk-map-lockup-dark.svg" alt="Busk Map" width={width} height={size} className={ground === "dark" ? "block" : "hidden dark:block"} style={{ height: size, width: "auto" }} />
+      {ground === "auto" ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src="/brand/busk-map-lockup-light.svg" alt="Busk Map" width={width} height={size} className="block dark:hidden" style={{ height: size, width: "auto" }} />
+      ) : null}
     </span>
   );
 }

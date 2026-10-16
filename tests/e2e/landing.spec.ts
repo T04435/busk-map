@@ -1,3 +1,4 @@
+import { ASSET_COUNT, COMPONENT_COUNT } from "../../src/components/brand/brand-tables";
 import { expect, test } from "./fixtures";
 
 // The landing against the design deck's Main board (QA's audit, B-018..B-026).
@@ -72,9 +73,9 @@ test.describe("landing, as the deck draws it", () => {
     await page.goto("/");
     const teaser = page.getByTestId("brand-teaser");
     await expect(teaser.getByRole("heading", { name: "Honeycomb" })).toBeVisible();
-    await expect(teaser.getByRole("list", { name: "The brand in numbers" })).toContainText("90components");
+    await expect(teaser.getByRole("list", { name: "The brand in numbers" })).toContainText(`${COMPONENT_COUNT}components`);
     await expect(teaser.getByRole("list", { name: "The brand in numbers" })).toContainText("3typefaces");
-    await expect(teaser.getByRole("list", { name: "The brand in numbers" })).toContainText("9assets");
+    await expect(teaser.getByRole("list", { name: "The brand in numbers" })).toContainText(`${ASSET_COUNT}assets`);
   });
 
   test("the footer (F07-F11) is wordmark + Qloo, Privacy/Terms/Brain/Brand, GitHub icon + Built by, and continues the closing band's dark ground (B-023)", async ({ page }) => {

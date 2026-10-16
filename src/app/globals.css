@@ -364,6 +364,10 @@ html { scroll-padding-bottom: var(--bottom-nav); }
     @apply font-sans;
     -webkit-font-smoothing: antialiased;
   }
+  /* Reduced motion: no transitions anywhere. Animations keep their own rules (the Loader keeps moving). */
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after { transition-duration: 0ms !important; }
+  }
 }
 
 /* The landing page's ticker: two copies side by side, rolled left by one copy's width. Still under reduced motion. */

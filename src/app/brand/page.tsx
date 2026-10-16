@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { Check, Download, Music, TriangleAlert } from "lucide-react";
 import { ComponentGroups, PlanStates } from "@/components/brand/brand-components";
 import { IconGrid } from "@/components/brand/brand-icons";
-import { COMPONENT_COUNT, KIT, SCREENS } from "@/components/brand/brand-tables";
+import { ASSET_GROUPS, COMPONENT_COUNT, KIT, SCREENS } from "@/components/brand/brand-tables";
 import { PhoneFold } from "@/components/brand/phone-fold";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Loader } from "@/components/honeycomb/loader";
@@ -75,9 +75,6 @@ function Scale({ title, rows }: { title: string; rows: ScaleRow[] }) {
   );
 }
 
-/** The --ring row, one ring (F14); the data file still carries the older two-border sentence. */
-const RING_USE = "Keyboard focus (shadcn --ring): one 2px ring. Fields also turn their border to it; buttons keep a 2px ring with no gap, never a second ring. Bluestone by day, signal orange at night; 3:1 or more on every surface.";
-
 const PRINCIPLES = [
   ["The pitch ring", "An open circle (the crowd) around one paper cell (the performer), in an orange honeycomb cell. It is the logo, the loader, every map pin and the score ring."],
   ["One thing, one cell", "Anything that stands for one thing (a place, a rank, a song, a score, a step) is a pointy-top hexagon. Anything that holds things stays a square box."],
@@ -108,77 +105,10 @@ const COLOURS = [
   ["Footfall", "--footfall", "foot traffic"],
 ] as const;
 
-type Asset = { name: string; src: string; alt: string; w: number; h: number; dark?: boolean; note?: string };
-const ASSET_GROUPS: { name: string; min: string; files: Asset[] }[] = [
-  {
-    name: "Logos",
-    min: "260px",
-    files: [
-      { name: "busk-map-lockup-light.svg", src: "/brand/busk-map-lockup-light.svg", alt: "Busk Map logo for light grounds", w: 256, h: 48 },
-      { name: "busk-map-lockup-dark.svg", src: "/brand/busk-map-lockup-dark.svg", alt: "Busk Map logo for dark grounds", w: 256, h: 48, dark: true },
-    ],
-  },
-  {
-    name: "Other brand files (not logos)",
-    min: "220px",
-    files: [
-      { name: "busk-map-mark-light.svg", src: "/brand/busk-map-mark-light.svg", alt: "Hex mark for light grounds, a file for the icon set only", w: 64, h: 64, note: "Mark only: the icon files are cut from it. Not a logo." },
-      { name: "busk-map-mark-dark.svg", src: "/brand/busk-map-mark-dark.svg", alt: "Hex mark for dark grounds, a file for the icon set only", w: 64, h: 64, dark: true, note: "Mark only: the icon files are cut from it. Not a logo." },
-      { name: "busk-map-wordmark-light.svg", src: "/brand/busk-map-wordmark-light.svg", alt: "Wordmark for light grounds, a file for the lockup only", w: 241, h: 39, note: "The lockup's lettering on its own. Not a logo." },
-      { name: "busk-map-wordmark-dark.svg", src: "/brand/busk-map-wordmark-dark.svg", alt: "Wordmark for dark grounds, a file for the lockup only", w: 241, h: 39, dark: true, note: "The lockup's lettering on its own. Not a logo." },
-    ],
-  },
-  {
-    name: "Favicon and app icons",
-    min: "180px",
-    files: [
-      { name: "favicon.svg", src: "/brand/favicon/favicon.svg", alt: "Favicon", w: 48, h: 48 },
-      { name: "favicon-32.png", src: "/brand/favicon/favicon-32.png", alt: "Favicon, 32 pixels", w: 32, h: 32 },
-      { name: "apple-touch-icon-180.png", src: "/brand/favicon/apple-touch-icon-180.png", alt: "Apple touch icon", w: 96, h: 96 },
-      { name: "app-icon-512.png", src: "/brand/favicon/app-icon-512.png", alt: "App icon, 512 pixels", w: 96, h: 96 },
-    ],
-  },
-  {
-    name: "Social and Devpost",
-    min: "320px",
-    files: [
-      { name: "og-image-1200x630.png", src: "/brand/social/og-image-1200x630.png", alt: "Open Graph image", w: 1200, h: 630 },
-      { name: "devpost-cover-1200x800.png", src: "/brand/social/devpost-cover-1200x800.png", alt: "Devpost cover", w: 1200, h: 800 },
-      { name: "devpost-thumbnail-512.png", src: "/brand/social/devpost-thumbnail-512.png", alt: "Devpost thumbnail", w: 512, h: 512 },
-      { name: "social-banner-1500x500.png", src: "/brand/social/social-banner-1500x500.png", alt: "Social banner", w: 1500, h: 500 },
-    ],
-  },
-  {
-    name: "GitHub and README",
-    min: "320px",
-    files: [
-      { name: "github-social-preview-1280x640.png", src: "/brand/kit/github-social-preview-1280x640.png", alt: "GitHub social preview", w: 1280, h: 640 },
-      { name: "readme-hero-1600x640.png", src: "/brand/kit/readme-hero-1600x640.png", alt: "README hero", w: 1600, h: 640 },
-    ],
-  },
-  {
-    name: "Video kit",
-    min: "320px",
-    files: [
-      { name: "video-title-1920x1080.png", src: "/brand/kit/video-title-1920x1080.png", alt: "Video title card", w: 1920, h: 1080 },
-      { name: "video-end-1920x1080.png", src: "/brand/kit/video-end-1920x1080.png", alt: "Video end card", w: 1920, h: 1080 },
-      { name: "video-lower-third-1920x1080.png", src: "/brand/kit/video-lower-third-1920x1080.png", alt: "Video lower third", w: 1920, h: 1080 },
-    ],
-  },
-  {
-    name: "Screenshots",
-    min: "320px",
-    files: [
-      { name: "screenshot-desktop-1500x1000.png", src: "/brand/kit/screenshot-desktop-1500x1000.png", alt: "Desktop screenshot", w: 1500, h: 1000 },
-      { name: "screenshot-phone-1500x1000.png", src: "/brand/kit/screenshot-phone-1500x1000.png", alt: "Phone screenshot", w: 1500, h: 1000 },
-    ],
-  },
-];
-
 /** The brand page: a public, static showcase of the Honeycomb brand with the app's real components. */
 export default function BrandPage() {
   return (
-    <main id="main" className="flex-1 motion-reduce:[&_*]:!transition-none">
+    <main id="main" className="flex-1">
       <section data-theme="dark" aria-labelledby="brand-h" className="bm-grain border-b-[6px] border-primary bg-background text-foreground">
         <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-10 px-4 py-12 md:px-6 md:py-16">
           <div className="flex min-w-0 max-w-3xl flex-col gap-4">
@@ -388,7 +318,7 @@ export default function BrandPage() {
                     <span aria-hidden="true" className="mr-1.5 inline-block h-5 w-7 border-[1.5px] border-rule align-middle" style={{ background: t.darkSw }} />
                     {t.dark}
                   </td>
-                  <td className={TD}><Rich>{t.name === "ring" ? RING_USE : t.use}</Rich></td>
+                  <td className={TD}><Rich>{t.use}</Rich></td>
                 </tr>
               ))}
             </tbody>

@@ -9,6 +9,7 @@ import { HeroGlow } from "@/components/landing/hero-glow";
 import { HeroTasteMap } from "@/components/landing/hero-taste-map";
 import { OwnRedirect } from "@/components/landing/own-redirect";
 import { Warmup } from "@/components/landing/warmup";
+import { ASSET_COUNT, COMPONENT_COUNT } from "@/components/brand/brand-tables";
 import { WhatYouGet } from "@/components/landing/what-you-get";
 import { EXAMPLES, exampleWhen, examplePlays } from "@/lib/examples";
 import { CALLS_ON_RERUN, CALLS_PER_NEW_BUSK, callKinds } from "@/lib/qloo-map";
@@ -274,9 +275,9 @@ export default function Home() {
             </p>
             <ul aria-label="The brand in numbers" className="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 font-mono text-sm leading-5 font-medium text-muted-foreground">
               {[
-                { n: 90, label: "components" },
+                { n: COMPONENT_COUNT, label: "components" },
                 { n: 3, label: "typefaces" },
-                { n: 9, label: "assets" },
+                { n: ASSET_COUNT, label: "assets" },
               ].map((item) => (
                 <li key={item.label}>
                   <b className="mr-1.5 font-display text-[28px] leading-none font-extrabold text-foreground">{item.n}</b>

@@ -28,8 +28,8 @@ test.describe("landing, as the deck draws it", () => {
     await page.goto("/");
     const numbers = page.getByTestId("brain-teaser").getByRole("list", { name: "Qloo in numbers" }).getByRole("listitem");
     await expect(numbers).toHaveCount(3);
-    await expect(numbers.nth(0)).toHaveText("12kinds of Qloo call");
-    await expect(numbers.nth(1)).toHaveText("24–33calls for a new busk");
+    await expect(numbers.nth(0)).toHaveText("14kinds of Qloo call");
+    await expect(numbers.nth(1)).toHaveText("28–37calls for a new busk");
     await expect(numbers.nth(2)).toHaveText("0on a rerun");
     await expect(page.getByTestId("brain-teaser").getByText("parts of your plan")).toHaveCount(0);
   });

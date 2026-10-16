@@ -4,7 +4,7 @@ import { noBuskingCells } from "./zone-cells";
 import { titleCase } from "@/lib/text";
 import { venueDetail } from "@/lib/venue";
 import { planSchema, type Plan, type PlanPitch } from "@/lib/plan-schema";
-import { leadingAgeBand, skippedForSpacing, type ScoredPitch } from "@/server/scoring";
+import { leadingAgeBand, SCENE_ACTS_SHOWN, skippedForSpacing, type ScoredPitch } from "@/server/scoring";
 import * as qloo from "@/server/adapters/qloo";
 import { agentChanges } from "@/lib/agent-vs-engine";
 import { fromEngine, fromToolOutputs, type ToolResult } from "@/lib/research-totals";
@@ -185,7 +185,7 @@ export type AssembleOptions = {
  */
 export async function assemblePlan(context: PlanContext, ai: AiText | null, options: AssembleOptions = {}): Promise<Plan> {
   const { request, city } = context;
-  const [engineTop, engineRanked, cells, locals, learn, weather, artists, footfall, trends, contrast, profile, impact, usual] = await Promise.all([
+  const [engineTop, engineRanked, cells, locals, learn, weather, artists, footfall, trends, contrast, profile, impact, usual, localScene] = await Promise.all([
     context.topPitches(),
     context.ranked(),
     context.tasteCells(),
@@ -199,6 +199,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     context.crowdProfile(),
     context.localImpact(),
     context.entityIds().then((ids) => (ids.length > 0 ? context.hotspotCrowd() : null)),
+    context.localScene(),
   ]);
   const funnel = await context.funnel();
   const qlooDown = context.qlooFailed();
@@ -318,6 +319,14 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
         }),
         trend: trends.find((t) => t.entityId === a.id)?.windowChange ?? null,
       })),
+      // The local scene: the city's over-indexed genres and its local acts, re-scored for the performer's fans (null: today's crowd only).
+      localScene:
+        localScene && localScene.acts.length > 0
+          ? {
+              genres: localScene.genres.map((g) => ({ name: titleCase(g.name), over: g.over })),
+              acts: localScene.acts.slice(0, SCENE_ACTS_SHOWN).map((a) => ({ name: a.name, affinity: a.affinity === null ? null : Math.round(a.affinity * 100) / 100 })),
+            }
+          : null,
       // Qloo genre names arrive in mixed case ("indie", "Alternative Rock"): shown in title case.
       genres: [...new Map(genres.map((g) => [titleCase(g.name), { name: titleCase(g.name), affinity: g.affinity }])).values()],
       contrast:

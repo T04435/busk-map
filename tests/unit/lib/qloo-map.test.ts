@@ -263,11 +263,11 @@ describe("qloo map: referential integrity", () => {
     expect(new Set(allIds).size).toBe(allIds.length);
   });
 
-  it("has the documented shape: 12 kinds (14 with 5b and 5c), 18 data points, 9 features, Spotify, Ticketmaster and Last.fm", () => {
-    expect(callKinds).toBe(12);
-    expect(calls).toHaveLength(14);
-    expect(calls.filter((c) => c.variantOf).map((c) => c.id)).toEqual(["c5b", "c5c"]);
-    expect(dataPoints).toHaveLength(18);
+  it("has the documented shape: 14 kinds (18 with 5b, 5c, 7b and 11b), 20 data points, 9 features, Spotify, Ticketmaster and Last.fm", () => {
+    expect(callKinds).toBe(14);
+    expect(calls).toHaveLength(18);
+    expect(calls.filter((c) => c.variantOf).map((c) => c.id)).toEqual(["c5b", "c5c", "c7b", "c11b"]);
+    expect(dataPoints).toHaveLength(20);
     expect(featureCount).toBe(9);
     expect(secondarySources.map((s) => s.label)).toEqual(["Spotify", "Ticketmaster", "Last.fm"]);
   });
@@ -317,7 +317,7 @@ describe("qloo map: referential integrity", () => {
 
 describe("qloo map: facts and trace", () => {
   it("derives the counts and states the quota", () => {
-    expect(facts.map((f) => f.value)).toEqual(["12", "24–33", "0", "9", "≤ 25"]);
+    expect(facts.map((f) => f.value)).toEqual(["14", "28–37", "0", "9", "≤ 25"]);
     expect(CALLS_PER_LEARN_RUN).toBe("≤ 25");
     expect(quotaNote).toContain("10,000 requests a month per key, at 5 a second");
     expect(quotaNote).toContain("24 h");
@@ -342,6 +342,19 @@ describe("qloo map: facts and trace", () => {
     expect(calls.find((c) => c.id === "c5c")).toMatchObject({ variantOf: "c5", codeRef: "client.ts:localArtists", via: ["learn/tools.ts:crowd_at"] });
     expect(calls.find((c) => c.id === "c12")).toMatchObject({ num: "12", codeRef: "client.ts:tasteArtists", urnType: "urn:entity:artist" });
     expect(featuresTouchedBy("spotify")).toContain("f_learn");
+  });
+
+  it("the local scene lights its two compare inputs, its scene list, the re-score, and the crowd panel, set and agent it feeds", () => {
+    const { nodes } = trace("d_scene");
+    for (const id of ["c14", "c7b", "f_crowd", "f_setlist", "f_agent"] as const) expect(nodes.has(id), id).toBe(true);
+    const over = trace("d_overindex").nodes;
+    for (const id of ["c11b", "c13", "c5b", "f_crowd"] as const) expect(over.has(id), id).toBe(true);
+    // The re-score and the compare are variants of calls that already exist (same client function), so they are not new kinds.
+    expect(calls.find((c) => c.id === "c7b")).toMatchObject({ variantOf: "c7", codeRef: "client.ts:affinityFor" });
+    expect(calls.find((c) => c.id === "c11b")).toMatchObject({ variantOf: "c11", codeRef: "client.ts:compareGenres", endpoint: "/v2/analysis/compare" });
+    expect(calls.find((c) => c.id === "c13")).toMatchObject({ codeRef: "client.ts:globalArtists", urnType: "urn:entity:artist" });
+    expect(calls.find((c) => c.id === "c14")).toMatchObject({ codeRef: "client.ts:sceneArtists", urnType: "urn:entity:artist" });
+    expect(calls.find((c) => c.id === "c14")!.keyParams.join(" ")).toContain("signal.interests.tags");
   });
 
   it("a data point lights both ways", () => {

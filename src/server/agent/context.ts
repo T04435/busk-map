@@ -19,17 +19,24 @@ import {
   buildCandidatesWithFunnel,
   buildSetlist,
   DEFAULT_MAX_SONGS,
+  GLOBAL_POP_TAKE,
   learnThese,
   normalizeWeights,
+  overIndexGenres,
   pickTopPitches,
   rankPitches,
+  rankSceneActs,
   rankPitchesAnyTime,
+  sceneAffinityById,
+  SCENE_TAKE,
   scorePitch,
   scorePitchAnyTime,
   typicalForSlot,
+  USUAL_CROWD_TAKE,
   footfallReferenceOf,
   type AnyTimeBase,
   type Candidate,
+  type LocalScene,
   type RepertoireSong,
   type ScoreInputs,
   type ScoredPitch,
@@ -50,6 +57,7 @@ export const TRENDING_STALE_DAYS = 14;
 export const WIDEN_FACTOR = 2;
 /** Radius of "the crowd" at a pitch for genre analysis, and around the busiest hotspot for the contrast. */
 export const CROWD_RADIUS_M = 400;
+/** The usual crowd's artists the contrast with the performer's fans compares (the first of the USUAL_CROWD_TAKE read). */
 export const HOTSPOT_CROWD_TAKE = 10;
 /** Event headliners matched against the performer's taste per plan (one Qloo search each, cached). */
 export const EVENT_ARTISTS_MAX = 6;
@@ -78,6 +86,7 @@ const OPTIONAL_QLOO: [prefix: string, feature: string][] = [
   ["genres:", "the genres at the top pitch"],
   ["hotspotCrowd", "the contrast with the usual crowd"],
   ["compare", "the contrast with the usual crowd"],
+  ["scene:", "the local scene (acts local to this city)"],
   ["relatedArtists", "related artists for the suggested songs"],
   ["affinity:", "the suggested set order by local taste"],
   ["songArtists", "the suggested set order by local taste"],
@@ -426,13 +435,14 @@ export class PlanContext {
 
   /**
    * What the crowd at the city's busiest busking hotspot likes, with no
-   * performer signal: the "usual crowd" the performer's fans are compared with.
+   * performer signal: the "usual crowd" the performer's fans are compared with. It reads USUAL_CROWD_TAKE artists in one
+   * call: the first HOTSPOT_CROWD_TAKE are the contrast's group, all of them are the local scene's step 1 (genre over-index).
    */
   hotspotCrowd() {
     const [hotspot] = USUAL_HOTSPOTS;
     const d = 0.004;
     const box = { south: hotspot.lat - d, north: hotspot.lat + d, west: hotspot.lon - d, east: hotspot.lon + d };
-    return this.track("hotspotCrowd", () => qloo.localArtists([], box, HOTSPOT_CROWD_TAKE, this.adapters)).then(({ artists }) => ({ hotspot: hotspot.name, artists }));
+    return this.track("hotspotCrowd", () => qloo.localArtists([], box, USUAL_CROWD_TAKE, this.adapters)).then(({ artists }) => ({ hotspot: hotspot.name, artists }));
   }
 
   /** How the performer's fans differ from the usual hotspot crowd, by genre (Qloo compare). */
@@ -440,7 +450,7 @@ export class PlanContext {
     return this.once("contrast", async () => {
       const [ids, crowd] = await Promise.all([this.entityIds(), this.hotspotCrowd()]);
       if (ids.length === 0 || crowd.artists.length === 0) return null;
-      const rows = await this.track("compare", () => qloo.compareGenres(ids, crowd.artists.map((a) => a.id), this.adapters));
+      const rows = await this.track("compare", () => qloo.compareGenres(ids, crowd.artists.slice(0, HOTSPOT_CROWD_TAKE).map((a) => a.id), this.adapters));
       if (rows.length === 0) return null;
       const byDelta = [...rows].sort((a, b) => b.a - b.b - (a.a - a.b));
       return {
@@ -448,6 +458,38 @@ export class PlanContext {
         more: byDelta.filter((r) => r.a - r.b >= 0.15).slice(0, 3).map((r) => r.name),
         less: byDelta.reverse().filter((r) => r.b - r.a >= 0.15).slice(0, 3).map((r) => r.name),
       };
+    });
+  }
+
+  /**
+   * The local scene (+3 cacheable Qloo calls on a cold city, plus the global-pop reference shared by all cities):
+   *  1. city over-index: /v2/analysis/compare of the usual crowd's top 20 (the existing hotspotCrowd read) against Qloo's
+   *     global-pop artists gives the genres this city over-indexes on (1–7);
+   *  2. local scene: location plus those genre tags (signal.interests.tags) gives the local artists, which are then
+   *     re-scored for the act's fans (the same affinity read as the event headliners, #7).
+   * Any step that fails or finds nothing leaves null (today's behaviour) and the plan says why (OPTIONAL_QLOO).
+   */
+  localScene(): Promise<LocalScene | null> {
+    return this.once("localScene", async () => {
+      const [ids, usual] = await Promise.all([this.entityIds(), this.hotspotCrowd()]);
+      if (ids.length === 0 || usual.artists.length === 0 || this.qlooFailed()) return null;
+      const none = (what: string) => {
+        // A failed call already left its own note (track); an answer with no data says so here.
+        const note = `Qloo had no ${what}, so the plan goes without a local scene.`;
+        if (!this.qlooFailed() && !this.notes.some((n) => n.startsWith("Qloo didn't answer in time for the local scene")) && !this.notes.includes(note)) this.notes.push(note);
+        return null;
+      };
+      const global = await this.track("scene:global", () => qloo.globalArtists(GLOBAL_POP_TAKE, this.adapters));
+      if (global.length === 0) return none("global reference artists");
+      const rows = await this.track("scene:compare", () => qloo.compareGenres(usual.artists.map((a) => a.id), global.map((a) => a.id), this.adapters));
+      const handles = overIndexGenres(rows);
+      if (handles.length === 0) return none("genres this city leans to");
+      const own = new Set(ids);
+      const scene = (await this.track("scene:artists", () => qloo.sceneArtists(handles.map((h) => h.id), this.city.bbox, SCENE_TAKE, this.adapters))).filter((a) => !own.has(a.id));
+      if (scene.length === 0) return none("local artists for those genres");
+      const affinity = await this.track("scene:taste", () => qloo.tasteMatch(scene.map((a) => a.id), ids, this.adapters));
+      if (Object.keys(affinity).length === 0) return none("score of local artists for your fans");
+      return { genres: handles, acts: rankSceneActs(scene, affinity, own) };
     });
   }
 
@@ -583,7 +625,7 @@ export class PlanContext {
    */
   fillArtists(): Promise<FillArtist[]> {
     return this.once("fillArtists", async () => {
-      const [ids, crowd, resolved] = await Promise.all([this.entityIds(), this.localArtists(), this.artists()]);
+      const [ids, crowd, resolved, scene] = await Promise.all([this.entityIds(), this.localArtists(), this.artists(), this.localScene()]);
       if (ids.length === 0) return [];
       const related = this.qlooFailed() ? [] : (await this.track("relatedArtists", () => qloo.tasteArtists(ids, SUGGEST_RELATED_TAKE, this.adapters))).artists;
       const names = new Map(resolved.flatMap((r) => (r.entity ? [[r.entity.id, r.entity.name] as const] : [])));
@@ -600,7 +642,9 @@ export class PlanContext {
           }),
       });
       const inSet = new Set(this.request.performer.songs.map((s) => nameKey(s.artist)));
-      return mergeFillArtists([crowd.map(toFill), related.map(toFill)], inSet);
+      // Local acts your fans would like (the local scene) are fill candidates too: the plan's songs are then local, not only global pop.
+      const local = (scene?.acts ?? []).filter((a) => a.affinity !== null).map((a): FillArtist => ({ id: a.id, name: a.name, growth: null, listeners: null, because: [], local: { fit: a.affinity } }));
+      return mergeFillArtists([crowd.map(toFill), related.map(toFill), local], inSet);
     });
   }
 
@@ -623,13 +667,15 @@ export class PlanContext {
   setlistFor(pitch: { id: string; lat: number; lon: number }) {
     return this.once(`setlist:${pitch.id}`, async () => {
       const fill = this.fillCount;
-      const [repertoire, songs, years, profile, candidates] = await Promise.all([
+      const [repertoire, songs, years, profile, candidates, localScene] = await Promise.all([
         this.repertoire(),
         this.songs(),
         this.releaseYears(),
         this.crowdProfile(),
         fill ? this.fillArtists() : Promise.resolve([] as FillArtist[]),
+        this.localScene(),
       ]);
+      const scene = localScene ? sceneAffinityById(localScene) : null;
       const candidateIds = candidates.map((c) => c.id);
       const own = [...new Set(repertoire.flatMap((s) => (s.artistEntityId ? [s.artistEntityId] : [])))];
       const ids = fill ? [...new Set([...own.slice(0, Math.max(0, AFFINITY_IDS_MAX - candidateIds.length)), ...candidateIds])].slice(0, AFFINITY_IDS_MAX) : own;
@@ -644,7 +690,7 @@ export class PlanContext {
       };
       addPlaycounts(songs);
       const currentYear = Number(this.today.slice(0, 4));
-      if (!fill) return buildSetlist(repertoire, affinity, playcounts, undefined, { years, ageLean: profile?.age ?? null, currentYear, ageLabel });
+      if (!fill) return buildSetlist(repertoire, affinity, playcounts, undefined, { years, ageLean: profile?.age ?? null, currentYear, ageLabel }, scene);
 
       const have = new Set(repertoire.map((s) => trackKey(s.artist, s.title)));
       const skip = new Set((this.request.performer.skipSongs ?? []).map((s) => trackKey(s.artist, s.title)));
@@ -658,7 +704,7 @@ export class PlanContext {
       const artistNames = [...new Set(picks.map((p) => p.track.artist))].sort();
       if (artistNames.length > 0) addPlaycounts(await this.track(`songsFill:${artistNames.join("|")}`, () => getSongs(artistNames, this.adapters)));
       // Room for all the suggested songs on top of the act's own 12, so a long Repertoire can't push them out.
-      const ordered = buildSetlist([...repertoire, ...suggested], affinity, playcounts, MAX_REPERTOIRE_SET + fill, { years: eraYears, ageLean: profile?.age ?? null, currentYear, ageLabel });
+      const ordered = buildSetlist([...repertoire, ...suggested], affinity, playcounts, MAX_REPERTOIRE_SET + fill, { years: eraYears, ageLean: profile?.age ?? null, currentYear, ageLabel }, scene);
       let ownKept = 0;
       return ordered.filter((e) => e.origin === "suggested" || ownKept++ < DEFAULT_MAX_SONGS);
     });

@@ -149,3 +149,13 @@ export function crowdTags(entityIds: string[], point: LatLon, radiusM: number, t
 export function compareGenres(groupA: string[], groupB: string[], context: AdapterContext): Promise<AdapterResult<GenreContrast[]>> {
   return run(context, [], (backend) => client.compareGenres(backend, groupA, groupB));
 }
+
+/** global_pop: Qloo's globally popular artists (no signal), the reference set the local scene's genre over-index is measured against. */
+export function globalArtists(take: number, context: AdapterContext): Promise<AdapterResult<QlooEntity[]>> {
+  return run<QlooEntity[]>(context, [], (backend) => client.globalArtists(backend, take));
+}
+
+/** local_scene: artists liked in the city area and tagged with its over-indexed genres (no artist signal). */
+export function sceneArtists(tagIds: string[], area: BBox, take: number, context: AdapterContext): Promise<AdapterResult<QlooEntity[]>> {
+  return run<QlooEntity[]>(context, [], (backend) => client.sceneArtists(backend, tagIds, area, take));
+}

@@ -163,6 +163,8 @@ export const planPitchSchema = z.object({
       eraFit: z.number().min(0).max(1).nullable().default(null),
       /** "suggested": Busk Map added it from the crowd's taste (suggested fill); "repertoire": the act's own song. Old plans: repertoire. */
       origin: z.enum(["repertoire", "suggested"]).default("repertoire"),
+      /** The song's artist is a local-scene act (Qloo compare + genre tag, re-scored for the act's fans): its score includes the local-scene bonus. */
+      localScene: z.boolean().default(false),
       /** Why a suggested song is here and where it was found; null for the act's own songs. */
       suggestion: z
         .object({
@@ -245,6 +247,17 @@ export const planSchema = z.object({
     ),
     /** What the crowd at the busiest busking hotspot likes with no performer signal (Qloo insights): "the usual crowd". */
     usualCrowd: z.object({ hotspot: z.string(), artists: z.array(z.object({ name: z.string(), affinity: z.number().nullable() })) }).nullable().default(null),
+    /**
+     * The local scene (Qloo compare + genre tag): the genres this city over-indexes on against global pop, and the local
+     * acts of those genres re-scored for the performer's fans. Null when Qloo gave no scene (a plan note says why).
+     */
+    localScene: z
+      .object({
+        genres: z.array(z.object({ name: z.string(), over: z.number() })),
+        acts: z.array(z.object({ name: z.string(), affinity: z.number().nullable() })),
+      })
+      .nullable()
+      .default(null),
     /** Genres that characterise the crowd at the top pitch (Qloo urn:tag). */
     genres: z.array(z.object({ name: z.string(), affinity: z.number().nullable() })).default([]),
     /** How the performer's fans differ from the crowd the city centre already likes (Qloo compare). */

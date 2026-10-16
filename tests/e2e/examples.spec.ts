@@ -122,6 +122,8 @@ test.describe("data-led plans", () => {
       const crowd = sheet.getByRole("region", { name: "Compared with the usual crowd" });
       await expect(crowd.getByRole("heading", { name: "Your fans vs the usual crowd" })).toBeVisible();
       await expect(crowd.getByText(/^Qloo insights for the hotspot/)).toBeVisible();
+      // The local scene: the city's genres and the local acts your fans would like (Qloo compare + genre tag, re-scored).
+      await expect(sheet.getByTestId("local-scene")).toContainText(/^Local scene: .+: acts your fans would like: .+\.$/);
       await expect(sheet.getByRole("heading", { name: "Who your fans are" })).toBeVisible();
       // What to play: songs carry their year and era fit.
       await expect(sheet.getByText(/from \d{4}: a (strong|good|fair|weak) era fit for a crowd leaning /).first()).toBeVisible();

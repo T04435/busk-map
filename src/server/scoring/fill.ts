@@ -17,6 +17,8 @@ export type FillArtist = {
   listeners: number | null;
   /** Names of the act's artists that explain the match (Qloo explainability), strongest first. */
   because: string[];
+  /** Set on artists from the local scene (Qloo compare + genre tag): `fit` is the act's fans' affinity for them, when known. */
+  local?: { fit: number | null };
 };
 
 /** One catalogue song, as Spotify or Last.fm gave it. */
@@ -41,6 +43,7 @@ export function mergeFillArtists(lists: FillArtist[][], leaveOut: Set<string>, l
       for (const b of a.because) if (!have.because.includes(b)) have.because.push(b);
       have.growth ??= a.growth;
       have.listeners ??= a.listeners;
+      have.local ??= a.local;
     }
   }
   return [...out.values()];
@@ -62,6 +65,7 @@ const formatListeners = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFi
 /** "Liked by the crowd here (affinity 82/100), fans also like Paul Kelly": every number comes from the data. */
 export function suggestionBecause(artist: FillArtist, affinity: number | undefined): string {
   const bits = [affinity !== undefined ? `Liked by the crowd here (affinity ${Math.round(affinity * 100)}/100)` : "Liked by this city's crowd"];
+  if (artist.local) bits.unshift(artist.local.fit !== null ? `A local act your fans would like (${Math.round(artist.local.fit * 100)}/100)` : "A local act");
   if (artist.because.length > 0) bits.push(`fans also like ${artist.because.slice(0, 2).join(" and ")}`);
   if (artist.listeners) bits.push(`${formatListeners(artist.listeners)} Last.fm listeners`);
   return bits.join(", ");

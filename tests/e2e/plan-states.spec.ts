@@ -124,7 +124,7 @@ test.describe("the research feed", () => {
     await page.goto("/plan?example=folk-duo");
     await waitForPlan(page);
     const feed = await agentSteps(page);
-    const toggle = page.getByRole("switch", { name: "Show raw data" });
+    const toggle = page.getByRole("switch", { name: "Raw data" });
     await expect(toggle).not.toBeChecked();
     await expect(feed.locator("code")).toHaveCount(0);
     await expect(feed.getByTestId("agent-step-data")).toHaveCount(0);
@@ -143,7 +143,7 @@ test.describe("the research feed", () => {
     await expect(page.getByTestId("plan-pending")).toBeVisible();
     await expect(page.getByTestId("agent-tag")).toHaveText("Live");
     await expect(page.getByRole("list", { name: "Research, newest first" }).getByRole("listitem").first()).toBeVisible();
-    await expect(page.getByRole("switch", { name: "Show raw data" })).toHaveCount(0);
+    await expect(page.getByRole("switch", { name: "Raw data" })).toHaveCount(0);
     await expect(page.getByTestId("plan-funnel")).toBeVisible();
   });
 

@@ -34,12 +34,12 @@ export function ChoiceGroup({
   const noteId = useId();
   return (
     <fieldset className={cn("m-0 min-w-0 border-0 p-0", className)} data-slot="choice-group">
-      <legend className="mb-2 p-0 text-label font-bold text-foreground">{legend}</legend>
+      <legend className="mb-2 p-0 text-[15px] leading-5 font-bold text-foreground">{legend}</legend>
       <RadioGroup value={value} onValueChange={onValueChange} aria-invalid={invalid || undefined} aria-describedby={[describedBy, note ? noteId : null].filter(Boolean).join(" ") || undefined}>
         {children}
       </RadioGroup>
       {note ? (
-        <p id={noteId} className="mt-2 mb-0 text-sm leading-5 text-muted-foreground">
+        <p id={noteId} className="mt-3 mb-0 text-sm leading-5 text-muted-foreground">
           {note}
         </p>
       ) : null}
@@ -56,7 +56,7 @@ export function ChoiceCard({ value, title, description, end, className }: { valu
       htmlFor={id}
       data-slot="choice-card"
       className={cn(
-        "relative grid min-h-16 cursor-pointer grid-cols-[auto_1fr_auto] items-center gap-3 border-2 border-input bg-card px-4 py-3 transition-[border-color,box-shadow] duration-(--duration-fast) hover:border-foreground has-[[data-state=checked]]:border-rule has-[[data-state=checked]]:shadow-[4px_4px_0_var(--primary)] has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-disabled focus-within:outline-3 focus-within:outline-offset-4 focus-within:outline-solid focus-within:outline-ring motion-reduce:transition-none",
+        "relative grid min-h-16 cursor-pointer grid-cols-[auto_1fr_auto] items-center gap-3 border-2 border-border bg-card px-4 py-3 transition-[border-color] duration-(--duration-fast) hover:border-input has-[[data-state=checked]]:border-foreground has-[[data-state=checked]]:shadow-[4px_4px_0_var(--primary)] has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-75 focus-within:outline-3 focus-within:outline-offset-4 focus-within:outline-solid focus-within:outline-ring motion-reduce:transition-none",
         className
       )}
     >

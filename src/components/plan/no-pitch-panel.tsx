@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Calendar, Scale, ShieldOff } from "lucide-react";
 import { HexCell } from "@/components/honeycomb/hex-cell";
+import { Icon } from "@/components/honeycomb/icon";
 import { Button } from "@/components/ui/button";
 import { permitName } from "@/lib/slot";
 
@@ -13,35 +13,35 @@ const WHO: Record<string, string> = { general: "a general permit", premium: "a p
 export function NoPitchPanel({ permit, when, againHref, rulesHref }: { permit: string; when: string; againHref: string; rulesHref?: string }) {
   const general = permit === "general";
   return (
-    <section data-testid="no-pitch" role="status" className="flex flex-col items-start gap-4 border-2 border-rule bg-card p-5 sm:flex-row sm:p-6">
-      <HexCell size={56} tone="error">
-        <ShieldOff aria-hidden="true" className="size-6" />
-      </HexCell>
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
-        <h2 className="m-0 font-display text-[clamp(28px,4vw,36px)] leading-none font-extrabold uppercase">No legal pitch for {WHO[permit] ?? permitName(permit)} {when}</h2>
-        <p className="m-0 max-w-[60ch] text-base leading-6">
+    <section data-testid="no-pitch" role="status" className="border-2 border-rule bg-card">
+      <div className="grid justify-items-center gap-3 px-4 py-8 text-center">
+        <HexCell size={64} lift>
+          <Icon name="restricted" size={28} />
+        </HexCell>
+        <h2 className="m-0 font-display text-xl leading-[26px] font-extrabold tracking-[0.01em] uppercase">No legal pitch for {WHO[permit] ?? permitName(permit)} {when}</h2>
+        <p className="m-0 max-w-[36ch] text-[15px] leading-[22px] text-muted-foreground">
           The council&apos;s busking rules left no pitch for this slot.{" "}
           {general ? "A different day or time may open some." : "A general permit opens more spots in most slots, or another day may."}{" "}
           {rulesHref ? (
-            <a href={rulesHref} target="_blank" rel="noreferrer" className="inline-flex min-h-tap items-center font-bold underline underline-offset-3">
+            <a href={rulesHref} target="_blank" rel="noreferrer" className="inline-flex min-h-tap items-center font-bold text-foreground underline underline-offset-3">
               Read the council&apos;s busking rules
               <span className="sr-only"> (opens in a new tab)</span>
             </a>
           ) : null}
         </p>
-        <div className="flex flex-wrap gap-3 [&>*]:max-sm:w-full">
+        <div className="flex flex-wrap justify-center gap-3 [&>*]:max-sm:w-full">
           {general ? null : (
             <Button asChild>
               <Link href={`${againHref}${againHref.includes("?") ? "&" : "?"}permit=general`}>
-                <Scale aria-hidden="true" />
-                Try with a general permit
+                <Icon name="legal" size={16} />
+                Plan with a general permit
               </Link>
             </Button>
           )}
           <Button asChild variant={general ? "default" : "outline"}>
             <Link href={againHref}>
-              <Calendar aria-hidden="true" />
-              Pick another day
+              <Icon name="calendar" size={16} />
+              Try another day
             </Link>
           </Button>
         </div>

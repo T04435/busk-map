@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "cn";
 import { Logo } from "@/components/honeycomb/logo";
+import { Icon } from "@/components/honeycomb/icon";
 import { activeNavId, HAS_BOTTOM_NAV, NAV_ITEMS } from "@/components/honeycomb/nav-items";
 
 /**
@@ -31,7 +32,7 @@ export function AppHeaderView({ pathname }: { pathname: string | null }) {
                 on ? "bg-primary text-primary-foreground" : "text-[#a7b0b5] hover:bg-[#232d33] hover:text-[#f2ede4]"
               )}
             >
-              <item.icon aria-hidden="true" className="size-[18px]" />
+              <Icon name={item.icon} size={18} />
               {item.label}
             </Link>
           );

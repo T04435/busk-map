@@ -40,34 +40,47 @@ export function statusText(s: DataStatus): string {
   return `${s.source === "qloo" && s.mode === "synthetic" ? QLOO_TEST_LABEL : MODE_LABEL[s.mode]}${s.reason ? `: ${REASON_LABEL[s.reason] ?? s.reason}` : ""}`;
 }
 
-/** Every data source, its credit, licence link and how this plan used it. */
+/** What each source is used for, in the DS SourceAttribution wording. */
+const USE: Record<SourceId, string> = {
+  qloo: "Taste, crowds, venues and event crowds",
+  "melbourne-pedestrian": "Foot traffic",
+  "melbourne-busking": "Where you may play",
+  osm: "Public spaces and venue names",
+  ticketmaster: "Events near each pitch",
+  lastfm: "Song popularity",
+  "open-meteo": "The forecast for your slot",
+  spotify: "Song years, lengths and popularity",
+  openfreemap: "Map tiles",
+  ai: "The reasons written for each pitch",
+};
+
+/** Every data source, its credit, licence link and how this plan used it (the DS SourceAttribution). */
 export function DataSources({ status, showAi, soFar }: { status: DataStatus[]; showAi: boolean; /** While the run is live: only the sources it has touched so far. */ soFar?: SourceId[] }) {
   const used = new Map(status.map((s) => [s.source, s]));
   const ids: SourceId[] = ["qloo", "melbourne-pedestrian", "melbourne-busking", "osm", "ticketmaster", "lastfm", "open-meteo", "spotify", "openfreemap"];
   if (showAi) ids.push("ai");
   const shown = soFar ? ids.filter((id) => soFar.includes(id)) : ids;
   return (
-    <section aria-label="Data used" data-testid="data-used" className="space-y-3 border-t-2 border-rule pt-4">
-      <div>
-        <h3 className="m-0 font-mono text-xs font-bold tracking-[0.06em] text-muted-foreground uppercase">{soFar ? "Data used so far" : "Data used"}</h3>
-        <p className="m-0 text-sm text-muted-foreground">Where every number on this page comes from.</p>
-      </div>
-      <ul className="m-0 grid list-none gap-3 p-0 text-sm md:grid-cols-2">
+    <section aria-label="Data used" data-testid="data-used">
+      <h3 className="m-0 mb-1.5 font-mono text-[11px] leading-4 font-medium tracking-[0.06em] text-muted-foreground uppercase">{soFar ? "Data used so far" : "Data used"}</h3>
+      <ul className="m-0 list-none p-0">
         {shown.map((id) => {
           const source = SOURCES[id];
           const s = used.get(id);
           return (
-            <li key={id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border border-border bg-card px-3 py-2">
-              <span className="flex flex-wrap items-center gap-x-2">
-                {id === "qloo" ? <QlooWordmark width={52} /> : null}
-                <a className="font-bold underline underline-offset-3 hover:decoration-2" href={source.url} target="_blank" rel="noreferrer">
-                  {source.credit}
-                </a>
-                <span className="text-muted-foreground">({source.licence})</span>
-              </span>
-              {(s || soFar) && (
-                <DataStatusBadge status={s ? s.mode : "live"} label={s ? statusText(s) : "Live"} />
-              )}
+            <li key={id} className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 border-t border-border py-2.5 text-sm leading-5 first:border-t-0">
+              <div>
+                <div className="flex flex-wrap items-center gap-x-2 font-bold">
+                  {id === "qloo" ? <QlooWordmark width={52} /> : null}
+                  <a className="underline decoration-[1.5px] underline-offset-3 hover:decoration-[2.5px]" href={source.url} target="_blank" rel="noreferrer">
+                    {source.credit}
+                  </a>
+                </div>
+                <div className="text-[13px] text-muted-foreground">
+                  {USE[id]} · {source.licence}
+                </div>
+              </div>
+              {(s || soFar) && <DataStatusBadge status={s ? s.mode : "live"} label={s ? statusText(s) : "Live"} />}
             </li>
           );
         })}

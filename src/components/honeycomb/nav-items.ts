@@ -1,4 +1,4 @@
-import { Map, type LucideIcon } from "lucide-react";
+import type { IconName } from "@/components/honeycomb/icon";
 
 export type NavId = "busks";
 
@@ -6,7 +6,8 @@ export type NavItem = {
   id: NavId;
   label: string;
   href: string;
-  icon: LucideIcon;
+  /** A DS Icon name (never a Lucide component or a text glyph). */
+  icon: IconName;
   /** Paths (and anything below them) that light this item up. */
   match: readonly string[];
 };
@@ -16,7 +17,7 @@ export type NavItem = {
  * /busks, /plan and a stored busk at /p/<id> all light it up. There is no Setlist route.
  */
 export const NAV_ITEMS: readonly NavItem[] = [
-  { id: "busks", label: "Busks", href: "/busks", icon: Map, match: ["/busks", "/plan", "/p"] },
+  { id: "busks", label: "Busks", href: "/busks", icon: "map", match: ["/busks", "/plan", "/p"] },
 ];
 
 /** Which item a pathname belongs to, or null (the landing page, not-found pages) when none does. */

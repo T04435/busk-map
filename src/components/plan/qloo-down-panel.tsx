@@ -1,6 +1,6 @@
-import { RotateCw, WifiOff } from "lucide-react";
 import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
 import { HexCell } from "@/components/honeycomb/hex-cell";
+import { Icon } from "@/components/honeycomb/icon";
 import { QlooWordmark } from "@/components/honeycomb/logo";
 import { Button } from "@/components/ui/button";
 
@@ -10,22 +10,24 @@ import { Button } from "@/components/ui/button";
  */
 export function QlooDownPanel({ onRetry, busy = false }: { onRetry: () => void; busy?: boolean }) {
   return (
-    <section data-testid="qloo-down" role="alert" className="flex flex-col items-start gap-4 border-2 border-rule bg-card p-5 shadow-md md:p-6">
+    <section data-testid="qloo-down" role="alert" className="grid justify-items-center gap-3 border-2 border-rule bg-card px-4 py-8 text-center">
       <HexCell size={64} tone="error" lift>
-        <WifiOff aria-hidden="true" className="size-7" />
+        <Icon name="offline" size={28} />
       </HexCell>
-      <h2 className="m-0 font-display text-[clamp(32px,5vw,44px)] leading-[0.95] font-extrabold uppercase">No plan without taste data</h2>
-      <p className="m-0 max-w-[52ch] text-base leading-6">
+      <h2 className="m-0 font-display text-xl leading-[26px] font-extrabold tracking-[0.01em] uppercase">No plan without taste data</h2>
+      <p className="m-0 max-w-[36ch] text-[15px] leading-[22px] text-muted-foreground">
         Busk Map plans around your sound, and Qloo, our taste data source, isn&apos;t answering. Your act, day and permit are kept: try again in a minute.
       </p>
-      <span className="inline-flex flex-wrap items-center gap-2">
+      <span className="inline-flex flex-wrap items-center justify-center gap-2">
         <QlooWordmark width={52} />
         <DataStatusBadge status="unavailable" label="Unavailable" reason="not responding" />
       </span>
-      <Button type="button" onClick={onRetry} disabled={busy} data-testid="qloo-retry">
-        <RotateCw aria-hidden="true" />
-        Try again
-      </Button>
+      <div className="flex flex-wrap justify-center gap-3">
+        <Button type="button" onClick={onRetry} disabled={busy} data-testid="qloo-retry">
+          <Icon name="refresh" size={16} />
+          Try again
+        </Button>
+      </div>
     </section>
   );
 }

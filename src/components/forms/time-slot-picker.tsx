@@ -1,14 +1,10 @@
 "use client";
 
-import { DatePicker } from "@/components/forms/date-picker";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useId } from "react";
 import { formatHour } from "@/lib/slot";
+import { cn } from "cn";
 
-const HOURS = Array.from({ length: 24 }, (_, h) => h);
-
-/** The quick picks: a whole slot in one tap. The selects below say the exact hours. */
+/** The four slots, as the DS draws them: Morning 9 am–12 pm, Lunch 12–3 pm, Afternoon 3–6 pm, Evening 6–9 pm. */
 export const QUICK_SLOTS = [
   { id: "morning", label: "Morning", from: 9, to: 12 },
   { id: "lunch", label: "Lunch", from: 12, to: 15 },
@@ -16,91 +12,60 @@ export const QUICK_SLOTS = [
   { id: "evening", label: "Evening", from: 18, to: 21 },
 ] as const;
 
-export type TimeSlotValue = { date: string; from: string; to: string };
+export type QuickSlotId = (typeof QUICK_SLOTS)[number]["id"];
+/** "any" is Any time · Busk Map picks; otherwise a quick slot's id. */
+export type TimeSlotId = "any" | QuickSlotId;
+
+/** "9 am–12 pm", "12–3 pm" as the DS prints a slot's range. */
+const range = (from: number, to: number) => {
+  const a = formatHour(from), b = formatHour(to);
+  // "12–3 pm", not "12 pm–3 pm": the first suffix goes when both ends share it (as the DS prints a slot).
+  const sa = a.split(" ")[1], sb = b.split(" ")[1];
+  return sa && sa === sb ? `${a.split(" ")[0]}–${b}` : `${a}–${b}`;
+};
+
+const SLOT =
+  "min-h-14 cursor-pointer rounded-none border-2 border-border bg-card px-3 py-2 text-left text-foreground transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid focus-visible:outline-ring focus-visible:shadow-none aria-pressed:border-rule aria-pressed:bg-primary aria-pressed:text-primary-foreground motion-reduce:transition-none";
 
 /**
- * The day and hours of the busk: a quick pick of four common slots, then the date and exact From and To. The quick
- * picks are a toggle group (one at a time) that sets From and To; the selects stay the source of truth, so a custom
- * range simply leaves every quick pick off. Select values are rendered as children so the server HTML shows them (B-006).
+ * DS TimeSlotPicker. With `anyTime`: the label "Time (optional)", Any time first (dashed, "Busk Map picks") and its hint
+ * when pressed. Without it: the label "Time" and the four slots only. The slots are pressed-state buttons (Big Shoulders
+ * label, mono range, the pressed one orange). An empty value presses nothing (a custom range from a stored plan).
+ * The date is NOT in here: the form asks it once, above, as the DS DatePicker.
  */
 export function TimeSlotPicker({
   value,
   onChange,
-  today,
-  invalid,
+  anyTime = false,
+  label = anyTime ? "Time (optional)" : "Time",
+  anyHint = "Busk Map finds the best hours that day: when your crowd is out, foot traffic peaks and events let out. Each pitch gets its own time.",
   describedBy,
 }: {
-  value: TimeSlotValue;
-  onChange: (value: TimeSlotValue) => void;
-  /** The city's local date: a plan is for today or later. */
-  today: string;
-  invalid?: boolean;
+  value: TimeSlotId | "";
+  onChange: (id: TimeSlotId) => void;
+  /** Offer "Any time · Busk Map picks" first (needs the plan's any-time slot; off until dev/core is merged). */
+  anyTime?: boolean;
+  label?: string;
+  anyHint?: string;
   describedBy?: string;
 }) {
-  const picked = QUICK_SLOTS.find((s) => String(s.from) === value.from && String(s.to) === value.to)?.id ?? "";
+  const labelId = useId();
+  const quick = QUICK_SLOTS.map((s) => ({ id: s.id as TimeSlotId, label: s.label, range: range(s.from, s.to) }));
+  const options = anyTime ? [{ id: "any" as TimeSlotId, label: "Any time", range: "Busk Map picks" }, ...quick] : quick;
   return (
-    <div className="flex flex-col gap-4" data-slot="time-slot-picker">
-      <div className="flex flex-col gap-1.5">
-        <span id="quick-slot-label" className="text-label font-bold">
-          Time of day
-        </span>
-        <ToggleGroup
-          type="single"
-          value={picked}
-          onValueChange={(id) => {
-            const slot = QUICK_SLOTS.find((s) => s.id === id);
-            if (slot) onChange({ ...value, from: String(slot.from), to: String(slot.to) });
-          }}
-          aria-labelledby="quick-slot-label"
-          className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4"
-        >
-          {QUICK_SLOTS.map((slot) => (
-            <ToggleGroupItem key={slot.id} value={slot.id} className="h-auto min-h-14 w-full flex-col items-start gap-0 px-3 py-2 text-left font-display text-lg leading-[1.1] tracking-[0.02em]">
-              {slot.label}
-              <span className="font-mono text-[13px] leading-[18px] font-medium tracking-normal normal-case">
-                {formatHour(slot.from)}–{formatHour(slot.to)}
-              </span>
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+    <div className="flex min-w-0 flex-col gap-1.5" data-slot="time-slot-picker">
+      <span id={labelId} className="text-[15px] leading-5 font-bold text-foreground">
+        {label}
+      </span>
+      <div role="group" aria-labelledby={labelId} aria-describedby={describedBy} className="grid grid-cols-[repeat(auto-fit,minmax(96px,1fr))] gap-1.5">
+        {options.map((o) => (
+          <button key={o.id} type="button" aria-pressed={value === o.id} onClick={() => onChange(o.id)} className={cn(SLOT, o.id === "any" && "border-dashed")}>
+            <b className="block font-display text-lg leading-5 font-extrabold tracking-[0.02em] uppercase">{o.label}</b>
+            <span className={cn("block font-mono text-[13px] leading-[18px]", value === o.id ? "text-primary-foreground" : "text-muted-foreground")}>{o.range}</span>
+          </button>
+        ))}
       </div>
-      <div className="grid gap-4 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
-        <div className="space-y-1">
-          <Label htmlFor="date">Date</Label>
-          <DatePicker id="date" value={value.date} onChange={(date) => onChange({ ...value, date })} min={today} aria-describedby={describedBy} />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="from">From</Label>
-          <Select value={value.from} onValueChange={(from) => onChange({ ...value, from })}>
-            <SelectTrigger id="from" className="w-full" aria-invalid={invalid || undefined} aria-describedby={describedBy}>
-              <SelectValue>{formatHour(Number(value.from))}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {HOURS.map((h) => (
-                <SelectItem key={h} value={String(h)}>
-                  {formatHour(h)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="to">To</Label>
-          <Select value={value.to} onValueChange={(to) => onChange({ ...value, to })}>
-            <SelectTrigger id="to" className="w-full" aria-invalid={invalid || undefined} aria-describedby={describedBy}>
-              <SelectValue>{formatHour(Number(value.to))}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {HOURS.map((h) => (
-                <SelectItem key={h + 1} value={String(h + 1)}>
-                  {formatHour(h + 1)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="m-0 text-xs leading-4 text-muted-foreground">Up to 6 hours</p>
-        </div>
-      </div>
+      {anyTime && value === "any" ? <p className="m-0 text-sm leading-5 text-muted-foreground">{anyHint}</p> : null}
     </div>
   );
 }

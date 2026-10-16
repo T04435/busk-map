@@ -116,7 +116,7 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     await page.goto(`/plan?name=Copy%20Link%20Act&artists=Paul%20Kelly&date=${SATURDAY}&from=18&to=21`);
     await expect(page).toHaveURL(SHORT);
     await page.getByRole("button", { name: "Copy link" }).click();
-    await expect(page.getByRole("textbox", { name: "Plan link" })).toHaveValue(new RegExp(`/p/${idOf(page.url())}$`));
+    await expect(page.getByRole("textbox", { name: "Copy this link" })).toHaveValue(new RegExp(`/p/${idOf(page.url())}$`));
   });
 
   test("a plan whose slot has passed: a note and a pre-filled form link, no new run", async ({ page }) => {

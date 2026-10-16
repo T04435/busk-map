@@ -153,6 +153,33 @@ test.describe("own act", () => {
     await expect(page).toHaveURL(/\/busks$/);
   });
 
+  test("a failed submit focuses the first invalid field and wires it to its error (B-220)", async ({ page }) => {
+    await page.goto("/busks");
+    const form = page.getByRole("form", { name: "Plan for your own act" });
+    await form.getByLabel("Act name").fill("No artists");
+    await form.getByRole("button", { name: "Plan my busk" }).click();
+    await expect(form.locator("#err-artists")).toBeVisible();
+    const field = form.locator("[data-field=artists] input").first();
+    await expect(field).toBeFocused();
+    await expect(field).toHaveAttribute("aria-invalid", "true");
+    await expect(field).toHaveAttribute("aria-describedby", "err-artists");
+  });
+
+  test("while planning, the button reads Planning and the form is busy (B-221)", async ({ page }) => {
+    await page.route("**/api/plans", async (route) => {
+      await new Promise((r) => setTimeout(r, 1500));
+      await route.continue();
+    });
+    await page.goto("/busks");
+    const form = page.getByRole("form", { name: "Plan for your own act" });
+    await form.getByLabel("Act name").fill("Busy Duo");
+    await form.getByLabel("Artists you sound like").fill("Paul Kelly");
+    await form.getByRole("button", { name: "Plan my busk" }).click();
+    const pending = form.getByRole("button", { name: /Planning/ });
+    await expect(pending).toBeDisabled();
+    await expect(form).toHaveAttribute("aria-busy", "true");
+  });
+
   test("a typed plan link (deep link) opens the same plan", async ({ page }) => {
     await page.goto(`/plan?name=Deep%20Link%20Duo&artists=Angus%20%26%20Julia%20Stone&songs=Big%20Jet%20Plane~Angus%20%26%20Julia%20Stone&date=${SUNDAY}&from=12&to=15&permit=general`);
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);

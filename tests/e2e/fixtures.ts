@@ -43,7 +43,7 @@ export async function agentSteps(page: import("@playwright/test").Page) {
 /** Turn the page-level "Show raw data" switch on (it appears once the run has finished). */
 export async function showRawData(page: import("@playwright/test").Page) {
   await agentSteps(page);
-  const toggle = page.getByRole("switch", { name: "Show raw data" });
+  const toggle = page.getByRole("switch", { name: "Raw data" });
   await toggle.scrollIntoViewIfNeeded();
   await toggle.click();
   await expect(toggle).toBeChecked();

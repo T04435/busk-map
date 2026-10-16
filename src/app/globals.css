@@ -65,6 +65,13 @@
   --hidden-gem: #7a5a00;
   --usual-spot: #56606a;
   --event: #256489;
+  --map-land: #ece6da;
+  --map-street: #fbf9f5;
+  --map-street-major: #ffffff;
+  --map-street-edge: #d8d0c2;
+  --map-park: #d9e0c8;
+  --map-water: #9fc0d6;
+  --map-label: #7a7266;
   --weather: #4f6577;
   --estimate: #6d5a00;
 }
@@ -115,6 +122,13 @@
   --hidden-gem: #ffcf3a;
   --usual-spot: #a7b0b5;
   --event: #7cc0e6;
+  --map-land: #161e23;
+  --map-street: #222c33;
+  --map-street-major: #2c3940;
+  --map-street-edge: #0f1416;
+  --map-park: #1c2a24;
+  --map-water: #1f3a4d;
+  --map-label: #76828a;
   --weather: #9db4c6;
   --estimate: #e6cf6b;
 }
@@ -164,6 +178,13 @@
     --hidden-gem: #ffcf3a;
     --usual-spot: #a7b0b5;
     --event: #7cc0e6;
+    --map-land: #161e23;
+    --map-street: #222c33;
+    --map-street-major: #2c3940;
+    --map-street-edge: #0f1416;
+    --map-park: #1c2a24;
+    --map-water: #1f3a4d;
+    --map-label: #76828a;
     --weather: #9db4c6;
     --estimate: #e6cf6b;
   }
@@ -400,3 +421,7 @@ html { scroll-padding-bottom: var(--bottom-nav); }
 /* MapLibre's own controls (zoom, attribution toggle) at tap-target size. */
 .maplibregl-ctrl.maplibregl-ctrl-group button { width: 44px; height: 44px; }
 .maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button { width: 44px; height: 44px; }
+
+/* MapLibre's cooperative-gestures hint (B-227): "Use two fingers to move the map" on a bluestone veil, in the app's type. */
+.maplibregl-cooperative-gesture-screen { background: color-mix(in oklab, var(--bluestone) 78%, transparent) !important; color: #f2ede4 !important; font: 700 15px/22px var(--font-sans) !important; }
+

@@ -196,9 +196,9 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
             ))}
           </ul>
         )}
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Input aria-label="Your Spotify artist link" value={spotifyLink} onChange={(e) => setSpotifyLink(e.target.value)} placeholder="Your Spotify artist link (optional)" />
-          <Button type="button" variant="outline" onClick={() => void loadOwnSongs()} disabled={spotifyLink.trim().length < 10}>
+          <Button type="button" variant="outline" className="self-start sm:self-auto" onClick={() => void loadOwnSongs()} disabled={spotifyLink.trim().length < 10}>
             Load my songs
           </Button>
         </div>

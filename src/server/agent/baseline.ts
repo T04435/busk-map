@@ -7,7 +7,7 @@ import { USUAL_HOTSPOTS } from "@/server/data/spots";
 import { comparisonStore, recordComparison } from "@/server/comparisons/store";
 import { log } from "@/server/log";
 import { processMap } from "@/server/memo";
-import { compareWithBaseline, comparisonRecord } from "@/server/scoring";
+import { compareWithBaseline, comparisonRecord, scorePitchAnyTime, type Candidate } from "@/server/scoring";
 import { plainLlmSuggestion } from "./compare";
 import { planKey, planStore, storeGet, storePut } from "./plan-store";
 import { buildEnginePlan, engineContext, presetIdFor } from "./preload";
@@ -31,14 +31,17 @@ async function build(request: PlanRequest, adapters: AdapterContext, day: string
   const [plain] = await Promise.all([plainLlmSuggestion(request, adapters.offline), buildEnginePlan(request, adapters, day)]);
   if (plain.text === null) return { status: plain.reason };
   const ctx = engineContext(request, adapters, day);
-  const [top, ranked, pitchData, footfall, scoreInputs] = await Promise.all([ctx.topPitches(), ctx.ranked(), ctx.pitchData(), ctx.footfall(), ctx.scoreInputs()]);
+  const [top, ranked, pitchData, footfall] = await Promise.all([ctx.topPitches(), ctx.ranked(), ctx.pitchData(), ctx.footfall()]);
+  // Any time: the plain AI's spots are scored at their own best window, like the pool.
+  const anyTime = ctx.isAnyTime ? await ctx.anyTimeBase() : null;
+  const windows = ctx.windows();
   const comparison = compareWithBaseline(plain.spots, {
     top,
     ranked,
     places: knownPlaces(pitchData.sites, footfall.sensors),
     area: ctx.city.bbox,
     legality: { sites: pitchData.sites, zones: pitchData.zones, hotspots: USUAL_HOTSPOTS, permit: request.permit },
-    scoreInputs,
+    ...(anyTime ? { scoreCandidate: (c: Candidate) => scorePitchAnyTime(c, anyTime, windows, ctx.weights) } : { scoreInputs: await ctx.scoreInputs() }),
     weights: ctx.weights,
   });
   // Recorded for the uniqueness stats (GET /api/baseline-stats): ids and scores only, never the act's name.

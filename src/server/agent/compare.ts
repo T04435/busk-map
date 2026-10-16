@@ -2,7 +2,7 @@ import "server-only";
 import { generateText, Output } from "ai";
 import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
-import { describeSlot } from "@/lib/slot";
+import { describeSlot, isAnyTime, weekdayOf } from "@/lib/slot";
 import type { PlanRequest } from "@/lib/plan-schema";
 import { CITIES } from "@/server/cities";
 import { providerStatus } from "@/server/env";
@@ -52,6 +52,8 @@ export function usualSpotMentioned(text: string): string | null {
   return HOTSPOT_ALIASES.find(([pattern]) => pattern.test(text))?.[1] ?? null;
 }
 
+const capitalise = (s: string) => `${s[0].toUpperCase()}${s.slice(1)}`;
+
 /**
  * The baseline question. It is the control for Busk Map, so it must be a fair
  * one: the same performer, songs, city, day and slot, and an honest ask for
@@ -64,7 +66,9 @@ export function comparePrompt(request: Pick<PlanRequest, "city" | "slot" | "perf
     `You are an experienced street performer who knows ${city} well. Give a fellow busker your honest best advice.`,
     `The act: ${request.performer.name}. Their music sounds like ${request.performer.artists.join(", ")}.`,
     songs ? `Songs they can play: ${songs}.` : "They haven't listed songs.",
-    `When: ${describeSlot(request.slot)}, in central ${city}.`,
+    isAnyTime(request.slot)
+      ? `When: ${capitalise(weekdayOf(request.slot.date))} ${request.slot.date}, at whatever time of day is best, in central ${city}.`
+      : `When: ${describeSlot(request.slot)}, in central ${city}.`,
     "Recommend the three best spots to busk for this act at this time: real, specific places (a square, street corner, laneway or forecourt) where busking is allowed and the people passing then would enjoy this music.",
     "For each, give its name, its approximate latitude and longitude (null if you aren't sure) and one short reason (under 25 words).",
     "Then a setlist of up to six songs, from their list where possible, in the order to play them.",

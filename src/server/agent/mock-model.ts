@@ -34,14 +34,27 @@ function lastScores(results: ToolResult[]): ScoreRow[] {
   return scored?.pitches ?? [];
 }
 
+type BestHoursOut = { pitches?: { pitchId: string; best: string }[] };
+
+/** Any time: each pitch's best hours, as best_hours reported them (empty when it wasn't called). */
+function bestHoursOf(results: ToolResult[]): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const r of results.filter((x) => x.toolName === "best_hours" && x.output.type !== "error-text" && x.output.type !== "error-json")) {
+    for (const p of (r.output.value as BestHoursOut | undefined)?.pitches ?? []) out.set(p.pitchId, p.best);
+  }
+  return out;
+}
+
 function finish(results: ToolResult[], scenario: MockScenario, rejections: number): Move {
   const rows = lastScores(results);
+  const hours = bestHoursOf(results);
+  const hoursNote = (p: ScoreRow) => (hours.has(p.pitchId) ? ` Best hours ${hours.get(p.pitchId)}.` : "");
   const picks = rows.filter((r) => r.engineTop3);
   let chosen = (picks.length ? picks : rows).slice(0, 3);
   // "rerank": Claude puts the engine's #2 first, for a reason it found (the first sentence of its why).
   if (scenario === "rerank" && chosen.length >= 2) chosen = [chosen[1], chosen[0], ...chosen.slice(2)];
   const reason = (p: ScoreRow, i: number) =>
-    scenario === "rerank" && i === 0 ? `The crowd at ${p.name} fits this act better on the data gathered. Mock explanation: it scored ${p.score}/100.` : null;
+    scenario === "rerank" && i === 0 ? `The crowd at ${p.name} fits this act better on the data gathered. Mock explanation: it scored ${p.score}/100.${hoursNote(p)}` : null;
   const invented = scenario === "invented-numbers";
   const badFirst = scenario === "bad-finish" && rejections === 0;
   return {
@@ -52,12 +65,12 @@ function finish(results: ToolResult[], scenario: MockScenario, rejections: numbe
         input: {
           summary: "Mock planner summary (offline test mode).",
           pitches: badFirst
-            ? [{ pitchId: "made-up", why: "Trust me." }, ...chosen.slice(1).map((p) => ({ pitchId: p.pitchId, why: `Mock explanation: ${p.name} scored ${p.score}/100.` }))]
+            ? [{ pitchId: "made-up", why: "Trust me." }, ...chosen.slice(1).map((p) => ({ pitchId: p.pitchId, why: `Mock explanation: ${p.name} scored ${p.score}/100.${hoursNote(p)}` }))]
             : chosen.map((p, i) => ({
                 pitchId: p.pitchId,
                 why: invented
                   ? `Mock explanation: about 98765 people pass ${p.name}.`
-                  : (reason(p, i) ?? `Mock explanation: ${p.name} scored ${p.score}/100 on the data gathered.`),
+                  : (reason(p, i) ?? `Mock explanation: ${p.name} scored ${p.score}/100 on the data gathered.${hoursNote(p)}`),
               })),
           notes: ["Offline test mode: explanations come from a mock model."],
         },
@@ -121,6 +134,11 @@ export function nextMove(results: ToolResult[], tools: string[], scenario: MockS
   }
   const rows = lastScores(results);
   const [first, second] = rows;
+  // Any time (best_hours is offered only then): the hours of the engine's top pitches, before the crowds are compared.
+  if (!done("best_hours").length && tools.includes("best_hours") && first) {
+    const ids = rows.filter((r) => r.engineTop3).slice(0, 3).map((r) => r.pitchId);
+    return { text: "This is an any-time busk, so I'll check the best hours for each of the engine's top pitches.", calls: [{ toolName: "best_hours", input: { pitchIds: ids.length ? ids : [first.pitchId] } }] };
+  }
   if (!done("compare_crowds").length && first && second) {
     return { text: `Comparing the crowds at ${first.name} and ${second.name}.`, calls: [{ toolName: "compare_crowds", input: { a: first.pitchId, b: second.pitchId } }] };
   }

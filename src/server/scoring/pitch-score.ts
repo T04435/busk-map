@@ -270,6 +270,8 @@ export type ScoredPitch = Candidate & {
     places: NearbyPlace[];
     events: NearbyEvent[];
   };
+  /** Any-time plans only: the 3-hour window this pitch scored best in, and the next best two. */
+  window?: { startHour: number; endHour: number; runnersUp: { startHour: number; endHour: number; score: number }[] };
 };
 
 export function scorePitch(candidate: Candidate, inputs: ScoreInputs, weights: Weights): ScoredPitch {

@@ -9,14 +9,20 @@ test.describe("own act", () => {
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill("Jess on guitar");
     await form.getByLabel("Artists you sound like").fill("Paul Kelly, Missy Higgins");
-    await form.getByLabel("Song list").fill("How to Make Gravy - Paul Kelly\nScar - Missy Higgins\nMy Laneway Song - Jess (own)");
+    // One song typed in under the search (Spotify has no match for it), just for this busk.
+    await page.route("**/api/repertoire?type=tracks*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ mode: "synthetic", tracks: [] }) }));
+    await form.getByRole("button", { name: "Edit for this busk" }).click();
+    await form.getByText("+ Add a song just for this busk").click();
+    await form.getByRole("combobox", { name: "Search songs on Spotify" }).pressSequentially("My Laneway Song - Jess");
+    await form.getByTestId("type-it-in").getByRole("button", { name: "Add as typed" }).click();
+    await form.getByRole("button", { name: "Done" }).click();
     await form.getByRole("button", { name: "Plan my set" }).click();
 
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await expect(page.getByRole("heading", { level: 1, name: "Jess on guitar" })).toBeVisible();
     await waitForPlan(page);
     await expect(page.getByText(EXPLANATIONS_LABEL)).toBeVisible();
-    await expect(page.getByText("Your song").first()).toBeVisible();
+    await expect(page.getByRole("list").filter({ hasText: "My Laneway Song" }).first()).toBeVisible();
   });
 
   test("live search: artist chips, a picked song ranked by the act's artists, and the date picker", async ({ page }) => {
@@ -44,6 +50,8 @@ test.describe("own act", () => {
 
     // Songs: versions by the act's artists come first (marked), then Spotify's order: cover, title, artist, album and length.
     // These are songs the act already plays, so there is no Learn it menu here.
+    await form.getByRole("button", { name: "Edit for this busk" }).click();
+    await form.getByText("+ Add a song just for this busk").click();
     const songBox = form.getByRole("combobox", { name: "Search songs on Spotify" });
     await songBox.pressSequentially("Gravy");
     const options = form.getByRole("listbox", { name: "Song results" }).getByRole("option");
@@ -55,10 +63,11 @@ test.describe("own act", () => {
     await expect(song).not.toContainText("By your artist");
     await expect(form.getByRole("button", { name: /^Learn it/ })).toHaveCount(0);
     await song.click();
-    const picked = form.getByRole("list", { name: "Songs you picked" });
+    const picked = form.getByRole("list", { name: "Songs for this busk" });
     await expect(picked.getByRole("listitem")).toHaveCount(1);
     await expect(picked).toContainText("3:07");
     await expect(picked.getByRole("button", { name: /^Learn it/ })).toHaveCount(0);
+    await form.getByRole("button", { name: "Done" }).click();
 
     // The plan date is today or later.
     const date = form.getByLabel("Date");
@@ -67,6 +76,8 @@ test.describe("own act", () => {
     await page.keyboard.press("Escape");
     const day = isoDay(9);
     await pickDate(page, date, day);
+    // Any time is the default; pick the evening so the plan's slot is the fixed 6-9 pm.
+    await form.getByRole("radio", { name: /Evening/ }).click();
 
     await form.getByRole("button", { name: "Plan my set" }).click();
     // The plan opens on its short link; the request (artists with Spotify ids, songs with lengths, the date) is stored behind it.

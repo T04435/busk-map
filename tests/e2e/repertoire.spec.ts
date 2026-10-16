@@ -6,11 +6,35 @@ const SHOTS = process.env.REPERTOIRE_SHOTS;
 
 type Page = import("@playwright/test").Page;
 
+const NO_MATCH = { status: 200, contentType: "application/json", body: JSON.stringify({ mode: "synthetic", tracks: [] }) };
+const routed = new WeakSet<Page>();
+
+/**
+ * Adds a song the way the page offers it when Spotify has no match: search for "Title - Artist", then "Add as typed" (the
+ * type-it-in form is prefilled from the query). "(own)" has no field, so own songs go through the API.
+ */
 async function add(page: Page, text: string, accepted = true) {
-  await page.getByLabel("Or type one in").fill(text);
-  await page.getByRole("button", { name: "Add song" }).click();
+  if (/\(own\)\s*$/i.test(text)) {
+    const [title, artist] = text.replace(/\(own\)\s*$/i, "").trim().split(/\s+-\s+/);
+    const res = await page.request.post("/api/playlist/songs", { data: { title, artist, own: true, source: "typed" } });
+    expect(res.ok()).toBe(true);
+    await page.reload();
+    return;
+  }
+  if (!routed.has(page)) {
+    routed.add(page);
+    await page.route("**/api/repertoire?type=tracks*", (route) => route.fulfill(NO_MATCH));
+  }
+  const box = page.getByRole("combobox", { name: "Search songs on Spotify" });
+  // Typed before hydration, the query is lost: retry until the type-it-in form shows.
+  await expect(async () => {
+    await box.fill("");
+    await box.fill(text);
+    await expect(page.getByTestId("type-it-in")).toBeVisible({ timeout: 1500 });
+  }).toPass();
+  await page.getByTestId("type-it-in").getByRole("button", { name: "Add as typed" }).click();
   // The box clears once the server has answered: the next add must not type into the old value.
-  await expect(page.getByLabel("Or type one in")).toHaveValue(accepted ? "" : text);
+  await expect(box).toHaveValue(accepted ? "" : text);
 }
 
 test.describe("Repertoire storage (offline, memory store)", () => {

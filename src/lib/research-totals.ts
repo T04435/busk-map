@@ -55,6 +55,8 @@ export const researchTotalsSchema = z.object({
   rules: count,
   scored: count,
   songs: count,
+  /** Any time only: the 3-hour windows scored (10 am to 10 pm, minus those already started today). */
+  windows: count.optional(),
   qlooCalls: count.optional(),
   qlooCacheHits: count.optional(),
 });
@@ -118,7 +120,10 @@ export function fromToolOutputs(results: ToolResult[]): ResearchTotals {
   const songs = new Set<string>();
   for (const o of outputsOf(results, "build_setlist")) for (const s of rows(o.songs)) if (key(s.song)) songs.add(JSON.stringify([key(s.song), key(s.artist)]));
 
+  const windows = scoring.length ? nonNegInt(scoring[scoring.length - 1].windows) : 0;
+
   return {
+    ...(windows > 0 ? { windows } : {}),
     taste: [...maps.values()].reduce((a, b) => a + b, 0),
     crowds: crowds.size,
     places: places.size,

@@ -8,7 +8,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Separator } from "@/components/ui/separator";
 import { EXAMPLES } from "@/lib/examples";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
-import { fixedSlotOf, nextSlotDate, weekdayOf } from "@/lib/slot";
+import { isAnyTime, nextAnyTimeDate, nextSlotDate, weekdayOf } from "@/lib/slot";
 import { loadStoredPlan } from "@/server/plans";
 import { playlistViewForCookie } from "@/server/playlist/read";
 import { SOURCES } from "@/lib/sources";
@@ -56,17 +56,6 @@ export default function Home({ searchParams }: PageProps<"/">) {
           ))}
         </ul>
         <p className="text-sm text-muted-foreground">
-          Or plan a whole week:{" "}
-          {EXAMPLES.map((example, i) => (
-            <span key={example.id}>
-              {i > 0 && " · "}
-              <Link className="underline" prefetch={false} href={`/week?example=${example.id}`}>
-                Week: {example.label}
-              </Link>
-            </span>
-          ))}
-        </p>
-        <p className="text-sm text-muted-foreground">
           Keep the songs you can sing in your{" "}
           <Link className="underline" href="/repertoire">
             {PLAYLIST_COPY.name}
@@ -102,6 +91,11 @@ export default function Home({ searchParams }: PageProps<"/">) {
       </section>
 
       <footer className="space-y-1 text-xs text-muted-foreground">
+        <p>
+          <Link className="underline" href="/brain">
+            Brain
+          </Link>
+        </p>
         <p>Data: {[SOURCES.qloo, SOURCES["melbourne-pedestrian"], SOURCES["melbourne-busking"], SOURCES.ticketmaster, SOURCES.lastfm, SOURCES["open-meteo"], SOURCES.spotify, SOURCES.osm].map((s) => s.name).join(" · ")}</p>
         <p>
           Busk Map never confirms a pitch is legal; check your permit conditions. Built for the Qloo Agentic Hackathon. MIT licence.
@@ -120,15 +114,19 @@ async function OwnActForm({ searchParams }: Pick<PageProps<"/">, "searchParams">
   const stored = typeof again === "string" ? await loadStoredPlan(again).catch(() => null) : null;
   // This device's Repertoire (its cookie), if any: the form pre-fills from it unless ?again names an act.
   const repertoire = await playlistViewForCookie((await headers()).get("cookie"));
-  if (!stored) return <PerformerForm defaultDate={nextSlotDate("saturday", 18, 21, today, hour)} today={today} repertoire={repertoire} />;
+  if (!stored) return <PerformerForm defaultDate={nextAnyTimeDate(today, hour)} today={today} repertoire={repertoire} />;
   const { performer, permit } = stored.request;
-  const slot = fixedSlotOf(stored.request.slot);
+  const slot = stored.request.slot;
+  // A plan made for "any time" opens the form on any time, on the next date a window can still start.
+  const when = isAnyTime(slot)
+    ? { defaultDate: nextAnyTimeDate(today, hour), prefill: { performer, permit, anyTime: true as const } }
+    : { defaultDate: nextSlotDate(weekdayOf(slot.date), slot.startHour, slot.endHour, today, hour), prefill: { performer, permit, startHour: slot.startHour, endHour: slot.endHour } };
   return (
     <PerformerForm
       key={stored.id}
-      defaultDate={nextSlotDate(weekdayOf(slot.date), slot.startHour, slot.endHour, today, hour)}
+      defaultDate={when.defaultDate}
       today={today}
-      prefill={{ performer, permit, startHour: slot.startHour, endHour: slot.endHour }}
+      prefill={when.prefill}
       repertoire={repertoire}
     />
   );

@@ -91,3 +91,16 @@ export const LEARN_LIMITS = {
 
 /** Per-run call caps for the model's tools (a further call is a tool error the model sees). */
 export const LEARN_TOOL_CAPS = { related_artists: 2, crowd_at: 3, rising: 2, crowd_profile: 1, top_tracks: 3, finish_suggestions: 3 } as const;
+
+// --- Suggested fill in a busk's set (docs/plan-inputs-architecture.md §3.1, stage S4) ---
+
+/** Suggested songs per pitch, at most (matches planRequestSchema performer.fillSuggested.max(8)). */
+export const SUGGEST_MAX_PER_PITCH = 8;
+/** Artists whose songs one pitch's fill looks up. Two songs each (LEARN_MAX_PER_ARTIST) fill the 8. */
+export const SUGGEST_ARTISTS_PER_PITCH = 4;
+/** Spotify/Last.fm catalogue lookups for the whole busk (3 pitches x 4 artists, fewer when pitches share artists). Not Qloo quota. */
+export const SUGGEST_CATALOGUE_LOOKUPS = 12;
+/** Extra Qloo calls the fill may make for a busk: the related-artists read (taste_artists). Warm: 0. */
+export const SUGGEST_EXTRA_QLOO_CALLS = 1;
+/** Related artists asked of Qloo for the fill (the city crowd's own artists are added to them). */
+export const SUGGEST_RELATED_TAKE = 20;

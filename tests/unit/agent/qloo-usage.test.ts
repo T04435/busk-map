@@ -62,4 +62,17 @@ describe("Qloo usage per busk", () => {
     expect(a.totals.qlooCalls! + b.totals.qlooCalls!).toBe(alone);
     expect(a.totals.qlooCacheHits! + b.totals.qlooCacheHits!).toBeGreaterThan(0);
   });
+
+  it("any time makes no more Qloo requests than a fixed slot (places and taste do not depend on the hour)", async () => {
+    const anyRequest = planRequestSchema.parse({ city: "melbourne", slot: { date: "2026-10-17", any: true }, performer: EXAMPLES[0].performer });
+    mockFetch([]);
+    const { PlanContext } = await import("@/server/agent/context");
+    const { runPlanAgent } = await import("@/server/agent/agent");
+    const { createMockPlanner } = await import("@/server/agent/mock-model");
+    cache.clear();
+    const fixed = (await busk()).totals.qlooCalls!;
+    cache.clear();
+    const { plan } = await runPlanAgent(new PlanContext(anyRequest, OFFLINE, "2026-10-15", 9), {}, undefined, { model: createMockPlanner() });
+    expect(plan.researchTotals!.qlooCalls).toBeLessThanOrEqual(fixed);
+  });
 });

@@ -66,6 +66,16 @@ describe("research totals from the agent's tool outputs", () => {
   });
 });
 
+describe("research totals: time windows (any time)", () => {
+  it("takes `windows` from the last score_pitches, and leaves it out for a fixed slot", () => {
+    const scored = (windows?: number) => ({ tool: "score_pitches", ok: true, output: { poolSize: 5, ...(windows === undefined ? {} : { windows }) } });
+    expect(fromToolOutputs([scored(7)])).toMatchObject({ windows: 7, scored: 5 });
+    expect(fromToolOutputs([scored(10), scored(7)]).windows).toBe(7);
+    expect("windows" in fromToolOutputs([scored()])).toBe(false);
+    expect("windows" in fromToolOutputs([])).toBe(false);
+  });
+});
+
 describe("research totals from the engine's data", () => {
   it("counts the engine's cells, crowd reads, pool evidence, sensors and setlists, de-duplicated", () => {
     const pitch = (places: string[], events: { name: string; venue: { name: string }; start: string }[]) => ({ evidence: { places: places.map((name) => ({ name })), events } });

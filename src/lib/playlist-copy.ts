@@ -50,7 +50,7 @@ export const PLAYLIST_COPY = {
   forgotten: "Your Repertoire was deleted.",
   loading: "Loading your Repertoire…",
 
-  // On the busk form, the week page and the plan (S2)
+  // On the busk form and the plan (S2)
   mineWithCount: (n: number) => `${USE_MINE} (${n} ${n === 1 ? "song" : "songs"})`,
   fromRepertoire: "From your Repertoire",
   editedHint: "Changes below are for this busk only until you save them.",
@@ -62,7 +62,30 @@ export const PLAYLIST_COPY = {
   addedToLearn: "Added to Songs you should learn.",
   addedFromPlans: "Added from plans",
   adding: "Adding…",
-  weekToggleHint: "Plan the week with your Repertoire's songs and artists.",
+
+  // The busk form's one Repertoire block (RepertoireSource, plan-inputs S5)
+  source: {
+    heading: "Your Repertoire",
+    headingLastBusk: "Songs from your last busk",
+    summary: (n: number, length: string | null) => `${n} ${n === 1 ? "song" : "songs"}${length ? ` · about ${length}` : ""}`,
+    edit: "Edit for this busk",
+    done: "Done",
+    selected: (n: number, total: number) => `${n} of ${total} selected`,
+    selectAll: "Select all",
+    removeAll: "Remove all",
+    listLabel: "Songs for this busk",
+    justForBusk: "Just for this busk",
+    addJustForBusk: "+ Add a song just for this busk",
+    hideAdd: "Hide adding songs",
+    fillHint: "Busk Map fills the gaps with new suggested songs for each crowd, picked from what that crowd likes.",
+    editedSummary: (n: number, total: number) => `Your Repertoire, edited for this busk · ${n} of ${total} songs · new suggested songs fill the rest`,
+    suggestedOnlyTitle: "New suggested songs only",
+    suggestedOnly: "None of your songs this busk: each pitch gets suggested songs for its crowd.",
+    empty: "Your Repertoire is empty",
+    emptyHint: "You can still plan: Busk Map suggests songs for each crowd.",
+    build: "Build your Repertoire",
+    removeFromRepertoireToo: "Remove them from my Repertoire too",
+  },
 
   // Friendly errors
   errors: {

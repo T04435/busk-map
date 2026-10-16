@@ -2,7 +2,7 @@ import { distanceM, inBBox, type BBox, type LatLon } from "@/lib/geo";
 import { nameKey } from "@/lib/text";
 import { candidateAt, type CandidateInputs } from "./candidates";
 import { scorePitch, tooCloseTo, type ScoreInputs, type ScoredPitch } from "./pitch-score";
-import type { Weights } from "./types";
+import type { Candidate, Weights } from "./types";
 
 /**
  * The plain-AI baseline, set against Busk Map's picks. The baseline is the
@@ -93,7 +93,10 @@ export type BaselineInputs = {
   places: KnownPlace[];
   area: BBox;
   legality: Pick<CandidateInputs, "sites" | "zones" | "hotspots" | "permit">;
-  scoreInputs: ScoreInputs;
+  /** The engine's inputs for the fixed slot. */
+  scoreInputs?: ScoreInputs;
+  /** Any time: scores a spot at its best window (the same function that ranks the pool). Used instead of `scoreInputs`. */
+  scoreCandidate?: (candidate: Candidate) => ScoredPitch | null;
   weights: Weights;
 };
 
@@ -140,7 +143,9 @@ export function compareWithBaseline(spots: BaselineSpot[], inputs: BaselineInput
 /** Score the baseline's own spot with the same engine and inputs, or null when the council's layers rule it out. */
 function scoreSpot(spot: BaselineSpot, at: Located, index: number, inputs: BaselineInputs): ScoredPitch | null {
   const candidate = candidateAt({ id: `baseline:${index}`, name: at.place ?? spot.name, lat: at.lat, lon: at.lon }, inputs.legality);
-  return candidate ? scorePitch(candidate, inputs.scoreInputs, inputs.weights) : null;
+  if (!candidate) return null;
+  if (inputs.scoreCandidate) return inputs.scoreCandidate(candidate);
+  return scorePitch(candidate, inputs.scoreInputs!, inputs.weights);
 }
 
 /**

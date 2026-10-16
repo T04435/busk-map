@@ -4,6 +4,16 @@ import { expect, LOCAL, test } from "./fixtures";
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
 const SEARCHES = ["Search Spotify, e.g. Paul Kelly", "Search songs, e.g. Riptide"];
 
+/** The song search lives in "Edit for this busk" > "+ Add a song just for this busk". */
+async function openSongSearch(page: import("@playwright/test").Page) {
+  const form = page.getByRole("form", { name: "Plan for your own act" });
+  await expect(async () => {
+    await form.getByRole("button", { name: "Edit for this busk" }).click({ timeout: 1000 });
+    await expect(form.getByText("+ Add a song just for this busk")).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  await form.getByText("+ Add a song just for this busk").click();
+}
+
 test.describe("accessibility", () => {
   test("landing has no critical axe violations (B-004)", async ({ page }) => {
     await page.goto("/");
@@ -16,6 +26,7 @@ test.describe("accessibility", () => {
   test("the search comboboxes say whether their list is shown and point at it only while it is (B-004)", async ({ page }) => {
     test.skip(!LOCAL, "Searches the offline catalogue");
     await page.goto("/");
+    await openSongSearch(page);
     for (const placeholder of SEARCHES) {
       const input = page.getByPlaceholder(placeholder);
       await expect(input).toHaveAttribute("role", "combobox");
@@ -40,6 +51,7 @@ test.describe("accessibility", () => {
 
   test("the search inputs show a focus ring when tabbed to (B-005)", async ({ page }) => {
     await page.goto("/");
+    await openSongSearch(page);
     for (const placeholder of SEARCHES) {
       const input = page.getByPlaceholder(placeholder);
       const group = input.locator("xpath=ancestor::*[@data-slot='input-group'][1]");

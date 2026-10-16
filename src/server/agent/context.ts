@@ -2,12 +2,12 @@ import "server-only";
 import type { BBox } from "@/lib/geo";
 import type { TrendRow } from "@/server/adapters/qloo";
 import { ageLabel } from "@/lib/age";
-import { addDays, fixedSlotOf, slotUtcRange, weekdayOf } from "@/lib/slot";
+import { addDays, ANY_TIME_DAY, anyTimeWindowsLeft, DEFAULT_SLOT_HOURS, isAnyTime, slotUtcRange, weekdayOf, zonedHourToUtc, type Slot, type TimeWindow } from "@/lib/slot";
 import { nameKey, trackKey } from "@/lib/text";
 import type { PlanRequest } from "@/lib/plan-schema";
 import type { AdapterContext, AdapterName, AdapterResult } from "@/server/adapters/core";
-import { getEvents } from "@/server/adapters/events";
-import { getFootfall } from "@/server/adapters/footfall";
+import { getEvents, getEventsBetween, EVENTS_LOOKBACK_HOURS } from "@/server/adapters/events";
+import { getFootfall, getTypicalFootfall, type FootfallData } from "@/server/adapters/footfall";
 import { getPitches } from "@/server/adapters/pitches";
 import * as qloo from "@/server/adapters/qloo";
 import { findReleaseYears } from "@/server/adapters/repertoire";
@@ -18,16 +18,27 @@ import { PUBLIC_SPOTS, USUAL_HOTSPOTS } from "@/server/data/spots";
 import {
   buildCandidatesWithFunnel,
   buildSetlist,
+  DEFAULT_MAX_SONGS,
   learnThese,
   normalizeWeights,
   pickTopPitches,
   rankPitches,
+  rankPitchesAnyTime,
+  scorePitch,
+  scorePitchAnyTime,
+  typicalForSlot,
+  footfallReferenceOf,
+  type AnyTimeBase,
+  type Candidate,
   type RepertoireSong,
   type ScoreInputs,
   type ScoredPitch,
   type Weights,
 } from "@/server/scoring";
-import { serverToday } from "@/server/clock";
+import { serverLocalNow, serverToday } from "@/server/clock";
+import { LEARN_MAX_PER_ARTIST, SUGGEST_ARTISTS_PER_PITCH, SUGGEST_CATALOGUE_LOOKUPS, SUGGEST_RELATED_TAKE } from "@/server/playlist/config";
+import { fillAsRepertoire, mergeFillArtists, pickFillSongs, rankFillArtists, type FillArtist } from "@/server/scoring/fill";
+import { catalogueOf } from "@/server/songs/catalogue";
 
 /** Search radius for busy places, from the city centre. Covers the planning area. */
 export const PLACES_RADIUS_M = 2000;
@@ -42,6 +53,10 @@ export const CROWD_RADIUS_M = 400;
 export const HOTSPOT_CROWD_TAKE = 10;
 /** Event headliners matched against the performer's taste per plan (one Qloo search each, cached). */
 export const EVENT_ARTISTS_MAX = 6;
+/** Most entity ids one per-pitch affinity call may carry (Qloo's `take` cap); the act's own artists come first, then the fill's candidates. */
+export const AFFINITY_IDS_MAX = 50;
+/** Upper bound for the ordering pass of a set with suggested songs (the act's 60 songs); trimmed afterwards. */
+const MAX_REPERTOIRE_SET = 60;
 
 function widen(box: BBox, factor: number): BBox {
   const dLat = ((box.north - box.south) * (factor - 1)) / 2;
@@ -63,6 +78,7 @@ const OPTIONAL_QLOO: [prefix: string, feature: string][] = [
   ["genres:", "the genres at the top pitch"],
   ["hotspotCrowd", "the contrast with the usual crowd"],
   ["compare", "the contrast with the usual crowd"],
+  ["relatedArtists", "related artists for the suggested songs"],
   ["affinity:", "the suggested set order by local taste"],
   ["songArtists", "the suggested set order by local taste"],
   ["eventArtists", "how well event crowds match your taste"],
@@ -92,12 +108,39 @@ export class PlanContext {
   /** Things the plan should tell the performer, e.g. that a search was widened. */
   readonly notes: string[] = [];
 
-  constructor(request: PlanRequest, adapters: AdapterContext, today?: string) {
+  /** The city's current hour, for dropping any-time windows that have started (only matters on today's date). */
+  private readonly nowHour: number;
+
+  constructor(request: PlanRequest, adapters: AdapterContext, today?: string, nowHour?: number) {
     this.request = request;
     this.adapters = adapters;
     this.city = CITIES[request.city];
     this.today = today ?? serverToday(this.city.timeZone);
+    this.nowHour = nowHour ?? serverLocalNow(this.city.timeZone).hour;
     this.weights = normalizeWeights(request.weights);
+  }
+
+  /** Whether the request is "any time": the engine picks each pitch's window (plan-inputs-architecture.md 2). */
+  get isAnyTime(): boolean {
+    return isAnyTime(this.request.slot);
+  }
+
+  /** The any-time windows still ahead on the request's date (D2). Empty for a fixed slot. */
+  windows(): TimeWindow[] {
+    return isAnyTime(this.request.slot) ? anyTimeWindowsLeft(this.request.slot.date, this.today, this.nowHour) : [];
+  }
+
+  /** The fixed slot of a fixed request. Any-time code must not call it. */
+  private fixedSlot(): Slot {
+    if (isAnyTime(this.request.slot)) throw new Error("fixedSlot() on an any-time request");
+    return this.request.slot;
+  }
+
+  /** The slot a pitch is played in: its best window for any time, else the request's slot. */
+  slotFor(pitch: { window?: { startHour: number; endHour: number } }): Slot {
+    if (!isAnyTime(this.request.slot)) return this.request.slot;
+    const w = pitch.window ?? DEFAULT_SLOT_HOURS;
+    return { date: this.request.slot.date, startHour: w.startHour, endHour: w.endHour };
   }
 
   private once<T>(key: string, load: () => Promise<T>): Promise<T> {
@@ -250,8 +293,25 @@ export class PlanContext {
     return this.track("crowd", () => qloo.crowdProfile(ids, this.adapters));
   }
 
-  footfall() {
-    return this.track("footfall", () => getFootfall(this.request.city, fixedSlotOf(this.request.slot), this.adapters, this.today));
+  /** Typical foot traffic by weekday and hour, loaded once (the agent's footfall_at and any time's windows share it). */
+  typicalFootfall() {
+    return this.trackFootfallTypical(() => getTypicalFootfall(this.request.city, 0, 24, this.adapters, this.today));
+  }
+
+  footfall(): Promise<FootfallData> {
+    if (isAnyTime(this.request.slot)) {
+      // Any time: the sensors with their typical average over the 10 am to 10 pm day (one sensor request, shared with footfall_at).
+      return this.once("footfallDay", async () => {
+        const typical = await this.typicalFootfall();
+        return {
+          level: typical.level,
+          baselineDates: [],
+          liveAsOf: null,
+          sensors: typical.sensors.map((s) => ({ id: s.id, name: s.name, lat: s.lat, lon: s.lon, avgHourly: typicalForSlot(s, this.weekday, ANY_TIME_DAY.startHour, ANY_TIME_DAY.endHour), samples: 0, liveLastHour: null })),
+        };
+      });
+    }
+    return this.track("footfall", () => getFootfall(this.request.city, this.fixedSlot(), this.adapters, this.today));
   }
 
   pitchData() {
@@ -259,7 +319,14 @@ export class PlanContext {
   }
 
   events() {
-    return this.track("events", () => getEvents(this.request.city, fixedSlotOf(this.request.slot), this.adapters));
+    if (isAnyTime(this.request.slot)) {
+      // The whole day: events starting from the lookback before 10 am to an hour past the last window's end.
+      const { date } = this.request.slot;
+      const from = zonedHourToUtc(date, ANY_TIME_DAY.startHour - EVENTS_LOOKBACK_HOURS, this.city.timeZone).toISOString();
+      const to = zonedHourToUtc(date, ANY_TIME_DAY.endHour + 1, this.city.timeZone).toISOString();
+      return this.track("events", () => getEventsBetween(this.request.city, from, to, this.adapters));
+    }
+    return this.track("events", () => getEvents(this.request.city, this.fixedSlot(), this.adapters));
   }
 
   /**
@@ -294,7 +361,9 @@ export class PlanContext {
   }
 
   weather() {
-    return this.track("weather", () => getWeather(this.request.city, fixedSlotOf(this.request.slot), this.adapters, this.today));
+    // Any time: the day's hours, 10 am to 10 pm.
+    const slot = isAnyTime(this.request.slot) ? { date: this.request.slot.date, ...ANY_TIME_DAY } : this.fixedSlot();
+    return this.track("weather", () => getWeather(this.request.city, slot, this.adapters, this.today));
   }
 
   /** Last.fm top tracks for the repertoire's artists and the rising artists. */
@@ -361,7 +430,9 @@ export class PlanContext {
     });
   }
 
+  /** The engine's inputs for the fixed slot. */
   async scoreInputs(): Promise<ScoreInputs> {
+    const slot = this.fixedSlot();
     const [cells, footfall, places, rawEvents, weather, eventTaste] = await Promise.all([
       this.tasteCells(),
       this.footfall(),
@@ -371,7 +442,7 @@ export class PlanContext {
       this.eventTaste(),
     ]);
     const events = rawEvents.map((e) => ({ ...e, tasteMatch: eventTaste.get(e.id) ?? null }));
-    const { start, end } = slotUtcRange(fixedSlotOf(this.request.slot), this.city.timeZone);
+    const { start, end } = slotUtcRange(slot, this.city.timeZone);
     return {
       cells,
       sensors: footfall.sensors,
@@ -379,15 +450,57 @@ export class PlanContext {
       events,
       weather: weather?.hours ?? null,
       weekday: this.weekday,
-      startHour: fixedSlotOf(this.request.slot).startHour,
-      endHour: fixedSlotOf(this.request.slot).endHour,
+      startHour: slot.startHour,
+      endHour: slot.endHour,
       slotStartMs: start.getTime(),
       slotEndMs: end.getTime(),
     };
   }
 
+  /** Any time: the day's data every window is scored from. */
+  anyTimeBase(): Promise<AnyTimeBase> {
+    return this.once("anyTimeBase", async () => {
+      const date = this.request.slot.date;
+      const [cells, typical, places, rawEvents, weather, eventTaste] = await Promise.all([
+        this.tasteCells(),
+        this.typicalFootfall(),
+        this.places(),
+        this.events(),
+        this.weather(),
+        this.eventTaste(),
+      ]);
+      const base: AnyTimeBase = {
+        weekday: this.weekday,
+        cells,
+        sensors: typical.sensors,
+        places,
+        events: rawEvents.map((e) => ({ ...e, tasteMatch: eventTaste.get(e.id) ?? null })),
+        weather: weather?.hours ?? null,
+        hourMs: (hour) => zonedHourToUtc(date, hour, this.city.timeZone).getTime(),
+      };
+      return base;
+    });
+  }
+
+  /** The foot-traffic scale shared by every window of the day. */
+  async footfallReference(): Promise<number> {
+    return footfallReferenceOf(await this.anyTimeBase());
+  }
+
+  /** One candidate scored as the engine scores its pool: at the fixed slot, or at its best window for any time. */
+  async scoreCandidate(candidate: Candidate): Promise<ScoredPitch | null> {
+    if (isAnyTime(this.request.slot)) return scorePitchAnyTime(candidate, await this.anyTimeBase(), this.windows(), this.weights);
+    return scorePitch(candidate, await this.scoreInputs(), this.weights);
+  }
+
   ranked(): Promise<ScoredPitch[]> {
     return this.once("ranked", async () => {
+      if (isAnyTime(this.request.slot)) {
+        const [{ candidates }, base] = await Promise.all([this.candidates(), this.anyTimeBase()]);
+        const windows = this.windows();
+        if (windows.length === 0) this.notes.push("No busking hours are left on that day, so nothing was scored. Plan again for another day.");
+        return rankPitchesAnyTime(candidates, base, windows, this.weights);
+      }
       const [{ candidates }, inputs] = await Promise.all([this.candidates(), this.scoreInputs()]);
       return rankPitches(candidates, inputs, this.weights);
     });
@@ -437,20 +550,96 @@ export class PlanContext {
     return this.track("years", () => findReleaseYears(songs, this.city.countryCode, this.adapters));
   }
 
-  /** Setlist for one pitch: per-pitch crowd affinity, Last.fm popularity and era fit with the crowd's age lean. */
+  /** Suggested songs asked for (docs/plan-inputs-architecture.md D4); 0 when the act asked for none. */
+  get fillCount(): number {
+    return this.request.performer.fillSuggested ?? 0;
+  }
+
+  /**
+   * Artists that could supply suggested songs (§3.1 steps 1–2): the city crowd's own artists (already fetched) plus the
+   * artists related to the act's (taste_artists, +1 Qloo call cold), without artists whose songs are already in the set.
+   * A failed related-artists call leaves the city crowd alone, with a plan note (OPTIONAL_QLOO).
+   */
+  fillArtists(): Promise<FillArtist[]> {
+    return this.once("fillArtists", async () => {
+      const [ids, crowd, resolved] = await Promise.all([this.entityIds(), this.localArtists(), this.artists()]);
+      if (ids.length === 0) return [];
+      const related = this.qlooFailed() ? [] : (await this.track("relatedArtists", () => qloo.tasteArtists(ids, SUGGEST_RELATED_TAKE, this.adapters))).artists;
+      const names = new Map(resolved.flatMap((r) => (r.entity ? [[r.entity.id, r.entity.name] as const] : [])));
+      const toFill = (e: qloo.QlooEntity): FillArtist => ({
+        id: e.id,
+        name: e.name,
+        growth: e.audienceGrowth,
+        listeners: e.lastfmListeners,
+        because: [...e.explanation]
+          .sort((a, b) => b.score - a.score)
+          .flatMap((x) => {
+            const name = x.name ?? names.get(x.entityId);
+            return name ? [name] : [];
+          }),
+      });
+      const inSet = new Set(this.request.performer.songs.map((s) => nameKey(s.artist)));
+      return mergeFillArtists([crowd.map(toFill), related.map(toFill)], inSet);
+    });
+  }
+
+  /** An artist's songs, looked up once per busk and within SUGGEST_CATALOGUE_LOOKUPS lookups (Spotify, Last.fm as backup; not Qloo quota). */
+  private catalogueLookups = 0;
+  private catalogue(artist: string) {
+    const key = `catalogue:${nameKey(artist)}`;
+    if (!this.memo.has(key)) {
+      if (this.catalogueLookups >= SUGGEST_CATALOGUE_LOOKUPS) return Promise.resolve(null);
+      this.catalogueLookups++;
+    }
+    return this.once(key, () => catalogueOf(artist, this.city.countryCode, this.adapters));
+  }
+
+  /**
+   * Setlist for one pitch: per-pitch crowd affinity, Last.fm popularity and era fit with the crowd's age lean. With
+   * `fillSuggested`, the same per-pitch affinity call also scores the fill's candidate artists, and the best of them
+   * supply suggested songs (never one the act has or removed for this busk), ordered together with the act's own.
+   */
   setlistFor(pitch: { id: string; lat: number; lon: number }) {
     return this.once(`setlist:${pitch.id}`, async () => {
-      const [repertoire, songs, years, profile] = await Promise.all([this.repertoire(), this.songs(), this.releaseYears(), this.crowdProfile()]);
-      const ids = [...new Set(repertoire.flatMap((s) => (s.artistEntityId ? [s.artistEntityId] : [])))];
+      const fill = this.fillCount;
+      const [repertoire, songs, years, profile, candidates] = await Promise.all([
+        this.repertoire(),
+        this.songs(),
+        this.releaseYears(),
+        this.crowdProfile(),
+        fill ? this.fillArtists() : Promise.resolve([] as FillArtist[]),
+      ]);
+      const candidateIds = candidates.map((c) => c.id);
+      const own = [...new Set(repertoire.flatMap((s) => (s.artistEntityId ? [s.artistEntityId] : [])))];
+      const ids = fill ? [...new Set([...own.slice(0, Math.max(0, AFFINITY_IDS_MAX - candidateIds.length)), ...candidateIds])].slice(0, AFFINITY_IDS_MAX) : own;
       const affinity = ids.length
         ? await this.track(`affinity:${pitch.id}`, () => qloo.artistAffinityAt(ids, pitch, PITCH_CROWD_RADIUS_M, this.adapters))
         : {};
       const playcounts: Record<string, number> = {};
-      for (const tracks of Object.values(songs)) for (const t of tracks) playcounts[trackKey(t.artist, t.title)] = t.playcount;
-      // Last.fm may autocorrect the artist name; also key by the name we asked for.
-      for (const [asked, tracks] of Object.entries(songs)) for (const t of tracks) playcounts[trackKey(asked, t.title)] ??= t.playcount;
+      const addPlaycounts = (list: Record<string, { title: string; artist: string; playcount: number }[]>) => {
+        for (const tracks of Object.values(list)) for (const t of tracks) playcounts[trackKey(t.artist, t.title)] = t.playcount;
+        // Last.fm may autocorrect the artist name; also key by the name we asked for.
+        for (const [asked, tracks] of Object.entries(list)) for (const t of tracks) playcounts[trackKey(asked, t.title)] ??= t.playcount;
+      };
+      addPlaycounts(songs);
       const currentYear = Number(this.today.slice(0, 4));
-      return buildSetlist(repertoire, affinity, playcounts, undefined, { years, ageLean: profile?.age ?? null, currentYear, ageLabel });
+      if (!fill) return buildSetlist(repertoire, affinity, playcounts, undefined, { years, ageLean: profile?.age ?? null, currentYear, ageLabel });
+
+      const have = new Set(repertoire.map((s) => trackKey(s.artist, s.title)));
+      const skip = new Set((this.request.performer.skipSongs ?? []).map((s) => trackKey(s.artist, s.title)));
+      const picks = await pickFillSongs(rankFillArtists(candidates, affinity), fill, LEARN_MAX_PER_ARTIST, SUGGEST_ARTISTS_PER_PITCH, have, skip, async (a) => {
+        const found = await this.catalogue(a.name);
+        return found && found.tracks.length > 0 ? found : null;
+      });
+      const suggested = fillAsRepertoire(picks, affinity);
+      const eraYears = { ...years };
+      for (const p of picks) if (p.track.year !== null) eraYears[trackKey(p.track.artist, p.track.title)] = p.track.year;
+      const artistNames = [...new Set(picks.map((p) => p.track.artist))].sort();
+      if (artistNames.length > 0) addPlaycounts(await this.track(`songsFill:${artistNames.join("|")}`, () => getSongs(artistNames, this.adapters)));
+      // Room for all the suggested songs on top of the act's own 12, so a long Repertoire can't push them out.
+      const ordered = buildSetlist([...repertoire, ...suggested], affinity, playcounts, MAX_REPERTOIRE_SET + fill, { years: eraYears, ageLean: profile?.age ?? null, currentYear, ageLabel });
+      let ownKept = 0;
+      return ordered.filter((e) => e.origin === "suggested" || ownKept++ < DEFAULT_MAX_SONGS);
     });
   }
 

@@ -49,16 +49,20 @@ export function isAnyTime(slot: RequestSlot): slot is AnyTimeSlot {
   return "any" in slot && slot.any === true && !("startHour" in slot);
 }
 
-/** The hours any-time stands in as until the engine picks windows (S2): the default 6-9 pm slot. */
-export const ANY_TIME_STAND_IN = { startHour: 18, endHour: 21 } as const;
+/** The hours a plan with no window to show (nothing scored) reports as its slot: the default 6-9 pm. */
+export const DEFAULT_SLOT_HOURS = { startHour: 18, endHour: 21 } as const;
 
-/**
- * A fixed slot for code that only works with hours. Any time maps to ANY_TIME_STAND_IN: an S1 guard so nothing
- * crashes; the real any-time behaviour is S2.
- */
-export function fixedSlotOf(slot: RequestSlot): Slot {
-  return isAnyTime(slot) ? { date: slot.date, ...ANY_TIME_STAND_IN } : (slot as Slot);
-}
+/** A 3-hour window on a date, local time. */
+export type TimeWindow = { startHour: number; endHour: number };
+
+/** Length of each any-time window (plan-inputs-architecture.md D2). */
+export const ANY_TIME_WINDOW_HOURS = 3;
+/** Any time looks at the 10 am to 10 pm day: windows start every hour from 10 am to 7 pm (10 windows, the last 7-10 pm). */
+export const ANY_TIME_DAY = { startHour: 10, endHour: 22 } as const;
+export const ANY_TIME_WINDOWS: readonly TimeWindow[] = Array.from(
+  { length: ANY_TIME_DAY.endHour - ANY_TIME_DAY.startHour - ANY_TIME_WINDOW_HOURS + 1 },
+  (_, i) => ({ startHour: ANY_TIME_DAY.startHour + i, endHour: ANY_TIME_DAY.startHour + i + ANY_TIME_WINDOW_HOURS }),
+);
 
 const DAY_MS = 86_400_000;
 
@@ -168,6 +172,25 @@ export function nextSlotDate(weekday: Weekday, startHour: number, endHour: numbe
   return nextWeekday(weekday, today);
 }
 
+/**
+ * The any-time windows still open on `date`: all of them for a later date, none for an earlier one, and on `today`
+ * only those that start after the current hour (D2).
+ */
+export function anyTimeWindowsLeft(date: string, today: string, nowHour: number): TimeWindow[] {
+  if (date < today) return [];
+  if (date > today) return [...ANY_TIME_WINDOWS];
+  return ANY_TIME_WINDOWS.filter((w) => w.startHour > nowHour);
+}
+
+/**
+ * The default date for "any time": today if a window can still start after the current hour, otherwise tomorrow. Not
+ * `nextSlotDate`, which keeps a slot that is still running: an any-time window must still be ahead of you.
+ */
+export function nextAnyTimeDate(today: string, nowHour: number): string {
+  const last = ANY_TIME_WINDOWS[ANY_TIME_WINDOWS.length - 1].startHour;
+  return nowHour < last ? today : addDays(today, 1);
+}
+
 export function formatHour(hour: number): string {
   const h = hour % 24;
   const suffix = h < 12 ? "am" : "pm";
@@ -177,6 +200,6 @@ export function formatHour(hour: number): string {
 
 export function describeSlot(slot: RequestSlot): string {
   const day = weekdayOf(slot.date);
-  if (isAnyTime(slot)) return `${day[0].toUpperCase()}${day.slice(1)} ${slot.date}, any time`;
+  if (isAnyTime(slot)) return `${day[0].toUpperCase()}${day.slice(1)} ${slot.date}, any time, Busk Map picks the hours`;
   return `${day[0].toUpperCase()}${day.slice(1)} ${slot.date}, ${formatHour(slot.startHour)}–${formatHour(slot.endHour)}`;
 }

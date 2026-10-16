@@ -1,6 +1,6 @@
 import "server-only";
 import { ToolLoopAgent, type LanguageModel, type StopCondition } from "ai";
-import { describeSlot, fixedSlotOf } from "@/lib/slot";
+import { describeSlot } from "@/lib/slot";
 import type { Plan } from "@/lib/plan-schema";
 import { fromToolOutputs, type ResearchTotals, type ToolResult } from "@/lib/research-totals";
 import { withQlooUsage } from "@/server/adapters/qloo/usage";
@@ -57,9 +57,11 @@ export function buildPrompt(ctx: PlanContext, matched: { query: string; match: s
     `Performer: ${request.performer.name}.`,
     `Sounds like: ${request.performer.artists.join(", ")}. Qloo matched: ${found.map((m) => m.match).join(", ") || "none"}${missing.length ? `; no match for ${missing.join(", ")}` : ""}.`,
     songs ? `Can play: ${songs}.` : "No song list given.",
-    `City: ${ctx.city.name}. Slot: ${describeSlot(request.slot)} (${ctx.weekday}, hours ${fixedSlotOf(request.slot).startHour} to ${fixedSlotOf(request.slot).endHour}). Permit: ${request.permit}.`,
+    ctx.isAnyTime
+      ? `City: ${ctx.city.name}. Date: ${ctx.weekday} ${request.slot.date}. No fixed time: the engine scores each pitch at its best 3-hour window that day, 10 am to 10 pm. Call best_hours and say each pitch's hours in its why. Permit: ${request.permit}.`
+      : `City: ${ctx.city.name}. Slot: ${describeSlot(request.slot)} (${ctx.weekday}, hours ${ctx.slotFor({}).startHour} to ${ctx.slotFor({}).endHour}). Permit: ${request.permit}.`,
     `Planning area: latitude ${box.south} to ${box.north}, longitude ${box.west} to ${box.east}.`,
-    "Find the three best pitches for this act in this slot and explain why each crowd fits.",
+    ctx.isAnyTime ? "Find the three best pitches for this act on this day, each at its best hours, and explain why each crowd fits." : "Find the three best pitches for this act in this slot and explain why each crowd fits.",
   ].join("\n");
 }
 

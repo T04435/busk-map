@@ -52,8 +52,23 @@ const f = await p.evaluate(() => {
 });
 const gh = f?.a.find((l) => /github\.com/.test(l.h ?? ""));
 ok("F07 GitHub is an icon link (no “github.com/…” text)", gh && gh.svg && !f.repoText, JSON.stringify(gh));
-const built = f?.a.filter((l) => /T04435|built by/i.test(l.t) || (l.svg && !/github\.com\/T04435\/busk-map|qloo/.test(l.h ?? "")));
-ok("F08 “Built by T04435” is a link and the pixel mark (an SVG) is a link; no “@…” text", built?.some((l) => /built by t04435/i.test(l.t)) && built?.some((l) => l.svg && !/T04435\/busk-map/.test(l.h ?? "")) && !f.at, JSON.stringify(built));
+// F08, as agreed (B-160): “Built by” is plain text; “T04435” links to https://github.com/T04435; the critter SVG links to
+// https://claude.com/claude-code in a new tab (rel noopener noreferrer) with the accessible name
+// “Built with Claude Code (opens in a new tab)”. No “@…” text.
+const f8 = await p.evaluate(() => {
+  const ft = document.querySelector("footer"); if (!ft) return null;
+  const tw = document.createTreeWalker(ft, NodeFilter.SHOW_TEXT); let n, builtBy = null;
+  while ((n = tw.nextNode())) if (/\bBuilt by\b/i.test(n.textContent)) { builtBy = { inLink: !!n.parentElement.closest("a"), text: n.textContent.trim() }; break; }
+  const name = (a) => (a.getAttribute("aria-label") || a.querySelector("svg title")?.textContent || a.querySelector("svg")?.getAttribute("aria-label") || a.innerText || "").trim();
+  const handle = [...ft.querySelectorAll("a")].filter((a) => a.innerText.trim() === "T04435").map((a) => ({ href: a.getAttribute("href"), target: a.getAttribute("target"), rel: a.getAttribute("rel") }));
+  const critter = [...ft.querySelectorAll("a")].filter((a) => a.querySelector("svg, img") && /claude/i.test(a.getAttribute("href") ?? "")).map((a) => ({ href: a.getAttribute("href"), target: a.getAttribute("target"), rel: a.getAttribute("rel") ?? "", name: name(a) }));
+  return { builtBy, handle, critter };
+});
+ok("F08 “Built by” is plain text (not inside a link)", !!f8?.builtBy && !f8.builtBy.inLink, JSON.stringify(f8?.builtBy));
+ok("F08 “T04435” links to https://github.com/T04435", f8?.handle.length === 1 && /^https:\/\/github\.com\/T04435\/?$/.test(f8.handle[0].href ?? ""), JSON.stringify(f8?.handle));
+const cr = f8?.critter?.[0];
+ok("F08 the critter links to https://claude.com/claude-code, new tab, rel noopener noreferrer, named “Built with Claude Code (opens in a new tab)”", f8?.critter.length === 1 && /^https:\/\/claude\.com\/claude-code\/?$/.test(cr.href ?? "") && cr.target === "_blank" && /\bnoopener\b/.test(cr.rel) && /\bnoreferrer\b/.test(cr.rel) && cr.name === "Built with Claude Code (opens in a new tab)", JSON.stringify(f8?.critter));
+ok("F08 no “@…” handle text", !f.at);
 const third = (x) => (x < f.w / 3 ? "L" : x < (2 * f.w) / 3 ? "C" : "R");
 const pos = Object.fromEntries((f?.a ?? []).map((l) => [l.t || l.h, third(l.x)]));
 ok("F11 layout: Privacy · Brain · Brand in the centre; GitHub and Built by on the right", ["Privacy", "Brain", "Brand"].every((k) => Object.entries(pos).some(([t, s]) => t.startsWith(k) && s === "C")) && gh && third(gh.x) === "R", JSON.stringify(pos));

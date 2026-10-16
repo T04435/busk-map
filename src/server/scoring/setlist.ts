@@ -16,7 +16,12 @@ export type RepertoireSong = {
   own: boolean;
   /** Track length, when known. */
   durationMs: number | null;
+  /** Set on songs Busk Map added (suggested fill, docs/plan-inputs-architecture.md §3.3); absent on the act's own. */
+  suggestion?: SongSuggestion;
 };
+
+/** Why a suggested song is in the set and where it was found. */
+export type SongSuggestion = { because: string; source: "spotify" | "lastfm"; sourceUrl: string | null; spotifyTrackId: string | null };
 
 export type SetlistEntry = {
   songId: string;
@@ -39,6 +44,9 @@ export type SetlistEntry = {
   year: number | null;
   /** 0–1: how well the song's era suits the crowd's age lean, when both are known. */
   eraFit: number | null;
+  /** "suggested" for songs Busk Map added from the crowd's taste; the act's own are "repertoire". */
+  origin: "repertoire" | "suggested";
+  suggestion: SongSuggestion | null;
 };
 
 /**
@@ -193,6 +201,8 @@ export function buildSetlist(
       durationMs: song.durationMs,
       year,
       eraFit: fit === null ? null : Math.round(fit * 1000) / 1000,
+      origin: song.suggestion ? "suggested" : "repertoire",
+      suggestion: song.suggestion ?? null,
     };
   });
 

@@ -18,6 +18,7 @@ import { PUBLIC_SPOTS, USUAL_HOTSPOTS } from "@/server/data/spots";
 import {
   buildCandidatesWithFunnel,
   buildSetlist,
+  DEFAULT_MAX_SONGS,
   learnThese,
   normalizeWeights,
   pickTopPitches,
@@ -35,6 +36,9 @@ import {
   type Weights,
 } from "@/server/scoring";
 import { serverLocalNow, serverToday } from "@/server/clock";
+import { LEARN_MAX_PER_ARTIST, SUGGEST_ARTISTS_PER_PITCH, SUGGEST_CATALOGUE_LOOKUPS, SUGGEST_RELATED_TAKE } from "@/server/playlist/config";
+import { fillAsRepertoire, mergeFillArtists, pickFillSongs, rankFillArtists, type FillArtist } from "@/server/scoring/fill";
+import { catalogueOf } from "@/server/songs/catalogue";
 
 /** Search radius for busy places, from the city centre. Covers the planning area. */
 export const PLACES_RADIUS_M = 2000;
@@ -49,6 +53,10 @@ export const CROWD_RADIUS_M = 400;
 export const HOTSPOT_CROWD_TAKE = 10;
 /** Event headliners matched against the performer's taste per plan (one Qloo search each, cached). */
 export const EVENT_ARTISTS_MAX = 6;
+/** Most entity ids one per-pitch affinity call may carry (Qloo's `take` cap); the act's own artists come first, then the fill's candidates. */
+export const AFFINITY_IDS_MAX = 50;
+/** Upper bound for the ordering pass of a set with suggested songs (the act's 60 songs); trimmed afterwards. */
+const MAX_REPERTOIRE_SET = 60;
 
 function widen(box: BBox, factor: number): BBox {
   const dLat = ((box.north - box.south) * (factor - 1)) / 2;
@@ -70,6 +78,7 @@ const OPTIONAL_QLOO: [prefix: string, feature: string][] = [
   ["genres:", "the genres at the top pitch"],
   ["hotspotCrowd", "the contrast with the usual crowd"],
   ["compare", "the contrast with the usual crowd"],
+  ["relatedArtists", "related artists for the suggested songs"],
   ["affinity:", "the suggested set order by local taste"],
   ["songArtists", "the suggested set order by local taste"],
   ["eventArtists", "how well event crowds match your taste"],
@@ -541,20 +550,96 @@ export class PlanContext {
     return this.track("years", () => findReleaseYears(songs, this.city.countryCode, this.adapters));
   }
 
-  /** Setlist for one pitch: per-pitch crowd affinity, Last.fm popularity and era fit with the crowd's age lean. */
+  /** Suggested songs asked for (docs/plan-inputs-architecture.md D4); 0 when the act asked for none. */
+  get fillCount(): number {
+    return this.request.performer.fillSuggested ?? 0;
+  }
+
+  /**
+   * Artists that could supply suggested songs (§3.1 steps 1–2): the city crowd's own artists (already fetched) plus the
+   * artists related to the act's (taste_artists, +1 Qloo call cold), without artists whose songs are already in the set.
+   * A failed related-artists call leaves the city crowd alone, with a plan note (OPTIONAL_QLOO).
+   */
+  fillArtists(): Promise<FillArtist[]> {
+    return this.once("fillArtists", async () => {
+      const [ids, crowd, resolved] = await Promise.all([this.entityIds(), this.localArtists(), this.artists()]);
+      if (ids.length === 0) return [];
+      const related = this.qlooFailed() ? [] : (await this.track("relatedArtists", () => qloo.tasteArtists(ids, SUGGEST_RELATED_TAKE, this.adapters))).artists;
+      const names = new Map(resolved.flatMap((r) => (r.entity ? [[r.entity.id, r.entity.name] as const] : [])));
+      const toFill = (e: qloo.QlooEntity): FillArtist => ({
+        id: e.id,
+        name: e.name,
+        growth: e.audienceGrowth,
+        listeners: e.lastfmListeners,
+        because: [...e.explanation]
+          .sort((a, b) => b.score - a.score)
+          .flatMap((x) => {
+            const name = x.name ?? names.get(x.entityId);
+            return name ? [name] : [];
+          }),
+      });
+      const inSet = new Set(this.request.performer.songs.map((s) => nameKey(s.artist)));
+      return mergeFillArtists([crowd.map(toFill), related.map(toFill)], inSet);
+    });
+  }
+
+  /** An artist's songs, looked up once per busk and within SUGGEST_CATALOGUE_LOOKUPS lookups (Spotify, Last.fm as backup; not Qloo quota). */
+  private catalogueLookups = 0;
+  private catalogue(artist: string) {
+    const key = `catalogue:${nameKey(artist)}`;
+    if (!this.memo.has(key)) {
+      if (this.catalogueLookups >= SUGGEST_CATALOGUE_LOOKUPS) return Promise.resolve(null);
+      this.catalogueLookups++;
+    }
+    return this.once(key, () => catalogueOf(artist, this.city.countryCode, this.adapters));
+  }
+
+  /**
+   * Setlist for one pitch: per-pitch crowd affinity, Last.fm popularity and era fit with the crowd's age lean. With
+   * `fillSuggested`, the same per-pitch affinity call also scores the fill's candidate artists, and the best of them
+   * supply suggested songs (never one the act has or removed for this busk), ordered together with the act's own.
+   */
   setlistFor(pitch: { id: string; lat: number; lon: number }) {
     return this.once(`setlist:${pitch.id}`, async () => {
-      const [repertoire, songs, years, profile] = await Promise.all([this.repertoire(), this.songs(), this.releaseYears(), this.crowdProfile()]);
-      const ids = [...new Set(repertoire.flatMap((s) => (s.artistEntityId ? [s.artistEntityId] : [])))];
+      const fill = this.fillCount;
+      const [repertoire, songs, years, profile, candidates] = await Promise.all([
+        this.repertoire(),
+        this.songs(),
+        this.releaseYears(),
+        this.crowdProfile(),
+        fill ? this.fillArtists() : Promise.resolve([] as FillArtist[]),
+      ]);
+      const candidateIds = candidates.map((c) => c.id);
+      const own = [...new Set(repertoire.flatMap((s) => (s.artistEntityId ? [s.artistEntityId] : [])))];
+      const ids = fill ? [...new Set([...own.slice(0, Math.max(0, AFFINITY_IDS_MAX - candidateIds.length)), ...candidateIds])].slice(0, AFFINITY_IDS_MAX) : own;
       const affinity = ids.length
         ? await this.track(`affinity:${pitch.id}`, () => qloo.artistAffinityAt(ids, pitch, PITCH_CROWD_RADIUS_M, this.adapters))
         : {};
       const playcounts: Record<string, number> = {};
-      for (const tracks of Object.values(songs)) for (const t of tracks) playcounts[trackKey(t.artist, t.title)] = t.playcount;
-      // Last.fm may autocorrect the artist name; also key by the name we asked for.
-      for (const [asked, tracks] of Object.entries(songs)) for (const t of tracks) playcounts[trackKey(asked, t.title)] ??= t.playcount;
+      const addPlaycounts = (list: Record<string, { title: string; artist: string; playcount: number }[]>) => {
+        for (const tracks of Object.values(list)) for (const t of tracks) playcounts[trackKey(t.artist, t.title)] = t.playcount;
+        // Last.fm may autocorrect the artist name; also key by the name we asked for.
+        for (const [asked, tracks] of Object.entries(list)) for (const t of tracks) playcounts[trackKey(asked, t.title)] ??= t.playcount;
+      };
+      addPlaycounts(songs);
       const currentYear = Number(this.today.slice(0, 4));
-      return buildSetlist(repertoire, affinity, playcounts, undefined, { years, ageLean: profile?.age ?? null, currentYear, ageLabel });
+      if (!fill) return buildSetlist(repertoire, affinity, playcounts, undefined, { years, ageLean: profile?.age ?? null, currentYear, ageLabel });
+
+      const have = new Set(repertoire.map((s) => trackKey(s.artist, s.title)));
+      const skip = new Set((this.request.performer.skipSongs ?? []).map((s) => trackKey(s.artist, s.title)));
+      const picks = await pickFillSongs(rankFillArtists(candidates, affinity), fill, LEARN_MAX_PER_ARTIST, SUGGEST_ARTISTS_PER_PITCH, have, skip, async (a) => {
+        const found = await this.catalogue(a.name);
+        return found && found.tracks.length > 0 ? found : null;
+      });
+      const suggested = fillAsRepertoire(picks, affinity);
+      const eraYears = { ...years };
+      for (const p of picks) if (p.track.year !== null) eraYears[trackKey(p.track.artist, p.track.title)] = p.track.year;
+      const artistNames = [...new Set(picks.map((p) => p.track.artist))].sort();
+      if (artistNames.length > 0) addPlaycounts(await this.track(`songsFill:${artistNames.join("|")}`, () => getSongs(artistNames, this.adapters)));
+      // Room for all the suggested songs on top of the act's own 12, so a long Repertoire can't push them out.
+      const ordered = buildSetlist([...repertoire, ...suggested], affinity, playcounts, MAX_REPERTOIRE_SET + fill, { years: eraYears, ageLean: profile?.age ?? null, currentYear, ageLabel });
+      let ownKept = 0;
+      return ordered.filter((e) => e.origin === "suggested" || ownKept++ < DEFAULT_MAX_SONGS);
     });
   }
 

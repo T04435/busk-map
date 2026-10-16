@@ -15,6 +15,7 @@ const MAX_OWN = 20;
 function profileProblem(status: number | undefined, body: { reason?: string; mode?: string } | null): string {
   if (status === 429) return "Too many searches in a short time. Wait a moment and try again.";
   if (body?.reason === "not_found") return "Spotify has no artist at that link. Open it in Spotify to check it, then copy the artist's share link again.";
+  if (body?.reason === "missing_key") return "Loading songs from a Spotify profile isn't available here. Search for a song below instead.";
   if (body?.mode === "fallback") return "Spotify isn't answering right now. Try again in a minute, or search for a song below.";
   return "Couldn't load songs from that link. Paste an open.spotify.com/artist/… link, or search for a song below.";
 }

@@ -58,7 +58,9 @@ dl{{margin:0;display:grid;gap:6px}} dt{{font-size:12px;color:var(--muted)}} dd{{
 .chip{{font-weight:800;padding:1px 8px}} .chip.ok{{background:var(--okbg);color:var(--ok)}} .chip.bad{{background:var(--badbg);color:var(--bad)}} .chip.warn{{background:var(--warnbg);color:var(--warn)}} .chip.held{{background:var(--heldbg);color:var(--held)}}
 .ph{{border:2px dashed var(--muted);color:var(--muted);padding:24px 8px;text-align:center;font-weight:800}}
 body.action .row[data-action="false"]{{display:none}}
+.ready{{border:2px solid var(--line);background:var(--card);padding:12px 16px;margin:8px 0 14px}} .ready.ready{{border-color:var(--ok)}} .ready.ready-with-notes{{border-color:var(--warn)}} .ready.not-ready{{border-color:var(--bad)}}
 .box{{background:var(--card);border:1px solid var(--line);padding:12px 16px;margin-top:20px;overflow-x:auto}} .box h2{{font-size:16px;margin:0 0 6px}}
+.prov{{border-left:4px solid var(--accent);padding:6px 10px;background:var(--bg);font-size:13px}} .synth{{border:2px solid var(--fg);padding:8px 12px;margin:10px 0}} .synth h3{{margin:0 0 4px;font-size:14px}} .box details{{margin-top:10px}} .box summary{{font-weight:800;cursor:pointer;min-height:32px}} .box h3,.box h4,.box h5,.box h6{{font-size:14px;margin:12px 0 4px}} .box table{{margin:6px 0}} .box code{{font-size:12px}}
 table{{border-collapse:collapse}} th,td{{border:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top}}
 @media (max-width:1100px){{.row{{grid-template-columns:1fr 1fr}} .id{{grid-column:1/-1}} dl{{grid-column:1/-1}}}}
 @media (max-width:600px){{.row{{grid-template-columns:1fr}}}}
@@ -67,6 +69,7 @@ table{{border-collapse:collapse}} th,td{{border:1px solid var(--line);padding:4p
 <h1>{html.escape(D["TITLE"])}</h1>
 <p class="ver">{D["VERSION"]} · design/honeycomb ＠ {D["COMMIT"]} · {D["DATE"]} · route {html.escape(D["ROUTE"])}</p>
 <p class="chg">{html.escape(D["CHANGES"])}</p>
+{(lambda r: f'<section class="ready {r[0].lower().replace(" ", "-")}" aria-label="Ready for design-approve"><b>Ready for the user\'s design-approve? {html.escape(r[0])}.</b> {html.escape(r[1])}</section>')(D["READY"]) if D.get("READY") else ""}
 <div class="strip" role="group" aria-label="Summary">{stats}<button class="filter" type="button" aria-pressed="false" id="flt">Needs action only</button></div>
 <p class="chg">{html.escape(D["SOURCE_NOTE"])} The row id is the ticket.</p>
 {"".join(rows)}

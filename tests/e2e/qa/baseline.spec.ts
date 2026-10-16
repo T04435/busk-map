@@ -92,7 +92,7 @@ test.describe("QA judge paths", () => {
   });
 
   test("no page needs a login: no sign-in control on the judge paths", async ({ page }) => {
-    for (const path of ["/", "/plan?example=acoustic", "/week?example=sax", "/tips"]) {
+    for (const path of ["/", "/plan?example=acoustic", "/week?example=sax", "/brain"]) {
       await page.goto(path);
       await expect(page.getByRole("button", { name: /sign in|log in/i })).toHaveCount(0);
       await expect(page.getByRole("link", { name: /sign in|log in/i })).toHaveCount(0);

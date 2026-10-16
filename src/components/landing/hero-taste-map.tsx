@@ -43,29 +43,11 @@ const HERO_PINS: MapPin[] = [
   { rank: 3, col: 19, row: 9, kind: "top" },
 ];
 
-/** A no-busking zone, drawn as hatched honeycomb cells (never a rectangle), beside pitch 1. */
-const ZONE: [number, number][] = [[10, 17], [11, 17], [12, 17], [10, 18], [11, 18], [12, 18], [13, 18], [10, 19], [11, 19], [12, 19]];
-/** The hero's event: a diamond near the middle of the map. */
-const EVENT = { col: 12, row: 9 };
-/** The river, along the bottom of the map. */
-const RIVER = "M-20 505 C 150 470 290 540 440 512 S 700 450 780 490";
+/** Held by the user (L05): whether the hero shows only the orange cells. Flip to true when they answer. */
+const HERO_ORANGE_ONLY = false;
+
 /** A few faint streets under the cells, so it reads as a map. */
 const STREETS = ["M0 170 L760 240", "M0 380 L760 340", "M230 0 L290 600", "M520 0 L470 600", "M0 270 L760 120"];
-
-/** The pattern behind "What you get back": another made-up crowd, with the pins of the example busk. */
-export const PLAN_PREVIEW = {
-  heat: [
-    { x: 3.6, y: 6.4, a: 1 },
-    { x: 7.4, y: 2.8, a: 0.9 },
-    { x: 9.4, y: 6.2, a: 0.72 },
-    { x: 1.6, y: 1.8, a: 0.4 },
-  ] satisfies Heat,
-  pins: [
-    { rank: 1, col: 3, row: 6, kind: "top" },
-    { rank: 2, col: 7, row: 3, kind: "gem" },
-    { rank: 3, col: 9, row: 6, kind: "top" },
-  ] satisfies MapPin[],
-};
 
 /**
  * An illustration of a taste map: pointy-top cells in the five-step taste ramp, three pitch pins on top. The pattern is
@@ -79,8 +61,8 @@ export function HeroTasteMap({ className, label, heat = HERO_HEAT, pins = HERO_P
       const { x, y } = center(col, row);
       const a = affinity(heat, col + (row % 2 ? 0.5 : 0), row);
       const lv = level(a);
-      // Only the orange cells where the taste is (F05, F28): the dark, low-taste cells are not drawn.
-      if (lv < 3) continue;
+      // The dark, low-taste cells stay until the user decides the hero goes orange-only (HERO_ORANGE_ONLY).
+      if (HERO_ORANGE_ONLY && lv < 3) continue;
       cells.push(
         <polygon
           key={`${col}-${row}`}
@@ -93,30 +75,15 @@ export function HeroTasteMap({ className, label, heat = HERO_HEAT, pins = HERO_P
       );
     }
   }
-  const ev = center(EVENT.col, EVENT.row);
   return (
     // Full-bleed (F19): the map fills whatever box it is given, edge to edge, with no frame and no empty space.
     <svg role="img" aria-label={label} viewBox={`0 0 ${WIDTH.toFixed(0)} ${HEIGHT.toFixed(0)}`} preserveAspectRatio="xMidYMid slice" className={cn("block size-full", className)}>
-      <defs>
-        <pattern id="hero-zone-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <line x1="0" y1="0" x2="0" y2="6" stroke="var(--zone-pink)" strokeWidth="2.5" />
-        </pattern>
-      </defs>
       <g fill="none" stroke="var(--foreground)" strokeOpacity={0.14} strokeWidth={2}>
         {STREETS.map((d) => (
           <path key={d} d={d} />
         ))}
       </g>
-      <path d={RIVER} fill="none" stroke="var(--event)" strokeOpacity={0.55} strokeWidth={14} strokeLinecap="round" />
       {cells}
-      {ZONE.map(([col, row]) => {
-        const { x, y } = center(col, row);
-        return <polygon key={`z-${col}-${row}`} points={hexPoints(x, y, R - 1.5)} fill="url(#hero-zone-hatch)" stroke="var(--zone-pink)" strokeWidth={1.5} />;
-      })}
-      <g>
-        <polygon points={`${ev.x},${ev.y - 20} ${ev.x + 20},${ev.y} ${ev.x},${ev.y + 20} ${ev.x - 20},${ev.y}`} fill="var(--event)" stroke="var(--background)" strokeWidth={3} />
-        <rect x={ev.x - 5} y={ev.y - 5} width={10} height={10} transform={`rotate(45 ${ev.x} ${ev.y})`} fill="var(--background)" />
-      </g>
       {pins.map((pin) => {
         const { x, y } = center(pin.col, pin.row);
         // Every ranked pitch is a numbered pin, hidden gems too (the gem is marked where pitches are listed).

@@ -1,10 +1,11 @@
 import "server-only";
 import { neon } from "@neondatabase/serverless";
-import { playlistSongKey, type AddSongInput, type PatchPlaylistInput, type PlaylistSongView, type PlaylistView, type SongSource, type SongState, type SoundsLike, type UsualPitch } from "@/lib/playlist-schema";
+import { playlistSongKey, type AddPlanSuggestionInput, type AddSongInput, type LearnSuggestionView, type PatchPlaylistInput, type PlaylistSongView, type PlaylistView, type SongSource, type SongState, type SoundsLike, type UsualPitch } from "@/lib/playlist-schema";
+import { usualFromBusks, withBusk, type RecentBusk } from "@/lib/playlist-usual";
 import { env } from "@/server/env";
 import { log } from "@/server/log";
 import { processMap } from "@/server/memo";
-import { MAX_SONGS, PLAYLIST_EXPIRY_MONTHS, TOUCH_INTERVAL_MS } from "./config";
+import { MAX_SONGS, MAX_USUAL_PITCHES, PLAYLIST_EXPIRY_MONTHS, TOUCH_INTERVAL_MS, USUAL_PITCHES_FROM_LAST_PLANS } from "./config";
 
 /**
  * Repertoires (tables `playlists` and `playlist_songs`, migrations/004_playlists.sql).
@@ -15,6 +16,8 @@ export type PlaylistRecord = {
   actName: string | null;
   soundsLike: SoundsLike[];
   usualPitches: UsualPitch[];
+  /** The last few busks planned with it, newest first (migration 006): where usualPitches comes from. */
+  recentBusks: RecentBusk[];
   city: string;
   revision: number;
   createdAt: number;
@@ -24,6 +27,8 @@ export type PlaylistRecord = {
 export type StoredSong = Omit<PlaylistSongView, "addedAt"> & { songKey: string; addedAt: number };
 
 export type AddSongResult = { ok: true; song: StoredSong } | { ok: false; reason: "duplicate" | "full" };
+/** "Add to Repertoire" from a plan: refused when the song is already suggested (any status) or already sung. */
+export type AddSuggestionResult = { ok: true; suggestion: LearnSuggestionView } | { ok: false; reason: "already_suggested" | "in_repertoire" };
 export type UpdateResult = { ok: true; playlist: PlaylistRecord } | { ok: false; reason: "stale" | "missing" };
 
 export interface PlaylistStore {
@@ -40,6 +45,13 @@ export interface PlaylistStore {
   removeSong(playlistId: string, songId: string): Promise<boolean>;
   /** Act name, sounds like, usual pitches. A stale `revision` is refused. */
   update(playlistId: string, patch: PatchPlaylistInput): Promise<UpdateResult>;
+  /**
+   * A song from a plan's Learn these becomes a pending suggestion with no run (docs §3.3). The unique key on
+   * (playlist, song key) is the no-repeat rule. Does not bump the revision: it is not an edit of the Repertoire.
+   */
+  addPlanSuggestion(playlistId: string, input: AddPlanSuggestionInput): Promise<AddSuggestionResult>;
+  /** Records the top pitch of a busk planned with the Repertoire and refreshes the usual pitches. No revision bump. */
+  recordBusk(playlistId: string, busk: RecentBusk): Promise<UsualPitch[]>;
   /** Forget: the Repertoire and (by cascade) everything under it. */
   forget(playlistId: string): Promise<boolean>;
   /** Delete Repertoires not seen for 13 months. Returns how many. */
@@ -66,12 +78,42 @@ export function toPlaylistView(playlist: PlaylistRecord, songs: StoredSong[]): P
   };
 }
 
+/** A suggestion row added from a plan, as the Learn list returns it (docs §7.3). */
+function planSuggestionView(id: string, input: AddPlanSuggestionInput, suggestedAt: string): LearnSuggestionView {
+  return {
+    id,
+    runId: null,
+    runNumber: null,
+    rank: null,
+    title: input.title,
+    artist: input.artist,
+    year: null,
+    durationMs: null,
+    image: null,
+    songSource: "plan",
+    sourceUrl: null,
+    reason: input.reason,
+    because: [],
+    basedOn: [],
+    growth: input.growth ?? null,
+    trendDelta: null,
+    isNew: false,
+    status: "pending",
+    suggestedAt,
+    learnedAt: null,
+    dismissedAt: null,
+  };
+}
+
 export class MemoryPlaylistStore implements PlaylistStore {
   readonly kind = "memory" as const;
   /** Keyed by token hash. */
   readonly playlists = new Map<string, PlaylistRecord & { tokenHash: string }>();
   readonly songRows = new Map<string, StoredSong[]>();
+  /** Plan suggestions by Repertoire id (the learn runs of R3 write to the same table in Postgres). */
+  readonly suggestionRows = new Map<string, (LearnSuggestionView & { songKey: string })[]>();
   private nextSongId = 1;
+  private nextSuggestionId = 1;
 
   private byId(id: string) {
     for (const p of this.playlists.values()) if (p.id === id) return p;
@@ -97,12 +139,13 @@ export class MemoryPlaylistStore implements PlaylistStore {
   }
 
   async create(tokenHash: string, now = Date.now()) {
-    const row = { id: crypto.randomUUID(), tokenHash, actName: null, soundsLike: [], usualPitches: [], city: "melbourne", revision: 1, createdAt: now, lastSeenAt: now };
+    const row = { id: crypto.randomUUID(), tokenHash, actName: null, soundsLike: [], usualPitches: [], recentBusks: [], city: "melbourne", revision: 1, createdAt: now, lastSeenAt: now };
     this.playlists.set(tokenHash, row);
     this.songRows.set(row.id, []);
     if (this.playlists.size > 1000) {
       const oldest = this.playlists.keys().next().value!;
       this.songRows.delete(this.playlists.get(oldest)!.id);
+      this.suggestionRows.delete(this.playlists.get(oldest)!.id);
       this.playlists.delete(oldest);
     }
     return this.record(row);
@@ -165,8 +208,48 @@ export class MemoryPlaylistStore implements PlaylistStore {
     if (patch.actName !== undefined) row.actName = patch.actName;
     if (patch.soundsLike) row.soundsLike = structuredClone(patch.soundsLike);
     if (patch.usualPitches) row.usualPitches = structuredClone(patch.usualPitches);
+    if (patch.songs) this.replaceSongs(row.id, patch.songs);
     row.revision++;
     return { ok: true, playlist: this.record(row) };
+  }
+
+  /** The songs after an edit: the ones missing are removed, new ones added as "can sing", the rest keep their row. */
+  private replaceSongs(playlistId: string, wanted: AddSongInput[]) {
+    const keyed = new Map<string, AddSongInput>();
+    for (const s of wanted) {
+      const key = playlistSongKey(s.artist, s.title);
+      if (!keyed.has(key)) keyed.set(key, s);
+    }
+    const kept = (this.songRows.get(playlistId) ?? []).filter((r) => keyed.has(r.songKey));
+    for (const row of kept) {
+      const next = keyed.get(row.songKey)!;
+      row.own = next.own;
+      row.durationMs = next.durationMs ?? row.durationMs;
+      keyed.delete(row.songKey);
+    }
+    for (const [songKey, s] of keyed) {
+      kept.push({ id: String(this.nextSongId++), songKey, title: s.title, artist: s.artist, own: s.own, state: "can_sing", source: s.source, spotifyTrackId: s.spotifyTrackId ?? null, year: s.year ?? null, durationMs: s.durationMs ?? null, addedAt: Date.now() });
+    }
+    this.songRows.set(playlistId, kept);
+  }
+
+  async addPlanSuggestion(playlistId: string, input: AddPlanSuggestionInput): Promise<AddSuggestionResult> {
+    const songKey = playlistSongKey(input.artist, input.title);
+    if ((this.songRows.get(playlistId) ?? []).some((s) => s.songKey === songKey)) return { ok: false, reason: "in_repertoire" };
+    const rows = this.suggestionRows.get(playlistId) ?? [];
+    if (rows.some((s) => s.songKey === songKey)) return { ok: false, reason: "already_suggested" };
+    const suggestion = { ...planSuggestionView(String(this.nextSuggestionId++), input, new Date().toISOString()), songKey };
+    this.suggestionRows.set(playlistId, [...rows, suggestion]);
+    const { songKey: _key, ...view } = suggestion; // eslint-disable-line @typescript-eslint/no-unused-vars
+    return { ok: true, suggestion: view };
+  }
+
+  async recordBusk(playlistId: string, busk: RecentBusk) {
+    const row = this.byId(playlistId);
+    if (!row) return [];
+    row.recentBusks = withBusk(row.recentBusks, busk, USUAL_PITCHES_FROM_LAST_PLANS);
+    row.usualPitches = usualFromBusks(row.recentBusks, MAX_USUAL_PITCHES);
+    return structuredClone(row.usualPitches);
   }
 
   async forget(playlistId: string) {
@@ -174,6 +257,7 @@ export class MemoryPlaylistStore implements PlaylistStore {
     if (!row) return false;
     this.playlists.delete(row.tokenHash);
     this.songRows.delete(playlistId);
+    this.suggestionRows.delete(playlistId);
     return true;
   }
 
@@ -198,6 +282,7 @@ type PlaylistRow = {
   act_name: string | null;
   sounds_like: SoundsLike[];
   usual_pitches: UsualPitch[];
+  recent_busks: RecentBusk[];
   city: string;
   revision: number;
   created_at: Time;
@@ -218,7 +303,7 @@ type SongRow = {
   added_at: Time;
 };
 
-const PLAYLIST_COLUMNS = "id, act_name, sounds_like, usual_pitches, city, revision, created_at, last_seen_at";
+const PLAYLIST_COLUMNS = "id, act_name, sounds_like, usual_pitches, recent_busks, city, revision, created_at, last_seen_at";
 const SONG_COLUMNS = "id::text AS id, song_key, state, source, title, artist, own, spotify_track_id, year, duration_ms, added_at";
 
 const toRecord = (r: PlaylistRow): PlaylistRecord => ({
@@ -226,6 +311,7 @@ const toRecord = (r: PlaylistRow): PlaylistRecord => ({
   actName: r.act_name,
   soundsLike: r.sounds_like,
   usualPitches: r.usual_pitches,
+  recentBusks: r.recent_busks ?? [],
   city: r.city,
   revision: r.revision,
   createdAt: ms(r.created_at),
@@ -245,6 +331,34 @@ const toSong = (r: SongRow): StoredSong => ({
   durationMs: r.duration_ms,
   addedAt: ms(r.added_at),
 });
+
+type SuggestionRow = {
+  id: string;
+  title: string;
+  artist: string;
+  reason: string;
+  evidence: { growth?: number | null } | null;
+  status: LearnSuggestionView["status"];
+  created_at: Time;
+};
+
+const SUGGESTION_COLUMNS = "id::text AS id, title, artist, reason, evidence, status, created_at";
+
+/** What a plan suggestion keeps of the plan's numbers: small derived values only (docs §1.2). */
+const planEvidence = (growth: number | null) => ({ ranker: "template", artistFrom: "plan", because: [], affinity: null, growth, trendDelta: null, basedOn: [] });
+
+const toSuggestionView = (r: SuggestionRow): LearnSuggestionView =>
+  planSuggestionView(r.id, { title: r.title, artist: r.artist, reason: r.reason, growth: r.evidence?.growth ?? null }, new Date(r.created_at).toISOString());
+
+/** The songs of an edit by song key, the first of a repeat winning, as the rows the statement inserts. */
+function uniqueSongs(songs: AddSongInput[]) {
+  const byKey = new Map<string, { song_key: string; title: string; artist: string; own: boolean; duration_ms: number | null }>();
+  for (const s of songs) {
+    const song_key = playlistSongKey(s.artist, s.title);
+    if (!byKey.has(song_key)) byKey.set(song_key, { song_key, title: s.title, artist: s.artist, own: s.own, duration_ms: s.durationMs ?? null });
+  }
+  return [...byKey.values()];
+}
 
 /** Song ids are BIGSERIAL: anything else can't match a row (and must not reach the cast). */
 const isSongId = (id: string) => /^\d{1,18}$/.test(id);
@@ -323,14 +437,33 @@ export class PostgresPlaylistStore implements PlaylistStore {
   }
 
   async update(playlistId: string, patch: PatchPlaylistInput): Promise<UpdateResult> {
+    // One statement. The playlist row is claimed by its revision; the song changes are data-modifying CTEs on that
+    // row, so a stale writer changes nothing at all (they join on `upd`, which is empty) and the edit is atomic.
+    const wanted = patch.songs ? uniqueSongs(patch.songs) : null;
     const rows = (await this.sql.query(
-      `UPDATE playlists
-          SET act_name = CASE WHEN $3::boolean THEN $4::text ELSE act_name END,
-              sounds_like = CASE WHEN $5::boolean THEN $6::jsonb ELSE sounds_like END,
-              usual_pitches = CASE WHEN $7::boolean THEN $8::jsonb ELSE usual_pitches END,
-              revision = revision + 1, updated_at = now()
-        WHERE id = $1 AND revision = $2
-        RETURNING ${PLAYLIST_COLUMNS}`,
+      `WITH upd AS (
+         UPDATE playlists
+            SET act_name = CASE WHEN $3::boolean THEN $4::text ELSE act_name END,
+                sounds_like = CASE WHEN $5::boolean THEN $6::jsonb ELSE sounds_like END,
+                usual_pitches = CASE WHEN $7::boolean THEN $8::jsonb ELSE usual_pitches END,
+                revision = revision + 1, updated_at = now()
+          WHERE id = $1 AND revision = $2
+          RETURNING ${PLAYLIST_COLUMNS}
+       ), gone AS (
+         DELETE FROM playlist_songs
+          WHERE $9::boolean AND playlist_id IN (SELECT id FROM upd)
+            AND song_key NOT IN (SELECT x.song_key FROM jsonb_to_recordset($10::jsonb) AS x(song_key text))
+          RETURNING id
+       ), added AS (
+         INSERT INTO playlist_songs (playlist_id, song_key, state, source, title, artist, own, duration_ms)
+         SELECT upd.id, x.song_key, 'can_sing', 'typed', x.title, x.artist, x.own, x.duration_ms
+           FROM upd, jsonb_to_recordset($10::jsonb) AS x(song_key text, title text, artist text, own boolean, duration_ms integer)
+          WHERE $9::boolean
+         ON CONFLICT (playlist_id, song_key)
+           DO UPDATE SET own = EXCLUDED.own, duration_ms = COALESCE(EXCLUDED.duration_ms, playlist_songs.duration_ms), updated_at = now()
+         RETURNING id
+       )
+       SELECT ${PLAYLIST_COLUMNS} FROM upd`,
       [
         playlistId,
         patch.revision,
@@ -340,11 +473,39 @@ export class PostgresPlaylistStore implements PlaylistStore {
         JSON.stringify(patch.soundsLike ?? []),
         patch.usualPitches !== undefined,
         JSON.stringify(patch.usualPitches ?? []),
+        wanted !== null,
+        JSON.stringify(wanted ?? []),
       ],
     )) as PlaylistRow[];
     if (rows[0]) return { ok: true, playlist: toRecord(rows[0]) };
     const exists = (await this.sql.query("SELECT 1 AS one FROM playlists WHERE id = $1", [playlistId])) as unknown[];
     return { ok: false, reason: exists.length ? "stale" : "missing" };
+  }
+
+  async addPlanSuggestion(playlistId: string, input: AddPlanSuggestionInput): Promise<AddSuggestionResult> {
+    const songKey = playlistSongKey(input.artist, input.title);
+    // One conditional statement: a song you already sing is not suggested, and the unique key refuses a repeat.
+    const rows = (await this.sql.query(
+      `INSERT INTO learn_suggestions (playlist_id, song_key, title, artist, song_source, reason, evidence, status)
+       SELECT $1::uuid, $2::text, $3::text, $4::text, 'plan', $5::text, $6::jsonb, 'pending'
+        WHERE NOT EXISTS (SELECT 1 FROM playlist_songs WHERE playlist_id = $1::uuid AND song_key = $2::text)
+       ON CONFLICT (playlist_id, song_key) DO NOTHING
+       RETURNING ${SUGGESTION_COLUMNS}`,
+      [playlistId, songKey, input.title, input.artist, input.reason, JSON.stringify(planEvidence(input.growth ?? null))],
+    )) as SuggestionRow[];
+    if (rows[0]) return { ok: true, suggestion: toSuggestionView(rows[0]) };
+    const sung = (await this.sql.query("SELECT 1 AS one FROM playlist_songs WHERE playlist_id = $1 AND song_key = $2", [playlistId, songKey])) as unknown[];
+    return { ok: false, reason: sung.length ? "in_repertoire" : "already_suggested" };
+  }
+
+  async recordBusk(playlistId: string, busk: RecentBusk) {
+    const rows = (await this.sql.query("SELECT recent_busks FROM playlists WHERE id = $1", [playlistId])) as { recent_busks: RecentBusk[] }[];
+    if (!rows[0]) return [];
+    const recent = withBusk(rows[0].recent_busks ?? [], busk, USUAL_PITCHES_FROM_LAST_PLANS);
+    const usual = usualFromBusks(recent, MAX_USUAL_PITCHES);
+    // Bookkeeping, not an edit: the revision stays, so an open busk form can still save.
+    await this.sql.query("UPDATE playlists SET recent_busks = $2::jsonb, usual_pitches = $3::jsonb WHERE id = $1", [playlistId, JSON.stringify(recent), JSON.stringify(usual)]);
+    return usual;
   }
 
   async forget(playlistId: string) {

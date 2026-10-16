@@ -16,4 +16,5 @@ export const BOTID_PROTECTED_ROUTES = [
   { path: "/api/playlist/songs", method: "POST" },
   { path: "/api/playlist/songs/*", method: "PATCH" },
   { path: "/api/playlist/songs/*", method: "DELETE" },
+  { path: "/api/playlist/learn/suggestions", method: "POST" },
 ] as const;

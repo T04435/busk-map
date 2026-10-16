@@ -2,6 +2,8 @@
  * Every user-facing word about the Repertoire (docs/playlist-architecture.md §4.1). Client-safe.
  * Code names stay `playlist`; a later rename ("Songbook") is an edit to this one file.
  */
+const USE_MINE = "Use my Repertoire";
+
 export const PLAYLIST_COPY = {
   name: "Repertoire",
   canSing: "Songs you can sing",
@@ -9,7 +11,7 @@ export const PLAYLIST_COPY = {
   learned: "Learned",
   suggestedSet: "Suggested set",
   addTo: "Add to Repertoire",
-  useMine: "Use my Repertoire",
+  useMine: USE_MINE,
   findToLearn: "Find songs to learn",
   findMore: "Find more songs to learn",
   newThisRun: "New this run",
@@ -38,11 +40,27 @@ export const PLAYLIST_COPY = {
   forgotten: "Your Repertoire was deleted.",
   loading: "Loading your Repertoire…",
 
+  // On the busk form, the week page and the plan (S2)
+  mineWithCount: (n: number) => `${USE_MINE} (${n} ${n === 1 ? "song" : "songs"})`,
+  fromRepertoire: "From your Repertoire",
+  editedHint: "Changes below are for this busk only until you save them.",
+  saveThese: "Save these songs as your Repertoire",
+  saveTheseHint: "Keep them on this device so the next busk starts with them. Nothing is saved unless you choose to.",
+  saving: "Saving…",
+  saved: "Saved to your Repertoire.",
+  reload: "Reload",
+  addedToLearn: "Added to Songs to learn.",
+  addedFromPlans: "Added from plans",
+  adding: "Adding…",
+  weekToggleHint: "Plan the week with your Repertoire's songs and artists.",
+
   // Friendly errors
   errors: {
     invalid: "That song couldn't be read. Check the title and artist and try again.",
     typedFormat: "Type it as Title - Artist.",
     duplicate: "That song is already in your Repertoire.",
+    inRepertoire: "In your Repertoire already.",
+    alreadySuggested: "Already on your list of songs to learn.",
     full: (max: number) => `Your Repertoire holds ${max} songs. Remove one to add another.`,
     stale: "Your Repertoire changed in another tab. Reload to see the latest.",
     notFound: "That song isn't in your Repertoire any more.",

@@ -189,3 +189,51 @@ describe("PostgresPlaylistStore SQL shape", () => {
     expect(f.calls[1].params).toEqual([hash]);
   });
 });
+
+describe("plan suggestions and busks (R2)", () => {
+  it("the Postgres store adds a plan suggestion with one conditional INSERT, and tells a repeat from a song you sing", async () => {
+    const calls: { text: string; params: unknown[] }[] = [];
+    const results: unknown[][] = [[], [], [{ one: 1 }], [], []];
+    const sql = { query: async (text: string, params: unknown[]) => (calls.push({ text, params }), results.shift() ?? []) };
+    const store = new PostgresPlaylistStore(sql as never);
+    // Nothing inserted, no song row: already suggested.
+    expect(await store.addPlanSuggestion("pid", { title: "Zed", artist: "Q", reason: "r", growth: null })).toEqual({ ok: false, reason: "already_suggested" });
+    expect(calls[0].text).toMatch(/INSERT INTO learn_suggestions[\s\S]*WHERE NOT EXISTS \(SELECT 1 FROM playlist_songs[\s\S]*ON CONFLICT \(playlist_id, song_key\) DO NOTHING/);
+    expect(calls[0].text).toMatch(/'plan'[\s\S]*'pending'/);
+    expect(calls[0].text).not.toMatch(/run_id/);
+    expect(calls[0].params[0]).toBe("pid");
+    // Nothing inserted and the song is sung.
+    results.unshift([], [{ one: 1 }]);
+    expect(await store.addPlanSuggestion("pid", { title: "Zed", artist: "Q", reason: "r", growth: null })).toEqual({ ok: false, reason: "in_repertoire" });
+  });
+
+  it("recording a busk writes only the busk list and the usual pitches, never the revision", async () => {
+    const calls: string[] = [];
+    const results: unknown[][] = [[{ recent_busks: [] }], []];
+    const sql = { query: async (text: string) => (calls.push(text), results.shift() ?? []) };
+    const store = new PostgresPlaylistStore(sql as never);
+    const usual = await store.recordBusk("pid", { key: "k", at: 1, name: "Bourke Street Mall", lat: -37.8, lon: 144.9 });
+    expect(usual).toEqual([{ name: "Bourke Street Mall", lat: -37.8, lon: 144.9 }]);
+    expect(calls[1]).toMatch(/UPDATE playlists SET recent_busks = \$2::jsonb, usual_pitches = \$3::jsonb WHERE id = \$1/);
+    expect(calls[1]).not.toMatch(/revision/);
+  });
+
+  it("an edit that carries songs claims the revision first and changes songs only through that row", async () => {
+    const calls: { text: string; params: unknown[] }[] = [];
+    const sql = { query: async (text: string, params: unknown[]) => (calls.push({ text, params }), [] as unknown[]) };
+    const store = new PostgresPlaylistStore(sql as never);
+    const song = (title: string) => ({ title, artist: "A", own: false, source: "typed" as const });
+    await store.update("pid", { revision: 3, songs: [song("One"), song("ONE"), song("Two")] });
+    const { text, params } = calls[0];
+    expect(text).toMatch(/WITH upd AS \(\s*UPDATE playlists[\s\S]*WHERE id = \$1 AND revision = \$2/);
+    expect(text).toMatch(/DELETE FROM playlist_songs[\s\S]*playlist_id IN \(SELECT id FROM upd\)/);
+    expect(text).toMatch(/FROM upd, jsonb_to_recordset/);
+    expect(params[8]).toBe(true);
+    expect(JSON.parse(params[9] as string).map((s: { title: string }) => s.title)).toEqual(["One", "Two"]);
+    // Without songs, nothing about songs is touched.
+    calls.length = 0;
+    await store.update("pid", { revision: 3, actName: "Jess" });
+    expect(calls[0].params[8]).toBe(false);
+    expect(JSON.parse(calls[0].params[9] as string)).toEqual([]);
+  });
+});

@@ -12,6 +12,7 @@ import { CITIES } from "@/server/cities";
 import { testSwitches } from "@/server/env";
 import { log } from "@/server/log";
 import { freshRunsAllowed, saveRunSnapshot } from "@/server/plans";
+import { recordBuskForRepertoire } from "@/server/playlist/usual";
 import { freshRunGate } from "@/server/rate-limit";
 import { adapterContextFor, clientIp, FAULTS_HEADER, freshLimitFaultRequested } from "@/server/request";
 
@@ -148,7 +149,11 @@ export async function POST(request: Request) {
   let unfollow = () => {};
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      const send = (event: PlanStreamEvent) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      const send = (event: PlanStreamEvent) => {
+        controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+        // The viewer's own cookie decides (a shared run reaches many devices). Examples never touch a Repertoire.
+        if (event.type === "plan") void recordBuskForRepertoire(request.headers.get("cookie"), parsed.data, event.plan, storeKey, { example: Boolean(presetId) });
+      };
       if (joined) {
         const at = new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", timeZone: CITIES[parsed.data.city].timeZone }).format(run.startedAt);
         send(

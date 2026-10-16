@@ -172,3 +172,92 @@ describe("the creation limit: 10 new Repertoires an hour per IP", () => {
     expect((await res.json()).error.code).toBe("limit");
   });
 });
+
+describe("the busk form's explicit save and the plan's Add to Repertoire (offline, memory store)", () => {
+  beforeEach(() => vi.unstubAllEnvs());
+
+  async function loadAll() {
+    const base = await load();
+    const suggestions = await import("@/app/api/playlist/learn/suggestions/route");
+    return { ...base, suggestions };
+  }
+  const song = (title: string, artist = "Paul Kelly", own = false) => ({ title, artist, own });
+
+  it("POST /api/playlist can seed a new Repertoire from a busk's songs; an existing one is returned unchanged", async () => {
+    const { root } = await loadAll();
+    const res = await root.POST(req("POST", "", { actName: "Jess", soundsLike: [{ name: "Paul Kelly" }], songs: [song("Gravy"), song("Scar", "Missy Higgins"), song("Gravy")] }));
+    expect(res.status).toBe(201);
+    const made = (await res.json()).playlist;
+    expect(made).toMatchObject({ actName: "Jess", soundsLike: [{ name: "Paul Kelly" }] });
+    expect(made.songs.map((s: { title: string }) => s.title)).toEqual(["Gravy", "Scar"]);
+    const again = await root.POST(req("POST", "", { actName: "Someone else", songs: [song("Different")] }, cookieOf(res)));
+    expect(again.status).toBe(200);
+    expect((await again.json()).playlist).toMatchObject({ actName: "Jess", songs: [{ title: "Gravy" }, { title: "Scar" }] });
+  });
+
+  it("a plain POST with no body still makes an empty Repertoire, and a bad body is a friendly 400", async () => {
+    const { root } = await loadAll();
+    expect((await (await root.POST(new Request(url, { method: "POST", headers: { host: "localhost:3100" } }))).json()).playlist.songs).toEqual([]);
+    const bad = await root.POST(req("POST", "", { songs: [{ title: "", artist: "x" }] }));
+    expect(bad.status).toBe(400);
+    expect((await bad.json()).error.message).toMatch(/couldn't be read/);
+  });
+
+  it("PATCH with songs replaces the set: removed songs go, new ones come in, kept ones keep their row; the revision is checked", async () => {
+    const { root } = await loadAll();
+    const made = await root.POST(req("POST", "", { songs: [song("Gravy"), song("Scar", "Missy Higgins")] }));
+    const cookie = cookieOf(made);
+    const first = (await made.json()).playlist;
+    const keptId = first.songs[0].id;
+
+    const stale = await root.PATCH(req("PATCH", "", { revision: first.revision + 5, songs: [song("Nope")] }, cookie));
+    expect(stale.status).toBe(409);
+    const { error } = await stale.json();
+    expect(error).toMatchObject({ code: "stale" });
+    expect(error.message).toMatch(/Reload/);
+    expect((await (await root.GET(req("GET", "", undefined, cookie))).json()).playlist.songs).toHaveLength(2);
+
+    const ok = await root.PATCH(req("PATCH", "", { revision: first.revision, actName: "Jess", songs: [song("Gravy", "Paul Kelly", true), song("Riptide", "Vance Joy")] }, cookie));
+    const next = (await ok.json()).playlist;
+    expect(next.revision).toBe(first.revision + 1);
+    expect(next.songs.map((s: { title: string }) => s.title)).toEqual(["Gravy", "Riptide"]);
+    expect(next.songs[0]).toMatchObject({ id: keptId, own: true });
+  });
+
+  it("add to Repertoire: a pending suggestion with no run, created on the first add, and a repeat is refused politely", async () => {
+    const { suggestions, root } = await loadAll();
+    const body = { title: "Wagon Wheel", artist: "Old Crow Medicine Show", reason: "Rising with this crowd", growth: 0.3 };
+    const res = await suggestions.POST(req("POST", "/learn/suggestions", body));
+    expect(res.status).toBe(201);
+    expect((await res.json()).suggestion).toMatchObject({ runId: null, runNumber: null, songSource: "plan", status: "pending", growth: 0.3, title: "Wagon Wheel" });
+    const cookie = cookieOf(res);
+    expect(cookie).toMatch(/^buskmap_playlist=/);
+
+    const again = await suggestions.POST(req("POST", "/learn/suggestions", { ...body, title: "WAGON WHEEL (Remastered)", artist: "old crow medicine show" }, cookie));
+    expect(again.status).toBe(409);
+    const refused = (await again.json()).error;
+    expect(refused).toMatchObject({ code: "already_suggested", message: "Already on your list of songs to learn." });
+
+    // A suggestion is not an edit of the Repertoire: no songs, no new revision.
+    expect((await (await root.GET(req("GET", "", undefined, cookie))).json()).playlist).toMatchObject({ songs: [], revision: 1 });
+  });
+
+  it("a song you already sing is 'In your Repertoire', and a long reason is cut instead of refused", async () => {
+    const { suggestions, songs } = await loadAll();
+    const cookie = cookieOf(await songs.POST(req("POST", "/songs", { title: "Scar", artist: "Missy Higgins" })));
+    const sung = await suggestions.POST(req("POST", "/learn/suggestions", { title: "Scar", artist: "Missy Higgins", reason: "x" }, cookie));
+    expect(sung.status).toBe(409);
+    expect((await sung.json()).error).toMatchObject({ code: "in_repertoire", message: "In your Repertoire already." });
+    const long = await suggestions.POST(req("POST", "/learn/suggestions", { title: "Long", artist: "Reason", reason: "word ".repeat(100) }, cookie));
+    expect(long.status).toBe(201);
+    expect((await long.json()).suggestion.reason).toHaveLength(240);
+  });
+
+  it("validates the suggestion and refuses another site's Origin", async () => {
+    const { suggestions } = await loadAll();
+    expect((await suggestions.POST(req("POST", "/learn/suggestions", { title: "", artist: "x", reason: "y" }))).status).toBe(400);
+    const cross = await suggestions.POST(req("POST", "/learn/suggestions", { title: "A", artist: "B", reason: "C" }, undefined, { origin: "https://evil.example" }));
+    expect(cross.status).toBe(403);
+    expect(cross.headers.get("set-cookie")).toBeNull();
+  });
+});

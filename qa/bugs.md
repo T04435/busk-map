@@ -21,6 +21,15 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-015 | Medium | /brain: the sticky trace panel hides the focused node while tabbing (WCAG 2.2 AA 2.4.11) | Fixed (2b26dc5), verified by QA |
 | B-016 | Low | /repertoire: after Remove, keyboard focus falls to <body> | Fixed (1b00ab4), verified by QA |
 | B-017 | Low | /week loading state: `aria-label` on a role-less div (axe serious, aria-prohibited-attr) | Fixed (1b5a4e5), verified by QA |
+| B-018 | Medium | Honeycomb landing: hero "Plan a busk" CTA has no visible focus indicator (WCAG 2.4.7) | Open (design/honeycomb) |
+| B-019 | Medium | Honeycomb landing: "Honeycomb" brand teaser section missing | Open (design/honeycomb) |
+| B-020 | Medium | Honeycomb landing: "What you get back" lacks research funnel, taste map, Learn these, set length | Open (design/honeycomb) |
+| B-021 | Low | Honeycomb landing: hero map without zone/event/river; no glowing cells; caption reworded | Open (design/honeycomb) |
+| B-022 | Low | Honeycomb landing: act cards lack day/hours and "Plays …" lines | Open (design/honeycomb) |
+| B-023 | Low | Honeycomb landing: footer Brand link (removed by decision 121); paper not dark band | Open (design/honeycomb) |
+| B-024 | Low | Honeycomb landing: Brain teaser 4th number "parts of your plan" | Open (design/honeycomb) |
+| B-025 | Low | Honeycomb landing: H1 orphans "PLAY." at 1440 | Open (design/honeycomb) |
+| B-026 | Low | "For judges" link from decision 104 never designed | Open (BRAND/MANAGER) |
 
 ---
 
@@ -133,3 +142,6 @@ DEV found and fixed it (8afd14d): at 390 px the landing's "Your Spotify artist l
 - **Actual:** `src/app/week/page.tsx:35` renders `<div aria-busy="true" aria-label="Loading week">`. axe flags `aria-prohibited-attr` (serious): a `div` with no role can't carry `aria-label`, so screen readers don't announce "Loading week". The same pattern is on two spans in `week-view.tsx` (line 177 "Score N out of 100", line 230 "…: already started"). axe didn't flag those in the loaded state QA scanned, but they're likely ignored by screen readers too.
 - **Suggestion:** give the loading wrapper `role="status"` (with the label, or visible sr-only text), and give the spans visible sr-only text instead of `aria-label`. This touches ARIA only, so it doesn't change the frozen Week design.
 - Regression spec (added with the fix): `tests/e2e/qa/week-a11y.spec.ts` renders the server HTML without scripts, so the Suspense fallback stays on screen deterministically. It fails on 8e4cd0d and passes on 1b5a4e5.
+
+### B-018 to B-026 · Honeycomb landing (design/honeycomb at 69a6cad)
+Details, evidence and the lost-at hop for each are in the visual report on the `design/honeycomb` branch: `qa/reports/honeycomb-landing-audit.html`, indexed by `qa/reports/honeycomb-landing-audit.md`. They're logged here so the ledger stays complete; they apply to the Honeycomb branch, not to dev/core's current look.

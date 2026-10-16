@@ -5,13 +5,16 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | ID | Sev | Title | Status |
 |---|---|---|---|
 | B-001 | High | Playwright could reuse a live server and call paid APIs | Fixed (e3b85fb), verified by QA |
-| B-002 | Medium | Plan doesn't say why higher-scored spots aren't in the top 3 (250 m spacing) | Open |
-| B-003 | Low | Offline own act: picking a searched artist fails with a generic form error | Open |
-| B-004 | Medium | Landing search comboboxes: `aria-expanded="true"` and `aria-controls` points at a missing listbox (axe critical) | Open |
-| B-005 | Low | Artist and song search inputs show no focus ring | Open |
-| B-006 | Low | Select values are blank in the server HTML until hydration | Open |
-| B-007 | Low | Offline: "Explanations: Claude" chip and credit while the mock model wrote them | Open |
-| B-008 | Low | e2e guard is skipped whenever `PLAYWRIGHT_BASE_URL` is set, even to a localhost live server | Open |
+| B-002 | Medium | Plan doesn't say why higher-scored spots aren't in the top 3 (250 m spacing) | Fixed (4161a9f), verified by QA |
+| B-003 | Low | Offline own act: picking a searched artist fails with a generic form error | Fixed (cdecbb7), verified by QA |
+| B-004 | Medium | Landing search comboboxes: `aria-expanded="true"` and `aria-controls` points at a missing listbox (axe critical) | Fixed (491f506), verified by QA; pre-hydration leftover in B-011 |
+| B-005 | Low | Artist and song search inputs show no focus ring | Fixed (2559a05), verified by QA |
+| B-006 | Low | Select values are blank in the server HTML until hydration | Fixed (54d3217), verified by QA |
+| B-007 | Low | Offline: "Explanations: Claude" chip and credit while the mock model wrote them | Fixed (270c877), verified by QA; other offline Claude text in B-010 |
+| B-008 | Low | e2e guard is skipped whenever `PLAYWRIGHT_BASE_URL` is set, even to a localhost live server | Fixed (70eb77e), verified by QA; residual hosts in B-009 |
+| B-009 | Low | e2e guard treats this machine's other addresses (0.0.0.0, 127.0.0.2, LAN IP, .local) as a deploy | Open |
+| B-010 | Low | Offline: steps, Agent vs engine and pitch cards still say Claude wrote them | Open |
+| B-011 | Low | Landing search comboboxes say `aria-expanded="true"` in the server HTML until hydration | Open |
 
 ---
 
@@ -60,3 +63,22 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 - **Expected:** a localhost base URL is checked like the reused-server case (`/api/health` must report `offline: true`), or needs an explicit opt-in.
 - **Actual:** global setup only warns and returns. `LOCAL` is false, so the mock and fault specs skip, but the example, own-act and short-link specs run against the live server and can start real agent runs on uncached plans. It takes a deliberate env var, so the severity is Low. Suggest: apply the health check whenever the base URL host is localhost/127.0.0.1, or require `BUSKMAP_E2E_LIVE=1` to run against a non-offline target.
 - **Everything else tried held:** `/api/health` is dynamic, not prerendered, so a server started without `BUSKMAP_ALLOW_FAULTS` from a faults-on build reported `faults: false`. A live server can't inherit `offline: true` from an offline build. A server without the route (older build, production) gives 404, and the run aborts. `VERCEL_ENV=production` forces `offline: false`, and the run aborts. Guard verified to abort against live :3200 (see B-001).
+
+### B-009 · Low · e2e guard treats this machine's other addresses as a deploy
+- **Found:** retest of 70eb77e. `guardMode()` from `tests/e2e/guard.ts` was evaluated directly for each URL with `external: true`; Playwright was not run against a live server.
+- **Steps:** `PLAYWRIGHT_BASE_URL=http://192.168.1.101:3200 pnpm test:e2e` (the "Network:" URL that `next dev` prints), or the same with `0.0.0.0`, `127.0.0.2` or `<machine>.local`.
+- **Expected:** the health check runs, because these are all this machine.
+- **Actual:** `localhost`, `127.0.0.1` and `[::1]` give `check`, but `0.0.0.0`, `127.0.0.2`, `192.168.1.101` and `t04435-mbp.local` give `warn`. In those cases the non-mock specs run against the live dev server.
+- **Suggestion:** call `/api/health` for every target, and when it isn't `offline: true`, require an explicit opt-in (E2E_ALLOW_LIVE=1, or a deploy flag) instead of deciding by hostname.
+
+### B-010 · Low · Offline: steps, "Agent vs engine" and pitch cards still credit Claude
+- **Found:** retest of 270c877, as DEV flagged.
+- **Steps:** offline server, `/plan?example=acoustic`.
+- **Expected:** with the mock model, nothing says Claude wrote the text.
+- **Actual:** the chip and credit are fixed, but the page still shows "Claude kept the engine's top 3.", every step's "Claude: …" prefix (for example "Claude: I'll start with the taste map…"), and "Explained by Claude" on each pitch card. This is offline only. It matters because a test-mode server left running reads as a real Claude run.
+
+### B-011 · Low · Search comboboxes say expanded in the server HTML
+- **Found:** retest of 491f506 (a leftover DEV already knows about).
+- **Steps:** `curl /` and look at the two `role="combobox"` inputs.
+- **Expected:** `aria-expanded="false"` from the first paint.
+- **Actual:** both inputs have `aria-expanded="true"` until hydration. After hydration, axe finds 0 violations on `/`. Only screen-reader users who arrive before the JavaScript loads are affected.

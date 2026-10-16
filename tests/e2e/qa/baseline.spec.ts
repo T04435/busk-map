@@ -98,11 +98,10 @@ test.describe("QA judge paths", () => {
   });
 });
 
-test.describe("QA open defects (expected to fail until fixed)", () => {
-  test.skip(!LOCAL, "Offline-only defect");
+test.describe("QA regressions for fixed defects", () => {
+  test.skip(!LOCAL, "Offline-only defects");
 
   test("B-003: an artist picked from offline search opens a plan", async ({ page }) => {
-    test.fail(true, "B-003: synthetic search ids (syn-artist-1) fail the 22-char Spotify id rule");
     await page.goto("/");
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill("QA Synthetic Pick");
@@ -110,5 +109,18 @@ test.describe("QA open defects (expected to fail until fixed)", () => {
     await page.getByRole("option", { name: /Qa Nobody Band \(synthetic\)/ }).click();
     await form.getByRole("button", { name: "Plan my set" }).click();
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/, { timeout: 10_000 });
+  });
+
+  test("B-007: offline plans credit the test model, not Claude", async ({ page }) => {
+    await page.goto("/plan?example=acoustic");
+    await expect(page.getByText("Explanations: test model (offline)")).toBeVisible();
+    await expect(page.getByText("Explanations: Claude")).toHaveCount(0);
+    await expect(page.getByText(/Plan explanations written by Claude/)).toHaveCount(0);
+  });
+
+  test("B-002: a higher-scored pitch left out of the top 3 says why", async ({ page }) => {
+    await page.goto("/plan?example=acoustic");
+    await expect(page.getByRole("region", { name: "Pitches", exact: true })).toBeVisible();
+    await expect(page.getByText(/250 m/).first()).toBeVisible();
   });
 });

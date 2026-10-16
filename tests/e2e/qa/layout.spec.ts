@@ -9,7 +9,9 @@ import { expect, LOCAL, test } from "../fixtures";
 type Page = import("@playwright/test").Page;
 
 const SCREENS: { name: string; path: string; ready: (p: Page) => Promise<void> }[] = [
-  { name: "landing", path: "/", ready: (p) => expect(p.getByRole("form", { name: "Plan for your own act" })).toBeVisible() },
+  { name: "landing", path: "/", ready: (p) => expect(p.getByRole("heading", { level: 1 })).toBeVisible() },
+  { name: "busks form", path: "/busks", ready: (p) => expect(p.getByRole("form", { name: "Plan for your own act" })).toBeVisible() },
+  { name: "brand", path: "/brand", ready: (p) => expect(p.getByRole("heading", { level: 1 })).toBeVisible() },
   { name: "plan acoustic", path: "/plan?example=acoustic", ready: (p) => expect(p.getByRole("region", { name: "Pitches", exact: true })).toBeVisible() },
   { name: "plan sax", path: "/plan?example=sax", ready: (p) => expect(p.getByRole("region", { name: "Pitches", exact: true })).toBeVisible() },
   { name: "plan folk duo", path: "/plan?example=folk-duo", ready: (p) => expect(p.getByRole("region", { name: "Pitches", exact: true })).toBeVisible() },

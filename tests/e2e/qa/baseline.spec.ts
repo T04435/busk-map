@@ -102,7 +102,7 @@ test.describe("QA regressions for fixed defects", () => {
   test.skip(!LOCAL, "Offline-only defects");
 
   test("B-003: an artist picked from offline search opens a plan", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/busks");
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill("QA Synthetic Pick");
     await form.getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Qa Nobody Band");

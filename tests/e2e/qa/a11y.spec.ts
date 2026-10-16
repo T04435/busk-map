@@ -9,9 +9,11 @@ const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"]
 
 type Page = import("@playwright/test").Page;
 const PAGES: { name: string; path: string; ready: (page: Page) => Promise<void>; hydrated?: string }[] = [
-  // aria-expanded="false" is in the server HTML too (B-011), so it doesn't prove hydration. The warm-up POST is sent from a
-  // client effect, so seeing it means React has hydrated the landing page.
-  { name: "landing", path: "/", ready: (p) => expect(p.getByPlaceholder("Search Spotify, e.g. Paul Kelly")).toBeVisible(), hydrated: "/api/warm" },
+  // The warm-up POST is sent from a client effect on / and /busks, so seeing it means React has hydrated the page
+  // (aria-expanded="false" is in the server HTML too since B-011, so it can't be the signal).
+  { name: "landing", path: "/", ready: (p) => expect(p.getByRole("heading", { level: 1 })).toBeVisible(), hydrated: "/api/warm" },
+  { name: "busks form", path: "/busks", ready: (p) => expect(p.getByPlaceholder("Search Spotify, e.g. Paul Kelly")).toBeVisible(), hydrated: "/api/warm" },
+  { name: "brand", path: "/brand", ready: (p) => expect(p.getByRole("heading", { level: 1 })).toBeVisible() },
   { name: "example plan (acoustic)", path: "/plan?example=acoustic", ready: (p) => expect(p.getByRole("region", { name: "Pitches", exact: true })).toBeVisible() },
   { name: "example plan (sax)", path: "/plan?example=sax", ready: (p) => expect(p.getByRole("region", { name: "Pitches", exact: true })).toBeVisible() },
   { name: "week (folk duo)", path: "/week?example=folk-duo", ready: (p) => expect(p.getByRole("list", { name: "Top sessions" })).toBeVisible() },

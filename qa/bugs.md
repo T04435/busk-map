@@ -20,7 +20,7 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-014 | Low | docs/qloo-data-map.md still calls the week-prefetch comment "about 47 Qloo calls" | Fixed (b88e174), verified by QA |
 | B-015 | Medium | /brain: the sticky trace panel hides the focused node while tabbing (WCAG 2.2 AA 2.4.11) | Fixed (2b26dc5), verified by QA |
 | B-016 | Low | /repertoire: after Remove, keyboard focus falls to <body> | Fixed (1b00ab4), verified by QA |
-| B-017 | Low | /week loading state: `aria-label` on a role-less div (axe serious, aria-prohibited-attr) | Open |
+| B-017 | Low | /week loading state: `aria-label` on a role-less div (axe serious, aria-prohibited-attr) | Fixed (1b5a4e5), verified by QA |
 
 ---
 
@@ -132,4 +132,4 @@ DEV found and fixed it (8afd14d): at 390 px the landing's "Your Spotify artist l
 - **Expected:** the loading state is announced, and axe passes.
 - **Actual:** `src/app/week/page.tsx:35` renders `<div aria-busy="true" aria-label="Loading week">`. axe flags `aria-prohibited-attr` (serious): a `div` with no role can't carry `aria-label`, so screen readers don't announce "Loading week". The same pattern is on two spans in `week-view.tsx` (line 177 "Score N out of 100", line 230 "…: already started"). axe didn't flag those in the loaded state QA scanned, but they're likely ignored by screen readers too.
 - **Suggestion:** give the loading wrapper `role="status"` (with the label, or visible sr-only text), and give the spans visible sr-only text instead of `aria-label`. This touches ARIA only, so it doesn't change the frozen Week design.
-- No spec: the loading state is too brief offline for a stable test. The reproduction script was run by hand (2 of 3 example weeks caught loading).
+- Regression spec (added with the fix): `tests/e2e/qa/week-a11y.spec.ts` renders the server HTML without scripts, so the Suspense fallback stays on screen deterministically. It fails on 8e4cd0d and passes on 1b5a4e5.

@@ -37,3 +37,19 @@
 
 ## Not done
 Live checks: none, as the user decided.
+
+## B-017 retest (dev/core 1b5a4e5)
+
+**PASS: B-017 fixed and verified.** Open: High 0, Medium 0, Low 0.
+
+Tested on a clean `git archive 1b5a4e5` export plus QA's files, because the shared tree holds DEV's uncommitted Repertoire R3 work.
+
+| Check | Result |
+|---|---|
+| Loading state | The Suspense fallback is `role="status" aria-busy="true"` with sr-only "Loading week", and no `aria-label`. axe (WCAG 2.0–2.2 A/AA) finds 0 violations at 390, 768 and 1440. Rendered deterministically from the server HTML with scripts removed (the no-JS view before React swaps it) |
+| Loaded week | axe finds 0 violations at all three widths |
+| Screen-reader names | The accessibility tree reads every session's score as "Score N out of 100", never "N/100" (the visual text is aria-hidden). No `span` or `div` without a role carries `aria-label` anywhere on the page. "Past" cells: the tree has the "…: already started" words instead of "Past" whenever today has past slots in the grid |
+| The spec catches the bug | `week-a11y.spec.ts` fails on 8e4cd0d (no role=status; the score cell not in words) and passes on 1b5a4e5 |
+| QA suite on the export | 195 passed at w390/w768/w1440 |
+
+Honeycomb: the same fix lands in S4. This spec is on dev/core; QA will carry it into the Honeycomb verify.

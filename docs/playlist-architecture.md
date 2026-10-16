@@ -429,7 +429,7 @@ Plus:
 
 ## 6. Effort, stages, risks
 
-**Order:** the Honeycomb design implementation in `../busk-map-honeycomb` (`design/honeycomb`) comes first and is not counted here. Playlist work starts on `dev/core` after it merges, so the new UI is built on Honeycomb components. Until BRAND's Playlist screens arrive, DEV builds the screens plain and adds rows to `design-backlog.md`.
+**Order (user's direction, 17 Oct):** two tracks run in parallel. Track A, the Honeycomb look in `../busk-map-honeycomb` (`design/honeycomb`), comes first and is not counted here. Track B, Playlist, is built on `dev/core` alongside it, once this proposal is approved, and is not blocked by Track A. It is plain shadcn logic and UI only, so merging Honeycomb into `dev/core` stays a clean "look over features" merge; the only expected conflicts are where Playlist renames Setlist labels, and they are resolved in favour of both. BRAND's Playlist screens (DS v63+, `design-handoff/playlist/`) are applied afterwards as a brand sync, tagged `brandv1.<iteration>.0`. Until then DEV adds rows to `design-backlog.md`.
 
 | Stage | Contents | Hours |
 |---|---|---|

@@ -22,7 +22,7 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-016 | Low | /repertoire: after Remove, keyboard focus falls to <body> | Fixed (1b00ab4), verified by QA |
 | B-017 | Low | /week loading state: `aria-label` on a role-less div (axe serious, aria-prohibited-attr) | Fixed (1b5a4e5), verified by QA |
 | B-018 | Medium | Honeycomb landing: hero "Plan a busk" CTA has no visible focus indicator (WCAG 2.4.7) | Fixed (d169cb4), verified by QA on 91b220e |
-| B-019 | Medium | Honeycomb landing: "Honeycomb" brand teaser section missing | Held for the user (L23) |
+| B-019 | Medium | Honeycomb landing: "Honeycomb" brand teaser section missing | Fixed (9ef8b9a, user call), verified in Landing · review v4 at 7b1521e |
 | B-020 | Medium | Honeycomb landing: "What you get back" lacks research funnel, taste map, Learn these, set length | Fixed (91b220e) with declared deviations, verified by QA; differences in B-033, B-034 |
 | B-021 | Low | Honeycomb landing: hero map without zone/event/river; no glowing cells; caption reworded | Glow and caption fixed (774a87f), verified; zone/event/river held for the user (L05) |
 | B-022 | Low | Honeycomb landing: act cards lack day/hours and "Plays …" lines | Fixed (ac950fd), verified; other card differences in B-032 |
@@ -35,11 +35,10 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-029 | Low | /repertoire nothing new: copy says everything was suggested before while the run shows songs checked 0, suggested before 0; no left-out count or next-step hint | Fixed (f15688f), verified by QA on df3c80c |
 | B-030 | Low | /repertoire Learn list: older runs do not fold | Deferred to R6 (3034133 reverted in 524456e; absent, checked) |
 | B-031 | Low | /repertoire Learn list: no filter chips (All · New · To learn · Learned · Not for me) | Deferred to R6 (dc7c09f reverted in 524456e; absent, checked) |
-| B-032 | Low | Honeycomb landing L13: act cards: filled orange initials hex reading "SA" (board: outline, "SX"); action is a plain dark row, not the orange underlined link; Plays lists differ from the board | Open (design/honeycomb) |
-| B-033 | Low | Honeycomb landing L17: research funnel labels under the hexes, dashes instead of ▸ chevrons, boxed in a card | Open (design/honeycomb) |
-| B-034 | Low | Honeycomb landing L20: setlist panel marked built but Learn these is a tan panel (board: bordered box, orange top rule, mono title); set-length line sans; rows 1–4 not 01–04; heading names the pitch; no Copy | Open (design/honeycomb) |
-| B-035 | High | design/honeycomb 4b9bff1 doesn't build from a clean export: setlist-panel.tsx imports components/setlist/copy-set-button, which was never committed (untracked in DEV's worktree) | Open (design/honeycomb) |
-
+| B-032 | Low | Honeycomb landing L13: act cards: filled orange initials hex reading "SA" (board: outline, "SX"); action is a plain dark row, not the orange underlined link; Plays lists differ from the board | Accepted by the user (kept as built; reverted in 8b6a21e) |
+| B-033 | Low | Honeycomb landing L17: research funnel labels under the hexes, dashes instead of ▸ chevrons, boxed in a card | Fixed (2d8dc86, d74ccd2), verified in v4 at 7b1521e |
+| B-034 | Low | Honeycomb landing L20: setlist panel marked built but Learn these is a tan panel (board: bordered box, orange top rule, mono title); set-length line sans; rows 1–4 not 01–04; heading names the pitch; no Copy | Fixed (4b9bff1, fe89b0e), verified in v4 at 7b1521e |
+| B-035 | High | design/honeycomb 4b9bff1 doesn't build from a clean export: setlist-panel.tsx imports components/setlist/copy-set-button, which was never committed (untracked in DEV's worktree) | Fixed (fe89b0e), verified: 7b1521e builds from a clean export |
 ---
 
 ### B-001 · High · Playwright could reuse a live server and call paid APIs

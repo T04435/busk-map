@@ -1,4 +1,6 @@
-# Repertoire R3 to R5 audit: spec vs build (index)
+# QA-02 · Repertoire R3 to R5 audit: spec vs build (index)
+
+**QA-02** · branch `dev/core` · commits tested 23a8d72 (R3) and e220abd (R4, R5). Rows are #01–#34 in the HTML; cite a finding as “QA-02 #05”.
 
 **Visual report:** [repertoire-r3-r5-audit.html](repertoire-r3-r5-audit.html). It puts the spec text on the left and the build on the right at 390, 768 and 1440, with a red box around each gap. Images are in `qa/screens/r3/` (R3) and `qa/screens/r45/` (R4, R5). It replaces the R3-only report from f9ba2d6.
 
@@ -24,13 +26,13 @@ All builds were clean exports, offline with the mock model. **Date:** 16 Oct 202
 
 ## Defects (all R3, logged in f9ba2d6; nothing new in R4 or R5)
 
-| ID | Sev | Item | Lost at |
-|---|---|---|---|
-| B-027 | Medium | The learn feed shows tool names, raw UUIDs and JSON by default. It runs oldest first, stays above the list, and shows totals as a 10-count grid instead of the funnel | handoff→DEV (sketch v3 not published as boards) |
-| B-028 | Low | Qloo down: no "Your songs are safe." and no "didn't count" line | handoff→DEV |
-| B-029 | Low | Nothing new: the copy contradicts the run's counts | DEV self-check |
-| B-030 | Low | Older runs don't fold | handoff→DEV |
-| B-031 | Low | No filter chips | handoff→DEV |
+| Row | ID | Sev | Item | Lost at |
+|---|---|---|---|---|
+| #05–#07 | B-027 | Medium | The learn feed shows tool names, raw UUIDs and JSON by default. It runs oldest first, stays above the list, and shows totals as a 10-count grid instead of the funnel | handoff→DEV (sketch v3 not published as boards) |
+| #12 | B-028 | Low | Qloo down: no "Your songs are safe." and no "didn't count" line | handoff→DEV |
+| #11 | B-029 | Low | Nothing new: the copy contradicts the run's counts | DEV self-check |
+| #17 | B-030 | Low | Older runs don't fold | handoff→DEV |
+| #18 | B-031 | Low | No filter chips | handoff→DEV |
 
 ## R4 and R5 notes
 - **The R5 evening bug is fixed.**

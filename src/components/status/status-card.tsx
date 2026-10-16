@@ -36,7 +36,7 @@ export function StatusCard({
   return (
     <Wrapper {...(embedded ? {} : { id: "main" })} className={embedded ? "w-full" : "mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-4 px-4 py-8 md:py-12"}>
       {numeral && !embedded ? (
-        <p aria-hidden="true" className="m-0 text-center font-display text-[clamp(96px,20vw,160px)] leading-[0.85] font-extrabold text-primary">
+        <p aria-hidden="true" className="m-0 text-center font-display text-[clamp(96px,20vw,160px)] leading-[0.85] font-extrabold text-signal-text">
           {numeral}
         </p>
       ) : null}

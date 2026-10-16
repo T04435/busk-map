@@ -20,6 +20,7 @@ export function ErrorCard({ error, onRetry }: { error: Error & { digest?: string
   return (
     <StatusCard
       testId="route-error"
+      tone="error"
       title={ERROR_TITLE}
       description={ERROR_DESCRIPTION}
       footnote={error.digest ? <>Reference: <code>{error.digest}</code></> : null}

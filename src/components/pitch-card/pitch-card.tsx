@@ -126,7 +126,7 @@ export function PitchCard({ pitch, rank, model = null }: { pitch: PlanPitch; ran
               // The same show can run twice in a slot (e.g. 6 pm and 8:30 pm sessions): the name alone isn't a unique key.
               <p key={`${event.name}-${event.localTime}-${i}`} className="flex flex-wrap items-center gap-2">
                 {event.name} at {event.venue}: crowd {event.moment === "leaving" ? "leaves" : "arrives"} around {event.localTime}
-                {event.endEstimated && event.moment === "leaving" && <EstimateLabel>Estimated end</EstimateLabel>}
+                {event.endEstimated && event.moment === "leaving" && <EstimateLabel tag="Estimated end" />}
                 {event.tasteMatch && (
                   <span className="text-muted-foreground" data-testid="event-taste-match">
                     Qloo: {event.tasteMatch.artist}&apos;s fans match your taste {Math.round(event.tasteMatch.affinity * 100)}/100

@@ -1,4 +1,5 @@
 import { cn } from "cn";
+import { Icon } from "@/components/honeycomb/icon";
 import { QlooWordmark } from "@/components/honeycomb/logo";
 
 /** A logo file, or a light and a dark one swapped by the theme (the app's own theme mechanism: the dark variant). */
@@ -74,40 +75,44 @@ function LogoSlot({ partner: p }: { partner: Partner }) {
 /** Thanks to (L21b): Qloo as the only sponsor, then the stack and data Busk Map is built with. */
 export function PartnersSection({ partners = BUILT_WITH }: { partners?: Partner[] }) {
   return (
-    <section aria-labelledby="thanks-h" data-testid="partners" className="flex flex-col gap-7">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <h2 id="thanks-h" className="m-0 font-display text-[clamp(44px,5vw,72px)] leading-[0.92] font-extrabold uppercase">
-          Thanks to
-        </h2>
-        <p className="m-0 max-w-md text-sm leading-5 text-muted-foreground">
-          Qloo is the hackathon&apos;s sponsor. Everything else is the stack and the open data Busk Map is built with.
-        </p>
-      </div>
-
-      <div data-testid="sponsor" className="flex flex-wrap items-center gap-x-10 gap-y-6 border-[3px] border-rule bg-card p-6 shadow-[8px_8px_0_var(--qloo)] md:p-8">
-        <div className="flex flex-col gap-3">
-          <span className="font-mono text-[11px] leading-4 font-bold tracking-[0.08em] text-muted-foreground uppercase">Sponsor</span>
-          <QlooWordmark width={176} className="w-[clamp(120px,30vw,176px)]" wordmarkClassName="h-auto w-full text-foreground" />
-        </div>
-        <p className="m-0 max-w-xl min-w-0 flex-[1_1_280px] text-base leading-6">
+    <section aria-labelledby="thanks-h" data-testid="partners" className="flex flex-col gap-10">
+      <h2 id="thanks-h" className="m-0 text-center font-display text-[clamp(44px,5vw,72px)] leading-[0.92] font-extrabold uppercase">
+        Thanks to
+      </h2>
+      {/* The sponsor, first and largest (user, live session 17 Oct): a centred "Sponsored by" card with the Qloo wordmark. */}
+      <div data-testid="sponsor" className="mx-auto flex w-full max-w-3xl flex-col items-center gap-5 border-[3px] border-rule bg-card px-6 py-10 text-center shadow-[8px_8px_0_var(--qloo)] md:px-12 md:py-14">
+        <span className="font-mono text-xs leading-4 font-bold tracking-[0.12em] text-qloo uppercase">Sponsored by</span>
+        <QlooWordmark width={300} className="w-[clamp(180px,40vw,300px)]" wordmarkClassName="h-auto w-full text-foreground" />
+        <p className="m-0 max-w-xl text-base leading-6 text-muted-foreground">
           Qloo&apos;s taste AI is the brain of every busk: the crowd at each pitch, the artists it likes, who&apos;s rising. The Qloo Agentic Hackathon runs on Devpost.
         </p>
+        <a
+          href="https://qloo.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="qloo.com (opens in a new tab)"
+          className="inline-flex min-h-tap items-center gap-1.5 font-mono text-sm leading-5 font-bold text-foreground underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none"
+        >
+          qloo.com
+          <Icon name="external" size={16} />
+        </a>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <h3 className="m-0 font-mono text-xs leading-4 font-bold tracking-[0.08em] text-signal-text uppercase">Built with</h3>
-        <ul aria-label="Built with" className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(min(200px,100%),1fr))] gap-3 p-0">
+      {/* Built with: a logo wall; each cell names the partner and its role for screen readers and on hover. */}
+      <div className="flex flex-col items-center gap-4">
+        <h3 className="m-0 font-mono text-xs leading-4 font-bold tracking-[0.12em] text-muted-foreground uppercase">Built with</h3>
+        <ul aria-label="Built with" className="m-0 grid w-full list-none grid-cols-[repeat(auto-fill,minmax(min(180px,100%),1fr))] gap-px border-2 border-rule bg-border p-0">
           {partners.map((p) => (
-            <li key={p.name} className="flex">
+            <li key={p.name} className="flex bg-card">
               <a
                 href={p.href}
-                className="flex w-full flex-col gap-3 border-2 border-rule bg-card p-4 no-underline hover:shadow-[4px_4px_0_var(--foreground)]"
+                title={`${p.name}: ${p.role}`}
+                className="flex min-h-24 w-full items-center justify-center px-4 text-foreground no-underline hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none"
               >
-                <span className="flex h-10 items-center">
-                  <LogoSlot partner={p} />
+                <LogoSlot partner={p} />
+                <span className="sr-only">
+                  {p.name}: {p.role}
                 </span>
-                <b className="font-display text-xl leading-none font-extrabold uppercase">{p.name}</b>
-                <span className="text-sm leading-5 text-muted-foreground">{p.role}</span>
               </a>
             </li>
           ))}

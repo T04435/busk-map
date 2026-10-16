@@ -129,13 +129,6 @@ export default function Home() {
               </li>
             ))}
           </ul>
-          <p className="m-0 text-sm text-muted-foreground">
-            Planning for your own act?{" "}
-            <Link className="font-bold text-foreground underline underline-offset-3 hover:decoration-2" href="/busks">
-              Plan your busk
-            </Link>
-            .
-          </p>
         </section>
 
         <section aria-labelledby="who-h" className="flex flex-col gap-7">

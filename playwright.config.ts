@@ -14,6 +14,8 @@ const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 
 export default defineConfig({
   testDir: "tests/e2e",
+  // Aborts locally unless the server on the e2e port is offline (GET /api/health); warns against a deploy.
+  globalSetup: "./tests/e2e/global-setup.ts",
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,

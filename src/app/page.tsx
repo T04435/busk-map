@@ -92,7 +92,7 @@ export default function Home() {
             <figure className="m-0 flex flex-col gap-2.5">
               <HeroTasteMap label="An illustration of Qloo's taste map for a folk duo, with their three pitches" />
             </figure>
-            <Button asChild variant="poster" className="h-19 w-full justify-between px-8 text-[34px] leading-none [&_svg:not([class*=size-])]:size-9">
+            <Button asChild variant="poster" size="poster-lg" className="w-full justify-between [&_svg:not([class*=size-])]:size-9">
               <Link href="/busks">
               Plan a busk
               <ArrowRight aria-hidden="true" className="size-9" />
@@ -254,7 +254,7 @@ export default function Home() {
                 </li>
               ))}
             </ul>
-            <Button asChild variant="poster" className="h-auto min-h-[52px] self-start gap-2.5 border-foreground bg-qloo px-6 text-lg font-sans font-bold normal-case tracking-normal text-bluestone hover:bg-[color-mix(in_oklab,var(--qloo)_88%,var(--foreground))] shadow-[4px_4px_0_var(--foreground)] hover:shadow-[5px_5px_0_var(--foreground)]">
+            <Button asChild variant="poster" size="default" className="h-auto min-h-[52px] self-start gap-2.5 border-foreground bg-qloo px-6 text-lg font-sans font-bold normal-case tracking-normal text-bluestone hover:bg-[color-mix(in_oklab,var(--qloo)_88%,var(--foreground))] shadow-[4px_4px_0_var(--foreground)] hover:shadow-[5px_5px_0_var(--foreground)]">
               <Link href="/brain">
               Open the brain <span aria-hidden="true">→</span>
             </Link>
@@ -289,7 +289,7 @@ export default function Home() {
                 </li>
               ))}
             </ul>
-            <Button asChild variant="poster" className="h-auto min-h-[52px] self-start gap-2.5 border-rule px-6 text-lg font-sans font-bold normal-case tracking-normal shadow-[4px_4px_0_var(--foreground)] hover:shadow-[5px_5px_0_var(--foreground)]">
+            <Button asChild variant="poster" size="default" className="h-auto min-h-[52px] self-start gap-2.5 border-rule px-6 text-lg font-sans font-bold normal-case tracking-normal shadow-[4px_4px_0_var(--foreground)] hover:shadow-[5px_5px_0_var(--foreground)]">
               <Link href="/brand">
               See the brand <span aria-hidden="true">→</span>
             </Link>

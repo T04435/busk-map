@@ -22,7 +22,7 @@ const buttonVariants = cva(
         // The hero and closing calls to action: a 2px cream edge and a hard offset shadow. The focus ring is an outline 10px out, so the
         // offset shadow stays exactly as it is (B-018); no ring box-shadow competes with it.
         poster:
-          "h-16 border-2 border-foreground bg-primary px-9 font-display text-2xl font-extrabold tracking-[0.01em] text-primary-foreground shadow-[6px_6px_0_var(--foreground)] hover:-translate-x-px hover:-translate-y-px hover:bg-[color-mix(in_oklab,var(--primary)_88%,var(--foreground))] hover:shadow-[7px_7px_0_var(--foreground)] focus-visible:outline-3 focus-visible:outline-offset-10 focus-visible:outline-ring focus-visible:outline-solid",
+          "border-2 border-foreground bg-primary font-display font-extrabold tracking-[0.01em] text-primary-foreground shadow-[6px_6px_0_var(--foreground)] hover:-translate-x-px hover:-translate-y-px hover:bg-[color-mix(in_oklab,var(--primary)_88%,var(--foreground))] hover:shadow-[7px_7px_0_var(--foreground)] focus-visible:outline-3 focus-visible:outline-offset-10 focus-visible:outline-ring focus-visible:outline-solid",
         // A link in a button's clothes: signal-text (never orange text), underlined, sentence case.
         link: "focus-visible:ring-2 focus-visible:ring-ring h-auto min-h-0 border-0 px-0 font-bold tracking-normal text-signal-text normal-case underline underline-offset-4 hover:decoration-2",
       },
@@ -32,6 +32,9 @@ const buttonVariants = cva(
         xs: "h-10 gap-1.5 px-3 text-xs [&_svg:not([class*='size-'])]:size-3.5",
         sm: "h-control-sm gap-1.5 px-3 text-[0.8rem] [&_svg:not([class*='size-'])]:size-3.5",
         lg: "h-13 gap-2 px-6 text-base",
+        // The poster variant's own heights (BRAND): the closing call to action is 64px, the hero's 76px. The variant picks "poster" when no size is given.
+        poster: "h-16 gap-3 px-9 text-2xl",
+        "poster-lg": "h-19 gap-3 px-8 text-[34px] leading-none",
         icon: "size-control",
         "icon-xs": "size-10 [&_svg:not([class*='size-'])]:size-4",
         "icon-sm": "size-10",
@@ -48,7 +51,7 @@ const buttonVariants = cva(
 function Button({
   className,
   variant = "default",
-  size = "default",
+  size,
   asChild = false,
   ...props
 }: React.ComponentProps<"button"> &
@@ -56,6 +59,7 @@ function Button({
     asChild?: boolean
   }) {
   const Comp = asChild ? Slot.Root : "button"
+  size ??= variant === "poster" ? "poster" : "default"
 
   return (
     <Comp

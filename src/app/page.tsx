@@ -50,14 +50,15 @@ export default function Home() {
           <rect width="100%" height="100%" fill="url(#hero-lattice)" />
         </svg>
         <div className="relative mx-auto flex max-w-[1360px] flex-wrap items-start gap-x-14 gap-y-10 px-4 py-12 md:px-6 md:py-16">
-          <div className="flex min-w-0 flex-[1_1_520px] flex-col gap-7 pt-4 md:pt-6">
-            <h1 id="hero" className="m-0 font-display text-[clamp(64px,9vw,136px)] leading-[0.86] font-extrabold uppercase">
+          {/* The headline sizes itself to its column (19cqw) so "What to play." always stays on one line, as in the deck (B-025). */}
+          <div className="flex min-w-0 flex-[1.2_1_520px] flex-col gap-7 pt-4 [container-type:inline-size] md:pt-6">
+            <h1 id="hero" className="m-0 font-display text-[min(19cqw,clamp(64px,9vw,136px))] leading-[0.86] font-extrabold uppercase">
               <span className="sr-only">Busk Map: </span>
               Where to busk.
               <br />
               When.
               <br />
-              <span className="text-signal-text">What to play.</span>
+              <span className="whitespace-nowrap text-signal-text">What to play.</span>
             </h1>
             <p className="m-0 max-w-xl text-lg leading-[27px]">
               Busk Map finds the street pitches whose crowd matches your music at the hour you want to play, and orders your setlist for each one.

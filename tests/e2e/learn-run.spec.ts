@@ -7,6 +7,8 @@ import { expect, LOCAL, test } from "./fixtures";
  */
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
 const SHOTS = process.env.REPERTOIRE_SHOTS;
+/** Screenshot file prefix: the stage that took them (r3, r5b …). */
+const SHOT_PREFIX = process.env.REPERTOIRE_SHOT_PREFIX ?? "r3";
 const WIDTHS = [390, 768, 1440] as const;
 type Page = import("@playwright/test").Page;
 
@@ -40,12 +42,12 @@ const idOf = async (card: import("@playwright/test").Locator) => ({ title: (awai
 const cardOf = (scope: import("@playwright/test").Locator, s: { title: string; artist: string }) => scope.locator(`[data-testid="learn-card"][data-song=${JSON.stringify(s.title)}][data-artist=${JSON.stringify(s.artist)}]`);
 
 /** A canned, valid learn stream, for the states a mock run doesn't reach on its own (UI states only). */
-function stream(end: Record<string, unknown>, extra: object[] = []) {
+function stream(end: Record<string, unknown>, extra: object[] = [], totals: Record<string, number> = {}) {
   const events = [
     { type: "run", runId: "canned", number: 1, startedAt: new Date().toISOString(), model: "mock", inputs: { songs: 5, soundsLike: [], pitches: [] }, replay: false, stepsKept: true },
     { type: "status", message: "Looking for songs to learn" },
     ...extra,
-    { type: "totals", totals: { artists: 4, crowds: 0, liked: 0, songsChecked: 0, alreadySuggested: 0, dismissedSkipped: 0, alreadyKnown: 0, newSongs: 0, qlooCalls: 4, qlooCacheHits: 0 } },
+    { type: "totals", totals: { artists: 4, crowds: 0, liked: 0, songsChecked: 0, alreadySuggested: 0, dismissedSkipped: 0, alreadyKnown: 0, newSongs: 0, qlooCalls: 4, qlooCacheHits: 0, ...totals } },
     { type: "end", ok: true, runId: "canned", mode: "agent", newCount: 0, skippedCount: 0, code: null, message: "", ...end },
   ];
   return events.map((e) => JSON.stringify(e)).join("\n") + "\n";
@@ -96,7 +98,7 @@ test.describe("Songs to learn: a learn run (offline)", () => {
     await expect(value("crowds")).toHaveText("1");
     await expect(value("songsChecked")).not.toHaveText("0");
     await expect(value("leftOut")).toHaveText("0");
-    await expect(totals.locator("[data-total]")).toHaveCount(6);
+    await expect(totals.locator("[data-total]")).toHaveCount(7);
     const newSongs = Number(await value("newSongs").innerText());
     expect(newSongs).toBeGreaterThanOrEqual(3);
     // The raw switch brings the tool names, sources and data back.
@@ -156,15 +158,6 @@ test.describe("Songs to learn: a learn run (offline)", () => {
     const groupOrder = await section(page).locator('[data-testid="learn-group"]').evaluateAll((els) => els.map((e) => e.getAttribute("data-run")));
     expect(groupOrder).toEqual(["2", "1"]);
 
-    // The newest run is open and the older one has folded (B-030): its songs are hidden until it is opened.
-    await expect(group(page, 2)).toHaveAttribute("data-open", "true");
-    await expect(group(page, 1)).toHaveAttribute("data-open", "false");
-    await expect(group(page, 1).getByTestId("learn-group-toggle")).toHaveAttribute("aria-expanded", "false");
-    await expect(cards(group(page, 1))).toHaveCount(0);
-    await group(page, 1).getByTestId("learn-group-toggle").click();
-    await expect(group(page, 1).getByTestId("learn-group-toggle")).toHaveAttribute("aria-expanded", "true");
-    await expect(cards(group(page, 1)).first()).toBeVisible();
-
     // Undo on a dismissed song brings it back to the list (the only way back); Undo on a learned one takes it out of Songs you can sing.
     await group(page, 1).getByRole("button", { name: "Not for me (1)" }).click();
     await cardOf(group(page, 1), dismissed).getByRole("button", { name: /^Undo: / }).click();
@@ -190,7 +183,10 @@ test.describe("Songs to learn: a learn run (offline)", () => {
     await expect(section(page).getByTestId("learn-running")).toBeVisible();
     await expect(section(page).getByTestId("learn-feed")).toBeVisible();
     await expect(howFound(page)).toHaveCount(0);
+    // Raw data is for a finished run: no switch while it is live (inventory F15).
+    await expect(section(page).getByTestId("learn-raw-switch")).toHaveCount(0);
     await expect(section(page).getByTestId("learn-end")).toHaveAttribute("data-state", "done", { timeout: 20_000 });
+    await expect(section(page).getByTestId("learn-raw-switch")).toBeVisible();
     await expect(section(page).getByTestId("learn-feed")).toHaveCount(0);
     const fold = howFound(page).getByRole("button", { name: "How we found these songs" });
     await expect(fold).toHaveAttribute("aria-expanded", "false");
@@ -201,64 +197,6 @@ test.describe("Songs to learn: a learn run (offline)", () => {
     await fold.focus();
     await page.keyboard.press("Enter");
     await expect(section(page).getByTestId("learn-feed")).toBeVisible();
-  });
-
-  test("filter chips: All, New, To learn, Learned and Not for me, with counts, by keyboard (B-031)", async ({ page }) => {
-    await seed(page);
-    await page.goto("/repertoire");
-    await findButton(page).click();
-    await expect(section(page).getByTestId("learn-end")).toHaveAttribute("data-state", "done");
-    await expect(cards(section(page)).first()).toBeVisible();
-    const total = await cards(section(page)).count();
-    expect(total).toBeGreaterThanOrEqual(3);
-    const learned = await idOf(cardAt(group(page, 1), 0));
-    await cardOf(group(page, 1), learned).getByRole("button", { name: /^Mark as learned: / }).click();
-    await expect(cardOf(group(page, 1), learned).getByRole("button", { name: /^Undo: / })).toBeVisible();
-    const dismissed = await idOf(cardAt(group(page, 1), 1));
-    await cardOf(group(page, 1), dismissed).getByRole("button", { name: /^Not for me: / }).click();
-
-    const chips = section(page).getByTestId("learn-filters").getByRole("radio");
-    await expect(chips).toHaveCount(5);
-    const chip = (name: string) => section(page).getByTestId("learn-filters").getByRole("radio", { name: new RegExp(`^${name}`) });
-    await expect(chip("All")).toContainText(String(total));
-    await expect(chip("New")).toContainText(String(total));
-    await expect(chip("To learn")).toContainText(String(total - 2));
-    await expect(chip("Learned")).toContainText("1");
-    await expect(chip("Not for me")).toContainText("1");
-    await expect(chip("All")).toBeChecked();
-
-    // Filtering the list
-    await chip("To learn").click();
-    await expect(chip("To learn")).toBeChecked();
-    await expect(cards(section(page))).toHaveCount(total - 2);
-    await chip("Learned").click();
-    await expect(cards(section(page))).toHaveCount(1);
-    await expect(cardOf(section(page), learned)).toBeVisible();
-    await chip("Not for me").click();
-    await expect(cards(section(page))).toHaveCount(1);
-    await expect(cardOf(section(page), dismissed).getByRole("button", { name: /^Undo: / })).toBeVisible();
-    await chip("New").click();
-    await expect(cards(section(page))).toHaveCount(total - 1);
-    await chip("All").click();
-    await expect(cards(section(page))).toHaveCount(total - 1);
-
-    // Keyboard: arrows move between chips, Space picks one; a picked chip can't be unpicked into nothing.
-    await chip("All").focus();
-    await expect(chip("All")).toBeFocused();
-    await page.keyboard.press("ArrowRight");
-    await expect(chip("New")).toBeFocused();
-    await page.keyboard.press("ArrowRight");
-    await expect(chip("To learn")).toBeFocused();
-    await page.keyboard.press("Space");
-    await expect(chip("To learn")).toBeChecked();
-    await expect(cards(section(page))).toHaveCount(total - 2);
-    await page.keyboard.press("Space");
-    await expect(chip("To learn")).toBeChecked();
-    // Marking a song learned under "To learn" takes it out of view; focus stays with the chip.
-    const next = await idOf(cardAt(section(page), 0));
-    await cardOf(section(page), next).getByRole("button", { name: /^Mark as learned: / }).click();
-    await expect(cards(section(page))).toHaveCount(total - 3);
-    await expect(chip("To learn")).toContainText(String(total - 3));
   });
 
   test("replaying a stored run shows the same steps, labelled a replay, and makes no new run", async ({ page }) => {
@@ -414,7 +352,7 @@ test.describe("Songs to learn: widths, accessibility, screenshots (offline)", ()
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${name}-${width} scrolls sideways`).toBe(true);
         if (SHOTS && info.project.name === "desktop") {
           await section(page).scrollIntoViewIfNeeded();
-          await page.screenshot({ path: `${SHOTS}/r3-${shot}-${width}.png`, fullPage: true });
+          await page.screenshot({ path: `${SHOTS}/${SHOT_PREFIX}-${shot}-${width}.png`, fullPage: true });
         }
       }
     };
@@ -453,11 +391,33 @@ test.describe("Songs to learn: widths, accessibility, screenshots (offline)", ()
     await cardOf(group(page, 1), dismissed).getByRole("button", { name: /^Not for me: / }).click();
     await findButton(page, "Find more songs to learn").click();
     await expect(section(page).getByTestId("learn-end")).toHaveAttribute("data-state", "done");
-    await group(page, 1).getByTestId("learn-group-toggle").click();
     await group(page, 1).getByRole("button", { name: "Not for me (1)" }).click();
     await group(page, 1).getByRole("button", { name: "Replay steps" }).click();
     await expect(group(page, 1).getByTestId("learn-run")).toBeVisible();
     await check("list", "learn-list");
+
+    // The folded feed, opened: plain words; then with the raw data switched on
+    const feed = await openHowFound(page);
+    await expect(feed).toBeVisible();
+    await check("how-found", "learn-how-found");
+    await section(page).getByTestId("learn-raw-switch").click();
+    await expect(feed.getByTestId("agent-step-raw").first()).toBeVisible();
+    await check("raw", "learn-raw");
+    await section(page).getByTestId("learn-raw-switch").click();
+
+    // Nothing new: songs were checked and all left out; and no songs checked at all
+    const endOf = (code: string, message: string, skippedCount: number) => ({ ok: true, mode: "agent", newCount: 0, skippedCount, code, message });
+    for (const [name, end, totals] of [
+      ["learn-nothing-new", endOf("nothing_new", "Nothing new this time (7 left out). Try again after a new busk, or after you've learned a few songs.", 7), { songsChecked: 22, alreadySuggested: 5, dismissedSkipped: 1, alreadyKnown: 1 }],
+      ["learn-no-songs-checked", endOf("nothing_new", "Couldn't find songs to check this time. Try again after a new busk, or after you've learned a few songs.", 0), {}],
+    ] as const) {
+      await page.goto("/repertoire");
+      await canned(page, stream(end, [], totals));
+      await findButton(page, "Find more songs to learn").click();
+      await expect(section(page).getByTestId("learn-end")).toHaveAttribute("data-state", "nothing-new");
+      await page.unroute("**/api/playlist/learn");
+      await check(name, name);
+    }
 
     // Limit (both scopes), Qloo down
     for (const [fault, shot] of [["learn-limit", "learn-limit-repertoire"], ["learn-limit-ip", "learn-limit-ip"], ["qloo", "learn-qloo-down"]] as const) {

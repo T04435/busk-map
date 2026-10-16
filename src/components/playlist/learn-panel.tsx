@@ -8,7 +8,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { applyLearnEvent, emptyLive, type LearnLive } from "@/lib/learn-live";
 import type { LearnEnd, LearnListView, LearnRunView, LearnStreamEvent } from "@/lib/learn-schema";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
@@ -88,11 +87,6 @@ function runMeta(run: LearnRunView): string {
   return parts.join(" · ");
 }
 
-export type LearnFilter = "all" | "new" | "pending" | "learned" | "dismissed";
-const FILTERS: LearnFilter[] = ["all", "new", "pending", "learned", "dismissed"];
-/** Whether a song belongs under a filter chip. "New" is `isNew` (the latest finished run's songs). */
-export const inFilter = (s: Pick<LearnSuggestionView, "status" | "isNew">, filter: LearnFilter) => (filter === "all" ? true : filter === "new" ? s.isNew : s.status === filter);
-
 type Group = { key: string; title: string; run: LearnRunView | null; songs: LearnSuggestionView[] };
 
 /** The Songs to learn list, grouped by run (newest first), then "Added from plans", then runs whose row was capped. */
@@ -121,8 +115,6 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
   const [busy, setBusy] = useState(false);
   const [replays, setReplays] = useState<Record<string, { live: LearnLive | null; state: "loading" | "open" | "failed" }>>({});
   const [raw, setRaw] = useState(false);
-  const [filter, setFilter] = useState<LearnFilter>("all");
-  const [folds, setFolds] = useState<Record<string, boolean>>({});
   const focusAfter = useRef<string | null>(null);
   const mounted = useRef(true);
   const joined = useRef<string | null>(null);
@@ -191,9 +183,8 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
     const target = focusAfter.current;
     if (!target || busy) return;
     focusAfter.current = null;
-    // A song a filter no longer shows can't take focus: the chip that filtered it does.
-    (document.querySelector<HTMLElement>(`[data-focus-id="${target}"]`) ?? document.querySelector<HTMLElement>(`[data-testid="learn-filter-${filter}"]`))?.focus();
-  }, [list, busy, filter]);
+    document.querySelector<HTMLElement>(`[data-focus-id="${target}"]`)?.focus();
+  }, [list, busy]);
 
   async function start() {
     setNotice(null);
@@ -221,10 +212,7 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
   const limit = list?.limit;
   const limited = limit !== undefined && limit.remaining === 0;
   const enough = hasPlaylist && songCount >= MIN_SONGS;
-  const allGroups = useMemo(() => (list ? groupsOf(list) : []), [list]);
-  const counts = Object.fromEntries(FILTERS.map((f) => [f, songs.filter((s) => inFilter(s, f)).length])) as Record<LearnFilter, number>;
-  // A filter hides the groups it empties; the folds stay as they are (the group index is the unfiltered one).
-  const groups = useMemo(() => allGroups.map((g, index) => ({ ...g, index, songs: g.songs.filter((s) => inFilter(s, filter)) })).filter((g) => filter === "all" || g.songs.length > 0), [allGroups, filter]);
+  const groups = useMemo(() => (list ? groupsOf(list) : []), [list]);
 
   async function change(song: LearnSuggestionView, status: "pending" | "learned" | "dismissed") {
     setBusy(true);
@@ -238,7 +226,7 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
         focusAfter.current = `undo-${song.id}`;
       } else if (status === "dismissed") {
         setInfo(COPY.dismissedDone(song.title));
-        const pending = groups.filter((g) => folds[g.key] ?? (!g.run || g.index === 0)).flatMap((g) => g.songs).filter((s) => s.status === "pending" && s.id !== song.id);
+        const pending = groups.flatMap((g) => g.songs).filter((s) => s.status === "pending" && s.id !== song.id);
         const next = pending.find((_, i, all) => all[i - 1]?.id === song.id) ?? pending[0];
         focusAfter.current = next ? `learned-${next.id}` : "learn-run-button";
       } else {
@@ -302,7 +290,8 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
             </Button>
             {limit && !running && !limited && <span className="text-sm text-muted-foreground">{COPY.runsLeft(limit.remaining)}</span>}
           </div>
-          {(live || (list && list.runs.length > 0)) && (
+          {/* Raw data is for a finished run: the switch is hidden while one is going (inventory F15). */}
+          {!running && (live?.end || (list && list.runs.length > 0)) && (
             <div className="flex items-center gap-2">
               <Switch id="learn-raw" checked={raw} onCheckedChange={setRaw} data-testid="learn-raw-switch" />
               <Label htmlFor="learn-raw" className="text-sm font-normal">
@@ -374,7 +363,7 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
           {live?.end && !running && <EndNotice end={live.end} />}
 
           {/* While a run is going the feed is the main view; once it has finished it moves under the list (below). */}
-          {live && (running || !live.end) && <LearnFeed live={live} heading={live.number ? COPY.runHeading(live.number) : COPY.starting} running={running} raw={raw} />}
+          {live && (running || !live.end) && <LearnFeed live={live} heading={live.number ? COPY.runHeading(live.number) : COPY.starting} running={running} raw={false} />}
         </div>
       )}
 
@@ -382,50 +371,16 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
         {info}
       </div>
 
-      {songs.length > 0 && (
-        <div className="space-y-1" data-testid="learn-filters">
-          <ToggleGroup type="single" variant="outline" size="sm" value={filter} onValueChange={(next) => next && setFilter(next as LearnFilter)} aria-label={COPY.filterLabel} className="gap-1.5">
-            {FILTERS.map((f) => (
-              <ToggleGroupItem key={f} value={f} data-testid={`learn-filter-${f}`} className="gap-1.5">
-                {COPY.filters[f]}
-                <span className="tabular-nums" aria-hidden>
-                  {counts[f]}
-                </span>
-                <span className="sr-only">, {counts[f]}</span>
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-          {groups.length === 0 && (
-            <p className="text-sm text-muted-foreground" data-testid="learn-filter-empty">
-              {COPY.filterEmpty}
-            </p>
-          )}
-        </div>
-      )}
-
       {groups.map((group) => {
-        const index = group.index;
         const dismissed = group.songs.filter((s) => s.status === "dismissed");
-        // Under "Not for me" the dismissed songs are the list, not a fold inside it.
-        const shown = filter === "dismissed" ? dismissed : group.songs.filter((s) => s.status !== "dismissed");
+        const shown = group.songs.filter((s) => s.status !== "dismissed");
         const run = group.run;
         const open = run ? replays[run.runId] : undefined;
-        // The newest run is open and older runs fold (B-030); a group the performer opened or closed stays that way.
-        const expanded = folds[group.key] ?? (!run || index === 0 || filter !== "all");
         return (
-          <Collapsible key={group.key} open={expanded} onOpenChange={(next) => setFolds((current) => ({ ...current, [group.key]: next }))} className="space-y-1" data-testid="learn-group" data-run={run?.number ?? group.key} data-open={expanded ? "true" : "false"}>
+          <div key={group.key} className="space-y-1" data-testid="learn-group" data-run={run?.number ?? group.key}>
             <div className="space-y-1">
-              <h3 className="text-base font-semibold">
-                <CollapsibleTrigger asChild>
-                  <Button type="button" variant="ghost" size="sm" className="group -ml-2 h-auto px-2 py-1 text-base font-semibold" data-testid="learn-group-toggle">
-                    <ChevronRightIcon aria-hidden className="transition-transform group-data-[state=open]:rotate-90" />
-                    {group.title}
-                  </Button>
-                </CollapsibleTrigger>
-              </h3>
+              <h3 className="text-base font-semibold">{group.title}</h3>
               {run && <p className="text-sm text-muted-foreground">{runMeta(run)}</p>}
-            </div>
-            <CollapsibleContent className="space-y-1">
               {run && run.status !== "running" && (
                 <Button type="button" variant="link" size="sm" className="h-auto px-0" aria-expanded={open?.state === "open"} onClick={() => void replay(run)} disabled={!run.stepsKept}>
                   {open?.state === "open" ? COPY.hideSteps : run.stepsKept ? COPY.replay : COPY.stepsPruned}
@@ -433,35 +388,35 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
               )}
               {open?.state === "loading" && <p className="text-sm text-muted-foreground">{COPY.replayLoading}</p>}
               {open?.state === "failed" && <p className="text-sm text-destructive">{COPY.replayFailed}</p>}
-              {open?.state === "open" && open.live && <LearnFeed live={open.live} heading={`${COPY.runHeading(run!.number)}: ${COPY.stepsHeading}`} running={false} raw={raw} />}
-              {shown.length > 0 ? (
-                <ul aria-label={group.title} className="divide-y">
-                  {shown.map((song) => (
-                    <LearnSongCard key={song.id} song={song} busy={busy} onStatus={(s, status) => void change(s, status)} />
-                  ))}
-                </ul>
-              ) : (
-                run && dismissed.length === 0 && <p className="text-sm text-muted-foreground">{run.status === "failed" ? COPY.errorTitle : COPY.nothingNewTitle}</p>
-              )}
-              {filter !== "dismissed" && dismissed.length > 0 && (
-                <Collapsible>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="link" size="sm" className="group h-auto px-0 text-muted-foreground">
-                      <ChevronRightIcon aria-hidden className="transition-transform group-data-[state=open]:rotate-90" />
-                      {COPY.dismissedGroup(dismissed.length)}
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <ul aria-label={`${group.title}: ${COPY.notForMe}`} className="divide-y">
-                      {dismissed.map((song) => (
-                        <LearnSongCard key={song.id} song={song} busy={busy} onStatus={(s, status) => void change(s, status)} />
-                      ))}
-                    </ul>
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
+            </div>
+            {open?.state === "open" && open.live && <LearnFeed live={open.live} heading={`${COPY.runHeading(run!.number)}: ${COPY.stepsHeading}`} running={false} raw={raw} />}
+            {shown.length > 0 ? (
+              <ul aria-label={group.title} className="divide-y">
+                {shown.map((song) => (
+                  <LearnSongCard key={song.id} song={song} busy={busy} onStatus={(s, status) => void change(s, status)} />
+                ))}
+              </ul>
+            ) : (
+              run && dismissed.length === 0 && <p className="text-sm text-muted-foreground">{run.status === "failed" ? COPY.errorTitle : COPY.nothingNewTitle}</p>
+            )}
+            {dismissed.length > 0 && (
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button variant="link" size="sm" className="group h-auto px-0 text-muted-foreground">
+                    <ChevronRightIcon aria-hidden className="transition-transform group-data-[state=open]:rotate-90" />
+                    {COPY.dismissedGroup(dismissed.length)}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <ul aria-label={`${group.title}: ${COPY.notForMe}`} className="divide-y">
+                    {dismissed.map((song) => (
+                      <LearnSongCard key={song.id} song={song} busy={busy} onStatus={(s, status) => void change(s, status)} />
+                    ))}
+                  </ul>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </div>
         );
       })}
 

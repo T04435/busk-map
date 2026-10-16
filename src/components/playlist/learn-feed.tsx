@@ -16,21 +16,31 @@ import { modelName } from "@/lib/sources";
 const COPY = PLAYLIST_COPY.learn;
 
 /**
- * A learn run's totals as a funnel (sketch §2): what it matched, read and checked, how many songs it left out (suggested
- * before, dismissed, or already sung, as ONE count) and how many are new. Plain shadcn; the look comes later.
+ * The research funnel in its learn mode (inventory F04, sketch §2): Qloo calls › artists matched › crowds read › artists
+ * liked › songs checked › left out (dashed; ONE count: suggested before + dismissed + already sung) › new songs, which
+ * shows a loader until the picks are accepted. The plan's funnel is a sentence (plan-funnel), so the learn mode has its own
+ * markup. Plain shadcn; the look comes later.
  */
-export function LearnFunnel({ live }: { live: LearnLive }) {
+export function ResearchFunnel({ kind, totals, running }: { kind: "learn"; totals: LearnLive["totals"]; running: boolean }) {
+  const items = funnelOf(totals);
   return (
-    <div data-testid="learn-totals" className="space-y-1">
+    <div data-testid="learn-totals" data-kind={kind} className="space-y-1">
       <h4 className="text-sm font-medium">{COPY.totalsHeading}</h4>
       <ol className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm" aria-label={COPY.totalsHeading}>
-        {funnelOf(live.totals).map((item, i, all) => (
-          <li key={item.key} className="flex items-baseline gap-1.5" data-total={item.key}>
-            <span className="font-semibold tabular-nums" data-part="value">
-              {item.value}
-            </span>
+        {items.map((item, i) => (
+          <li key={item.key} className={`flex items-baseline gap-1.5 ${item.key === "leftOut" ? "rounded-md border border-dashed px-1.5" : ""}`} data-total={item.key}>
+            {item.key === "newSongs" && running && item.value === 0 ? (
+              <>
+                <Skeleton aria-hidden className="h-4 w-5 self-center" />
+                <span className="sr-only">choosing songs</span>
+              </>
+            ) : (
+              <span className="font-semibold tabular-nums" data-part="value">
+                {item.value}
+              </span>
+            )}
             <span className="text-muted-foreground">{item.label}</span>
-            {i < all.length - 1 && <ChevronRightIcon aria-hidden className="size-3.5 self-center text-muted-foreground" />}
+            {i < items.length - 1 && <ChevronRightIcon aria-hidden className="size-3.5 self-center text-muted-foreground" />}
           </li>
         ))}
       </ol>
@@ -69,7 +79,7 @@ export function LearnFeed({ live, heading, running, raw }: { live: LearnLive; he
           {live.replay && <span className="ml-2 text-sm font-normal text-muted-foreground">(replay)</span>}
         </h3>
         {live.status && <p className="text-sm text-muted-foreground">{live.status}</p>}
-        <LearnFunnel live={live} />
+        <ResearchFunnel kind="learn" totals={live.totals} running={running} />
         {raw && <RawTotals live={live} />}
         {steps.length > 0 && (
           <ul className="space-y-3 text-sm" aria-live="polite" aria-label="Learn run steps">

@@ -74,9 +74,9 @@ describe("plainStep: the learn tools' results in plain words (arch §7.1)", () =
 });
 
 describe("funnelOf: one 'left out' count", () => {
-  it("is alreadySuggested + dismissedSkipped + alreadyKnown, in the sketch's order", () => {
-    const f = funnelOf({ artists: 6, crowds: 3, liked: 14, songsChecked: 22, alreadySuggested: 4, dismissedSkipped: 2, alreadyKnown: 1, newSongs: 6 });
-    expect(f.map((x) => `${x.value} ${x.label}`)).toEqual(["6 artists matched", "3 crowds read", "14 artists liked", "22 songs checked", "7 left out", "6 new songs"]);
-    expect(funnelOf({ artists: 1, crowds: 1, liked: 1, songsChecked: 1, alreadySuggested: 0, dismissedSkipped: 0, alreadyKnown: 0, newSongs: 1 }).map((x) => x.label)).toEqual(["artist matched", "crowd read", "artist liked", "song checked", "left out", "new song"]);
+  it("is alreadySuggested + dismissedSkipped + alreadyKnown, in the inventory's F04 order", () => {
+    const f = funnelOf({ qlooCalls: 9, artists: 6, crowds: 3, liked: 14, songsChecked: 22, alreadySuggested: 4, dismissedSkipped: 2, alreadyKnown: 1, newSongs: 6 });
+    expect(f.map((x) => `${x.value} ${x.label}`)).toEqual(["9 Qloo calls", "6 artists matched", "3 crowds read", "14 artists liked", "22 songs checked", "7 left out", "6 new songs"]);
+    expect(funnelOf({ artists: 1, crowds: 1, liked: 1, songsChecked: 1, alreadySuggested: 0, dismissedSkipped: 0, alreadyKnown: 0, newSongs: 1 }).map((x) => x.label)).toEqual(["Qloo calls", "artist matched", "crowd read", "artist liked", "song checked", "left out", "new song"]);
   });
 });

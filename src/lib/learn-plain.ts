@@ -95,9 +95,10 @@ export function plainStep(step: Pick<AgentStep, "tool" | "status" | "summary" | 
 }
 
 /** The funnel of a run (sketch §2): counts left to right, with ONE "left out" count. `songs` are the songs it checked. */
-export function funnelOf(t: { artists: number; crowds: number; liked: number; songsChecked: number; alreadySuggested: number; dismissedSkipped: number; alreadyKnown: number; newSongs: number }) {
+export function funnelOf(t: { qlooCalls?: number; artists: number; crowds: number; liked: number; songsChecked: number; alreadySuggested: number; dismissedSkipped: number; alreadyKnown: number; newSongs: number }) {
   const leftOut = t.alreadySuggested + t.dismissedSkipped + t.alreadyKnown;
   return [
+    { key: "qlooCalls", value: t.qlooCalls ?? 0, label: t.qlooCalls === 1 ? "Qloo call" : "Qloo calls" },
     { key: "artists", value: t.artists, label: t.artists === 1 ? "artist matched" : "artists matched" },
     { key: "crowds", value: t.crowds, label: t.crowds === 1 ? "crowd read" : "crowds read" },
     { key: "liked", value: t.liked, label: t.liked === 1 ? "artist liked" : "artists liked" },

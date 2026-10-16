@@ -151,12 +151,8 @@ export const PLAYLIST_COPY = {
     notForMe: "Not for me",
     undo: "Undo",
     learnedBadge: "Learned",
-    /** The filter chips over the list (sketch §3): "New" is the latest run's songs (isNew). */
     showRaw: "Show raw data",
     howFound: "How we found these songs",
-    filterLabel: "Show songs",
-    filters: { all: "All", new: "New", pending: "To learn", learned: "Learned", dismissed: "Not for me" },
-    filterEmpty: "No songs here yet.",
     dismissedGroup: (n: number) => `Not for me (${n})`,
     movedToSung: (title: string) => `${title} is now in ${CAN_SING}.`,
     dismissedDone: (title: string) => `${title} won't be suggested again. Undo it from Not for me.`,

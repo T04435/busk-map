@@ -72,7 +72,7 @@ export default function Home() {
             </figure>
             <Link
               href="/busks"
-              className="flex min-h-[76px] items-center justify-between border-2 border-foreground bg-primary px-8 font-display text-[34px] leading-none font-extrabold text-primary-foreground uppercase no-underline shadow-[6px_6px_0_var(--foreground)] hover:bg-[color-mix(in_oklab,var(--primary)_88%,var(--foreground))]"
+              className="flex min-h-[76px] items-center justify-between border-2 border-foreground bg-primary px-8 font-display text-[34px] leading-none font-extrabold text-primary-foreground uppercase no-underline bm-poster [--poster-shadow:6px_6px_0_var(--foreground)] hover:bg-[color-mix(in_oklab,var(--primary)_88%,var(--foreground))]"
             >
               Plan a busk
               <ArrowRight aria-hidden="true" className="size-9" />
@@ -230,7 +230,7 @@ export default function Home() {
           </h2>
           <Link
             href="/busks"
-            className="inline-flex min-h-16 items-center border-2 border-foreground bg-primary px-9 text-xl font-bold text-primary-foreground no-underline shadow-[6px_6px_0_var(--foreground)] hover:bg-[color-mix(in_oklab,var(--primary)_88%,var(--foreground))]"
+            className="inline-flex min-h-16 items-center border-2 border-foreground bg-primary px-9 text-xl font-bold text-primary-foreground no-underline bm-poster [--poster-shadow:6px_6px_0_var(--foreground)] hover:bg-[color-mix(in_oklab,var(--primary)_88%,var(--foreground))]"
           >
             Plan a busk
           </Link>

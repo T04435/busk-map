@@ -55,6 +55,27 @@ test.describe("accessibility", () => {
     }
   });
 
+  test("the poster buttons keep a visible focus ring next to their offset shadow (B-018)", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1, name: "Busk Map" })).toBeVisible();
+    // Both sit on a dark band, so the ring is the night one: a 2px ink gap, then a 4px signal-orange ring (#ff6a2b).
+    for (const cta of [page.getByRole("link", { name: "Plan a busk" }).first(), page.getByRole("link", { name: "Plan a busk" }).last()]) {
+      const shadow = () => cta.evaluate((el) => getComputedStyle(el).boxShadow);
+      const before = await shadow();
+      expect(before).toMatch(/6px 6px 0px/);
+      expect(before).not.toMatch(/rgb\(255, 106, 43\) 0px 0px 0px 4px/);
+      await expect(async () => {
+        await cta.focus();
+        await page.keyboard.press("Tab");
+        await page.keyboard.press("Shift+Tab");
+        await expect(cta).toBeFocused({ timeout: 500 });
+      }).toPass();
+      const after = await shadow();
+      expect(after).toMatch(/rgb\(255, 106, 43\) 0px 0px 0px 4px/);
+      expect(after).toMatch(/6px 6px 0px/); // the poster shadow stays
+    }
+  });
+
   test("the search inputs show a focus ring when tabbed to (B-005)", async ({ page }) => {
     await page.goto("/busks");
     for (const placeholder of SEARCHES) {

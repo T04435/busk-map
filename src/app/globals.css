@@ -340,6 +340,11 @@ html { scroll-padding-bottom: var(--bottom-nav); }
 }
 @media (prefers-reduced-motion: reduce) { .bm-skeleton { animation: none; } }
 
+/* Poster buttons (an offset block shadow): the shadow comes from --poster-shadow so the focus ring can sit with it. A plain
+   shadow utility would replace the base layer's :focus-visible ring (B-018), so this rule is unlayered and wins. */
+.bm-poster { box-shadow: var(--poster-shadow); }
+.bm-poster:focus-visible { box-shadow: var(--focus-ring), var(--poster-shadow); }
+
 @layer base {
   * {
     @apply border-border;

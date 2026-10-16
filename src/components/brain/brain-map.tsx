@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "cn";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   callKinds,
@@ -338,7 +339,7 @@ function TracedPanel({ selected, onClear }: { selected: NodeId; onClear: () => v
   const isFeature = nodeKind(selected) === "feature";
   const reach = [...nodes].filter((id) => id !== selected && (isFeature ? ["call", "source"] : ["feature"]).includes(nodeKind(id)));
   const links = edges.flatMap((e) =>
-    e.to === selected ? [{ dir: "From", arrow: "←", name: nodeLabel(e.from), how: e.how }] : e.from === selected ? [{ dir: "To", arrow: "→", name: nodeLabel(e.to), how: e.how }] : [],
+    e.to === selected ? [{ dir: "From", arrow: "from", name: nodeLabel(e.from), how: e.how }] : e.from === selected ? [{ dir: "To", arrow: "to", name: nodeLabel(e.to), how: e.how }] : [],
   );
   return (
     <div
@@ -367,7 +368,7 @@ function TracedPanel({ selected, onClear }: { selected: NodeId; onClear: () => v
               <span aria-hidden="true" className="mt-[3px] h-3.5 w-2 shrink-0 bg-primary [clip-path:polygon(0_0,50%_0,100%_50%,50%_100%,0_100%)]" />
               <span>
                 <b>
-                  <span aria-hidden="true">{l.arrow} </span>
+                  {l.arrow === "from" ? <ArrowLeft aria-hidden="true" className="mr-1 inline size-3.5 align-[-2px]" strokeWidth={2} /> : <ArrowRight aria-hidden="true" className="mr-1 inline size-3.5 align-[-2px]" strokeWidth={2} />}
                   <span className="sr-only">{l.dir} </span>
                   {l.name}
                 </b>

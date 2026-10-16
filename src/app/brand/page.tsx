@@ -124,7 +124,7 @@ export default function BrandPage() {
                 ["#book", "Brand book"],
                 ["#words", "Words"],
                 ["#foundations", "Foundations"],
-                ["#tokens", "Tokens → shadcn"],
+                ["#tokens", "Tokens to shadcn"],
                 ["#components", "Components"],
                 ["#screens", "Screens"],
                 ["#assets", "Assets"],
@@ -287,7 +287,7 @@ export default function BrandPage() {
         <Section
           id="tokens"
           n="04"
-          title="Tokens → shadcn"
+          title="Tokens to shadcn"
           intro={
             <>
               The colour names are shadcn/ui theme variables one-to-one, so every shadcn component picks up Honeycomb from <code className="font-mono text-[0.9em]">globals.css</code> alone. Busk Map&apos;s map, data and brand tokens sit on top. Every text pair passes 4.5:1 and every mark 3:1, in both themes.

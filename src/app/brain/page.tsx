@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { BrainMap } from "@/components/brain/brain-map";
 import { QlooWordmark } from "@/components/honeycomb/logo";
 import { NoteCard } from "@/components/honeycomb/note-card";
@@ -71,8 +72,9 @@ export default function BrainPage() {
           </NoteCard>
         </section>
 
-        <Link className="flex min-h-tap items-center self-start font-mono text-base font-bold text-primary hover:underline underline-offset-3" href="/">
-          ← Back to Busk Map
+        <Link className="flex min-h-tap items-center gap-2 self-start font-mono text-base font-bold text-primary hover:underline underline-offset-3" href="/">
+          <ArrowLeft aria-hidden="true" className="size-4" strokeWidth={2} />
+          Back to Busk Map
         </Link>
       </div>
     </main>

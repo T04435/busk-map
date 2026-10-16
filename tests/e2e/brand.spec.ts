@@ -13,7 +13,7 @@ test.describe("brand page", () => {
     await page.goto("/brand");
     await expect(page.getByText("Busk Map design deck · design system v66")).toBeVisible();
     const nav = page.getByRole("navigation", { name: "On this page" });
-    for (const l of ["Brand book", "Words", "Foundations", "Tokens → shadcn", "Components", "Screens", "Assets", "Handoff"]) await expect(nav.getByRole("link", { name: l })).toBeVisible();
+    for (const l of ["Brand book", "Words", "Foundations", "Tokens to shadcn", "Components", "Screens", "Assets", "Handoff"]) await expect(nav.getByRole("link", { name: l })).toBeVisible();
     for (const id of ["book", "words", "foundations", "tokens", "components", "screens", "assets", "handoff"]) await expect(page.locator(`#${id}`)).toBeVisible();
   });
 

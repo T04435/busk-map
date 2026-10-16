@@ -255,7 +255,7 @@ export default function Home() {
             </ul>
             <Button asChild variant="poster" size="default" className="h-auto min-h-[52px] self-start gap-2.5 border-foreground bg-qloo px-6 text-lg font-sans font-bold normal-case tracking-normal text-bluestone hover:bg-[color-mix(in_oklab,var(--qloo)_88%,var(--foreground))] shadow-[4px_4px_0_var(--foreground)] hover:shadow-[5px_5px_0_var(--foreground)]">
               <Link href="/brain">
-              Open the brain <span aria-hidden="true">→</span>
+              Open the brain <ArrowRight aria-hidden="true" className="size-5" strokeWidth={2} />
             </Link>
             </Button>
           </div>
@@ -290,7 +290,7 @@ export default function Home() {
             </ul>
             <Button asChild variant="poster" size="default" className="h-auto min-h-[52px] self-start gap-2.5 border-rule px-6 text-lg font-sans font-bold normal-case tracking-normal shadow-[4px_4px_0_var(--foreground)] hover:shadow-[5px_5px_0_var(--foreground)]">
               <Link href="/brand">
-              See the brand <span aria-hidden="true">→</span>
+              See the brand <ArrowRight aria-hidden="true" className="size-5" strokeWidth={2} />
             </Link>
             </Button>
           </div>

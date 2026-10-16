@@ -33,7 +33,7 @@ export function ResearchFunnel({
   live: boolean;
   /** Number of pitches in the busk once it is ready (null while choosing). */
   picks: number | null;
-  /** "stacked": label under each cell, in a card, with a rule between (the plan page). "landing": label beside each cell, joined by ▸, no box (the landing's board). */
+  /** "stacked": label under each cell, in a card, with a rule between (the plan page). "landing": label beside each cell, joined by a half-hex connector, no box (the landing's board). */
   layout?: "stacked" | "landing";
   className?: string;
 }) {
@@ -45,8 +45,8 @@ export function ResearchFunnel({
   const items: React.ReactNode[] = [];
   const link = (k: string) =>
     landing ? (
-      <li key={`${k}-l`} aria-hidden="true" className="text-sm leading-none text-muted-foreground">
-        ▸
+      <li key={`${k}-l`} aria-hidden="true" className="px-1">
+        <span className="block h-2.5 w-1.5 bg-muted-foreground [clip-path:polygon(0_0,50%_0,100%_50%,50%_100%,0_100%)]" />
       </li>
     ) : (
       <li key={`${k}-l`} aria-hidden="true" className="hidden h-0.5 w-3 bg-rule sm:block" />

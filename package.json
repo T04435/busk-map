@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "node scripts/migrate.mjs --if-production && pnpm build",
     "start": "next start",
     "lint": "eslint",
     "lint:fix": "eslint --fix",

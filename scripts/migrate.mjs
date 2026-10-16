@@ -1,45 +1,44 @@
 #!/usr/bin/env node
 /**
- * Apply migrations/*.sql (idempotent) over Neon's DIRECT connection,
- * DATABASE_URL_UNPOOLED. Run against the dev branch only:
+ * Apply migrations/*.sql over Neon's DIRECT connection (DATABASE_URL_UNPOOLED),
+ * recording each in schema_migrations; only unrecorded files run.
  *
- *   pnpm db:migrate:dev   (reads .env.development.local, which points at the Neon dev branch)
+ *   pnpm db:migrate:dev          local, reads .env.development.local (the Neon dev branch)
+ *   --if-production              the `vercel-build` hook: runs only in the Vercel production build,
+ *                                skips (exit 0) in preview/development builds
  *
- * Never prints the connection string. Refuses to run with VERCEL_ENV=production.
+ * Production runs ONLY with VERCEL_ENV=production and VERCEL=1 (the Vercel build env);
+ * a manual run with VERCEL_ENV=production alone is refused. Any error exits non-zero,
+ * which fails the build. Never prints the connection string.
+ * `--dir <path>` points at another migrations directory (tests, verification).
  */
-import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { neon } from "@neondatabase/serverless";
+import { gate, runMigrations } from "./migrate-lib.mjs";
 
-if (process.env.VERCEL_ENV === "production") {
-  console.error("Refusing to migrate with VERCEL_ENV=production. Production migrations are a separate, reviewed step.");
+const args = process.argv.slice(2);
+const decision = gate(process.env, args);
+if (decision.action === "skip") {
+  console.log(`migrate: ${decision.reason}`);
+  process.exit(0);
+}
+if (decision.action === "refuse") {
+  console.error(`migrate: refusing. ${decision.reason}`);
   process.exit(1);
 }
 const url = process.env.DATABASE_URL_UNPOOLED;
 if (!url) {
-  console.error("DATABASE_URL_UNPOOLED is not set (expected in .env.development.local).");
+  console.error("migrate: DATABASE_URL_UNPOOLED is not set.");
   process.exit(1);
 }
+const dirFlag = args.indexOf("--dir");
+const dir = dirFlag >= 0 ? path.resolve(args[dirFlag + 1]) : path.join(process.cwd(), "migrations");
 
-/** Statements in a migration file, comments removed. */
-export function statements(sql) {
-  return sql
-    .split("\n")
-    .filter((line) => !line.trim().startsWith("--"))
-    .join("\n")
-    .split(";")
-    .map((s) => s.trim())
-    .filter(Boolean);
+console.log(`migrate: ${decision.reason}`);
+try {
+  const { applied, skipped } = await runMigrations({ sql: neon(url), dir });
+  console.log(`migrate: done, ${applied.length} applied, ${skipped.length} skipped`);
+} catch (error) {
+  console.error(`migrate: FAILED. ${error instanceof Error ? error.message.split(url).join("[url]") : "unknown error"}`);
+  process.exit(1);
 }
-
-const sql = neon(url);
-const dir = path.join(process.cwd(), "migrations");
-for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-  const list = statements(readFileSync(path.join(dir, file), "utf8"));
-  for (const statement of list) await sql.query(statement);
-  console.log(`Applied ${file} (${list.length} statements)`);
-}
-const [{ count }] = await sql.query("SELECT count(*)::int AS count FROM baseline_comparisons");
-const [{ stored }] = await sql.query("SELECT count(*)::int AS stored FROM plan_store");
-const [{ plans }] = await sql.query("SELECT count(*)::int AS plans FROM plans");
-console.log(`baseline_comparisons rows: ${count}; plan_store rows: ${stored}; plans rows: ${plans}`);

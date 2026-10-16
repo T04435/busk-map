@@ -102,6 +102,45 @@ export const PLAYLIST_COPY = {
     unavailable: "Couldn't load suggestions right now. Refresh your profile to try again.",
   },
 
+  // Repertoire research: one Spotify link, a streamed run (hackathons/qloo-2026/repertoire-research-spec.md)
+  research: {
+    linkLabel: "Your Spotify artist link",
+    linkPlaceholder: "Paste your Spotify artist link",
+    linkHint: "We read your Spotify profile and your songs, then ask Qloo who your fans are and what they love. It takes about a minute.",
+    example: "It looks like open.spotify.com/artist/…",
+    /** Offline test mode only: a link the local mocks know end to end. */
+    exampleTest: "Try the test artist",
+    start: "Research my act",
+    starting: "Starting your research…",
+    runStarted: "Researching your act",
+    running: "Researching your act…",
+    runningHint: "Each step appears as it happens. You can leave this page: the research carries on and the results will be here.",
+    heading: "Researching your act",
+    howBuilt: "How we built your Repertoire",
+    findMore: "Find more songs to learn",
+    findingMore: "Finding more songs…",
+    moreStarted: "Finding more songs to learn",
+    refresh: "Refresh my research",
+    refreshHint: "Reads your profile and asks Qloo again. Your songs and lists stay.",
+    changeLink: "Use a different link",
+    actName: "Act name",
+    actNameHint: "From your Spotify name. Change it if you busk under another name.",
+    saveActName: "Save act name",
+    summaryHeading: "Your act, in a paragraph",
+    profileHeading: "Your profile",
+    fansHeading: "Who your fans are",
+    soundsLikeHeading: "Artists you sound like",
+    fansLoveHeading: "What your fans also love",
+    noSummary: "No summary this time.",
+    done: (n: number) => (n > 0 ? `Your research is done: ${n} ${n === 1 ? "song" : "songs"} to learn.` : "Your research is done."),
+    errors: {
+      badLink: "That isn't a Spotify artist link. It starts with open.spotify.com/artist/.",
+      upToDate: "Your research is up to date for this link. Use Refresh my research to run it again.",
+      noResearch: "Research your act first, then find more songs to learn.",
+      noMatch: "Qloo doesn't know this artist yet, so there are no taste results. Your songs are saved.",
+    },
+  },
+
   // Friendly errors
   errors: {
     invalid: "That song couldn't be read. Check the title and artist and try again.",
@@ -127,6 +166,8 @@ export const PLAYLIST_COPY = {
       if (!e.ok) {
         if (e.code === "qloo_unavailable") return "Suggestions need Qloo's taste data, and Qloo isn't answering right now. Try again in a little while.";
         if (e.code === "no_match") return "Qloo couldn't match your artists, so there is nothing to learn from yet. Add songs by better-known artists and try again.";
+        if (e.code === "spotify_not_found") return "Spotify has no artist at that link. Check it and try again. This run didn't count.";
+        if (e.code === "spotify_unavailable") return "Spotify isn't answering right now, so your profile couldn't be read. Try again in a minute. This run didn't count.";
         if (e.code === "timeout") return "The run ran out of time before it found songs. Try again.";
         return "The run stopped before it found songs. Try again in a little while.";
       }

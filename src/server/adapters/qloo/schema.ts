@@ -256,6 +256,15 @@ export type TrendRow = {
 
 export type TasteTag = { id: string; name: string; affinity: number | null };
 
+/** One entity's own profile (/entities by id): its typed tags and its description. */
+export type EntityDetail = {
+  id: string;
+  name: string;
+  popularity: number | null;
+  description: string | null;
+  tags: { id: string; name: string; type: string | null }[];
+};
+
 /** Share (0–1) of each group's artists tagged with this genre. */
 export type GenreContrast = { id: string; name: string; a: number; b: number };
 

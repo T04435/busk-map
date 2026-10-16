@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { entitySchema, type explainabilityAggregateSchema, type Explanation, type Impact, type QlooEntity, type QlooPlace, type RawEntity } from "./schema";
+import { entitySchema, type EntityDetail, type explainabilityAggregateSchema, type Explanation, type Impact, type QlooEntity, type QlooPlace, type RawEntity } from "./schema";
 
 /**
  * Pull "which input entity drove this result" out of a result's
@@ -32,6 +32,24 @@ export function toEntity(raw: RawEntity): QlooEntity {
     image: raw.properties?.image?.url || null,
     tags: (raw.tags ?? []).flatMap((t) => (t.id ? [{ id: t.id, name: t.name || t.id }] : [])),
     explanation,
+  };
+}
+
+/** A text field that may be a string or `{ value }` (Qloo sends both shapes for descriptions). */
+function textOf(value: unknown): string | null {
+  const v = typeof value === "string" ? value : value && typeof value === "object" && typeof (value as { value?: unknown }).value === "string" ? (value as { value: string }).value : null;
+  const t = v?.replace(/\s+/g, " ").trim();
+  return t ? t.slice(0, 600) : null;
+}
+
+export function toDetail(raw: RawEntity): EntityDetail {
+  const props = (raw.properties ?? {}) as Record<string, unknown>;
+  return {
+    id: raw.entity_id,
+    name: raw.name,
+    popularity: raw.popularity ?? null,
+    description: textOf(props.description) ?? textOf(props.short_description),
+    tags: (raw.tags ?? []).flatMap((t) => (t.id ? [{ id: t.id, name: (t.name || t.id).trim(), type: t.type ?? null }] : [])),
   };
 }
 

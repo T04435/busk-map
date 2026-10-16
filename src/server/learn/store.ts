@@ -483,8 +483,8 @@ export class PostgresLearnStore implements LearnStore {
   async recentRuns(playlistId: string, sinceMs: number) {
     const rows = (await this.sql.query(
       `SELECT count(*)::int AS n, min(started_at) AS oldest FROM learn_runs
-        WHERE playlist_id = $1 AND started_at > to_timestamp($2::double precision / 1000) AND COALESCE(end_code, '') NOT IN ('qloo_unavailable', 'no_match')`,
-      [playlistId, sinceMs],
+        WHERE playlist_id = $1 AND started_at > to_timestamp($2::double precision / 1000) AND NOT (COALESCE(end_code, '') = ANY ($3::text[]))`,
+      [playlistId, sinceMs, [...OUT_OF_BUDGET_CODES]],
     )) as { n: number; oldest: Time | null }[];
     return { count: rows[0]?.n ?? 0, oldestStartedAt: rows[0]?.oldest ? ms(rows[0].oldest) : null };
   }

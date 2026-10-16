@@ -2,7 +2,11 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
+import { calls, dataPoints, features, secondarySources } from "../../src/lib/qloo-map";
 import { expect, test } from "./fixtures";
+
+/** Every node the graph draws, derived from the map so the spec never drifts when a call, source, data point or feature is added. */
+const NODE_COUNT = calls.length + secondarySources.length + dataPoints.length + features.length;
 
 /**
  * /brain, "The brain of Busk Map": Qloo calls → data points → features, with tracing.
@@ -69,7 +73,7 @@ test.describe("the brain of Busk Map at three widths", () => {
         await expect(page.getByText("kinds of Qloo call")).toBeVisible();
         await expect(page.getByTestId("quota-note")).toContainText("One key's 10,000 calls a month cover roughly 270–360 new busks");
         await expect(page.getByRole("heading", { name: "Next · not built yet" })).toBeVisible();
-        await expect(page.locator("[data-node-id]")).toHaveCount(18 + 3 + 20 + 9);
+        await expect(page.locator("[data-node-id]")).toHaveCount(NODE_COUNT);
         await expectNoSidewaysScroll(page);
         await page.screenshot({ path: path.join(SCREENS, `brain-${width.name}.png`), fullPage: true });
 

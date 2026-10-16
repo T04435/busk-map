@@ -2,7 +2,7 @@ import "server-only";
 import { nameKey } from "@/lib/text";
 import type { SoundsLikeSuggestions, SoundsLikeStatus, SpotifyProfile } from "@/lib/playlist-schema";
 import type { AdapterContext } from "@/server/adapters/core";
-import { resolveArtists, resolveSpotifyArtists, tasteArtists } from "@/server/adapters/qloo";
+import { resolveArtists, resolveSpotifyArtists, tasteArtists, type QlooEntity } from "@/server/adapters/qloo";
 import { getArtistProfile } from "@/server/adapters/repertoire";
 import type { PlaylistRecord } from "./store";
 
@@ -36,16 +36,25 @@ export async function refreshOwnArtist(spotifyId: string, context: AdapterContex
   const spotify = await getArtistProfile(spotifyId, context);
   if (!spotify.data) return { profile: null, qlooArtistId: null, qloo: "unavailable", spotify: spotify.reason === "not_found" ? "not_found" : "unavailable" };
   const profile = spotify.data;
+  const found = await findOwnOnQloo(spotifyId, profile.name, context);
+  return { profile, qlooArtistId: found.entity?.id ?? null, qloo: found.qloo, spotify: "ok" };
+}
+
+/**
+ * The act's own artist on Qloo, from its Spotify id and name: the external-id lookup first (it can't pick a namesake), then
+ * a name search accepted only when the name matches exactly. Shared by the profile refresh and Repertoire research step 3.
+ */
+export async function findOwnOnQloo(spotifyId: string, name: string, context: AdapterContext): Promise<{ entity: QlooEntity | null; qloo: ProfileRefresh["qloo"] }> {
   const byId = await resolveSpotifyArtists([spotifyId], context);
   let entity = byId.data[0] ?? null;
   let answered = byId.mode !== "fallback";
   if (!entity && answered) {
-    const byName = await resolveArtists([profile.name], context);
+    const byName = await resolveArtists([name], context);
     answered = answered && byName.mode !== "fallback";
-    const found = byName.data[0]?.entity ?? null;
-    if (found && nameKey(found.name) === nameKey(profile.name)) entity = found;
+    const hit = byName.data[0]?.entity ?? null;
+    if (hit && nameKey(hit.name) === nameKey(name)) entity = hit;
   }
-  return { profile, qlooArtistId: entity?.id ?? null, qloo: entity ? "matched" : answered ? "unknown" : "unavailable", spotify: "ok" };
+  return { entity, qloo: entity ? "matched" : answered ? "unknown" : "unavailable" };
 }
 
 /**

@@ -8,7 +8,7 @@ import { log } from "@/server/log";
 import { QLOO_MOCK_BASE_URL, qlooMockFetch } from "@/server/qloo-mock/fetch";
 import { countLookup, lookupScope, noteQlooRequest } from "./usage";
 import { AdapterError, fetchJson } from "../core";
-import { parseEntities, toEntity, toImpact, toPlace } from "./normalize";
+import { parseEntities, toDetail, toEntity, toImpact, toPlace } from "./normalize";
 import {
   compareResponseSchema,
   demographicsResponseSchema,
@@ -19,6 +19,7 @@ import {
   tagsResponseSchema,
   trendingResponseSchema,
   type CrowdProfile,
+  type EntityDetail,
   type GenreContrast,
   type HeatCell,
   type LocalArtists,
@@ -181,6 +182,26 @@ async function entitiesBySpotifyIdsCached(backend: QlooBackend, spotifyIds: stri
     const params = { "external.spotify.ids": ids(spotifyIds) };
     const results = await orNotFound(async () => (await qlooGet(backend, "/entities", params, entitiesResponseSchema)).results, []);
     return listEntities("/entities", params, results).map(toEntity);
+  });
+}
+
+/**
+ * `/entities` by Qloo id: one artist's own profile (Repertoire research, step 3). The resolver's lookups keep only what the
+ * plan needs; this reads the entity's typed tags (genres and the rest) and its description.
+ */
+export async function entityDetail(backend: QlooBackend, entityId: string): Promise<EntityDetail | null> {
+  return countLookup("entityDetail", [backend, entityId], () => entityDetailCached(backend, entityId));
+}
+
+async function entityDetailCached(backend: QlooBackend, entityId: string): Promise<EntityDetail | null> {
+  "use cache: remote";
+  return lookupScope("entityDetail", [backend, entityId], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:entities");
+    const params = { entity_ids: entityId };
+    const results = await orNotFound(async () => (await qlooGet(backend, "/entities", params, entitiesResponseSchema)).results, []);
+    const [first] = listEntities("/entities", params, results);
+    return first ? toDetail(first) : null;
   });
 }
 
@@ -531,6 +552,32 @@ async function crowdTagsCached(backend: QlooBackend, entityIds: string[], point:
       "signal.interests.entities": ids(entityIds),
       "signal.location": wktPoint(point),
       "signal.location.radius": radiusM,
+      take: Math.min(take, MAX_TAKE),
+    };
+    const body = await qlooGet(backend, "/v2/insights", params, tagsResponseSchema);
+    logIfEmpty("/v2/insights", params, body.results.tags.length);
+    return body.results.tags.map((tag) => ({ id: tag.tag_id ?? tag.id ?? "", name: tag.name, affinity: tag.query?.affinity ?? null })).filter((t) => t.id);
+  });
+}
+
+/**
+ * `urn:tag` taste analysis with no location: the music genres that characterise fans of these artists anywhere, strongest
+ * first (Repertoire research, step 8: "Your sound in genres").
+ */
+export async function artistGenres(backend: QlooBackend, entityIds: string[], take: number): Promise<TasteTag[]> {
+  return countLookup("artistGenres", [backend, entityIds, take], () => artistGenresCached(backend, entityIds, take));
+}
+
+async function artistGenresCached(backend: QlooBackend, entityIds: string[], take: number): Promise<TasteTag[]> {
+  "use cache: remote";
+  return lookupScope("artistGenres", [backend, entityIds, take], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:tags");
+    const params = {
+      "filter.type": "urn:tag",
+      "filter.tag.types": "urn:tag:genre:music",
+      "filter.parents.types": "urn:entity:artist",
+      "signal.interests.entities": ids(entityIds),
       take: Math.min(take, MAX_TAKE),
     };
     const body = await qlooGet(backend, "/v2/insights", params, tagsResponseSchema);

@@ -11,9 +11,9 @@
  * lose a call without this map changing too.
  */
 
-import { PLAYLIST_COPY } from "@/lib/playlist-copy";
+import { PLAYLIST_COPY } from "./playlist-copy";
 
-export type CallId = "c1" | "c2" | "c3" | "c4" | "c5" | "c5b" | "c5c" | "c6" | "c7" | "c7b" | "c8" | "c9" | "c10" | "c11" | "c11b" | "c12" | "c13" | "c14" | "c_fans";
+export type CallId = "c1" | "c2" | "c3" | "c4" | "c5" | "c5b" | "c5c" | "c6" | "c7" | "c7b" | "c8" | "c9" | "c10" | "c11" | "c11b" | "c12" | "c12b" | "c12c" | "c13" | "c14" | "c15" | "c16" | "c_fans";
 export type SourceId = "spotify" | "ticketmaster" | "lastfm";
 export type DataPointId =
   | "d_id"
@@ -37,8 +37,13 @@ export type DataPointId =
   | "d_tracks"
   | "d_plays"
   | "d_own_signal"
-  | "d_fans";
-export type FeatureId = "f_rank" | "f_map" | "f_events" | "f_crowd" | "f_fans" | "f_setlist" | "f_plain" | "f_agent" | "f_learn";
+  | "d_fans"
+  | "d_profile"
+  | "d_own_songs"
+  | "d_sound_alikes"
+  | "d_fans_love"
+  | "d_act_genres";
+export type FeatureId = "f_rank" | "f_map" | "f_events" | "f_crowd" | "f_fans" | "f_setlist" | "f_plain" | "f_agent" | "f_learn" | "f_research";
 export type NodeId = CallId | SourceId | DataPointId | FeatureId;
 export type NodeKind = "call" | "source" | "dataPoint" | "feature";
 
@@ -128,10 +133,11 @@ export const calls: readonly QlooCall[] = [
     endpoint: "/entities",
     keyParams: ["external.spotify.ids=<id>"],
     codeRef: "client.ts:entitiesBySpotifyIds",
-    via: ["index.ts:resolveArtists", "learn/context.ts:matchPlaylist"],
+    via: ["index.ts:resolveArtists", "learn/context.ts:matchPlaylist", "own-artist.ts:findOwnOnQloo"],
     dataPoints: [
       { id: "d_id", how: "matches an artist by its Spotify id, so the right namesake is picked" },
       { id: "d_own_signal", how: "matches your own artist from the saved Spotify link, so it joins the taste signal" },
+      { id: "d_profile", how: "finds you on Qloo from your Spotify link (research step 3)" },
     ],
   },
   {
@@ -300,6 +306,30 @@ export const calls: readonly QlooCall[] = [
     dataPoints: [{ id: "d_taste_artists", how: "artists whose fans overlap your Repertoire’s fans, anywhere, and which of your artists explain each" }],
   },
   {
+    id: "c12b",
+    num: "12b",
+    label: "Who you sound like",
+    endpoint: "/v2/insights",
+    urnType: "urn:entity:artist",
+    keyParams: ["signal.interests.entities=<your own artist id>", "feature.explainability=true", "take=12", "no location"],
+    codeRef: "client.ts:tasteArtists",
+    via: ["own-artist.ts:soundsLikeFor", "research/run.ts:executeResearchRun"],
+    variantOf: "c12",
+    dataPoints: [{ id: "d_sound_alikes", how: "the artists whose fans overlap yours, by affinity: your sound-alikes (research step 4)" }],
+  },
+  {
+    id: "c12c",
+    num: "12c",
+    label: "What your fans also love",
+    endpoint: "/v2/insights",
+    urnType: "urn:entity:artist",
+    keyParams: ["signal.interests.entities=<you + up to 4 sound-alikes>", "feature.explainability=true", "take=24", "you and your sound-alikes left out after"],
+    codeRef: "client.ts:tasteArtists",
+    via: ["research/run.ts:executeResearchRun"],
+    variantOf: "c12",
+    dataPoints: [{ id: "d_fans_love", how: "artists your fans over-index on that you don’t already sound like, and who explains each (research step 6)" }],
+  },
+  {
     id: "c13",
     num: "13",
     label: "Global-pop artists",
@@ -322,6 +352,27 @@ export const calls: readonly QlooCall[] = [
     dataPoints: [{ id: "d_scene", how: "artists of the city’s own genres liked in the plan area, shared by every act" }],
   },
   {
+    id: "c15",
+    num: "15",
+    label: "Your artist’s profile",
+    endpoint: "/entities",
+    keyParams: ["entity_ids=<your own artist id>"],
+    codeRef: "client.ts:entityDetail",
+    via: ["index.ts:artistDetail", "research/run.ts:executeResearchRun"],
+    dataPoints: [{ id: "d_profile", how: "your entity’s genre tags, its other descriptive (audience character) tags and its description" }],
+  },
+  {
+    id: "c16",
+    num: "16",
+    label: "Your sound in genres",
+    endpoint: "/v2/insights",
+    urnType: "urn:tag",
+    keyParams: ["filter.tag.types=urn:tag:genre:music", "filter.parents.types=urn:entity:artist", "signal.interests.entities=<your own artist id>", "take=8", "no location"],
+    codeRef: "client.ts:artistGenres",
+    via: ["index.ts:actGenres", "research/run.ts:executeResearchRun"],
+    dataPoints: [{ id: "d_act_genres", how: "the music genres your fans lean to, anywhere (research step 8)" }],
+  },
+  {
     id: "c_fans",
     num: "9b",
     label: "Your own fans",
@@ -329,9 +380,9 @@ export const calls: readonly QlooCall[] = [
     urnType: "urn:demographics",
     keyParams: ["signal.interests.entities=<your own artist id>"],
     codeRef: "client.ts:demographics",
-    via: ["context.ts:ownFans", "index.ts:crowdProfile"],
+    via: ["context.ts:ownFans", "index.ts:crowdProfile", "research/run.ts:executeResearchRun"],
     variantOf: "c9",
-    dataPoints: [{ id: "d_fans", how: "the age and gender lean of the fans of your own artist alone, one request per busk" }],
+    dataPoints: [{ id: "d_fans", how: "the age and gender lean of the fans of your own artist alone: one request per busk, the same (cached) one in research step 5" }],
   },
 ];
 
@@ -339,11 +390,12 @@ export const secondarySources: readonly SecondarySource[] = [
   {
     id: "spotify",
     label: "Spotify",
-    contributes: "artist ids, release years, songs to learn",
+    contributes: "artist ids, your profile and songs, release years, songs to learn",
     dataPoints: [
       { id: "d_id", how: "the artist picker supplies the Spotify id" },
       { id: "d_years", how: "release years for your songs" },
-      { id: "d_tracks", how: "songs by the artists a learn run chooses" },
+      { id: "d_tracks", how: "songs by the artists a learn run (or research step 7) chooses" },
+      { id: "d_own_songs", how: "your profile (photo, name, genres, followers) and your releases, from your Spotify artist link (research steps 1–2)" },
     ],
   },
   {
@@ -362,13 +414,14 @@ export const secondarySources: readonly SecondarySource[] = [
     dataPoints: [
       { id: "d_plays", how: "top tracks per artist, with how many times each is played" },
       { id: "d_tracks", how: "the songs backup: a learn run takes an artist’s top tracks from Last.fm when Spotify has none" },
+      { id: "d_own_songs", how: "your own top tracks, when Spotify has none of your releases" },
     ],
     lookups: [
       {
         method: "artist.gettoptracks",
         codeRef: "songs/client.ts:fetchTopTracks",
-        via: ["songs/index.ts:getSongs", "learn/tools.ts:top_tracks"],
-        purpose: "an artist’s top tracks and their plays",
+        via: ["songs/index.ts:getSongs", "learn/tools.ts:top_tracks", "research/run.ts:executeResearchRun"],
+        purpose: "an artist’s top tracks and their plays (and your own songs in research step 2 when Spotify has none)",
       },
       {
         method: "artist.getinfo",
@@ -558,7 +611,10 @@ export const dataPoints: readonly DataPoint[] = [
     label: "Songs by those artists",
     sub: "from Spotify",
     fields: ["track title", "artist", "release year", "duration"],
-    features: [{ id: "f_learn", how: "the songs a run picks from; earlier suggestions are left out here" }],
+    features: [
+      { id: "f_learn", how: "the songs a run picks from; earlier suggestions are left out here" },
+      { id: "f_research", how: "songs your fans would stop for: the first Songs you should learn, each with who explains it" },
+    ],
   },
   {
     id: "d_plays",
@@ -585,7 +641,51 @@ export const dataPoints: readonly DataPoint[] = [
     label: "Your own fans",
     sub: "age and gender of your artist’s fans",
     fields: ["query.age", "query.gender"],
-    features: [{ id: "f_crowd", how: "“Your fans lean 25–29; this crowd leans 30–34”, beside the crowd’s own lean bars" }],
+    features: [
+      { id: "f_crowd", how: "“Your fans lean 25–29; this crowd leans 30–34”, beside the crowd’s own lean bars" },
+      { id: "f_research", how: "“Who your fans are” in your Repertoire: the age and gender lean bars" },
+    ],
+  },
+  {
+    id: "d_profile",
+    label: "You on Qloo",
+    sub: "genres, audience character, description",
+    fields: ["entity_id", "name", "tags[].name", "tags[].type", "properties.description", "popularity"],
+    features: [{ id: "f_research", how: "the profile header’s genre and audience-character chips, and the facts the summary is written from" }],
+  },
+  {
+    id: "d_own_songs",
+    label: "Your profile and songs",
+    sub: "from your Spotify artist link",
+    fields: ["name", "images", "genres", "followers", "track title", "album", "release year", "duration"],
+    features: [{ id: "f_research", how: "the profile header, and your songs straight into Songs you can sing, tagged Your song" }],
+  },
+  {
+    id: "d_sound_alikes",
+    label: "Artists you sound like",
+    sub: "by Qloo affinity, editable",
+    fields: ["entity_id", "name", "query.affinity", "tags[].name", "external.spotify[].id"],
+    features: [
+      { id: "f_research", how: "“Artists you sound like”, saved to your act when it is empty, and the signal for what your fans also love" },
+      { id: "f_rank", how: "the artists you sound like join every busk’s taste signal" },
+    ],
+  },
+  {
+    id: "d_fans_love",
+    label: "What your fans also love",
+    sub: "beyond your sound-alikes",
+    fields: ["entity_id", "name", "query.affinity", "query.explainability"],
+    features: [{ id: "f_research", how: "“What your fans also love”, and the artists whose top tracks become songs to learn" }],
+  },
+  {
+    id: "d_act_genres",
+    label: "Your sound in genres",
+    sub: "the genres your fans lean to",
+    fields: ["tag_id (or id)", "name", "query.affinity"],
+    features: [
+      { id: "f_research", how: "your genre tags in the research" },
+      { id: "f_crowd", how: "the local-scene genres you share with the city are marked, and lead the scene search" },
+    ],
   },
 ];
 
@@ -641,6 +741,14 @@ export const features: readonly Feature[] = [
     how: "combined",
     with: ["Spotify", "Last.fm", "Claude Sonnet (the learn agent)"],
   },
+  {
+    id: "f_research",
+    label: "Repertoire research",
+    sub: "your act, researched from one link",
+    location: `${PLAYLIST_COPY.name} page: the research run and its results`,
+    how: "combined",
+    with: ["Spotify", "Last.fm", "Claude Sonnet (one summary call)"],
+  },
 ];
 
 /** Planned, not built (docs/qloo-data-map.md §3). Only items with built: false. */
@@ -658,7 +766,7 @@ export const dataPointCount = dataPoints.length;
 /** Measured, not derivable (docs/qloo-data-map.md §4): live 28–32 (24–28 before the local scene, plus its 4), mock 37; plus one (#9b) when the act has an own artist, not counted in this range; a rerun is served from the cache. */
 export const CALLS_PER_NEW_BUSK = "28–37";
 export const CALLS_ON_RERUN = 0;
-/** A learn run's hard cap (config.ts:LEARN_QLOO_BUDGET): typically 8–9 requests, 25 at worst (docs/playlist-architecture.md §2.9). */
+/** A learn run's hard cap (config.ts:LEARN_QLOO_BUDGET): typically 8–9 requests, 25 at worst (docs/playlist-architecture.md §2.9). A research run shares the cap: 7 requests cold on the mock, fewer once cached (docs/repertoire-research.md). */
 export const CALLS_PER_LEARN_RUN = "≤ 25";
 
 export const QUOTA = {

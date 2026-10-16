@@ -64,7 +64,7 @@ export const LEARN_STEPS_MAX_BYTES = 256 * 1024;
 /** The window of the run limit. */
 export const LEARN_WINDOW_MINUTES = 60;
 /** Runs that ended before the model got any data (Qloo down, nothing matched) cost nothing and don't count towards either limit (B-028). */
-export const LEARN_UNCOUNTED_END_CODES: readonly string[] = ["qloo_unavailable", "no_match"];
+export const LEARN_UNCOUNTED_END_CODES: readonly string[] = ["qloo_unavailable", "no_match", "spotify_unavailable", "spotify_not_found"];
 /** Busk plan runs that ended because Qloo was down cost nothing and don't count towards the 5-an-hour fresh-run limit (B-043, like B-028 for learn runs). */
 export const PLAN_UNCOUNTED_END_CODES: readonly string[] = ["qloo_unavailable"];
 /** Max picks that one artist may have in a run, and the songs across the Repertoire that make an artist "over-represented". */
@@ -104,3 +104,22 @@ export const SUGGEST_CATALOGUE_LOOKUPS = 12;
 export const SUGGEST_EXTRA_QLOO_CALLS = 1;
 /** Related artists asked of Qloo for the fill (the city crowd's own artists are added to them). */
 export const SUGGEST_RELATED_TAKE = 20;
+
+// --- Repertoire research (hackathons/qloo-2026/repertoire-research-spec.md) ---
+
+/** Your own songs a research run adds to Songs you can sing (step 2), at most: the rest of the 60 stay free for covers. */
+export const RESEARCH_OWN_SONGS_MAX = 20;
+/** Sound-alikes (step 4) saved as your "Artists you sound like" when that list is empty. */
+export const RESEARCH_SOUNDS_LIKE_SAVED = 6;
+/** Sound-alikes that join your own artist in step 6's signal. */
+export const RESEARCH_SIGNAL_SOUND_ALIKES = 4;
+/** Artists asked of Qloo in step 6 (sound-alikes and you are left out after), and kept. */
+export const RESEARCH_FANS_LOVE_TAKE = 24;
+export const RESEARCH_FANS_LOVE_KEPT = 10;
+/** Artists whose top tracks step 7 looks up, and songs taken per artist. */
+export const RESEARCH_LEARN_ARTISTS = 4;
+export const RESEARCH_LEARN_PER_ARTIST = 2;
+/** Genre tags asked of Qloo in step 8. */
+export const RESEARCH_GENRES_TAKE = 8;
+/** Step 9: one short call. */
+export const RESEARCH_SUMMARY_LIMITS = { maxOutputTokens: 1500, timeoutMs: 30_000, maxPicks: 6, summaryChars: 700 } as const;

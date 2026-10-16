@@ -285,7 +285,7 @@ describe("PostgresLearnStore: SQL shape", () => {
   it("counts the window in the database and leaves out the runs that ended before the model", async () => {
     const f = fake([[{ n: 2, oldest: new Date(5_000) }]]);
     expect(await f.store.recentRuns("p", 1000)).toEqual({ count: 2, oldestStartedAt: 5000 });
-    expect(f.calls[0].text).toMatch(/NOT IN \('qloo_unavailable', 'no_match'\)/);
+    expect(f.calls[0].text).toMatch(/NOT \(COALESCE\(end_code, ''\) = ANY \(\$3::text\[\]\)\)/);
   });
 
   it("Learned runs in one transaction under the Repertoire's lock and the 60-song limit; Undo deletes the song in the same statement", async () => {

@@ -16,14 +16,21 @@ export type LearnModel = (typeof LEARN_MODELS)[number];
 export const LEARN_RUN_STATUSES = ["running", "done", "failed", "fallback"] as const;
 export type LearnRunStatus = (typeof LEARN_RUN_STATUSES)[number];
 
-export const LEARN_END_CODES = ["timeout", "stopped", "model_unavailable", "qloo_unavailable", "no_match", "nothing_new"] as const;
+/** spotify_*: a Repertoire research run (lib/repertoire-research.ts) that couldn't read the Spotify profile. */
+export const LEARN_END_CODES = ["timeout", "stopped", "model_unavailable", "qloo_unavailable", "no_match", "nothing_new", "spotify_unavailable", "spotify_not_found"] as const;
 export type LearnEndCode = (typeof LEARN_END_CODES)[number];
 
 export const BASED_ON_KINDS = ["learned", "repertoire", "crowd", "soundsLike"] as const;
 export type BasedOnKind = (typeof BASED_ON_KINDS)[number];
 
 /** What a run looked at: the can-sing + learned count, the sounds-like names, the usual pitch names (empty = the city crowd). */
-export const learnInputsSchema = z.object({ songs: count, soundsLike: z.array(z.string()), pitches: z.array(z.string()) });
+export const learnInputsSchema = z.object({
+  songs: count,
+  soundsLike: z.array(z.string()),
+  pitches: z.array(z.string()),
+  /** Absent on a learn run (and on every run saved before research). "research": a full Repertoire research run; "more": its "Find more songs to learn". */
+  kind: z.enum(["research", "more"]).optional(),
+});
 export type LearnInputs = z.infer<typeof learnInputsSchema>;
 
 /**

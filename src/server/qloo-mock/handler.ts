@@ -670,6 +670,43 @@ function search(params: Params, key: string): Response {
   return ok(page, key);
 }
 
+/** Invented "audience character" words per genre, for /entities by id (Repertoire research step 3). Not Qloo data. */
+const MOCK_CHARACTER: Record<Genre, string> = {
+  folk: "Heartfelt",
+  indie_folk: "Dreamy",
+  americana: "Rootsy",
+  singer_songwriter: "Storytelling",
+  acoustic: "Mellow",
+  indie_rock: "Youthful",
+  rock: "Energetic",
+  pop: "Upbeat",
+  soul: "Soulful",
+  funk: "Groovy",
+  neo_soul: "Smooth",
+  jazz: "Sophisticated",
+  rnb: "Smooth",
+  blues: "Gritty",
+  hip_hop: "Bold",
+  electronic: "Energetic",
+};
+
+/**
+ * An artist looked up by Qloo id: the lookup payload plus the extra an id lookup carries in the mock, typed character tags
+ * (`urn:tag:audience:qloo`, an assumed type: unverified live) and a description. Only `entity_ids` lookups get them, so
+ * /search and the Spotify-id match are unchanged.
+ */
+function artistDetailPayload(artist: CatalogArtist) {
+  const base = artistPayload(artist, undefined, "lookup");
+  const ranked = (Object.entries(artist.genres) as [Genre, number][]).sort((x, y) => y[1] - x[1]);
+  const words = [...new Set(ranked.map(([g]) => MOCK_CHARACTER[g]))].slice(0, 3);
+  const top = ranked.slice(0, 2).map(([g]) => GENRES[g].toLowerCase());
+  return {
+    ...base,
+    properties: { ...base.properties, description: `${artist.name} makes ${top.join(" and ")} music (Qloo mock test description, not Qloo data).` },
+    tags: [...base.tags, ...words.map((w) => ({ name: w, tag_id: mockId("audience", w), type: "urn:tag:audience:qloo", value: mockId("audience", w) }))],
+  };
+}
+
 function entities(params: Params, key: string): Response {
   const ids = params.list("entity_ids");
   const spotify = params.list("external.spotify.ids");
@@ -679,7 +716,7 @@ function entities(params: Params, key: string): Response {
       const place = PLACE_BY_ID.get(id.toUpperCase());
       if (place) return [placePayload(place)];
       const artist = isMockId(id) ? artistById(id) : null;
-      return artist ? [artistPayload(artist, undefined, "lookup")] : [];
+      return artist ? [artistDetailPayload(artist)] : [];
     }),
     ...spotify.flatMap((sid): unknown[] => {
       const artist = CATALOG.find((a) => a.spotifyId === sid);

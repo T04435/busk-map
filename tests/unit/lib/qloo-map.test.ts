@@ -32,6 +32,8 @@ const FILES: Record<string, string> = {
   "context.ts": path.join(ROOT, "src/server/agent/context.ts"),
   "learn/context.ts": path.join(ROOT, "src/server/learn/context.ts"),
   "learn/tools.ts": path.join(ROOT, "src/server/learn/tools.ts"),
+  "own-artist.ts": path.join(ROOT, "src/server/playlist/own-artist.ts"),
+  "research/run.ts": path.join(ROOT, "src/server/research/run.ts"),
   "songs/client.ts": LASTFM_CLIENT,
   "songs/index.ts": path.join(ROOT, "src/server/adapters/songs/index.ts"),
 };
@@ -252,7 +254,7 @@ describe("qloo map: drift against the Last.fm adapter", () => {
         expect(declaredNames(FILES[file]).has(fn), `${ref} not found`).toBe(true);
       }
     }
-    expect(lastfm?.dataPoints.map((d) => d.id).sort()).toEqual(["d_plays", "d_tracks"]);
+    expect(lastfm?.dataPoints.map((d) => d.id).sort()).toEqual(["d_own_songs", "d_plays", "d_tracks"]);
   });
 });
 
@@ -263,12 +265,12 @@ describe("qloo map: referential integrity", () => {
     expect(new Set(allIds).size).toBe(allIds.length);
   });
 
-  it("has the documented shape: 14 kinds (19 with 5b, 5c, 7b, 11b and 9b), 22 data points, 9 features, Spotify, Ticketmaster and Last.fm", () => {
-    expect(callKinds).toBe(14);
-    expect(calls).toHaveLength(19);
-    expect(calls.filter((c) => c.variantOf).map((c) => c.id)).toEqual(["c5b", "c5c", "c7b", "c11b", "c_fans"]);
-    expect(dataPoints).toHaveLength(22);
-    expect(featureCount).toBe(9);
+  it("has the documented shape: 16 kinds (23 with 5b, 5c, 7b, 11b, 12b, 12c and 9b), 27 data points, 10 features, Spotify, Ticketmaster and Last.fm", () => {
+    expect(callKinds).toBe(16);
+    expect(calls).toHaveLength(23);
+    expect(calls.filter((c) => c.variantOf).map((c) => c.id)).toEqual(["c5b", "c5c", "c7b", "c11b", "c12b", "c12c", "c_fans"]);
+    expect(dataPoints).toHaveLength(27);
+    expect(featureCount).toBe(10);
     expect(secondarySources.map((s) => s.label)).toEqual(["Spotify", "Ticketmaster", "Last.fm"]);
   });
 
@@ -317,7 +319,7 @@ describe("qloo map: referential integrity", () => {
 
 describe("qloo map: facts and trace", () => {
   it("derives the counts and states the quota", () => {
-    expect(facts.map((f) => f.value)).toEqual(["14", "28–37", "0", "9", "≤ 25"]);
+    expect(facts.map((f) => f.value)).toEqual(["16", "28–37", "0", "10", "≤ 25"]);
     expect(CALLS_PER_LEARN_RUN).toBe("≤ 25");
     expect(quotaNote).toContain("10,000 requests a month per key, at 5 a second");
     expect(quotaNote).toContain("24 h");
@@ -357,6 +359,17 @@ describe("qloo map: facts and trace", () => {
     expect(calls.find((c) => c.id === "c14")!.keyParams.join(" ")).toContain("signal.interests.tags");
   });
 
+  it("Repertoire research lights its own calls, the shared ones it reuses, Spotify, Last.fm and every step's data point", () => {
+    const { nodes } = trace("f_research");
+    for (const id of ["c2", "c15", "c12b", "c_fans", "c12c", "c16", "spotify", "lastfm", "d_profile", "d_own_songs", "d_sound_alikes", "d_fans", "d_fans_love", "d_tracks", "d_act_genres"] as const) expect(nodes.has(id), id).toBe(true);
+    expect(nodes.has("ticketmaster")).toBe(false);
+    expect(calls.find((c) => c.id === "c15")).toMatchObject({ endpoint: "/entities", codeRef: "client.ts:entityDetail" });
+    expect(calls.find((c) => c.id === "c16")).toMatchObject({ urnType: "urn:tag", codeRef: "client.ts:artistGenres" });
+    for (const id of ["c12b", "c12c"]) expect(calls.find((c) => c.id === id)).toMatchObject({ variantOf: "c12", codeRef: "client.ts:tasteArtists" });
+    // Your genres feed the busk's local scene (the crowd panel).
+    expect(trace("d_act_genres").nodes.has("f_crowd")).toBe(true);
+  });
+
   it("a data point lights both ways", () => {
     const { nodes } = trace("d_headliner");
     expect(nodes.has("c7")).toBe(true);
@@ -368,7 +381,7 @@ describe("qloo map: facts and trace", () => {
   it("secondary sources touch the features their data points feed", () => {
     expect(featuresTouchedBy("ticketmaster").sort()).toEqual(["f_agent", "f_events", "f_plain", "f_rank"]);
     expect(featuresTouchedBy("spotify")).toContain("f_setlist");
-    expect(featuresTouchedBy("lastfm").sort()).toEqual(["f_agent", "f_learn", "f_setlist"]);
+    expect(featuresTouchedBy("lastfm").sort()).toEqual(["f_agent", "f_learn", "f_research", "f_setlist"]);
   });
 
   it("Last.fm backs up the song lookups: plays for the Suggested set, top tracks for Songs to learn", () => {

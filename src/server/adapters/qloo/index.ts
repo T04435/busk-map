@@ -3,9 +3,9 @@ import type { BBox, LatLon } from "@/lib/geo";
 import { qlooBackend, type QlooBackend } from "@/server/env";
 import { runAdapter, type AdapterContext, type AdapterResult } from "../core";
 import * as client from "./client";
-import type { CrowdProfile, GenreContrast, HeatCell, LocalArtists, QlooEntity, QlooPlace, TasteTag, TrendRow } from "./schema";
+import type { CrowdProfile, EntityDetail, GenreContrast, HeatCell, LocalArtists, QlooEntity, QlooPlace, TasteTag, TrendRow } from "./schema";
 
-export type { CrowdProfile, Explanation, GenreContrast, HeatCell, Impact, LocalArtists, QlooEntity, QlooPlace, TasteTag, TrendRow } from "./schema";
+export type { CrowdProfile, EntityDetail, Explanation, GenreContrast, HeatCell, Impact, LocalArtists, QlooEntity, QlooPlace, TasteTag, TrendRow } from "./schema";
 export type { TrendWindow } from "./client";
 /** Requests the trending window probe may send at most (a quarter back at a time). */
 export const TRENDING_PROBES = client.TRENDING_MAX_PROBES;
@@ -158,4 +158,14 @@ export function globalArtists(take: number, context: AdapterContext): Promise<Ad
 /** local_scene: artists liked in the city area and tagged with its over-indexed genres (no artist signal). */
 export function sceneArtists(tagIds: string[], area: BBox, take: number, context: AdapterContext): Promise<AdapterResult<QlooEntity[]>> {
   return run<QlooEntity[]>(context, [], (backend) => client.sceneArtists(backend, tagIds, area, take));
+}
+
+/** artist_detail: one artist's own Qloo profile (typed tags, description), for Repertoire research step 3. */
+export function artistDetail(entityId: string, context: AdapterContext): Promise<AdapterResult<EntityDetail | null>> {
+  return run<EntityDetail | null>(context, null, (backend) => client.entityDetail(backend, entityId));
+}
+
+/** act_genres: the music genres fans of these artists lean to, anywhere (Repertoire research step 8). */
+export function actGenres(entityIds: string[], take: number, context: AdapterContext): Promise<AdapterResult<TasteTag[]>> {
+  return run<TasteTag[]>(context, [], (backend) => client.artistGenres(backend, entityIds, take));
 }

@@ -25,6 +25,8 @@ const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const clean = (s: string) => s.replace(/[|~]/g, " ").trim();
 
 /** One song per line: "Title - Artist". Add "(own)" for your own songs. */
+const PERMIT_LABELS = { general: "General", premium: "Premium", "circle-act": "Circle act" } as const;
+
 export function parseSongLines(text: string) {
   return text
     .split("\n")
@@ -222,7 +224,7 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
           <Label htmlFor="from">From</Label>
           <Select value={from} onValueChange={setFrom}>
             <SelectTrigger id="from" className="w-full">
-              <SelectValue />
+              <SelectValue>{formatHour(Number(from))}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {HOURS.map((h) => (
@@ -237,7 +239,7 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
           <Label htmlFor="to">To</Label>
           <Select value={to} onValueChange={setTo}>
             <SelectTrigger id="to" className="w-full">
-              <SelectValue />
+              <SelectValue>{formatHour(Number(to))}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {HOURS.map((h) => (
@@ -252,12 +254,15 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
           <Label htmlFor="permit">Permit</Label>
           <Select value={permit} onValueChange={setPermit}>
             <SelectTrigger id="permit" className="w-full">
-              <SelectValue />
+              {/* The label as children, so the server HTML shows it before hydration (B-006). */}
+              <SelectValue>{PERMIT_LABELS[permit as keyof typeof PERMIT_LABELS]}</SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="general">General</SelectItem>
-              <SelectItem value="premium">Premium</SelectItem>
-              <SelectItem value="circle-act">Circle act</SelectItem>
+              {Object.entries(PERMIT_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

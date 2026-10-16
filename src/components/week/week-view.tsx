@@ -91,7 +91,7 @@ export function WeekView({ initialPlan, request, exampleId, faults }: Props) {
           <Label htmlFor="max-sessions">Sessions this week</Label>
           <Select value={String(request.limits.maxSessions)} onValueChange={(v) => navigate({ ...request, limits: { ...request.limits, maxSessions: Number(v) } })}>
             <SelectTrigger id="max-sessions" className="w-28">
-              <SelectValue />
+              <SelectValue>{request.limits.maxSessions}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {[1, 2, 3, 4, 5].map((n) => (
@@ -106,7 +106,7 @@ export function WeekView({ initialPlan, request, exampleId, faults }: Props) {
           <Label htmlFor="per-day">Per day</Label>
           <Select value={String(request.limits.maxPerDay)} onValueChange={(v) => navigate({ ...request, limits: { ...request.limits, maxPerDay: Number(v) } })}>
             <SelectTrigger id="per-day" className="w-28">
-              <SelectValue />
+              <SelectValue>{request.limits.maxPerDay}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {[1, 2, 3, 4].map((n) => (

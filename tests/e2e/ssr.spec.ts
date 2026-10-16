@@ -16,7 +16,8 @@ test.describe("server HTML (B-006)", () => {
     expect(html).toMatch(/<button[^>]*role="radio"[^>]*aria-checked="true"[^>]*value="general"|<button[^>]*value="general"[^>]*aria-checked="true"/);
   });
 
-  test("the week limits show their values before hydration", async ({ request }) => {
+  // Week planner removed (user, 17 Oct)
+  test.skip("the week limits show their values before hydration", async ({ request }) => {
     expect(await selectValues(request, "/week?example=folk-duo")).toEqual(["5", "1"]);
   });
 });

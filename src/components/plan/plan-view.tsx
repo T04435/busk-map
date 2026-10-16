@@ -27,7 +27,6 @@ import { FRESH_HEADER, PLAN_ID_HEADER } from "@/lib/plan-id";
 import { planStreamEventSchema, type Plan, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
 import type { ResearchTotals } from "@/lib/research-totals";
 import { formatHour, nightWord, slotEyebrow } from "@/lib/slot";
-import { weekSearchParams } from "@/lib/week-url";
 import { AgentStepStream, applyStreamEvent, type AgentStep, type FeedPhase, type RunUsage } from "./agent-steps";
 import { AgentVsEngine } from "./agent-vs-engine";
 import { CopyLink } from "./copy-link";
@@ -101,7 +100,7 @@ const AGENT_WAIT_MS = 110_000;
 const ranOutNote = (model: ExplanationsModel | null) => `${modelName(model, "start")} ran out of time, so these spots come straight from Busk Map's scores. The reasons are standard ones.`;
 const couldntNote = (model: ExplanationsModel | null) => `${modelName(model, "start")} couldn't finish, so these spots come straight from Busk Map's scores. The reasons are standard ones.`;
 
-export function PlanView({ initialPlan, heading, request, center, autoRun, exampleId, faults, shareId = null, replay = null, fresh = false }: Props) {
+export function PlanView({ initialPlan, heading, request, center, autoRun, faults, shareId = null, replay = null, fresh = false }: Props) {
   // A stored run starts the view finished: its plan, its steps (collapsed, as a replay) and its totals.
   const [stored] = useState(() => replayState(replay));
   const [plan, setPlan] = useState<Plan | null>(stored?.plan ?? initialPlan);
@@ -484,19 +483,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
         </p>
       )}
       <p className="m-0 text-sm font-bold">Busk Map never confirms a pitch is legal. Check your permit conditions on the day.</p>
-      <p className="m-0 flex flex-wrap gap-x-4 text-sm" data-testid="plan-links">
-        <Link
-          // No prefetch: prefetching /week builds a whole week plan on every plan view, about N+2 Qloo calls (one artist lookup per act artist, one heatmap, one places; docs/qloo-data-map.md).
-          className="inline-flex min-h-tap items-center font-bold text-foreground underline underline-offset-3 hover:decoration-2"
-          href={`/week?${weekSearchParams(
-            { city: request.city, permit: request.permit, performer: request.performer, startDate: request.slot.date, limits: { maxSessions: 5, maxPerDay: 1, unavailable: [] }, weights: request.weights },
-            exampleId,
-          )}`}
-          prefetch={false}
-        >
-          Plan my week instead
-        </Link>
-      </p>
     </section>
   ) : null;
 

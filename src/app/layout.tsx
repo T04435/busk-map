@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Atkinson_Hyperlegible_Next, Big_Shoulders, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AppHeader, AppHeaderView } from "@/components/honeycomb/app-header";
+import { HAS_BOTTOM_NAV } from "@/components/honeycomb/nav-items";
 import { MobileNav, MobileNavView } from "@/components/honeycomb/mobile-nav";
 import { SiteFooter, SiteFooterView } from "@/components/honeycomb/site-footer";
 
@@ -33,7 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en-AU" className={`${display.variable} ${sans.variable} ${mono.variable} h-full antialiased`}>
       {/* Under 721px the fixed bottom nav would cover the end of the page: pad by its height (plus the safe area). */}
-      <body className="flex min-h-full flex-col pb-[calc(var(--size-nav)+env(safe-area-inset-bottom))] min-[721px]:pb-0">
+      <body className={HAS_BOTTOM_NAV ? "flex min-h-full flex-col pb-[calc(var(--size-nav)+env(safe-area-inset-bottom))] min-[721px]:pb-0" : "flex min-h-full flex-col"}>
         <a
           href="#main"
           className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-2 focus-visible:left-2 focus-visible:z-[60] focus-visible:border-2 focus-visible:border-rule focus-visible:bg-card focus-visible:px-4 focus-visible:py-3 focus-visible:font-bold"

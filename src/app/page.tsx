@@ -155,17 +155,6 @@ export default function Home() {
             ))}
           </ul>
           <p className="m-0 text-sm text-muted-foreground">
-            Or plan a whole week:{" "}
-            {EXAMPLES.map((example, i) => (
-              <span key={example.id}>
-                {i > 0 && " · "}
-                <Link className="text-foreground underline underline-offset-3 hover:decoration-2" prefetch={false} href={`/week?example=${example.id}`}>
-                  Week: {example.label}
-                </Link>
-              </span>
-            ))}
-          </p>
-          <p className="m-0 text-sm text-muted-foreground">
             Planning for your own act?{" "}
             <Link className="font-bold text-foreground underline underline-offset-3 hover:decoration-2" href="/busks">
               Plan your busk

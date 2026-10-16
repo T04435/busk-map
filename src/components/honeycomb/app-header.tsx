@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "cn";
 import { Logo } from "@/components/honeycomb/logo";
-import { activeNavId, NAV_ITEMS } from "@/components/honeycomb/nav-items";
+import { activeNavId, HAS_BOTTOM_NAV, NAV_ITEMS } from "@/components/honeycomb/nav-items";
 
 /**
- * The header on every page: the lockup, and from 721px up the three destinations. Always bluestone with the 4px orange
+ * The header on every page: the lockup, and from 721px up the destinations (all widths while there is no bottom bar). Always bluestone with the 4px orange
  * rule under it, in day and night. The active item is boxed in orange and says `aria-current="page"`. Below 721px the
  * header is the compact bar (lockup only) and MobileNav carries the destinations at the bottom.
  */
@@ -18,7 +18,7 @@ export function AppHeaderView({ pathname }: { pathname: string | null }) {
       <Link href="/" aria-label="Busk Map home" className="flex h-tap items-center rounded-none focus-visible:ring-2 focus-visible:ring-[#f2ede4]">
         <Logo size={36} ground="dark" />
       </Link>
-      <nav aria-label="Main" className="hidden gap-1 min-[721px]:flex">
+      <nav aria-label="Main" className={cn("gap-1", HAS_BOTTOM_NAV ? "hidden min-[721px]:flex" : "flex")}>
         {NAV_ITEMS.map((item) => {
           const on = item.id === active;
           return (

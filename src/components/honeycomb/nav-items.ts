@@ -1,6 +1,6 @@
-import { CalendarDays, Brain, Map, type LucideIcon } from "lucide-react";
+import { Map, type LucideIcon } from "lucide-react";
 
-export type NavId = "busks" | "week" | "brain";
+export type NavId = "busks";
 
 export type NavItem = {
   id: NavId;
@@ -12,13 +12,11 @@ export type NavItem = {
 };
 
 /**
- * The three destinations (Busks, Week, Brain; Tips was removed from the app UI, a "rate your busks" feature comes later). Busks is the plan page and the form that starts it:
+ * The main nav holds features only, and Busks is the only one (Week was removed, Tips too, a "rate your busks" feature comes later; Brain and Brand live in the footer). Busks is the plan page and the form that starts it:
  * /busks, /plan and a stored busk at /p/<id> all light it up. There is no Setlist route.
  */
 export const NAV_ITEMS: readonly NavItem[] = [
   { id: "busks", label: "Busks", href: "/busks", icon: Map, match: ["/busks", "/plan", "/p"] },
-  { id: "week", label: "Week", href: "/week", icon: CalendarDays, match: ["/week"] },
-  { id: "brain", label: "Brain", href: "/brain", icon: Brain, match: ["/brain"] },
 ];
 
 /** Which item a pathname belongs to, or null (the landing page, not-found pages) when none does. */
@@ -30,3 +28,6 @@ export function activeNavId(pathname: string | null | undefined): NavId | null {
   }
   return null;
 }
+
+/** The bottom bar needs two or more items; with one, the header carries it on every width and nothing is padded for a bar. */
+export const HAS_BOTTOM_NAV = NAV_ITEMS.length > 1;

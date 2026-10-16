@@ -75,12 +75,8 @@ describe("RankTile and LeanBar", () => {
 });
 
 describe("navigation", () => {
-  it("has the three destinations, in order", () => {
-    expect(NAV_ITEMS.map((i) => [i.label, i.href])).toEqual([
-      ["Busks", "/busks"],
-      ["Week", "/week"],
-      ["Brain", "/brain"],
-    ]);
+  it("holds features only: Busks (Week removed, Brain lives in the footer)", () => {
+    expect(NAV_ITEMS.map((i) => [i.label, i.href])).toEqual([["Busks", "/busks"]]);
   });
 
   it("maps paths to the active item (the plan pages are Busks; the landing has none)", () => {
@@ -89,26 +85,24 @@ describe("navigation", () => {
     expect(activeNavId("/busks")).toBe("busks");
     expect(activeNavId("/plan")).toBe("busks");
     expect(activeNavId("/p/abc123")).toBe("busks");
-    expect(activeNavId("/week")).toBe("week");
-    expect(activeNavId("/brain/")).toBe("brain");
+    expect(activeNavId("/week")).toBeNull();
+    expect(activeNavId("/brain/")).toBeNull();
     expect(activeNavId("/tips")).toBeNull();
     expect(activeNavId("/pitchfork")).toBeNull();
   });
 
-  for (const [name, View] of [
-    ["AppHeader", AppHeaderView],
-    ["MobileNav", MobileNavView],
-  ] as const) {
-    it(`${name} marks exactly the current page with aria-current`, () => {
-      const out = html(createElement(View, { pathname: "/week" }));
-      expect(out.match(/aria-current="page"/g)).toHaveLength(1);
-      expect(out).toMatch(/aria-current="page"[^>]*>(?:(?!<\/a>).)*Week/);
-      expect(out).toContain('aria-label="Main"');
-      for (const href of ["/busks", "/week", "/brain"]) expect(out).toContain(`href="${href}"`);
-    });
+  it("AppHeader marks Busks with aria-current on a plan page, and nothing on /brain", () => {
+    const out = html(createElement(AppHeaderView, { pathname: "/plan" }));
+    expect(out.match(/aria-current="page"/g)).toHaveLength(1);
+    expect(out).toMatch(/aria-current="page"[^>]*>(?:(?!<\/a>).)*Busks/);
+    expect(out).toContain('aria-label="Main"');
+    expect(out).toContain('href="/busks"');
+    for (const href of ["/week", "/brain"]) expect(out).not.toContain(`href="${href}"`);
+    expect(html(createElement(AppHeaderView, { pathname: "/brain" }))).not.toContain("aria-current");
+    expect(html(createElement(AppHeaderView, { pathname: "/" }))).not.toContain("aria-current");
+  });
 
-    it(`${name} marks nothing on the landing page`, () => {
-      expect(html(createElement(View, { pathname: "/" }))).not.toContain("aria-current");
-    });
-  }
+  it("MobileNav renders nothing while the main nav has one item", () => {
+    expect(html(createElement(MobileNavView, { pathname: "/busks" }))).toBe("");
+  });
 });

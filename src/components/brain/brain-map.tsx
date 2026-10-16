@@ -314,7 +314,7 @@ function IdlePanel() {
       <ul className="m-0 mt-2 flex list-none flex-col gap-1.5 p-0 text-sm leading-5">
         {[
           ["Setlist and learn these", "four Qloo calls and Spotify meet in your setlist"],
-          ["Taste heatmap", "one call that shapes the map, the ranking and the week"],
+          ["Taste heatmap", "one call that shapes the map and the ranking"],
         ].map(([name, what]) => (
           <li key={name} className="flex gap-2">
             <span aria-hidden="true" className="mt-[3px] h-3.5 w-2 shrink-0 bg-primary [clip-path:polygon(0_0,50%_0,100%_50%,50%_100%,0_100%)]" />

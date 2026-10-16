@@ -238,18 +238,6 @@ const PAGES: PageCase[] = [
     },
   },
   {
-    name: "week",
-    open: async (page) => {
-      await page.goto("/week?example=sax");
-      await expect(page.getByRole("heading", { level: 1, name: /^Plan my week/ })).toBeVisible();
-      await expect(page.getByRole("region", { name: "Week grid" })).toBeVisible();
-    },
-    controls: async (page) => {
-      await expectOnTop(page.locator("#max-sessions"), "Max sessions");
-      await expectOnTop(page.locator("#per-day"), "Per day");
-    },
-  },
-  {
     name: "brain",
     open: async (page) => {
       await page.goto("/brain");

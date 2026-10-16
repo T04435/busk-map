@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, CalendarDays } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CityPicker } from "@/components/forms/city-picker";
@@ -14,7 +14,6 @@ import { Label } from "@/components/ui/label";
 import { fieldLabel, planFormError } from "@/lib/form-errors";
 import { planRequestSchema, type PlanRequest, type PlanRequestInput } from "@/lib/plan-schema";
 import { planSearchParams } from "@/lib/plan-url";
-import { weekSearchParams } from "@/lib/week-url";
 import { ArtistPicker, typedArtists, type PickedArtist } from "./artist-picker";
 import { RepertoirePicker, type PickedSong } from "./repertoire-picker";
 
@@ -96,7 +95,6 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const target = (event.nativeEvent as SubmitEvent).submitter?.getAttribute("value") === "week" ? "week" : "plan";
     const parsedSongs = [
       ...picked.map((p) => ({ title: p.title, artist: p.artist, own: p.own, ...(p.durationMs ? { durationMs: p.durationMs } : {}) })),
     ];
@@ -125,11 +123,6 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
       return;
     }
     setError(null);
-    if (target === "week") {
-      const { slot: planSlot, ...rest } = result.data;
-      router.push(`/week?${weekSearchParams({ ...rest, startDate: planSlot.date, limits: { maxSessions: 5, maxPerDay: 1, unavailable: [] } }, null)}`);
-      return;
-    }
     void openPlan(result.data);
   }
 
@@ -193,10 +186,6 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
         <Button type="submit" value="plan" size="lg" disabled={submitting}>
           Plan my busk
           <ArrowRight aria-hidden="true" />
-        </Button>
-        <Button type="submit" value="week" variant="outline" size="lg">
-          <CalendarDays aria-hidden="true" />
-          Plan my week from this date
         </Button>
       </div>
     </form>

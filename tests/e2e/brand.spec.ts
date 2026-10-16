@@ -21,7 +21,7 @@ test.describe("brand page", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/brand");
     const section = page.locator("#components");
-    for (const h of ["Controls", "Feedback and honesty", "Plan your busk", "Map", "The busk", "Research", "Week", "States and app shell"]) await expect(section.getByRole("heading", { level: 3, name: h, exact: true })).toBeVisible();
+    for (const h of ["Controls", "Feedback and honesty", "Plan your busk", "Map", "The busk", "Research", "States and app shell"]) await expect(section.getByRole("heading", { level: 3, name: h, exact: true })).toBeVisible();
     await expect(section).toContainText(/\d+ reusable components in the design system, grouped/);
     expect(await page.locator("main").innerText()).not.toContain(",,");
     expect(await page.locator("main").innerText()).not.toMatch(/\bTips?\b|Melbourne/);

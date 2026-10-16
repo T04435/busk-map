@@ -303,8 +303,7 @@
 @utility opacity-disabled { opacity: 0.5; }
 
 /* Height of the fixed bottom nav (phones, under 768px): sticky bars and scroll padding sit above it. */
-:root { --bottom-nav: calc(var(--size-nav) + env(safe-area-inset-bottom)); }
-@media (min-width: 768px) { :root { --bottom-nav: 0px; } }
+:root { --bottom-nav: 0px; } /* no bottom bar while the main nav has one item (Busks); restore calc(var(--size-nav) + env(safe-area-inset-bottom)) under 768px with two or more */
 html { scroll-padding-bottom: var(--bottom-nav); }
 
 /* Orange fills carry a 2px rule by day; at night the rule drops (the fill is its own edge). */

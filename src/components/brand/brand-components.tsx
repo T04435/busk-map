@@ -21,7 +21,6 @@ import { NoteCard } from "@/components/honeycomb/note-card";
 import { PercentCell } from "@/components/honeycomb/percent-cell";
 import { PitchRow } from "@/components/honeycomb/pitch-row";
 import { PlanAlert } from "@/components/honeycomb/plan-alert";
-import { RankTile } from "@/components/honeycomb/rank-tile";
 import { ResearchFunnel } from "@/components/honeycomb/research-funnel";
 import { StatStrip } from "@/components/honeycomb/stat-strip";
 import { WeatherStrip } from "@/components/plan/weather-strip";
@@ -61,7 +60,7 @@ export function ComponentGroups() {
       <Group title="Controls" names={COMPONENT_GROUPS.controls}>
         <div className="flex flex-wrap items-center gap-2.5">
           <Button>Plan my busk <ArrowRight aria-hidden="true" /></Button>
-          <Button variant="outline"><Calendar aria-hidden="true" />Week</Button>
+          <Button variant="outline"><Calendar aria-hidden="true" />Pick a date</Button>
           <Button variant="ghost">Cancel</Button>
           <Button variant="secondary">Secondary</Button>
           <Button variant="destructive">Delete</Button>
@@ -133,19 +132,6 @@ export function ComponentGroups() {
           live={false}
           picks={3}
         />
-      </Group>
-
-      <Group title="Week" names={COMPONENT_GROUPS.week}>
-        <div className="flex gap-3 border-2 border-rule bg-popover p-3">
-          <RankTile n={1} />
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-            <span className="font-mono text-xs text-muted-foreground">Sat 18 Oct · 6–9 pm</span>
-            <b className="font-display text-[22px] leading-none font-extrabold uppercase">Southbank Promenade</b>
-            <span>The footy crowd walks the river after the game.</span>
-            <span><DiscoveryBadge discovery="hidden-gem" /></span>
-          </div>
-          <PercentCell value={88} size={44} label="Score" />
-        </div>
       </Group>
 
       <Group title="States and app shell" names={COMPONENT_GROUPS.shell}>

@@ -1,6 +1,7 @@
 import { EXPLANATIONS_LABEL, expect, LOCAL, openDetails, test, waitForPlan } from "./fixtures";
 
-test.describe("week planner", () => {
+// Week planner removed (user, 17 Oct): the page is gone; the server logic stays, unreachable.
+test.describe.skip("week planner", () => {
   test("an example's week: top sessions, the grid and the calendar export", async ({ page, request }) => {
     await page.goto("/");
     await page.getByRole("link", { name: "Week: Soul and funk sax player" }).click();

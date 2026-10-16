@@ -24,7 +24,6 @@ export const SCREENS: ScreenRow[] = [
   { name: "Route error", route: "error.tsx", shows: "\"Something went wrong\", with its reference" },
   { name: "Global error", route: "global-error.tsx", shows: "No layout and no brand fonts" },
   { name: "This deck", route: "/brand", shows: "Honeycomb, the brand and design deck" },
-  { name: "Week planner", route: "/week", shows: "Your planned busks by day" },
 ];
 
 export type KitRow = { name: string; size: string; file: string; src: string };
@@ -53,7 +52,6 @@ export const COMPONENT_GROUPS = {
   map: ["TasteMap", "TasteMapLegend", "PitchPin", "MapPlaceholder", "PlanMap"],
   busk: ["PitchRow", "PitchCard", "DiscoveryBadge", "BothAgreeBadge", "ScoreBreakdown", "WeightsPanel", "CrowdPanel", "MeterBar", "LeanBar", "EvidenceLine", "SetlistPanel", "WeatherStrip", "FootfallSparkline", "CopyLinkButton", "SlotPassed"],
   research: ["ResearchFunnel", "AgentStepStream", "AgentVsEngine", "StepData", "ComparePanel"],
-  week: ["WeekGrid", "WeekDayCard", "SessionCard"],
   shell: ["Logo", "Icon", "HexCell", "PercentCell", "ScoreRing", "ScoreBlock", "RankTile", "Loader", "Skeleton", "Card", "EmptyState", "ErrorState", "PlanNotFound", "AppHeader", "MobileNav", "BrandHoneycomb"],
 } as const;
 

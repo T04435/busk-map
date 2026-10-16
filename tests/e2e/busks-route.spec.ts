@@ -31,13 +31,14 @@ test.describe("/busks", () => {
     await expect(form.getByRole("combobox", { name: "To" })).toContainText("3 pm");
   });
 
-  test("phones get the compact header with the logo, and the bottom nav", async ({ page }) => {
+  test("phones get the compact header with the logo and the Busks item; no bottom bar for one item", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/busks");
     // Streaming leaves the Suspense fallback header beside the real one for a moment: wait for one.
     await expect(page.locator('[data-slot="app-header"]')).toHaveCount(1);
     await expect(page.locator('[data-slot="app-header"]')).toBeVisible();
-    await expect(page.locator('[data-slot="app-header"] nav')).toBeHidden();
-    await expect(page.locator("[data-mobile-nav]")).toBeVisible();
+    await expect(page.locator('[data-slot="app-header"] nav').getByRole("link", { name: "Busks" })).toBeVisible();
+    await expect(page.locator("[data-mobile-nav]")).toHaveCount(0);
+    expect(await page.evaluate(() => getComputedStyle(document.body).paddingBottom)).toBe("0px");
   });
 });

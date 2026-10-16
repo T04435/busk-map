@@ -89,7 +89,7 @@ const prefillSongs = (prefill: FormPrefill | undefined): PickedSong[] =>
 /** The Repertoire as the form's fields (docs/playlist-architecture.md §3.1): name, sounds-like artists, songs. */
 const repertoireFields = (view: PlaylistView) => ({
   name: view.actName ?? "",
-  artists: view.soundsLike.map((a): PickedArtist => ({ name: a.name, spotifyId: a.spotifyId ?? null, image: null })),
+  artists: view.soundsLike.map((a): PickedArtist => ({ name: a.name, spotifyId: a.spotifyId ?? null, qlooId: a.qlooId ?? null, image: null })),
   picked: view.songs.map(
     (song): PickedSong => ({ key: `rep-${song.id}`, title: song.title, artist: song.artist, album: null, image: null, durationMs: song.durationMs, own: song.own }),
   ),
@@ -244,7 +244,7 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
     const result = await savePlaylist({
       revision: rep.revision,
       actName: clean(name) || null,
-      soundsLike: chosen.slice(0, 10).map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}) })),
+      soundsLike: chosen.slice(0, 10).map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.qlooId ? { qlooId: a.qlooId } : {}) })),
       spotifyArtistId: profileId,
     });
     if (result.ok && result.playlist) {

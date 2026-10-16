@@ -50,9 +50,11 @@ export const entitySchema = z.object({
       description: z.unknown().optional(),
       /** Live /search and /entities: other services' ids; Last.fm adds listener counts. */
       external: z
-        .object({ lastfm: z.object({ listeners: numeric.optional() }).loose().optional() })
+        .object({ lastfm: z.object({ listeners: numeric.optional() }).loose().optional(), spotify: z.object({ id: z.string().optional() }).loose().optional() })
         .loose()
         .optional(),
+      /** Artist photo (live /entities and /search; insights results sometimes), when Qloo has one. */
+      image: z.object({ url: z.string().optional() }).loose().nullish(),
     })
     .loose()
     .optional(),
@@ -60,7 +62,7 @@ export const entitySchema = z.object({
   tags: z.array(tagSchema).nullish(),
   /** Insights results: other services' ids as lists; Last.fm entries carry listener counts. */
   external: z
-    .object({ lastfm: z.array(z.object({ listeners: numeric.optional() }).loose()).optional() })
+    .object({ lastfm: z.array(z.object({ listeners: numeric.optional() }).loose()).optional(), spotify: z.array(z.object({ id: z.string().optional() }).loose()).optional() })
     .loose()
     .optional(),
   query: z
@@ -207,6 +209,10 @@ export type QlooEntity = {
   affinity: number | null;
   /** Qloo's audience_growth measurement (insights results), when sent. */
   audienceGrowth: number | null;
+  /** The artist's Spotify id (Qloo's external ids), when sent. */
+  spotifyId?: string | null;
+  /** The artist's photo URL, when Qloo sends one. */
+  image?: string | null;
   tags: { id: string; name: string }[];
   /** Input entities that drove this result (feature.explainability). */
   explanation: Explanation[];

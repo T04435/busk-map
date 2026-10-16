@@ -62,6 +62,13 @@ export async function soundsLikeFor(playlist: PlaylistRecord, context: AdapterCo
   const artists = result.data.artists
     .filter((a) => a.id !== playlist.qlooArtistId && nameKey(a.name) !== own)
     .slice(0, SOUNDS_LIKE_TAKE)
-    .map((a) => ({ name: a.name, qlooId: a.id }));
+    .map((a) => ({
+      name: a.name,
+      qlooId: a.id,
+      // Qloo's external ids carry the Spotify artist when it has one; otherwise none (the chip says "Qloo", never "typed").
+      ...(a.spotifyId && /^[A-Za-z0-9]{22}$/.test(a.spotifyId) ? { spotifyId: a.spotifyId } : {}),
+      ...(a.image && /^https:\/\//.test(a.image) ? { image: a.image } : {}),
+      ...(a.tags.length > 0 ? { tags: a.tags.slice(0, 3).map((t) => t.name) } : {}),
+    }));
   return { status: "ok", artists };
 }

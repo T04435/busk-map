@@ -11,8 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { formatCount, MIN_QUERY_CHARS } from "@/lib/live-search";
 
-/** An artist chip: picked from Spotify (with its id), or typed as free text (id null). */
-export type PickedArtist = { name: string; spotifyId: string | null; image: string | null };
+/** An artist chip: picked from Spotify (with its id), suggested by Qloo (qlooId, and a spotifyId when Qloo has one), or typed as free text (both null). */
+export type PickedArtist = { name: string; spotifyId: string | null; image: string | null; qlooId?: string | null };
+
+/** Where a chip came from: Spotify's search, Qloo's suggestions (no Spotify id), or typed text. */
+export const artistSource = (artist: Pick<PickedArtist, "spotifyId" | "qlooId">): "spotify" | "qloo" | "typed" => (artist.spotifyId ? "spotify" : artist.qlooId ? "qloo" : "typed");
 
 export const MAX_PICKED_ARTISTS = 10;
 const LABEL = "Artists you sound like";
@@ -64,7 +67,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
       const existing = next.findIndex((a) => a.name.toLowerCase() === artist.name.toLowerCase());
       // A Spotify pick upgrades a typed chip of the same name.
       if (existing === -1) next.push(artist);
-      else if (!next[existing].spotifyId && artist.spotifyId) next[existing] = artist;
+      else if (!next[existing].spotifyId && artist.spotifyId) next[existing] = { ...artist, qlooId: artist.qlooId ?? next[existing].qlooId ?? null };
     }
     onChange(next);
   }
@@ -111,7 +114,9 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
               <span className="min-w-0 flex-1 truncate font-bold" title={artist.name}>
                 {artist.name}
               </span>
-              {!artist.spotifyId && <span className="shrink-0 font-mono text-[11px] leading-4 font-medium tracking-[0.06em] text-muted-foreground uppercase">Typed</span>}
+              {artistSource(artist) !== "spotify" && (
+                <span className="shrink-0 font-mono text-[11px] leading-4 font-medium tracking-[0.06em] text-muted-foreground uppercase">{artistSource(artist) === "qloo" ? "Qloo" : "Typed"}</span>
+              )}
               <Button
                 type="button"
                 variant="ghost"

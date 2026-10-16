@@ -8,12 +8,12 @@ import type { SoundsLikeSuggestions } from "@/lib/playlist-schema";
 import { MAX_PICKED_ARTISTS, type PickedArtist } from "@/components/landing/artist-picker";
 import { loadSoundsLike } from "./playlist-api";
 
-/** The picker's list with suggestions added (skipping ones it already has, up to the picker's maximum). Typed-style chips: Qloo's names carry no Spotify id. */
-export function withSuggested(current: PickedArtist[], add: readonly { name: string }[]): PickedArtist[] {
+/** The picker's list with suggestions added (skipping ones it already has, up to the picker's maximum). A suggestion keeps its Spotify id (when Qloo has one) and its Qloo id, so it is never shown as typed. */
+export function withSuggested(current: PickedArtist[], add: readonly { name: string; spotifyId?: string; qlooId?: string; image?: string }[]): PickedArtist[] {
   const next = [...current];
-  for (const { name } of add) {
+  for (const { name, spotifyId, qlooId, image } of add) {
     if (next.length >= MAX_PICKED_ARTISTS) break;
-    if (!next.some((a) => a.name.toLowerCase() === name.toLowerCase())) next.push({ name, spotifyId: null, image: null });
+    if (!next.some((a) => a.name.toLowerCase() === name.toLowerCase())) next.push({ name, spotifyId: spotifyId ?? null, qlooId: qlooId ?? null, image: image ?? null });
   }
   return next;
 }

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { profilePhoto } from "@/components/playlist/profile-header";
+import { artistSource } from "@/components/landing/artist-picker";
 import { withSuggested } from "@/components/playlist/sounds-like-suggestions";
 import { CATALOG } from "@/server/qloo-mock/catalog";
 import { json, LIVE, mockFetch, OFFLINE, route } from "../../helpers";
@@ -46,6 +47,8 @@ describe("Spotify profile and Qloo sounds-like on the Repertoire (offline)", () 
     expect(sounds.status).toBe("ok");
     expect(sounds.artists.length).toBeGreaterThan(0);
     expect(sounds.artists.length).toBeLessThanOrEqual(10);
+    // Every suggestion carries its Qloo id and the Spotify id from Qloo's external ids (the mock sends them), so none shows as typed.
+    for (const a of sounds.artists) expect(a).toMatchObject({ qlooId: expect.any(String), spotifyId: expect.stringMatching(/^[A-Za-z0-9]{22}$/) });
     expect(sounds.artists.map((a: { name: string }) => a.name)).not.toContain(KNOWN.name);
     // The user's own picks are never touched.
     expect(body.playlist.soundsLike).toEqual([]);
@@ -125,6 +128,12 @@ describe("profile pieces", () => {
     const added = withSuggested(picks, [{ name: "paul kelly" }, { name: "Courtney Barnett" }]);
     expect(added.map((a) => a.name)).toEqual(["Paul Kelly", "Courtney Barnett"]);
     expect(added[0].spotifyId).toBe("x");
+    const kept = withSuggested([], [{ name: "50 Cent", qlooId: "q1", spotifyId: "s".repeat(22) }, { name: "No Spotify", qlooId: "q2" }]);
+    expect(kept[0]).toMatchObject({ spotifyId: "s".repeat(22), qlooId: "q1" });
+    expect(kept[1]).toMatchObject({ spotifyId: null, qlooId: "q2" });
+    expect(artistSource(kept[0])).toBe("spotify");
+    expect(artistSource(kept[1])).toBe("qloo");
+    expect(artistSource({ spotifyId: null })).toBe("typed");
     const many = withSuggested([], Array.from({ length: 14 }, (_, i) => ({ name: `A${i}` })));
     expect(many).toHaveLength(10);
   });

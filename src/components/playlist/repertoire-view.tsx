@@ -74,7 +74,7 @@ export function RepertoireView() {
 
   function fillAct(view: PlaylistView) {
     setActName(view.actName ?? "");
-    setActArtists(view.soundsLike.map((a): PickedArtist => ({ name: a.name, spotifyId: a.spotifyId ?? null, image: null })));
+    setActArtists(view.soundsLike.map((a): PickedArtist => ({ name: a.name, spotifyId: a.spotifyId ?? null, qlooId: a.qlooId ?? null, image: null })));
     setArtistQuery("");
   }
 
@@ -174,7 +174,7 @@ export function RepertoireView() {
   async function saveAct() {
     const act = {
       actName: actName.replace(/\s+/g, " ").trim() || null,
-      soundsLike: chosenArtists().map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}) })),
+      soundsLike: chosenArtists().map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.qlooId ? { qlooId: a.qlooId } : {}) })),
     };
     const ok = await run(() => (playlist ? savePlaylist({ revision: playlist.revision, ...act }) : createPlaylist(act)), COPY.act.savedPage);
     if (ok) setArtistQuery("");

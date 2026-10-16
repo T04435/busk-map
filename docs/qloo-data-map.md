@@ -89,7 +89,7 @@ What the 33 cold calls are made of:
 
 The count depends on which tools Claude chooses, so live runs vary. The mock planner calls more tools than the 16 Oct runs did.
 
-**The week planner** (`week.ts`) makes about N+2 calls: N `/search` or `/entities`, one heatmap and one places call (no `filter.hours`). It isn't counted in `researchTotals`. A comment in `plan-view.tsx` says "about 47 Qloo calls" for a week plan. That doesn't match the code path above (uncertain, likely stale).
+**The week planner** (`week.ts`) makes about N+2 calls: N `/search` or `/entities`, one heatmap and one places call (no `filter.hours`). It isn't counted in `researchTotals`. The no-prefetch comment on the week link in `plan-view.tsx` gives the same count ("about N+2 Qloo calls": one artist lookup per act artist, one heatmap, one places). The one heatmap and one places answer are reused for every slot of the week, which is why /brain lists the week planner under taste cells and open places.
 
 **Quota.** 10,000 requests a month per key, at 5 a second. At 24–33 calls per cold busk, that is roughly 300–400 cold busks a month. Cached reruns cost nothing.
 

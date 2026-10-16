@@ -2,17 +2,19 @@
 
 import { ChevronRightIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AgentSteps } from "@/components/plan/agent-steps";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { applyLearnEvent, emptyLive, type LearnLive } from "@/lib/learn-live";
 import type { LearnEnd, LearnListView, LearnRunView, LearnStreamEvent } from "@/lib/learn-schema";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import type { LearnSuggestionView } from "@/lib/playlist-schema";
 import { joinLearn, loadLearn, patchSuggestion, pageFaults, startLearn, type Refusal } from "./learn-api";
+import { LearnFeed } from "./learn-feed";
 import { LearnSongCard } from "./learn-song-card";
 
 const COPY = PLAYLIST_COPY.learn;
@@ -30,51 +32,6 @@ type Notice =
 
 const whenOf = (iso: string) => new Date(iso).toLocaleString("en-AU", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 const dayOf = (iso: string) => new Date(iso).toLocaleDateString("en-AU", { day: "numeric", month: "short" });
-
-/** The funnel of a run: what it looked at and what it left out, with Qloo's request count. */
-function Totals({ live }: { live: LearnLive }) {
-  const t = live.totals;
-  const items: [keyof typeof COPY.totals, number][] = [
-    ["artists", t.artists],
-    ["crowds", t.crowds],
-    ["liked", t.liked],
-    ["songsChecked", t.songsChecked],
-    ["alreadySuggested", t.alreadySuggested],
-    ["dismissedSkipped", t.dismissedSkipped],
-    ["alreadyKnown", t.alreadyKnown],
-    ["newSongs", t.newSongs],
-    ["qlooCalls", t.qlooCalls],
-    ["qlooCacheHits", t.qlooCacheHits],
-  ];
-  return (
-    <div data-testid="learn-totals" className="space-y-1">
-      <h4 className="text-sm font-medium">{COPY.totalsHeading}</h4>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-5">
-        {items.map(([key, value]) => (
-          <div key={key} className="flex items-baseline gap-1.5" data-total={key}>
-            <dt className="order-2 text-muted-foreground">{COPY.totals[key]}</dt>
-            <dd className="order-1 font-medium tabular-nums">{value}</dd>
-          </div>
-        ))}
-      </dl>
-    </div>
-  );
-}
-
-function RunFeed({ live, heading, running }: { live: LearnLive; heading: string; running: boolean }) {
-  return (
-    <div className="space-y-3 rounded-lg border p-4" data-testid="learn-run" data-run={live.number ?? ""} data-replay={live.replay ? "true" : "false"}>
-      <h3 className="text-base font-semibold">
-        {heading}
-        {live.replay && <span className="ml-2 text-sm font-normal text-muted-foreground">(replay)</span>}
-      </h3>
-      {live.status && <p className="text-sm text-muted-foreground">{live.status}</p>}
-      <Totals live={live} />
-      <AgentSteps steps={live.steps} model={live.model} kind="learn" label="Learn run steps" />
-      {running && live.steps.length === 0 && <Skeleton className="h-10 w-full" />}
-    </div>
-  );
-}
 
 /** How a finished run reads on the run bar. */
 function EndNotice({ end }: { end: LearnEnd }) {
@@ -163,6 +120,7 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
   const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
   const [replays, setReplays] = useState<Record<string, { live: LearnLive | null; state: "loading" | "open" | "failed" }>>({});
+  const [raw, setRaw] = useState(false);
   const [filter, setFilter] = useState<LearnFilter>("all");
   const [folds, setFolds] = useState<Record<string, boolean>>({});
   const focusAfter = useRef<string | null>(null);
@@ -344,6 +302,14 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
             </Button>
             {limit && !running && !limited && <span className="text-sm text-muted-foreground">{COPY.runsLeft(limit.remaining)}</span>}
           </div>
+          {(live || (list && list.runs.length > 0)) && (
+            <div className="flex items-center gap-2">
+              <Switch id="learn-raw" checked={raw} onCheckedChange={setRaw} data-testid="learn-raw-switch" />
+              <Label htmlFor="learn-raw" className="text-sm font-normal">
+                {COPY.showRaw}
+              </Label>
+            </div>
+          )}
 
           {reason && (
             <p className="text-sm text-muted-foreground" data-testid="learn-reason">
@@ -407,7 +373,8 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
           )}
           {live?.end && !running && <EndNotice end={live.end} />}
 
-          {live && (running || live.steps.length > 0) && <RunFeed live={live} heading={live.number ? COPY.runHeading(live.number) : COPY.starting} running={running} />}
+          {/* While a run is going the feed is the main view; once it has finished it moves under the list (below). */}
+          {live && (running || !live.end) && <LearnFeed live={live} heading={live.number ? COPY.runHeading(live.number) : COPY.starting} running={running} raw={raw} />}
         </div>
       )}
 
@@ -466,7 +433,7 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
               )}
               {open?.state === "loading" && <p className="text-sm text-muted-foreground">{COPY.replayLoading}</p>}
               {open?.state === "failed" && <p className="text-sm text-destructive">{COPY.replayFailed}</p>}
-              {open?.state === "open" && open.live && <RunFeed live={open.live} heading={`${COPY.runHeading(run!.number)}: ${COPY.stepsHeading}`} running={false} />}
+              {open?.state === "open" && open.live && <LearnFeed live={open.live} heading={`${COPY.runHeading(run!.number)}: ${COPY.stepsHeading}`} running={false} raw={raw} />}
               {shown.length > 0 ? (
                 <ul aria-label={group.title} className="divide-y">
                   {shown.map((song) => (
@@ -497,6 +464,20 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
           </Collapsible>
         );
       })}
+
+      {live && live.end && !running && live.steps.length > 0 && (
+        <Collapsible className="space-y-2" data-testid="learn-how-found">
+          <CollapsibleTrigger asChild>
+            <Button type="button" variant="ghost" size="sm" className="group -ml-2 h-auto px-2 py-1 text-base font-semibold">
+              <ChevronRightIcon aria-hidden className="transition-transform group-data-[state=open]:rotate-90" />
+              {COPY.howFound}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <LearnFeed live={live} heading={live.number ? COPY.runHeading(live.number) : COPY.starting} running={false} raw={raw} />
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </section>
   );
 }

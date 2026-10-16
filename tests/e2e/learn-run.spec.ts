@@ -26,6 +26,13 @@ const section = (page: Page) => page.getByTestId("learn-section");
 const findButton = (page: Page, name: "Find songs to learn" | "Find more songs to learn" = "Find songs to learn") => section(page).getByRole("button", { name, exact: true });
 const group = (page: Page, run: number) => section(page).locator(`[data-testid="learn-group"][data-run="${run}"]`);
 const cards = (scope: import("@playwright/test").Locator) => scope.getByTestId("learn-card");
+const howFound = (page: Page) => section(page).getByTestId("learn-how-found");
+/** Once a run has finished its feed is folded under the list: open it. */
+async function openHowFound(page: Page) {
+  const trigger = howFound(page).getByRole("button", { name: "How we found these songs" });
+  if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
+  return howFound(page).getByTestId("learn-feed");
+}
 /** Songs are identified by title and artist: the mock's catalogue repeats titles across artists. */
 const keysOf = async (scope: import("@playwright/test").Locator) => (await cards(scope).evaluateAll((els) => els.map((e) => `${e.getAttribute("data-artist")} | ${e.getAttribute("data-song")}`))).sort();
 const cardAt = (scope: import("@playwright/test").Locator, i: number) => cards(scope).nth(i);
@@ -57,26 +64,54 @@ test.describe("Songs to learn: a learn run (offline)", () => {
     await expect(section(page).getByText("3 runs left this hour")).toBeVisible();
 
     await findButton(page).click();
-    // The steps stream under the button, in the plan's step view, with the learn labels.
-    const feed = section(page).getByTestId("learn-run");
-    await expect(feed.getByRole("list", { name: "Learn run steps" })).toBeVisible();
     await expect(section(page).getByTestId("learn-end")).toHaveAttribute("data-state", "done");
+    // Finished: the feed is folded under the list, in plain words, newest first, with no step numbers or tool names.
+    await expect(section(page).getByTestId("learn-run")).toHaveCount(0);
+    const feed = await openHowFound(page);
     const steps = feed.getByRole("list", { name: "Learn run steps" });
-    for (const label of ["Matching your songs on Qloo", "Reading your earlier runs", "Artists your fans also like", "Who the crowd likes at your pitch", "Who's rising with those crowds", "Top songs by those artists", "Choosing and explaining"]) {
-      await expect(steps.getByText(label, { exact: true })).toBeVisible();
-    }
-    await expect(steps.getByTestId("agent-step").first()).toContainText("match_playlist");
-    // The notes are by the test model, and the finishing step is not marked rejected.
+    await expect(steps).toBeVisible();
+    const order = await steps.getByTestId("agent-step").evaluateAll((els) => els.map((e) => e.getAttribute("data-tool")).filter(Boolean));
+    expect(order[0]).toBe("finish_suggestions");
+    expect(order.at(-1)).toBe("match_playlist");
+    expect(order.slice(-2)).toEqual(["history", "match_playlist"]);
+    const stepText = (tool: string) => steps.locator(`[data-tool="${tool}"]`);
+    await expect(stepText("match_playlist")).toContainText("Matched your 5 songs to 4 artists on Qloo");
+    await expect(stepText("history")).toContainText("No earlier runs: this is your first");
+    await expect(stepText("related_artists")).toContainText(/Found \d+ artists your fans also like/);
+    await expect(stepText("crowd_at")).toContainText(/Read the crowd at /);
+    await expect(stepText("top_tracks")).toContainText(/Picked top tracks on /);
+    await expect(stepText("finish_suggestions")).toContainText(/Ranked \d+ songs and wrote why/);
     await expect(steps.getByTestId("agent-note-text").first()).toContainText("Test model:");
-    await expect(steps.locator('[data-tool="finish_suggestions"]')).toContainText("done");
-    // The funnel
+    await expect(stepText("finish_suggestions")).toHaveAttribute("data-status", "done");
+    await expect(stepText("finish_suggestions")).not.toContainText("rejected");
+    // Raw data stays hidden: no tool names, Qloo endpoints, ids or JSON, and no step numbers.
+    const plainText = await feed.innerText();
+    expect(plainText).not.toMatch(/match_playlist|related_artists|crowd_at|top_tracks|finish_suggestions|\/v2\/|urn:entity|[{}]|"[a-zA-Z]+":/);
+    expect(plainText).not.toMatch(/^\d+\.\s/m);
+    await expect(feed.getByTestId("agent-step-raw")).toHaveCount(0);
+    // The funnel, with one "left out" count
     const totals = feed.getByTestId("learn-totals");
-    await expect(totals.locator('[data-total="artists"] dd')).toHaveText("4");
-    await expect(totals.locator('[data-total="crowds"] dd')).toHaveText("1");
-    await expect(totals.locator('[data-total="songsChecked"] dd')).not.toHaveText("0");
-    const newSongs = Number(await totals.locator('[data-total="newSongs"] dd').innerText());
+    const value = (key: string) => totals.locator(`[data-total="${key}"] [data-part="value"]`);
+    await expect(value("artists")).toHaveText("4");
+    await expect(value("crowds")).toHaveText("1");
+    await expect(value("songsChecked")).not.toHaveText("0");
+    await expect(value("leftOut")).toHaveText("0");
+    await expect(totals.locator("[data-total]")).toHaveCount(6);
+    const newSongs = Number(await value("newSongs").innerText());
     expect(newSongs).toBeGreaterThanOrEqual(3);
+    // The raw switch brings the tool names, sources and data back.
+    await section(page).getByTestId("learn-raw-switch").click();
+    await expect(steps.locator('[data-tool="match_playlist"]')).toContainText("match_playlist");
+    await expect(steps.locator('[data-tool="match_playlist"]')).toContainText("Qloo /search or /entities");
+    await expect(steps.locator('[data-tool="match_playlist"]').getByRole("button", { name: "Data returned" })).toBeVisible();
+    await expect(feed.getByTestId("learn-totals-raw")).toBeVisible();
+    await section(page).getByTestId("learn-raw-switch").click();
+    await expect(feed.getByTestId("agent-step-raw")).toHaveCount(0);
     await expect(section(page).getByTestId("learn-end")).toHaveText(`The test model found ${newSongs} songs to learn.`);
+    // The fold sits under the song list.
+    const listBox = await group(page, 1).boundingBox();
+    const foldBox = await howFound(page).boundingBox();
+    expect(foldBox!.y).toBeGreaterThan(listBox!.y + listBox!.height - 1);
 
     // The list: Run 1, its songs, "New this run" on each.
     const run1 = group(page, 1);
@@ -115,11 +150,11 @@ test.describe("Songs to learn: a learn run (offline)", () => {
     await expect(group(page, 1).getByText("New this run")).toHaveCount(0);
     await expect(run2.getByText(`Builds on ${learned.title}`).first()).toBeVisible();
     // The funnel shows what the server left out of the second run.
-    const second2 = section(page).getByTestId("learn-run").getByTestId("learn-totals");
-    await expect(second2.locator('[data-total="alreadySuggested"] dd')).not.toHaveText("0");
+    const second2 = (await openHowFound(page)).getByTestId("learn-totals");
+    await expect(second2.locator('[data-total="leftOut"] [data-part="value"]')).not.toHaveText("0");
     // Run 2 sits above run 1.
-    const order = await section(page).locator('[data-testid="learn-group"]').evaluateAll((els) => els.map((e) => e.getAttribute("data-run")));
-    expect(order).toEqual(["2", "1"]);
+    const groupOrder = await section(page).locator('[data-testid="learn-group"]').evaluateAll((els) => els.map((e) => e.getAttribute("data-run")));
+    expect(groupOrder).toEqual(["2", "1"]);
 
     // The newest run is open and the older one has folded (B-030): its songs are hidden until it is opened.
     await expect(group(page, 2)).toHaveAttribute("data-open", "true");
@@ -141,6 +176,31 @@ test.describe("Songs to learn: a learn run (offline)", () => {
     // The API agrees: the three songs it holds are the ones typed in.
     const state = (await (await page.request.get("/api/playlist")).json()).playlist;
     expect(state.songs.map((s: { title: string }) => s.title)).toEqual(SONGS.map((s) => s.title));
+  });
+
+  test("while a run is going its feed is the main view; once finished it folds under the list as 'How we found these songs'", async ({ page }) => {
+    await seed(page);
+    await page.goto("/repertoire");
+    await page.route("**/api/playlist/learn", async (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      await new Promise((r) => setTimeout(r, 1500));
+      return route.continue();
+    });
+    await findButton(page).click();
+    await expect(section(page).getByTestId("learn-running")).toBeVisible();
+    await expect(section(page).getByTestId("learn-feed")).toBeVisible();
+    await expect(howFound(page)).toHaveCount(0);
+    await expect(section(page).getByTestId("learn-end")).toHaveAttribute("data-state", "done", { timeout: 20_000 });
+    await expect(section(page).getByTestId("learn-feed")).toHaveCount(0);
+    const fold = howFound(page).getByRole("button", { name: "How we found these songs" });
+    await expect(fold).toHaveAttribute("aria-expanded", "false");
+    await expect(cards(group(page, 1)).first()).toBeVisible();
+    const list = await group(page, 1).boundingBox();
+    const folded = await howFound(page).boundingBox();
+    expect(folded!.y).toBeGreaterThan(list!.y + list!.height - 1);
+    await fold.focus();
+    await page.keyboard.press("Enter");
+    await expect(section(page).getByTestId("learn-feed")).toBeVisible();
   });
 
   test("filter chips: All, New, To learn, Learned and Not for me, with counts, by keyboard (B-031)", async ({ page }) => {
@@ -184,7 +244,9 @@ test.describe("Songs to learn: a learn run (offline)", () => {
 
     // Keyboard: arrows move between chips, Space picks one; a picked chip can't be unpicked into nothing.
     await chip("All").focus();
+    await expect(chip("All")).toBeFocused();
     await page.keyboard.press("ArrowRight");
+    await expect(chip("New")).toBeFocused();
     await page.keyboard.press("ArrowRight");
     await expect(chip("To learn")).toBeFocused();
     await page.keyboard.press("Space");
@@ -204,7 +266,7 @@ test.describe("Songs to learn: a learn run (offline)", () => {
     await page.goto("/repertoire");
     await findButton(page).click();
     await expect(section(page).getByTestId("learn-end")).toHaveAttribute("data-state", "done");
-    const liveSteps = await section(page).getByTestId("learn-run").getByTestId("agent-step").evaluateAll((els) => els.map((e) => e.getAttribute("data-tool")));
+    const liveSteps = await (await openHowFound(page)).getByTestId("agent-step").evaluateAll((els) => els.map((e) => e.getAttribute("data-tool")));
     await page.reload();
     const posts: string[] = [];
     page.on("request", (r) => {
@@ -290,7 +352,7 @@ test.describe("Songs to learn: refusals and states (offline)", () => {
     await expect(end).toHaveAttribute("data-state", "qloo");
     await expect(end).toContainText("Qloo isn't answering");
     await expect(end.getByTestId("learn-safe")).toHaveText("Your songs are safe. This run didn't count towards your limit.");
-    await expect(section(page).getByTestId("learn-run").getByTestId("agent-step")).toHaveCount(1);
+    await expect((await openHowFound(page)).getByTestId("agent-step")).toHaveCount(1);
     await expect(cards(section(page))).toHaveCount(0);
     await expect(findButton(page, "Find more songs to learn")).toBeEnabled();
   });

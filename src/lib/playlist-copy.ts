@@ -152,6 +152,8 @@ export const PLAYLIST_COPY = {
     undo: "Undo",
     learnedBadge: "Learned",
     /** The filter chips over the list (sketch §3): "New" is the latest run's songs (isNew). */
+    showRaw: "Show raw data",
+    howFound: "How we found these songs",
     filterLabel: "Show songs",
     filters: { all: "All", new: "New", pending: "To learn", learned: "Learned", dismissed: "Not for me" },
     filterEmpty: "No songs here yet.",

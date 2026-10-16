@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Landing recheck</title>
+<title>QA-03 · Landing recheck</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
 <style>:root{--bg:#f4f1ea;--card:#fff;--fg:#17191c;--muted:#5d6168;--line:#d9d4c8;--ok:#1d7a3a;--okbg:#e2f3e7;--bad:#b3141b;--badbg:#fbe3e4;--warn:#8a5a00;--warnbg:#fdf0d3;--held:#4b4f86;--heldbg:#e7e7f6;--accent:#e85d1c}
@@ -18,7 +18,7 @@ h1{font-size:24px;margin:0 0 4px} .sub{color:var(--muted);margin:0 0 20px}
 .note,.fixes{background:var(--card);border:1px solid var(--line);padding:14px 18px;margin-top:16px} .note h2,.fixes h2{margin:0 0 8px;font-size:16px}
 .row{background:var(--card);border:1px solid var(--line);margin:16px 0;padding:14px}
 .row header{display:flex;flex-wrap:wrap;gap:8px;align-items:center} .row h2{font-size:15px;margin:0;flex:1 1 260px}
-.n{color:var(--muted);font-weight:800}
+.n{color:var(--fg);font-weight:800;border:1px solid var(--line);padding:1px 6px}
 .chip{font-weight:800;padding:2px 10px;border-radius:2px} .chip.ok{background:var(--okbg);color:var(--ok)} .chip.bad{background:var(--badbg);color:var(--bad)} .chip.warn{background:var(--warnbg);color:var(--warn)} .chip.held{background:var(--heldbg);color:var(--held)}
 .claim{border:1px solid var(--line);padding:1px 8px;color:var(--muted)} .qa{color:var(--ok);font-weight:800}
 .lost{border:1px dashed var(--muted);padding:1px 8px;color:var(--muted)} .def{border:1px solid var(--accent);color:var(--accent);padding:1px 8px;font-weight:800}
@@ -34,8 +34,8 @@ body.problems .row[data-status="Present"]{display:none}
 @media (max-width:700px){.w{grid-template-columns:1fr} .tabs{margin-left:0}}
 </style></head>
 <body data-w="1440"><div class="wrap">
-<h1>Landing / recheck · 29 parts · board vs build</h1>
-<p class="sub">design/honeycomb at 91b220e (DEV's fixes d169cb4..91b220e), clean export, offline on QA's port. Left: BRAND's crop of the v62 Main board, then QA's render of the same board at that width. Right: the build. DEV's claim beside each verdict; red boxes mark undeclared or open gaps. QA[busk-map], 16 Oct 2026.</p>
+<h1>QA-03 · Landing / recheck · 29 parts · board vs build</h1>
+<p class="sub"><b>QA-03</b> · branch design/honeycomb · commit tested 91b220e. Cite a finding as “QA-03 L13”. design/honeycomb at 91b220e (DEV's fixes d169cb4..91b220e), clean export, offline on QA's port. Left: BRAND's crop of the v62 Main board, then QA's render of the same board at that width. Right: the build. DEV's claim beside each verdict; red boxes mark undeclared or open gaps. QA[busk-map], 16 Oct 2026.</p>
 <div class="strip" role="group" aria-label="Summary and view">
 <span class="stat ok">20 Present</span><span class="stat warn">6 Different</span><span class="stat bad">1 Missing</span><span class="stat bad">0 Broken</span><span class="stat held">2 Held</span>
 <button class="filter" type="button" aria-pressed="false" id="flt">Problems only</button>

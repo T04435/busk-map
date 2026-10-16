@@ -1,4 +1,6 @@
-# Landing `/` audit: Honeycomb design vs build (index)
+# QA-01 · Landing `/` audit: Honeycomb design vs build (index)
+
+**QA-01** · branch `design/honeycomb` · commit tested 69a6cad. Rows are #01–#21 in the HTML; cite a finding as “QA-01 #04”.
 
 **Visual report:** [honeycomb-landing-audit.html](honeycomb-landing-audit.html). It shows design and build side by side at 390, 768 and 1440, with a red box around each gap. Images are in `qa/screens/honeycomb/landing/`.
 
@@ -20,17 +22,17 @@
 
 ## Defects (all on the landing)
 
-| ID | Sev | Item | Lost at |
-|---|---|---|---|
-| B-018 | Medium | The hero "Plan a busk" CTA shows no focus indicator. Its poster `box-shadow` overrides the focus ring (WCAG 2.4.7). It's the only one of 58 tab stops with this problem | DEV self-check (QA's focus check also missed it: it counted any shadow as a ring) |
-| B-019 | Medium | The "Honeycomb" brand teaser section (→ /brand) is missing | BRAND→handoff |
-| B-020 | Medium | "What you get back" has no research funnel, no taste map with pins, no Learn these and no set length (a 3-row list instead) | BRAND→handoff |
-| B-021 | Low | Hero: no hatched no-busking zone, event diamond or river on the taste map; no glowing honeycomb cells on the ground; caption reworded | BRAND→handoff |
-| B-022 | Low | "Try an act" cards have no "Saturday · 6–9 pm" line and no "Plays …" songs line | BRAND→handoff (the DS ExampleActCard README also lacks them) |
-| B-023 | Low | The footer has a "Brand" link the user removed (decision 121), and it sits on paper, not the deck's dark band | handoff→DEV |
-| B-024 | Low | Brain teaser: an extra 4th number labelled "parts of your plan" (the brand word is "busk") | DEV self-check |
-| B-025 | Low | The H1 orphans "PLAY." at 1440 (5 lines; the deck keeps it at 4) | DEV self-check |
-| B-026 | Low | The "For judges" link from HQ's 8 judge additions (decision 104) was never designed | brief→BRAND |
+| Row | ID | Sev | Item | Lost at |
+|---|---|---|---|---|
+| #04 | B-018 | Medium | The hero "Plan a busk" CTA shows no focus indicator. Its poster `box-shadow` overrides the focus ring (WCAG 2.4.7). It's the only one of 58 tab stops with this problem | DEV self-check (QA's focus check also missed it: it counted any shadow as a ring) |
+| #16 | B-019 | Medium | The "Honeycomb" brand teaser section (→ /brand) is missing | BRAND→handoff |
+| #11–#13 | B-020 | Medium | "What you get back" has no research funnel, no taste map with pins, no Learn these and no set length (a 3-row list instead) | BRAND→handoff |
+| #03, #06 | B-021 | Low | Hero: no hatched no-busking zone, event diamond or river on the taste map; no glowing honeycomb cells on the ground; caption reworded | BRAND→handoff |
+| #09 | B-022 | Low | "Try an act" cards have no "Saturday · 6–9 pm" line and no "Plays …" songs line | BRAND→handoff (the DS ExampleActCard README also lacks them) |
+| #18 | B-023 | Low | The footer has a "Brand" link the user removed (decision 121), and it sits on paper, not the deck's dark band | handoff→DEV |
+| #14 | B-024 | Low | Brain teaser: an extra 4th number labelled "parts of your plan" (the brand word is "busk") | DEV self-check |
+| #02 | B-025 | Low | The H1 orphans "PLAY." at 1440 (5 lines; the deck keeps it at 4) | DEV self-check |
+| #19 | B-026 | Low | The "For judges" link from HQ's 8 judge additions (decision 104) was never designed | brief→BRAND |
 
 Also missing, but already accepted: the demo-video slot (DEV deviation 1).
 

@@ -1,4 +1,6 @@
-# Landing `/` recheck: 29 parts, board vs build (index)
+# QA-03 · Landing `/` recheck: 29 parts, board vs build (index)
+
+**QA-03** · branch `design/honeycomb` · commit tested 91b220e. Rows are the part ids L01–L29; cite a finding as “QA-03 L13”.
 
 **Visual report:** [honeycomb-landing-recheck.html](honeycomb-landing-recheck.html). For each part it puts BRAND's board crop and QA's deck render at that width on the left and the build on the right, at 390, 768 and 1440. Each part carries QA's verdict next to DEV's claim. Images are in `qa/screens/honeycomb/recheck/`.
 

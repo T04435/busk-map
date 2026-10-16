@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brain · review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f1ea;--card:#fff;--fg:#17191c;--muted:#5d6168;--line:#d9d4c8;--ok:#1d7a3a;--okbg:#e2f3e7;--bad:#b3141b;--badbg:#fbe3e4;--warn:#8a5a00;--warnbg:#fdf0d3;--held:#4b4f86;--heldbg:#e7e7f6;--accent:#c2410c}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#111416;--card:#1a1e21;--fg:#eceae4;--muted:#a3a8ad;--line:#2d3337;--ok:#6fd38f;--okbg:#14301e;--bad:#ff8c8f;--badbg:#3a1416;--warn:#f2c160;--warnbg:#33280f;--held:#b9b9f0;--heldbg:#25253d;--accent:#ff7a3d}}
+:root[data-theme="dark"]{--bg:#111416;--card:#1a1e21;--fg:#eceae4;--muted:#a3a8ad;--line:#2d3337;--ok:#6fd38f;--okbg:#14301e;--bad:#ff8c8f;--badbg:#3a1416;--warn:#f2c160;--warnbg:#33280f;--held:#b9b9f0;--heldbg:#25253d;--accent:#ff7a3d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.wrap{max-width:1600px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:24px;margin:0} .ver{font-weight:800;margin:6px 0 2px} .chg{color:var(--muted);margin:0 0 12px}
+.strip{display:flex;flex-wrap:wrap;gap:8px;align-items:center;position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0;border-bottom:1px solid var(--line)}
+.stat{padding:6px 12px;border:1px solid var(--line);background:var(--card);font-weight:800}
+.stat.ok{color:var(--ok)} .stat.bad{color:var(--bad)} .stat.warn{color:var(--warn)} .stat.held{color:var(--held)}
+.filter{font:inherit;padding:6px 12px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer;min-height:40px} .filter[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.row{display:grid;grid-template-columns:150px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,.55fr) minmax(0,1.3fr);gap:12px;background:var(--card);border:1px solid var(--line);margin:12px 0;padding:12px;scroll-margin-top:70px}
+.row:target{outline:3px solid var(--accent)}
+.id a{display:inline-block;font-size:22px;font-weight:800;color:var(--fg);text-decoration:none;border:2px solid var(--fg);padding:0 8px} .id span{display:block;margin-top:6px;font-weight:600}
+figure{margin:0;min-width:0} figcaption{font-size:12px;color:var(--muted);margin-bottom:4px}
+img{display:block;max-width:100%;height:auto;max-height:520px;object-fit:contain;object-position:top left;border:1px solid var(--line);background:#fff}
+.box img{max-height:none}
+dl{margin:0;display:grid;gap:6px} dt{font-size:12px;color:var(--muted)} dd{margin:0} .call{font-weight:800;color:var(--accent)}
+.chip{font-weight:800;padding:1px 8px} .chip.ok{background:var(--okbg);color:var(--ok)} .chip.bad{background:var(--badbg);color:var(--bad)} .chip.warn{background:var(--warnbg);color:var(--warn)} .chip.held{background:var(--heldbg);color:var(--held)}
+.ph{border:2px dashed var(--muted);color:var(--muted);padding:24px 8px;text-align:center;font-weight:800}
+body.action .row[data-action="false"]{display:none}
+.box{background:var(--card);border:1px solid var(--line);padding:12px 16px;margin-top:20px;overflow-x:auto} .box h2{font-size:16px;margin:0 0 6px}
+table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top}
+@media (max-width:1100px){.row{grid-template-columns:1fr 1fr} .id{grid-column:1/-1} dl{grid-column:1/-1}}
+@media (max-width:600px){.row{grid-template-columns:1fr}}
+</style></head>
+<body><div class="wrap">
+<h1>Brain · review</h1>
+<p class="ver">v1 · design/honeycomb ＠ 7b1521e · 17 Oct 2026 · route /brain</p>
+<p class="chg">First version: 14 provisional parts from the deck&#x27;s Brain board, trace state, field strip, impeccable critique and audit; B-052.</p>
+<div class="strip" role="group" aria-label="Summary"><span class="stat ok">12 Present</span><span class="stat warn">1 Different</span><span class="stat bad">0 Missing</span><span class="stat bad">1 Broken</span><button class="filter" type="button" aria-pressed="false" id="flt">Needs action only</button></div>
+<p class="chg">Deck: the Brain board (night). Build: QA&#x27;s own export. design/honeycomb predates dev/core&#x27;s Repertoire R4 (12 kinds, 5 facts, Last.fm, “Suggested set”); those arrive with the merge and are checked on dev/core by brain.spec. The row id is the ticket.</p>
+<article class="row" id="BR01" data-action="true">
+<div class="id"><a href="#BR01">BR01</a><span>Header: Powered by Qloo, title, intro</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR01.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR01.jpg" alt="BR01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR01-1440.jpg" alt="BR01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR01-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR01-390.jpg" alt="BR01 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> As the board; the intro says “11 kinds” and “trace its path” (board: “eleven”, “light up”).</dd></div>
+<div><dt>User's call</dt><dd class="call">F09: the Qloo logo links to qloo.com in a new tab.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR02" data-action="false">
+<div class="id"><a href="#BR02">BR02</a><span>Facts strip</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR02.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR02.jpg" alt="BR02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR02-1440.jpg" alt="BR02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR02-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR02-390.jpg" alt="BR02 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> 11 · 24–33 · 0 · 9, as the board (dev/core R4 makes it five facts with 12 kinds and ≤ 25 per learn run).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR03" data-action="false">
+<div class="id"><a href="#BR03">BR03</a><span>Wiring: Qloo calls column</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR03.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR03.jpg" alt="BR03 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR03-1440.jpg" alt="BR03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR03-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR03-390.jpg" alt="BR03 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> 11 kinds (with 5b) with endpoints; numbered hex cells.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR04" data-action="false">
+<div class="id"><a href="#BR04">BR04</a><span>Wiring: data points column</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR04.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR04.jpg" alt="BR04 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR04-1440.jpg" alt="BR04 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR04-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR04-390.jpg" alt="BR04 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Same data points and sublines as the board.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR05" data-action="false">
+<div class="id"><a href="#BR05">BR05</a><span>Wiring: your busk column</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR05.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR05.jpg" alt="BR05 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR05-1440.jpg" alt="BR05 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR05-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR05-390.jpg" alt="BR05 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Nine parts with sublines; spaced to line up with their wires as the board.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR06" data-action="false">
+<div class="id"><a href="#BR06">BR06</a><span>Other sources (Spotify, Ticketmaster)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR06.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR06.jpg" alt="BR06 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR06-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR06-1440.jpg" alt="BR06 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR06-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR06-390.jpg" alt="BR06 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Dashed wires, as the board.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR07" data-action="false">
+<div class="id"><a href="#BR07">BR07</a><span>“The wiring” heading and legend</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR07.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR07.jpg" alt="BR07 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR07-1440.jpg" alt="BR07 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR07-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR07-390.jpg" alt="BR07 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Qloo · Spotify, Ticketmaster · the path you picked.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR08" data-action="true">
+<div class="id"><a href="#BR08">BR08</a><span>Pick any piece panel</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR08.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR08.jpg" alt="BR08 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR08-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR08-1440.jpg" alt="BR08 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR08-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR08-390.jpg" alt="BR08 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> One sentence with a single suggestion; the board&#x27;s two “Try …” items with orange markers (Setlist and learn these; Taste heatmap) are gone.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-052</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR09" data-action="false">
+<div class="id"><a href="#BR09">BR09</a><span>Three notes: numbers from data, the quota, next</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR09.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR09.jpg" alt="BR09 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR09-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR09-1440.jpg" alt="BR09 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR09-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR09-390.jpg" alt="BR09 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Same three cards; the quota copy is updated to the current pacing.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR10" data-action="false">
+<div class="id"><a href="#BR10">BR10</a><span>Back to Busk Map</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/BR10.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/BR10.jpg" alt="BR10 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR10-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR10-1440.jpg" alt="BR10 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR10-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR10-390.jpg" alt="BR10 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Link as the board.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR11" data-action="false">
+<div class="id"><a href="#BR11">BR11</a><span>Trace state (a piece picked)</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Not in the deck</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/BR11-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR11-1440.jpg" alt="BR11 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/BR11-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/BR11-390.jpg" alt="BR11 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Picking “Setlist and learn these” lights its path and fills the panel (comes from 4 Qloo calls, 1 other source, 5 data points); the focused piece stays visible (B-015 fixed).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR12" data-action="false">
+<div class="id"><a href="#BR12">BR12</a><span>Phone layout (390)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/full-390.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/full-390.jpg" alt="BR12 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/full-390-night.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/full-390-night.jpg" alt="BR12 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Columns stack; no sideways scroll; axe clean.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR13" data-action="false">
+<div class="id"><a href="#BR13">BR13</a><span>Both themes</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/brain/deck/full-1440.jpg"><img loading="lazy" src="../screens/honeycomb/brain/deck/full-1440.jpg" alt="BR13 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/brain/build/full-1440-day.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/full-1440-day.jpg" alt="BR13 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/brain/build/full-390-day.jpg"><img loading="lazy" src="../screens/honeycomb/brain/build/full-390-day.jpg" alt="BR13 build 390"></a></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> The page is night in day and night themes, as the board; axe clean in both.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article><article class="row" id="BR14" data-action="true">
+<div class="id"><a href="#BR14">BR14</a><span>Field focus</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Not in the deck</div></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip bad">Broken</span> All 38 pieces (buttons) fail at 390 and 1440, day and night: two ring layers when focused. See the strip below.</dd></div>
+<div><dt>User's call</dt><dd class="call">F13, F14, F15</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>7b1521e</code></dd></div>
+</dl></article>
+<section class="box" id="field-strip"><h2>Field strip (F14): /brain</h2><p>Every piece is a button; each shows two ring layers when focused (cause: the global :focus-visible rule, Site-wide S09).</p><a href="../screens/honeycomb/brain/field-strip.jpg"><img src="../screens/honeycomb/brain/field-strip.jpg" alt="Brain field strip"></a></section><section class="box" id="critique"><h2>Impeccable critique</h2><ol><li><b>P2 · The invitation got quieter.</b> The panel's two concrete “Try …” prompts became one run-on sentence (B-052); the page's best interaction is now easier to miss.</li><li><b>P3 · Tile borders are faint</b> (about 1.6:1 against the night ground, Assessment B): the 38 pieces read as one block until one is picked.</li><li>Otherwise the page is the board: strong hierarchy, one idea, a clear path from call to busk part.</li></ol></section><section class="box" id="audit"><h2>Impeccable audit</h2><table><tr><th>Check</th><th>Result</th></tr><tr><td>axe at 390 and 1440, day and night</td><td>Clean</td></tr><tr><td>Sideways scroll</td><td>None</td></tr><tr><td>Heading outline</td><td>h1 › h2 › h3, no skips</td></tr><tr><td>Keyboard trace</td><td>Enter selects, Escape clears (QA brain.spec); the focused piece stays clear of the panel</td></tr><tr><td>Focus</td><td>Doubled ring on every piece (F14)</td></tr></table></section>
+<section class="box"><h2>Versions</h2><ul><li><b>v1</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: First version: 14 provisional parts from the deck&#x27;s Brain board, trace state, field strip, impeccable critique and audit; B-052.</li></ul></section>
+</div>
+<script>
+const f=document.getElementById('flt');f.addEventListener('click',()=>{const on=!document.body.classList.contains('action');document.body.classList.toggle('action',on);f.setAttribute('aria-pressed',String(on));});
+</script></body></html>

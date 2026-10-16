@@ -6,6 +6,7 @@ import { Warmup } from "@/components/landing/warmup";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { EXAMPLES } from "@/lib/examples";
+import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import { localToday, nextWeekday, weekdayOf } from "@/lib/slot";
 import { loadStoredPlan } from "@/server/plans";
 import { SOURCES } from "@/lib/sources";
@@ -68,6 +69,13 @@ export default function Home({ searchParams }: PageProps<"/">) {
             tip log
           </Link>
           : it stays in this browser, and pitches where you earn more get a small bonus in your next plans.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Keep the songs you can sing in your{" "}
+          <Link className="underline" href="/repertoire">
+            {PLAYLIST_COPY.name}
+          </Link>
+          .
         </p>
       </section>
 

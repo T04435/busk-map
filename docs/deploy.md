@@ -91,7 +91,7 @@ The tip log is stored in the performer's browser (localStorage). Plans read only
 
 Every plan runs a plain-AI baseline (Claude Haiku, no tools, no data) in parallel and sets it beside Busk Map's picks. Comparisons are recorded for the uniqueness stats at `GET /api/baseline-stats` only when `DATABASE_URL` points to Postgres (for example Neon from the Vercel Marketplace). Without it, recording is a no-op (one log line) and plans work as usual.
 
-- The app reads the pooled `DATABASE_URL` at runtime and never runs DDL. The tables come from `migrations/*.sql` (idempotent: 001 baseline comparisons, 002 the agent's run store, 003 `plans` for the short links), applied over the direct `DATABASE_URL_UNPOOLED`: `pnpm db:migrate:dev` runs them against the Neon dev branch (from `.env.development.local`). Production (main) needs the same migrations as a separate, approved step; until then, recording fails softly with a log line, and without the `plans` table the long `/plan?…` URLs keep working (no short link is made).
+- The app reads the pooled `DATABASE_URL` at runtime and never runs DDL. The tables come from `migrations/*.sql` (idempotent: 001 baseline comparisons, 002 the agent's run store, 003 `plans` for the short links, 004 `playlists` and `playlist_songs` for the Repertoire, 005 `learn_runs` and `learn_suggestions`), applied over the direct `DATABASE_URL_UNPOOLED`: `pnpm db:migrate:dev` runs them against the Neon dev branch (from `.env.development.local`). Production (main) needs the same migrations as a separate, approved step; until then, recording fails softly with a log line, and without the `plans` table the long `/plan?…` URLs keep working (no short link is made).
 - Short links (`/p/<id>`): without `DATABASE_URL` they are kept in memory (one log line). That works on a single long-lived server; on Vercel the long `/plan?…` URL is kept instead.
 - Locally, `next dev` uses the dev branch (`.env.development.local` wins over `.env.local`). `next start` reads `.env.local`, which may point at main: run it with `DATABASE_URL=` in the shell to keep local runs out of the production database.
 - Rows hold no personal data: an example id or "custom", the city and slot, pitch ids, scores, the plain AI's pick statuses and the overlap.
@@ -99,3 +99,13 @@ Every plan runs a plain-AI baseline (Claude Haiku, no tools, no data) in paralle
 ## Stored step data
 
 Plans keep their full step data. A finished run stores its steps, and each step holds the data the tool returned (much of it derived from Qloo), in the `plans` rows and the `plan_store` runs. It is stored privately server-side and never committed to the repository. The `plan_store` replay cache keeps its own expiry (15 min; example presets are never stored there, every click is a fresh run); the `plans` rows behind short links persist.
+
+## Repertoire storage
+
+The saved Repertoire (code name `playlist`; docs/playlist-architecture.md) lives in Neon behind an anonymous device cookie.
+
+- **Migrations:** `004_playlists.sql` (`playlists`, `playlist_songs`) and `005_learn_runs.sql` (`learn_runs`, `learn_suggestions`, plus two columns on the 004 tables). Both are idempotent. **Production needs both applied at deploy**, as a separate approved step: without 004 every `/api/playlist/*` write fails with a 503 "Saving isn't available" and the rest of the app is unaffected. Locally: `pnpm db:migrate:dev` (Neon dev branch).
+- **The cookie:** `buskmap_playlist`, set by the server on the first save only (browsing creates nothing). HttpOnly, SameSite=Lax, 400 days, Secure in production. The value is a random 128-bit token; the database keeps only its sha256. It never appears in a URL, a plan request or a short link.
+- **Store:** the pooled `DATABASE_URL`. Without it, a long-lived local server keeps Repertoires in memory (lost on restart); on Vercel without a database the routes answer 503.
+- **Limits:** 60 songs (can sing + learned) per Repertoire; 10 new Repertoires an hour per IP (per instance, like the other limiters; offline test mode is not limited); mutating routes check `Origin` and BotID. A WAF rate rule on `/api/playlist/*` is the cross-instance limit. Constants: `src/server/playlist/config.ts`.
+- **Forget and expiry:** `DELETE /api/playlist` deletes the Repertoire and clears the cookie; a Repertoire unseen for 13 months is deleted when a new one is created.

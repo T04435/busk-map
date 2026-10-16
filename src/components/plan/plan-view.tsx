@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FRESH_HEADER, PLAN_ID_HEADER } from "@/lib/plan-id";
 import { planStreamEventSchema, type Plan, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
+import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import { weekSearchParams } from "@/lib/week-url";
 import { agentVsEngineLines } from "@/lib/agent-vs-engine";
 import { TipLogForm } from "@/components/tips/tip-log-form";
@@ -297,6 +298,9 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
           </Link>
           <Link className="underline" href="/tips">
             Tip log
+          </Link>
+          <Link className="underline" href="/repertoire">
+            {PLAYLIST_COPY.link}
           </Link>
         </p>
         {shareId && <CopyLink id={shareId} />}

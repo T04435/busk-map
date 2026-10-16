@@ -22,7 +22,7 @@ describe("global-error.tsx", () => {
     expect(html.startsWith("<html")).toBe(true);
     expect(html).toContain("<body");
     expect(html).toContain("<h1>Something went wrong</h1>");
-    expect(html).toContain("while setting up the pitch");
+    expect(html).toContain("Something went wrong loading Busk Map");
     expect(html).toContain(">Try again</button>");
     expect(html).toMatch(/<a [^>]*href="\/"[^>]*>Go home<\/a>/);
   });

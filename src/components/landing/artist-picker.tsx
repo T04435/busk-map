@@ -115,7 +115,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
         </ul>
       )}
       <p className="m-0 text-sm text-muted-foreground" data-testid="artists-hint">
-        {value.length} of {MAX_PICKED_ARTISTS}. Type a comma to add a name that isn&apos;t on Spotify.
+        {full ? "That’s the most. Remove one to add another." : `${value.length} of ${MAX_PICKED_ARTISTS}. Type a comma to add a name that isn’t on Spotify.`}
       </p>
       <Command
         shouldFilter={false}

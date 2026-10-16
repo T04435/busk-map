@@ -1,12 +1,12 @@
 "use client";
 
-import { Loader2Icon, XIcon } from "lucide-react";
+import { Loader2Icon, MusicIcon, XIcon } from "lucide-react";
 import { useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { TrackResult } from "@/components/forms/repertoire-api";
 import { FormMessage } from "@/components/honeycomb/form-message";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { formatDuration } from "@/lib/live-search";
 import { type PickedArtist } from "./artist-picker";
@@ -33,7 +33,7 @@ const MAX_PICKED = 60;
 
 /** The songs you picked: a cover cell, title, "artist · album", a "Your song" badge, the length and a remove button. */
 export function PickedSongs({ songs, onRemove }: { songs: PickedSong[]; onRemove: (song: PickedSong) => void }) {
-  if (songs.length === 0) return null;
+  if (songs.length === 0) return <p className="m-0 text-sm text-muted-foreground">Search for songs above.</p>;
   const known = songs.reduce((sum, s) => sum + (s.durationMs ?? 0), 0);
   const unknown = songs.some((s) => s.durationMs === null);
   return (
@@ -51,6 +51,7 @@ export function PickedSongs({ songs, onRemove }: { songs: PickedSong[]; onRemove
             <span className="block truncate text-xs text-muted-foreground">{[song.artist, song.album].filter(Boolean).join(" · ")}</span>
           </span>
           {song.own && <Badge variant="solid">Your song</Badge>}
+          {song.key.startsWith("typed:") && <Badge variant="neutral">Typed</Badge>}
           {song.durationMs !== null && <span className="font-mono text-xs text-muted-foreground tabular-nums">{formatDuration(song.durationMs)}</span>}
           <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${song.title}`} onClick={() => onRemove(song)}>
             <XIcon aria-hidden />
@@ -99,7 +100,7 @@ export function RepertoirePicker({
     tried.current = link;
     setSearchNote(null);
     if (link.length < 10) {
-      setLinkError("Paste your artist link from Spotify: open.spotify.com/artist/…");
+      setLinkError("That isn't a Spotify artist link. It starts with open.spotify.com/artist/.");
       return;
     }
     setLinkError(null);
@@ -141,25 +142,30 @@ export function RepertoirePicker({
       <PickedSongs songs={picked} onRemove={(song) => setPicked((current) => current.filter((p) => p !== song))} />
       <div className="space-y-1">
         <Label htmlFor={linkId}>Your Spotify artist link (optional)</Label>
-        <Input
-          id={linkId}
-          value={spotifyLink}
-          onChange={(e) => {
-            setSpotifyLink(e.target.value);
-            setLinkError(null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              void loadOwnSongs();
-            }
-          }}
-          onBlur={() => void loadOwnSongs()}
-          aria-busy={loading}
-          aria-invalid={linkError ? true : undefined}
-          aria-describedby={linkError ? `${linkId}-err` : undefined}
-          placeholder="open.spotify.com/artist/…"
+        <InputGroup className="has-[>[data-align=inline-start]]:[&>input]:pl-10">
+          <InputGroupAddon className="pointer-events-none absolute inset-y-0 left-0 z-10 pl-3">
+            <MusicIcon aria-hidden="true" className="size-4" />
+          </InputGroupAddon>
+          <InputGroupInput
+            id={linkId}
+            value={spotifyLink}
+            onChange={(e) => {
+              setSpotifyLink(e.target.value);
+              setLinkError(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void loadOwnSongs();
+              }
+            }}
+            onBlur={() => void loadOwnSongs()}
+            aria-busy={loading}
+            aria-invalid={linkError ? true : undefined}
+            aria-describedby={linkError ? `${linkId}-err` : undefined}
+            placeholder="open.spotify.com/artist/…"
         />
+        </InputGroup>
         <div aria-live="polite">
           {loading ? (
             <FormMessage>
@@ -167,9 +173,9 @@ export function RepertoirePicker({
             </FormMessage>
           ) : searchNote ? (
             <FormMessage>{searchNote}</FormMessage>
-          ) : spotifyLink.trim() && !linkError ? (
-            <FormMessage>Press Enter to load your songs.</FormMessage>
-          ) : null}
+          ) : (
+            <FormMessage>Optional: adds your own songs. Press Enter to load them.</FormMessage>
+          )}
         </div>
         {linkError ? (
           <FormMessage tone="error" id={`${linkId}-err`} alert={false}>

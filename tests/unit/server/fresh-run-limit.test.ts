@@ -16,7 +16,7 @@ describe("fresh agent runs: 5 per hour per IP", () => {
       ok: false,
       retryAfterS: 50 * 60,
       retryAt: "2026-10-17T00:00:00.000Z",
-      message: "You've started 5 plans this hour. Try again in about 50 minutes, or open one of your earlier plans.",
+      message: "You've started 5 plans this hour. Try again in about 50 minutes.",
     });
     // Another IP is unaffected; after the hour the first run no longer counts.
     expect(freshRunGate({ ...live, ip: "10.0.0.2" }, limiter, NOW + 10 * 60_000)).toEqual({ ok: true });
@@ -53,7 +53,7 @@ describe("fresh agent runs: 5 per hour per IP", () => {
         ok: false,
         retryAfterS: FORCED_LIMIT_RETRY_S,
         retryAt: new Date(NOW + FORCED_LIMIT_RETRY_S * 1000).toISOString(),
-        message: "You've started 5 plans this hour. Try again in about 45 minutes, or open one of your earlier plans.",
+        message: "You've started 5 plans this hour. Try again in about 45 minutes.",
       });
     }
     for (let i = 0; i < 5; i++) expect(freshRunGate(live, limiter, NOW).ok).toBe(true);
@@ -70,6 +70,6 @@ describe("freshLimitMessage", () => {
     [30 * 60, "about 30 minutes"],
     [3600, "about 60 minutes"],
   ])("%i s → %s", (seconds, phrase) => {
-    expect(freshLimitMessage(seconds)).toBe(`You've started 5 plans this hour. Try again in ${phrase}, or open one of your earlier plans.`);
+    expect(freshLimitMessage(seconds)).toBe(`You've started 5 plans this hour. Try again in ${phrase}.`);
   });
 });

@@ -64,7 +64,7 @@ test.describe("QA /brain", () => {
 
   test("Next items are labelled as not built", async ({ page }) => {
     await open(page);
-    const next = page.getByRole("heading", { name: "Next (not built yet)" });
+    const next = page.getByRole("heading", { name: "Next · not built yet" });
     await expect(next).toBeVisible();
     await expect(next.locator("xpath=..").getByRole("listitem")).toHaveCount(3);
   });

@@ -17,6 +17,8 @@ const SCREENS: { name: string; path: string; ready: (p: Page) => Promise<void> }
   { name: "plan folk duo", path: "/plan?example=folk-duo", ready: (p) => expect(p.getByRole("region", { name: "Pitches", exact: true })).toBeVisible() },
   { name: "week sax", path: "/week?example=sax", ready: (p) => expect(p.getByRole("list", { name: "Top sessions" })).toBeVisible() },
   { name: "brain", path: "/brain", ready: (p) => expect(p.getByRole("heading", { name: "The wiring" })).toBeVisible() },
+  { name: "plan slot passed", path: "/plan?name=QA%20Past&artists=Paul%20Kelly&songs=Dumb%20Things~Paul%20Kelly&date=2026-10-03&from=12&to=15&permit=general", ready: (p) => expect(p.getByTestId("slot-passed")).toBeVisible() },
+  { name: "plan sources down", path: "/plan?example=folk-duo&faults=footfall,weather,events", ready: (p) => expect(p.getByRole("region", { name: "Pitches", exact: true })).toBeVisible() },
   { name: "tip log", path: "/tips", ready: (p) => expect(p.getByRole("heading", { level: 1 })).toBeVisible() },
   { name: "not found", path: "/qa-no-such-page", ready: (p) => expect(p.getByText("No pitch here")).toBeVisible() },
   { name: "plan not found", path: "/p/zzzzzzzzz", ready: (p) => expect(p.getByText("We can't find this busk")).toBeVisible() },
@@ -37,6 +39,16 @@ test.describe("QA layout at 390, 768 and 1440 px", () => {
       await ready(page);
       // Not "networkidle": the landing page's data warm-up keeps a request open for up to a minute.
       await page.waitForTimeout(750);
+      // The landing's hero map fills in and drops its pins over about 2 s: shoot it at rest.
+      if (path === "/") await page.waitForTimeout(2500);
+      // The plan map loads lazily (in view, then when the browser is idle, up to 1.5 s): shoot it loaded, not its placeholder.
+      if (await page.getByRole("button", { name: "Show the map" }).count()) {
+        // It loads once it's within 200 px of the viewport, which can be below the fold: scroll to it like a reader would.
+        await page.getByRole("button", { name: "Show the map" }).scrollIntoViewIfNeeded();
+        await expect(page.getByRole("button", { name: "Show the map" })).toHaveCount(0, { timeout: 8000 });
+        await page.waitForTimeout(1500);
+        await page.evaluate(() => window.scrollTo(0, 0));
+      }
 
       const layout = await page.evaluate(() => {
         const width = document.documentElement.clientWidth;
@@ -72,7 +84,7 @@ test.describe("QA layout at 390, 768 and 1440 px", () => {
       const shot = await page.screenshot({ fullPage: true });
       await testInfo.attach(`${name}.png`, { body: shot, contentType: "image/png" });
       // QA_SHOTS=<dir outside the repo> keeps every screenshot, passed or not, for the visual walk.
-      if (process.env.QA_SHOTS) writeFileSync(`${process.env.QA_SHOTS}/${testInfo.project.name}-${name.replace(/\W+/g, "-")}.png`, shot);
+      if (process.env.QA_SHOTS) writeFileSync(`${process.env.QA_SHOTS}/${name.replace(/\W+/g, "-")}-${testInfo.project.name.slice(1)}-${process.env.QA_SCHEME === "dark" ? "night" : "day"}.png`, shot);
       expect(layout.scrollWidth, "horizontal page scroll").toBeLessThanOrEqual(layout.width);
       expect(layout.cut, "content cut off at the right edge").toEqual([]);
       expect(layout.clipped, "placeholder text cut off").toEqual([]);

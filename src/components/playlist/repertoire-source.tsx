@@ -91,12 +91,12 @@ export function RepertoireSource<T extends SourceSong>({
             <p className="text-sm text-muted-foreground tabular-nums" aria-live="polite">
               {COPY.source.selected(sent.length, base.length + added.length)}
             </p>
-            <Button type="button" variant="ghost" size="sm" onClick={() => onRemovedChange(new Set())} disabled={!removedAny}>
+            <Button type="button" variant="outline" size="sm" onClick={() => onRemovedChange(new Set())} disabled={!removedAny}>
               {COPY.source.selectAll}
             </Button>
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
               disabled={sent.length === 0}
               onClick={() => {

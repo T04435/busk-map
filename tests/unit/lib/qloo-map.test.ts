@@ -263,11 +263,11 @@ describe("qloo map: referential integrity", () => {
     expect(new Set(allIds).size).toBe(allIds.length);
   });
 
-  it("has the documented shape: 14 kinds (18 with 5b, 5c, 7b and 11b), 20 data points, 9 features, Spotify, Ticketmaster and Last.fm", () => {
+  it("has the documented shape: 14 kinds (19 with 5b, 5c, 7b, 11b and 9b), 22 data points, 9 features, Spotify, Ticketmaster and Last.fm", () => {
     expect(callKinds).toBe(14);
-    expect(calls).toHaveLength(18);
-    expect(calls.filter((c) => c.variantOf).map((c) => c.id)).toEqual(["c5b", "c5c", "c7b", "c11b"]);
-    expect(dataPoints).toHaveLength(20);
+    expect(calls).toHaveLength(19);
+    expect(calls.filter((c) => c.variantOf).map((c) => c.id)).toEqual(["c5b", "c5c", "c7b", "c11b", "c_fans"]);
+    expect(dataPoints).toHaveLength(22);
     expect(featureCount).toBe(9);
     expect(secondarySources.map((s) => s.label)).toEqual(["Spotify", "Ticketmaster", "Last.fm"]);
   });

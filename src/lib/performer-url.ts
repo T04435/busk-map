@@ -65,3 +65,22 @@ export function fillParam(performer: Pick<Performer, "fillSuggested" | "skipSong
   if (performer.skipSongs?.length) out.push(["skip", songsParam(performer.skipSongs.map((s) => ({ ...s, own: false })))]);
   return out;
 }
+
+/**
+ * `own=<qlooId>~<name>~<spotify id>`: the act's own artist on Qloo (the Spotify id is optional). Absent when there is none, so old
+ * links stay unchanged. A "~" in the name is replaced on the way out.
+ */
+const QLOO_ID = /^[A-Za-z0-9-]{8,64}$/;
+
+export function parseOwnParam(value: string | undefined): Pick<Performer, "ownArtist"> {
+  if (!value) return {};
+  const [qlooId, name, spotifyId] = value.split("~").map((s) => s.trim());
+  if (!qlooId || !name || !QLOO_ID.test(qlooId)) return {};
+  return { ownArtist: { qlooId, name: name.slice(0, 80), ...(spotifyId && SPOTIFY_ID.test(spotifyId) ? { spotifyId } : {}) } };
+}
+
+export function ownParam(performer: Pick<Performer, "ownArtist">): [string, string][] {
+  const own = performer.ownArtist;
+  if (!own) return [];
+  return [["own", [own.qlooId, own.name.replaceAll("~", " "), own.spotifyId].filter(Boolean).join("~")]];
+}

@@ -57,6 +57,9 @@ export const EXAMPLES: ExamplePerformer[] = [
         { title: "Nakamarra", artist: "Hiatus Kaiyote", own: false },
         { title: "Truth", artist: "Kamasi Washington", own: false },
       ],
+      // The act's own artist on the offline Qloo mock (mockId("artist", "The Bamboos")): shows "from your music" and the fans lean
+      // without the form. Live Qloo ignores a mock id (PlanContext.ownArtist), so this example is unchanged there.
+      ownArtist: { qlooId: "4D4F434B-7923-F70E-1AC1-F5B56C8CBF9F", name: "The Bamboos", spotifyId: "snwFCxUDsBtAVsNCpizAkh" },
     },
   },
   {

@@ -185,7 +185,7 @@ export type AssembleOptions = {
  */
 export async function assemblePlan(context: PlanContext, ai: AiText | null, options: AssembleOptions = {}): Promise<Plan> {
   const { request, city } = context;
-  const [engineTop, engineRanked, cells, locals, learn, weather, artists, footfall, trends, contrast, profile, impact, usual, localScene] = await Promise.all([
+  const [engineTop, engineRanked, cells, locals, learn, weather, artists, footfall, trends, contrast, profile, impact, usual, localScene, ownFans] = await Promise.all([
     context.topPitches(),
     context.ranked(),
     context.tasteCells(),
@@ -200,6 +200,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     context.localImpact(),
     context.entityIds().then((ids) => (ids.length > 0 ? context.hotspotCrowd() : null)),
     context.localScene(),
+    context.ownFans(),
   ]);
   const funnel = await context.funnel();
   const qlooDown = context.qlooFailed();
@@ -241,7 +242,12 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     }),
   );
   const topIds = new Set(top.map((p) => p.id));
-  const nameOf = (entityId: string) => artists.find((r) => r.entity?.id === entityId)?.entity?.name ?? null;
+  const nameOf = (entityId: string) => context.entityName(entityId, artists);
+  const own = context.ownArtist();
+  const ownIds = await context.entityIds();
+  const ownUsed = own !== null && ownIds.includes(own.qlooId);
+  // "From your music": the own artist's share of the crowd's top picks (Qloo explainability), when it drove them.
+  const ownShare = own === null ? null : (drivers(locals.slice(0, 10), nameOf, impact).find((d) => d.name === own.name)?.share ?? null);
   const maxAffinity = Math.max(0, ...cells.map((c) => c.affinity));
   const usedAi = pitches.some((p) => p.whySource === "ai");
   // The engine's own order: its spaced top 3, then the rest of its pool by score (one rank per pitch).
@@ -366,6 +372,21 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
           }
         : null,
     researchTotals,
+    ...(own
+      ? {
+          ownArtist: {
+            name: own.name,
+            used: ownUsed,
+            share: ownUsed ? ownShare : null,
+            fans: ownFans
+              ? {
+                  age: Object.entries(ownFans.age).map(([band, lean]) => ({ band, lean: Math.round(lean * 100) / 100 })),
+                  gender: Object.entries(ownFans.gender).map(([band, lean]) => ({ band, lean: Math.round(lean * 100) / 100 })),
+                }
+              : null,
+          },
+        }
+      : {}),
   };
   return planSchema.parse(plan);
 }

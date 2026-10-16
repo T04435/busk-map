@@ -99,7 +99,7 @@ export function PitchSheet({
                 canAddToRepertoire={canAddToRepertoire}
                 repertoireTotal={repertoireTotal}
               />
-              <CrowdPanel crowd={plan.crowd} resolved={plan.resolvedArtists} topPitch={plan.pitches[0]?.name ?? null} qlooMode={plan.qlooMode} />
+              <CrowdPanel crowd={plan.crowd} resolved={plan.resolvedArtists} topPitch={plan.pitches[0]?.name ?? null} qlooMode={plan.qlooMode} ownArtist={plan.ownArtist} />
               <Disclosure label="How this score adds up" data-testid="score-details" className="[&_summary]:min-h-tap">
                 <div className="space-y-5">
                   <ScoreBreakdown pitch={pitch} weights={plan.weights} />

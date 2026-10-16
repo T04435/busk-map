@@ -2,12 +2,13 @@
  * Plan state lives in the URL, so a plan can be shared by link:
  *   /plan?example=acoustic
  *   /plan?name=…&artists=A|B~<spotify id>&songs=Title~Artist|Own Song~Me~own|Song~Artist~215s&date=2026-10-17&from=18&to=21&permit=general
+ * Optional: own=<qlooId>~<name>[~<spotify id>] (the act's own artist on Qloo)
  * (artist ids and song lengths are optional; see lib/performer-url.ts)
  * Optional: w=taste,footfall,places,events,weather[,discovery]  pitch=<id>  run=0 (show the engine's plan only;
  * by default the agent starts on load, and the server replays a recent run of the same request)
  */
 import { findExample } from "./examples";
-import { artistsParam, fillParam, parseArtistsParam, parseFillParam, parseSongsParam, songsParam } from "./performer-url";
+import { artistsParam, fillParam, ownParam, parseArtistsParam, parseFillParam, parseOwnParam, parseSongsParam, songsParam } from "./performer-url";
 import { parseWeightsParam, weightsParam } from "./weights-url";
 import { planRequestSchema, type PlanRequest } from "./plan-schema";
 import { isAnyTime, nextSlotDate } from "./slot";
@@ -32,6 +33,7 @@ export function parsePlanParams(params: Params, now: LocalNow): ParsedPlanUrl {
         ...parseArtistsParam(first(params.artists)),
         songs: parseSongsParam(first(params.songs)),
         ...parseFillParam(first(params.fill), first(params.skip)),
+        ...parseOwnParam(first(params.own)),
       }
     : example?.performer;
   if (!performer) return { ok: false, error: "Pick an example performer or describe your own." };
@@ -78,6 +80,7 @@ export function planSearchParams(request: PlanRequest, extra: Record<string, str
     params.set("to", String(request.slot.endHour));
   }
   for (const [key, value] of fillParam(request.performer)) params.set(key, value);
+  for (const [key, value] of ownParam(request.performer)) params.set(key, value);
   if (request.performer.songs.length) {
     params.set("songs", songsParam(request.performer.songs));
   }

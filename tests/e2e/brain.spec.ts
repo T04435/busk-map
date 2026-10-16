@@ -21,6 +21,10 @@ const WIDTHS = [
 
 const SCREENS = process.env.LAYOUT_SCREENS_DIR ?? path.resolve(__dirname, "../../../hackathon/hackathons/qloo-2026/screens");
 
+/** Stage R4 screenshots (r4-brain-idle-<width>.png, r4-brain-lastfm-<width>.png) go here when set. */
+const REPERTOIRE_SHOTS = process.env.REPERTOIRE_SHOTS;
+const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
+
 const nodeOf = (page: Page, id: string) => page.locator(`[data-node-id="${id}"]`);
 
 async function openBrain(page: Page) {
@@ -65,7 +69,7 @@ test.describe("the brain of Busk Map at three widths", () => {
         await expect(page.getByText("kinds of Qloo call")).toBeVisible();
         await expect(page.getByTestId("quota-note")).toContainText("10,000 requests a month per key, at 5 a second");
         await expect(page.getByRole("heading", { name: "Next (not built yet)" })).toBeVisible();
-        await expect(page.locator("[data-node-id]")).toHaveCount(14 + 2 + 17 + 10);
+        await expect(page.locator("[data-node-id]")).toHaveCount(14 + 3 + 18 + 10);
         await expectNoSidewaysScroll(page);
         await page.screenshot({ path: path.join(SCREENS, `brain-${width.name}.png`), fullPage: true });
 
@@ -96,6 +100,52 @@ test.describe("the brain of Busk Map at three widths", () => {
         await expect(nodeOf(page, "f_fans")).toBeVisible();
         await expect(call).toBeFocused();
         await expect(page.getByRole("status")).toHaveText("Trace cleared. Every piece is shown.");
+      });
+
+      test("Last.fm is a dashed secondary source for the song lookups; the facts strip fits; axe is clean (R4)", async ({ page }) => {
+        await openBrain(page);
+        // Facts: five tiles, the fifth the learn run's call budget, none cut off.
+        const tiles = page.locator("#facts + ul li");
+        await expect(tiles).toHaveCount(5);
+        await expect(tiles.last()).toContainText("≤ 25");
+        await expect(tiles.last()).toContainText("Qloo calls per learn run");
+        await expectNoSidewaysScroll(page);
+        const cut = await tiles.evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().right > window.innerWidth + 1).length);
+        expect(cut, "fact tiles wider than their box or the viewport").toBe(0);
+        await expect(page.getByText("Dashed: Spotify, Ticketmaster, Last.fm, the other sources.")).toBeVisible();
+        await expect(page.getByRole("heading", { name: "With three other sources" })).toBeVisible();
+
+        // The Last.fm node: a secondary source whose label and detail are not cut off by their button.
+        const lastfm = nodeOf(page, "lastfm");
+        await lastfm.scrollIntoViewIfNeeded();
+        await expect(lastfm).toBeVisible();
+        await expect(lastfm).toContainText("Last.fm");
+        const clipped = await page.locator("[data-node-id]").evaluateAll((els) =>
+          els.filter((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().right > window.innerWidth + 1).map((e) => e.getAttribute("data-node-id")),
+        );
+        expect(clipped, "node buttons whose content overflows").toEqual([]);
+        if (REPERTOIRE_SHOTS) {
+          mkdirSync(REPERTOIRE_SHOTS, { recursive: true });
+          await page.getByRole("heading", { name: "The wiring" }).evaluate((el) => el.scrollIntoView({ block: "start" }));
+          await page.screenshot({ path: path.join(REPERTOIRE_SHOTS, `r4-brain-idle-${width.name}.png`) });
+        }
+        const idle = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+        expect(idle.violations.map((v) => `${v.impact} ${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+
+        // Trace it: plays and songs, then Suggested set, Songs you should learn and the agent's tools.
+        await lastfm.click();
+        await expect(lastfm).toHaveAttribute("data-trace", "selected");
+        for (const id of ["d_plays", "d_tracks", "f_setlist", "f_learn", "f_agent"]) await expect(nodeOf(page, id)).toHaveAttribute("data-trace", "path");
+        for (const id of ["ticketmaster", "c3", "f_map"]) await expect(nodeOf(page, id)).toHaveAttribute("data-trace", "dim");
+        await expect(page.getByRole("status")).toContainText("Tracing. Last.fm feeds 2 data points and 3 parts of your busk.");
+        await page.waitForTimeout(300);
+        await page.getByRole("heading", { name: "The wiring" }).evaluate((el) => el.scrollIntoView({ block: "start" }));
+        if (REPERTOIRE_SHOTS) await page.screenshot({ path: path.join(REPERTOIRE_SHOTS, `r4-brain-lastfm-${width.name}.png`) });
+        const traced = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+        expect(traced.violations.map((v) => `${v.impact} ${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+        await expectNoSidewaysScroll(page);
+        const dashed = await page.locator('svg path[stroke-dasharray]').count();
+        if (!width.stacked) expect(dashed, "dashed wires for the secondary sources").toBeGreaterThan(0);
       });
 
       test("with a trace open, every piece focused by Tab stays clear of the folded trace panel (WCAG 2.4.11, B-015)", async ({ page }) => {
@@ -152,12 +202,12 @@ test.describe("the brain of Busk Map at three widths", () => {
         // The slim bar stays usable: the traced name and Clear trace are readable, and the details return once focus
         // moves to Clear trace (out of the pieces).
         const panel = page.getByTestId("trace-panel");
-        await expect(panel.getByText("Setlist and learn these", { exact: true })).toBeVisible();
+        await expect(panel.getByText("Suggested set", { exact: true })).toBeVisible();
         const clearButton = page.getByRole("button", { name: "Clear trace" });
         await expect(clearButton).toBeVisible();
         await clearButton.focus();
         await expect(page.getByTestId("trace-detail")).toBeVisible();
-        await expect(page.getByRole("status")).toContainText("Tracing. Setlist and learn these comes from");
+        await expect(page.getByRole("status")).toContainText("Tracing. Suggested set comes from");
 
         // Clearing the trace drops the scroll padding again.
         await page.keyboard.press("Escape");

@@ -22,6 +22,7 @@ import {
   type NodeId,
 } from "@/lib/qloo-map";
 
+const LASTFM_CLIENT = path.resolve(__dirname, "../../../src/server/adapters/songs/client.ts");
 const ROOT = path.resolve(__dirname, "../../..");
 const QLOO_DIR = path.join(ROOT, "src/server/adapters/qloo");
 /** Where a `file.ts:function` reference in the map lives. */
@@ -31,6 +32,8 @@ const FILES: Record<string, string> = {
   "context.ts": path.join(ROOT, "src/server/agent/context.ts"),
   "learn/context.ts": path.join(ROOT, "src/server/learn/context.ts"),
   "learn/tools.ts": path.join(ROOT, "src/server/learn/tools.ts"),
+  "songs/client.ts": LASTFM_CLIENT,
+  "songs/index.ts": path.join(ROOT, "src/server/adapters/songs/index.ts"),
 };
 
 const parse = (file: string) => ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
@@ -104,6 +107,34 @@ function countedWrappers(): Map<string, string> {
     visit(statement.body, (n) => {
       if (ts.isCallExpression(n) && calleeName(n) === "countLookup" && exported) out.set(statement.name!.text, stringArg(n, 0)!);
     });
+  }
+  return out;
+}
+
+type LastfmRequest = { fn: string; method: string };
+
+/**
+ * Every Last.fm request in the songs adapter, read from its syntax tree. A request site is a top-level function that
+ * calls `fetchJson` with a `new URLSearchParams({ method: "<api method>", … })` literal bound in the same function.
+ */
+function lastfmRequests(): LastfmRequest[] {
+  const out: LastfmRequest[] = [];
+  for (const statement of parse(LASTFM_CLIENT).statements) {
+    if (!ts.isFunctionDeclaration(statement) || !statement.body || !statement.name) continue;
+    let sends = false;
+    const methods: string[] = [];
+    visit(statement.body, (n) => {
+      if (!ts.isCallExpression(n) && !ts.isNewExpression(n)) return;
+      if (ts.isCallExpression(n) && calleeName(n) === "fetchJson") sends = true;
+      if (ts.isNewExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === "URLSearchParams") {
+        const method = literalProp(n.arguments?.[0], "method");
+        if (method) methods.push(method);
+      }
+    });
+    if (!sends) continue;
+    expect(methods, `${statement.name.text} calls fetchJson without a literal Last.fm method`).toHaveLength(1);
+    expect(statement.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword), `${statement.name.text} is not exported`).toBe(true);
+    out.push({ fn: statement.name.text, method: methods[0] });
   }
   return out;
 }
@@ -183,6 +214,48 @@ describe("qloo map: drift against the Qloo adapter", () => {
   });
 });
 
+describe("qloo map: drift against the Last.fm adapter", () => {
+  const requests = lastfmRequests();
+  const lastfm = secondarySources.find((s) => s.id === "lastfm");
+  const inMap = (lastfm?.lookups ?? []).map((l) => `${l.codeRef.split(":")[1]}:${l.method}`);
+
+  it("finds the adapter's requests (the parser still understands songs/client.ts)", () => {
+    expect(requests.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("names exactly the Last.fm requests the client sends, function and API method", () => {
+    expect(inMap.sort()).toEqual(requests.map((r) => `${r.fn}:${r.method}`).sort());
+  });
+
+  it("Last.fm is reached only through songs/client.ts", () => {
+    const users: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (/\.tsx?$/.test(entry.name) && full !== LASTFM_CLIENT) {
+          visit(parse(full), (n) => {
+            if (ts.isStringLiteralLike(n) && /ws\.audioscrobbler\.com/i.test(n.text)) users.push(path.relative(ROOT, full));
+          });
+        }
+      }
+    };
+    walk(path.join(ROOT, "src"));
+    expect([...new Set(users)]).toEqual([]);
+  });
+
+  it("every Last.fm `via` reference names a function that exists, and the source feeds the songs data points", () => {
+    for (const l of lastfm?.lookups ?? []) {
+      for (const ref of [l.codeRef, ...l.via]) {
+        const [file, fn] = ref.split(":");
+        expect(FILES[file], `unknown file in ${ref}`).toBeDefined();
+        expect(declaredNames(FILES[file]).has(fn), `${ref} not found`).toBe(true);
+      }
+    }
+    expect(lastfm?.dataPoints.map((d) => d.id).sort()).toEqual(["d_plays", "d_tracks"]);
+  });
+});
+
 describe("qloo map: referential integrity", () => {
   const allIds: NodeId[] = [...calls, ...secondarySources, ...dataPoints, ...features].map((n) => n.id);
 
@@ -190,13 +263,13 @@ describe("qloo map: referential integrity", () => {
     expect(new Set(allIds).size).toBe(allIds.length);
   });
 
-  it("has the documented shape: 12 kinds (14 with 5b and 5c), 17 data points, 10 features, Spotify and Ticketmaster only", () => {
+  it("has the documented shape: 12 kinds (14 with 5b and 5c), 18 data points, 10 features, Spotify, Ticketmaster and Last.fm", () => {
     expect(callKinds).toBe(12);
     expect(calls).toHaveLength(14);
     expect(calls.filter((c) => c.variantOf).map((c) => c.id)).toEqual(["c5b", "c5c"]);
-    expect(dataPoints).toHaveLength(17);
+    expect(dataPoints).toHaveLength(18);
     expect(featureCount).toBe(10);
-    expect(secondarySources.map((s) => s.label)).toEqual(["Spotify", "Ticketmaster"]);
+    expect(secondarySources.map((s) => s.label)).toEqual(["Spotify", "Ticketmaster", "Last.fm"]);
   });
 
   it("every link target exists and points to the next column", () => {
@@ -244,7 +317,7 @@ describe("qloo map: referential integrity", () => {
 
 describe("qloo map: facts and trace", () => {
   it("derives the counts and states the quota", () => {
-    expect(facts.map((f) => f.value)).toEqual(["12", "24–33", "0", "10"]);
+    expect(facts.map((f) => f.value)).toEqual(["12", "24–33", "0", "10", "≤ 25"]);
     expect(CALLS_PER_LEARN_RUN).toBe("≤ 25");
     expect(quotaNote).toContain("10,000 requests a month per key, at 5 a second");
     expect(quotaNote).toContain("24 h");
@@ -282,6 +355,22 @@ describe("qloo map: facts and trace", () => {
   it("secondary sources touch the features their data points feed", () => {
     expect(featuresTouchedBy("ticketmaster").sort()).toEqual(["f_agent", "f_events", "f_plain", "f_rank"]);
     expect(featuresTouchedBy("spotify")).toContain("f_setlist");
+    expect(featuresTouchedBy("lastfm").sort()).toEqual(["f_agent", "f_learn", "f_setlist"]);
+  });
+
+  it("Last.fm backs up the song lookups: plays for the Suggested set, top tracks for Songs to learn", () => {
+    const { nodes } = trace("lastfm");
+    for (const id of ["d_plays", "d_tracks", "f_setlist", "f_learn", "f_agent"] as const) expect(nodes.has(id), id).toBe(true);
+    expect(nodes.has("ticketmaster")).toBe(false);
+    expect(nodes.has("d_cells")).toBe(false);
+    expect(trace("d_tracks").nodes.has("spotify")).toBe(true);
+    expect(trace("f_learn").nodes.has("lastfm")).toBe(true);
+  });
+
+  it("uses the Repertoire words for the renamed features", () => {
+    expect(features.find((f) => f.id === "f_setlist")).toMatchObject({ label: "Suggested set", location: "Pitch card: the suggested set, and Songs you should learn" });
+    expect(features.find((f) => f.id === "f_learn")).toMatchObject({ label: "Songs you should learn", location: "Repertoire page: To learn" });
+    for (const text of [...features.flatMap((f) => [f.label, f.sub, f.location]), ...edges.map((e) => e.how)]) expect(text).not.toMatch(/\bsetlist|learn these|playlist/i);
   });
 
   it("summarises a trace in one sentence", () => {

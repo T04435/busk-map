@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BrainMap } from "@/components/brain/brain-map";
+import { cn } from "cn";
 import { callKinds, facts, next, quotaNote } from "@/lib/qloo-map";
 
 export const metadata: Metadata = {
@@ -32,9 +33,13 @@ export default function BrainPage() {
         <h2 id="facts" className="sr-only">
           Qloo calls per busk
         </h2>
-        <ul className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border lg:grid-cols-4">
-          {facts.map((f) => (
-            <li key={f.label} className="flex flex-col gap-1 bg-background p-4">
+        <ul className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border lg:grid-cols-5">
+          {facts.map((f, i) => (
+            <li
+              key={f.label}
+              // An odd last tile takes the whole row on two columns, so no empty cell shows the border colour.
+              className={cn("flex flex-col gap-1 bg-background p-4", facts.length % 2 === 1 && i === facts.length - 1 && "col-span-2 lg:col-span-1")}
+            >
               <span className="text-3xl font-semibold tracking-tight">{f.value}</span>
               <span className="text-sm text-muted-foreground">{f.label}</span>
             </li>

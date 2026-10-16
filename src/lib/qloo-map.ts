@@ -2,16 +2,19 @@
  * The brain of Busk Map: how Qloo data flows through the app, as built on dev/core.
  *
  * One source of truth for the /brain page and the landing teaser. The facts come from docs/qloo-data-map.md
- * (commit 4164685): Qloo calls → the data points they return → the parts of a busk they decide. Spotify and
- * Ticketmaster are the only secondary sources shown. Client-safe: plain data and pure helpers.
+ * (commit 4164685): Qloo calls → the data points they return → the parts of a busk they decide. Spotify, Ticketmaster
+ * and Last.fm are the secondary sources shown. Client-safe: plain data and pure helpers.
  *
  * tests/unit/lib/qloo-map.test.ts keeps this honest: every link target exists, nothing is orphaned, and the set of
- * `calls[].codeRef` equals the client functions that send a Qloo request (read from the adapter's source), so the
- * adapter can't gain or lose a call without this map changing too.
+ * `calls[].codeRef` equals the client functions that send a Qloo request (read from the adapter's source), and the
+ * Last.fm calls in `secondarySources` equal the requests in adapters/songs/client.ts, so neither adapter can gain or
+ * lose a call without this map changing too.
  */
 
+import { PLAYLIST_COPY } from "@/lib/playlist-copy";
+
 export type CallId = "c1" | "c2" | "c3" | "c4" | "c5" | "c5b" | "c5c" | "c6" | "c7" | "c8" | "c9" | "c10" | "c11" | "c12";
-export type SourceId = "spotify" | "ticketmaster";
+export type SourceId = "spotify" | "ticketmaster" | "lastfm";
 export type DataPointId =
   | "d_id"
   | "d_cells"
@@ -29,7 +32,8 @@ export type DataPointId =
   | "d_contrast"
   | "d_years"
   | "d_taste_artists"
-  | "d_tracks";
+  | "d_tracks"
+  | "d_plays";
 export type FeatureId = "f_rank" | "f_map" | "f_events" | "f_week" | "f_crowd" | "f_fans" | "f_setlist" | "f_plain" | "f_agent" | "f_learn";
 export type NodeId = CallId | SourceId | DataPointId | FeatureId;
 export type NodeKind = "call" | "source" | "dataPoint" | "feature";
@@ -56,11 +60,25 @@ export type QlooCall = {
   dataPoints: readonly Link<DataPointId>[];
 };
 
+/** One request an outside source's client sends (checked against the source's code by the drift test). */
+export type SourceLookup = {
+  /** The Last.fm API method sent, e.g. "artist.gettoptracks". */
+  method: string;
+  /** The client function that sends it: `songs/client.ts:<function>`. */
+  codeRef: `songs/client.ts:${string}`;
+  /** Who calls it (`file:function`), for the reader. */
+  via: readonly string[];
+  /** What it is for. */
+  purpose: string;
+};
+
 export type SecondarySource = {
   id: SourceId;
   label: string;
   contributes: string;
   dataPoints: readonly Link<DataPointId>[];
+  /** The requests this source's client sends, when the drift test covers them (Last.fm). */
+  lookups?: readonly SourceLookup[];
 };
 
 export type DataPoint = {
@@ -270,6 +288,29 @@ export const secondarySources: readonly SecondarySource[] = [
       { id: "d_headliner", how: "the headliner names Qloo matches" },
     ],
   },
+  {
+    id: "lastfm",
+    label: "Last.fm",
+    contributes: "song plays, and songs when Spotify has none",
+    dataPoints: [
+      { id: "d_plays", how: "top tracks per artist, with how many times each is played" },
+      { id: "d_tracks", how: "the songs backup: a learn run takes an artist’s top tracks from Last.fm when Spotify has none" },
+    ],
+    lookups: [
+      {
+        method: "artist.gettoptracks",
+        codeRef: "songs/client.ts:fetchTopTracks",
+        via: ["songs/index.ts:getSongs", "learn/tools.ts:top_tracks"],
+        purpose: "an artist’s top tracks and their plays",
+      },
+      {
+        method: "artist.getinfo",
+        codeRef: "songs/client.ts:fetchArtistListeners",
+        via: ["songs/index.ts:getListeners"],
+        purpose: "listener counts beside the artists in the picker (not part of the graph)",
+      },
+    ],
+  },
 ];
 
 export const dataPoints: readonly DataPoint[] = [
@@ -325,7 +366,7 @@ export const dataPoints: readonly DataPoint[] = [
     fields: ["entity_id", "name", "query.affinity", "query.measurements.audience_growth", "external.lastfm[].listeners"],
     features: [
       { id: "f_crowd", how: "who this crowd likes" },
-      { id: "f_setlist", how: "learn these: the crowd’s top artists" },
+      { id: "f_setlist", how: "songs to learn: the crowd’s top artists" },
       { id: "f_agent", how: "the crowd_at tool" },
     ],
   },
@@ -378,7 +419,7 @@ export const dataPoints: readonly DataPoint[] = [
     sub: "trend change by artist",
     fields: ["date", "population_percent_delta", "population_percentile"],
     features: [
-      { id: "f_setlist", how: "ranks learn these" },
+      { id: "f_setlist", how: "ranks the songs to learn" },
       { id: "f_crowd", how: "the “Rising” badge" },
       { id: "f_agent", how: "the learn_these tool" },
       { id: "f_learn", how: "who is rising among the artists a run found" },
@@ -434,6 +475,16 @@ export const dataPoints: readonly DataPoint[] = [
     fields: ["track title", "artist", "release year", "duration"],
     features: [{ id: "f_learn", how: "the songs a run picks from; earlier suggestions are left out here" }],
   },
+  {
+    id: "d_plays",
+    label: "Song plays",
+    sub: "from Last.fm",
+    fields: ["track title", "playcount", "listeners"],
+    features: [
+      { id: "f_setlist", how: "about a third of each song’s score is how well-known it is; it also ranks the songs to learn" },
+      { id: "f_agent", how: "the build_setlist and learn_these tools" },
+    ],
+  },
 ];
 
 export const features: readonly Feature[] = [
@@ -473,9 +524,9 @@ export const features: readonly Feature[] = [
   },
   {
     id: "f_setlist",
-    label: "Setlist and learn these",
+    label: PLAYLIST_COPY.suggestedSet,
     sub: "what to play, what to learn",
-    location: "Pitch card: the setlist, and Learn these",
+    location: `Pitch card: the ${PLAYLIST_COPY.suggestedSetNoun}, and ${PLAYLIST_COPY.toLearn}`,
     how: "combined",
     with: ["Last.fm", "Spotify"],
   },
@@ -490,9 +541,9 @@ export const features: readonly Feature[] = [
   { id: "f_agent", label: "The agent’s tools", sub: "what Claude asks while it plans", location: "Plan page: Agent steps", how: "direct" },
   {
     id: "f_learn",
-    label: "Songs to learn",
+    label: PLAYLIST_COPY.toLearn,
     sub: "a scouting run",
-    location: "Repertoire page: Songs to learn",
+    location: `${PLAYLIST_COPY.name} page: ${PLAYLIST_COPY.toLearnShort}`,
     how: "combined",
     with: ["Spotify", "Last.fm", "Claude Sonnet (the learn agent)"],
   },
@@ -528,6 +579,7 @@ export const facts: readonly { value: string; label: string }[] = [
   { value: CALLS_PER_NEW_BUSK, label: "Qloo calls for a new busk" },
   { value: String(CALLS_ON_RERUN), label: `on a rerun: answers cached for ${QUOTA.cacheHours} h` },
   { value: String(featureCount), label: "parts of your busk it decides" },
+  { value: CALLS_PER_LEARN_RUN, label: "Qloo calls per learn run" },
 ];
 
 export const quotaNote =

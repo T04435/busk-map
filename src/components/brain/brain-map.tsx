@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
+import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import {
   callKinds,
   calls,
@@ -168,7 +169,7 @@ export function BrainMap() {
         <h2 id="wiring" className="text-2xl font-semibold tracking-tight">
           The wiring
         </h2>
-        <p className="text-sm text-muted-foreground">Pick any piece to trace its path. Dashed: Spotify and Ticketmaster, the other sources.</p>
+        <p className="text-sm text-muted-foreground">Pick any piece to trace its path. Dashed: {secondarySources.map((s) => s.label).join(", ")}, the other sources.</p>
       </div>
 
       <div ref={gridRef} className="relative grid gap-8 lg:grid-cols-3 lg:gap-x-16" data-testid="brain-grid">
@@ -198,7 +199,7 @@ export function BrainMap() {
             {calls.map((c) => node(c.id, c.label, `${c.endpoint}${c.urnType ? ` · ${c.urnType}` : ""}`, c.num))}
           </ul>
           <div className={cn("space-y-2 pt-3", !onPathSources && "max-lg:hidden")}>
-            <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">With two other sources</h4>
+            <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">With {secondarySources.length === 3 ? "three" : secondarySources.length} other sources</h4>
             <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1" aria-label="Other sources">
               {secondarySources.map((s) => node(s.id, s.label, s.contributes, undefined, true))}
             </ul>
@@ -248,8 +249,8 @@ function IdlePanel() {
     <div className="rounded-xl border p-4 text-sm" data-testid="trace-panel">
       <p className="font-medium">Pick any piece</p>
       <p className="text-muted-foreground">
-        Choose a Qloo call, a data point or a part of your busk, and its whole path lights up. Try Setlist and learn these, where four
-        Qloo calls and Spotify meet.
+        Choose a Qloo call, a data point or a part of your busk, and its whole path lights up. Try {PLAYLIST_COPY.suggestedSet}, where four
+        Qloo calls, Spotify and Last.fm meet.
       </p>
     </div>
   );

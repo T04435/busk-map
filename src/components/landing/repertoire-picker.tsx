@@ -1,11 +1,12 @@
 "use client";
 
-import { Loader2Icon, MusicIcon, XIcon } from "lucide-react";
+import { CheckIcon, Loader2Icon, MusicIcon, PencilIcon, XIcon } from "lucide-react";
 import { useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { TrackResult } from "@/components/forms/repertoire-api";
 import { FormMessage } from "@/components/honeycomb/form-message";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { formatDuration } from "@/lib/live-search";
@@ -31,8 +32,67 @@ export const toPicked = (track: TrackResult, own: boolean): PickedSong => ({
 /** The most songs one act can pick. */
 const MAX_PICKED = 60;
 
+/** One picked song. A typed one can be edited in place: the title and artist become two fields until Done. */
+function PickedRow({ song, onRemove, onEdit }: { song: PickedSong; onRemove: (song: PickedSong) => void; onEdit?: (song: PickedSong, edit: { title: string; artist: string }) => void }) {
+  const typed = song.key.startsWith("typed:");
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(song.title);
+  const [artist, setArtist] = useState(song.artist);
+  const editRef = useRef<HTMLButtonElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const id = useId();
+  const done = () => {
+    const t = clean(title);
+    if (t) onEdit?.(song, { title: t, artist: clean(artist) || "Unknown artist" });
+    else setTitle(song.title);
+    setEditing(false);
+    // The row may be re-keyed by the edit: focus returns to the edit button of whichever row renders next.
+    queueMicrotask(() => document.querySelector<HTMLButtonElement>(`[data-edit-for="${CSS.escape(t ? `typed:${t.toLowerCase()}|${(clean(artist) || "Unknown artist").toLowerCase()}` : song.key)}"]`)?.focus());
+  };
+  if (editing)
+    return (
+      <li className="flex flex-col gap-2 px-3 py-2" data-testid="typed-song-edit">
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label htmlFor={`${id}-t`}>Title</Label>
+            <Input ref={titleRef} id={`${id}-t`} value={title} maxLength={120} autoFocus onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), done())} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor={`${id}-a`}>Artist</Label>
+            <Input id={`${id}-a`} value={artist} maxLength={80} onChange={(e) => setArtist(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), done())} />
+          </div>
+        </div>
+        <div>
+          <Button type="button" size="sm" onClick={done}>
+            <CheckIcon aria-hidden /> Done
+          </Button>
+        </div>
+      </li>
+    );
+  return (
+    <li className="flex items-center gap-3 px-3 py-1.5">
+      <SongCover image={song.image} />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-bold">{song.title}</span>
+        <span className="block truncate text-xs text-muted-foreground">{[song.artist, song.album].filter(Boolean).join(" · ")}</span>
+      </span>
+      {song.own && <Badge variant="solid">Your song</Badge>}
+      {typed && <Badge variant="neutral">Typed</Badge>}
+      {song.durationMs !== null && <span className="font-mono text-xs text-muted-foreground tabular-nums">{formatDuration(song.durationMs)}</span>}
+      {typed && onEdit ? (
+        <Button ref={editRef} type="button" variant="ghost" size="icon-xs" data-edit-for={song.key} aria-label={`Edit ${song.title}`} onClick={() => { setTitle(song.title); setArtist(song.artist); setEditing(true); }}>
+          <PencilIcon aria-hidden />
+        </Button>
+      ) : null}
+      <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${song.title}`} onClick={() => onRemove(song)}>
+        <XIcon aria-hidden />
+      </Button>
+    </li>
+  );
+}
+
 /** The songs you picked: a cover cell, title, "artist · album", a "Your song" badge, the length and a remove button. */
-export function PickedSongs({ songs, onRemove }: { songs: PickedSong[]; onRemove: (song: PickedSong) => void }) {
+export function PickedSongs({ songs, onRemove, onEdit }: { songs: PickedSong[]; onRemove: (song: PickedSong) => void; onEdit?: (song: PickedSong, edit: { title: string; artist: string }) => void }) {
   if (songs.length === 0) return <p className="m-0 text-sm text-muted-foreground">Search for songs above.</p>;
   const known = songs.reduce((sum, s) => sum + (s.durationMs ?? 0), 0);
   const unknown = songs.some((s) => s.durationMs === null);
@@ -44,19 +104,7 @@ export function PickedSongs({ songs, onRemove }: { songs: PickedSong[]; onRemove
       </p>
     <ul aria-label="Songs you picked" className="m-0 list-none divide-y divide-border border-2 border-rule bg-card p-0 text-sm">
       {songs.map((song) => (
-        <li key={song.key} className="flex items-center gap-3 px-3 py-1.5">
-          <SongCover image={song.image} />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate font-bold">{song.title}</span>
-            <span className="block truncate text-xs text-muted-foreground">{[song.artist, song.album].filter(Boolean).join(" · ")}</span>
-          </span>
-          {song.own && <Badge variant="solid">Your song</Badge>}
-          {song.key.startsWith("typed:") && <Badge variant="neutral">Typed</Badge>}
-          {song.durationMs !== null && <span className="font-mono text-xs text-muted-foreground tabular-nums">{formatDuration(song.durationMs)}</span>}
-          <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${song.title}`} onClick={() => onRemove(song)}>
-            <XIcon aria-hidden />
-          </Button>
-        </li>
+        <PickedRow key={song.key} song={song} onRemove={onRemove} onEdit={onEdit} />
       ))}
     </ul>
     </div>
@@ -135,11 +183,20 @@ export function RepertoirePicker({
     addSongs([{ key, title: song.title, artist: song.artist, album: null, image: null, durationMs: null, own: song.own }]);
   }
 
+  /** Edit a typed song in place: same row, new title and artist (its key follows them, so a duplicate collapses into the other row). */
+  function editTyped(song: PickedSong, edit: { title: string; artist: string }) {
+    const key = `typed:${edit.title.toLowerCase()}|${edit.artist.toLowerCase()}`;
+    setPicked((current) => {
+      const next = current.map((p) => (p === song ? { ...p, key, title: edit.title, artist: edit.artist } : p));
+      return next.filter((p, i) => next.findIndex((q) => q.key === p.key) === i);
+    });
+  }
+
   return (
     <fieldset className="m-0 flex min-w-0 flex-col gap-3.5 border-0 p-0" aria-describedby={error ? errorId : undefined}>
       <legend className="mb-1 p-0 text-label font-bold">Songs you can play</legend>
       <SongSearch onAdd={(track) => addSongs([toPicked(track, false)])} isAdded={(track) => picked.some((p) => p.key === track.id)} artists={artists} onAddTyped={addTyped} />
-      <PickedSongs songs={picked} onRemove={(song) => setPicked((current) => current.filter((p) => p !== song))} />
+      <PickedSongs songs={picked} onRemove={(song) => setPicked((current) => current.filter((p) => p !== song))} onEdit={editTyped} />
       <div className="space-y-1">
         <Label htmlFor={linkId}>Your Spotify artist link (optional)</Label>
         <InputGroup className="has-[>[data-align=inline-start]]:[&>input]:pl-10">

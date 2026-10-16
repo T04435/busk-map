@@ -191,3 +191,28 @@ test.describe("artists Qloo can't match", () => {
     await expect(page.getByTestId("agent-fallback")).toContainText("template ones");
   });
 });
+
+test.describe("F25: a song Spotify doesn't have is one row in the song search", () => {
+  test.skip(!LOCAL, "Relies on the mock's catalogue");
+
+  test("splits Title - Artist, says what it saves, and the picked row is editable in place", async ({ page }) => {
+    await page.goto("/busks");
+    const form = page.getByRole("form", { name: "Plan for your own act" });
+    await form.getByPlaceholder("Search songs, e.g. Riptide").fill("Wild Song - The Nobodies");
+    await expect(form.getByRole("option", { name: "Add “Wild Song” by The Nobodies as typed" })).toBeVisible();
+    await expect(form.getByText("It's saved without a length, tagged Typed. Edit the title or artist any time.")).toBeVisible();
+    await form.getByRole("option", { name: /as typed/ }).last().click();
+    const picked = form.getByRole("list", { name: "Songs you picked" });
+    await expect(picked).toContainText("Typed");
+    await picked.getByRole("button", { name: "Edit Wild Song" }).click();
+    await form.getByLabel("Title").fill("Wild Song II");
+    await form.getByLabel("Artist").fill("The Somebodies");
+    await form.getByRole("button", { name: "Done" }).click();
+    await expect(picked).toContainText("Wild Song II");
+    await expect(picked).toContainText("The Somebodies");
+    await expect(picked.getByRole("listitem")).toHaveCount(1);
+    // A title with no dash has no "by".
+    await form.getByPlaceholder("Search songs, e.g. Riptide").fill("Mystery Tune");
+    await expect(form.getByRole("option", { name: "Add “Mystery Tune” as typed" })).toBeVisible();
+  });
+});

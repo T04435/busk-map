@@ -1,6 +1,6 @@
 "use client";
 
-import { MusicIcon } from "lucide-react";
+import { MusicIcon, PlusIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { searchTracks, type TrackResult } from "@/components/forms/repertoire-api";
 import { useLiveSearch } from "@/components/forms/use-live-search";
@@ -25,13 +25,14 @@ export function SongCover({ image, className, size = 32 }: { image: string | nul
  * "Songs you can play": live Spotify song search. Picking a result adds it (cover, album and length kept).
  * Songs by the act's "sounds like" artists (`artists`) come first, marked "By your artist".
  */
-/** What was typed as a song: "Title - Artist", with "(own)" at the end for your own song. No " - " means a title only. */
+/** What was typed as a song: "Title - Artist", with "(own)" at the end for your own song. No " - " means a title only (artist ""). */
 export function parseTypedSong(text: string): { title: string; artist: string; own: boolean } {
   const own = /\(own\)\s*$/i.test(text);
   const body = text.replace(/\(own\)\s*$/i, "").trim();
   const [title, ...rest] = body.split(/\s+[-–]\s+/);
   const clean = (s: string) => s.replace(/[|~]/g, " ").trim();
-  return { title: clean(title), artist: clean(rest.join(" - ")) || "Unknown artist", own };
+  // A title with no " - " has no artist: the row says so by leaving "by <artist>" off, and the song is saved as "Unknown artist".
+  return { title: clean(title), artist: clean(rest.join(" - ")), own };
 }
 
 export function SongSearch({
@@ -56,6 +57,7 @@ export function SongSearch({
   const [search] = useState(() => (q: string, signal: AbortSignal) => searchTracks(q, signal, artistsRef.current.map((a) => a.name)));
   const { state, update } = useLiveSearch<TrackResult>(search);
   const typed = query.trim();
+  const parsedTyped = parseTypedSong(typed);
   // Ranked again here with Spotify ids, and for chips added after the search.
   const results = state.status === "done" ? rankByActArtists(state.results, artists) : [];
   // Keyboard focus starts on the first result each time new results arrive.
@@ -103,7 +105,7 @@ export function SongSearch({
           )}
           {state.status === "done" && results.length === 0 && (
             <p role="status" className="px-3 py-2 text-sm text-muted-foreground">
-              No songs on Spotify match “{state.query}”. Add it as typed below.
+              No songs on Spotify match “{state.query}”.
             </p>
           )}
           {results.length > 0 && (
@@ -144,17 +146,18 @@ export function SongSearch({
               <CommandItem
                 value="typed"
                 onSelect={() => {
-                  onAddTyped(parseTypedSong(typed));
+                  onAddTyped({ ...parsedTyped, artist: parsedTyped.artist || "Unknown artist" });
                   setQuery("");
                   update("");
                   inputRef.current?.focus();
                 }}
               >
-                <span className="min-w-0 flex-1 truncate">
-                  Add “{typed}” as typed
-                  <span className="block truncate text-xs text-muted-foreground">Write it as “Title - Artist”. Add (own) for your own song.</span>
+                <PlusIcon aria-hidden="true" className="size-4 shrink-0" />
+                <span className="min-w-0 flex-1 break-words">
+                  Add “{parsedTyped.title}”{parsedTyped.artist ? ` by ${parsedTyped.artist}` : ""} as typed
                 </span>
               </CommandItem>
+              <p className="m-0 px-3 pb-2 text-xs text-muted-foreground">It&apos;s saved without a length, tagged Typed. Edit the title or artist any time.</p>
             </CommandGroup>
           )}
         </CommandList>

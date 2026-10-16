@@ -7,8 +7,8 @@ import { Logo } from "@/components/honeycomb/logo";
 import { activeNavId, NAV_ITEMS } from "@/components/honeycomb/nav-items";
 
 /**
- * The header on every page: the lockup, and from 768px up the four destinations. Always bluestone with the 4px orange
- * rule under it, in day and night. The active item is boxed in orange and says `aria-current="page"`. Below 768px the
+ * The header on every page: the lockup, and from 721px up the four destinations. Always bluestone with the 4px orange
+ * rule under it, in day and night. The active item is boxed in orange and says `aria-current="page"`. Below 721px the
  * header is the compact bar (lockup only) and MobileNav carries the destinations at the bottom.
  */
 export function AppHeaderView({ pathname }: { pathname: string | null }) {
@@ -18,7 +18,7 @@ export function AppHeaderView({ pathname }: { pathname: string | null }) {
       <Link href="/" className="flex h-tap items-center rounded-none focus-visible:ring-2 focus-visible:ring-[#f2ede4]">
         <Logo size={36} ground="dark" />
       </Link>
-      <nav aria-label="Main" className="hidden gap-1 md:flex">
+      <nav aria-label="Main" className="hidden gap-1 min-[721px]:flex">
         {NAV_ITEMS.map((item) => {
           const on = item.id === active;
           return (

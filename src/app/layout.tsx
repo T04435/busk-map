@@ -32,8 +32,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en-AU" className={`${display.variable} ${sans.variable} ${mono.variable} h-full antialiased`}>
-      {/* Under 768px the fixed bottom nav would cover the end of the page: pad by its height (plus the safe area). */}
-      <body className="flex min-h-full flex-col pb-[calc(var(--size-nav)+env(safe-area-inset-bottom))] md:pb-0">
+      {/* Under 721px the fixed bottom nav would cover the end of the page: pad by its height (plus the safe area). */}
+      <body className="flex min-h-full flex-col pb-[calc(var(--size-nav)+env(safe-area-inset-bottom))] min-[721px]:pb-0">
         <a
           href="#main"
           className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-2 focus-visible:left-2 focus-visible:z-[60] focus-visible:border-2 focus-visible:border-rule focus-visible:bg-card focus-visible:px-4 focus-visible:py-3 focus-visible:font-bold"

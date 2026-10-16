@@ -46,6 +46,15 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-040 | Low | Honeycomb /busks B09: Spotify artist link has no visible label; “(optional)” lives in the placeholder (WCAG 3.3.2) | Open (design/honeycomb; F26 reshapes it) |
 | B-041 | Low | Honeycomb /busks B11/B14: a focused choice card shows a 2 px dark outline flush on its 2 px dark border, barely visible on the selected card | Open (design/honeycomb) |
 | B-042 | Low | Honeycomb /busks B07 at 390: the “By your artist” badge and the time squeeze the song title in the results to one letter | Open (design/honeycomb) |
+| B-043 | Medium | Honeycomb plan P17: Qloo down shows only an alert; no “No plan without taste data” panel and no Try again (board) | Open (design/honeycomb; Try again vs HQ default 8 is the user's call) |
+| B-044 | Medium | Honeycomb plan P19: no legal pitch has no recovery actions (board: Plan with a general permit · Try another day) | Open (design/honeycomb) |
+| B-045 | Low | Honeycomb plan P18: no artist matched stacks three alerts and has no “Pick your artists from Spotify” action | Open (design/honeycomb) |
+| B-046 | Low | Honeycomb plan P20: a source down shows only a chip; no alert saying what is estimated | Open (design/honeycomb) |
+| B-047 | Low | Honeycomb plan P06: weather shows only the slot's hours; no hours either side, slot bracket or updated line | Open (design/honeycomb) |
+| B-048 | Low | Honeycomb plan: at 1440 the heading outline skips h1 → h3 (the h2 is hidden when wide) | Open (design/honeycomb) |
+| B-049 | Low | Honeycomb plan P15/P18: fallback copy says “agent” and “engine” where the board says Claude and Busk Map's scores | Open (design/honeycomb) |
+| B-050 | Medium | Honeycomb plan P24: “Your busk” starts 871 px down at 390 (987 px at 1440): header stack, chips and funnel push the payoff below the fold | Open (design/honeycomb) |
+| B-051 | Low | Honeycomb plan P02/P03: the plan page keeps the boxed funnel and full-width Agent vs engine rows, unlike the board | Open (design/honeycomb) |
 
 ---
 
@@ -192,4 +201,7 @@ Checked part by part against BRAND's 29-part inventory (`design-handoff/inventor
 
 ### B-036 to B-042 · Busks · review v1 (design/honeycomb at 7b1521e)
 Evidence, side by side with the deck at 390/768/1440: `qa/reports/busks.html` on design/honeycomb (rows B06–B14). Parts are provisional until BRAND's busks inventory lands. The user's calls F13, F14, F20, F25, F26 and F27 are tracked in that report, not here.
+
+### B-043 to B-051 · Plan · review v1 (design/honeycomb at 7b1521e)
+Evidence, side by side with the deck's 11 Plan boards: `qa/reports/plan.html` on design/honeycomb (rows P01–P26; provisional until BRAND's plan inventory lands). axe is clean on the ready plan and every reachable state; the engine fallback (P15) has no offline switch and is judged from the source.
 

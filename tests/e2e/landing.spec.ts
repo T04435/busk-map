@@ -160,3 +160,48 @@ test.describe("landing, as the deck draws it", () => {
     await expect(get.getByRole("region", { name: "Learn these" })).toContainText("Dinosaurs");
   });
 });
+
+// L21b (F23-F24): Thanks to, just before the Brain teaser.
+test.describe("landing: Thanks to (L21b)", () => {
+  const BUILT_WITH = [
+    ["Claude", "https://www.anthropic.com/claude"],
+    ["Vercel", "https://vercel.com"],
+    ["Neon", "https://neon.com"],
+    ["Spotify", "https://www.spotify.com"],
+    ["Last.fm", "https://www.last.fm"],
+    ["Ticketmaster", "https://www.ticketmaster.com"],
+    ["Open-Meteo", "https://open-meteo.com"],
+    ["MapLibre", "https://maplibre.org"],
+    ["OpenStreetMap", "https://www.openstreetmap.org"],
+  ];
+
+  test("it sits before the Brain teaser, with Qloo as the only sponsor", async ({ page }) => {
+    await page.goto("/");
+    const partners = page.getByTestId("partners");
+    await expect(partners.getByRole("heading", { level: 2, name: "Thanks to" })).toBeVisible();
+    const before = await page.evaluate(() => {
+      const a = document.querySelector('[data-testid="partners"]')!;
+      const b = document.querySelector('[data-testid="brain-teaser"]')!;
+      return !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(before).toBe(true);
+    const sponsor = partners.getByTestId("sponsor");
+    await expect(sponsor.getByRole("link")).toHaveCount(1);
+    const qloo = sponsor.getByRole("link", { name: /^Qloo/ });
+    await expect(qloo).toHaveAttribute("href", "https://qloo.com");
+    await expect(qloo).toHaveAttribute("target", "_blank");
+    await expect(qloo).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  test("it lists the 9 Built with names, each linked to its site in the same tab", async ({ page }) => {
+    await page.goto("/");
+    const items = page.getByTestId("partners").getByRole("list", { name: "Built with" }).getByRole("listitem");
+    await expect(items).toHaveCount(BUILT_WITH.length);
+    for (const [name, href] of BUILT_WITH) {
+      const link = page.getByTestId("partners").getByRole("list", { name: "Built with" }).getByRole("link", { name: new RegExp(`^${name.replace(/[.]/g, "\\.")}`) });
+      await expect(link).toHaveCount(1);
+      await expect(link).toHaveAttribute("href", href);
+      await expect(link).not.toHaveAttribute("target", "_blank");
+    }
+  });
+});

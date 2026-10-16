@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { HeroGlow } from "@/components/landing/hero-glow";
 import { HeroTasteMap } from "@/components/landing/hero-taste-map";
+import { PartnersSection } from "@/components/landing/partners-section";
 import { OwnRedirect } from "@/components/landing/own-redirect";
 import { Warmup } from "@/components/landing/warmup";
 import { ASSET_COUNT, COMPONENT_COUNT } from "@/components/brand/brand-tables";
@@ -220,6 +221,8 @@ export default function Home() {
             ))}
           </ul>
         </section>
+
+        <PartnersSection />
 
         <section
           data-theme="dark"

@@ -43,8 +43,8 @@ const HERO_PINS: MapPin[] = [
   { rank: 3, col: 19, row: 9, kind: "top" },
 ];
 
-/** Held by the user (L05): whether the hero shows only the orange cells. Flip to true when they answer. */
-const HERO_ORANGE_ONLY = false;
+/** L05 hero orange-only (user, 17 Oct): the hero shows only the orange cells (taste level 3 and up). */
+const HERO_ORANGE_ONLY = true;
 
 /** A few faint streets under the cells, so it reads as a map. */
 const STREETS = ["M0 170 L760 240", "M0 380 L760 340", "M230 0 L290 600", "M520 0 L470 600", "M0 270 L760 120"];
@@ -61,7 +61,7 @@ export function HeroTasteMap({ className, label, heat = HERO_HEAT, pins = HERO_P
       const { x, y } = center(col, row);
       const a = affinity(heat, col + (row % 2 ? 0.5 : 0), row);
       const lv = level(a);
-      // The dark, low-taste cells stay until the user decides the hero goes orange-only (HERO_ORANGE_ONLY).
+      // L05 hero orange-only (user): the dark, low-taste cells are dropped.
       if (HERO_ORANGE_ONLY && lv < 3) continue;
       cells.push(
         <polygon

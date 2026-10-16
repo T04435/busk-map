@@ -63,7 +63,7 @@ function LogoSlot({ partner: p }: { partner: Partner }) {
     </span>
   );
   return p.plate ? (
-    <span className="inline-flex h-10 items-center px-3 dark:bg-transparent dark:px-0" style={{ backgroundColor: p.plate }}>
+    <span className="inline-flex h-10 items-center bg-(--plate) px-3 dark:bg-transparent dark:px-0" style={{ "--plate": p.plate } as React.CSSProperties}>
       {body}
     </span>
   ) : (

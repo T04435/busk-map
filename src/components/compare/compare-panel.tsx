@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { baselineViewSchema, type BaselineView, type PlanPitch, type PlanRequest } from "@/lib/plan-schema";
@@ -150,7 +151,7 @@ function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{pitch.name}</span>
                   <span className="text-muted-foreground">{pitch.score}/100</span>
-                  {pitch.discovery === "hidden-gem" && <Badge>Hidden gem</Badge>}
+                  {pitch.discovery === "hidden-gem" && <DiscoveryBadge discovery="hidden-gem" />}
                 </span>
                 <ul className="list-disc pl-5 text-muted-foreground">
                   {evidenceLines(pitch).map((line) => (
@@ -174,7 +175,7 @@ function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{spot.name}</span>
                   <Badge variant={spot.status === "scored" ? "secondary" : "outline"}>{STATUS_LABEL[spot.status]}</Badge>
-                  {spot.usualSpot && <Badge variant="outline">Usual spot</Badge>}
+                  {spot.usualSpot && <DiscoveryBadge discovery="usual" />}
                 </span>
                 <span className="block text-muted-foreground">{spot.why}</span>
                 <span className="block text-muted-foreground">

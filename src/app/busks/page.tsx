@@ -1,0 +1,82 @@
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { connection } from "next/server";
+import { ExampleActCard } from "@/components/honeycomb/example-act-card";
+import { Banner } from "@/components/honeycomb/banner";
+import { PageHeader } from "@/components/honeycomb/page-header";
+import { PerformerForm } from "@/components/landing/performer-form";
+import { Warmup } from "@/components/landing/warmup";
+import { EXAMPLES } from "@/lib/examples";
+import { localToday, nextWeekday, weekdayOf } from "@/lib/slot";
+import { loadStoredPlan } from "@/server/plans";
+import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Plan your busk · Busk Map",
+  description: "Tell Busk Map who you sound like and what you can play, then pick your hours. It finds the pitches whose crowd matches your music.",
+};
+
+export default function BusksPage({ searchParams }: PageProps<"/busks">) {
+  return (
+    <main id="main" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-8 md:py-12">
+      <Warmup />
+      <PageHeader
+        meta="Melbourne · your act, your hours"
+        title="Plan your busk"
+        subtitle="Tell Busk Map who you sound like and what you can play, then pick your hours. Claude researches the pitches as soon as you start."
+      />
+      <Suspense>
+        <OwnAct searchParams={searchParams} />
+      </Suspense>
+      <p className="m-0 text-sm text-muted-foreground">
+        Played a busk already?{" "}
+        <Link className="font-bold text-foreground underline underline-offset-3 hover:decoration-2" href="/tips">
+          Log your takings
+        </Link>
+        : they stay in this browser, and the pitches where you earn more get a small bonus in your next plans.
+      </p>
+    </main>
+  );
+}
+
+/** `?again=<plan id>` (from a plan whose slot has passed): the form pre-filled with that act, on the next same weekday. */
+async function OwnAct({ searchParams }: Pick<PageProps<"/busks">, "searchParams">) {
+  const again = (await searchParams).again;
+  // The default date depends on today, so render it at request time.
+  await connection();
+  const today = localToday("Australia/Melbourne");
+  const stored = typeof again === "string" ? await loadStoredPlan(again).catch(() => null) : null;
+  if (!stored) {
+    return (
+      <>
+        <section aria-labelledby="examples-h" className="flex flex-col gap-3.5">
+          <h2 id="examples-h" className="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
+            Or try a made-up act
+          </h2>
+          <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(min(260px,100%),1fr))] gap-3 p-0">
+            {EXAMPLES.map((example) => (
+              <li key={example.id}>
+                <ExampleActCard name={example.label} blurb={example.blurb} soundsLike={example.performer.artists.slice(0, 3).join(", ")} href={`/plan?example=${example.id}`} />
+              </li>
+            ))}
+          </ul>
+        </section>
+        <PerformerForm defaultDate={nextWeekday("saturday", today)} today={today} />
+      </>
+    );
+  }
+  const { performer, permit, slot } = stored.request;
+  return (
+    <>
+      <Banner tone="info">
+        Planning again for {performer.name}. Your act, artists, songs and permit come from your earlier busk: pick a new date and time.
+      </Banner>
+      <PerformerForm
+        key={stored.id}
+        defaultDate={nextWeekday(weekdayOf(slot.date), today)}
+        today={today}
+        prefill={{ performer, permit, startHour: slot.startHour, endHour: slot.endHour }}
+      />
+    </>
+  );
+}

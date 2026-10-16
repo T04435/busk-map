@@ -1,3 +1,4 @@
+import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EstimateLabel } from "@/components/plan/estimate-label";
@@ -27,13 +28,6 @@ const FOOTFALL_NOTE: Record<NonNullable<PlanPitch["footfallSource"]>, string> = 
   "nearby-sensors": " (estimated from nearby sensors)",
   "qloo-popularity": " (estimated from Qloo area popularity)",
 };
-
-/** "Hidden gem" or "Usual spot", for the card and the pitch list. */
-export function DiscoveryBadge({ discovery, className }: { discovery: PlanPitch["discovery"]; className?: string }) {
-  if (discovery === "hidden-gem") return <Badge className={className}>Hidden gem</Badge>;
-  if (discovery === "usual") return <Badge variant="outline" className={className}>Usual spot</Badge>;
-  return null;
-}
 
 /** `model`: who wrote an "ai" why, Claude or the test model offline (B-010). */
 export function PitchCard({ pitch, rank, model = null }: { pitch: PlanPitch; rank: number; model?: ExplanationsModel | null }) {

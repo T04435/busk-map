@@ -15,6 +15,7 @@ export function StatusCard({
   footnote,
   testId,
   tone = "notfound",
+  embedded = false,
 }: {
   title: string;
   description: string;
@@ -23,24 +24,28 @@ export function StatusCard({
   footnote?: ReactNode;
   testId: string;
   tone?: "notfound" | "error";
+  /** Show the card inside another page (the brand page): no <main>, and the title is an <h3>. */
+  embedded?: boolean;
 }) {
   const error = tone === "error";
+  const Title = embedded ? "h3" : "h1";
+  const Wrapper = embedded ? "div" : "main";
   return (
-    <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 md:py-12">
+    <Wrapper {...(embedded ? {} : { id: "main" })} className={embedded ? "w-full" : "mx-auto w-full max-w-6xl flex-1 px-4 py-8 md:py-12"}>
       <section
         data-testid={testId}
         data-tone={tone}
-        role={error ? "alert" : undefined}
-        className="mx-auto flex w-full max-w-xl flex-col items-start gap-4 border-2 border-rule bg-card p-6 [&_h1]:m-0 [&_h1]:font-display [&_h1]:text-[clamp(40px,7vw,56px)] [&_h1]:leading-[0.95] [&_h1]:font-extrabold [&_h1]:uppercase"
+        role={error ? (embedded ? "group" : "alert") : undefined}
+        className="mx-auto flex w-full max-w-xl flex-col items-start gap-4 border-2 border-rule bg-card p-6 [&_h1]:m-0 [&_h1]:font-display [&_h1]:text-[clamp(40px,7vw,56px)] [&_h1]:leading-[0.95] [&_h1]:font-extrabold [&_h1]:uppercase [&_h3]:m-0 [&_h3]:font-display [&_h3]:text-[clamp(40px,7vw,56px)] [&_h3]:leading-[0.95] [&_h3]:font-extrabold [&_h3]:uppercase"
       >
         <HexCell size={72} tone={error ? "error" : "dashed"} lift>
           {error ? <CircleAlert className="size-[30px]" aria-hidden="true" /> : <MapPin className="size-[30px]" aria-hidden="true" />}
         </HexCell>
-        <h1>{title}</h1>
+        <Title>{title}</Title>
         <p className="m-0 text-[17px] leading-[26px]">{description}</p>
         {footnote ? <p className="m-0 font-mono text-xs leading-4 font-medium text-muted-foreground">{footnote}</p> : null}
         <div className="flex w-full flex-wrap gap-3 [&>*]:max-sm:w-full">{actions}</div>
       </section>
-    </main>
+    </Wrapper>
   );
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Logo, QlooWordmark } from "@/components/honeycomb/logo";
 
 const REPO = "https://github.com/T04435/busk-map";
@@ -13,6 +14,9 @@ export function SiteFooter({ repo = REPO }: { repo?: string }) {
       <span className="inline-flex flex-wrap items-center gap-x-2.5 gap-y-1">
         Taste data by <QlooWordmark width={44} /> · MIT licence
       </span>
+      <Link className="flex min-h-tap items-center text-foreground underline underline-offset-3 hover:decoration-2" href="/brand">
+        Brand
+      </Link>
       <span className="inline-flex flex-wrap items-center gap-x-2.5 gap-y-1">
         <b className="font-display text-base leading-none font-extrabold text-foreground uppercase">Open source</b>
         <a className="text-foreground underline underline-offset-3 hover:decoration-2" href={repo}>

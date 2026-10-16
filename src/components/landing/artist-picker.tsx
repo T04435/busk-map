@@ -4,8 +4,7 @@ import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { loadListeners, loadReleases, searchArtists, type ArtistResult } from "@/components/forms/repertoire-api";
 import { useLiveSearch } from "@/components/forms/use-live-search";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
 import { Button } from "@/components/ui/button";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { formatCount, MIN_QUERY_CHARS } from "@/lib/live-search";
@@ -17,13 +16,6 @@ export const MAX_PICKED_ARTISTS = 10;
 const LABEL = "Artists you sound like";
 // "|" and "~" separate values in the plan URL.
 const clean = (s: string) => s.replace(/[|~]/g, " ").replace(/\s+/g, " ").trim();
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 
 /** Split typed text into artist names: commas and new lines separate them. */
 export function typedArtists(text: string): string[] {
@@ -98,24 +90,23 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium" aria-hidden>
+      <p className="text-label font-bold" aria-hidden>
         {LABEL}
       </p>
       {value.length > 0 && (
-        <ul aria-label="Artists you picked" className="flex flex-wrap gap-1.5">
+        <ul aria-label="Artists you picked" className="m-0 flex list-none flex-wrap gap-2 p-0">
           {value.map((artist) => (
             <li key={artist.name}>
-              <Badge variant="secondary" className="h-7 gap-1.5 py-0 pr-0.5 pl-0.5 text-sm font-normal">
-                <Avatar size="sm">
-                  {artist.image && <AvatarImage src={artist.image} alt="" referrerPolicy="no-referrer" />}
-                  <AvatarFallback>{initials(artist.name)}</AvatarFallback>
-                </Avatar>
-                <span>{artist.name}</span>
-                {!artist.spotifyId && <span className="text-xs text-muted-foreground">(typed)</span>}
+              <span className="inline-flex min-h-10 items-center gap-2 border-[1.5px] border-rule bg-card py-1 pr-0.5 pl-1.5 text-sm leading-5">
+                <HexCell size={26} image={artist.image} fontSize={10}>
+                  {initialsOf(artist.name)}
+                </HexCell>
+                <span className="font-bold">{artist.name}</span>
+                {!artist.spotifyId && <span className="font-mono text-[11px] leading-4 font-medium tracking-[0.06em] text-muted-foreground uppercase">(typed)</span>}
                 <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${artist.name}`} onClick={() => onChange(value.filter((a) => a !== artist))}>
                   <XIcon aria-hidden />
                 </Button>
-              </Badge>
+              </span>
             </li>
           ))}
         </ul>
@@ -178,14 +169,14 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
                       data-checked={has(artist.name)}
                       onSelect={() => pick({ name: clean(artist.name), spotifyId: artist.id, image: artist.image })}
                     >
-                      <Avatar>
-                        {artist.image && <AvatarImage src={artist.image} alt="" referrerPolicy="no-referrer" />}
-                        <AvatarFallback>{initials(artist.name)}</AvatarFallback>
-                      </Avatar>
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium">{artist.name}</span>
-                        {meta.length > 0 && <span className="block text-xs text-muted-foreground">{meta.join(" · ")}</span>}
+                      <HexCell size={32} image={artist.image} fontSize={12}>
+                        {initialsOf(artist.name)}
+                      </HexCell>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-bold">{artist.name}</span>
+                        {meta.length > 0 && <span className="block font-mono text-xs text-muted-foreground">{meta.join(" · ")}</span>}
                       </span>
+                      {has(artist.name) && <span className="font-mono text-[11px] leading-4 font-bold tracking-[0.06em] uppercase">Added</span>}
                     </CommandItem>
                   );
                 })}

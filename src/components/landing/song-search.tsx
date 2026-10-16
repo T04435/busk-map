@@ -4,7 +4,7 @@ import { MusicIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { searchTracks, type TrackResult } from "@/components/forms/repertoire-api";
 import { useLiveSearch } from "@/components/forms/use-live-search";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Badge } from "@/components/ui/badge";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { formatDuration, MIN_QUERY_CHARS } from "@/lib/live-search";
@@ -12,15 +12,12 @@ import { isByActArtist, rankByActArtists, type ActArtist } from "@/lib/track-ran
 
 const LABEL = "Search songs on Spotify";
 
-/** Album cover, or a music note when Spotify has none. */
-export function SongCover({ image, className }: { image: string | null; className?: string }) {
+/** Album cover in a honeycomb cell, or a music note when Spotify has none. */
+export function SongCover({ image, className, size = 32 }: { image: string | null; className?: string; size?: number }) {
   return (
-    <Avatar className={`rounded-md after:rounded-md ${className ?? ""}`}>
-      {image && <AvatarImage src={image} alt="" referrerPolicy="no-referrer" className="rounded-md" />}
-      <AvatarFallback className="rounded-md">
-        <MusicIcon aria-hidden className="size-4" />
-      </AvatarFallback>
-    </Avatar>
+    <HexCell size={size} tone="muted" image={image} className={className}>
+      <MusicIcon aria-hidden className="size-4" />
+    </HexCell>
   );
 }
 
@@ -104,12 +101,12 @@ export function SongSearch({
                   <CommandItem key={track.id} value={`spotify:${track.id}`} data-checked={added} onSelect={() => !added && onAdd(track)}>
                     <SongCover image={track.image} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{track.title}</span>
+                      <span className="block truncate font-bold">{track.title}</span>
                       <span className="block truncate text-xs text-muted-foreground">{[artist, track.album].filter(Boolean).join(" · ")}</span>
                     </span>
-                    {isByActArtist(track, artists) && <Badge variant="secondary">By your artist</Badge>}
-                    {track.durationMs !== null && <span className="text-xs text-muted-foreground tabular-nums">{formatDuration(track.durationMs)}</span>}
-                    <span className="sr-only">{added ? "Added" : "Add"}</span>
+                    {isByActArtist(track, artists) && <Badge variant="neutral">By your artist</Badge>}
+                    {track.durationMs !== null && <span className="font-mono text-xs text-muted-foreground tabular-nums">{formatDuration(track.durationMs)}</span>}
+                    <span className={added ? "font-mono text-[11px] leading-4 font-bold tracking-[0.06em] uppercase" : "sr-only"}>{added ? "Added" : "Add"}</span>
                   </CommandItem>
                 );
               })}

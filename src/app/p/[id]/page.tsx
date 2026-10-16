@@ -57,7 +57,7 @@ async function ShortPlan({ params, searchParams }: Pick<PageProps<"/p/[id]">, "p
   const engineOnly = first(query.run) === "0";
   const snapshot = fresh || engineOnly || testFaults.length > 0 ? null : snapshotFor(stored, request, adapters.offline);
   const passed = slotPassed(request.slot, city.timeZone);
-  const againHref = `/?again=${stored.id}#own`;
+  const againHref = `/busks?again=${stored.id}`;
   const slotLabel = describeSlot(request.slot);
 
   if (passed && !snapshot) {

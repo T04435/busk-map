@@ -1,32 +1,27 @@
 "use client";
 
-import { XIcon } from "lucide-react";
+import { ArrowRight, CalendarDays } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { DatePicker } from "@/components/forms/date-picker";
-import type { TrackResult } from "@/components/forms/repertoire-api";
-import { Badge } from "@/components/ui/badge";
+import { CityPicker } from "@/components/forms/city-picker";
+import { PermitPicker } from "@/components/forms/permit-picker";
+import { TimeSlotPicker } from "@/components/forms/time-slot-picker";
+import { FormMessage } from "@/components/honeycomb/form-message";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { planFormError } from "@/lib/form-errors";
+import { fieldLabel, planFormError } from "@/lib/form-errors";
 import { planRequestSchema, type PlanRequest, type PlanRequestInput } from "@/lib/plan-schema";
 import { planSearchParams } from "@/lib/plan-url";
 import { weekSearchParams } from "@/lib/week-url";
-import { formatHour } from "@/lib/slot";
-import { formatDuration } from "@/lib/live-search";
 import { ArtistPicker, typedArtists, type PickedArtist } from "./artist-picker";
-import { SongCover, SongSearch } from "./song-search";
+import { RepertoirePicker, type PickedSong } from "./repertoire-picker";
 
-const HOURS = Array.from({ length: 24 }, (_, h) => h);
 // "|" and "~" separate values in the plan URL.
 const clean = (s: string) => s.replace(/[|~]/g, " ").trim();
 
 /** One song per line: "Title - Artist". Add "(own)" for your own songs. */
-const PERMIT_LABELS = { general: "General", premium: "Premium", "circle-act": "Circle act" } as const;
-
 export function parseSongLines(text: string) {
   return text
     .split("\n")
@@ -39,19 +34,6 @@ export function parseSongLines(text: string) {
       return { title: clean(title), artist: clean(rest.join(" - ")) || "Unknown artist", own };
     });
 }
-
-/** A song picked from Spotify (search or "Load my songs"), with what the search showed. */
-type PickedSong = { key: string; title: string; artist: string; album: string | null; image: string | null; durationMs: number | null; own: boolean };
-
-const toPicked = (track: TrackResult, own: boolean): PickedSong => ({
-  key: track.id,
-  title: clean(track.title),
-  artist: clean(track.artists[0]?.name ?? "") || "Unknown artist",
-  album: track.album,
-  image: track.image,
-  durationMs: track.durationMs,
-  own,
-});
 
 /** A stored plan's act, to plan again ("Plan again for a new date"): everything but the date. */
 export type FormPrefill = Pick<PlanRequest, "performer" | "permit"> & { startHour: number; endHour: number };
@@ -70,6 +52,28 @@ const prefillSongs = (prefill: FormPrefill | undefined): PickedSong[] =>
     own: song.own,
   }));
 
+/** The form fields an error can belong to (B-003: every error names its field). */
+type Field = "name" | "artists" | "songs" | "slot" | "permit";
+type FormError = { field: Field; /** The field's name as the form labels it. */ label: string; /** The whole sentence, naming the field. */ message: string; /** The sentence without the field's name in front, for the alert body. */ detail: string };
+
+function fieldOf(path: string): Field {
+  if (path.startsWith("performer.name")) return "name";
+  if (path.startsWith("performer.songs")) return "songs";
+  if (path.startsWith("slot")) return "slot";
+  if (path === "permit") return "permit";
+  return "artists";
+}
+
+const FIELD_LABEL: Record<Field, string> = { name: "Act name", artists: "Artists you sound like", songs: "Songs you can play", slot: "Date and times", permit: "Permit" };
+
+function errorFor(issues: { path: PropertyKey[]; message: string }[], input: PlanRequestInput): FormError {
+  const path = (issues[0]?.path ?? []).map(String).join(".");
+  const field = fieldOf(path);
+  const label = fieldLabel(path) ?? FIELD_LABEL[field];
+  const message = planFormError(issues, input);
+  return { field, label, message, detail: message.startsWith(`${label}: `) ? message.slice(label.length + 2) : message };
+}
+
 /** `today` is the city's local date: a plan is for today or later. */
 export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: string; today: string; prefill?: FormPrefill }) {
   const router = useRouter();
@@ -78,43 +82,10 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
   const [artistQuery, setArtistQuery] = useState("");
   const [picked, setPicked] = useState<PickedSong[]>(() => prefillSongs(prefill));
   const [songs, setSongs] = useState("");
-  const [date, setDate] = useState(defaultDate);
-  const [from, setFrom] = useState(String(prefill?.startHour ?? 18));
-  const [to, setTo] = useState(String(prefill?.endHour ?? 21));
+  const [slot, setSlot] = useState({ date: defaultDate, from: String(prefill?.startHour ?? 18), to: String(prefill?.endHour ?? 21) });
   const [permit, setPermit] = useState<string>(prefill?.permit ?? "general");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [searchNote, setSearchNote] = useState<string | null>(null);
-  const [spotifyLink, setSpotifyLink] = useState("");
-
-  function addSongs(next: PickedSong[]) {
-    setPicked((current) => [...current, ...next.filter((song) => !current.some((c) => c.key === song.key))].slice(0, 60));
-  }
-
-  async function loadOwnSongs() {
-    setSearchNote("Loading your songs from Spotify…");
-    const res = await fetch(`/api/repertoire?${new URLSearchParams({ type: "artist", link: spotifyLink })}`).catch(() => null);
-    const body = res?.ok ? await res.json() : null;
-    const tracks: TrackResult[] = body?.tracks ?? [];
-    if (!tracks.length) {
-      setSearchNote(
-        res?.status === 429
-          ? "Too many searches in a short time. Wait a moment and try again."
-          : body?.reason === "not_found"
-            ? "Spotify has no artist at that link. Open it in Spotify to check it, then copy the artist's share link again."
-            : body?.mode === "fallback"
-              ? "Spotify isn't answering right now. Try again in a minute, or type your songs below."
-              : "Couldn't load songs from that link. Paste an open.spotify.com/artist/… link, or type your songs.",
-      );
-      return;
-    }
-    addSongs(tracks.slice(0, 20).map((t) => toPicked(t, true)));
-    setSearchNote(
-      body?.mode === "synthetic"
-        ? "Offline test mode: these songs are made up, not from Spotify."
-        : `Added ${Math.min(tracks.length, 20)} of your songs from Spotify. Remove any you don't play.`,
-    );
-  }
+  const [error, setError] = useState<FormError | null>(null);
 
   /** The plan's short link (/p/<id>), or the long URL if no link could be made. */
   async function openPlan(request: PlanRequest) {
@@ -139,145 +110,97 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
       ...new Set([...chosen.map((a) => a.name), ...parsedSongs.filter((s) => !s.own).map((s) => s.artist)]),
     ].slice(0, 10);
     const spotifyArtists = chosen.flatMap((a) => (a.spotifyId && artistList.includes(a.name) ? [{ name: a.name, id: a.spotifyId }] : []));
-    if (date < today) {
-      setError("Pick today or a later date.");
+    if (slot.date < today) {
+      const message = "Pick today or a later date.";
+      setError({ field: "slot", label: FIELD_LABEL.slot, message, detail: message });
       return;
     }
     const input: PlanRequestInput = {
       city: "melbourne",
-      slot: { date, startHour: Number(from), endHour: Number(to) },
+      slot: { date: slot.date, startHour: Number(slot.from), endHour: Number(slot.to) },
       permit: permit as PlanRequestInput["permit"],
       performer: { name: clean(name) || "My act", artists: artistList, spotifyArtists, songs: parsedSongs },
     };
     const result = planRequestSchema.safeParse(input);
     if (!result.success) {
-      setError(planFormError(result.error.issues, input));
+      setError(errorFor(result.error.issues, input));
       return;
     }
     setError(null);
     if (target === "week") {
-      const { slot, ...rest } = result.data;
-      router.push(`/week?${weekSearchParams({ ...rest, startDate: slot.date, limits: { maxSessions: 5, maxPerDay: 1, unavailable: [] } }, null)}`);
+      const { slot: planSlot, ...rest } = result.data;
+      router.push(`/week?${weekSearchParams({ ...rest, startDate: planSlot.date, limits: { maxSessions: 5, maxPerDay: 1, unavailable: [] } }, null)}`);
       return;
     }
     void openPlan(result.data);
   }
 
-  return (
-    <form onSubmit={submit} className="space-y-4" aria-label="Plan for your own act">
-      <div className="space-y-1">
-        <Label htmlFor="name">Act name</Label>
-        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Jess on acoustic guitar" maxLength={80} />
-      </div>
-      <ArtistPicker value={artists} onChange={setArtists} query={artistQuery} onQueryChange={setArtistQuery} />
+  const errorId = (field: Field) => (error?.field === field ? `err-${field}` : undefined);
+  const hasError = (field: Field) => error?.field === field;
 
-      <fieldset className="min-w-0 space-y-2">
-        <legend className="text-sm font-medium">Songs you can play</legend>
-        <SongSearch
-          onAdd={(track) => addSongs([toPicked(track, false)])}
-          isAdded={(track) => picked.some((p) => p.key === track.id)}
-          artists={artists}
-        />
-        {picked.length > 0 && (
-          <ul aria-label="Songs you picked" className="divide-y rounded-lg border text-sm">
-            {picked.map((song) => (
-              <li key={song.key} className="flex items-center gap-2 px-2 py-1.5">
-                <SongCover image={song.image} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{song.title}</span>
-                  <span className="block truncate text-xs text-muted-foreground">{[song.artist, song.album].filter(Boolean).join(" · ")}</span>
-                </span>
-                {song.own && <Badge variant="secondary">Your song</Badge>}
-                {song.durationMs !== null && <span className="text-xs text-muted-foreground tabular-nums">{formatDuration(song.durationMs)}</span>}
-                <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${song.title}`} onClick={() => setPicked((current) => current.filter((p) => p !== song))}>
-                  <XIcon aria-hidden />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input aria-label="Your Spotify artist link" value={spotifyLink} onChange={(e) => setSpotifyLink(e.target.value)} placeholder="Your Spotify artist link (optional)" />
-          <Button type="button" variant="outline" className="self-start sm:self-auto" onClick={() => void loadOwnSongs()} disabled={spotifyLink.trim().length < 10}>
-            Load my songs
-          </Button>
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-7 border-2 border-rule bg-card p-4 md:p-7" aria-label="Plan for your own act" noValidate>
+      <section aria-label="Your act" className="flex flex-col gap-4.5">
+        <div className="space-y-1.5">
+          <Label htmlFor="name">Act name</Label>
+          <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Jess on acoustic guitar" maxLength={80} aria-invalid={hasError("name") || undefined} aria-describedby={errorId("name")} />
+          {hasError("name") && (
+            <FormMessage tone="error" id="err-name" alert={false}>
+              {error!.message}
+            </FormMessage>
+          )}
         </div>
-        {searchNote && <p className="text-sm text-muted-foreground" aria-live="polite">{searchNote}</p>}
-        <Label htmlFor="songs" className="text-sm font-normal text-muted-foreground">
-          Song list: type songs Spotify doesn&apos;t have
-        </Label>
-        <Textarea
-          id="songs"
-          value={songs}
-          onChange={(e) => setSongs(e.target.value)}
-          rows={4}
-          placeholder={"One per line: Title - Artist\nHow to Make Gravy - Paul Kelly\nMy Song - Me (own)"}
-        />
+        <div className="space-y-1.5">
+          <ArtistPicker value={artists} onChange={setArtists} query={artistQuery} onQueryChange={setArtistQuery} />
+          {hasError("artists") && (
+            <FormMessage tone="error" id="err-artists" alert={false}>
+              {error!.message}
+            </FormMessage>
+          )}
+        </div>
+      </section>
+
+      <RepertoirePicker
+        artists={artists}
+        picked={picked}
+        setPicked={setPicked}
+        typed={songs}
+        onTypedChange={setSongs}
+        invalid={hasError("songs")}
+        errorId="err-songs"
+        error={hasError("songs") ? error!.message : null}
+      />
+
+      <fieldset className="m-0 flex min-w-0 flex-col gap-4.5 border-0 p-0">
+        <legend className="mb-1 p-0 text-label font-bold">When and where</legend>
+        <CityPicker cities={[{ id: "melbourne", name: "Melbourne", level: "live", note: "Taste, foot traffic, busking rules, events and weather" }]} value="melbourne" onValueChange={() => {}} />
+        <TimeSlotPicker value={slot} onChange={setSlot} today={today} invalid={hasError("slot")} describedBy={errorId("slot")} />
+        {hasError("slot") && (
+          <FormMessage tone="error" id="err-slot" alert={false}>
+            {error!.message}
+          </FormMessage>
+        )}
+        <PermitPicker value={permit} onValueChange={setPermit} />
+        {hasError("permit") && (
+          <FormMessage tone="error" id="err-permit" alert={false}>
+            {error!.message}
+          </FormMessage>
+        )}
       </fieldset>
 
-      <div className="grid gap-4 sm:grid-cols-4">
-        <div className="space-y-1">
-          <Label htmlFor="date">Date</Label>
-          <DatePicker id="date" value={date} onChange={setDate} min={today} />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="from">From</Label>
-          <Select value={from} onValueChange={setFrom}>
-            <SelectTrigger id="from" className="w-full">
-              <SelectValue>{formatHour(Number(from))}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {HOURS.map((h) => (
-                <SelectItem key={h} value={String(h)}>
-                  {formatHour(h)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="to">To</Label>
-          <Select value={to} onValueChange={setTo}>
-            <SelectTrigger id="to" className="w-full">
-              <SelectValue>{formatHour(Number(to))}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {HOURS.map((h) => (
-                <SelectItem key={h + 1} value={String(h + 1)}>
-                  {formatHour(h + 1)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="permit">Permit</Label>
-          <Select value={permit} onValueChange={setPermit}>
-            <SelectTrigger id="permit" className="w-full">
-              {/* The label as children, so the server HTML shows it before hydration (B-006). */}
-              <SelectValue>{PERMIT_LABELS[permit as keyof typeof PERMIT_LABELS]}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(PERMIT_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
       {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
+        <Alert variant="error">
+          <AlertTitle>{error.label}</AlertTitle>
+          <AlertDescription>{error.detail}</AlertDescription>
+        </Alert>
       )}
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" value="plan" disabled={submitting}>
+      <div className="flex flex-wrap gap-3 border-t border-border pt-5 max-sm:[&>button]:w-full">
+        <Button type="submit" value="plan" size="lg" disabled={submitting}>
           Plan my set
+          <ArrowRight aria-hidden="true" />
         </Button>
-        <Button type="submit" value="week" variant="outline">
+        <Button type="submit" value="week" variant="outline" size="lg">
+          <CalendarDays aria-hidden="true" />
           Plan my week from this date
         </Button>
       </div>

@@ -13,6 +13,11 @@ const nextConfig: NextConfig = {
   env: { NEXT_PUBLIC_BUSKMAP_BOTID: process.env.VERCEL ? "1" : "" },
   partialPrefetching: true,
 
+  // TEMPORARY (Honeycomb S1): the nav links to /busks, which the next stage builds. Until then it lands on the form.
+  async redirects() {
+    return [{ source: "/busks", destination: "/#own", permanent: false }];
+  },
+
   turbopack: {
     rules: {
       "*.css": {

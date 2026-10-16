@@ -85,24 +85,3 @@ export function futureDay(weekday: number, from = new Date()): string {
 /** A Saturday and a Sunday at least a week ahead, for typed plan links. */
 export const SATURDAY = futureDay(6);
 export const SUNDAY = futureDay(0);
-
-/**
- * A song typed by hand, just for this busk: "Edit for this busk" > "+ Add a song just for this busk", then the one song search.
- * When Spotify has matches, the list's last row adds it ("Add “…” as typed", F25); with no match, the type-it-in form does.
- */
-export async function addTypedSong(form: import("@playwright/test").Locator, text: string) {
-  const edit = form.getByRole("button", { name: "Edit for this busk" });
-  if (await edit.isVisible()) await edit.click();
-  const add = form.getByTestId("add-for-busk");
-  if (!(await add.evaluate((el) => (el as HTMLDetailsElement).open))) await add.locator("summary").click();
-  const box = form.getByPlaceholder("Search songs, e.g. Riptide");
-  // Typed before hydration, the query is lost: retry until the list or the type-it-in form shows.
-  await expect(async () => {
-    await box.fill("");
-    await box.fill(text);
-    await expect(form.getByRole("option", { name: /as typed/ }).or(form.getByTestId("type-it-in"))).toBeVisible({ timeout: 2000 });
-  }).toPass();
-  const typedForm = form.getByTestId("type-it-in");
-  if (await typedForm.isVisible()) await typedForm.getByRole("button", { name: "Add as typed" }).click();
-  else await form.getByRole("option", { name: /as typed/ }).last().click();
-}

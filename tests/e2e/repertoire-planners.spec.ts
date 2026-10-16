@@ -31,11 +31,8 @@ test.describe("planners read the Repertoire (offline)", () => {
     const f = form(page);
     await expect(f.getByTestId("repertoire-summary")).toContainText("Your Repertoire · 3 songs");
     await expect(f.getByLabel("Act name")).toHaveValue(act);
-    await f.getByRole("button", { name: "Edit for this busk" }).click();
-    const picked = f.getByRole("list", { name: "Songs for this busk" });
-    await expect(picked.getByRole("listitem")).toHaveCount(3);
-    await expect(picked).toContainText("How to Make Gravy");
-    await f.getByRole("button", { name: "Done" }).click();
+    // Read-only here: the songs are summarised, with a link to edit them on /repertoire.
+    await expect(f.getByRole("link", { name: "Edit in your Repertoire" })).toHaveAttribute("href", "/repertoire");
     await expect(f.getByRole("list", { name: "Artists you picked" })).toContainText("Paul Kelly");
 
     const posted = page.waitForRequest((r) => r.url().endsWith("/api/plans") && r.method() === "POST");
@@ -55,64 +52,27 @@ test.describe("planners read the Repertoire (offline)", () => {
     await expect.poll(async () => (await state(page)).usualPitches.length).toBe(1);
   });
 
-  test("edit for this busk only leaves the Repertoire as it was; Save writes it, with the revision check", async ({ page }) => {
+  test("planning a busk (even with the act renamed on the form) leaves the Repertoire as it was", async ({ page }) => {
     await seed(page);
     const before = await state(page);
     await page.goto("/busks");
     const f = form(page);
-    await f.getByRole("button", { name: "Edit for this busk" }).click();
-    await f.getByRole("checkbox", { name: /Scar/ }).click();
-    await expect(f.getByText("Edited for this busk").first()).toBeVisible();
-    await f.getByRole("button", { name: "Done" }).click();
+    await f.getByLabel("Act name").fill("Renamed for this busk");
     await f.getByRole("button", { name: "Plan my busk" }).click();
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await waitForPlan(page);
     const after = await state(page);
     expect(after.revision).toBe(before.revision);
+    expect(after.actName).toBe(before.actName);
     expect(after.songs.map((s: { title: string }) => s.title)).toEqual(SONGS.map((s) => s.title));
-    // An edited busk is not "planned with the Repertoire": no usual pitch.
-    expect(after.usualPitches).toEqual([]);
-
-    // Back on the form the Repertoire is whole again; edit and save explicitly.
-    await page.goto("/busks");
-    await form(page).getByRole("button", { name: "Edit for this busk" }).click();
-    await expect(form(page).getByRole("list", { name: "Songs for this busk" }).getByRole("listitem")).toHaveCount(3);
-    await form(page).getByRole("checkbox", { name: /Scar/ }).click();
-    await form(page).getByRole("button", { name: "Save these changes to my Repertoire" }).click();
-    await expect(form(page).getByRole("status").filter({ hasText: "Saved to your Repertoire." })).toBeVisible();
-    await expect(form(page).getByTestId("repertoire-summary")).toContainText("2 songs");
-    expect((await state(page)).songs.map((s: { title: string }) => s.title)).toEqual(["How to Make Gravy", "My Laneway Song"]);
-
-    // Another tab changed it meanwhile: a stale save says so, kindly, and Reload brings the latest.
-    await form(page).getByRole("checkbox", { name: /My Laneway Song/ }).click();
-    const latest = await state(page);
-    expect((await page.request.patch("/api/playlist", { data: { revision: latest.revision, actName: "Changed elsewhere" } })).ok()).toBe(true);
-    await form(page).getByRole("button", { name: "Save these changes to my Repertoire" }).click();
-    await expect(form(page).getByRole("alert")).toContainText("changed in another tab");
-    await form(page).getByRole("button", { name: "Reload" }).click();
-    await expect(form(page).getByLabel("Act name")).toHaveValue("Changed elsewhere");
-    await expect(form(page).getByRole("list", { name: "Songs for this busk" }).getByRole("listitem")).toHaveCount(2);
   });
 
-  test("with no Repertoire the form is as it was, and the planned busk offers to save its songs", async ({ page }) => {
+  test("with no Repertoire the form says so, and a planned busk with songs offers to save them", async ({ page }) => {
     await page.goto("/busks");
-    const f = form(page);
-    await expect(f.getByTestId("repertoire-empty")).toBeVisible();
-    await f.getByLabel("Act name").fill("Jess on guitar");
-    await f.getByLabel("Artists you sound like").fill("Paul Kelly");
-    // Two songs, typed in under the search (Spotify has no match), just for this busk.
-    await page.route("**/api/repertoire?type=tracks*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ mode: "synthetic", tracks: [] }) }));
-    await f.getByRole("button", { name: "Edit for this busk" }).click();
-    await f.getByText("+ Add a song just for this busk").click();
-    for (const song of ["How to Make Gravy - Paul Kelly", "My Laneway Song - Jess"]) {
-      const box = f.getByRole("combobox", { name: "Search songs on Spotify" });
-      await box.fill("");
-      await box.pressSequentially(song);
-      await f.getByTestId("type-it-in").getByRole("button", { name: "Add as typed" }).click();
-      await expect(f.getByRole("list", { name: "Songs for this busk" })).toContainText(song.split(" - ")[0]);
-    }
-    await f.getByRole("button", { name: "Done" }).click();
-    await f.getByRole("button", { name: "Plan my busk" }).click();
+    await expect(form(page).getByTestId("repertoire-empty")).toBeVisible();
+    await expect(form(page).getByRole("link", { name: "Create your Repertoire" })).toHaveAttribute("href", "/repertoire");
+    // Songs reach a busk without a Repertoire through a plan link; the form itself cannot add them any more.
+    await page.goto("/plan?name=Jess%20on%20guitar&artists=Paul%20Kelly&songs=How%20to%20Make%20Gravy~Paul%20Kelly&date=2099-01-03&from=18&to=21");
     await waitForPlan(page);
     expect(await state(page)).toBeNull();
     const nudge = page.getByTestId("save-as-repertoire");
@@ -120,10 +80,10 @@ test.describe("planners read the Repertoire (offline)", () => {
     await nudge.getByRole("button", { name: "Save these songs as your Repertoire" }).click();
     await expect(nudge.getByRole("status")).toContainText("Saved to your Repertoire.");
     const saved = await state(page);
-    expect(saved.songs.map((s: { title: string }) => s.title)).toEqual(["How to Make Gravy", "My Laneway Song"]);
+    expect(saved.songs.map((s: { title: string }) => s.title)).toEqual(["How to Make Gravy"]);
     expect(saved.actName).toBe("Jess on guitar");
     await page.goto("/busks");
-    await expect(form(page).getByTestId("repertoire-summary")).toContainText("Your Repertoire · 2 songs");
+    await expect(form(page).getByTestId("repertoire-summary")).toContainText("Your Repertoire · 1 song");
   });
 
   test("Add to Repertoire from Songs you should learn: a pending suggestion, and a second add is refused politely", async ({ page }) => {
@@ -183,9 +143,6 @@ test.describe("planners read the Repertoire (offline)", () => {
     };
     const widths = [390, 768, 1440];
     await page.goto("/busks");
-    await form(page).getByRole("button", { name: "Edit for this busk" }).click();
-    await form(page).getByRole("checkbox", { name: /Scar/ }).click();
-    await expect(form(page).getByText("Edited for this busk").first()).toBeVisible();
     for (const width of widths) {
       await page.setViewportSize({ width, height: 900 });
       await check(`form-${width}`);

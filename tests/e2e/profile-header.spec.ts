@@ -96,7 +96,7 @@ test.describe("Spotify profile header and sounds-like suggestions (offline)", ()
     expect(seen.profile).toBe(1);
   });
 
-  test("the busk form shows the header and suggestions; adding one is an edit, saved only with 'Save to my Repertoire'", async ({ page }) => {
+  test("the busk form shows the header and suggestions; adding one is for this busk only, never shown as typed, and offers no save", async ({ page }) => {
     const id = await idOf(page, "Paul Kelly");
     await page.request.post("/api/playlist", { data: { spotifyArtistId: id, songs: [{ title: "Synthetic Song", artist: "Paul Kelly" }] } });
     await page.request.post("/api/playlist/profile");
@@ -104,16 +104,19 @@ test.describe("Spotify profile header and sounds-like suggestions (offline)", ()
     await page.goto("/busks");
     const f = form(page);
     await expect(f.getByTestId("profile-name")).toHaveText("Paul Kelly");
+    await expect(f.getByRole("button", { name: /Refresh profile/ })).toHaveCount(0);
     const suggestions = f.getByTestId("sounds-like-suggestions");
     await expect(suggestions).toBeVisible();
     const first = suggestions.getByRole("listitem").first();
     const name = (await first.locator('[data-slot="chip"]').innerText()).trim();
     await first.getByRole("button", { name: `Add ${name}` }).click();
-    await expect(f.getByRole("list", { name: "Artists you picked" })).toContainText(name);
-    await expect(f.getByTestId("save-act")).toBeVisible();
+    const picked = f.getByRole("list", { name: "Artists you picked" });
+    await expect(picked).toContainText(name);
+    // A Qloo suggestion carries its Spotify id (the mock sends one), so it is not a "Typed" chip.
+    await expect(picked).not.toContainText("Typed");
+    await expect(f.getByTestId("save-act")).toHaveCount(0);
+    await expect(f.getByRole("button", { name: "Save to my Repertoire" })).toHaveCount(0);
     expect((await state(page)).soundsLike).toEqual([]);
-    await f.getByTestId("save-act").getByRole("button", { name: "Save to my Repertoire" }).click();
-    await expect.poll(async () => (await state(page)).soundsLike.map((a: { name: string }) => a.name)).toEqual([name]);
     expect(seen.profile).toBe(0);
   });
 });

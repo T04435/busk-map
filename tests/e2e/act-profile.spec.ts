@@ -17,7 +17,7 @@ const profileCalls = (page: Page) => {
 test.describe("the act profile in the Repertoire (offline)", () => {
   test.skip(!LOCAL, "Writes to the local offline server's memory store");
 
-  test("save on /repertoire, the busk form prefills, a busk edit stays on the busk, an explicit save updates it", async ({ page }) => {
+  test("save on /repertoire, the busk form prefills, and a busk edit stays on the busk", async ({ page }) => {
     const calls = profileCalls(page);
     await page.goto("/repertoire");
     const act = page.getByTestId("act-profile");
@@ -40,46 +40,27 @@ test.describe("the act profile in the Repertoire (offline)", () => {
     const f = form(page);
     await expect(f.getByLabel("Act name")).toHaveValue("Jess on guitar");
     await expect(f.getByRole("list", { name: "Artists you picked" })).toContainText("Paul Kelly");
-    await f.getByRole("button", { name: "Edit for this busk" }).click();
-    await f.getByText("+ Add a song just for this busk").click();
-    await expect(f.getByLabel(/Your Spotify artist profile/)).toHaveValue(LINK);
-    await f.getByLabel(/Your Spotify artist profile/).focus();
-    await f.getByLabel(/Your Spotify artist profile/).blur();
-    await expect(f.getByRole("button", { name: "Refresh my songs" })).toBeVisible();
+    // The busk form is read-only for the Repertoire: no profile link field, no save offer.
+    await expect(f.getByLabel(/Your Spotify artist profile/)).toHaveCount(0);
     expect(calls).toHaveLength(1);
     await expect(f.getByTestId("save-act")).toHaveCount(0);
 
-    // Edit for this busk: the plan request carries the edited values; the Repertoire keeps the saved ones.
+    // Editing the name here is for this busk only: the plan request carries it; the Repertoire keeps the saved one, and there is no save offer.
     await f.getByLabel("Act name").fill("Jess and Sam");
-    await expect(f.getByTestId("save-act")).toBeVisible();
+    await expect(f.getByTestId("save-act")).toHaveCount(0);
     const posted = page.waitForRequest((r) => r.url().endsWith("/api/plans") && r.method() === "POST");
     await f.getByRole("button", { name: "Plan my busk" }).click();
     expect((await posted).postDataJSON().performer.name).toBe("Jess and Sam");
     await page.goto("/repertoire");
     await expect(page.getByTestId("act-profile").getByLabel("Act name")).toHaveValue("Jess on guitar");
     expect((await state(page)).actName).toBe("Jess on guitar");
-
-    // "Back to my Repertoire" drops the edit; "Save to my Repertoire" keeps it.
-    await page.goto("/busks");
-    await form(page).getByLabel("Act name").fill("Jess and Sam");
-    await form(page).getByRole("button", { name: "Back to my Repertoire" }).click();
-    await expect(form(page).getByLabel("Act name")).toHaveValue("Jess on guitar");
-    await form(page).getByLabel("Act name").fill("Jess and Sam");
-    await form(page).getByRole("button", { name: "Save to my Repertoire" }).click();
-    await expect(form(page).getByRole("status").filter({ hasText: "Saved to your Repertoire." })).toBeVisible();
-    expect(await state(page)).toMatchObject({ actName: "Jess and Sam", spotifyArtistId: ID, soundsLike: [{ name: "Paul Kelly" }] });
-    await page.goto("/repertoire");
-    await expect(page.getByTestId("act-profile").getByLabel("Act name")).toHaveValue("Jess and Sam");
   });
 
   test("a changed profile link loads its songs once and Refresh loads them again, on request only", async ({ page }) => {
     await page.request.post("/api/playlist", { data: { actName: "Jess", spotifyArtistId: LINK } });
     const calls = profileCalls(page);
-    await page.goto("/busks");
-    const f = form(page);
-    await f.getByRole("button", { name: "Edit for this busk" }).click();
-    await f.getByText("+ Add a song just for this busk").click();
-    const add = f.getByTestId("repertoire-add");
+    await page.goto("/repertoire");
+    const add = page.getByTestId("repertoire-add");
     await expect(add.getByLabel(/Your Spotify artist profile/)).toHaveValue(LINK);
     expect(calls).toHaveLength(0);
     await add.getByRole("button", { name: "Refresh my songs" }).click();

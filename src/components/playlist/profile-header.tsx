@@ -19,11 +19,12 @@ export function profilePhoto(images: SpotifyProfile["images"]): string | null {
 /**
  * The Spotify profile of the Repertoire's artist: photo in a hex cell (the hex mark with initials when there is no
  * photo), the name, and genres as chips. Nothing without a saved Spotify link. With a link but no snapshot yet it offers
- * to load one; it never loads by itself.
+ * to load one; it never loads by itself. Without `onRefresh` it is read-only: no buttons, and nothing without a snapshot.
  */
-export function ProfileHeader({ profile, hasLink, busy, onRefresh }: { profile: SpotifyProfile | null | undefined; hasLink: boolean; busy: boolean; onRefresh: () => void }) {
+export function ProfileHeader({ profile, hasLink, busy = false, onRefresh }: { profile: SpotifyProfile | null | undefined; hasLink: boolean; busy?: boolean; onRefresh?: () => void }) {
   if (!hasLink) return null;
   if (!profile) {
+    if (!onRefresh) return null;
     return (
       <div data-testid="profile-header">
         <Button type="button" variant="outline" size="sm" disabled={busy} onClick={onRefresh}>
@@ -52,9 +53,11 @@ export function ProfileHeader({ profile, hasLink, busy, onRefresh }: { profile: 
         )}
         {typeof profile.followers === "number" && <p className="m-0 font-mono text-xs text-muted-foreground">{COPY.profile.followers(profile.followers)}</p>}
       </div>
-      <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={onRefresh} aria-label={`${COPY.profile.refreshProfile}: ${profile.name}`}>
-        {busy ? COPY.profile.refreshing : COPY.profile.refreshProfile}
-      </Button>
+      {onRefresh && (
+        <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={onRefresh} aria-label={`${COPY.profile.refreshProfile}: ${profile.name}`}>
+          {busy ? COPY.profile.refreshing : COPY.profile.refreshProfile}
+        </Button>
+      )}
     </section>
   );
 }

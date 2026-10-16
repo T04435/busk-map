@@ -3,14 +3,11 @@
 import { Icon } from "@/components/honeycomb/icon";
 import { Loader } from "@/components/honeycomb/loader";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { loadPlaylist, refreshProfile, savePlaylist } from "@/components/playlist/playlist-api";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CityPicker } from "@/components/forms/city-picker";
 import { PermitPicker } from "@/components/forms/permit-picker";
 import { DatePicker } from "@/components/forms/date-picker";
 import { choiceOf, slotIdOf, TimeSlotPicker } from "@/components/forms/time-slot-picker";
-import type { TrackResult } from "@/components/forms/repertoire-api";
-import { RepertoireAdd } from "@/components/playlist/repertoire-add";
 import { ProfileHeader } from "@/components/playlist/profile-header";
 import { SoundsLikeSuggestionsList, withSuggested } from "@/components/playlist/sounds-like-suggestions";
 import { RepertoireSource } from "@/components/playlist/repertoire-source";
@@ -22,22 +19,18 @@ import { Label } from "@/components/ui/label";
 import { fieldLabel, planFormError } from "@/lib/form-errors";
 import { planRequestSchema, type PlanRequest, type PlanRequestInput } from "@/lib/plan-schema";
 import { planSearchParams } from "@/lib/plan-url";
-import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
-import { playlistSongKey, type PlaylistView } from "@/lib/playlist-schema";
-import { draftOf, repertoireDraft, sameDraft } from "@/lib/repertoire-prefill";
+import { PLAYLIST_COPY } from "@/lib/playlist-copy";
+import { type PlaylistView } from "@/lib/playlist-schema";
 import { choiceForHours, hoursOf, type TimeChoice } from "@/lib/time-slots";
 import { ArtistPicker, typedArtists, type PickedArtist } from "./artist-picker";
 
 // "|" and "~" separate values in the plan URL.
 const clean = (s: string) => s.replace(/[|~]/g, " ").trim();
 
-/** How many suggested songs the busk asks for (plan-inputs-architecture.md D4): what was removed, at least 3 and at most 8; 6 after Remove all or with no songs. */
-export const FILL_MIN = 3;
-export const FILL_MAX = 8;
+/** How many suggested songs the busk asks for (plan-inputs-architecture.md D4): 6 when the busk has no songs of its own; none when the Repertoire has some. */
 export const FILL_WHEN_EMPTY = 6;
-export function fillCount(removed: number, sent: number): number | undefined {
-  if (sent === 0) return FILL_WHEN_EMPTY;
-  return removed > 0 ? Math.min(FILL_MAX, Math.max(FILL_MIN, removed)) : undefined;
+export function fillCount(sent: number): number | undefined {
+  return sent === 0 ? FILL_WHEN_EMPTY : undefined;
 }
 
 /** One song per line: "Title - Artist". Add "(own)" for your own songs. (The planner no longer has the box; the plan-link parser tests use it.) */
@@ -54,20 +47,8 @@ export function parseSongLines(text: string) {
     });
 }
 
-/** A song in the form, with what the search showed. */
-type PickedSong = { key: string; title: string; artist: string; album: string | null; image: string | null; durationMs: number | null; own: boolean };
-
-const toPicked = (track: TrackResult, own: boolean): PickedSong => ({
-  key: track.id,
-  title: clean(track.title),
-  artist: clean(track.artists[0]?.name ?? "") || "Unknown artist",
-  album: track.album,
-  image: track.image,
-  durationMs: track.durationMs,
-  own,
-});
-
-const typedSong = (title: string, artist: string): PickedSong => ({ key: `typed-${playlistSongKey(artist, title)}`, title: clean(title), artist: clean(artist) || "Unknown artist", album: null, image: null, durationMs: null, own: false });
+/** A song the busk carries: from the Repertoire (read-only here), or the last busk's when planning again. */
+type PickedSong = { key: string; title: string; artist: string; durationMs: number | null; own: boolean };
 
 /** A stored plan's act, to plan again ("Plan again for a new date"): everything but the date. */
 export type FormPrefill = Pick<PlanRequest, "performer" | "permit"> & ({ startHour: number; endHour: number; anyTime?: false } | { anyTime: true });
@@ -80,8 +61,6 @@ const prefillSongs = (prefill: FormPrefill | undefined): PickedSong[] =>
     key: `again-${i}`,
     title: song.title,
     artist: song.artist,
-    album: null,
-    image: null,
     durationMs: song.durationMs ?? null,
     own: song.own,
   }));
@@ -91,7 +70,7 @@ const repertoireFields = (view: PlaylistView) => ({
   name: view.actName ?? "",
   artists: view.soundsLike.map((a): PickedArtist => ({ name: a.name, spotifyId: a.spotifyId ?? null, qlooId: a.qlooId ?? null, image: null })),
   picked: view.songs.map(
-    (song): PickedSong => ({ key: `rep-${song.id}`, title: song.title, artist: song.artist, album: null, image: null, durationMs: song.durationMs, own: song.own }),
+    (song): PickedSong => ({ key: `rep-${song.id}`, title: song.title, artist: song.artist, durationMs: song.durationMs, own: song.own }),
   ),
 });
 
@@ -114,7 +93,7 @@ function fieldOf(path: string): Field {
 const FOCUS_TARGET: Record<Field, string> = {
   name: "#name",
   artists: "[data-field=artists] input",
-  songs: "[data-field=songs] input, [data-field=songs] button",
+  songs: "[data-field=songs] a",
   slot: "#date",
   permit: "[data-field=permit] [role=radio][tabindex='0']",
 };
@@ -131,30 +110,19 @@ function errorFor(issues: { path: PropertyKey[]; message: string }[], input: Pla
 
 /**
  * `today` is the city's local date: a plan is for today or later. `repertoire` is this device's Repertoire (read on the
- * server from its cookie), or null: with none, the block says so and the busk plans with suggested songs.
+ * server from its cookie), or null. The Repertoire is READ-ONLY here (a summary and a link to /repertoire); the act name and
+ * artists are plain fields for this busk, prefilled from it and never saved back.
  */
 export function PerformerForm({ defaultDate, today, prefill, repertoire = null }: { defaultDate: string; today: string; prefill?: FormPrefill; repertoire?: PlaylistView | null }) {
   const router = useRouter();
-  // The Repertoire is the starting point when there is one with songs; ?again (a plan's act) still wins.
-  const [saved, setSaved] = useState<PlaylistView | null>(repertoire && repertoire.songs.length > 0 && !prefill ? repertoire : null);
-  // The act (name, artists, Spotify profile) starts from the Repertoire's, even when it has no songs; ?again still wins for name and artists.
-  const [rep, setRep] = useState<PlaylistView | null>(repertoire);
-  const initial = saved ? repertoireFields(saved) : null;
+  // The Repertoire is the starting point when there is one; ?again (a plan's act) still wins for the name, artists and songs.
+  const rep = repertoire;
   const repAct = rep && !prefill ? repertoireFields(rep) : null;
-  const [name, setName] = useState(repAct?.name ?? initial?.name ?? prefill?.performer.name ?? "");
-  const [artists, setArtists] = useState<PickedArtist[]>(() => repAct?.artists ?? initial?.artists ?? prefillArtists(prefill));
-  const [profileId, setProfileId] = useState<string | null>(repertoire?.spotifyArtistId ?? null);
-  const [actNote, setActNote] = useState<{ kind: "info" | "error" | "stale"; text: string } | null>(null);
-  const [actBusy, setActBusy] = useState(false);
-  const [profileBusy, setProfileBusy] = useState(false);
+  const [name, setName] = useState(repAct?.name ?? prefill?.performer.name ?? "");
+  const [artists, setArtists] = useState<PickedArtist[]>(() => repAct?.artists ?? prefillArtists(prefill));
   const [artistQuery, setArtistQuery] = useState("");
-  // The block: the Repertoire's songs (or the last busk's), the ones unticked for this busk, and the ones added just for it.
-  const [base, setBase] = useState<PickedSong[]>(() => initial?.picked ?? prefillSongs(prefill));
-  const [removed, setRemoved] = useState<Set<string>>(new Set());
-  const [added, setAdded] = useState<PickedSong[]>([]);
-  const [editing, setEditing] = useState(false);
-  const [repNote, setRepNote] = useState<{ kind: "info" | "error" | "stale"; text: string } | null>(null);
-  const [repBusy, setRepBusy] = useState(false);
+  // The songs the busk carries: the Repertoire's (or, planning again, the last busk's).
+  const songs = useMemo<PickedSong[]>(() => (prefill ? prefillSongs(prefill) : rep ? repertoireFields(rep).picked : []), [prefill, rep]);
   const [date, setDate] = useState(defaultDate);
   const [time, setTime] = useState<TimeChoice>(() => initialTime(prefill));
   // Hours from an old link that match no named slot stay on offer as a "From your link" choice, so nothing is lost.
@@ -187,131 +155,14 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
     };
   }, [error, failures]);
 
-  const kept = base.filter((s) => !removed.has(s.key));
-  const sentSongs = [...kept, ...added];
-
   /** What the form holds now, as the request will carry it. */
   function currentFields() {
-    const parsedSongs = sentSongs.map((p) => ({ title: p.title, artist: p.artist, own: p.own, ...(p.durationMs ? { durationMs: p.durationMs } : {}) }));
+    const parsedSongs = songs.map((p) => ({ title: p.title, artist: p.artist, own: p.own, ...(p.durationMs ? { durationMs: p.durationMs } : {}) }));
     const chosen = [...artists];
     for (const typed of typedArtists(artistQuery)) {
       if (!chosen.some((a) => a.name.toLowerCase() === typed.toLowerCase())) chosen.push({ name: typed, spotifyId: null, image: null });
     }
     return { parsedSongs, chosen };
-  }
-
-  // The songs and the act are saved separately: each has its own explicit save and its own "back to my Repertoire".
-  const edited = saved !== null && !sameDraft(draftOf({ name: "", artists: [], songs: currentFields().parsedSongs }), repertoireDraft({ actName: null, soundsLike: [], songs: saved.songs }));
-  const actEdited =
-    rep !== null &&
-    (!sameDraft(draftOf({ name: clean(name), artists: currentFields().chosen.map((a) => a.name), songs: [] }), repertoireDraft({ actName: rep.actName, soundsLike: rep.soundsLike, songs: [] })) ||
-      (profileId ?? null) !== (rep.spotifyArtistId ?? null));
-
-  function fillSongsFrom(view: PlaylistView) {
-    setBase(repertoireFields(view).picked);
-    setRemoved(new Set());
-    setAdded([]);
-  }
-
-  function fillActFrom(view: PlaylistView) {
-    const fields = repertoireFields(view);
-    setName(fields.name);
-    setArtists(fields.artists);
-    setArtistQuery("");
-    setProfileId(view.spotifyArtistId ?? null);
-  }
-
-  function fillFrom(view: PlaylistView) {
-    fillActFrom(view);
-    fillSongsFrom(view);
-  }
-
-  function reset() {
-    if (saved) fillSongsFrom(saved);
-  }
-
-  function resetAct() {
-    if (rep) fillActFrom(rep);
-    setActNote(null);
-  }
-
-  /** Explicit save of the act: the name, the artists you sound like and the Spotify profile. Songs are not touched. */
-  async function saveAct() {
-    if (!rep) return;
-    const { chosen } = currentFields();
-    setActBusy(true);
-    setActNote(null);
-    const result = await savePlaylist({
-      revision: rep.revision,
-      actName: clean(name) || null,
-      soundsLike: chosen.slice(0, 10).map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.qlooId ? { qlooId: a.qlooId } : {}) })),
-      spotifyArtistId: profileId,
-    });
-    if (result.ok && result.playlist) {
-      setRep(result.playlist);
-      if (saved) setSaved({ ...saved, revision: result.playlist.revision });
-      fillActFrom(result.playlist);
-      setActNote({ kind: "info", text: COPY.saved });
-      // A new (or cleared) Spotify link is loaded once, here, when it is saved; never on page load.
-      if ((result.playlist.spotifyArtistId ?? null) !== (rep.spotifyArtistId ?? null)) await loadProfile();
-    } else if (!result.ok) setActNote({ kind: result.code === "stale" ? "stale" : "error", text: result.message });
-    setActBusy(false);
-  }
-
-  /** Loads the Spotify artist and finds it in Qloo, for the saved link: after a link change is saved, or when Refresh is pressed. */
-  async function loadProfile() {
-    setProfileBusy(true);
-    const outcome = await refreshProfile();
-    setProfileBusy(false);
-    if (!outcome.ok) return setActNote({ kind: outcome.code === "stale" ? "stale" : "error", text: outcome.message });
-    setRep(outcome.playlist);
-    setSaved((current) => (current ? { ...current, revision: outcome.playlist.revision } : current));
-    if (outcome.spotify === "not_found") setActNote({ kind: "error", text: COPY.profile.notFound });
-    else if (outcome.spotify === "unavailable") setActNote({ kind: "error", text: COPY.profile.spotifyDown });
-  }
-
-  /** The only thing here that writes the Repertoire: an explicit save, checked against the revision last seen. */
-  async function saveToRepertoire() {
-    if (!saved) return;
-    const { parsedSongs } = currentFields();
-    setRepBusy(true);
-    setRepNote(null);
-    const result = await savePlaylist({ revision: saved.revision, songs: parsedSongs.slice(0, 60) });
-    setRepBusy(false);
-    if (result.ok && result.playlist) {
-      setSaved(result.playlist);
-      setRep(result.playlist);
-      fillSongsFrom(result.playlist);
-      setRepNote({ kind: "info", text: COPY.saved });
-    } else if (!result.ok) setRepNote({ kind: result.code === "stale" ? "stale" : "error", text: result.message });
-  }
-
-  /** The Repertoire changed elsewhere (another tab): fetch the latest and fill from it. */
-  async function reloadRepertoire() {
-    const result = await loadPlaylist();
-    if (result.ok && result.playlist) {
-      setSaved(result.playlist);
-      setRep(result.playlist);
-      fillFrom(result.playlist);
-      setRepNote(null);
-      setActNote(null);
-    }
-  }
-
-  const inForm = (key: string) => base.some((s) => s.key === key) || added.some((s) => s.key === key);
-  const sameSong = (a: { title: string; artist: string }, b: { title: string; artist: string }) => playlistSongKey(a.artist, a.title) === playlistSongKey(b.artist, b.title);
-
-  /** Add songs just for this busk; a song already in the block is ticked again instead of doubled. */
-  function addSongs(next: PickedSong[]) {
-    const unticked = base.filter((s) => removed.has(s.key) && next.some((n) => sameSong(n, s)));
-    if (unticked.length > 0) {
-      const back = new Set(removed);
-      for (const s of unticked) back.delete(s.key);
-      setRemoved(back);
-    }
-    setAdded((current) =>
-      [...current, ...next.filter((n) => !inForm(n.key) && !base.some((s) => sameSong(n, s)) && !current.some((c) => sameSong(n, c)))].slice(0, 60 - base.length),
-    );
   }
 
   // The pending state belongs to one click. Coming back to this page (Back, the bfcache, or the router keeping this
@@ -363,9 +214,8 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
       return;
     }
     const hours = hoursOf(time);
-    // Songs removed for this busk are filled by suggested ones (not the removed songs themselves); none at all plans with suggestions only.
-    const removedSongs = base.filter((s) => removed.has(s.key)).map((s) => ({ title: s.title, artist: s.artist }));
-    const fill = fillCount(removedSongs.length, parsedSongs.length);
+    // With no songs the busk plans with suggested songs only; with a Repertoire it asks for no fill.
+    const fill = fillCount(parsedSongs.length);
     const input: PlanRequestInput = {
       city: "melbourne",
       slot: hours ? { date, ...hours } : { date, any: true },
@@ -375,7 +225,7 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
         artists: artistList,
         spotifyArtists,
         songs: parsedSongs,
-        ...(fill ? { fillSuggested: fill, ...(removedSongs.length ? { skipSongs: removedSongs.slice(0, 60) } : {}) } : {}),
+        ...(fill ? { fillSuggested: fill } : {}),
         // Your own artist leads the taste signal, only when Qloo matched it (never a default: it would change the plan's hash).
         ...(rep?.qlooArtistId && rep.spotifyProfile?.name
           ? { ownArtist: { qlooId: rep.qlooArtistId, name: rep.spotifyProfile.name, ...(rep.spotifyArtistId ? { spotifyId: rep.spotifyArtistId } : {}) } }
@@ -395,26 +245,9 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
   const errorId = (field: Field) => (error?.field === field ? `err-${field}` : undefined);
   const hasError = (field: Field) => error?.field === field;
 
-  const noteOf = (note: typeof repNote) =>
-    note && (
-    <FormMessage tone={note.kind === "info" ? "success" : "error"}>
-      {note.text}
-      {note.kind === "stale" && (
-        <>
-          {" "}
-          <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={() => void reloadRepertoire()}>
-            {COPY.reload}
-          </Button>
-        </>
-      )}
-    </FormMessage>
-    );
-  const noteView = noteOf(repNote);
-
   return (
     <form ref={formRef} onSubmit={submit} onKeyDown={keepEnterInFields} className="flex flex-col gap-7 border-2 border-rule bg-card p-4 md:p-7" aria-label="Plan for your own act" aria-busy={submitting || undefined} noValidate>
       <section aria-label="Your act" className="flex flex-col gap-4.5">
-        {rep && <ProfileHeader profile={rep.spotifyProfile} hasLink={Boolean(rep.spotifyArtistId)} busy={profileBusy} onRefresh={() => void loadProfile()} />}
         <div className="space-y-1.5">
           <Label htmlFor="name">Act name</Label>
           <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Jess on acoustic guitar" maxLength={80} aria-invalid={hasError("name") || undefined} aria-describedby={errorId("name")} />
@@ -438,44 +271,15 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
           picked={currentFields().chosen.map((a) => a.name)}
           onAdd={(add) => setArtists((current) => withSuggested(current, add))}
         />
-        {rep && actEdited && (
-          <div className="flex flex-wrap items-center gap-2" data-testid="save-act">
-            <p className="text-sm text-muted-foreground">{COPY.act.editedHint}</p>
-            <Button type="button" variant="outline" size="sm" disabled={actBusy} onClick={() => void saveAct()}>
-              {actBusy ? COPY.saving : COPY.act.save}
-            </Button>
-            <Button type="button" variant="ghost" size="sm" disabled={actBusy} onClick={resetAct}>
-              {COPY.act.back}
-            </Button>
-          </div>
-        )}
-        {noteOf(actNote)}
       </section>
 
       <div data-field="songs" className="flex flex-col gap-1.5">
         <RepertoireSource
-          heading={prefill && !saved ? COPY.source.headingLastBusk : COPY.source.heading}
-          base={base}
-          removed={removed}
-          added={added}
-          editing={editing}
-          onEditingChange={setEditing}
-          onRemovedChange={setRemoved}
-          onAddedChange={setAdded}
-          addSlot={
-            <RepertoireAdd
-              artists={artists}
-              isAdded={(track) => inForm(track.id) || sentSongs.some((s) => sameSong(s, { title: clean(track.title), artist: clean(track.artists[0]?.name ?? "") || "Unknown artist" }))}
-              onAddTrack={(track) => addSongs([toPicked(track, false)])}
-              onAddTyped={(song) => addSongs([typedSong(song.title, song.artist)])}
-              onAddOwn={(tracks) => addSongs(tracks.map((t) => toPicked(t, true)))}
-              profileId={profileId}
-              onProfileChange={setProfileId}
-            />
-          }
-          save={saved ? { edited, busy: repBusy, onSave: () => void saveToRepertoire(), onReset: reset, note: noteView } : null}
+          heading={prefill ? PLAYLIST_COPY.source.headingLastBusk : PLAYLIST_COPY.source.heading}
+          songs={songs}
+          hasRepertoire={Boolean(rep && rep.songs.length > 0)}
+          header={rep ? <ProfileHeader profile={rep.spotifyProfile} hasLink={Boolean(rep.spotifyArtistId)} /> : null}
         />
-        {!saved && noteView}
         {hasError("songs") && (
           <FormMessage tone="error" id="err-songs" alert={false}>
             {error!.message}

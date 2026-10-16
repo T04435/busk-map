@@ -34,7 +34,7 @@ test.describe("server HTML (B-011)", () => {
     expect(response.status()).toBe(200);
     const html = await response.text();
     const comboboxes = [...html.matchAll(/<input[^>]*role="combobox"[^>]*>/g)].map((m) => m[0]);
-    // The song search is inside "Edit for this busk" and is not in the server HTML until it is opened.
+    // /busks has the artist search only: songs are added on /repertoire.
     expect(comboboxes.map((tag) => tag.match(/placeholder="([^"]*)"/)?.[1])).toEqual(["Search Spotify, e.g. Paul Kelly"]);
     for (const tag of comboboxes) {
       expect(tag).toContain('aria-expanded="false"');

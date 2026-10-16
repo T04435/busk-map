@@ -3,17 +3,8 @@ import type { Page } from "@playwright/test";
 import { expect, LOCAL, test } from "./fixtures";
 
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
-const SEARCHES = ["Search Spotify, e.g. Paul Kelly", "Search songs, e.g. Riptide"];
-
-/** The song search lives in "Edit for this busk" > "+ Add a song just for this busk". */
-async function openSongSearch(page: import("@playwright/test").Page) {
-  const form = page.getByRole("form", { name: "Plan for your own act" });
-  await expect(async () => {
-    await form.getByRole("button", { name: "Edit for this busk" }).click({ timeout: 1000 });
-    await expect(form.getByText("+ Add a song just for this busk")).toBeVisible({ timeout: 1000 });
-  }).toPass();
-  await form.getByText("+ Add a song just for this busk").click();
-}
+// /busks has the artist search only: songs are added on /repertoire.
+const SEARCHES = ["Search Spotify, e.g. Paul Kelly"];
 
 test.describe("accessibility", () => {
   test("landing has no critical axe violations (B-004)", async ({ page }) => {
@@ -45,7 +36,6 @@ test.describe("accessibility", () => {
   test("the search comboboxes say whether their list is shown and point at it only while it is (B-004)", async ({ page }) => {
     test.skip(!LOCAL, "Searches the offline catalogue");
     await page.goto("/busks");
-    await openSongSearch(page);
     for (const placeholder of SEARCHES) {
       const input = page.getByPlaceholder(placeholder);
       await expect(input).toHaveAttribute("role", "combobox");
@@ -95,7 +85,6 @@ test.describe("accessibility", () => {
 
   test("a focused InputGroup search and a focused Input each show exactly one ring (F13, F14, B-005)", async ({ page }) => {
     await page.goto("/busks");
-    await openSongSearch(page);
     // The search field: the group carries the one border and the one ring; the input inside carries neither.
     for (const placeholder of SEARCHES) {
       const input = page.getByPlaceholder(placeholder);

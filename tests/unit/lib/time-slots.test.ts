@@ -29,16 +29,10 @@ describe("named time slots", () => {
 });
 
 describe("the suggested-fill count the form sends (plan-inputs D4)", () => {
-  it("sends none while nothing is removed, at least 3 when something is, at most 8", () => {
-    expect(fillCount(0, 5)).toBeUndefined();
-    expect(fillCount(1, 4)).toBe(3);
-    expect(fillCount(3, 2)).toBe(3);
-    expect(fillCount(5, 2)).toBe(5);
-    expect(fillCount(20, 2)).toBe(8);
-  });
-  it("sends 6 after Remove all or with no songs at all", () => {
-    expect(fillCount(9, 0)).toBe(6);
-    expect(fillCount(0, 0)).toBe(6);
+  it("sends none with a Repertoire, and 6 with no songs at all", () => {
+    expect(fillCount(5)).toBeUndefined();
+    expect(fillCount(1)).toBeUndefined();
+    expect(fillCount(0)).toBe(6);
   });
 });
 

@@ -4,7 +4,7 @@ const LINK = "[clip-path:polygon(0_0,50%_0,100%_50%,50%_100%,0_100%)]";
 /**
  * The landing's brain teaser sketch (user, impeccable live 17 Oct): the brain's real shape as dense bands of cells, 11 Qloo
  * calls, 16 data points and 8 parts of your busk, under big display labels and joined by the F30 half-hex links. A pulse runs
- * through every cell, calls to busk, three times on load (hc-flow in globals.css; still under reduced motion).
+ * through every cell, calls to busk, on a loop that never stops (hc-flow in globals.css; still under reduced motion).
  * A sketch, not data: hidden from screen readers (the teaser's numbers and copy carry the meaning).
  */
 const COLUMNS = [

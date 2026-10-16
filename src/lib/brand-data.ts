@@ -221,7 +221,7 @@ export const TOKENS: TokenRow[] = [
     "dark": "#ff6a2b",
     "lightSw": "#141c21",
     "darkSw": "#ff6a2b",
-    "use": "Keyboard focus (shadcn --ring): one 2px ring. Fields also turn their border to it; buttons keep a 2px ring with no gap, never a second ring. Bluestone by day, signal orange at night; 3:1 or more on every surface."
+    "use": "Keyboard focus (shadcn --ring): one ring. Buttons get a 2px outline in `ring` with a 2px offset; fields turn their border to `ring` plus one ring. Never a second ring, and never a ground gap plus a ring. Bluestone by day, signal orange at night; 3:1 or more on every surface."
   },
   {
     "name": "chart-1",
@@ -600,7 +600,7 @@ export const SHADOWS: ScaleRow[] = [
   {
     "name": "focus-ring",
     "value": "2px solid ring",
-    "use": "Keyboard focus: one 2px ring in `ring`, from each shadcn component's own focus-visible style. Fields also turn their border to `ring`; buttons keep a 2px gap. Never a second ring."
+    "use": "Keyboard focus: one ring, from each shadcn component's own focus-visible style. Buttons get a 2px outline in `ring` with a 2px offset; fields turn their border to `ring` plus one ring. Never a second ring, and never a ground gap plus a ring."
   }
 ];
 

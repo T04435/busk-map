@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createRateLimiter, FORCED_LIMIT_RETRY_S, FRESH_RUNS_PER_HOUR, freshLimitMessage, freshRunGate } from "@/server/rate-limit";
+import { PLAN_UNCOUNTED_END_CODES } from "@/server/playlist/config";
+import { createRateLimiter, FORCED_LIMIT_RETRY_S, FRESH_RUNS_PER_HOUR, freshLimitMessage, freshRunGate, refundPlanRun } from "@/server/rate-limit";
 
 // 2026-10-17 10:00 in Melbourne (UTC+11).
 const NOW = Date.parse("2026-10-16T23:00:00Z");
@@ -71,5 +72,30 @@ describe("freshLimitMessage", () => {
     [3600, "about 60 minutes"],
   ])("%i s → %s", (seconds, phrase) => {
     expect(freshLimitMessage(seconds)).toBe(`You've started 5 plans this hour. Try again in ${phrase}, or open one of your earlier plans.`);
+  });
+
+  it("a plan run that ends with Qloo down gives its hit back; a normal run and a timeout keep theirs (B-043)", () => {
+    const live = { reused: false, offline: false, ip: "10.0.0.1" };
+    const limiter = createRateLimiter(FRESH_RUNS_PER_HOUR, 60 * 60_000);
+    // Five Qloo-down runs leave the count unchanged, so the sixth attempt is allowed.
+    for (let i = 0; i < 5; i++) {
+      expect(freshRunGate(live, limiter, NOW)).toEqual({ ok: true });
+      expect(refundPlanRun("qloo_unavailable", live.ip, limiter)).toBe(true);
+    }
+    expect(freshRunGate(live, limiter, NOW)).toEqual({ ok: true });
+    expect(refundPlanRun("qloo_unavailable", live.ip, limiter)).toBe(true);
+    // A normal run (no end code), a timeout and an internal error all count.
+    for (const code of [null, "timeout", "internal"]) {
+      expect(freshRunGate(live, limiter, NOW).ok).toBe(true);
+      expect(refundPlanRun(code, live.ip, limiter)).toBe(false);
+    }
+    // Three counted so far; two more fill the limit and the next is refused.
+    expect(freshRunGate(live, limiter, NOW).ok).toBe(true);
+    expect(freshRunGate(live, limiter, NOW).ok).toBe(true);
+    expect(freshRunGate(live, limiter, NOW).ok).toBe(false);
+  });
+
+  it("the uncounted end codes live in one constant", () => {
+    expect(PLAN_UNCOUNTED_END_CODES).toEqual(["qloo_unavailable"]);
   });
 });

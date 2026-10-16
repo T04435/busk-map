@@ -1,7 +1,7 @@
 import "server-only";
 import type { LearnLimitScope } from "@/lib/learn-schema";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
-import { LEARN_RUNS_PER_HOUR_PER_IP, LEARN_UNCOUNTED_END_CODES, LEARN_RUNS_PER_HOUR_PER_PLAYLIST, LEARN_WINDOW_MINUTES, PLAYLIST_CREATIONS_PER_HOUR } from "@/server/playlist/config";
+import { LEARN_RUNS_PER_HOUR_PER_IP, LEARN_UNCOUNTED_END_CODES, LEARN_RUNS_PER_HOUR_PER_PLAYLIST, LEARN_WINDOW_MINUTES, PLAN_UNCOUNTED_END_CODES, PLAYLIST_CREATIONS_PER_HOUR } from "@/server/playlist/config";
 
 /**
  * A small sliding-window limiter, per server instance. It stops one browser
@@ -89,6 +89,15 @@ export function freshRunGate(
     retryAfterS = result.retryAfterS;
   }
   return { ok: false, retryAfterS, retryAt: new Date(now + retryAfterS * 1000).toISOString(), message: freshLimitMessage(retryAfterS) };
+}
+/**
+ * A fresh plan run that ended with an uncounted code (PLAN_UNCOUNTED_END_CODES: Qloo down) gives its hit back (B-043).
+ * Call it only for a run whose own request was counted by freshRunGate (not a replay, join or offline run).
+ */
+export function refundPlanRun(code: string | null, ip: string, limiter: RateLimiter = freshRunLimiter): boolean {
+  if (code === null || !PLAN_UNCOUNTED_END_CODES.includes(code)) return false;
+  limiter.release(ip);
+  return true;
 }
 /** Plain-LLM comparisons: 12 per 10 minutes per IP (cached, cheap model). */
 export const compareLimiter = createRateLimiter(12, 10 * 60_000);

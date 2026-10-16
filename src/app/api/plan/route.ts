@@ -13,7 +13,7 @@ import { testSwitches } from "@/server/env";
 import { log } from "@/server/log";
 import { freshRunsAllowed, saveRunSnapshot } from "@/server/plans";
 import { recordBuskForRepertoire } from "@/server/playlist/usual";
-import { freshRunGate } from "@/server/rate-limit";
+import { freshRunGate, refundPlanRun } from "@/server/rate-limit";
 import { adapterContextFor, clientIp, FAULTS_HEADER, freshLimitFaultRequested } from "@/server/request";
 
 /** Agent runs take 20–60 s; the agent itself times out at 90 s, then the engine's plan is assembled. */
@@ -73,16 +73,20 @@ export async function POST(request: Request) {
     : JSON.stringify([parsed.data, adapters.offline, context.today]);
   // Joining or replaying a run costs no model call: not counted. Presets never replay from the plan store.
   const reused = adapters.faults.length === 0 && !fresh && (await hasSharedRun(shareKey, presetId ? undefined : storeKey, ttl, presetId ? undefined : store));
+  const ip = clientIp(request.headers);
+  const offline = testSwitches().offline;
   const gate = freshRunGate({
     reused,
-    offline: testSwitches().offline,
-    ip: clientIp(request.headers),
+    offline,
+    ip,
     forced: freshLimitFaultRequested(request.headers.get(FAULTS_HEADER)),
   });
   if (!gate.ok) {
     // Relative message (any time zone); retryAt and retryAfterS let a client show its own local time.
     return jsonError(429, "rate_limited", gate.message, { "Retry-After": String(gate.retryAfterS), "Cache-Control": "no-store" }, { retryAt: gate.retryAt, retryAfterS: gate.retryAfterS });
   }
+  // Only a run whose own request recorded a hit can give one back (B-043).
+  const counted = !reused && !offline;
   const requestId = crypto.randomUUID();
   const encoder = new TextEncoder();
 
@@ -117,6 +121,7 @@ export async function POST(request: Request) {
     } catch (error) {
       if (error instanceof QlooUnavailableError) {
         run.push({ type: "error", code: "qloo_unavailable", message: "Qloo, our taste data source, is not responding. Please try again shortly." });
+        if (counted) refundPlanRun("qloo_unavailable", ip);
       } else {
         log.error("plan failed", { requestId, error: error instanceof Error ? error.message : "unknown" });
         run.push({ type: "error", code: "internal", message: "Something went wrong while planning. Please try again." });

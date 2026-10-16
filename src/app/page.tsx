@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Clock, MapPin, Music, Scale } from "lucide-react";
+import { ArrowRight, Clock, MapPin, Music, Play, Scale } from "lucide-react";
 import { ExampleActCard } from "@/components/honeycomb/example-act-card";
 import { QlooLink } from "@/components/honeycomb/logo";
 import { PercentCell } from "@/components/honeycomb/percent-cell";
@@ -76,10 +76,14 @@ export default function Home() {
           <rect width="100%" height="100%" fill="url(#hero-lattice)" />
         </svg>
         <HeroGlow />
-        <div className="relative mx-auto flex max-w-[1360px] flex-wrap items-start gap-x-14 gap-y-10 px-4 py-12 md:px-6 md:py-16">
+        {/* Full-bleed map (F19): the map half runs to the hero's right edge and from top to bottom, with no frame. */}
+        <div className="relative h-[clamp(300px,80vw,460px)] w-full lg:absolute lg:inset-y-0 lg:right-0 lg:h-auto lg:w-1/2" data-testid="hero-map">
+          <HeroTasteMap label="An illustration of Qloo's taste map for a folk duo, with their three pitches" />
+        </div>
+        <div className="relative mx-auto flex max-w-[1360px] flex-wrap items-start gap-x-14 gap-y-10 px-4 py-12 md:px-6 md:py-16 lg:pointer-events-none">
           {/* The headline sizes itself to its column (19cqw) so "What to play." always stays on one line, as in the deck (B-025). */}
-          <div className="flex min-w-0 flex-[1.2_1_520px] flex-col gap-7 pt-4 [container-type:inline-size] md:pt-6">
-            <h1 id="hero" className="m-0 font-display text-[min(19cqw,clamp(64px,9vw,136px))] leading-[0.86] font-extrabold uppercase">
+          <div className="flex min-w-0 flex-[1.2_1_520px] flex-col gap-7 pt-4 [container-type:inline-size] md:pt-6 lg:max-w-[calc(50%-28px)] lg:pointer-events-auto">
+            <h1 id="hero" className="m-0 font-display text-[min(19cqw,clamp(64px,9vw,136px))] leading-[0.86] font-extrabold uppercase [text-shadow:0_0_18px_var(--background)]">
               <span className="sr-only">Busk Map: </span>
               Where to busk.
               <br />
@@ -87,16 +91,11 @@ export default function Home() {
               <br />
               <span className="whitespace-nowrap text-signal-text">What to play.</span>
             </h1>
-          </div>
-          <div className="flex min-w-0 flex-[1_1_460px] flex-col gap-4">
-            <figure className="m-0 flex flex-col gap-2.5">
-              <HeroTasteMap label="An illustration of Qloo's taste map for a folk duo, with their three pitches" />
-            </figure>
             <Button asChild variant="poster" size="poster-lg" className="w-full justify-between [&_svg:not([class*=size-])]:size-9">
               <Link href="/busks">
-              Plan a busk
-              <ArrowRight aria-hidden="true" className="size-9" />
-            </Link>
+                Plan a busk
+                <ArrowRight aria-hidden="true" className="size-9" />
+              </Link>
             </Button>
           </div>
           <div className="flex basis-full flex-wrap items-center justify-center gap-x-7 gap-y-4 pt-4 text-qloo">
@@ -127,7 +126,7 @@ export default function Home() {
       <div className="mx-auto flex max-w-[1360px] flex-col gap-20 px-4 pt-16 pb-16 md:gap-28 md:px-6 md:pt-24">
         <figure aria-label="Demo video, coming soon" data-testid="demo-video-slot" className="bm-grain m-0 flex aspect-video max-h-[720px] w-full flex-col items-center justify-center gap-4 border-[3px] border-rule bg-background p-6 text-center text-foreground shadow-md" data-theme="dark">
           <HexCell size={96} tone="primary" fontSize={44}>
-            <ArrowRight aria-hidden="true" className="size-10" />
+            <Play aria-hidden="true" className="size-10 fill-current" />
           </HexCell>
           <b className="font-display text-[clamp(28px,4vw,44px)] leading-none font-extrabold uppercase">[Demo video · 60–90 s]</b>
           <figcaption className="m-0 max-w-xl font-mono text-xs leading-4 text-muted-foreground">

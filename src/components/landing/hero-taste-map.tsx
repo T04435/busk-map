@@ -1,9 +1,9 @@
 import { cn } from "cn";
 
-const R = 25;
+const R = 15;
 const W = Math.sqrt(3) * R;
-const COLS = 13;
-const ROWS = 10;
+const COLS = 30;
+const ROWS = 26;
 const WIDTH = COLS * W + W / 2;
 const HEIGHT = (ROWS - 1) * 1.5 * R + 2 * R;
 
@@ -12,17 +12,17 @@ type MapPin = { rank: number; col: number; row: number; kind: "top" | "gem" };
 
 /** Hot spots on the grid (cell units): where this crowd gathers. A made-up pattern, not a city's data. */
 const HERO_HEAT: Heat = [
-  { x: 6.2, y: 5.4, a: 1 },
-  { x: 3.4, y: 2.6, a: 0.86 },
-  { x: 8.8, y: 3.2, a: 0.74 },
-  { x: 9.6, y: 6.8, a: 0.5 },
+  { x: 14.7, y: 13.3, a: 1 },
+  { x: 9.5, y: 8, a: 0.86 },
+  { x: 19.6, y: 9.1, a: 0.74 },
+  { x: 20.6, y: 16.5, a: 0.5 },
 ];
 
 function affinity(heat: Heat, cx: number, cy: number): number {
   let best = 0;
   for (const h of heat) {
     const d = Math.hypot(cx - h.x, (cy - h.y) * 1.15);
-    best = Math.max(best, h.a * Math.exp(-(d * d) / 9));
+    best = Math.max(best, h.a * Math.exp(-(d * d) / 13));
   }
   return best;
 }
@@ -38,25 +38,16 @@ function hexPoints(x: number, y: number, r: number): string {
 const center = (col: number, row: number) => ({ x: col * W + (row % 2 ? W : W / 2), y: row * 1.5 * R + R });
 
 const HERO_PINS: MapPin[] = [
-  { rank: 1, col: 6, row: 5, kind: "top" },
-  { rank: 2, col: 3, row: 2, kind: "gem" },
-  { rank: 3, col: 9, row: 3, kind: "top" },
+  { rank: 1, col: 14, row: 13, kind: "top" },
+  { rank: 2, col: 9, row: 8, kind: "gem" },
+  { rank: 3, col: 19, row: 9, kind: "top" },
 ];
 
-/** The pattern behind "What you get back": another made-up crowd, with the pins of the example busk. */
-export const PLAN_PREVIEW = {
-  heat: [
-    { x: 3.6, y: 6.4, a: 1 },
-    { x: 7.4, y: 2.8, a: 0.9 },
-    { x: 9.4, y: 6.2, a: 0.72 },
-    { x: 1.6, y: 1.8, a: 0.4 },
-  ] satisfies Heat,
-  pins: [
-    { rank: 1, col: 3, row: 6, kind: "top" },
-    { rank: 2, col: 7, row: 3, kind: "gem" },
-    { rank: 3, col: 9, row: 6, kind: "top" },
-  ] satisfies MapPin[],
-};
+/** Held by the user (L05): whether the hero shows only the orange cells. Flip to true when they answer. */
+const HERO_ORANGE_ONLY = false;
+
+/** A few faint streets under the cells, so it reads as a map. */
+const STREETS = ["M0 170 L760 240", "M0 380 L760 340", "M230 0 L290 600", "M520 0 L470 600", "M0 270 L760 120"];
 
 /**
  * An illustration of a taste map: pointy-top cells in the five-step taste ramp, three pitch pins on top. The pattern is
@@ -70,6 +61,8 @@ export function HeroTasteMap({ className, label, heat = HERO_HEAT, pins = HERO_P
       const { x, y } = center(col, row);
       const a = affinity(heat, col + (row % 2 ? 0.5 : 0), row);
       const lv = level(a);
+      // The dark, low-taste cells stay until the user decides the hero goes orange-only (HERO_ORANGE_ONLY).
+      if (HERO_ORANGE_ONLY && lv < 3) continue;
       cells.push(
         <polygon
           key={`${col}-${row}`}
@@ -77,20 +70,26 @@ export function HeroTasteMap({ className, label, heat = HERO_HEAT, pins = HERO_P
           style={{ "--d": `${Math.round(a * 900 + ((col * 7 + row * 3) % 5) * 40)}ms` } as React.CSSProperties}
           points={hexPoints(x, y, R - 1.5)}
           fill={`var(--taste-${lv})`}
-          opacity={0.85}
+          opacity={0.9}
         />,
       );
     }
   }
   return (
-    <svg role="img" aria-label={label} viewBox={`0 0 ${WIDTH.toFixed(0)} ${HEIGHT.toFixed(0)}`} className={cn("block h-auto w-full border-2 border-rule bg-background", className)}>
+    // Full-bleed (F19): the map fills whatever box it is given, edge to edge, with no frame and no empty space.
+    <svg role="img" aria-label={label} viewBox={`0 0 ${WIDTH.toFixed(0)} ${HEIGHT.toFixed(0)}`} preserveAspectRatio="xMidYMid slice" className={cn("block size-full", className)}>
+      <g fill="none" stroke="var(--foreground)" strokeOpacity={0.14} strokeWidth={2}>
+        {STREETS.map((d) => (
+          <path key={d} d={d} />
+        ))}
+      </g>
       {cells}
       {pins.map((pin) => {
         const { x, y } = center(pin.col, pin.row);
         // Every ranked pitch is a numbered pin, hidden gems too (the gem is marked where pitches are listed).
         return (
           <g key={pin.rank} className="hc-pin" style={{ "--d": `${1500 + pin.rank * 160}ms` } as React.CSSProperties}>
-            <polygon points={hexPoints(x, y, 21)} fill="var(--bluestone)" stroke="var(--primary)" strokeWidth={3} />
+            <polygon points={hexPoints(x, y, 24)} fill="var(--bluestone)" stroke="var(--primary)" strokeWidth={3} />
             <text x={x} y={y + 8} textAnchor="middle" fill="var(--primary)" style={{ font: "800 22px var(--font-display)" }}>
               {pin.rank}
             </text>

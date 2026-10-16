@@ -1,6 +1,6 @@
 "use client";
 
-import { Footprints } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import { Badge } from "@/components/ui/badge";
 import { ChoiceCard, ChoiceGroup } from "./choice-cards";
 
@@ -19,11 +19,14 @@ export function CityPicker({ cities, value, onValueChange, label = "City" }: { c
           end={
             city.level === "live" ? (
               <Badge variant="gem">
-                <Footprints aria-hidden="true" />
+                <Icon name="footfall" size={14} strokeWidth={2.5} />
                 Live data
               </Badge>
             ) : (
-              <Badge variant="estimate">Less data</Badge>
+              <Badge variant="estimate">
+                <Icon name="info" size={14} strokeWidth={2.5} />
+                Less data
+              </Badge>
             )
           }
         />

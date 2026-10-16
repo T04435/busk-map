@@ -66,7 +66,7 @@ test.describe("own act", () => {
     await artistBox.fill("Zzyzx Nobody");
     await form.getByRole("option", { name: "Add “Zzyzx Nobody” as typed" }).click();
     await expect(chips.getByRole("listitem")).toHaveCount(2);
-    await expect(chips.getByRole("listitem").nth(1)).toContainText("(typed)");
+    await expect(chips.getByRole("listitem").nth(1)).toContainText("Typed");
 
     // Songs: versions by the act's artists come first (marked), then Spotify's order: cover, title, artist, album and length.
     // These are songs the act already plays, so there is no Learn it menu here.

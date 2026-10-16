@@ -1,19 +1,23 @@
 "use client";
 
-import { MusicIcon, PlusIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { searchTracks, type TrackResult } from "@/components/forms/repertoire-api";
 import { useLiveSearch } from "@/components/forms/use-live-search";
 import { HexCell } from "@/components/honeycomb/hex-cell";
+import { Icon } from "@/components/honeycomb/icon";
+import { Loader } from "@/components/honeycomb/loader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "cn";
 import { formatDuration, MIN_QUERY_CHARS } from "@/lib/live-search";
 import { isByActArtist, rankByActArtists, type ActArtist } from "@/lib/track-rank";
 
 const LABEL = "Search songs on Spotify";
+// A status line in the results frame (DS bm-results-line).
+const LINE = "m-0 flex items-center gap-2 p-3 text-sm leading-5 text-muted-foreground";
 
 /** "Title - Artist" from what was searched: the song typed in when Spotify has no match, prefilled (artist empty when there is no " - "). */
 export function splitTypedQuery(query: string): { title: string; artist: string } {
@@ -72,7 +76,7 @@ function TypedFallback({ query, onAdd }: { query: string; onAdd: (song: { title:
 export function SongCover({ image, className, size = 32 }: { image: string | null; className?: string; size?: number }) {
   return (
     <HexCell size={size} tone="muted" image={image} className={className}>
-      <MusicIcon aria-hidden className="size-4" />
+      <Icon name="music" size={16} />
     </HexCell>
   );
 }
@@ -153,19 +157,21 @@ export function SongSearch({
       />
       {typed && (
         <CommandList label="Song results" className="max-h-80 border-2 border-rule bg-popover p-1">
-          {state.status === "idle" && <p className="px-3 py-2 text-sm text-muted-foreground">Type {MIN_QUERY_CHARS} or more letters to search Spotify.</p>}
+          {state.status === "idle" && <p className={LINE}>Type {MIN_QUERY_CHARS} or more letters to search Spotify.</p>}
           {state.status === "loading" && (
-            <p role="status" className="px-3 py-2 text-sm text-muted-foreground">
+            <p role="status" className={LINE}>
+              <Loader size={18} label="Searching" className="text-primary" />
               Searching Spotify…
             </p>
           )}
           {state.status === "error" && (
-            <p role="alert" className="px-3 py-2 text-sm text-destructive">
+            <p role="alert" className={cn(LINE, "text-destructive")}>
+              <Icon name="warning" size={16} className="shrink-0" />
               {state.message}
             </p>
           )}
           {state.status === "done" && results.length === 0 && (
-            <p role="status" className="px-3 py-2 text-sm text-muted-foreground">
+            <p role="status" className={LINE}>
               No songs on Spotify match “{state.query}”.{onAddTyped ? " Type it in below instead." : ""}
             </p>
           )}
@@ -188,12 +194,13 @@ export function SongSearch({
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-bold">{track.title}</span>
                       <span className="block truncate text-xs text-muted-foreground">{[artist, track.album].filter(Boolean).join(" · ")}</span>
-                      {isByActArtist(track, artists) && (
-                        <span className="mt-0.5 block">
-                          <Badge variant="neutral">By your artist</Badge>
-                        </span>
-                      )}
                     </span>
+                    {isByActArtist(track, artists) && (
+                      <Badge variant="neutral">
+                        <Icon name="users" size={14} strokeWidth={2.5} />
+                        By your artist
+                      </Badge>
+                    )}
                     {track.durationMs !== null && <span className="font-mono text-xs text-muted-foreground tabular-nums">{formatDuration(track.durationMs)}</span>}
                     <span className={added ? "font-mono text-[11px] leading-4 font-bold tracking-[0.06em] uppercase" : "sr-only"}>{added ? "Added" : "Add"}</span>
                   </CommandItem>
@@ -213,7 +220,7 @@ export function SongSearch({
                   inputRef.current?.focus();
                 }}
               >
-                <PlusIcon aria-hidden="true" className="size-4 shrink-0" />
+                <Icon name="plus" size={18} />
                 <span className="min-w-0 flex-1 break-words">
                   Add “{parsedTyped.title}”{parsedTyped.artist ? ` by ${parsedTyped.artist}` : ""} as typed
                 </span>

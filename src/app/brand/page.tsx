@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Check, Download, Music, TriangleAlert } from "lucide-react";
+import { Download } from "lucide-react";
 import { ComponentGroups, PlanStates } from "@/components/brand/brand-components";
 import { IconGrid } from "@/components/brand/brand-icons";
 import { ASSET_GROUPS, COMPONENT_COUNT, KIT, SCREENS } from "@/components/brand/brand-tables";
 import { PhoneFold } from "@/components/brand/phone-fold";
 import { HexCell } from "@/components/honeycomb/hex-cell";
+import { Icon } from "@/components/honeycomb/icon";
 import { Loader } from "@/components/honeycomb/loader";
 import { Logo, QlooWordmark } from "@/components/honeycomb/logo";
 import { PercentCell } from "@/components/honeycomb/percent-cell";
@@ -251,8 +252,8 @@ export default function BrandPage() {
             <div className="flex flex-wrap items-center gap-4.5 border-2 border-rule bg-card p-5">
               <HexCell size={56} fontSize={24} tone="primary">1</HexCell>
               <HexCell size={56} fontSize={20}>GW</HexCell>
-              <HexCell size={56} tone="muted"><Music className="size-6" aria-hidden="true" /></HexCell>
-              <HexCell size={56} tone="error"><TriangleAlert className="size-6" aria-hidden="true" /></HexCell>
+              <HexCell size={56} tone="muted"><Icon name="music" size={24} /></HexCell>
+              <HexCell size={56} tone="error"><Icon name="warning" size={24} /></HexCell>
               <PercentCell value={91} size={56} label="Score" />
               <PercentCell value={64} size={56} label="Taste match" />
               <PercentCell value={null} size={56} label="Score" />
@@ -262,7 +263,7 @@ export default function BrandPage() {
           </PhoneFold>
 
           <PhoneFold heading="Iconography" headingClassName={H3}>
-            <p className="m-0 max-w-3xl">One icon set, 24px grid, 2px stroke, square caps. Icons come with a word beside them; they never carry meaning alone.</p>
+            <p className="m-0 max-w-3xl">One icon set, 24px grid, 2px stroke, round caps and joins. Icons come with a word beside them; they never carry meaning alone.</p>
             <IconGrid />
           </PhoneFold>
 
@@ -423,7 +424,7 @@ export default function BrandPage() {
             </TableFrame>
           </PhoneFold>
           <p className="m-0 flex items-center gap-2 text-sm text-muted-foreground">
-            <Check aria-hidden="true" className="size-4" />
+            <Icon name="check" size={16} />
             Busk Map is open source (MIT). The brand files are in the repository under public/brand.
           </p>
         </Section>

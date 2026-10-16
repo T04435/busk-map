@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import { CircleOff, Footprints, Info, WifiOff } from "lucide-react";
+import { Icon, type IconName } from "@/components/honeycomb/icon";
 import { cn } from "cn";
 
 export type BannerTone = "info" | "test" | "offline" | "less";
 
-const ICON = { info: Info, test: CircleOff, offline: WifiOff, less: Footprints } as const;
+// The DS maps the tones to info / info / offline / footfall (its BANNER_ICON): test data uses the info glyph.
+const ICON: Record<BannerTone, IconName> = { info: "info", test: "info", offline: "offline", less: "footfall" };
 const STYLE: Record<BannerTone, string> = {
   info: "bg-accent text-accent-foreground",
   // Test data: the hatch, with the words on a solid chip so they stay readable.
@@ -15,10 +16,9 @@ const STYLE: Record<BannerTone, string> = {
 
 /** A full-width strip of context above a page or form: planning again, test data, offline, less data. A polite status. */
 export function Banner({ tone = "info", action, children, className, testId }: { tone?: BannerTone; action?: ReactNode; children: ReactNode; className?: string; testId?: string }) {
-  const Icon = ICON[tone];
   return (
     <div role="status" data-slot="banner" data-testid={testId} data-tone={tone} className={cn("flex items-center gap-3 border-2 border-rule px-4 py-2.5 text-sm leading-5", STYLE[tone], className)}>
-      <Icon aria-hidden="true" className="size-[18px] shrink-0" />
+      <Icon name={ICON[tone]} size={18} />
       <span className="min-w-0 flex-1">{children}</span>
       {action}
     </div>

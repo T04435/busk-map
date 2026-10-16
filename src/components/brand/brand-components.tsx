@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ArrowRight, Calendar, Music } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import { BrandChoiceDemo, BrandMapDemo, BrandPickedSongsDemo, BrandSlotDemo } from "@/components/brand/brand-demos";
 import { COMPONENT_GROUPS } from "@/components/brand/brand-tables";
 import { PhoneFold } from "@/components/brand/phone-fold";
@@ -60,8 +60,8 @@ export function ComponentGroups() {
     <div className="grid grid-cols-[repeat(auto-fit,minmax(min(380px,100%),1fr))] gap-4">
       <Group title="Controls" names={COMPONENT_GROUPS.controls}>
         <div className="flex flex-wrap items-center gap-2.5">
-          <Button>Plan my busk <ArrowRight aria-hidden="true" /></Button>
-          <Button variant="outline"><Calendar aria-hidden="true" />Week</Button>
+          <Button>Plan my busk <Icon name="arrow-right" /></Button>
+          <Button variant="outline"><Icon name="calendar" />Week</Button>
           <Button variant="ghost">Cancel</Button>
           <Button variant="secondary">Secondary</Button>
           <Button variant="destructive">Delete</Button>
@@ -77,7 +77,7 @@ export function ComponentGroups() {
           <FormMessage tone="error" id="brand-input-err-m" alert={false}>Act name: use 80 characters or fewer.</FormMessage>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Chip selected icon={<Music />}>Folk</Chip>
+          <Chip selected icon={<Icon name="music" />}>Folk</Chip>
           <Chip>Americana</Chip>
         </div>
       </Group>

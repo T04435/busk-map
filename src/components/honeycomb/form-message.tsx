@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Check, TriangleAlert } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import { cn } from "cn";
 
 export type FormMessageTone = "note" | "error" | "success";
@@ -36,8 +36,8 @@ export function FormMessage({
         className
       )}
     >
-      {tone === "error" ? <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" /> : null}
-      {tone === "success" ? <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0" /> : null}
+      {tone === "error" ? <Icon name="warning" size={16} className="mt-0.5" /> : null}
+      {tone === "success" ? <Icon name="check" size={16} className="mt-0.5" /> : null}
       <span>{children}</span>
     </p>
   );

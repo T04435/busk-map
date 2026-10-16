@@ -1,4 +1,4 @@
-import { Diamond, Dot } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import { Badge } from "@/components/ui/badge";
 
 export type Discovery = "hidden-gem" | "usual" | "none" | null | undefined;
@@ -11,7 +11,7 @@ export function DiscoveryBadge({ discovery, className }: { discovery: Discovery;
   if (discovery === "hidden-gem") {
     return (
       <Badge variant="gem" title="A strong taste fit off the usual busking circuit" className={className}>
-        <Diamond aria-hidden="true" />
+        <Icon name="gem" size={14} strokeWidth={2.5} />
         Hidden gem
       </Badge>
     );
@@ -19,7 +19,7 @@ export function DiscoveryBadge({ discovery, className }: { discovery: Discovery;
   if (discovery === "usual") {
     return (
       <Badge variant="usual" title="A well-known busking hotspot" className={className}>
-        <Dot aria-hidden="true" />
+        <Icon name="usual" size={14} strokeWidth={2.5} />
         Usual pitch
       </Badge>
     );

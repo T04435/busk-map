@@ -1,4 +1,5 @@
-import { Database, Search } from "lucide-react";
+import { Database } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import { Badge } from "@/components/ui/badge";
 import { modelName, type ExplanationsModel } from "@/lib/sources";
 
@@ -18,7 +19,7 @@ export function FoundByBadge({ origin, written, model }: { origin: string; writt
   if (origin !== "agent") return null;
   return (
     <Badge variant="neutral" title={`${modelName(model, "start")} suggested this spot, and Busk Map scored it`}>
-      <Search aria-hidden="true" />
+      <Icon name="search" size={14} strokeWidth={2.5} />
       Found by {modelName(model)}
     </Badge>
   );

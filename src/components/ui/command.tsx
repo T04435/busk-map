@@ -16,7 +16,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group"
-import { SearchIcon, CheckIcon } from "lucide-react"
+import { Icon } from "@/components/honeycomb/icon"
 
 function Command({
   className,
@@ -94,7 +94,7 @@ function CommandInput({
     <div data-slot="command-input-wrapper">
       <InputGroup className="has-[>[data-align=inline-start]]:[&>input]:pl-10">
         <InputGroupAddon className="pointer-events-none absolute inset-y-0 left-0 z-10 pl-3">
-          <SearchIcon aria-hidden="true" className="size-4 shrink-0" />
+          <Icon name="search" size={16} />
         </InputGroupAddon>
         <CommandPrimitive.Input {...props} asChild>
           <InputGroupInput
@@ -181,7 +181,7 @@ function CommandItem({
       {...props}
     >
       {children}
-      <CheckIcon className="ml-auto opacity-0 group-has-data-[slot=command-shortcut]/command-item:hidden group-data-[checked=true]/command-item:opacity-100" />
+      <Icon name="check" className="ml-auto opacity-0 group-has-data-[slot=command-shortcut]/command-item:hidden group-data-[checked=true]/command-item:opacity-100" />
     </CommandPrimitive.Item>
   )
 }

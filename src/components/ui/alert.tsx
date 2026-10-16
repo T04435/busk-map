@@ -1,6 +1,7 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { CircleAlert, Info, TriangleAlert, CircleHelp } from "lucide-react"
+import { CircleAlert, CircleHelp } from "lucide-react"
+import { Icon } from "@/components/honeycomb/icon"
 import { cn } from "cn"
 
 // Honeycomb alerts: the tone colours the icon and the 2px border only. The text stays `foreground` on a faint tint of
@@ -24,13 +25,14 @@ const alertVariants = cva(
   }
 )
 
+// DS glyphs where the DS has one (info, warning); Lucide (same 2px stroke) for error and estimate, which it lacks.
 const TONE_ICON = {
-  default: Info,
-  info: Info,
-  warning: TriangleAlert,
-  destructive: CircleAlert,
-  error: CircleAlert,
-  estimate: CircleHelp,
+  default: () => <Icon name="info" size={20} />,
+  info: () => <Icon name="info" size={20} />,
+  warning: () => <Icon name="warning" size={20} />,
+  destructive: () => <CircleAlert className="size-5" />,
+  error: () => <CircleAlert className="size-5" />,
+  estimate: () => <CircleHelp className="size-5" />,
 } as const
 
 function Alert({
@@ -44,7 +46,7 @@ function Alert({
     /** Replace the tone's icon, or `false` for none. The icon is decoration: the title says what happened. */
     icon?: React.ReactNode | false
   }) {
-  const Icon = TONE_ICON[variant ?? "default"]
+  const ToneIcon = TONE_ICON[variant ?? "default"]
   return (
     <div
       data-slot="alert"
@@ -55,7 +57,7 @@ function Alert({
     >
       {icon === false ? null : (
         <span aria-hidden="true" className="mt-0.5 flex-none text-(--tone)">
-          {icon ?? <Icon className="size-5" />}
+          {icon ?? <ToneIcon />}
         </span>
       )}
       <div className="min-w-0 flex-1 space-y-0.5">{children}</div>

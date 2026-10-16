@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Footprints } from "lucide-react";
+import { Icon } from "@/components/honeycomb/icon";
 import { ChoiceCard, ChoiceGroup } from "@/components/forms/choice-cards";
 import { PERMIT_CHOICES } from "@/components/forms/permit-picker";
 import { QUICK_SLOTS } from "@/components/forms/time-slot-picker";
@@ -27,7 +27,7 @@ export function BrandChoiceDemo() {
           end={
             i === 0 ? (
               <Badge variant="gem">
-                <Footprints aria-hidden="true" />
+                <Icon name="footfall" size={14} strokeWidth={2.5} />
                 Live data
               </Badge>
             ) : undefined

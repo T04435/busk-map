@@ -174,7 +174,10 @@ export function WeekView({ initialPlan, request, exampleId, faults }: Props) {
                       {s.pitch.discovery === "usual" && <Badge variant="outline">Usual spot</Badge>}
                       {s.tipPoints ? <Badge variant="outline">Your tips +{s.tipPoints}</Badge> : null}
                     </span>
-                    <span aria-label={`Score ${s.score} out of 100`}>{s.score}/100</span>
+                    <span>
+                      <span aria-hidden="true">{s.score}/100</span>
+                      <span className="sr-only">Score {s.score} out of 100</span>
+                    </span>
                   </p>
                   <p className="text-muted-foreground">{s.why}</p>
                   {s.pitch.cautions.length > 0 && <p className="text-muted-foreground">{s.pitch.cautions.join(" ")}</p>}
@@ -227,8 +230,9 @@ export function WeekView({ initialPlan, request, exampleId, faults }: Props) {
                     return (
                       <td key={d.date} className="p-1">
                         {c?.past ? (
-                          <span className="block p-2 text-muted-foreground" aria-label={`${d.label} ${slot.label}: already started`}>
-                            Past
+                          <span className="block p-2 text-muted-foreground">
+                            <span aria-hidden="true">Past</span>
+                            <span className="sr-only">{`${d.label} ${slot.label}: already started`}</span>
                           </span>
                         ) : (
                         <Button

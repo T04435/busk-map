@@ -30,10 +30,6 @@ BUSKMAP_OFFLINE=1 BUSKMAP_ALLOW_FAULTS=1 pnpm dev
 
 See [docs/deploy.md](docs/deploy.md): environment variables, BotID, the WAF rate-limit rule and the warm-up.
 
-## Tip log
-
-After a session, log what you earned at a pitch ("Log your takings" on a plan, history at `/tips`). The log stays in the browser; pitches where you earn more than your own average get a small bonus (at most +5 out of 100) in your next plans and week. The example performers come with labelled example sessions.
-
 ## Checks
 
 ```bash

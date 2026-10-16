@@ -22,8 +22,6 @@ import { planStreamEventSchema, type Plan, type PlanRequest, type PlanStreamEven
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import { weekSearchParams } from "@/lib/week-url";
 import { agentVsEngineLines } from "@/lib/agent-vs-engine";
-import { TipLogForm } from "@/components/tips/tip-log-form";
-import { useTipSync } from "@/components/tips/use-tip-sync";
 import { AgentSteps, applyStreamEvent, type AgentStep, type RunUsage } from "./agent-steps";
 import { CopyLink } from "./copy-link";
 import { CrowdPanel } from "./crowd-panel";
@@ -50,7 +48,7 @@ type Props = {
   request: PlanRequest;
   center: { lat: number; lon: number };
   autoRun: boolean;
-  /** The example performer this plan is for, if any (tip log key). */
+  /** The example performer this plan is for, if any. */
   exampleId: string | null;
   /** Simulated outages to pass on to the agent (e2e only; the server ignores it in production). */
   faults: string | null;
@@ -105,7 +103,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   // A stored run starts the view finished: its plan, its steps (collapsed, as a replay) and its totals.
   const [stored] = useState(() => replayState(replay));
   const [plan, setPlan] = useState<Plan | null>(stored?.plan ?? initialPlan);
-  // A refresh after logging takings brings a new engine plan for the same request: adopt it.
+  // A refresh brings a new engine plan for the same request: adopt it.
   const [shownInitial, setShownInitial] = useState(initialPlan);
   if (initialPlan !== shownInitial) {
     setShownInitial(initialPlan);
@@ -130,9 +128,8 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   const pitchList = plan?.pitches ?? [];
   const selectedId = searchParams.get("pitch") ?? pitchList[0]?.id ?? null;
   const selected = pitchList.find((p) => p.id === selectedId) ?? pitchList[0] ?? null;
-  // A stored run counts as started: a changed request (a new tip log entry) then plans again.
+  // A stored run counts as started: a changed request then plans again.
   const started = useRef(Boolean(stored?.plan));
-  useTipSync(request.performer.name, exampleId, request.history);
   // The plain-AI baseline (a control: agreement is a badge, never a score change).
   // Asked once the plan is shown: during the agent's run the server starts it after the agent's data is in.
   const baseline = useBaseline(request, faults, revealed);
@@ -234,8 +231,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     }
   }, [autoRun, runAgent]);
 
-  // A refresh with a changed request (a new tip log entry changes its history) re-plans with the agent:
-  // agent-first pages get no engine plan from the server. The run key includes the history, so it's a new run.
+  // A refresh with a changed request re-plans with the agent: agent-first pages get no engine plan from the server.
   const requestKey = JSON.stringify(request);
   const lastRequestKey = useRef(requestKey);
   useEffect(() => {
@@ -263,7 +259,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   const qlooDown = plan?.qlooFailed === true || (run.status === "error" && run.message.startsWith("Qloo"));
   const unmatched = qlooDown || !plan ? [] : plan.resolvedArtists.filter((a) => a.matched === null).map((a) => a.query);
   const matched = (plan?.resolvedArtists ?? []).filter((a) => a.matched !== null).map((a) => a.matched!);
-  const tipPitches = pitchList.filter((p) => p.tip && p.tip.points > 0);
 
   return (
     <div className="space-y-6">
@@ -296,9 +291,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
             )}`}
           >
             Plan my week instead
-          </Link>
-          <Link className="underline" href="/tips">
-            Tip log
           </Link>
           <Link className="underline" href="/repertoire">
             {PLAYLIST_COPY.link}
@@ -439,20 +431,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
                 ))}
               </ul>
             )}
-            {plan.tipHistory && (
-              <p className="flex flex-wrap items-center gap-2 text-muted-foreground" data-testid="tip-history">
-                {plan.tipHistory.source !== "yours" && <Badge variant="secondary">Example data</Badge>}
-                <span>
-                  Your tip log ({plan.tipHistory.sessions} sessions, average ${Math.round(plan.tipHistory.perHour)}/h)
-                  {tipPitches.length > 0
-                    ? ` adds a small bonus to ${list(tipPitches.map((p) => `${p.name} (+${p.tip!.points})`))}, where you earned more than your average.`
-                    : " doesn't change these pitches: none of them earned you more than your average yet."}{" "}
-                  <Link className="underline" href="/tips">
-                    How it works
-                  </Link>
-                </span>
-              </p>
-            )}
             <WeatherStrip weather={plan.weather} />
           </CardContent>
         </Card>
@@ -519,7 +497,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
                           <span>
                             {p.name}
                             {p.discovery === "hidden-gem" ? " · hidden gem" : p.discovery === "usual" ? " · usual spot" : ""}
-                            {p.tipPoints ? ` · tips +${p.tipPoints}` : ""}
                             {p.tooCloseTo ? ` · too close to ${p.tooCloseTo.name}` : ""}
                           </span>
                           <span className="text-muted-foreground">{p.score}/100</span>
@@ -541,16 +518,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
         )}
 
         {!exampleId && !qlooDown && selected && <SaveAsRepertoire performer={request.performer} />}
-
-        {!qlooDown && plan.pitches.length > 0 && (
-          <TipLogForm
-            performerName={request.performer.name}
-            exampleId={exampleId}
-            slot={request.slot}
-            pitches={[...plan.pitches, ...plan.others].map((p) => ({ id: p.id, name: p.name }))}
-            defaultPitchId={selected?.id ?? null}
-          />
-        )}
 
         <div className="grid gap-6 lg:grid-cols-2">
           <CrowdPanel crowd={plan.crowd} resolved={plan.resolvedArtists} topPitch={plan.pitches[0]?.name ?? null} />

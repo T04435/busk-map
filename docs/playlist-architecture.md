@@ -37,7 +37,7 @@ The feature is a saved **Repertoire** with three parts:
   - A 128-bit random token needs no pepper or slow hash.
 - **CSRF:** SameSite=Lax blocks cross-site POSTs. Every mutating route also checks that `Origin` matches the host, and joins `BOTID_PROTECTED_ROUTES` (`src/lib/botid-routes.ts`). `POST /api/playlist/learn` is the one that spends model money, so BotID matters most there.
 - **The id never leaves the server.** It is not in URLs, plan requests or short links. A shared `/p/<id>` link carries a snapshot of the songs, never a pointer to anyone's Repertoire (§3.2). Learn run ids are random UUIDs and are only served to the cookie that owns them.
-- The tip log stays as it is: a separate, script-written cookie (`src/lib/tips.ts:TIP_COOKIE`).
+- The tip log was removed (17 Oct); a "rate your busks" feature replaces it later.
 
 ### 1.2 Tables: migrations `004_playlists.sql` and `005_learn_runs.sql`
 

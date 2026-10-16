@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { TIP_COOKIE } from "@/lib/tips";
 import { PlanScreen, PlanSkeleton } from "@/components/plan/plan-screen";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { parsePlanParams } from "@/lib/plan-url";
@@ -43,9 +42,7 @@ async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchPar
   const params = await searchParams;
   // Plans depend on today's date and live data: always render at request time.
   await connection();
-  // The tip log's summary (this browser's cookie), for the personal bonus. Never in the URL.
-  const tipCookie = (await cookies()).get(TIP_COOKIE)?.value ?? null;
-  const parsed = parsePlanParams(params, serverLocalNow(CITIES.melbourne.timeZone), tipCookie);
+  const parsed = parsePlanParams(params, serverLocalNow(CITIES.melbourne.timeZone));
   if (!parsed.ok) {
     return (
       <>

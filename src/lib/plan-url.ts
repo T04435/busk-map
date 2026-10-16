@@ -23,7 +23,7 @@ export type ParsedPlanUrl =
 /** The city's current local date and hour. A default date is the next one whose slot hasn't ended by then. */
 export type LocalNow = { today: string; hour: number };
 
-export function parsePlanParams(params: Params, now: LocalNow, _tipCookie?: string | null): ParsedPlanUrl {
+export function parsePlanParams(params: Params, now: LocalNow): ParsedPlanUrl {
   const example = findExample(first(params.example));
   const name = first(params.name);
   const performer = name

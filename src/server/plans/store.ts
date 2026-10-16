@@ -12,13 +12,12 @@ import { processMap } from "@/server/memo";
  *
  * A row holds the validated plan request as the act typed it (name, artists,
  * songs, slot, permit, weights) and, once the agent finishes, the plan and the
- * agent's steps, so the link shows at once. The tip-log history is never
- * stored: it comes from the viewer's own cookie when the plan is opened.
+ * agent's steps, so the link shows at once.
  *
  * The same canonical request on the same Melbourne day maps to the same id,
  * so reloads and the examples don't create rows.
  */
-export type StoredPlanRequest = Omit<PlanRequest, "history">;
+export type StoredPlanRequest = PlanRequest;
 
 export type PlanSnapshot = {
   plan: Plan;
@@ -62,11 +61,9 @@ export function canonicalJson(value: unknown): string {
   );
 }
 
-/** The request as stored. The schema has no tip history any more (an old stored one is dropped on parse), so hashes of existing links are unchanged. */
+/** The request as stored. The schema has no tip history any more (zod drops an old stored one on parse), so hashes of existing links are unchanged. */
 export function storedRequestOf(request: PlanRequest): StoredPlanRequest {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { history, ...rest } = request;
-  return rest;
+  return request;
 }
 
 export function requestHash(request: StoredPlanRequest, exampleId: string | null): string {

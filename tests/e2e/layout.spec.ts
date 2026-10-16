@@ -230,16 +230,6 @@ const PAGES: PageCase[] = [
     },
   },
   {
-    name: "tips",
-    open: async (page) => {
-      await page.goto("/tips");
-      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    },
-    controls: async (page) => {
-      await expectOnTop(page.getByRole("link", { name: "Busk Map home" }), "Busk Map home");
-    },
-  },
-  {
     name: "brain",
     open: async (page) => {
       await page.goto("/brain");

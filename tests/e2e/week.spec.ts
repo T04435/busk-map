@@ -46,7 +46,7 @@ test.describe("week planner", () => {
   test("a session links to its full plan and suggested set", async ({ page }) => {
     await page.goto("/week?example=folk-duo");
     await page.getByRole("link", { name: "Open this session's plan and suggested set" }).first().click();
-    // Example sessions open the example's own plan (with its example tip log).
+    // Example sessions open the example's own plan.
     // /plan?example=folk-duo&date=… redirects to the session's short link.
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await expect(page.getByRole("heading", { name: /^Suggested set for / })).toBeVisible();

@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { TIP_COOKIE } from "@/lib/tips";
 import { WeekRepertoire } from "@/components/week/week-repertoire";
 import { WeekView } from "@/components/week/week-view";
 import { DataSources } from "@/components/plan/data-sources";
@@ -49,8 +48,7 @@ async function WeekContent({ searchParams }: Pick<PageProps<"/week">, "searchPar
   const params = await searchParams;
   await connection();
   const today = serverToday(CITIES.melbourne.timeZone);
-  const tipCookie = (await cookies()).get(TIP_COOKIE)?.value ?? null;
-  const parsed = parseWeekParams(params, today, tipCookie);
+  const parsed = parseWeekParams(params, today);
   if (!parsed.ok) {
     return (
       <>
@@ -92,7 +90,7 @@ async function WeekContent({ searchParams }: Pick<PageProps<"/week">, "searchPar
       {repertoire && repertoire.songs.length > 0 && <WeekRepertoire repertoire={repertoire} request={parsed.request} />}
       {/* Keyed by the request: a changed URL means a new plan, not stale client state. */}
       <WeekView
-        key={`${weekSearchParams(parsed.request, parsed.exampleId)}#${JSON.stringify(parsed.request.history ?? null)}`}
+        key={weekSearchParams(parsed.request, parsed.exampleId).toString()}
         initialPlan={plan} request={parsed.request} exampleId={parsed.exampleId} faults={adapters.faults.length ? adapters.faults.join(",") : null} />
       <DataSources status={plan.dataStatus} showAi={creditsClaude(plan)} />
     </div>

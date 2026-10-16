@@ -1,4 +1,5 @@
 import "server-only";
+import { PLAYLIST_CREATIONS_PER_HOUR } from "@/server/playlist/config";
 
 /**
  * A small sliding-window limiter, per server instance. It stops one browser
@@ -83,3 +84,17 @@ export const compareLimiter = createRateLimiter(12, 10 * 60_000);
 export const repertoireLimiter = createRateLimiter(120, 60_000);
 /** New short plan links: 30 per 10 minutes per IP (reused links aren't counted). */
 export const planLinkLimiter = createRateLimiter(30, 10 * 60_000);
+
+/** New Repertoires: 10 an hour per IP (config.ts:PLAYLIST_CREATIONS_PER_HOUR). Reading or editing an existing one isn't counted. */
+export const playlistCreateLimiter = createRateLimiter(PLAYLIST_CREATIONS_PER_HOUR, 60 * 60_000);
+
+/** Whether this request may create a Repertoire. Offline test mode spends nothing and isn't limited (the e2e tests share one IP). */
+export function playlistCreateGate(
+  { offline, ip }: { offline: boolean; ip: string },
+  limiter: RateLimiter = playlistCreateLimiter,
+  now = Date.now(),
+): { ok: true } | { ok: false; retryAfterS: number } {
+  if (offline) return { ok: true };
+  const result = limiter.check(ip, now);
+  return result.ok ? { ok: true } : { ok: false, retryAfterS: result.retryAfterS };
+}

@@ -17,24 +17,26 @@ async function open(page: Page) {
 }
 
 test.describe("QA /brain", () => {
-  test("facts strip matches docs/qloo-data-map.md (11 kinds, 24–33 per new busk, 0 on a rerun, 9 parts)", async ({ page }) => {
+  test("facts strip matches docs/qloo-data-map.md and qloo-map.ts (12 kinds, 24–33 per new busk, 0 on a rerun, 10 parts, ≤ 25 per learn run)", async ({ page }) => {
     await open(page);
     const facts = page.getByRole("region", { name: "Qloo calls per busk" }).getByRole("listitem");
-    await expect(facts).toHaveText([/^11\s*kinds of Qloo call$/, /^24–33\s*Qloo calls for a new busk$/, /^0\s*on a rerun: answers cached for 24 h$/, /^9\s*parts of your busk it decides$/]);
+    // Repertoire R4 (cac564d): 12 kinds of call (#5c added), 10 parts (Songs to learn), and the learn-run cap.
+    await expect(facts).toHaveText([/^12\s*kinds of Qloo call$/, /^24–33\s*Qloo calls for a new busk$/, /^0\s*on a rerun: answers cached for 24 h$/, /^10\s*parts of your busk it decides$/, /^≤ 25\s*Qloo calls per learn run$/]);
     await expect(page.getByTestId("quota-note")).toContainText("10,000 requests a month");
   });
 
   test("keyboard trace: Enter traces and announces; Escape clears, announces, and returns focus to the node", async ({ page }) => {
     await open(page);
-    const setlist = node(page, /^Setlist and learn these/);
+    // Repertoire R4 renamed "Setlist and learn these" to "Suggested set" and added Last.fm as its second other source.
+    const setlist = node(page, /^Suggested set/);
     await setlist.focus();
     await page.keyboard.press("Enter");
     await expect(setlist).toHaveAttribute("aria-pressed", "true");
-    await expect(status(page)).toHaveText("Tracing. Setlist and learn these comes from 4 Qloo calls, 1 other source and 5 data points. Other pieces are dimmed.");
-    // The panel's claim: four Qloo calls and Spotify meet here.
+    await expect(status(page)).toHaveText("Tracing. Suggested set comes from 4 Qloo calls, 2 other sources and 6 data points. Other pieces are dimmed.");
+    // The panel's claim: four Qloo calls, Spotify and Last.fm meet here.
     const panel = page.getByTestId("trace-panel");
     await expect(panel).toContainText("Comes from:");
-    for (const piece of ["Artists nearby, explained", "Affinity at a pitch", "Trending", "Demographics", "Spotify"]) await expect(panel).toContainText(piece);
+    for (const piece of ["Artists nearby, explained", "Affinity at a pitch", "Trending", "Demographics", "Spotify", "Last.fm"]) await expect(panel).toContainText(piece);
 
     // Move focus to the Clear button, then Escape: focus must land back on the traced node.
     await page.getByRole("button", { name: "Clear trace" }).focus();
@@ -47,7 +49,7 @@ test.describe("QA /brain", () => {
   test("every piece traces by keyboard: Enter selects, announces, opens its panel; Escape clears and keeps focus", async ({ page }) => {
     await open(page);
     const ids = await page.locator("[data-node-id]").evaluateAll((els) => els.map((e) => e.getAttribute("data-node-id")!));
-    expect(ids.length, "11 kinds (12 with 5b) + 2 sources + 15 data points + 9 parts").toBe(38);
+    expect(ids.length, "12 kinds in 14 shapes (5b, 5c) + 3 sources (Spotify, Ticketmaster, Last.fm) + data points + 10 parts, per qloo-map.ts").toBe(45);
     for (const id of ids) {
       const piece = page.locator(`[data-node-id="${id}"]`);
       await piece.focus();
@@ -81,7 +83,7 @@ test.describe("QA /brain", () => {
 
   test("the sticky trace panel never covers the focused node while tabbing (WCAG 2.4.11)", async ({ page }) => {
     await open(page);
-    await node(page, /^Setlist and learn these/).click();
+    await node(page, /^Suggested set/).click();
     const covered: string[] = [];
     for (let i = 0; i < 40; i++) {
       await page.keyboard.press("Tab");
@@ -110,7 +112,7 @@ test.describe("QA /brain", () => {
       const svg = page.locator("[data-testid=brain-grid] > svg");
       expect(await svg.evaluate((el) => getComputedStyle(el).display), `${width}px wires`).toBe(wide ? "block" : "none");
       if (wide) await expect.poll(() => svg.locator("path").count()).toBeGreaterThan(10);
-      await node(page, /^Setlist and learn these/).click();
+      await node(page, /^Suggested set/).click();
       const dimmed = page.locator('[data-trace="dim"]');
       expect(await dimmed.count()).toBeGreaterThan(0);
       if (wide) await expect(dimmed.first()).toBeVisible();

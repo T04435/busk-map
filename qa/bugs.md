@@ -30,6 +30,11 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-024 | Low | Honeycomb landing: Brain teaser 4th number "parts of your plan" | Open (design/honeycomb) |
 | B-025 | Low | Honeycomb landing: H1 orphans "PLAY." at 1440 | Open (design/honeycomb) |
 | B-026 | Low | "For judges" link from decision 104 never designed | Open (BRAND/MANAGER) |
+| B-027 | Medium | /repertoire learn feed: tool names, raw UUIDs and finish_suggestions JSON in the default view; oldest first; stays above the list; 10-count grid, not the funnel | Open (pending Learn* boards) |
+| B-028 | Low | /repertoire Qloo down: no "Your songs are safe." and nothing says the run did not count | Open |
+| B-029 | Low | /repertoire nothing new: copy says everything was suggested before while the run shows songs checked 0, suggested before 0; no left-out count or next-step hint | Open |
+| B-030 | Low | /repertoire Learn list: older runs do not fold | Open |
+| B-031 | Low | /repertoire Learn list: no filter chips (All · New · To learn · Learned · Not for me) | Open |
 
 ---
 
@@ -145,3 +150,12 @@ DEV found and fixed it (8afd14d): at 390 px the landing's "Your Spotify artist l
 
 ### B-018 to B-026 · Honeycomb landing (design/honeycomb at 69a6cad)
 Details, evidence and the lost-at hop for each are in the visual report on the `design/honeycomb` branch: `qa/reports/honeycomb-landing-audit.html`, indexed by `qa/reports/honeycomb-landing-audit.md`. They're logged here so the ledger stays complete; they apply to the Honeycomb branch, not to dev/core's current look.
+
+### B-027 to B-031 · Repertoire R3, Songs you should learn (dev/core at 23a8d72)
+Spec: BRAND's `learn-run-sketch.md` v3 and DEV's contract (`docs/playlist-architecture.md` §7); the published canvas has no Learn* boards yet. Evidence, side by side at 390/768/1440: `qa/reports/repertoire-r3-audit.html`, indexed by `qa/reports/repertoire-r3-audit.md`. All found offline with the mock model.
+- **B-027 (Medium):** after a run, every step shows its tool name, Qloo endpoint, raw artist UUIDs and the whole `finish_suggestions` JSON, numbered oldest first, above the songs (at 1440 the new songs start about 1,600 px down). Sketch §2: plain words, raw data only behind "Show raw data", newest first, and once finished the feed moves under the list as "How we found these songs"; totals as the ResearchFunnel with one "left out" count.
+- **B-028 (Low):** Qloo down shows "Qloo isn't answering" but not "Your songs are safe." (sketch §1 error, §2 endings), and nothing tells the user the run didn't count (the API doesn't count it).
+- **B-029 (Low):** at run 8 (nothing new) the message says everything found was suggested before, while that run's counts read songs checked 0 and suggested before 0. Sketch: "…already in your history (7 left out)", plus a hint to try after a new busk or after learning songs.
+- **B-030 (Low):** every run group stays expanded; sketch §3 says the newest run is open and older runs fold.
+- **B-031 (Low):** no filter chips; sketch §3 and §6 list All · New · To learn · Learned · Not for me.
+

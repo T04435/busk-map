@@ -63,7 +63,7 @@ test.describe("the brain of Busk Map at three widths", () => {
       test("renders, traces a call to its features, and clears", async ({ page }) => {
         await openBrain(page);
         await expect(page.getByText("kinds of Qloo call")).toBeVisible();
-        await expect(page.getByTestId("quota-note")).toContainText("10,000 requests a month per key, at 5 a second");
+        await expect(page.getByTestId("quota-note")).toContainText("One key's 10,000 calls a month cover roughly 300–400 new busks");
         await expect(page.getByRole("heading", { name: "Next · not built yet" })).toBeVisible();
         await expect(page.locator("[data-node-id]")).toHaveCount(12 + 2 + 15 + 9);
         await expectNoSidewaysScroll(page);
@@ -195,6 +195,36 @@ test.describe("the brain of Busk Map", () => {
     await page.keyboard.press("Escape");
     await expect(point).toHaveAttribute("aria-pressed", "false");
     await expect(point).toBeFocused();
+  });
+
+  test("the idle panel offers two Try prompts (B-052)", async ({ page }) => {
+    await openBrain(page);
+    const panel = page.getByTestId("trace-panel");
+    await expect(panel.getByText("Try Setlist and learn these")).toBeVisible();
+    await expect(panel.getByText("Try Taste heatmap")).toBeVisible();
+  });
+
+  test("a piece picked with Enter keeps a visible ring and stays in view above the panel (B-149, B-150)", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openBrain(page);
+    const point = nodeOf(page, "d_cells");
+    await point.scrollIntoViewIfNeeded();
+    await page.keyboard.press("Tab");
+    await point.focus();
+    await page.keyboard.press("Enter");
+    await expect(point).toHaveAttribute("aria-pressed", "true");
+    await expect(point).toBeFocused();
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const el = document.activeElement as HTMLElement;
+          const r = el.getBoundingClientRect();
+          const p = document.querySelector('[data-testid="trace-panel"]')!.getBoundingClientRect();
+          return r.top >= 0 && r.bottom <= p.top;
+        }),
+      )
+      .toBe(true);
+    expect(await point.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe("none");
   });
 
   test("has no axe violations at any impact, untraced and traced", async ({ page }) => {

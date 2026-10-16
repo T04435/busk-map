@@ -29,7 +29,11 @@ import { DataSources } from "./data-sources";
 import { WeatherStrip } from "./weather-strip";
 import { WeightsPanel } from "./weights-panel";
 
-type RunState = { status: "idle" | "running" | "done" } | { status: "error"; message: string };
+type RunState =
+  | { status: "idle" | "running" | "done" }
+  | { status: "error"; message: string }
+  /** The fresh-run limit refused the run (429): nothing started, no fallback plan is built. */
+  | { status: "limited"; message: string };
 
 /** What the header needs before the plan exists (agent-first: the plan arrives with the agent's answer). */
 type Heading = Pick<Plan, "cityName" | "slotLabel" | "permit" | "performerName" | "qlooMode"> & {
@@ -176,6 +180,11 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
       });
       if (!response.ok || !response.body) {
         const body = await response.json().catch(() => null);
+        if (response.status === 429 && body?.error?.code === "rate_limited") {
+          // No run and no engine fallback: the fallback page would start the plain-AI baseline, a model call.
+          setRun({ status: "limited", message: body.error.message });
+          return;
+        }
         fail(body?.error?.message ?? "The planner is unavailable right now.");
         return;
       }
@@ -329,7 +338,9 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
         {/* No re-run for buskers: a reload replays the stored run. Developers can add ?fresh=1 (outside production). */}
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-sm text-muted-foreground" data-testid="agent-status">
-            {pending
+            {run.status === "limited"
+              ? "No new plan was started."
+              : pending
               ? "The agent is researching with Qloo and the other sources. The plan appears when it finishes."
               : run.status === "idle"
                 ? "Shown: the engine's plan from the data, without the agent."
@@ -350,6 +361,19 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
           </p>
         )}
         {!pending && plan?.agent && <AgentVsEngine agent={plan.agent} model={model} />}
+        {run.status === "limited" && (
+          <Alert data-testid="fresh-limit">
+            <AlertTitle>Plan limit reached</AlertTitle>
+            <AlertDescription>
+              <p>{run.message}</p>
+              <p>
+                <Link className="underline" href="/">
+                  Back to Busk Map home
+                </Link>
+              </p>
+            </AlertDescription>
+          </Alert>
+        )}
         {run.status === "error" && !qlooDown ? (
           <Alert variant="destructive">
             <AlertTitle>The agent could not finish</AlertTitle>
@@ -383,7 +407,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
         )}
       </section>
 
-      {pending || !plan ? (
+      {run.status === "limited" ? null : pending || !plan ? (
         <PendingPlan />
       ) : (
         <>

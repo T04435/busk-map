@@ -13,13 +13,13 @@ import { testSwitches } from "@/server/env";
 import { log } from "@/server/log";
 import { freshRunsAllowed, saveRunSnapshot } from "@/server/plans";
 import { freshRunGate } from "@/server/rate-limit";
-import { adapterContextFor, clientIp, FAULTS_HEADER } from "@/server/request";
+import { adapterContextFor, clientIp, FAULTS_HEADER, freshLimitFaultRequested } from "@/server/request";
 
 /** Agent runs take 20–60 s; the agent itself times out at 90 s, then the engine's plan is assembled. */
 export const maxDuration = 120;
 
-function jsonError(status: number, code: string, message: string, headers: HeadersInit = {}) {
-  return Response.json({ error: { code, message } }, { status, headers });
+function jsonError(status: number, code: string, message: string, headers: HeadersInit = {}, extra: Record<string, unknown> = {}) {
+  return Response.json({ error: { code, message, ...extra } }, { status, headers });
 }
 
 /**
@@ -32,7 +32,9 @@ function jsonError(status: number, code: string, message: string, headers: Heade
  * computed before the stream opens.
  *
  * Fresh runs are limited to 5 an hour per IP (per instance; replays and
- * joined runs are free).
+ * joined runs are free). A refusal is a 429 with Retry-After and
+ * `{ error: { code: "rate_limited", message, retryAt, retryAfterS } }`.
+ * The test fault `x-buskmap-faults: fresh-limit` forces it (never in production).
  *
  * With the x-buskmap-plan header (a short link's id), the finished run is kept
  * on that plan, so the link opens at once next time. With x-buskmap-fresh: 1
@@ -70,8 +72,16 @@ export async function POST(request: Request) {
     : JSON.stringify([parsed.data, adapters.offline, context.today]);
   // Joining or replaying a run costs no model call: not counted. Presets never replay from the plan store.
   const reused = adapters.faults.length === 0 && !fresh && (await hasSharedRun(shareKey, presetId ? undefined : storeKey, ttl, presetId ? undefined : store));
-  const gate = freshRunGate({ reused, offline: testSwitches().offline, ip: clientIp(request.headers), timeZone: CITIES[parsed.data.city].timeZone });
-  if (!gate.ok) return jsonError(429, "rate_limited", gate.message, { "Retry-After": String(gate.retryAfterS) });
+  const gate = freshRunGate({
+    reused,
+    offline: testSwitches().offline,
+    ip: clientIp(request.headers),
+    forced: freshLimitFaultRequested(request.headers.get(FAULTS_HEADER)),
+  });
+  if (!gate.ok) {
+    // Relative message (any time zone); retryAt and retryAfterS let a client show its own local time.
+    return jsonError(429, "rate_limited", gate.message, { "Retry-After": String(gate.retryAfterS), "Cache-Control": "no-store" }, { retryAt: gate.retryAt, retryAfterS: gate.retryAfterS });
+  }
   const requestId = crypto.randomUUID();
   const encoder = new TextEncoder();
 

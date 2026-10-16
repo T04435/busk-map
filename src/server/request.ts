@@ -29,3 +29,20 @@ export function renderFaultRequested(faults: string | null | undefined): boolean
   if (!testSwitches().allowFaults || !faults) return false;
   return faults.split(",").some((s) => s.trim() === "render");
 }
+
+/** Test fault: the fresh-run gate refuses (429), so the limit page can be tested offline. Same gate as the others. */
+export const FRESH_LIMIT_FAULT = "fresh-limit";
+
+export function freshLimitFaultRequested(faults: string | null | undefined): boolean {
+  if (!testSwitches().allowFaults || !faults) return false;
+  return faults.split(",").some((s) => s.trim() === FRESH_LIMIT_FAULT);
+}
+
+/**
+ * The test faults a page passes on to its API calls: the provider outages plus `fresh-limit`.
+ * Empty unless fault injection is allowed (never in production).
+ */
+export function pageFaultsFor(faults: string | null | undefined): string[] {
+  if (!testSwitches().allowFaults) return [];
+  return [...parseFaults(faults), ...(freshLimitFaultRequested(faults) ? [FRESH_LIMIT_FAULT] : [])];
+}

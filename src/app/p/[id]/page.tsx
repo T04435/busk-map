@@ -9,7 +9,7 @@ import { describeSlot, localToday } from "@/lib/slot";
 import { TIP_COOKIE } from "@/lib/tips";
 import { CITIES } from "@/server/cities";
 import { freshRunsAllowed, loadStoredPlan, slotPassed, snapshotEvents, snapshotFor, viewerRequest } from "@/server/plans";
-import { adapterContextFor } from "@/server/request";
+import { adapterContextFor, pageFaultsFor } from "@/server/request";
 
 export const metadata: Metadata = {
   title: "Plan · Busk Map",
@@ -50,11 +50,12 @@ async function ShortPlan({ params, searchParams }: Pick<PageProps<"/p/[id]">, "p
   if (!request) notFound();
 
   const adapters = adapterContextFor(first(query.faults));
+  const testFaults = pageFaultsFor(first(query.faults));
   const city = CITIES[request.city];
   const fresh = first(query.fresh) === "1" && freshRunsAllowed();
   // run=0 asks for the engine's plan alone (also the fallback when the agent ends without one): no stored run then.
   const engineOnly = first(query.run) === "0";
-  const snapshot = fresh || engineOnly || adapters.faults.length > 0 ? null : snapshotFor(stored, request, adapters.offline);
+  const snapshot = fresh || engineOnly || testFaults.length > 0 ? null : snapshotFor(stored, request, adapters.offline);
   const passed = slotPassed(request.slot, city.timeZone);
   const againHref = `/?again=${stored.id}#own`;
   const slotLabel = describeSlot(request.slot);
@@ -91,6 +92,7 @@ async function ShortPlan({ params, searchParams }: Pick<PageProps<"/p/[id]">, "p
         request={request}
         exampleId={stored.exampleId}
         adapters={adapters}
+        faults={testFaults}
         autoRun={!engineOnly}
         shareId={stored.id}
         replay={replay}

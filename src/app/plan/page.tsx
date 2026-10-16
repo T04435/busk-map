@@ -11,7 +11,7 @@ import { parsePlanParams } from "@/lib/plan-url";
 import { localToday } from "@/lib/slot";
 import { CITIES } from "@/server/cities";
 import { longUrlTarget } from "@/server/plans";
-import { adapterContextFor, clientIp, renderFaultRequested } from "@/server/request";
+import { adapterContextFor, clientIp, pageFaultsFor, renderFaultRequested } from "@/server/request";
 
 export const metadata: Metadata = {
   title: "Plan · Busk Map",
@@ -66,7 +66,9 @@ async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchPar
   const faults = typeof params.faults === "string" ? params.faults : null;
   if (renderFaultRequested(faults)) throw new Error("Simulated render fault (test)");
   const adapters = adapterContextFor(faults);
-  const target = await longUrlTarget(parsed, params, adapters.faults, clientIp(await headers()));
+  // Any test fault (outages or fresh-limit) keeps the long URL, as before.
+  const testFaults = pageFaultsFor(faults);
+  const target = await longUrlTarget(parsed, params, testFaults, clientIp(await headers()));
   if (target) redirect(target);
-  return <PlanScreen request={parsed.request} exampleId={parsed.exampleId} adapters={adapters} autoRun={parsed.autoRun} />;
+  return <PlanScreen request={parsed.request} exampleId={parsed.exampleId} adapters={adapters} faults={testFaults} autoRun={parsed.autoRun} />;
 }

@@ -49,6 +49,29 @@ describe("request helpers", () => {
     expect(renderFaultRequested("render")).toBe(false);
   });
 
+  it("honours the fresh-limit fault only when faults are allowed, and never in production", async () => {
+    let { freshLimitFaultRequested, pageFaultsFor } = await freshRequest();
+    expect(freshLimitFaultRequested("fresh-limit")).toBe(false);
+    expect(pageFaultsFor("fresh-limit,qloo")).toEqual([]);
+
+    vi.stubEnv("BUSKMAP_ALLOW_FAULTS", "1");
+    ({ freshLimitFaultRequested, pageFaultsFor } = await freshRequest());
+    expect(freshLimitFaultRequested("qloo, fresh-limit")).toBe(true);
+    expect(freshLimitFaultRequested("qloo")).toBe(false);
+    expect(freshLimitFaultRequested(null)).toBe(false);
+    // Pages pass the outages and fresh-limit on to their API calls; unknown names are dropped.
+    expect(pageFaultsFor("fresh-limit, qloo, nope")).toEqual(["qloo", "fresh-limit"]);
+    expect(pageFaultsFor(null)).toEqual([]);
+    // fresh-limit is not a provider outage: the adapters never see it.
+    const { adapterContextFor } = await freshRequest();
+    expect(adapterContextFor("fresh-limit").faults).toEqual([]);
+
+    vi.stubEnv("VERCEL_ENV", "production");
+    ({ freshLimitFaultRequested, pageFaultsFor } = await freshRequest());
+    expect(freshLimitFaultRequested("fresh-limit")).toBe(false);
+    expect(pageFaultsFor("fresh-limit")).toEqual([]);
+  });
+
   it("reads the client IP from proxy headers", async () => {
     const { clientIp } = await freshRequest();
     expect(clientIp(new Headers({ "x-forwarded-for": "1.2.3.4, 5.6.7.8" }))).toBe("1.2.3.4");

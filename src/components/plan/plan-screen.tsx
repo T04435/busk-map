@@ -43,6 +43,8 @@ type Props = {
   request: PlanRequest;
   exampleId: string | null;
   adapters: AdapterContext;
+  /** Test faults to pass on to the agent's API call (outages and fresh-limit); defaults to the adapters' outages. */
+  faults?: readonly string[];
   autoRun: boolean;
   shareId?: string | null;
   replay?: { events: PlanStreamEvent[]; note: string } | null;
@@ -55,7 +57,7 @@ type Props = {
  * stream start at once; with run=0 the engine's plan is built here and the
  * baseline starts after the page is sent. A stored run (replay) needs neither.
  */
-export async function PlanScreen({ request, exampleId, adapters, autoRun, shareId = null, replay = null, fresh = false }: Props) {
+export async function PlanScreen({ request, exampleId, adapters, faults = adapters.faults, autoRun, shareId = null, replay = null, fresh = false }: Props) {
   let plan = null;
   if (!autoRun && !replay) {
     after(() => baselineFor(request, adapters).then(() => undefined));
@@ -81,7 +83,7 @@ export async function PlanScreen({ request, exampleId, adapters, autoRun, shareI
       center={city.center}
       autoRun={autoRun && !replay}
       exampleId={exampleId}
-      faults={adapters.faults.length > 0 ? adapters.faults.join(",") : null}
+      faults={faults.length > 0 ? faults.join(",") : null}
       shareId={shareId}
       replay={replay}
       fresh={fresh}

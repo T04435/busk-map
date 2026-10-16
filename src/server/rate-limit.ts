@@ -31,27 +31,51 @@ export type RateLimiter = ReturnType<typeof createRateLimiter>;
 export const FRESH_RUNS_PER_HOUR = 5;
 export const freshRunLimiter = createRateLimiter(FRESH_RUNS_PER_HOUR, 60 * 60_000);
 
-export type FreshRunGate = { ok: true } | { ok: false; retryAfterS: number; message: string };
+export type FreshRunGate = { ok: true } | { ok: false; retryAfterS: number; retryAt: string; message: string };
+
+/** How long the test fault `faults=fresh-limit` says to wait (e2e of the limit page). */
+export const FORCED_LIMIT_RETRY_S = 45 * 60;
+
+/**
+ * The refusal text. Relative, so it reads right in any time zone (B-013): the response also carries
+ * `retryAt` (an ISO instant) for a client that wants to show its own local time.
+ */
+export function freshLimitMessage(retryAfterS: number): string {
+  const minutes = Math.max(1, Math.ceil(retryAfterS / 60));
+  return `You've started ${FRESH_RUNS_PER_HOUR} plans this hour. Try again in about ${minutes} minute${minutes === 1 ? "" : "s"}, or open one of your earlier plans.`;
+}
 
 /**
  * Whether this request may start a fresh agent run. Replays and joined runs (`reused`) are free and never counted;
  * offline test mode spends nothing and isn't limited (the e2e tests share one IP). Per instance, like every limiter
- * here: the Vercel WAF rule on /api/plan (docs/deploy.md) is the cross-instance limit.
+ * here: the Vercel WAF rule on /api/plan (docs/deploy.md) is the cross-instance limit. `forced` (the test fault
+ * `faults=fresh-limit`, never in production) refuses whatever the count, so the limit page can be tested offline.
  */
 export function freshRunGate(
-  { reused, offline, ip, timeZone }: { reused: boolean; offline: boolean; ip: string; timeZone: string },
+  {
+    reused,
+    offline,
+    ip,
+    forced = false,
+  }: {
+    reused: boolean;
+    offline: boolean;
+    ip: string;
+    forced?: boolean;
+    /** Unused since B-013 (the message is relative); accepted so older callers still compile. */
+    timeZone?: string;
+  },
   limiter: RateLimiter = freshRunLimiter,
   now = Date.now(),
 ): FreshRunGate {
-  if (reused || offline) return { ok: true };
-  const result = limiter.check(ip, now);
-  if (result.ok) return { ok: true };
-  const at = new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", timeZone }).format(now + result.retryAfterS * 1000);
-  return {
-    ok: false,
-    retryAfterS: result.retryAfterS,
-    message: `You've started ${FRESH_RUNS_PER_HOUR} plans this hour. Open one of your earlier plans, or try again at ${at}.`,
-  };
+  let retryAfterS = FORCED_LIMIT_RETRY_S;
+  if (!forced) {
+    if (reused || offline) return { ok: true };
+    const result = limiter.check(ip, now);
+    if (result.ok) return { ok: true };
+    retryAfterS = result.retryAfterS;
+  }
+  return { ok: false, retryAfterS, retryAt: new Date(now + retryAfterS * 1000).toISOString(), message: freshLimitMessage(retryAfterS) };
 }
 /** Plain-LLM comparisons: 12 per 10 minutes per IP (cached, cheap model). */
 export const compareLimiter = createRateLimiter(12, 10 * 60_000);

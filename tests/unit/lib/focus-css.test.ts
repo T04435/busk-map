@@ -33,8 +33,8 @@ const button = readFileSync(new URL("../../../src/components/ui/button.tsx", imp
 
 describe("the focus ring on buttons (1.4.11, 3:1 against what touches it)", () => {
   it("is one outline, 2px, offset 2px (outside the fill and the border)", () => {
-    expect(button).toContain("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid");
-    expect(button).not.toMatch(/focus-visible:ring-/);
+    expect(button).toContain("focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 focus-visible:ring-0");
+    expect(button).not.toMatch(/focus-visible:ring-[1-9]/);
   });
   for (const [name, block] of [["day", dayCss], ["night", nightCss]] as const) {
     it(`${name}: the ring clears 3:1 against the ground and the card`, () => {

@@ -12,20 +12,20 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid border-(--fill-rule) bg-primary text-primary-foreground hover:bg-[color-mix(in_oklab,var(--primary)_88%,var(--foreground))]",
+          "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 focus-visible:ring-0 border-(--fill-rule) bg-primary text-primary-foreground hover:bg-[color-mix(in_oklab,var(--primary)_88%,var(--foreground))]",
         outline:
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid border-input bg-transparent text-foreground hover:bg-secondary aria-expanded:bg-secondary",
+          "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 focus-visible:ring-0 border-input bg-transparent text-foreground hover:bg-secondary aria-expanded:bg-secondary",
         secondary:
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid border-rule bg-transparent text-secondary-foreground hover:bg-secondary aria-expanded:bg-secondary",
-        ghost: "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid text-foreground hover:bg-secondary aria-expanded:bg-secondary",
+          "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 focus-visible:ring-0 border-rule bg-transparent text-secondary-foreground hover:bg-secondary aria-expanded:bg-secondary",
+        ghost: "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 focus-visible:ring-0 text-foreground hover:bg-secondary aria-expanded:bg-secondary",
         destructive:
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid border-destructive bg-destructive text-destructive-foreground hover:bg-[color-mix(in_oklab,var(--destructive)_88%,var(--foreground))]",
+          "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 focus-visible:ring-0 border-destructive bg-destructive text-destructive-foreground hover:bg-[color-mix(in_oklab,var(--destructive)_88%,var(--foreground))]",
         // The hero and closing calls to action: a 2px cream edge and a hard offset shadow. The focus ring is an outline 10px out, so the
         // offset shadow stays exactly as it is (B-018); no ring box-shadow competes with it.
         poster:
           "border-2 border-foreground bg-primary font-display font-extrabold tracking-[0.01em] text-primary-foreground shadow-[6px_6px_0_var(--foreground)] hover:-translate-x-px hover:-translate-y-px hover:bg-[color-mix(in_oklab,var(--primary)_88%,var(--foreground))] hover:shadow-[7px_7px_0_var(--foreground)] focus-visible:outline-3 focus-visible:outline-offset-10 focus-visible:outline-ring focus-visible:outline-solid",
         // A link in a button's clothes: signal-text (never orange text), underlined, sentence case.
-        link: "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid h-auto min-h-0 border-0 px-0 font-bold tracking-normal text-signal-text normal-case underline underline-offset-4 hover:decoration-2",
+        link: "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 focus-visible:ring-0 h-auto min-h-0 border-0 px-0 font-bold tracking-normal text-signal-text normal-case underline underline-offset-4 hover:decoration-2",
       },
       size: {
         default: "h-control gap-2 px-4 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",

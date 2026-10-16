@@ -15,7 +15,7 @@ const rec = (v: unknown): Rec => (v !== null && typeof v === "object" && !Array.
 const arr = (v: unknown): Rec[] => (Array.isArray(v) ? v.map(rec) : []);
 const str = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
-const n0 = (v: number | null) => (v === null ? "–" : Math.round(v).toLocaleString("en-AU"));
+const n0 = (v: number | null) => (v === null ? "no data" : Math.round(v).toLocaleString("en-AU"));
 const pct = (v: unknown) => (num(v) === null ? null : Math.round((num(v) as number) * 100));
 
 /** Where a step looked: the place named in its output, else in its inputs. */

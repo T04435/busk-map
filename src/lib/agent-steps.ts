@@ -41,7 +41,7 @@ export function applyStreamEvent(steps: AgentStep[], event: PlanStreamEvent): Ag
 }
 
 export const scalar = (v: unknown): string => {
-  if (v === null || v === undefined) return "–";
+  if (v === null || v === undefined) return "none";
   if (typeof v === "string") return v;
   if (typeof v === "number" || typeof v === "boolean") return String(v);
   if (Array.isArray(v) && v.every((x) => x === null || typeof x !== "object")) return v.map(scalar).join(", ");

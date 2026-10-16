@@ -1,5 +1,6 @@
 import { cn } from "cn";
 import { HexCell, type HexTone } from "@/components/honeycomb/hex-cell";
+import { Icon } from "@/components/honeycomb/icon";
 import { ScoreRing, toPercent } from "@/components/honeycomb/score-ring";
 
 /** What a screen reader hears for a percent cell: "Score 87 out of 100", "Affinity 82 out of 100", or "Score no data". */
@@ -21,7 +22,7 @@ export function PercentCell({
   label,
   className,
 }: {
-  /** 0–100, or null for "no data" (a dashed cell with a dash). */
+  /** 0–100, or null for "no data" (a dashed cell with the DS minus icon). */
   value: number | null | undefined;
   size?: number;
   /** `primary` for the selected or top item. */
@@ -34,7 +35,7 @@ export function PercentCell({
   if (value == null || Number.isNaN(value)) {
     return (
       <HexCell size={size} tone="dashed" label={spoken} fontSize={Math.round(size * 0.36)} className={className}>
-        –
+        <Icon name="minus" size={Math.max(12, Math.round(size * 0.42))} />
       </HexCell>
     );
   }
@@ -45,11 +46,24 @@ export function PercentCell({
   );
 }
 
-/** A labelled PercentCell for a list of meters (put them in a `ul.flex.flex-wrap`). `value` is 0–1. */
-export function MeterBar({ label, value, size = 36, className }: { label: string; value: number | null | undefined; size?: number; className?: string }) {
+/** A labelled PercentCell for a list of meters (put them in a `ul.flex.flex-wrap`). `value` is 0–1; `noData` forces the no-data cell. */
+export function MeterBar({
+  label,
+  value,
+  noData,
+  size = 36,
+  className,
+}: {
+  label: string;
+  value: number | null | undefined;
+  /** Shows the no-data cell whatever `value` is (the DS prop). */
+  noData?: boolean;
+  size?: number;
+  className?: string;
+}) {
   return (
     <li className={cn("inline-flex items-center gap-2 text-sm leading-[18px]", className)}>
-      <PercentCell value={value == null ? null : value * 100} size={size} label={label} />
+      <PercentCell value={noData || value == null ? null : value * 100} size={size} label={label} />
       <span>{label}</span>
     </li>
   );

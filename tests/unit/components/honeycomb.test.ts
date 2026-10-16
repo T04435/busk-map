@@ -6,7 +6,8 @@ import { HexCell, cellHeight, initialsOf } from "@/components/honeycomb/hex-cell
 import { leanText } from "@/components/honeycomb/lean-bar";
 import { MobileNavView } from "@/components/honeycomb/mobile-nav";
 import { activeNavId, NAV_ITEMS } from "@/components/honeycomb/nav-items";
-import { PercentCell, percentLabel } from "@/components/honeycomb/percent-cell";
+import { Loader } from "@/components/honeycomb/loader";
+import { MeterBar, PercentCell, percentLabel } from "@/components/honeycomb/percent-cell";
 import { RankTile } from "@/components/honeycomb/rank-tile";
 
 const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
@@ -30,11 +31,47 @@ describe("PercentCell", () => {
     expect(out.match(/out of 100/g)).toHaveLength(1);
   });
 
-  it("shows a dashed cell and a dash for no data", () => {
-    const out = html(createElement(PercentCell, { value: null, label: "Affinity" }));
+  it("shows a dashed cell and the DS minus icon for no data", () => {
+    const out = html(createElement(PercentCell, { value: null, label: "Affinity", size: 36 }));
     expect(out).toContain('aria-label="Affinity no data"');
     expect(out).toContain('data-tone="dashed"');
-    expect(out).toContain("–");
+    expect(out).toContain('<path d="M6 12h12"');
+    expect(out).toContain('width="15"'); // max(12, round(36 * 0.42))
+    expect(out).not.toContain("–");
+    expect(html(createElement(PercentCell, { value: null, size: 24 }))).toContain('width="12"');
+  });
+});
+
+describe("MeterBar", () => {
+  it("shows the value as a percent cell with its label", () => {
+    const out = html(createElement(MeterBar, { label: "Jazz", value: 0.42 }));
+    expect(out).toContain('aria-label="Jazz 42 out of 100"');
+    expect(out).toContain("<span>Jazz</span>");
+  });
+
+  it("noData shows the no-data cell whatever the value is", () => {
+    const out = html(createElement(MeterBar, { label: "Jazz", value: 0.9, noData: true }));
+    expect(out).toContain('aria-label="Jazz no data"');
+    expect(out).toContain('<path d="M6 12h12"');
+    expect(html(createElement(MeterBar, { label: "Jazz", value: null }))).toContain("no data");
+  });
+});
+
+describe("Loader", () => {
+  it("is the DS ring plus a still hex core, a status named 'Loading' by default", () => {
+    const out = html(createElement(Loader, {}));
+    expect(out).toContain('<span class="bm-loader" role="status" aria-label="Loading">');
+    expect(out).toContain('width="24" height="24" viewBox="0 0 48 48"');
+    expect(out).toContain('<g class="bm-ringspin"><path d="M38.554 20.371A15 15 0 1 1 27.629 9.446"');
+    expect(out).toContain('stroke-width="6.5"');
+    expect(out).toContain('class="bm-loader-core" points="24.00,17.40 29.72,20.70 29.72,27.30 24.00,30.60 18.28,27.30 18.28,20.70"');
+  });
+
+  it("keeps size, label and className", () => {
+    const out = html(createElement(Loader, { size: 14, label: "Working", className: "bm-loader-think" }));
+    expect(out).toContain('class="bm-loader bm-loader-think"');
+    expect(out).toContain('aria-label="Working"');
+    expect(out).toContain('width="14" height="14"');
   });
 });
 

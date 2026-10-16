@@ -67,7 +67,7 @@ export function ArtistChip({
 export function ArtistChipList({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <ul
-      className={cn("m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(min(220px,100%),1fr))] gap-2 p-0", className)}
+      className={cn("m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(min(260px,100%),1fr))] gap-2 p-0", className)}
     >
       {children}
     </ul>

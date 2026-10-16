@@ -83,8 +83,13 @@ export function SongRow({
       <div
         className={cn(
           "grid items-start gap-x-3",
-          index != null ? "grid-cols-[auto_auto_minmax(0,1fr)]" : "grid-cols-[auto_minmax(0,1fr)]",
-          hasRight && (index != null ? "@min-[420px]:grid-cols-[auto_auto_minmax(0,1fr)_auto]" : "@min-[420px]:grid-cols-[auto_minmax(0,1fr)_auto]"),
+          index != null
+            ? hasRight
+              ? "grid-cols-[auto_auto_minmax(0,1fr)_auto]"
+              : "grid-cols-[auto_auto_minmax(0,1fr)]"
+            : hasRight
+              ? "grid-cols-[auto_minmax(0,1fr)_auto]"
+              : "grid-cols-[auto_minmax(0,1fr)]",
         )}
       >
         {index != null ? (
@@ -128,14 +133,8 @@ export function SongRow({
           {children ? <div className="mt-2 text-sm">{children}</div> : null}
         </div>
         {hasRight ? (
-          <div
-            className={cn(
-              "flex items-center gap-1",
-              // Narrow: the score and actions drop under the text column.
-              "col-start-2 mt-2 @min-[420px]:col-start-auto @min-[420px]:mt-0",
-              index != null && "col-start-3 @min-[420px]:col-start-auto",
-            )}
-          >
+          // The score and actions stay at the right on every width: an icon or two is narrower than a wrapped line.
+          <div className="-my-1 flex items-center gap-1">
             {hasScore ? <PercentCell value={score} size={40} label={scoreLabel} /> : null}
             {actions}
           </div>

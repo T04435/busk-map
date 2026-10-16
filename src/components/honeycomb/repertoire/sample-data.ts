@@ -1,0 +1,144 @@
+import type { RepertoireResults, RepertoireStep, RepertoireTotals } from "@/components/honeycomb/repertoire/types";
+
+/**
+ * Sample data for the design preview of the Repertoire research flow (/design/repertoire). An illustrative persona, not a
+ * real person: her own songs are made up; the other artists and songs are real, well-known ones. No real counts are claimed.
+ */
+export const SAMPLE_RESULTS: RepertoireResults = {
+  profile: {
+    name: "Hana Lee",
+    image: null,
+    genres: ["indie folk", "australian singer-songwriter", "acoustic pop"],
+    audience: ["Youthful", "Mellow", "Romantic"],
+    followers: 1840,
+    href: "https://open.spotify.com/artist/sample",
+  },
+  summary:
+    "A Melbourne singer-songwriter with a warm, finger-picked folk sound. Your fans lean 18 to 29 and lean female, and they also love Angus & Julia Stone and The Paper Kites, so laneway crowds on a slow afternoon are yours.",
+  fans: {
+    age: [
+      { label: "18–24", lean: 0.34 },
+      { label: "25–29", lean: 0.21 },
+      { label: "30–34", lean: -0.05 },
+      { label: "35–44", lean: -0.18 },
+      { label: "45+", lean: -0.31 },
+    ],
+    gender: [
+      { label: "Female", lean: 0.22 },
+      { label: "Male", lean: -0.22 },
+    ],
+  },
+  soundsLike: [
+    { name: "Angus & Julia Stone", source: "qloo", tags: ["indie folk", "australian"] },
+    { name: "The Paper Kites", source: "qloo", tags: ["indie folk", "dream pop"] },
+    { name: "Missy Higgins", source: "spotify", tags: ["australian pop"] },
+    { name: "Vance Joy", source: "qloo", tags: ["folk pop"] },
+  ],
+  fansLove: [
+    { name: "Boy & Bear", source: "qloo", tags: ["indie folk"] },
+    { name: "Julia Jacklin", source: "qloo", tags: ["indie"] },
+    { name: "Hollow Coves", source: "qloo", tags: ["acoustic"] },
+  ],
+  canSing: [
+    { id: "o1", title: "Southbank in the Rain", artist: "Hana Lee", year: 2024, album: "Laneways", durationMs: 214000, own: true },
+    { id: "o2", title: "Paper Lanterns", artist: "Hana Lee", year: 2023, album: "Laneways", durationMs: 187000, own: true },
+    { id: "c1", title: "Riptide", artist: "Vance Joy", year: 2013, durationMs: 204000 },
+    { id: "c2", title: "Big Jet Plane", artist: "Angus & Julia Stone", year: 2010, durationMs: 239000 },
+    { id: "c3", title: "Bloom", artist: "The Paper Kites", year: 2010, durationMs: 214000 },
+    { id: "c4", title: "Scar", artist: "Missy Higgins", year: 2004, durationMs: 214000 },
+  ],
+  toLearn: [
+    {
+      id: "l1",
+      title: "Fool",
+      artist: "Boy & Bear",
+      year: 2011,
+      durationMs: 236000,
+      reason: "Fans of Angus & Julia Stone and The Paper Kites love this.",
+      because: [{ name: "Angus & Julia Stone" }, { name: "The Paper Kites" }],
+      status: "pending",
+      fresh: true,
+    },
+    {
+      id: "l2",
+      title: "Pool",
+      artist: "Julia Jacklin",
+      year: 2019,
+      durationMs: 222000,
+      reason: "Your fans over-index on Julia Jacklin, and this is her most-played song.",
+      because: [{ name: "Julia Jacklin" }],
+      status: "pending",
+      fresh: true,
+    },
+    {
+      id: "l3",
+      title: "Coastline",
+      artist: "Hollow Coves",
+      year: 2017,
+      durationMs: 211000,
+      reason: "Fans of Vance Joy love this, and it sits in your key range of mellow acoustic songs.",
+      because: [{ name: "Vance Joy" }, { name: "Hollow Coves" }],
+      status: "pending",
+      fresh: true,
+    },
+    {
+      id: "l4",
+      title: "Young Folks",
+      artist: "Peter Bjorn and John",
+      year: 2006,
+      durationMs: 275000,
+      reason: "Fans of The Paper Kites stop for it.",
+      because: [{ name: "The Paper Kites" }],
+      status: "learned",
+    },
+    {
+      id: "l5",
+      title: "Somebody That I Used to Know",
+      artist: "Gotye",
+      year: 2011,
+      durationMs: 244000,
+      reason: "Fans of Missy Higgins love this.",
+      because: [{ name: "Missy Higgins" }],
+      status: "dismissed",
+    },
+  ],
+  learned: [{ id: "d1", title: "Holocene", artist: "Bon Iver", year: 2011, durationMs: 337000 }],
+};
+
+const DONE: RepertoireStep[] = [
+  { key: "profile", status: "done", found: "Hana Lee · indie folk, australian singer-songwriter", cells: [{ name: "Hana Lee" }] },
+  { key: "songs", status: "done", found: "2 of your songs, from 1 release", cells: [{ name: "Southbank in the Rain" }, { name: "Paper Lanterns" }] },
+  { key: "qloo", status: "done", found: "Found you on Qloo. Your audience reads Youthful, Mellow, Romantic." },
+  {
+    key: "soundsLike",
+    status: "done",
+    found: "4 artists you sound like",
+    cells: [{ name: "Angus & Julia Stone" }, { name: "The Paper Kites" }, { name: "Missy Higgins" }, { name: "Vance Joy" }],
+  },
+  { key: "fans", status: "done", found: "Your fans lean 18 to 29 and lean female." },
+  { key: "fansLove", status: "done", found: "3 artists your fans love that you don't play yet", cells: [{ name: "Boy & Bear" }, { name: "Julia Jacklin" }, { name: "Hollow Coves" }] },
+  { key: "learn", status: "done", found: "3 songs your fans would stop for, from 40 checked" },
+  { key: "genres", status: "done", found: "indie folk, acoustic pop, singer-songwriter" },
+  { key: "summary", status: "done", found: "Summed up in one paragraph." },
+];
+
+/** Every step done. */
+export const SAMPLE_STEPS_DONE = DONE;
+
+/** Mid-run: steps 1–4 done, step 5 working, the rest waiting. */
+export const SAMPLE_STEPS_RUNNING: RepertoireStep[] = DONE.map((s, i) =>
+  i < 4 ? s : i === 4 ? { key: s.key, status: "running" } : { key: s.key, status: "pending" },
+);
+
+export const SAMPLE_TOTALS_DONE: RepertoireTotals = { qlooCalls: 8, songs: 2, soundsLike: 4, fanArtists: 3, songsChecked: 40, toLearn: 3 };
+export const SAMPLE_TOTALS_RUNNING: Partial<RepertoireTotals> = { qlooCalls: 4, songs: 2, soundsLike: 4, toLearn: null };
+
+/** What the results look like mid-run: the profile, your songs and who you sound like are in; the rest is still coming. */
+export const SAMPLE_RESULTS_RUNNING: RepertoireResults = {
+  ...SAMPLE_RESULTS,
+  summary: null,
+  fans: null,
+  fansLove: null,
+  toLearn: null,
+  learned: null,
+};

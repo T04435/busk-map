@@ -56,6 +56,11 @@ export const planRequestSchema = z.object({
      * every old request's requestHash and planKey (tests/unit/server/plan-inputs-golden.test.ts).
      */
     ownArtist: z.object({ qlooId: text(64), name: text(80), spotifyId: spotifyIdSchema.optional() }).optional(),
+    /**
+     * The act's sound in Qloo music genres (Repertoire research step 8), for the local scene: the city's over-indexed genres the
+     * act shares lead the scene search and are marked. OPTIONAL and never defaulted, like ownArtist (the golden hashes).
+     */
+    genreTags: z.array(z.object({ id: text(80), name: text(60) })).min(1).max(6).optional(),
   }),
   weights: weightsSchema.optional(),
 });
@@ -259,7 +264,8 @@ export const planSchema = z.object({
      */
     localScene: z
       .object({
-        genres: z.array(z.object({ name: z.string(), over: z.number() })),
+        /** `yours`: a genre the act's own sound shares (Repertoire research), absent otherwise. */
+        genres: z.array(z.object({ name: z.string(), over: z.number(), yours: z.boolean().optional() })),
         acts: z.array(z.object({ name: z.string(), affinity: z.number().nullable() })),
       })
       .nullable()

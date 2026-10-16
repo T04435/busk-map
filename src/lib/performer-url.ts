@@ -84,3 +84,26 @@ export function ownParam(performer: Pick<Performer, "ownArtist">): [string, stri
   if (!own) return [];
   return [["own", [own.qlooId, own.name.replaceAll("~", " "), own.spotifyId].filter(Boolean).join("~")]];
 }
+
+/**
+ * `genres=<tag id>~<name>|…`: the act's genre tags (Repertoire research step 8). Absent when there are none, so old links stay
+ * unchanged. "~" and "|" in a name are replaced on the way out; at most 6.
+ */
+const TAG_ID = /^urn:tag:[a-z0-9_:.-]{1,72}$/i;
+
+export function parseGenresParam(value: string | undefined): Pick<Performer, "genreTags"> {
+  if (!value) return {};
+  const tags = value
+    .split("|")
+    .map((part) => part.split("~").map((s) => s.trim()))
+    .filter(([id, name]) => id && name && TAG_ID.test(id))
+    .slice(0, 6)
+    .map(([id, name]) => ({ id, name: name.slice(0, 60) }));
+  return tags.length ? { genreTags: tags } : {};
+}
+
+export function genresParam(performer: Pick<Performer, "genreTags">): [string, string][] {
+  const tags = performer.genreTags;
+  if (!tags?.length) return [];
+  return [["genres", tags.map((t) => `${t.id}~${t.name.replace(/[~|]/g, " ")}`).join("|")]];
+}

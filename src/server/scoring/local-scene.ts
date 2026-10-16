@@ -42,6 +42,19 @@ export function overIndexGenres(rows: GenreContrastRow[]): GenreHandle[] {
   return strong.length > 0 ? strong : gaps.slice(0, 1);
 }
 
+/**
+ * The act's own genres (Repertoire research step 8) against the city's handles: the handles the act shares go first (so the
+ * scene search leans to them) and are named in `yours`. Matched by tag id, else by name. Without act genres, unchanged.
+ */
+export function preferActGenres(handles: GenreHandle[], act: readonly { id: string; name: string }[] | undefined): { handles: GenreHandle[]; yours: string[] } {
+  if (!act?.length) return { handles, yours: [] };
+  const ids = new Set(act.map((g) => g.id));
+  const names = new Set(act.map((g) => nameKey(g.name)));
+  const shared = (h: GenreHandle) => ids.has(h.id) || names.has(nameKey(h.name));
+  const mine = handles.filter(shared);
+  return { handles: [...mine, ...handles.filter((h) => !shared(h))], yours: mine.map((h) => h.id) };
+}
+
 export type SceneAct = { id: string; name: string; /** The act's fans' Qloo affinity for this local act (0–1), null when Qloo left it out of the re-score. */ affinity: number | null };
 
 /**
@@ -63,8 +76,10 @@ export function rankSceneActs(scene: { id: string; name: string }[], affinity: R
 
 /** What a plan carries of the local scene. */
 export type LocalScene = {
-  /** The city's over-indexed genres (the handles), biggest gap first. */
+  /** The city's over-indexed genres (the handles), biggest gap first (the act's own genres first, when it has any). */
   genres: GenreHandle[];
+  /** Ids of the handles the act's own genres share (Repertoire research); absent without act genres. */
+  yours?: string[];
   /** The local acts, re-scored for the act's fans. */
   acts: SceneAct[];
 };

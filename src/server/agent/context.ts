@@ -23,6 +23,7 @@ import {
   learnThese,
   normalizeWeights,
   overIndexGenres,
+  preferActGenres,
   pickTopPitches,
   rankPitches,
   rankSceneActs,
@@ -550,14 +551,15 @@ export class PlanContext {
       const global = await this.track("scene:global", () => qloo.globalArtists(GLOBAL_POP_TAKE, this.adapters));
       if (global.length === 0) return none("global reference artists");
       const rows = await this.track("scene:compare", () => qloo.compareGenres(usual.artists.map((a) => a.id), global.map((a) => a.id), this.adapters));
-      const handles = overIndexGenres(rows);
+      const preferred = preferActGenres(overIndexGenres(rows), this.request.performer.genreTags);
+      const handles = preferred.handles;
       if (handles.length === 0) return none("genres this city leans to");
       const own = new Set(ids);
       const scene = (await this.track("scene:artists", () => qloo.sceneArtists(handles.map((h) => h.id), this.city.bbox, SCENE_TAKE, this.adapters))).filter((a) => !own.has(a.id));
       if (scene.length === 0) return none("local artists for those genres");
       const affinity = await this.track("scene:taste", () => qloo.tasteMatch(scene.map((a) => a.id), ids, this.adapters));
       if (Object.keys(affinity).length === 0) return none("score of local artists for your fans");
-      return { genres: handles, acts: rankSceneActs(scene, affinity, own) };
+      return { genres: handles, acts: rankSceneActs(scene, affinity, own), ...(preferred.yours.length ? { yours: preferred.yours } : {}) };
     });
   }
 

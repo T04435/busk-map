@@ -56,6 +56,8 @@ export function buildPrompt(ctx: PlanContext, matched: { query: string; match: s
   return [
     `Performer: ${request.performer.name}.`,
     `Sounds like: ${request.performer.artists.join(", ")}. Qloo matched: ${found.map((m) => m.match).join(", ") || "none"}${missing.length ? `; no match for ${missing.join(", ")}` : ""}.`,
+    // Only when the act has researched genres, so every older prompt is unchanged.
+    ...(request.performer.genreTags?.length ? [`Their sound in Qloo genres: ${request.performer.genreTags.map((g) => g.name).join(", ")} (the local scene leads with the ones the city shares).`] : []),
     songs ? `Can play: ${songs}.` : "No song list given.",
     ctx.isAnyTime
       ? `City: ${ctx.city.name}. Date: ${ctx.weekday} ${request.slot.date}. No fixed time: the engine scores each pitch at its best 3-hour window that day, 10 am to 10 pm. Call best_hours and say each pitch's hours in its why. Permit: ${request.permit}.`

@@ -221,3 +221,33 @@ describe("local scene: weighs into the set and the suggested fill", () => {
     expect((await busk(filled)).researchTotals!.qlooCalls).toBe(plain + 1);
   });
 });
+
+describe("local scene: the act's own genres (Repertoire research step 8)", () => {
+  it("preferActGenres puts the shared handles first and names them; without act genres nothing changes", async () => {
+    const { preferActGenres } = await import("@/server/scoring/local-scene");
+    const handles = [
+      { id: "urn:tag:genre:music:rock", name: "Rock", over: 0.4 },
+      { id: "urn:tag:genre:music:indie_folk", name: "Indie Folk", over: 0.2 },
+      { id: "urn:tag:genre:music:jazz", name: "Jazz", over: 0.16 },
+    ];
+    expect(preferActGenres(handles, undefined)).toEqual({ handles, yours: [] });
+    const out = preferActGenres(handles, [{ id: "urn:tag:genre:music:indie_folk", name: "Indie Folk" }, { id: "x", name: "jazz" }]);
+    expect(out.handles.map((h) => h.name)).toEqual(["Indie Folk", "Jazz", "Rock"]);
+    expect(out.yours).toEqual(["urn:tag:genre:music:indie_folk", "urn:tag:genre:music:jazz"]);
+  });
+
+  it("a busk with genre tags leads the scene search with the shared ones and marks them on the plan; without, the plan has no mark", async () => {
+    const without = await busk(request);
+    expect(without.crowd.localScene!.genres.some((g) => "yours" in g)).toBe(false);
+    const shared = without.crowd.localScene!.genres.at(-1)!;
+    cache.clear();
+    seen.length = 0;
+    const tagId = (await import("@/server/qloo-mock/catalog")).genreTagId;
+    const { GENRES } = await import("@/server/qloo-mock/catalog");
+    const key = (Object.keys(GENRES) as (keyof typeof GENRES)[]).find((g) => GENRES[g].toLowerCase() === shared.name.toLowerCase())!;
+    const withGenres = planRequestSchema.parse({ city: "melbourne", slot, performer: { ...EXAMPLES[0].performer, genreTags: [{ id: tagId(key), name: GENRES[key] }] } });
+    const plan = await busk(withGenres);
+    expect(plan.crowd.localScene!.genres[0]).toMatchObject({ name: shared.name, yours: true });
+    expect(list(sceneList()[0], "signal.interests.tags")[0]).toBe(tagId(key));
+  });
+});

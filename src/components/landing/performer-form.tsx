@@ -9,6 +9,7 @@ import { PermitPicker } from "@/components/forms/permit-picker";
 import { DatePicker } from "@/components/forms/date-picker";
 import { choiceOf, slotIdOf, TimeSlotPicker } from "@/components/forms/time-slot-picker";
 import { ProfileHeader } from "@/components/playlist/profile-header";
+import { actGenresOf } from "@/lib/repertoire-research";
 import { SoundsLikeSuggestionsList, withSuggested } from "@/components/playlist/sounds-like-suggestions";
 import { RepertoireSource } from "@/components/playlist/repertoire-source";
 import { FormMessage } from "@/components/honeycomb/form-message";
@@ -230,6 +231,8 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
         ...(rep?.qlooArtistId && rep.spotifyProfile?.name
           ? { ownArtist: { qlooId: rep.qlooArtistId, name: rep.spotifyProfile.name, ...(rep.spotifyArtistId ? { spotifyId: rep.spotifyArtistId } : {}) } }
           : {}),
+        // Your genres from the research lead the local scene (never a default: it would change the plan's hash).
+        ...(actGenresOf(rep?.research).length ? { genreTags: actGenresOf(rep?.research) } : {}),
       },
     };
     const result = planRequestSchema.safeParse(input);

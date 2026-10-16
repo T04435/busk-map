@@ -8,7 +8,7 @@
  * by default the agent starts on load, and the server replays a recent run of the same request)
  */
 import { findExample } from "./examples";
-import { artistsParam, fillParam, ownParam, parseArtistsParam, parseFillParam, parseOwnParam, parseSongsParam, songsParam } from "./performer-url";
+import { artistsParam, fillParam, genresParam, ownParam, parseArtistsParam, parseFillParam, parseGenresParam, parseOwnParam, parseSongsParam, songsParam } from "./performer-url";
 import { parseWeightsParam, weightsParam } from "./weights-url";
 import { planRequestSchema, type PlanRequest } from "./plan-schema";
 import { isAnyTime, nextSlotDate } from "./slot";
@@ -34,6 +34,7 @@ export function parsePlanParams(params: Params, now: LocalNow): ParsedPlanUrl {
         songs: parseSongsParam(first(params.songs)),
         ...parseFillParam(first(params.fill), first(params.skip)),
         ...parseOwnParam(first(params.own)),
+        ...parseGenresParam(first(params.genres)),
       }
     : example?.performer;
   if (!performer) return { ok: false, error: "Pick an example performer or describe your own." };
@@ -81,6 +82,7 @@ export function planSearchParams(request: PlanRequest, extra: Record<string, str
   }
   for (const [key, value] of fillParam(request.performer)) params.set(key, value);
   for (const [key, value] of ownParam(request.performer)) params.set(key, value);
+  for (const [key, value] of genresParam(request.performer)) params.set(key, value);
   if (request.performer.songs.length) {
     params.set("songs", songsParam(request.performer.songs));
   }

@@ -58,21 +58,21 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-052 | Low | Honeycomb /brain BR08: the Pick any piece panel lost the board's two “Try …” prompts (Setlist and learn these; Taste heatmap); one run-on sentence instead | Open (design/honeycomb) |
 | B-053 | Low | Honeycomb 404 E01: no large “404” above the card; content left-aligned; no poster shadow (board) | Partly fixed (573a599, 3d59083): numeral and centring in; poster shadow still soft (B-138) |
 | B-054 | Low | Honeycomb error card E02: “!” icon instead of the warning triangle, left-aligned, reference above the buttons instead of under a rule at the foot, no poster shadow | Partly fixed (573a599): triangle, centring, reference at the foot; poster shadow still soft (B-138) |
-| B-055 | Low | Honeycomb tips T03/T05/T06/T18–T21/T29/T34: copy says “sessions” where the brand word is “busks” (also page metadata and form messages); eyebrow, intro, disclaimer, storage note and How-it copy differ | Open (design/honeycomb) |
-| B-056 | Medium | Honeycomb tips T06/T24/T34/T36: one 896 px column with the form first at 1440 and 768; the board has two columns, and the phone order differs | Open (design/honeycomb) |
-| B-057 | Low | Honeycomb tips T07/T08: the own act's card has no “Open a plan” | Open (design/honeycomb) |
-| B-058 | Low | Honeycomb tips T09/T11: the bonus rule counts 2 busks in the whole log, not 2 at the pitch; “Log one more session” shows only when the whole log has one busk | Open (design/honeycomb) |
-| B-059 | Low | Honeycomb tips T13/T14/T16/T23: dates are ISO (“2026-10-12 · 12 pm–3 pm”) | Open (design/honeycomb) |
-| B-060 | Low | Honeycomb tips T17: loading is a plain line: no card, skeleton rows or aria-busy | Open (design/honeycomb) |
-| B-061 | Low | Honeycomb tips T18: empty state is a dashed box with an inline link, not the “Plan a busk →” button | Open (design/honeycomb) |
-| B-062 | Low | Honeycomb tips T19/T22: 3 example acts with 9 entries each (27 rows); the board has 1 act with 3 | Open (design/honeycomb) |
-| B-063 | Medium | Honeycomb tips T24–T30/T36: at 390 with a recent plan saved, the long Busk select pushes all 7 form controls past the card's right edge (clipped) | Open (design/honeycomb) |
-| B-064 | Low | Honeycomb tips T30: Log takings has no coins icon and isn't full width at 1440 | Open (design/honeycomb) |
-| B-065 | Low | Honeycomb tips T31: after saving, no “Logged” state with a check and no line saying what changed for the pitch | Open (design/honeycomb) |
-| B-066 | Medium | Honeycomb tips T33/T33c: errors show one at a time under the button: no top Alert, no per-field messages or aria-describedby, focus doesn't move; couldn't-save has no Alert or Try again | Open (design/honeycomb) |
-| B-067 | Low | Honeycomb tips T33b: no Saving state | Open (design/honeycomb) |
-| B-068 | Medium | Honeycomb tips T33d: when the log can't be read the page says “No sessions logged in this browser yet.” | Open (design/honeycomb) |
-| B-069 | Low | Honeycomb tips T05/T24/T34: line lengths about 93–136 characters at 1440 | Open (design/honeycomb) |
+| B-055 | Low | Honeycomb tips T03/T05/T06/T18–T21/T29/T34: copy says “sessions” where the brand word is “busks” (also page metadata and form messages); eyebrow, intro, disclaimer, storage note and How-it copy differ | Won't fix: removed (the user removed Tips, 17 Oct) |
+| B-056 | Medium | Honeycomb tips T06/T24/T34/T36: one 896 px column with the form first at 1440 and 768; the board has two columns, and the phone order differs | Won't fix: removed (the user removed Tips, 17 Oct) |
+| B-057 | Low | Honeycomb tips T07/T08: the own act's card has no “Open a plan” | Won't fix: removed (the user removed Tips, 17 Oct) |
+| B-058 | Low | Honeycomb tips T09/T11: the bonus rule counts 2 busks in the whole log, not 2 at the pitch; “Log one more session” shows only when the whole log has one busk | Won't fix: removed (the user removed Tips, 17 Oct) |
+| B-059 | Low | Honeycomb tips T13/T14/T16/T23: dates are ISO (“2026-10-12 · 12 pm–3 pm”) | Won't fix: removed (the user removed Tips, 17 Oct) |
+| B-060 | Low | Honeycomb tips T17: loading is a plain line: no card, skeleton rows or aria-busy | Won't fix: removed (the user removed Tips, 17 Oct) |
+| B-061 | Low | Honeycomb tips T18: empty state is a dashed box with an inline link, not the “Plan a busk →” button | Won't fix: removed (the user removed Tips, 17 Oct) |
+| B-062 | Low | Honeycomb tips T19/T22: 3 example acts with 9 entries each (27 rows); the board has 1 act with 3 | Won't fix: removed (the user removed Tips, 17 Oct) |
+| B-063 | Medium | Honeycomb tips T24–T30/T36: at 390 with a recent plan saved, the long Busk select pushes all 7 form controls past the card's right edge (clipped) | Won't fix: removed (the user removed Tips, 17 Oct) |
+| B-064 | Low | Honeycomb tips T30: Log takings has no coins icon and isn't full width at 1440 | Won't fix: removed (the user removed Tips, 17 Oct) |
+| B-065 | Low | Honeycomb tips T31: after saving, no “Logged” state with a check and no line saying what changed for the pitch | Won't fix: removed (the user removed Tips, 17 Oct) |
+| B-066 | Medium | Honeycomb tips T33/T33c: errors show one at a time under the button: no top Alert, no per-field messages or aria-describedby, focus doesn't move; couldn't-save has no Alert or Try again | Won't fix: removed (the user removed Tips, 17 Oct) |
+| B-067 | Low | Honeycomb tips T33b: no Saving state | Won't fix: removed (the user removed Tips, 17 Oct) |
+| B-068 | Medium | Honeycomb tips T33d: when the log can't be read the page says “No sessions logged in this browser yet.” | Won't fix: removed (the user removed Tips, 17 Oct) |
+| B-069 | Low | Honeycomb tips T05/T24/T34: line lengths about 93–136 characters at 1440 | Won't fix: removed (the user removed Tips, 17 Oct) |
 | B-070 | Low | Honeycomb brand BD03: eyebrow reads “Busk Map brand · design system v62” (board: “Busk Map design deck · design system v66”) | Open (design/honeycomb) |
 | B-071 | Medium | Honeycomb brand BD05/06/42/43/51/52: no Screens section or table, no Submission kit table, no Handoff panel; hero line and On-this-page nav trimmed to match | Open (design/honeycomb) |
 | B-072 | Low | Honeycomb brand BD13/19: no Iconography block (board: 39 icons) | Open (design/honeycomb) |
@@ -324,4 +324,7 @@ Each defect is on its row in the living report: `qa/reports/<page>.html` on desi
 
 ### B-134 to B-161 · v3 recheck at design/honeycomb 8207373 (17 Oct)
 All eight living reports re-judged at 8207373 (landing v5; busks, plan, brain, tips, brand, errors, site v3). Findings that appear on several pages carry one number (B-134 night focus ring, B-135 lockup P clip, B-136 map “i” icon, B-137 legend wrap, B-138 shadow tokens). Fixed or partly fixed defects are updated in the table above.
+
+### Tips retired (17 Oct)
+The user removed Tips from the app for now (a “rate your busks” feature replaces it later). `qa/reports/tips.html` is marked retired and kept as history; B-055 to B-069 are closed as won't fix (removed). From the v4 round, `qa/tools/no-tips-checks.mjs` checks that no /tips route, nav item, link, tip copy or tip factor remains, in the rendered pages and in the source. Baseline at 8207373: 50 of 58 checks fail (route 200, Tips in every nav, /tips links, tip copy on /, /busks, /week, /privacy and plans, and the tips route, components, scoring and example data in src). The nav should read Busks · Week · Brain, plus Repertoire after the merge.
 

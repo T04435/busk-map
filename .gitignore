@@ -49,3 +49,6 @@ next-env.d.ts
 
 # copied at dev/build time (scripts/copy-maplibre-worker.mjs)
 /public/vendor/
+
+# impeccable live mode working files (sessions, journal, config)
+.impeccable/

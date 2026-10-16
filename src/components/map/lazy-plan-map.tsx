@@ -80,7 +80,7 @@ export function LazyPlanMap(props: ComponentProps<typeof PlanMapType>) {
           </div>
         )}
       </div>
-      <MapLegend taste={on.taste} others={on.others} />
+      <MapLegend taste={on.taste} others={on.others} zones={on.zones} />
     </div>
   );
 }

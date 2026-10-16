@@ -45,9 +45,71 @@ function Fact({ icon, title, sub, children }: { icon: ReactNode; title: ReactNod
   );
 }
 
+const HEXP = (x: number, y: number, r: number) =>
+  Array.from({ length: 6 }, (_, i) => {
+    const t = (Math.PI / 180) * (60 * i - 90);
+    return `${(x + r * Math.cos(t)).toFixed(1)},${(y + r * Math.sin(t)).toFixed(1)}`;
+  }).join(" ");
+
+/**
+ * "Where your crowd gathers": a framed mini taste map (board B45). The strongest cells draw as bare orange cells (steps 3 and 4, like
+ * the big map), the ranked pitches as numbered pins, and the first pitch carries its name. It is a sketch of the cells Qloo returned,
+ * not a street map: the real map is in "Your busk".
+ */
+function MiniTasteMap({ cells, pins }: { cells: Rec[]; pins: MiniPin[] }) {
+  const pts = [
+    ...cells.map((c) => ({ lat: num(c.lat), lon: num(c.lon) })),
+    ...pins.map((p) => ({ lat: p.lat, lon: p.lon })),
+  ].filter((p): p is { lat: number; lon: number } => p.lat !== null && p.lon !== null);
+  if (pts.length === 0) return null;
+  const W = 320;
+  const H = 170;
+  const pad = 26;
+  const lats = pts.map((p) => p.lat);
+  const lons = pts.map((p) => p.lon);
+  const minLat = Math.min(...lats);
+  const minLon = Math.min(...lons);
+  const k = Math.cos((minLat * Math.PI) / 180);
+  const spanX = Math.max(0.004 * k, (Math.max(...lons) - minLon) * k);
+  const spanY = Math.max(0.004, Math.max(...lats) - minLat);
+  const scale = Math.min((W - 2 * pad) / spanX, (H - 2 * pad) / spanY);
+  const px = (lon: number) => W / 2 + ((lon - minLon) * k - spanX / 2) * scale;
+  const py = (lat: number) => H / 2 - (lat - minLat - spanY / 2) * scale;
+  const step = (a: number) => (a >= 0.78 ? 4 : 3);
+  const first = pins.find((p) => p.rank === 1);
+  return (
+    <svg role="img" aria-label={`A sketch of the strongest taste cells${pins.length ? ` and your top ${pins.length} pitches` : ""}`} viewBox={`0 0 ${W} ${H}`} className="bm-hatch-field block h-auto w-full border-2 border-rule bg-muted">
+      {cells.map((c, i) => {
+        const lat = num(c.lat);
+        const lon = num(c.lon);
+        if (lat === null || lon === null) return null;
+        return <polygon key={i} points={HEXP(px(lon), py(lat), 15)} fill={`var(--taste-${step(num(c.affinity) ?? 0)})`} stroke="var(--rule)" strokeOpacity={0.3} />;
+      })}
+      {pins.map((p) => (
+        <g key={p.id}>
+          <polygon points={HEXP(px(p.lon), py(p.lat), p.rank === 1 ? 14 : 11)} fill="var(--bluestone)" stroke="var(--primary)" strokeWidth={3} />
+          <text x={px(p.lon)} y={py(p.lat) + 5} textAnchor="middle" fill="var(--primary)" style={{ font: "800 14px var(--font-display)" }}>
+            {p.rank}
+          </text>
+        </g>
+      ))}
+      {first ? (
+        <g>
+          <rect x={Math.min(W - 4 - first.name.length * 7.2 - 10, Math.max(4, px(first.lon) - (first.name.length * 7.2 + 10) / 2))} y={py(first.lat) + 18} width={first.name.length * 7.2 + 10} height={18} fill="var(--card)" stroke="var(--rule)" strokeWidth={2} />
+          <text x={Math.min(W - 4 - first.name.length * 7.2 - 5, Math.max(9, px(first.lon) - (first.name.length * 7.2) / 2))} y={py(first.lat) + 31} fill="var(--foreground)" style={{ font: "700 10.5px var(--font-mono)", textTransform: "uppercase" }}>
+            {first.name}
+          </text>
+        </g>
+      ) : null}
+    </svg>
+  );
+}
+
 const Foot = ({ children }: { children: ReactNode }) => <p className="m-0 text-sm text-muted-foreground">{children}</p>;
 
-type Ctx = { when?: string };
+/** `pins`: the busk's ranked pitches, once the plan exists, so a card's mini map can show them. */
+export type MiniPin = { id: string; name: string; lat: number; lon: number; rank: number };
+type Ctx = { when?: string; pins?: MiniPin[] };
 type ToolUi = { doing: (s: AgentStep) => string; title: (s: AgentStep) => string; render: (out: Rec, s: AgentStep, ctx: Ctx) => ReactNode };
 
 /** Each tool as a busker sees it: what it is doing while it runs, a plain title once done, and its result drawn from the contract fields. */
@@ -55,11 +117,12 @@ export const TOOL_UI: Record<string, ToolUi> = {
   taste_map: {
     doing: () => "Finding where your kind of crowd gathers",
     title: () => "Where your crowd gathers",
-    render: (o) => {
+    render: (o, _s, ctx) => {
       const top = arr(o.strongest).slice(0, 3);
       const signals = Array.isArray(o.signals) ? (o.signals as string[]) : [];
       return (
         <>
+          <MiniTasteMap cells={arr(o.strongest)} pins={ctx.pins ?? []} />
           <ol className="m-0 flex list-none flex-col gap-2 p-0">
             {top.map((c, i) => (
               <li key={i} className="flex items-center gap-3">

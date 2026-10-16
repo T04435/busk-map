@@ -5,7 +5,7 @@ import { cn } from "cn";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const ORANGE_STEPS = ["bg-taste-3", "bg-taste-4", "bg-taste-5"];
+const ORANGE_STEPS = ["bg-taste-3", "bg-taste-4"];
 const HEX = "[clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]";
 
 /** One legend entry: a focusable key whose tooltip (on hover and on keyboard focus) says what the symbol means. */
@@ -24,11 +24,11 @@ function Key({ tip, children }: { tip: string; children: ReactNode }) {
 
 /**
  * The map's key (F03): ONE line along the bottom of the map, the details in tooltips that open on hover and on keyboard focus.
- * It lists only what the map draws: the taste cells (orange, steps 3 to 5) when there are any, the numbered top pitches, and the
+ * It lists only what the map draws: the taste cells (orange, steps 3 and 4) when there are any, the numbered top pitches, and the
  * quiet dots when other pitches were scored. No events or no-busking zones yet (the plan has no coordinates for them), and it
  * never says "test data".
  */
-export function MapLegend({ taste = true, others = true, className }: { taste?: boolean; others?: boolean; className?: string }) {
+export function MapLegend({ taste = true, others = true, zones = false, className }: { taste?: boolean; others?: boolean; zones?: boolean; className?: string }) {
   return (
     <TooltipProvider>
       <div
@@ -53,6 +53,12 @@ export function MapLegend({ taste = true, others = true, className }: { taste?: 
           </HexCell>
           Top pitch
         </Key>
+        {zones ? (
+          <Key tip="Streets where the council's rules allow no busking, drawn as hatched cells. Busk Map never confirms a pitch is legal: check the rules.">
+            <span aria-hidden="true" className={cn("block h-4 w-3.5 border border-(--zone-pink) bg-[repeating-linear-gradient(45deg,var(--zone-pink)_0_2px,transparent_2px_5px)]", HEX)} />
+            No busking
+          </Key>
+        ) : null}
         {others ? (
           <Key tip="Other pitches that were scored but did not make the top three. Use Browse other pitches to read them.">
             <span aria-hidden="true" className={cn("block h-4 w-3.5 bg-usual-spot", HEX)} />

@@ -41,7 +41,25 @@ function themeColor(variable: string, fallback: string): string {
 const RAMP_FALLBACK = ["#fbe3d2", "#f9b98e", "#f28644", "#dd6322", "#7f2d0c"];
 const rampColors = () => [1, 2, 3, 4, 5].map((n, i) => themeColor(`--taste-${n}`, RAMP_FALLBACK[i]));
 /** Affinity (0–1) to the ramp step, as the legend's five cells. */
-const fillExpression = (colors: string[]) => ["step", ["get", "affinity"], colors[2], 0.68, colors[3], 0.88, colors[4]] as never;
+const fillExpression = (colors: string[]) => ["step", ["get", "affinity"], colors[2], 0.78, colors[3]] as never;
+
+/** The no-busking hatch (F16): pink diagonal stripes on a 12px tile, in the zone colour. */
+function hatchImage(): ImageData | null {
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 12;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.strokeStyle = themeColor("--zone-pink", "#e0337a");
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  for (const k of [-12, 0, 12]) {
+    ctx.moveTo(k, 12);
+    ctx.lineTo(k + 12, 0);
+  }
+  ctx.stroke();
+  return ctx.getImageData(0, 0, 12, 12);
+}
 
 /** No tiles (offline, blocked, or the style host is down): a plain paper base, so the taste cells and pins still draw. */
 const baseStyle = (): StyleSpecification => ({
@@ -71,7 +89,7 @@ function hexagon(lat: number, lon: number, halfWidthDeg: number) {
 
 type Props = {
   /** Only what the map draws, so the landing can feed it a labelled example without a full plan. */
-  plan: Pick<Plan, "tasteCells" | "others"> & { pitches: Pick<PlanPitch, "id" | "name" | "lat" | "lon" | "score" | "discovery">[] };
+  plan: Pick<Plan, "tasteCells" | "others"> & { zones?: Plan["zones"] } & { pitches: Pick<PlanPitch, "id" | "name" | "lat" | "lon" | "score" | "discovery">[] };
   center: { lat: number; lon: number };
   selectedId: string | null;
   onSelect: (pitchId: string) => void;
@@ -191,6 +209,29 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
     };
     whenStyle(instance, apply);
   }, [plan.tasteCells, themeTick]);
+
+  // No-busking cells (F16): the council's no-busking streets as hatched honeycomb cells, never a line or a polygon.
+  useEffect(() => {
+    const instance = map.current;
+    if (!instance) return;
+    const data = {
+      type: "FeatureCollection" as const,
+      features: (plan.zones ?? []).map((c) => ({ type: "Feature" as const, properties: {}, geometry: { type: "Polygon" as const, coordinates: hexagon(c.lat, c.lon, 360 / 2 ** 19) } })),
+    };
+    const apply = () => {
+      const source = instance.getSource("zones") as GeoJSONSource | undefined;
+      if (source) {
+        source.setData(data);
+        return;
+      }
+      const hatch = hatchImage();
+      if (hatch && !instance.hasImage("hatch")) instance.addImage("hatch", hatch);
+      instance.addSource("zones", { type: "geojson", data });
+      instance.addLayer({ id: "zones", type: "fill", source: "zones", paint: hatch ? { "fill-pattern": "hatch" } : { "fill-color": themeColor("--zone-pink", "#e0337a"), "fill-opacity": 0.4 } });
+      instance.addLayer({ id: "zones-outline", type: "line", source: "zones", paint: { "line-color": themeColor("--zone-pink", "#e0337a"), "line-opacity": 0.6, "line-width": 1 } });
+    };
+    whenStyle(instance, apply);
+  }, [plan.zones, themeTick]);
 
   // Pins: real buttons, so they are reachable by keyboard and screen readers. The 48px button is the hit area; the shape inside grows when selected.
   useEffect(() => {

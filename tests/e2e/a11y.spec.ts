@@ -33,4 +33,21 @@ test.describe("accessibility", () => {
       await expect(input).not.toHaveAttribute("aria-controls", /./);
     }
   });
+
+  test("the search inputs show a focus ring when tabbed to (B-005)", async ({ page }) => {
+    await page.goto("/");
+    for (const placeholder of SEARCHES) {
+      const input = page.getByPlaceholder(placeholder);
+      const group = input.locator("xpath=ancestor::*[@data-slot='input-group'][1]");
+      const ring = () => group.evaluate((el) => getComputedStyle(el).boxShadow);
+      expect(await ring()).not.toMatch(/ 3px/);
+      await expect(input).toHaveAttribute("aria-expanded", "false"); // hydrated
+      await input.focus();
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Shift+Tab");
+      await expect(input).toBeFocused();
+      // The default shadcn Input ring (focus-visible:ring-3 ring-ring/50): a 3px box-shadow.
+      await expect.poll(ring).toMatch(/ 3px/);
+    }
+  });
 });

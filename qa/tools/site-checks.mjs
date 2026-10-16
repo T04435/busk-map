@@ -33,6 +33,7 @@ for (const r of ROUTES) {
 // The build's Logo variants by viewBox: lockup "2 0 256 48", wordmark-only "0 0 322 52", mark/ring "0 0 48 48". Anything else
 // is reported as UNKNOWN for a visual check against the user's reference (new stencil lettering, not the old larger-M face).
 const kindOf = (k) => (k === "svg:2 0 256 48" || /lockup/i.test(k) ? "lockup" : k === "svg:0 0 322 52" || /wordmark/i.test(k) ? "wordmark-only" : k === "svg:0 0 48 48" || /mark|icon/i.test(k) ? "mark-only" : "UNKNOWN");
+// One design = one kind: the lockup's dark and light files (theme variants) are the same design.
 const chrome = [...logoKinds.entries()].flatMap(([k, rs]) => rs.filter((r) => r !== "/brand").map((r) => [k, r]));
 const placed = await (async () => { const out = []; const p2 = await b.newPage({ viewport: { width: 1440, height: 900 } });
   for (const r of ROUTES.filter((x) => x !== "/brand")) { await p2.goto(B + r); await p2.waitForTimeout(800);
@@ -40,7 +41,7 @@ const placed = await (async () => { const out = []; const p2 = await b.newPage({
   await p2.close(); return out; })();
 const bad = placed.filter((x) => kindOf(x.split(":").slice(1).join(":")) !== "lockup");
 ok("F12 header and footer use the lockup ([hex mark][wordmark]) on every route; no wordmark-only or mark-only", placed.length > 0 && bad.length === 0, bad.length ? bad.slice(0, 6).join(" | ") : `${placed.length} placements, all lockup`);
-ok("F12 one logo design in the app chrome (outside /brand's specimens)", new Set(chrome.map(([k]) => k)).size === 1, [...new Set(chrome.map(([k]) => `${k} (${kindOf(k)})`))].join(" | "));
+ok("F12 one logo design in the app (outside /brand's specimens): the lockup only; no mark-only or wordmark-only anywhere (the favicon is exempt)", new Set(chrome.map(([k]) => kindOf(k))).size === 1 && kindOf(chrome[0]?.[0] ?? "") === "lockup", [...new Set(chrome.map(([k]) => `${k} (${kindOf(k)})`))].join(" | "));
 out.push("INFO  F12 lettering: compare a header crop with design-handoff/user-feedback-2026-10-17/04-wordmark-only-one.png (new stencil BUSK MAP); the old face with the larger M fails.");
 // F07, F08, F11 at 1440 on /
 await p.goto(B + "/"); await p.waitForTimeout(1200);

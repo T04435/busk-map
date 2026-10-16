@@ -21,7 +21,8 @@ test.describe("QA Landing · review", () => {
     await expect(pins).toHaveCount(0);
     await get.locator('[data-slot="map-frame"]').scrollIntoViewIfNeeded();
     await expect(pins).toHaveCount(3, { timeout: 20_000 });
-    const rows = get.locator('[data-slot="pitch-row"] button, button[data-slot="pitch-row"]');
+    // Each row holds the select button (aria-pressed) and, since F02, a Full details button: count the select buttons.
+    const rows = get.locator('[data-slot="pitch-row"] button[aria-pressed], button[data-slot="pitch-row"]');
     await expect(rows).toHaveCount(3);
     await rows.nth(1).click();
     await expect(rows.nth(1)).toHaveAttribute("aria-pressed", "true");
@@ -31,11 +32,12 @@ test.describe("QA Landing · review", () => {
     await expect(rows.nth(1)).toHaveAttribute("aria-pressed", "false");
   });
 
-  test("L23: the brand teaser is there and is the page's only /brand link", async ({ page }) => {
+  test("L23: the brand teaser is there; /brand is linked from it and from the footer (F11)", async ({ page }) => {
     await page.goto("/");
     const teaser = page.locator("section[aria-labelledby=brand-h]");
     await expect(teaser.getByRole("heading", { name: "Honeycomb" })).toBeVisible();
-    await expect(page.locator('a[href="/brand"]')).toHaveCount(1);
+    await expect(page.locator('a[href="/brand"]')).toHaveCount(2);
+    await expect(page.locator('footer a[href="/brand"]')).toHaveCount(1);
     await expect(teaser.locator('a[href="/brand"]')).toHaveCount(1);
   });
 });

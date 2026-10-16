@@ -1,39 +1,39 @@
 """Builds qa/reports/honeycomb-landing-recheck.html on design/honeycomb. Run: python3 -I hc-recheck.py <out.html>"""
 import html, sys
 BOARD = "../screens/honeycomb/recheck/board/"
-BUILD = "../screens/honeycomb/recheck/build/"
+BUILD = "../screens/honeycomb/recheck/v5/"
 DECK = "../screens/honeycomb/landing/"   # QA's own deck renders per width, from the 17 Oct audit (same v62 board)
 # part, name, deck render id (per width) or None, build image key (per width; {w} filled), status, dev claim, finding, lost_at, defect
 P = [
- ('L01', 'Header', 'header', 'L01-{w}', 'Different', 'built', 'Busks · Week · Brain · Tips, none active (Brain per HQ default 2). The lockup shape is what the corrected F12 asks, but its word is the old lettering: the M rises above the other letters (QA zoomed crop, 17 Oct).', None, None),
+ ('L01', 'Header', 'header', 'L01-{w}', 'Present', 'built', "The lockup [hex mark][new stencil wordmark] as an image, 36 px tall, letters all one height as in the user's reference (F12 corrected: fixed). Nav Busks · Week · Brain · Tips, none active. The header nav starts at 768 px, not 721 (B-129, tracked on L26).", None, None),
  ("L02","Hero band","hero-ground","L02-{w}","Present","built","Night band, dot grain, hex lattice and the 6px orange rule.",None,None),
- ('L03', 'Glowing honeycomb cells', 'hero-ground', 'L03-{w}', 'Present', 'built', 'Glowing cells as the board; the small texts beside them are gone (user call).', None, None),
- ('L04', 'Hero headline', 'headline', 'L04-{w}', 'Present', 'deviation', 'Three-line headline; “What to play.” never wraps; the extra intro line under the H1 is gone, as on the board.', None, None),
- ("L05","Hero taste map","hero-map","L05-{w}","Held","held","Pins 1 and 3 plus a hidden-gem diamond. Zone, event and river held for the user. Also unlike the board: a full rectangular grid (board: an irregular blob with gaps) and plain numbered pins (board: target rings with number badges).","held for the user",None),
- ("L06","Map fill-in and pin drop","hero-map","L05-{w}","Present","built","Cells fill in and pins drop (CSS); finished state under reduced motion, with no running animations.",None,None),
- ('L07', 'Map caption', 'hero-map', 'L05-{w}', 'Present', 'deviation', "Caption removed by the user's call (the board has one). Nothing else under the map.", None, None),
- ("L08","Hero CTA","hero-cta","L08-{w}-focus","Present","built","Poster block and shadow; the keyboard focus ring now shows beside the shadow (screenshot is the focused state). B-018 fixed.",None,None),
- ("L09","In partnership with Qloo","partner","L09-{w}","Present","built","Purple words, Qloo wordmark, centred.",None,None),
+ ('L03', 'Glowing honeycomb cells', 'hero-ground', 'L03-{w}', 'Present', 'built', 'Glowing cells as the board; the small texts beside them stay gone (user call).', None, None),
+ ('L04', 'Hero headline', 'headline', 'L04-{w}', 'Present', 'deviation', 'Three-line headline; “What to play.” never wraps at 1440.', None, None),
+ ("L05","Hero taste map","hero-map","L05-{w}","Held","held","Unchanged since v4: a separate SVG (HeroTasteMap), not the app's map. Still has the dark cells F05 removes (DEV's declared deviation: asking the user if F05 covers the hero). Pins 1 and 3 plus an unnumbered gem diamond; no hatched zone, event or river; a framed rectangle, not full-bleed (round 2 F16/F19 not built yet).","held for the user",None),
+ ("L06","Map fill-in and pin drop","hero-map","L05-{w}","Present","built","Cells fill in and pins drop; under reduced motion the finished map shows with 0 running animations.",None,None),
+ ('L07', 'Map caption', 'hero-map', 'L05-{w}', 'Present', 'deviation', "No caption, by the user's call. Nothing else under the map.", None, None),
+ ("L08","Hero CTA","hero-cta","L08-{w}-focus","Different","built","Now the Button poster variant: orange, cream 2px edge, 6px cream shadow, 34px Big Shoulders, and a 3px orange focus outline 10px out (visible beside the shadow; screenshot is focused). But it renders 44 px tall at 390, 768 and 1440 (board and v4: 76 px): the default size's h-control wins over the h-19 class.",None,"B-139"),
+ ("L09","In partnership with Qloo","partner","L09-{w}","Present","built","Purple words and the Qloo wordmark, centred; the wordmark now links to qloo.com in a new tab (F09).",None,None),
  ("L10","Ticker band","ticker","L10-{w}","Present","built","Six phrases, rolling; still under reduced motion.",None,None),
- ('L11', 'Demo video slot', 'video', 'L11-{w}', 'Present', 'deviation', 'Placeholder slot as the board: orange hex, “[Demo video · 60–90 s]” and the line. No media element, no autoplay, no controls.', None, None),
+ ('L11', 'Demo video slot', 'video', 'L11-{w}', 'Different', 'deviation', 'Placeholder slot as before: orange hex, “[Demo video · 60–90 s]” and the line, no media, no controls. The hex still holds an arrow; round 2 F22 asks for a play triangle (not built yet).', None, None),
  ("L12","“Try an act” heading","try","L12-{w}","Present","built","Second sentence in signal text.",None,None),
- ('L13', 'Act cards ×3', 'try', 'L13-{w}', 'Different', 'deviation', "Kept as built by the user's call: filled “SA” hex, dark action row, the app's Plays lists (B-032 accepted, not applied).", 'user call: keep', 'B-032'),
- ("L14","“Busking is guesswork” heading","guesswork","L14-{w}","Present","built","“guesswork” in signal text; Example data badge (HQ correction).",None,None),
+ ('L13', 'Act cards ×3', 'try', 'L13-{w}', 'Different', 'deviation', "Kept as built by the user's call: filled “SA” hex, dark action row, the app's Plays lists (B-032 accepted). Keyboard focus is a 2px dark ring right against the 2px dark border, so it reads as a thicker border (DEV's one-ring fallback, asking BRAND).", 'user call: keep', 'B-032'),
+ ("L14","“Busking is guesswork” heading","guesswork","L14-{w}","Present","built","“guesswork” in signal text; no Example data badge (F01 done).",None,None),
  ("L15","Problem cards ×4","guesswork","L15-{w}","Present","built","Copy as the board.",None,None),
- ("L16","“What you get back” heading","get-funnel","L16-{w}","Present","built","Plus an Example data badge.",None,None),
- ('L17', 'Research funnel', 'get-funnel', 'L17-{w}', 'Present', 'deviation', 'Funnel as the board: labels beside each hex, ▸ chevrons, not boxed, one row at 1440.', None, None),
- ('L18', 'Your busk (PlanMap)', 'get-map', 'L18-{w}', 'Different', 'deviation', 'Live PlanMap with example data; pins and list select each other both ways; loads lazily. Still unlike the board: no zone, river or event (held, L05), no “Full details →”; the map adds zoom buttons, “Browse other pitches (2)” and a legend reading “test data”.', 'DEV deviation (declared)', None),
+ ("L16","“What you get back” heading","get-funnel","L16-{w}","Present","built","Heading only; no Example data badge (F01 done).",None,None),
+ ('L17', 'Research funnel', 'get-funnel', 'L17-{w}', 'Present', 'deviation', 'Funnel as the board: labels beside each hex, ▸ chevrons, one row at 1440.', None, None),
+ ('L18', 'Your busk (PlanMap)', 'get-map', 'L18-{w}', 'Different', 'deviation', 'F02, F03, F05 done: “Full details →” on each pitch row; zoom buttons kept; no “test data”; only orange taste cells, no dark cells; zoomed out so streets, river and labels show; legend is one line at the bottom (Taste · Top pitch · Hidden gem · Other) with a tooltip on each item. Left: at 390 the legend wraps to two lines; the attribution control shows a tiled, clipped “i” icon (4 copies) bottom right at every width; at 1440 the map is 544 px tall in a 699 px column, leaving empty paper below. No zone, river or event (held, L05).', 'DEV deviation (declared)', 'B-137, B-136, B-141'),
  ("L19","“And what to play there”","get-setlist","L19-{w}","Present","built","Heading and paragraph as the board.",None,None),
- ('L20', 'Setlist panel', 'get-setlist', 'L20-{w}', 'Present', 'built', '“Setlist for this pitch”, Copy, rows 01–04, mono set length, bordered Learn these with the orange rule. Minor: the fan-age line joins the intro paragraph.', None, None),
- ("L21","Beyond buskers","beyond","L21-{w}","Present","built","“Busk Map already reads…” per HQ default 16.",None,None),
- ("L22","Brain teaser","brain","L22-{w}","Present","built","11 · 24–33 · 0 as a mono line, purple button, hex wiring sketch; 4th number gone. B-024 fixed. (dev/core's R4 makes it 12 kinds: update when merged.)",None,None),
- ('L23', 'Brand teaser', 'brand-teaser', 'L23-{w}', 'Present', 'held', "Brand teaser as the board: “Honeycomb”, line, 90 · 3 · 9, “See the brand →” (the page's only /brand link) and the specimen card.", None, None),
- ('L24', 'Closing CTA', 'cta', 'L24-{w}', 'Different', 'built', "As the board, plus a “Data: Qloo · …” credit line under the CTA (DEV's question for the user).", 'DEV deviation (declared)', None),
- ('L25', 'Footer', 'footer', 'L25-{w}', 'Present', 'built', 'No Brand link; on the night band; the repo link in signal text as the board.', None, None),
- ('L26', 'Bottom nav (phone)', 'header', 'L26-{w}', 'Present', 'built', 'Bottom nav Busks · Week · Brain · Tips below 721 px (Brain per HQ default 2).', None, None),
+ ('L20', 'Setlist panel', 'get-setlist', 'L20-{w}', 'Present', 'built', '“Setlist for this pitch”, Copy, rows 01–04, mono set length, bordered Learn these with the orange rule.', None, None),
+ ("L21","Beyond buskers","beyond","L21-{w}","Present","built","Now directly after What you get back, before the Brain teaser (F06 done at 390, 768 and 1440).",None,None),
+ ("L22","Brain teaser","brain","L22-{w}","Present","built","After Beyond buskers, before Brand (F06). 11 · 24–33 · 0, purple button, wiring sketch; the “Powered by” Qloo wordmark links to qloo.com (F09).",None,None),
+ ('L23', 'Brand teaser', 'brand-teaser', 'L23-{w}', 'Different', 'held', "Last of the three (F06). “Honeycomb”, line, 90 · 3 · 9, “See the brand →” (one of the page's 2 /brand links; the other is the footer, F11). The specimen card lost its app icon (the hex mark) at 8207373: it starts with hex cell 1 (board and v4: app icon, 1, 91).", None, 'B-140'),
+ ('L24', 'Closing CTA', 'cta', 'L24-{w}', 'Different', 'built', "No credit line under the CTA (F04 done). The button is now the poster variant: “PLAN A BUSK” in 24px Big Shoulders capitals, 44 px tall (board and v4: sans “Plan a busk”, 64 px).", None, 'B-139'),
+ ('L25', 'Footer', 'footer', 'L25-{w}', 'Present', 'built', 'Re-laid out by F07–F11: left lockup “with” Qloo; centre Privacy · Terms · Brain · Brand; right GitHub in a hex cell and “Built by T04435” with the pixel mark; no legal line (on /terms). Stacks cleanly at 390.', None, None),
+ ('L26', 'Bottom nav (phone)', 'header', 'L26-{w}', 'Different', 'built', 'Bottom nav Busks · Week · Brain · Tips at 390. It switches to the header nav at 768 px, not 721: from 721 to 767 the bottom bar still shows.', None, 'B-129'),
  ('L27', 'Phone layout', 'full', 'full-{w}', 'Present', 'built', 'Stacks at 390; no sideways scroll at 390, 768 or 1440, day and night.', None, None),
- ('L28', 'Reduced motion', 'full', 'motion-{w}', 'Present', 'built', "Reduced motion: still glow and ticker, finished map (DEV's e2e; QA's suite runs with motion reduced too).", None, None),
- ('L29', 'Night theme', 'night', 'night-{w}', 'Present', 'built', 'Night theme: paper sections switch; night bands unchanged; axe clean at 3 widths.', None, None),
+ ('L28', 'Reduced motion', 'full', 'motion-{w}', 'Present', 'built', 'Reduced motion: glow and ticker still, finished map; 0 running animations at 390, 768 and 1440.', None, None),
+ ('L29', 'Night theme', 'night', 'night-{w}', 'Present', 'built', 'Night theme: paper sections switch; night bands unchanged; axe clean at 390 and 1440.', None, None),
 ]
 COL = {"Present":"ok","Different":"warn","Missing":"bad","Broken":"bad","Held":"held"}
 ORDER = ["Present","Different","Missing","Broken","Held"]

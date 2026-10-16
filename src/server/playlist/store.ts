@@ -6,6 +6,7 @@ import { storeDatabaseUrl } from "@/server/env";
 import { log } from "@/server/log";
 import { processMap } from "@/server/memo";
 import type { MemorySuggestion, RunRecord } from "@/server/learn/types";
+import type { ResearchSnapshot } from "@/lib/repertoire-research";
 import { MAX_SONGS, MAX_USUAL_PITCHES, PLAYLIST_EXPIRY_MONTHS, TOUCH_INTERVAL_MS, USUAL_PITCHES_FROM_LAST_PLANS } from "./config";
 
 /**
@@ -19,6 +20,8 @@ export type PlaylistRecord = {
   spotifyArtistId: string | null;
   spotifyProfile?: SpotifyProfile | null;
   qlooArtistId?: string | null;
+  /** The last research run's snapshot (migration 009), or null before the first one. */
+  research?: ResearchSnapshot | null;
   usualPitches: UsualPitch[];
   /** The last few busks planned with it, newest first (migration 006): where usualPitches comes from. */
   recentBusks: RecentBusk[];
@@ -56,6 +59,8 @@ export interface PlaylistStore {
   addPlanSuggestion(playlistId: string, input: AddPlanSuggestionInput): Promise<AddSuggestionResult>;
   /** Records the top pitch of a busk planned with the Repertoire and refreshes the usual pitches. No revision bump. */
   recordBusk(playlistId: string, busk: RecentBusk): Promise<UsualPitch[]>;
+  /** Saves the research snapshot (migration 009). Bookkeeping, like recordBusk: no revision bump. */
+  saveResearch(playlistId: string, snapshot: ResearchSnapshot): Promise<boolean>;
   /** Forget: the Repertoire and (by cascade) everything under it. */
   forget(playlistId: string): Promise<boolean>;
   /** Delete Repertoires not seen for 13 months. Returns how many. */
@@ -96,6 +101,7 @@ export function toPlaylistView(playlist: PlaylistRecord, songs: StoredSong[]): P
     spotifyArtistId: playlist.spotifyArtistId,
     spotifyProfile: playlist.spotifyProfile ?? null,
     qlooArtistId: playlist.qlooArtistId ?? null,
+    research: playlist.research ?? null,
     usualPitches: playlist.usualPitches,
     city: playlist.city,
     songs: songs.map(toSongView),
@@ -292,6 +298,13 @@ export class MemoryPlaylistStore implements PlaylistStore {
     return structuredClone(row.usualPitches);
   }
 
+  async saveResearch(playlistId: string, snapshot: ResearchSnapshot) {
+    const row = this.byId(playlistId);
+    if (!row) return false;
+    row.research = structuredClone(snapshot);
+    return true;
+  }
+
   async forget(playlistId: string) {
     const row = this.byId(playlistId);
     if (!row) return false;
@@ -323,6 +336,7 @@ type PlaylistRow = {
   spotify_artist_id: string | null;
   spotify_profile?: SpotifyProfile | null;
   qloo_artist_id?: string | null;
+  research?: ResearchSnapshot | null;
   usual_pitches: UsualPitch[];
   recent_busks: RecentBusk[];
   city: string;
@@ -345,7 +359,7 @@ type SongRow = {
   added_at: Time;
 };
 
-const PLAYLIST_COLUMNS = "id, act_name, sounds_like, spotify_artist_id, spotify_profile, qloo_artist_id, usual_pitches, recent_busks, city, revision, created_at, last_seen_at";
+const PLAYLIST_COLUMNS = "id, act_name, sounds_like, spotify_artist_id, spotify_profile, qloo_artist_id, research, usual_pitches, recent_busks, city, revision, created_at, last_seen_at";
 const SONG_COLUMNS = "id::text AS id, song_key, state, source, title, artist, own, spotify_track_id, year, duration_ms, added_at";
 
 const toRecord = (r: PlaylistRow): PlaylistRecord => ({
@@ -355,6 +369,7 @@ const toRecord = (r: PlaylistRow): PlaylistRecord => ({
   spotifyArtistId: r.spotify_artist_id ?? null,
   spotifyProfile: r.spotify_profile ?? null,
   qlooArtistId: r.qloo_artist_id ?? null,
+  research: r.research ?? null,
   usualPitches: r.usual_pitches,
   recentBusks: r.recent_busks ?? [],
   city: r.city,
@@ -568,6 +583,11 @@ export class PostgresPlaylistStore implements PlaylistStore {
     // Bookkeeping, not an edit: the revision stays, so an open busk form can still save.
     await this.sql.query("UPDATE playlists SET recent_busks = $2::jsonb, usual_pitches = $3::jsonb WHERE id = $1", [playlistId, JSON.stringify(recent), JSON.stringify(usual)]);
     return usual;
+  }
+
+  async saveResearch(playlistId: string, snapshot: ResearchSnapshot) {
+    const rows = (await this.sql.query("UPDATE playlists SET research = $2::jsonb, research_at = now() WHERE id = $1 RETURNING id", [playlistId, JSON.stringify(snapshot)])) as unknown[];
+    return rows.length > 0;
   }
 
   async forget(playlistId: string) {

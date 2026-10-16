@@ -23,6 +23,17 @@ describe("MemoryPlaylistStore", () => {
     expect(JSON.stringify([...store.playlists.values()])).not.toContain(token);
   });
 
+  it("keeps the research snapshot without bumping the revision, and the view carries it", async () => {
+    const { store, playlist } = await make();
+    expect(toPlaylistView(playlist, []).research).toBeNull();
+    const snapshot = { version: 1 as const, spotifyArtistId: "x".repeat(22), fullRunId: "r1", runId: "r1", runNumber: 1, mode: "full" as const, at: "2026-10-17T00:00:00.000Z", steps: {} };
+    expect(await store.saveResearch(playlist.id, snapshot)).toBe(true);
+    const after = (await store.get(playlist.id))!;
+    expect(after.revision).toBe(playlist.revision);
+    expect(toPlaylistView(after, []).research).toEqual(snapshot);
+    expect(await store.saveResearch("missing", snapshot)).toBe(false);
+  });
+
   it("starts empty, adds a can-sing song, and refuses a repeat by song key", async () => {
     const { store, playlist } = await make();
     expect(await store.songs(playlist.id)).toEqual([]);
@@ -252,6 +263,17 @@ describe("plan suggestions and busks (R2)", () => {
     expect(usual).toEqual([{ name: "Bourke Street Mall", lat: -37.8, lon: 144.9 }]);
     expect(calls[1]).toMatch(/UPDATE playlists SET recent_busks = \$2::jsonb, usual_pitches = \$3::jsonb WHERE id = \$1/);
     expect(calls[1]).not.toMatch(/revision/);
+  });
+
+  it("saving the research snapshot writes only the snapshot and its time, never the revision", async () => {
+    const calls: { text: string; params: unknown[] }[] = [];
+    const sql = { query: async (text: string, params: unknown[]) => (calls.push({ text, params }), [{ id: "pid" }]) };
+    const store = new PostgresPlaylistStore(sql as never);
+    const snapshot = { version: 1 as const, spotifyArtistId: "x".repeat(22), fullRunId: "r1", runId: "r1", runNumber: 1, mode: "full" as const, at: "2026-10-17T00:00:00.000Z", steps: {} };
+    expect(await store.saveResearch("pid", snapshot)).toBe(true);
+    expect(calls[0].text).toMatch(/UPDATE playlists SET research = \$2::jsonb, research_at = now\(\) WHERE id = \$1/);
+    expect(calls[0].text).not.toMatch(/revision/);
+    expect(JSON.parse(calls[0].params[1] as string)).toEqual(snapshot);
   });
 
   it("an edit that carries songs claims the revision first and changes songs only through that row", async () => {

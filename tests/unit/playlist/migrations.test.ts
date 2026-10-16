@@ -33,3 +33,12 @@ describe("migrations 004 and 005", () => {
     expect(read("005_learn_runs.sql")).toMatch(/learn_runs_one_running ON learn_runs \(playlist_id\) WHERE status = 'running'/);
   });
 });
+
+describe("migration 009 (Repertoire research snapshot)", () => {
+  it("only adds columns, every statement guarded, so it is safe on an empty database and on a re-run", () => {
+    const list = statements(read("009_repertoire_research.sql"));
+    expect(list.length).toBeGreaterThan(0);
+    for (const statement of list) expect(statement).toMatch(/^ALTER TABLE playlists ADD COLUMN IF NOT EXISTS /);
+    expect(read("009_repertoire_research.sql")).toMatch(/ADD COLUMN IF NOT EXISTS research JSONB/);
+  });
+});

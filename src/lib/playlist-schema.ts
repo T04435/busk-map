@@ -155,6 +155,8 @@ export type PlaylistView = {
   /** Profile features: the profile snapshot and the act's artist in Qloo (no UI yet). */
   spotifyProfile?: SpotifyProfile | null;
   qlooArtistId?: string | null;
+  /** The last Repertoire research run's snapshot (lib/repertoire-research.ts), or null before the first. */
+  research?: import("./repertoire-research").ResearchSnapshot | null;
   usualPitches: UsualPitch[];
   city: string;
   songs: PlaylistSongView[];

@@ -45,8 +45,10 @@ export function PitchRow({
   const main = (
     <>
       <RankTile n={rank} size="sm" quiet={!selected} />
-      <span className="flex min-w-0 items-baseline gap-2 overflow-hidden whitespace-nowrap text-left">
-        <b className="min-w-0 truncate font-display text-[19px] leading-[22px] font-extrabold uppercase">{name}</b>
+      {/* The name is never cut (QA RC1: "FOOTPATH NE…" made the top pitches indistinguishable): it wraps, balanced, and the
+          time or the picked window sits on its own line under it. */}
+      <span className="flex min-w-0 flex-col gap-0.5 text-left">
+        <b className="font-display text-[19px] leading-[22px] font-extrabold text-balance uppercase [overflow-wrap:anywhere]">{name}</b>
         {time}
       </span>
       <PercentCell value={score} size={40} tone={selected ? "primary" : "default"} label="Score" />

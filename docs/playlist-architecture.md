@@ -1,8 +1,12 @@
-# Playlist: architecture proposal (for approval, no code yet)
+# Repertoire: architecture proposal (for approval, no code yet)
+
+> **Name (user decision D2, 17 Oct): the feature is called "Repertoire"** in every user-facing label and in the copy module (`PLAYLIST_COPY.name = "Repertoire"`).
+> **Code names deliberately stay `playlist`:** the tables `playlists` and `playlist_songs`, the cookie `buskmap_playlist`, `src/lib/playlist-copy.ts` and the routes under `/api/playlist/*`. The codebase already uses "repertoire" for the Spotify catalogue lookup (`src/server/adapters/repertoire/`, `/api/repertoire`, `RepertoirePicker`), so reusing that word for the saved list would collide. The wire fields stay as agreed in §7. A later rename stays cheap: one copy module for words, and internal names that are never shown.
+
 
 Status: **proposal**, 16 Oct 2026, updated 17 Oct for "Songs you should learn is its own AI run", `dev/core`. Input: the user's draft spec and its 17 Oct update (`hackathon/hackathons/qloo-2026/playlist-spec.md`) and BRAND's learn-run sketch (`hackathon/hackathons/qloo-2026/design-handoff/playlist/learn-run-sketch.md` §5–6). Nothing here is built. "Exists" means it is in the code today, with `file:function`. "Proposed" means new.
 
-The feature is a saved **Playlist** with three parts:
+The feature is a saved **Repertoire** with three parts:
 - **Songs you can sing**: saved once, then used by Plan a busk and the week planner.
 - **A suggested set per pitch**: today's setlist logic, unchanged.
 - **Songs you should learn**: new, and **its own AI agent run** (the "learn run"). The performer presses "Find songs to learn". A second `ToolLoopAgent` investigates with Qloo (artists, crowds, growth), takes songs from Spotify (Last.fm as backup), and picks and explains them. Its steps stream live with the busk research pattern. Every run's picks are saved to the To learn list, grouped by run, and each new run reads that history so it never repeats itself.
@@ -11,10 +15,10 @@ The feature is a saved **Playlist** with three parts:
 
 | # | Decision | Recommendation | Why |
 |---|---|---|---|
-| D1 | Storage (HQ card `playlist-storage`) | **A: a device Playlist in Neon behind an anonymous cookie** | It keeps the no-login rule, works on every browser including Safari, and moves into accounts later in one migration (§1.6). Run history needs a server store anyway |
-| D2 | Name | Keep **"Playlist"** for now. Every user-facing word lives in one module (§4.1), so "Songbook" costs one file later | You chose it. A rename stays cheap |
-| D3 (changed) | **Run limit** (was the refresh limit) | **3 learn runs an hour per Playlist and 6 an hour per IP. At most 25 Qloo requests per run.** One run at a time per Playlist | §2.9: a run costs about US$0.08–0.14 of model time and 8–9 Qloo requests typically, 25 at worst |
-| D4 | Usual pitches (the crowd input) | **Automatic:** the top pitch of each of the last 3 plans made with the Playlist. With none, the city crowd | No new UI to design. It reflects where you actually play |
+| D1 | Storage (HQ card `playlist-storage`) | **A: a device Repertoire in Neon behind an anonymous cookie** | It keeps the no-login rule, works on every browser including Safari, and moves into accounts later in one migration (§1.6). Run history needs a server store anyway |
+| D2 | Name | Keep **"Repertoire"** for now. Every user-facing word lives in one module (§4.1), so "Songbook" costs one file later | You chose it. A rename stays cheap |
+| D3 (changed) | **Run limit** (was the refresh limit) | **3 learn runs an hour per Repertoire and 6 an hour per IP. At most 25 Qloo requests per run.** One run at a time per Repertoire | §2.9: a run costs about US$0.08–0.14 of model time and 8–9 Qloo requests typically, 25 at worst |
+| D4 | Usual pitches (the crowd input) | **Automatic:** the top pitch of each of the last 3 plans made with the Repertoire. With none, the city crowd | No new UI to design. It reflects where you actually play |
 | D5 | A "Not for me" button on suggestions | **Yes:** a `dismissed` state, kept per run, undoable, never suggested again | Without it, a run brings back songs you rejected. BRAND's sketch already designs it |
 | D6 | Last.fm on the Brain page | **Show it as a third secondary source** | It is the named songs backup. Today the Brain shows only Spotify and Ticketmaster (`qloo-map.ts:secondarySources`) |
 | D7 (new) | **Learn run model** | **Claude Sonnet 5.5 with medium adaptive thinking**, the busk agent's settings (`models.ts:MODELS.planner`, `PLANNER_PROVIDER_OPTIONS`) | §2.5: summarised thinking is proven on the feed, and the guardrails reject fewer answers. About US$0.08–0.14 a run against Haiku's US$0.004–0.007. Swappable in one constant |
@@ -27,12 +31,12 @@ The feature is a saved **Playlist** with three parts:
 
 - **Cookie:** `buskmap_playlist`. The value is a random **128-bit token** (16 bytes from `crypto.getRandomValues`, base64url, 22 characters).
   - Flags: `HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=34560000` (400 days, Chrome's cap). The expiry slides forward on each write.
-  - It is set only by the server, on the first save. Browsing never creates a Playlist.
+  - It is set only by the server, on the first save. Browsing never creates a Repertoire.
 - **Stored hashed:** the database keeps `sha256(token)` and never the token.
   - A leaked table can't be replayed as cookies.
   - A 128-bit random token needs no pepper or slow hash.
 - **CSRF:** SameSite=Lax blocks cross-site POSTs. Every mutating route also checks that `Origin` matches the host, and joins `BOTID_PROTECTED_ROUTES` (`src/lib/botid-routes.ts`). `POST /api/playlist/learn` is the one that spends model money, so BotID matters most there.
-- **The id never leaves the server.** It is not in URLs, plan requests or short links. A shared `/p/<id>` link carries a snapshot of the songs, never a pointer to anyone's Playlist (§3.2). Learn run ids are random UUIDs and are only served to the cookie that owns them.
+- **The id never leaves the server.** It is not in URLs, plan requests or short links. A shared `/p/<id>` link carries a snapshot of the songs, never a pointer to anyone's Repertoire (§3.2). Learn run ids are random UUIDs and are only served to the cookie that owns them.
 - The tip log stays as it is: a separate, script-written cookie (`src/lib/tips.ts:TIP_COOKIE`).
 
 ### 1.2 Tables: migrations `004_playlists.sql` and `005_learn_runs.sql`
@@ -82,7 +86,7 @@ Indexes: `UNIQUE (playlist_id, song_key)`; `(playlist_id, state)`; `playlists (l
 |---|---|---|
 | `id` | `UUID PRIMARY KEY DEFAULT gen_random_uuid()` | `runId` on the wire |
 | `playlist_id` | `UUID NOT NULL REFERENCES playlists(id) ON DELETE CASCADE` | |
-| `number` | `INTEGER NOT NULL` | "Run 3": per Playlist, `max(number)+1` in the insert |
+| `number` | `INTEGER NOT NULL` | "Run 3": per Repertoire, `max(number)+1` in the insert |
 | `started_at` | `TIMESTAMPTZ NOT NULL DEFAULT now()` | |
 | `finished_at` | `TIMESTAMPTZ NULL` | |
 | `status` | `TEXT NOT NULL CHECK (status IN ('running','done','failed','fallback'))` | `fallback` = finished with the deterministic picks (§2.6) |
@@ -96,8 +100,8 @@ Indexes: `UNIQUE (playlist_id, song_key)`; `(playlist_id, state)`; `playlists (l
 
 Indexes:
 - `UNIQUE (playlist_id, number)`.
-- `(playlist_id, started_at DESC)`: the run list, the history query and the per-Playlist run limit (§2.10).
-- **`UNIQUE (playlist_id) WHERE status = 'running'`** (partial): one run at a time per Playlist, enforced atomically. A second start gets a 409 with the running `runId`.
+- `(playlist_id, started_at DESC)`: the run list, the history query and the per-Repertoire run limit (§2.10).
+- **`UNIQUE (playlist_id) WHERE status = 'running'`** (partial): one run at a time per Repertoire, enforced atomically. A second start gets a 409 with the running `runId`.
 
 **`learn_suggestions`** (005, proposed): the To learn list and the memory
 
@@ -122,7 +126,7 @@ Indexes:
 | `learned_at`, `dismissed_at` | `TIMESTAMPTZ NULL` | |
 
 Indexes:
-- **`UNIQUE (playlist_id, song_key)`**: the no-repeat rule (D9) in the database. A song can be suggested once per Playlist, whatever its status. This is the backstop under the guardrail in §2.6.
+- **`UNIQUE (playlist_id, song_key)`**: the no-repeat rule (D9) in the database. A song can be suggested once per Repertoire, whatever its status. This is the backstop under the guardrail in §2.6.
 - `(playlist_id, status, created_at DESC)`: the To learn list and the history block.
 - `(run_id, rank)`: a run's group.
 
@@ -133,7 +137,7 @@ Indexes:
 | Where | From → to | Trigger | Notes |
 |---|---|---|---|
 | `playlist_songs` | (none) → `can_sing` | Picked from Spotify search, loaded from "my Spotify artist" (`source=spotify`), typed (`typed`) | |
-| `learn_suggestions` | (none) → `pending` | A learn run's accepted picks, or "Add to Playlist" on a plan's Learn these (`run_id NULL`, `song_source='plan'`) | |
+| `learn_suggestions` | (none) → `pending` | A learn run's accepted picks, or "Add to Repertoire" on a plan's Learn these (`run_id NULL`, `song_source='plan'`) | |
 | both | `pending` → `learned` | "Mark learned" | `learned_at = now()`, plus the `playlist_songs` row (§1.2). Planners treat it as can sing |
 | both | `learned` → `pending` | "Undo" | The `playlist_songs` row goes |
 | `learn_suggestions` | `pending` → `dismissed` | "Not for me" (D5) | `dismissed_at = now()`. Folded under its run, never suggested again |
@@ -146,19 +150,19 @@ Indexes:
 
 | Limit | Value | Why |
 |---|---|---|
-| Can sing + learned | **60** | `planRequestSchema.performer.songs.max(60)`: a Playlist must always fit one plan request |
+| Can sing + learned | **60** | `planRequestSchema.performer.songs.max(60)`: a Repertoire must always fit one plan request |
 | Picks per run | **3 to 8** (fewer only if fewer valid songs exist) | BRAND's demo shows 6. Keeps a run's list readable |
 | Pending suggestions | **40** | A run is refused with `list_full` past it ("Mark some learned or dismiss them first") |
-| Suggestions in all | **400** per Playlist | Bounds the memory; at 8 a run, about 50 runs. Past it, the oldest **dismissed** rows of pruned runs are deleted first, and their `song_key` goes into `playlists.dismissed_keys`, so no-repeat still holds |
-| Runs | **50** per Playlist | Past it, the oldest run rows are deleted; their suggestions stay (`run_id` → NULL, shown under "Earlier runs") |
+| Suggestions in all | **400** per Repertoire | Bounds the memory; at 8 a run, about 50 runs. Past it, the oldest **dismissed** rows of pruned runs are deleted first, and their `song_key` goes into `playlists.dismissed_keys`, so no-repeat still holds |
+| Runs | **50** per Repertoire | Past it, the oldest run rows are deleted; their suggestions stay (`run_id` → NULL, shown under "Earlier runs") |
 | Steps kept | **Last 5 runs, at most 30 days** (D8) | Pruned in the same statement that inserts a new run |
-| New Playlists | 10 an hour per IP | Stops table spam (`rate-limit.ts:createRateLimiter`) |
-| Expiry | Delete a Playlist 13 months after `last_seen_at` | A small sweep run when `/api/playlist` writes, or a cron later. The cascade removes runs and suggestions |
+| New Repertoires | 10 an hour per IP | Stops table spam (`rate-limit.ts:createRateLimiter`) |
+| Expiry | Delete a Repertoire 13 months after `last_seen_at` | A small sweep run when `/api/playlist` writes, or a cron later. The cascade removes runs and suggestions |
 
 ### 1.5 Privacy
 
 - No PII is required. The act name is optional, and nothing ties a row to a person, an email or an IP. IPs are used only by the in-memory limiters (`rate-limit.ts`).
-- **"Forget my Playlist"** (`DELETE /api/playlist`) deletes the row (songs, runs and suggestions go with it through the cascade) and clears the cookie.
+- **"Forget my Repertoire"** (`DELETE /api/playlist`) deletes the row (songs, runs and suggestions go with it through the cascade) and clears the cookie.
 - The privacy note on the landing page says what is stored and for how long.
 - Stored run steps hold Qloo tool outputs at runtime only, are never committed, and are pruned under D8. Suggestions keep only small derived numbers.
 
@@ -166,8 +170,8 @@ Indexes:
 
 - Migration `00N_playlist_accounts.sql` adds `user_id TEXT NULL UNIQUE` to `playlists`.
 - **On sign-in:**
-  - The user has no Playlist: set `user_id` on the device Playlist.
-  - The user already has one: merge the device Playlist into it, then delete the device row.
+  - The user has no Repertoire: set `user_id` on the device Repertoire.
+  - The user already has one: merge the device Repertoire into it, then delete the device row.
     - Songs: union by `song_key`, `learned` > `can_sing`.
     - Suggestions: union by `song_key`, status precedence `learned` > `pending` > `dismissed`, the earliest `created_at` wins. Runs move across and are renumbered by `started_at`.
     - `sounds_like` is a union, capped at 10.
@@ -182,7 +186,7 @@ Indexes:
 | Cross-device | No (until accounts) | Yes | No |
 | Survives clearing site data | No (the cookie goes) | Yes | No |
 | Safari | Fine: an httpOnly server cookie isn't capped at 7 days | Fine | **Script-written storage is wiped after 7 days without a visit (ITP)** |
-| Learn run history and limits | Yes: runs and suggestions are stored per Playlist, the run limit counts stored runs, replays come from Neon | Yes | **No.** The server can't remember what it suggested, the limit can only be per IP, and every run must re-send the whole history |
+| Learn run history and limits | Yes: runs and suggestions are stored per Repertoire, the run limit counts stored runs, replays come from Neon | Yes | **No.** The server can't remember what it suggested, the limit can only be per IP, and every run must re-send the whole history |
 | Server-rendered prefill of the forms | Yes (the cookie is read server-side) | Yes | No: the forms flash empty, then fill from script |
 | Merge into accounts later | One migration (§1.6) | n/a | Import on first sign-in, from each browser |
 | Cost and extra work | 2 migrations, 2 stores, the routes in §3.6 | Resend account, sign-in design, email flows | None on the server |
@@ -192,14 +196,14 @@ Indexes:
 ### 2.1 The split, and one run end to end
 
 Qloo has no song-level data, so the work stays split, now inside an agent loop:
-1. **Qloo** finds and scores the **artists** (the Playlist's taste, the crowds at your pitches, who is rising).
+1. **Qloo** finds and scores the **artists** (the Repertoire's taste, the crowds at your pitches, who is rising).
 2. **Spotify** (Last.fm as backup) supplies the **songs** of the artists the agent chose.
 3. **Claude** decides what to look at next, chooses the picks from the songs the tools returned, and writes one reason per pick. It never adds a song.
 
 Code (proposed): `src/server/learn/agent.ts` (`runLearnAgent`, `LEARN_INSTRUCTIONS`, `buildLearnPrompt`), `src/server/learn/tools.ts` (`createLearnTools`, `LearnState`, `checkPicks`), `src/server/learn/history.ts` (`loadHistory`, `formatHistory`), `src/server/learn/store.ts` (Memory and Postgres), `src/server/learn/fallback.ts`, `src/lib/learn-schema.ts` and `src/lib/learn-totals.ts` (client-safe). It mirrors `src/server/agent/` file for file, so the two agents read alike.
 
 **One run** (`POST /api/playlist/learn`):
-1. Load the Playlist. Refuse before spending anything: no Playlist (404), fewer than 3 songs you can sing (409 `empty_playlist`), a run already going (409 `already_running` with its `runId`), pending list full (409 `list_full`), the run limit (429 `limit`, §2.10).
+1. Load the Repertoire. Refuse before spending anything: no Repertoire (404), fewer than 3 songs you can sing (409 `empty_playlist`), a run already going (409 `already_running` with its `runId`), pending list full (409 `list_full`), the run limit (429 `limit`, §2.10).
 2. Insert the `learn_runs` row (`status='running'`). Emit `run`, then `status`.
 3. **Server steps, no model** (emitted as ordinary `tool-start`/`tool-end` pairs so the feed shows them):
    - `match_playlist`: resolve the seed artists to Qloo ids (§2.2).
@@ -216,7 +220,7 @@ Names follow BRAND's sketch (§7). Two are **server steps** the model never call
 |---|---|---|---|---|---|
 | `match_playlist` | **Server**, once, first | – | Resolves seed artists: the can-sing and learned songs' artists plus `sounds_like`, unique, most frequent first, at most 10 (`qloo/index.ts:MAX_ARTISTS`). Stored ids first (`playlist_songs.qloo_artist_id`, `sounds_like[].qlooId`), then `qloo/index.ts:resolveArtists` / `resolveSpotifyArtists` for the rest, writing the ids back | Qloo #1 `/search` or #2 `/entities` (existing) | `{summary, songs, artists: [{name, matched}], unmatched: string[]}` |
 | `history` | **Server**, once, second | – | Loads the history (§2.8). Its numbers feed the totals | Neon only | `{summary, canSing, pending, learned, dismissed, earlierRuns, lastRunAt}` (counts and the last date; the lists themselves are in the prompt) |
-| `related_artists` | Model | `{ seeds: z.array(z.string().max(80)).max(10).optional(), take: z.number().int().min(5).max(30).default(20) }`. `seeds` are artist names from `match_playlist` (default: all); anything else is a tool error that lists the valid names | Artists whose fans overlap the Playlist's seeds, anywhere | **Qloo #12 (new)** `/v2/insights` `filter.type=urn:entity:artist`, `signal.interests.entities`, `feature.explainability=true`, no location. Proposed `client.ts:tasteArtists`, cached and counted like the others (`countLookup` + `lookupScope`, `cacheLife("days")`) | `{summary, artists: [{artistId, name, affinity, because: string[], growth, alreadyInPlaylist}]}`, at most 20 rows |
+| `related_artists` | Model | `{ seeds: z.array(z.string().max(80)).max(10).optional(), take: z.number().int().min(5).max(30).default(20) }`. `seeds` are artist names from `match_playlist` (default: all); anything else is a tool error that lists the valid names | Artists whose fans overlap the Repertoire's seeds, anywhere | **Qloo #12 (new)** `/v2/insights` `filter.type=urn:entity:artist`, `signal.interests.entities`, `feature.explainability=true`, no location. Proposed `client.ts:tasteArtists`, cached and counted like the others (`countLookup` + `lookupScope`, `cacheLife("days")`) | `{summary, artists: [{artistId, name, affinity, because: string[], growth, alreadyInPlaylist}]}`, at most 20 rows |
 | `crowd_at` | Model | `{ pitch: z.enum([...usualPitchNames, "city"]), take: z.number().int().min(5).max(15).default(10) }` | Artists the crowd at one of **your** usual pitches likes, from fans of your seeds | **Qloo #5c** `client.ts:localArtists` with `where.ts:boxAround(pitch, 400 m)` (existing function, same shape as the busk agent's `crowd_at`, so it can share cache entries). `"city"` = #5 over `CITIES[city].bbox` | `{summary, pitch, artists: [{artistId, name, affinity, because, growth, alreadyInPlaylist}]}` |
 | `rising` | Model | `{ artistIds: z.array(z.string().max(80)).min(1).max(5) }`, ids from earlier results only | Momentum for up to 5 candidate artists | **Qloo #8** `client.ts:trendingWindow` (cached for the day) then `client.ts:trending` (one request each, existing) | `{summary, window: {start, end} \| null, artists: [{artistId, name, growth, trendDelta \| null}]}`, flat rows dropped as `context.ts:PlanContext.rising` does |
 | `crowd_profile` | Model, optional | `{}` | The age lean of the seeds' fans, for era fit | **Qloo #9** `client.ts:demographics` (existing) | `{summary, ageLean, bands}` |
@@ -263,7 +267,7 @@ How to work:
    and crowd_at or rising at least once. Decide each next look from what you found: a strong
    related artist, a crowd at one of their pitches, an artist who is rising.
 2. Shortlist artists that fit both their taste and their crowds. Prefer artists who are not
-   already in their Playlist. No more than 2 songs by one artist.
+   already in their Repertoire. No more than 2 songs by one artist.
 3. Call top_tracks for your shortlist. It already leaves out songs from the history.
 4. Finish with finish_suggestions: 3 to 8 songIds from top_tracks, best first, each with a
    one-sentence reason a busker would find useful. If it is rejected, fix what it says and call it
@@ -296,7 +300,7 @@ Prices and measurements are the ones already recorded in `dev-log.md` (16 Oct: S
 | Latency per run | **25–40 s** (scaled from 24.6–35.8 s for 5–6 busk steps; BRAND's copy says "about 30 s") | Not measured here; expect roughly half |
 | Reuse | Same model id, options and gateway path as the busk agent: no new configuration | New thinking options to verify |
 
-**Recommendation (D7): Sonnet 5.5 with medium thinking** for the visible run. The run is a demo moment, the guardrail rejects bad answers, and a fallback in front of judges costs more than US$0.10. Proposed `MODELS.learn = MODELS.planner` and `LEARN_PROVIDER_OPTIONS = PLANNER_PROVIDER_OPTIONS`, so switching to Haiku later is a one-line change. S3 includes a small live check: 3 Sonnet runs on one test Playlist (about US$0.40), with tokens, timings and rejections recorded in `dev-log.md`. Offline, a proposed `mock-model.ts:createMockLearner(scenario)` drives the same tools.
+**Recommendation (D7): Sonnet 5.5 with medium thinking** for the visible run. The run is a demo moment, the guardrail rejects bad answers, and a fallback in front of judges costs more than US$0.10. Proposed `MODELS.learn = MODELS.planner` and `LEARN_PROVIDER_OPTIONS = PLANNER_PROVIDER_OPTIONS`, so switching to Haiku later is a one-line change. S3 includes a small live check: 3 Sonnet runs on one test Repertoire (about US$0.40), with tokens, timings and rejections recorded in `dev-log.md`. Offline, a proposed `mock-model.ts:createMockLearner(scenario)` drives the same tools.
 
 ### 2.6 `finish_suggestions`: the guardrail, the rejection loop, the fallback
 
@@ -316,7 +320,7 @@ finishSuggestionsSchema = z.object({
 
 **Checks** (a pure `checkPicks(answer, state)`, like `tools.ts:checkAnswer`):
 1. **From this run's catalogue:** every `songId` must be in `state.found` (filled only by this run's `top_tracks`). Unknown ids are rejected with a list of the best valid ones, as `checkAnswer` lists the scored pool.
-2. **No repeats (D9):** no `song_key` already in `learn_suggestions` for this Playlist (any status), in `playlists.dismissed_keys` or in `playlist_songs`, and no duplicate within the picks. `top_tracks` already filters these, so this is a backstop. Re-suggesting is **not allowed**; there is no "re-suggest with a reason" path.
+2. **No repeats (D9):** no `song_key` already in `learn_suggestions` for this Repertoire (any status), in `playlists.dismissed_keys` or in `playlist_songs`, and no duplicate within the picks. `top_tracks` already filters these, so this is a backstop. Re-suggesting is **not allowed**; there is no "re-suggest with a reason" path.
 3. **Artist cap:** at most **2 picks per artist** in a run, and **0** for an artist who already has 3 or more songs across can-sing, learned and pending (`overRepresented`).
 4. **Count:** at least `min(3, valid songs found)`.
 5. **Numbers:** every number in `reason`, `summary` and `notes` must be in `state.seen` (`NumberBag.unknownIn`, reused).
@@ -362,7 +366,7 @@ finishSuggestionsSchema = z.object({
 
 **Replay of a stored run:** the same `GET …/events` on a finished run replays the stored events from `learn_runs.steps` (the `AgentRun.replay` pattern, `runs.ts`), with `run.replay: true` and `status.replay: true`, then the run's stored suggestions as `suggestion` events (with their **current** status) and `end`. A pruned run (D8) replays as `run` (`stepsKept: false`), its suggestions, and `end`. A replay never calls a model or Qloo and is never counted against the limit.
 
-**Stale runs:** a `running` row older than `timeoutMs + 30 s` is marked `failed` (`end_code='timeout'`) by the next request for that Playlist, so a crashed instance never blocks the partial unique index for long.
+**Stale runs:** a `running` row older than `timeoutMs + 30 s` is marked `failed` (`end_code='timeout'`) by the next request for that Repertoire, so a crashed instance never blocks the partial unique index for long.
 
 ### 2.8 History in the prompt
 
@@ -390,7 +394,7 @@ Titles and artists are the stored, length-bounded values, with newlines and `|` 
 
 **"New this run" is computed by the server, never trusted from the model:**
 - In a run's stream: a `suggestion` is emitted only for a row this run inserted. Under D9 every one of them is new, so `isNew: true`.
-- In the stored list: `isNew = (run_id = the Playlist's latest finished run)`. Older runs' rows read `false`, so "New this run" moves on with each run.
+- In the stored list: `isNew = (run_id = the Repertoire's latest finished run)`. Older runs' rows read `false`, so "New this run" moves on with each run.
 - `basedOn` (server, from the run's tool data): `learned` when the artist's Qloo `because` list (or the model's checked `buildsOn`) names a learned song's artist or title; `repertoire` when it names a can-sing artist; `soundsLike` when it names a sounds-like artist; `crowd` when the artist came from `crowd_at` (with the pitch name).
 
 ### 2.9 Cost per run
@@ -411,12 +415,12 @@ Titles and artists are the stored, length-bounded values, with newlines and `|` 
 - Against the quota (10,000 a month, `qloo-map.ts:QUOTA`): 100 typical runs ≤ 900 requests (9%), 100 cold ones ≤ 2,500.
 - Spotify (≤ 12 searches) and Last.fm (≤ 12 top-track calls) per run are cached for days and weeks and are not Qloo quota.
 
-**Model per run** (D7, §2.5): Sonnet **US$0.075–0.14**; Haiku US$0.004–0.007. With the limits below, one Playlist can spend at most 3 runs an hour, about US$0.42. The gateway's US$50 a month budget stays the backstop (`docs/deploy.md`).
+**Model per run** (D7, §2.5): Sonnet **US$0.075–0.14**; Haiku US$0.004–0.007. With the limits below, one Repertoire can spend at most 3 runs an hour, about US$0.42. The gateway's US$50 a month budget stays the backstop (`docs/deploy.md`).
 
 ### 2.10 The run limit (D3)
 
 Proposed `rate-limit.ts:learnRunGate`, the `freshRunGate` pattern:
-- **Per Playlist: 3 runs an hour**, counted from `learn_runs` (`started_at > now() − 1 h`), so it holds across server instances. Runs that ended before the model (`qloo_unavailable`, `no_match`) are not counted.
+- **Per Repertoire: 3 runs an hour**, counted from `learn_runs` (`started_at > now() − 1 h`), so it holds across server instances. Runs that ended before the model (`qloo_unavailable`, `no_match`) are not counted.
 - **Per IP: 6 runs an hour**, `learnIpLimiter = createRateLimiter(6, 60 * 60_000)`, per instance like the other limiters.
 - **Free:** replays and joining an in-flight run never count. Offline test mode is never limited (the e2e tests share one IP), as in `freshRunGate`.
 - **Test fault:** `faults=learn-limit` (proposed `request.ts:LEARN_LIMIT_FAULT`, the `FRESH_LIMIT_FAULT` gate: only with `BUSKMAP_ALLOW_FAULTS=1`, never in production) forces a refusal with `retryAfterS = 2700` (`FORCED_LIMIT_RETRY_S`).
@@ -437,35 +441,35 @@ Proposed `rate-limit.ts:learnRunGate`, the `freshRunGate` pattern:
 
 ## 3. The planners
 
-### 3.1 How /plan and /week read the Playlist
+### 3.1 How /plan and /week read the Repertoire
 
 - **The landing performer form** (`components/landing/performer-form.tsx:PerformerForm`) is where both planners start. Submitting goes to Plan (`openPlan` → `POST /api/plans`) or to `/week?…` (`submit`).
-- When the server finds a Playlist cookie, `src/app/page.tsx:OwnActForm` passes the Playlist to the form as its prefill. The form already takes a `prefill` of a performer: today it comes from `?again=<plan id>`, and the Playlist would be a second source, with `?again` still winning.
-  - A default **"Use my Playlist (N songs)"** switch is on. Name, sounds-like and songs (can sing + learned) are filled from the Playlist.
-  - **"Edit for this busk only":** any change to songs or artists while it is on turns the badge into "Edited for this busk". The saved Playlist is **not** changed.
-    - An explicit **"Save these changes to my Playlist"** button (`PATCH /api/playlist`) is the only way the form writes.
-    - With no Playlist yet, the same button reads **"Save as my Playlist"** and creates it.
+- When the server finds a Repertoire cookie, `src/app/page.tsx:OwnActForm` passes the Repertoire to the form as its prefill. The form already takes a `prefill` of a performer: today it comes from `?again=<plan id>`, and the Repertoire would be a second source, with `?again` still winning.
+  - A default **"Use my Repertoire (N songs)"** switch is on. Name, sounds-like and songs (can sing + learned) are filled from the Repertoire.
+  - **"Edit for this busk only":** any change to songs or artists while it is on turns the badge into "Edited for this busk". The saved Repertoire is **not** changed.
+    - An explicit **"Save these changes to my Repertoire"** button (`PATCH /api/playlist`) is the only way the form writes.
+    - With no Repertoire yet, the same button reads **"Save as my Repertoire"** and creates it.
 - **The request stays what it is today:**
-  - The form submits a full `PlanRequest` (`plan-schema.ts:planRequestSchema`) or `WeekRequest` (`week-schema.ts:weekRequestSchema`) with `performer.songs` copied from the Playlist.
+  - The form submits a full `PlanRequest` (`plan-schema.ts:planRequestSchema`) or `WeekRequest` (`week-schema.ts:weekRequestSchema`) with `performer.songs` copied from the Repertoire.
   - `/api/plans`, `/api/plan`, `/api/week` and the URL helpers (`plan-url.ts:planSearchParams`, `week-url.ts:weekSearchParams`) need **no change**.
   - The only optional addition is `performer.songsFrom: "playlist" | "edited"`, for the badge on the plan. It is `.optional()`, so old links still parse.
-- **The week planner:** `week.ts:buildWeekPlan` does not score songs today. It gets them from the same form. Its per-session "Plan this busk" links (`week-view.tsx`, via `planSearchParams`) already carry `performer.songs`, so they carry the Playlist snapshot.
-- **The Playlist page (`/playlist`, proposed)** edits the three sections. Its song search reuses `components/landing/song-search.tsx`, the artist picker reuses `artist-picker.tsx`, and both use `/api/repertoire`. The To learn section holds the learn runs (§7).
+- **The week planner:** `week.ts:buildWeekPlan` does not score songs today. It gets them from the same form. Its per-session "Plan this busk" links (`week-view.tsx`, via `planSearchParams`) already carry `performer.songs`, so they carry the Repertoire snapshot.
+- **The Repertoire page (`/playlist`, proposed)** edits the three sections. Its song search reuses `components/landing/song-search.tsx`, the artist picker reuses `artist-picker.tsx`, and both use `/api/repertoire`. The To learn section holds the learn runs (§7).
 
 ### 3.2 Snapshot, not reference (recommended)
 
 - `plans.request` already stores the request "as the act typed it", songs included (`003_plans.sql`, `plans/store.ts` header). A short link is therefore a **snapshot** today. Keep it that way.
-  - `/p/<id>` keeps showing the songs it was planned with after the Playlist changes.
-  - The link is safe to share: it holds no Playlist id or cookie.
+  - `/p/<id>` keeps showing the songs it was planned with after the Repertoire changes.
+  - The link is safe to share: it holds no Repertoire id or cookie.
   - `requestHash` dedupe (`plans/store.ts:requestHash`) still works: same songs, same day, same id.
-- A reference (a Playlist id in the request) would make shared links change under the viewer, leak a handle to someone's Playlist, and break when the Playlist is forgotten. Not recommended.
+- A reference (a Repertoire id in the request) would make shared links change under the viewer, leak a handle to someone's Repertoire, and break when the Repertoire is forgotten. Not recommended.
 
-### 3.3 Learn these → the Playlist
+### 3.3 Learn these → the Repertoire
 
 - The plan keeps its per-crowd **Learn these** (`context.ts:PlanContext.learn` → `setlist.ts:learnThese`, shown from `plan.learnThese`). It answers "what suits *this* crowd", and the busk agent's `learn_these` tool is unchanged.
-- Each item with a title gets **"Add to Playlist"**. It sends `POST /api/playlist/learn/suggestions` with `{title, artist, reason, evidence: {artistFrom: "plan", growth}}`, which inserts a `learn_suggestions` row with `run_id NULL` and `song_source='plan'`, status `pending`.
-  - No Playlist yet → the first add creates one and sets the cookie.
-  - Already in the Playlist or the history (any state) → "In your Playlist". The unique index answers it.
+- Each item with a title gets **"Add to Repertoire"**. It sends `POST /api/playlist/learn/suggestions` with `{title, artist, reason, evidence: {artistFrom: "plan", growth}}`, which inserts a `learn_suggestions` row with `run_id NULL` and `song_source='plan'`, status `pending`.
+  - No Repertoire yet → the first add creates one and sets the cookie.
+  - Already in the Repertoire or the history (any state) → "In your Repertoire". The unique index answers it.
 - These rows are part of the history, so a learn run never suggests them again. The list shows them under "Added from plans".
 
 ### 3.4 The suggested set per pitch keeps working
@@ -474,17 +478,17 @@ Proposed `rate-limit.ts:learnRunGate`, the `freshRunGate` pattern:
   - 48% affinity, 32% popularity, 20% era fit;
   - the opener rule;
   - no artist twice in a row.
-- It is fed by `context.ts:PlanContext.repertoire` from `request.performer.songs`, which now come from the Playlist's can-sing and learned songs (§3.1).
+- It is fed by `context.ts:PlanContext.repertoire` from `request.performer.songs`, which now come from the Repertoire's can-sing and learned songs (§3.1).
 - `tests/unit/scoring/setlist.test.ts` stays green untouched.
-- **Optional saving (proposed, S5):** `qloo_artist_id` from the Playlist could seed `repertoire()` and skip the `songArtists` `/search` calls. That needs a request field and changes `requestHash`, so it is deferred.
+- **Optional saving (proposed, S5):** `qloo_artist_id` from the Repertoire could seed `repertoire()` and skip the `songArtists` `/search` calls. That needs a request field and changes `requestHash`, so it is deferred.
 
 ### 3.5 The examples stay input-only
 
-- The presets (`lib/examples.ts:EXAMPLES`, `/plan?example=…`) never read or write a Playlist.
-  - The "Use my Playlist" switch is not shown on example runs.
-  - "Add to Playlist" is hidden when `exampleId` is set.
+- The presets (`lib/examples.ts:EXAMPLES`, `/plan?example=…`) never read or write a Repertoire.
+  - The "Use my Repertoire" switch is not shown on example runs.
+  - "Add to Repertoire" is hidden when `exampleId` is set.
 - `/api/warm` and the examples' plan-store replay keep working as now.
-- An e2e checks that an example run leaves the Playlist unchanged (§5).
+- An e2e checks that an example run leaves the Repertoire unchanged (§5).
 
 ### 3.6 Routes (proposed)
 
@@ -492,7 +496,7 @@ All of these are route handlers, like the existing `/api/*`. The mutating ones g
 
 | Route | Does |
 |---|---|
-| `GET /api/playlist` | The current Playlist, or `null`. Never creates one |
+| `GET /api/playlist` | The current Repertoire, or `null`. Never creates one |
 | `POST /api/playlist` | Create, sets the cookie (limit: 10 an hour per IP) |
 | `PATCH /api/playlist` | Act name, sounds like, usual pitches. Needs `revision` (409 if it is stale) |
 | `POST /api/playlist/songs` | Add a can-sing song (from search or typed) |
@@ -502,11 +506,11 @@ All of these are route handlers, like the existing `/api/*`. The mutating ones g
 | `GET /api/playlist/learn/runs/[runId]/events` | Join an in-flight run, or replay a finished one (§2.7). NDJSON |
 | `POST /api/playlist/learn/suggestions` | Add a song from a plan's Learn these (§3.3) |
 | `PATCH /api/playlist/learn/suggestions/[id]` | `{status: "learned" \| "pending" \| "dismissed"}`: a transition from §1.3. Anything else is a 400 |
-| `DELETE /api/playlist` | Forget: deletes the Playlist and clears the cookie |
+| `DELETE /api/playlist` | Forget: deletes the Repertoire and clears the cookie |
 
 **The stores:**
 - `src/server/playlist/store.ts` and `src/server/learn/store.ts` (proposed): `Memory…` offline and `Postgres…` with `DATABASE_URL`, chosen like `plans/store.ts:shortPlanStore` (Neon HTTP driver, `processMap`).
-- Without a database outside tests, the Playlist routes return 503 "Saving isn't available", and the form keeps working without a Playlist.
+- Without a database outside tests, the Repertoire routes return 503 "Saving isn't available", and the form keeps working without a Repertoire.
 
 ## 4. Renames
 
@@ -515,8 +519,8 @@ All of these are route handlers, like the existing `/api/*`. The mutating ones g
 Proposed `src/lib/playlist-copy.ts`, client-safe:
 
 ```
-PLAYLIST_COPY = { name: "Playlist", canSing: "Songs you can sing", toLearn: "Songs to learn",
-  learned: "Learned", suggestedSet: "Suggested set", addTo: "Add to Playlist", useMine: "Use my Playlist",
+PLAYLIST_COPY = { name: "Repertoire", canSing: "Songs you can sing", toLearn: "Songs to learn",
+  learned: "Learned", suggestedSet: "Suggested set", addTo: "Add to Repertoire", useMine: "Use my Repertoire",
   findToLearn: "Find songs to learn", findMore: "Find more songs to learn", newThisRun: "New this run", … }
 ```
 
@@ -532,24 +536,24 @@ PLAYLIST_COPY = { name: "Playlist", canSing: "Songs you can sing", toLearn: "Son
 
 | Where | Today | Proposal |
 |---|---|---|
-| UI copy | "Setlist", "Learn these" (`setlist-panel.tsx`, `plan-view.tsx`, `crowd-panel.tsx`, `week-view.tsx`, `app/page.tsx`) | "Suggested set" per pitch. "Songs to learn" on the plan, "To learn" in the Playlist. All of it from `PLAYLIST_COPY` |
+| UI copy | "Setlist", "Learn these" (`setlist-panel.tsx`, `plan-view.tsx`, `crowd-panel.tsx`, `week-view.tsx`, `app/page.tsx`) | "Suggested set" per pitch. "Songs to learn" on the plan, "To learn" in the Repertoire. All of it from `PLAYLIST_COPY` |
 | Plan schema (`plan-schema.ts:planPitchSchema.setlist`, `planSchema.learnThese`) | Stored in Neon (`plans.plan`, `plan_store`) and on short links | **Keep the wire names.** Renaming them breaks the parsing of stored plans. Add TypeScript aliases only: `type SuggestedSet = PlanPitch["setlist"]`. If a rename is wanted later: accept both keys with `z.preprocess` (`setlist` → `suggestedSet`) for 7 days, then drop the old one |
 | Plan stream (`plan-schema.ts:planStreamEventSchema`) | | **Unchanged on the wire.** Its member schemas are exported by name for the learn stream (§2.7) |
 | Agent tools (`tools.ts:createTools`: `build_setlist`, `learn_these`) | The design contract fixes `build_setlist` `songs[]` (`dev-brief-agent-v2.md`) | **Keep the tool names and output fields.** Change only the display labels (`TOOL_LABELS.build_setlist` → "Suggested set for a pitch", `learn_these` → "Songs to learn"), and tell BRAND[busk-map] in the same round, as the contract asks |
 | Scoring (`setlist.ts:buildSetlist`, `SetlistEntry`, `learnThese`) | | Keep. `learnThese`'s ranking is reused by the learn fallback (§2.6) |
 | Plain-AI baseline (`baselineViewSchema.setlist`, `compare.ts`) | | Keep (wire field). Copy only |
 | `researchTotals.songs` | | Keep |
-| Design system (Honeycomb) | | BRAND renames components after the Honeycomb round. DEV adds rows to `design-backlog.md` for the Playlist page, the "Use my Playlist" switch, Add to Playlist, and the learn run pieces in BRAND's sketch §6 |
+| Design system (Honeycomb) | | BRAND renames components after the Honeycomb round. DEV adds rows to `design-backlog.md` for the Repertoire page, the "Use my Repertoire" switch, Add to Repertoire, and the learn run pieces in BRAND's sketch §6 |
 
 ### 4.3 The Brain page (`src/lib/qloo-map.ts`) and its drift test
 
 | Change in `qloo-map.ts` | Detail |
 |---|---|
-| New call **`c12`** | `num: "12"`, "Artists like your Playlist", `/v2/insights`, `urn:entity:artist`, `keyParams: ["signal.interests.entities=<Playlist ids>", "feature.explainability=true", "take=20"]`, `codeRef: "client.ts:tasteArtists"`, `via: ["learn/tools.ts:related_artists"]` |
+| New call **`c12`** | `num: "12"`, "Artists like your Repertoire", `/v2/insights`, `urn:entity:artist`, `keyParams: ["signal.interests.entities=<Repertoire ids>", "feature.explainability=true", "take=20"]`, `codeRef: "client.ts:tasteArtists"`, `via: ["learn/tools.ts:related_artists"]` |
 | New variant **`c5c`** | `variantOf: "c5"`, "Crowd at your usual pitches", `codeRef: "client.ts:localArtists"`, `via: ["learn/tools.ts:crowd_at"]` |
 | `c1`, `c2`, `c8`, `c9` | Add `via` entries for `learn/tools.ts` (`match_playlist`, `rising`, `crowd_profile`) |
-| New data points | `d_taste_artists` ("artists your Playlist's fans like", from c12 and c5c), `d_tracks` ("songs by those artists", from Spotify, with Last.fm as backup) |
-| Features | `f_setlist` is relabelled "Suggested set" (the id is kept, so the test traces stay valid). A new **`f_learn`** "Songs to learn", in the Playlist page's To learn section, `combined` with Spotify, Last.fm and **Claude Sonnet (the learn agent)** |
+| New data points | `d_taste_artists` ("artists your Repertoire's fans like", from c12 and c5c), `d_tracks` ("songs by those artists", from Spotify, with Last.fm as backup) |
+| Features | `f_setlist` is relabelled "Suggested set" (the id is kept, so the test traces stay valid). A new **`f_learn`** "Songs to learn", in the Repertoire page's To learn section, `combined` with Spotify, Last.fm and **Claude Sonnet (the learn agent)** |
 | Secondary sources (D6) | Add `lastfm`: songs backup |
 | Facts | A new `CALLS_PER_LEARN_RUN = "≤ 25"`. `CALLS_PER_NEW_BUSK` is unchanged |
 
@@ -573,7 +577,7 @@ The "names exactly the client functions that send a Qloo request" check fails by
 | File (proposed) | Covers |
 |---|---|
 | `tests/unit/server/playlist-store.test.ts` | Both stores share one contract suite (as `stored-plans.test.ts` does): the token is stored only as its hash, the cookie value is never logged, `song_key` dedupe, the cascade on forget, `revision` gives a 409, the 61st can-sing song is refused |
-| `tests/unit/server/learn-store.test.ts` | Both learn stores: run numbering, **one running run per Playlist** (the second insert fails), the **unique `(playlist_id, song_key)`** refuses a repeat, mark learned inserts the `playlist_songs` row and undo removes it, dismiss and undo, the pending cap (`list_full`), step pruning keeps the last 5 runs and drops steps older than 30 days but keeps their suggestions, the 400-row cap moves keys into `dismissed_keys`, the stale-run sweep |
+| `tests/unit/server/learn-store.test.ts` | Both learn stores: run numbering, **one running run per Repertoire** (the second insert fails), the **unique `(playlist_id, song_key)`** refuses a repeat, mark learned inserts the `playlist_songs` row and undo removes it, dismiss and undo, the pending cap (`list_full`), step pruning keeps the last 5 runs and drops steps older than 30 days but keeps their suggestions, the 400-row cap moves keys into `dismissed_keys`, the stale-run sweep |
 | `tests/unit/learn/guardrails.test.ts` | `checkPicks`: an id not from this run's `top_tracks` → rejected with the valid list; a song already in history (each status), in `dismissed_keys` or in can sing → rejected; a duplicate pick; a third song by one artist; an over-represented artist; a stray number; a `buildsOn` that isn't learned → dropped. After 2 rejections: number-only problems get the template reason, rule breaks are dropped, too few left → fallback. Title, artist and year always come from the record |
 | `tests/unit/learn/gating.test.ts` | `top_tracks` closed until 1 `related_artists` + 1 `crowd_at` or `rising`, with the message; `finish_suggestions` closed until songs are found; wrap-up at `maxSteps − 2` and at 60% / 75% of the token budget; `finish_suggestions` while wrapping up with no songs runs `top_tracks` server-side; per-tool call caps; zod rejects bad inputs (an unknown seed, an artist id not seen, `take` out of range) |
 | `tests/unit/learn/history.test.ts` | `formatHistory`: grouping by artist, the order of groups, most recent first, the 1,500-token budget with each truncation step in order, "and N more" lines, newlines and `|` stripped from titles; **no-repeat holds on the full history** even when the block is truncated (a song only in the truncated tail is still filtered by `top_tracks`) |
@@ -581,18 +585,18 @@ The "names exactly the client functions that send a Qloo request" check fails by
 | `tests/unit/learn/fallback.test.ts` | The deterministic order, 2 per artist, template reasons with only known numbers, `nothing_new` when everything is in history |
 | `tests/unit/lib/learn-totals.test.ts` | Each learn totals field from tool outputs; failed tools count 0; `newSongs` is 0 until accepted |
 | `tests/unit/lib/learn-schema.test.ts` | Every event in §7.2 parses; `planStreamEventSchema` still parses every stored plan run fixture (no wire change) |
-| `tests/unit/server/learn-run-limit.test.ts` | `learnRunGate`: the 4th run in an hour per Playlist is refused (counted from stored runs, so a second instance sees it), the 7th per IP; replays, joins and offline are free; runs that ended before the model aren't counted; `forced` refuses; the 429 body and relative message |
+| `tests/unit/server/learn-run-limit.test.ts` | `learnRunGate`: the 4th run in an hour per Repertoire is refused (counted from stored runs, so a second instance sees it), the 7th per IP; replays, joins and offline are free; runs that ended before the model aren't counted; `forced` refuses; the 429 body and relative message |
 | `tests/unit/agent/qloo-usage.test.ts` (extend) | **The budget:** with the emulated data cache, a cold run makes ≤ 25 Qloo requests, a typical one ≤ 10; the pre-check skips a tool whose worst case would cross 25, and the model sees the "budget used up" output |
 | `tests/unit/lib/plan-url.test.ts` (extend) | `songsFrom` round-trips, and old URLs still parse |
 | `tests/unit/lib/qloo-map.test.ts` | The new expectations in §4.3 |
 
 **Mock-model e2e (DEV, `tests/e2e/playlist.spec.ts` and `tests/e2e/learn-run.spec.ts`, offline only, `createMockLearner`).**
 
-Playlist flow:
-1. Type songs on the landing page, then "Save as my Playlist".
-2. Reload: the form is prefilled and "Use my Playlist" is on.
-3. Plan with it, which opens `/p/<id>`. "Add to Playlist" on a Learn these song: it is under To learn, "Added from plans".
-4. Start the week planner: the week request includes the Playlist's songs.
+Repertoire flow:
+1. Type songs on the landing page, then "Save as my Repertoire".
+2. Reload: the form is prefilled and "Use my Repertoire" is on.
+3. Plan with it, which opens `/p/<id>`. "Add to Repertoire" on a Learn these song: it is under To learn, "Added from plans".
+4. Start the week planner: the week request includes the Repertoire's songs.
 
 Learn run flow:
 1. On `/playlist`, press "Find songs to learn". The stream starts with `run` (number 1); the feed shows `match_playlist`, `history`, the model tools' steps and the funnel counting up, then `suggestion` events and `end` (`ok: true`). The new cards show "New this run".
@@ -603,9 +607,9 @@ Learn run flow:
 6. Mock scenarios: `repeat` (the mock picks an old song first) → one rejection, then accepted; `never-finish` → `mode: "fallback"`; `fail` → fallback with the "AI was unavailable" message.
 
 Plus:
-- "Edit for this busk only" leaves the saved Playlist unchanged.
-- An example run leaves the Playlist unchanged.
-- The old `/p/<id>` still shows its original songs after the Playlist changes (the snapshot).
+- "Edit for this busk only" leaves the saved Repertoire unchanged.
+- An example run leaves the Repertoire unchanged.
+- The old `/p/<id>` still shows its original songs after the Repertoire changes (the snapshot).
 
 **The cost guard:**
 - The e2e offline guard exists and covers the new specs as-is (`tests/e2e/guard.ts:decideGuard`, `global-setup.ts`): no live model or Qloo call can happen in e2e.
@@ -624,12 +628,12 @@ Plus:
 
 ## 6. Effort, stages, risks
 
-**Order (user's direction, 17 Oct):** two tracks run in parallel. Track A, the Honeycomb look in `../busk-map-honeycomb` (`design/honeycomb`), comes first and is not counted here. Track B, Playlist, is built on `dev/core` alongside it, once this proposal is approved, and is not blocked by Track A. It is plain shadcn logic and UI only, so merging Honeycomb into `dev/core` stays a clean "look over features" merge; the only expected conflicts are where Playlist renames Setlist labels, and they are resolved in favour of both. BRAND's Playlist screens (DS v64+, `design-handoff/playlist/`, plus the learn-run iteration in `learn-run-sketch.md` §6) are applied afterwards as a brand sync, tagged `brandv1.<iteration>.0`. Until then DEV adds rows to `design-backlog.md`.
+**Order (user's direction, 17 Oct):** two tracks run in parallel. Track A, the Honeycomb look in `../busk-map-honeycomb` (`design/honeycomb`), comes first and is not counted here. Track B, Repertoire, is built on `dev/core` alongside it, once this proposal is approved, and is not blocked by Track A. It is plain shadcn logic and UI only, so merging Honeycomb into `dev/core` stays a clean "look over features" merge; the only expected conflicts are where Repertoire renames Setlist labels, and they are resolved in favour of both. BRAND's Repertoire screens (DS v64+, `design-handoff/playlist/`, plus the learn-run iteration in `learn-run-sketch.md` §6) are applied afterwards as a brand sync, tagged `brandv1.<iteration>.0`. Until then DEV adds rows to `design-backlog.md`.
 
 | Stage | Contents | Hours (was) |
 |---|---|---|
-| S1 Storage and API | `004_playlists.sql`, the Memory and Postgres Playlist stores, the cookie, the Playlist routes, the limits, forget, unit tests | 6 (6) |
-| S2 Planners read the Playlist | Form prefill, "Use my Playlist", edit for this busk only, save to Playlist, a basic `/playlist` page, Add to Playlist on Learn these, the week flow | 6 (6) |
+| S1 Storage and API | `004_playlists.sql`, the Memory and Postgres Repertoire stores, the cookie, the Repertoire routes, the limits, forget, unit tests | 6 (6) |
+| S2 Planners read the Repertoire | Form prefill, "Use my Repertoire", edit for this busk only, save to Repertoire, a basic `/playlist` page, Add to Repertoire on Learn these, the week flow | 6 (6) |
 | **S3 The learn agent** | `005_learn_runs.sql` and the learn stores; `client.ts:tasteArtists`, `searchArtistTracks`; the 5 model tools and 2 server steps with zod, gating and call caps; `runLearnAgent` with `LEARN_INSTRUCTIONS`, wrap-up and the Qloo budget; `finish_suggestions` guardrails, rejection loop and fallback; history loading, formatting and truncation; `learn-schema.ts`, `learn-totals.ts`; the stream route, join and replay, the list and suggestion routes; `learnRunGate` and `faults=learn-limit`; `createMockLearner`; unit tests; the 3-run live check | **14** (8) |
 | S4 Brain and naming | `playlist-copy.ts`, label renames, `qloo-map.ts` and the drift test, `docs/qloo-data-map.md`, a note to BRAND | 3 (3) |
 | S5 Polish and tests | The two e2e flows, the limit fault spec, the learn UI states in plain shadcn (§7.4), the QA handoff, the expiry and pruning sweeps | **5** (4) |
@@ -639,7 +643,7 @@ Plus:
 
 | Risk | Mitigation |
 |---|---|
-| The Qloo quota (10k a month) is shared with plans | A 25-request cap per run with a worst-case pre-check, explicit runs only (never on page view), 3 per Playlist and 6 per IP an hour. `qlooCalls` is shown in the totals and logged per run |
+| The Qloo quota (10k a month) is shared with plans | A 25-request cap per run with a worst-case pre-check, explicit runs only (never on page view), 3 per Repertoire and 6 per IP an hour. `qlooCalls` is shown in the totals and logged per run |
 | **New: model cost per run** (US$0.075–0.14 on Sonnet) | The run limit, BotID on the route, replays free, the gateway's US$50 budget. Haiku is a one-line switch (D7) |
 | **New: the model repeats or invents songs** | Repeats are filtered before the model sees them (`top_tracks`), checked again in `checkPicks`, and refused by the unique index. Songs come only from `state.found`, by id, with record-sourced fields |
 | **New: a weak or rejected answer on stage** | Two rejections, then the deterministic fallback, labelled. The offline mock gives a reliable rehearsal, labelled as the test model |
@@ -651,7 +655,7 @@ Plus:
 | **New: token estimates are not measured yet** | The S3 live check records real numbers before the demo; the token budget (120k) and timeout bound the worst case |
 | Weak ranking signals live: `audience_growth` is 0, and trending is stale and flat (data map §5) | Growth is sent as `null` when Qloo returns 0, and the agent and the fallback rank by affinity and the taste∩pitch bonus. Say so in a note, as plans already do (`context.ts:PlanContext.rising`) |
 | Spotify artist search picks a namesake | Filter by `nameKey`, prefer the Spotify id when the artist was picked in the form (`sounds_like[].spotifyId`), and fall back to Last.fm |
-| A cookie lost on a cleared browser means a lost Playlist and history | Say so on the page. Accounts (§1.6) are the cure. Optional later: export and import as a file |
+| A cookie lost on a cleared browser means a lost Repertoire and history | Say so on the page. Accounts (§1.6) are the cure. Optional later: export and import as a file |
 | A migration on prod Neon | Both are idempotent and only add tables and columns. `npm run db:migrate:dev` runs on the dev branch first |
 | Design not ready | Screens are built plain behind design-backlog rows. The contract (§7 and `dev-brief-agent-v2.md`) is fixed before UI work |
 | The checkout is shared with QA | Commits by path only, per stage. No edits to `tests/e2e/qa/` |
@@ -708,10 +712,10 @@ Field notes (what the server can really know):
 | HTTP | `error.code` | Extra fields | LearnRunBar state |
 |---|---|---|---|
 | 429 (with `Retry-After`) | `limit` | `retryAt`, `retryAfterS`, `limit` {`max`, `windowMinutes`, `retryInMinutes`} | limit reached |
-| 409 | `empty_playlist` | `minSongs` (3) | empty Playlist |
+| 409 | `empty_playlist` | `minSongs` (3) | empty Repertoire |
 | 409 | `already_running` | `runId` | running (the client joins `…/runs/<runId>/events`) |
 | 409 | `list_full` | `pending`, `max` (40) | list full |
-| 404 | `no_playlist` | – | idle, first time (save the Playlist first) |
+| 404 | `no_playlist` | – | idle, first time (save the Repertoire first) |
 | 503 | `unavailable` | – | error |
 
 ### 7.3 The Learn list: `GET /api/playlist/learn`
@@ -752,7 +756,7 @@ Field notes (what the server can really know):
 | limit | 429 `limit` | `limit.retryInMinutes`, `message` |
 | Qloo down | `end.ok: false`, `code: "qloo_unavailable"` (or `no_match`) | `message` |
 | error | `end.ok: false` with any other code, a 503, or a broken stream | `message` |
-| empty Playlist | 409 `empty_playlist`, or fewer than 3 songs you can sing on the page | `minSongs` |
+| empty Repertoire | 409 `empty_playlist`, or fewer than 3 songs you can sing on the page | `minSongs` |
 | empty history | `runs` empty and no `suggestions` | the first-time copy |
 | list full | 409 `list_full` | `pending`, `max` |
 

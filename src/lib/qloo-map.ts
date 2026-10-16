@@ -13,7 +13,7 @@
 
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
-export type CallId = "c1" | "c2" | "c3" | "c4" | "c5" | "c5b" | "c5c" | "c6" | "c7" | "c7b" | "c8" | "c9" | "c10" | "c11" | "c11b" | "c12" | "c13" | "c14";
+export type CallId = "c1" | "c2" | "c3" | "c4" | "c5" | "c5b" | "c5c" | "c6" | "c7" | "c7b" | "c8" | "c9" | "c10" | "c11" | "c11b" | "c12" | "c13" | "c14" | "c_fans";
 export type SourceId = "spotify" | "ticketmaster" | "lastfm";
 export type DataPointId =
   | "d_id"
@@ -35,7 +35,9 @@ export type DataPointId =
   | "d_years"
   | "d_taste_artists"
   | "d_tracks"
-  | "d_plays";
+  | "d_plays"
+  | "d_own_signal"
+  | "d_fans";
 export type FeatureId = "f_rank" | "f_map" | "f_events" | "f_crowd" | "f_fans" | "f_setlist" | "f_plain" | "f_agent" | "f_learn";
 export type NodeId = CallId | SourceId | DataPointId | FeatureId;
 export type NodeKind = "call" | "source" | "dataPoint" | "feature";
@@ -127,7 +129,10 @@ export const calls: readonly QlooCall[] = [
     keyParams: ["external.spotify.ids=<id>"],
     codeRef: "client.ts:entitiesBySpotifyIds",
     via: ["index.ts:resolveArtists", "learn/context.ts:matchPlaylist"],
-    dataPoints: [{ id: "d_id", how: "matches an artist by its Spotify id, so the right namesake is picked" }],
+    dataPoints: [
+      { id: "d_id", how: "matches an artist by its Spotify id, so the right namesake is picked" },
+      { id: "d_own_signal", how: "matches your own artist from the saved Spotify link, so it joins the taste signal" },
+    ],
   },
   {
     id: "c3",
@@ -315,6 +320,18 @@ export const calls: readonly QlooCall[] = [
     codeRef: "client.ts:sceneArtists",
     via: ["index.ts:sceneArtists", "context.ts:localScene"],
     dataPoints: [{ id: "d_scene", how: "artists of the city’s own genres liked in the plan area, shared by every act" }],
+  },
+  {
+    id: "c_fans",
+    num: "9b",
+    label: "Your own fans",
+    endpoint: "/v2/insights",
+    urnType: "urn:demographics",
+    keyParams: ["signal.interests.entities=<your own artist id>"],
+    codeRef: "client.ts:demographics",
+    via: ["context.ts:ownFans", "index.ts:crowdProfile"],
+    variantOf: "c9",
+    dataPoints: [{ id: "d_fans", how: "the age and gender lean of the fans of your own artist alone, one request per busk" }],
   },
 ];
 
@@ -553,6 +570,23 @@ export const dataPoints: readonly DataPoint[] = [
       { id: "f_agent", how: "the build_setlist and learn_these tools" },
     ],
   },
+  {
+    id: "d_own_signal",
+    label: "Your own artist in the signal",
+    sub: "joins the artists you sound like",
+    fields: ["entity_id", "name"],
+    features: [
+      { id: "f_rank", how: "the own artist leads the signal for the taste map and the crowd match" },
+      { id: "f_crowd", how: "“from your music”: how much your own artist drove the crowd’s picks" },
+    ],
+  },
+  {
+    id: "d_fans",
+    label: "Your own fans",
+    sub: "age and gender of your artist’s fans",
+    fields: ["query.age", "query.gender"],
+    features: [{ id: "f_crowd", how: "“Your fans lean 25–29; this crowd leans 30–34”, beside the crowd’s own lean bars" }],
+  },
 ];
 
 export const features: readonly Feature[] = [
@@ -621,7 +655,7 @@ export const callKinds = calls.filter((c) => !c.variantOf).length;
 export const featureCount = features.length;
 export const dataPointCount = dataPoints.length;
 
-/** Measured, not derivable (docs/qloo-data-map.md §4): live 28–32 (24–28 before the local scene, plus its 4), mock 37; a rerun is served from the cache. */
+/** Measured, not derivable (docs/qloo-data-map.md §4): live 28–32 (24–28 before the local scene, plus its 4), mock 37; plus one (#9b) when the act has an own artist, not counted in this range; a rerun is served from the cache. */
 export const CALLS_PER_NEW_BUSK = "28–37";
 export const CALLS_ON_RERUN = 0;
 /** A learn run's hard cap (config.ts:LEARN_QLOO_BUDGET): typically 8–9 requests, 25 at worst (docs/playlist-architecture.md §2.9). */

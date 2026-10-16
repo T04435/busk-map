@@ -35,12 +35,38 @@ const meters = "m-0 flex list-none flex-wrap gap-x-4 gap-y-2 p-0";
  * what drives the match, the performer's fans against the usual hotspot crowd, the genres at the top pitch, and the fans'
  * age and gender lean. Every block ends with the Qloo call behind it. Ported from the DS CrowdPanel.
  */
-export function CrowdPanel({ crowd, resolved, topPitch, qlooMode = "live" }: { crowd: Plan["crowd"]; resolved: Plan["resolvedArtists"]; topPitch: string | null; qlooMode?: Plan["qlooMode"] }) {
+const FROM_YOUR_MUSIC = "from your music";
+
+/** The strongest above-average age band, labelled ("25–29"), or null when none leans. */
+const topAge = (d: { band: string; lean: number }[] | undefined) => {
+  const top = [...(d ?? [])].sort((a, b) => b.lean - a.lean)[0];
+  return top && top.lean > 0.05 ? ageLabel(top.band) : null;
+};
+
+export function CrowdPanel({
+  crowd,
+  resolved,
+  topPitch,
+  qlooMode = "live",
+  ownArtist,
+}: {
+  crowd: Plan["crowd"];
+  resolved: Plan["resolvedArtists"];
+  topPitch: string | null;
+  qlooMode?: Plan["qlooMode"];
+  /** The act's own artist (plan.ownArtist): marks what came "from your music" and compares your fans with this crowd. */
+  ownArtist?: Plan["ownArtist"];
+}) {
+  const ownName = ownArtist?.used ? ownArtist.name : null;
+  const fans = ownArtist?.fans ?? null;
+  const fansTop = topAge(fans?.age);
+  const crowdTop = topAge(crowd.demographics?.age);
+  const fansMax = Math.max(0.05, ...(fans ? [...fans.age, ...fans.gender].map((d) => Math.abs(d.lean)) : []));
   const unmatched = resolved.filter((r) => !r.matched).map((r) => r.query);
   const ages = (crowd.demographics?.age ?? []).filter((a) => a.lean > 0.05).sort((a, b) => b.lean - a.lean).slice(0, 2);
   const leanMax = Math.max(0.05, ...(crowd.demographics ? [...crowd.demographics.age, ...crowd.demographics.gender].map((d) => Math.abs(d.lean)) : []));
   const usualNames = new Set((crowd.usualCrowd?.artists ?? []).map((a) => a.name));
-  const empty = crowd.localArtists.length === 0 && crowd.drivers.length === 0 && crowd.genres.length === 0 && !crowd.contrast && !crowd.demographics && !crowd.usualCrowd && !crowd.localScene;
+  const empty = crowd.localArtists.length === 0 && crowd.drivers.length === 0 && crowd.genres.length === 0 && !crowd.contrast && !crowd.demographics && !fans && !crowd.usualCrowd && !crowd.localScene;
   return (
     <section aria-label="Who this crowd likes" className="border-2 border-rule bg-card p-4 md:p-6">
       <header className="mb-4 flex items-start justify-between gap-3">
@@ -68,9 +94,14 @@ export function CrowdPanel({ crowd, resolved, topPitch, qlooMode = "live" }: { c
       {crowd.drivers.length > 0 && (
         <Block title="What Qloo matched on" label="What drives the match" evidence="Qloo insights explainability: each of your artists' average effect on the crowd's top 10 picks.">
           <Hint>Share of the crowd&apos;s picks explained by each of your artists</Hint>
+          {ownName && ownArtist?.share != null && ownArtist.share > 0 && (
+            <p data-testid="from-your-music" className="m-0 text-sm leading-5">
+              <b>{ownName}</b> explains {Math.round(ownArtist.share * 100)}% of this crowd&apos;s picks: {FROM_YOUR_MUSIC}.
+            </p>
+          )}
           <ul className={meters}>
             {crowd.drivers.map((d) => (
-              <MeterBar key={d.name} label={d.name} value={Math.min(1, d.share)} />
+              <MeterBar key={d.name} label={d.name === ownName ? `${d.name} (${FROM_YOUR_MUSIC})` : d.name} value={Math.min(1, d.share)} />
             ))}
           </ul>
         </Block>
@@ -97,7 +128,12 @@ export function CrowdPanel({ crowd, resolved, topPitch, qlooMode = "live" }: { c
                     </Badge>
                   )}
                 </div>
-                {a.because.length > 0 && <Why>Because your fans like {a.explained.length > 0 ? list(a.explained.map((e) => `${e.name} (${Math.round(e.score * 100)})`)) : list(a.because)}</Why>}
+                {a.because.length > 0 && (
+                  <Why>
+                    Because your fans like {a.explained.length > 0 ? list(a.explained.map((e) => `${e.name} (${Math.round(e.score * 100)})`)) : list(a.because)}
+                    {ownName && a.because.includes(ownName) ? ` (${ownName} is ${FROM_YOUR_MUSIC})` : ""}
+                  </Why>
+                )}
               </li>
             ))}
           </ul>
@@ -171,17 +207,40 @@ export function CrowdPanel({ crowd, resolved, topPitch, qlooMode = "live" }: { c
         </Block>
       )}
 
-      {crowd.demographics && (crowd.demographics.age.length > 0 || crowd.demographics.gender.length > 0) && (
-        <Block title="Who your fans are" label="Age and gender lean" evidence="Qloo demographics for fans of your artists; + is above the average audience, − below.">
+      {((crowd.demographics && (crowd.demographics.age.length > 0 || crowd.demographics.gender.length > 0)) || fans) && (
+        <Block
+          title="Who your fans are"
+          label="Age and gender lean"
+          evidence={`Qloo demographics for fans of ${fans ? `${ownArtist!.name} and ` : ""}your artists; + is above the average audience, − below.`}
+        >
+          {fansTop && (
+            <p data-testid="fans-compare" className="m-0 text-[15px] leading-[22px]">
+              Your fans lean {fansTop}
+              {crowdTop ? `; this crowd leans ${crowdTop}` : ""}.
+            </p>
+          )}
+          {fans && fans.age.length > 0 && (
+            <div className="grid gap-1.5">
+              <Caption>Your fans ({ownArtist!.name})</Caption>
+              <ul className="m-0 grid list-none gap-1.5 p-0" aria-label={`Lean by age band for fans of ${ownArtist!.name}, against the average audience`}>
+                {fans.age.map((a) => (
+                  <LeanBar key={a.band} label={ageLabel(a.band)} lean={a.lean} max={fansMax} />
+                ))}
+              </ul>
+              {crowd.demographics && <Caption>This crowd (your artists and who you sound like)</Caption>}
+            </div>
+          )}
           {ages.length > 0 && <Why>Your fans skew {list(ages.map((a) => ageLabel(a.band)))}: the {PLAYLIST_COPY.suggestedSetNoun} favours songs from their era. Pitch your banter to suit.</Why>}
-          <ul className="m-0 grid list-none gap-1.5 p-0" aria-label="Lean by age band and gender, against the average audience">
-            {crowd.demographics.age.map((a) => (
-              <LeanBar key={a.band} label={ageLabel(a.band)} lean={a.lean} max={leanMax} />
-            ))}
-            {crowd.demographics.gender.map((g) => (
-              <LeanBar key={g.band} label={g.band[0].toUpperCase() + g.band.slice(1)} lean={g.lean} max={leanMax} />
-            ))}
-          </ul>
+          {crowd.demographics && (
+            <ul className="m-0 grid list-none gap-1.5 p-0" aria-label="Lean by age band and gender, against the average audience">
+              {crowd.demographics.age.map((a) => (
+                <LeanBar key={a.band} label={ageLabel(a.band)} lean={a.lean} max={leanMax} />
+              ))}
+              {crowd.demographics.gender.map((g) => (
+                <LeanBar key={g.band} label={g.band[0].toUpperCase() + g.band.slice(1)} lean={g.lean} max={leanMax} />
+              ))}
+            </ul>
+          )}
         </Block>
       )}
 

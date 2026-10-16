@@ -50,6 +50,12 @@ export const planRequestSchema = z.object({
     fillSuggested: z.number().int().min(1).max(8).optional(),
     /** Songs removed for this busk, so the fill leaves them out (D6). Optional, never defaulted. */
     skipSongs: z.array(z.object({ title: text(120), artist: text(80) })).max(60).optional(),
+    /**
+     * The act's own artist on Qloo (resolved from the saved Spotify link): its entity joins the taste signal and its fans'
+     * age and gender lean is shown against the crowd. OPTIONAL and never defaulted, like fillSuggested: a default would change
+     * every old request's requestHash and planKey (tests/unit/server/plan-inputs-golden.test.ts).
+     */
+    ownArtist: z.object({ qlooId: text(64), name: text(80), spotifyId: spotifyIdSchema.optional() }).optional(),
   }),
   weights: weightsSchema.optional(),
 });
@@ -314,6 +320,22 @@ export const planSchema = z.object({
    * Definitions in lib/research-totals.ts.
    */
   researchTotals: researchTotalsSchema.optional(),
+  /**
+   * The act's own artist, when the request carried one: whether Qloo's answer was usable (`used`), whether it drove the crowd match
+   * ("from your music": `share` is its effect on the crowd's top picks), and its fans' age and gender lean (one Qloo demographics
+   * call per busk). ADDITIVE and optional: plans stored before it still parse.
+   */
+  ownArtist: z
+    .object({
+      name: z.string(),
+      used: z.boolean(),
+      share: z.number().nullable().default(null),
+      fans: z
+        .object({ age: z.array(z.object({ band: z.string(), lean: z.number() })), gender: z.array(z.object({ band: z.string(), lean: z.number() })) })
+        .nullable()
+        .default(null),
+    })
+    .optional(),
 });
 
 export type Plan = z.infer<typeof planSchema>;

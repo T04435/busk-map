@@ -61,7 +61,7 @@ describe("golden: old stored requests hash identically", () => {
     it(`${name}: requestHash, planKey and the saved-run check are unchanged`, () => {
       const parsed = planRequestSchema.parse(f.request);
       // No new key appears on a parsed old request.
-      expect(canonicalJson(parsed)).not.toMatch(/fillSuggested|skipSongs|"any"/);
+      expect(canonicalJson(parsed)).not.toMatch(/fillSuggested|skipSongs|ownArtist|"any"/);
       expect(requestHash(storedRequestOf(parsed), f.exampleId)).toBe(f.hash);
       expect(planKey(parsed, false, "2026-10-16")).toBe(f.key);
 
@@ -88,5 +88,21 @@ describe("new fields change the hash only when used", () => {
     const hashes = [base, any, fill].map((r) => requestHash(storedRequestOf(r), null));
     expect(new Set(hashes).size).toBe(3);
     expect(planKey(base, false, "d")).not.toBe(planKey(any, false, "d"));
+  });
+});
+
+describe("ownArtist (profile signal)", () => {
+  const own = { qlooId: "4D4F434B-7923-F70E-1AC1-F5B56C8CBF9F", name: "The Bamboos", spotifyId: "snwFCxUDsBtAVsNCpizAkh" };
+  it("never appears on an old request, and changes the hash and plan key when present", () => {
+    const base = planRequestSchema.parse(FIXTURES.fullSaturday.request);
+    expect("ownArtist" in base.performer).toBe(false);
+    const withOwn = planRequestSchema.parse({ ...FIXTURES.fullSaturday.request, performer: { ...FIXTURES.fullSaturday.request.performer, ownArtist: own } });
+    expect(withOwn.performer.ownArtist).toEqual(own);
+    expect(requestHash(storedRequestOf(withOwn), null)).not.toBe(FIXTURES.fullSaturday.hash);
+    expect(requestHash(storedRequestOf(withOwn), null)).not.toBe(requestHash(storedRequestOf(base), null));
+    expect(planKey(withOwn, false, "2026-10-16")).not.toBe(FIXTURES.fullSaturday.key);
+    // A different own artist is a different request.
+    const other = planRequestSchema.parse({ ...FIXTURES.fullSaturday.request, performer: { ...FIXTURES.fullSaturday.request.performer, ownArtist: { ...own, qlooId: "4D4F434B-0000-0000-0000-000000000001" } } });
+    expect(requestHash(storedRequestOf(other), null)).not.toBe(requestHash(storedRequestOf(withOwn), null));
   });
 });

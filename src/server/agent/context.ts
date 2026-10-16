@@ -83,10 +83,12 @@ const OPTIONAL_QLOO: [prefix: string, feature: string][] = [
   ["trendWindow", "trends"],
   ["rising", "trends"],
   ["crowd", "the crowd's age and gender lean"],
+  ["ownFans", "who your fans are"],
   ["genres:", "the genres at the top pitch"],
   ["hotspotCrowd", "the contrast with the usual crowd"],
   ["compare", "the contrast with the usual crowd"],
   ["scene:", "the local scene (acts local to this city)"],
+  ["taste:soft", "the taste map with your own artist"],
   ["relatedArtists", "related artists for the suggested songs"],
   ["affinity:", "the suggested set order by local taste"],
   ["songArtists", "the suggested set order by local taste"],
@@ -227,8 +229,63 @@ export class PlanContext {
     return this.track("artists", () => qloo.resolveArtists(this.request.performer.artists, this.adapters, this.request.performer.spotifyArtists));
   }
 
-  async entityIds(): Promise<string[]> {
+  /** The artists you sound like, as Qloo entity ids (the signal before your own artist joins it). */
+  private async soundsLikeIds(): Promise<string[]> {
     return (await this.artists()).flatMap((a) => (a.entity ? [a.entity.id] : []));
+  }
+
+  /**
+   * The act's own Qloo artist, when the request carries one. Mock ids (4D4F434B-) mean nothing to live Qloo, so an example that
+   * carries one is ignored there instead of sending an id Qloo can't know.
+   */
+  ownArtist(): { qlooId: string; name: string } | null {
+    const own = this.request.performer.ownArtist;
+    if (!own) return null;
+    if (qloo.qlooMode(this.adapters) === "live" && /^4D4F434B-/i.test(own.qlooId)) return null;
+    return own;
+  }
+
+  /** The signal as Qloo gets it: own artist first (see ownWeight), then the artists you sound like. */
+  private withOwn(soft: string[]): string[] {
+    const own = this.ownArtist();
+    return own ? [own.qlooId, ...soft.filter((id) => id !== own.qlooId)] : soft;
+  }
+
+  /**
+   * The taste signal for every Qloo read: the act's own artist (when present and not dropped by the taste map) FIRST, then the
+   * artists you sound like. Qloo's `signal.interests.entities` takes no weights (the client sends none), so "weight" is position
+   * and inclusion: the own entity leads, and Qloo's explainability reports how much it drove each pick ("from your music").
+   * If the heatmap found nothing with the own entity but something without it, tasteCells() drops it for the whole plan.
+   */
+  async entityIds(): Promise<string[]> {
+    const soft = await this.soundsLikeIds();
+    if (!this.ownArtist()) return soft;
+    await this.tasteCells();
+    return this.ownDropped ? soft : this.withOwn(soft);
+  }
+
+  /** Set when Qloo's heatmap was empty with the own artist in the signal but not without it. */
+  private ownDropped = false;
+
+  /** Name of any entity in the signal (the artists you sound like, and the act's own artist). */
+  entityName(entityId: string, artists: { entity: { id: string; name: string } | null }[]): string | null {
+    const own = this.ownArtist();
+    if (own && own.qlooId === entityId) return own.name;
+    return artists.find((r) => r.entity?.id === entityId)?.entity?.name ?? null;
+  }
+
+  /**
+   * Who the act's own fans are (Qloo demographics signalled with the own artist alone). ONE call per busk, shared by every
+   * pitch, cached per own artist like the other demographics reads. Null without an own artist or when Qloo has no audience data.
+   */
+  ownFans() {
+    return this.once("ownFans", async () => {
+      const own = this.ownArtist();
+      if (!own || this.qlooFailed()) return null;
+      const profile = await this.track("ownFans", () => qloo.crowdProfile([own.qlooId], this.adapters));
+      if (!profile && !this.qlooFailed()) this.notes.push(`Qloo has no audience data for ${own.name}, so "who your fans are" shows the artists you sound like only.`);
+      return profile;
+    });
   }
 
   /**
@@ -237,11 +294,22 @@ export class PlanContext {
    */
   tasteCells() {
     return this.once("tasteCells", async () => {
-      const ids = await this.entityIds();
+      const soft = await this.soundsLikeIds();
+      const ids = this.withOwn(soft);
       if (ids.length === 0) return [];
-      const cells = await this.track("taste", () => qloo.tasteMap(ids, this.city.bbox, this.adapters));
+      let cells = await this.track("taste", () => qloo.tasteMap(ids, this.city.bbox, this.adapters));
+      if (cells.length === 0 && !this.qlooFailed() && ids.length > soft.length && soft.length > 0) {
+        // Qloo found nothing usable with the own artist: fall back to the artists you sound like only (the extra read costs one call).
+        const fallback = await this.track("taste:soft", () => qloo.tasteMap(soft, this.city.bbox, this.adapters));
+        if (fallback.length > 0) {
+          this.ownDropped = true;
+          this.notes.push(`Qloo had no taste data for ${this.ownArtist()!.name}, so the taste map uses the artists you sound like only.`);
+          cells = fallback;
+        }
+      }
       if (cells.length > 0 || this.qlooFailed()) return cells;
-      const wider = await this.track("taste:wide", () => qloo.tasteMap(ids, widen(this.city.bbox, WIDEN_FACTOR), this.adapters));
+      const useIds = this.ownDropped ? soft : ids;
+      const wider = await this.track("taste:wide", () => qloo.tasteMap(useIds, widen(this.city.bbox, WIDEN_FACTOR), this.adapters));
       this.notes.push(
         wider.length > 0
           ? "Qloo had no taste data for the city centre alone, so the taste map uses a wider area."

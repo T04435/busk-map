@@ -108,10 +108,10 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
               <Badge variant="secondary" className="h-7 gap-1.5 py-0 pr-0.5 pl-0.5 text-sm font-normal">
                 <Avatar size="sm">
                   {artist.image && <AvatarImage src={artist.image} alt="" referrerPolicy="no-referrer" />}
-                  <AvatarFallback>{initials(artist.name)}</AvatarFallback>
+                  <AvatarFallback className="text-secondary-foreground">{initials(artist.name)}</AvatarFallback>
                 </Avatar>
                 <span>{artist.name}</span>
-                {!artist.spotifyId && <span className="text-xs text-muted-foreground">(typed)</span>}
+                {!artist.spotifyId && <span className="text-xs text-secondary-foreground/80">(typed)</span>}
                 <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${artist.name}`} onClick={() => onChange(value.filter((a) => a !== artist))}>
                   <XIcon aria-hidden />
                 </Button>
@@ -180,7 +180,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
                     >
                       <Avatar>
                         {artist.image && <AvatarImage src={artist.image} alt="" referrerPolicy="no-referrer" />}
-                        <AvatarFallback>{initials(artist.name)}</AvatarFallback>
+                        <AvatarFallback className="text-secondary-foreground">{initials(artist.name)}</AvatarFallback>
                       </Avatar>
                       <span className="min-w-0">
                         <span className="block truncate font-medium">{artist.name}</span>

@@ -1,7 +1,7 @@
 "use client";
 
 import { XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { loadListeners, loadReleases, searchArtists, type ArtistResult } from "@/components/forms/repertoire-api";
 import { useLiveSearch } from "@/components/forms/use-live-search";
 import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
@@ -35,6 +35,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
   const { state, update, cancel } = useLiveSearch<ArtistResult>(searchArtists);
   const [listeners, setListeners] = useState<Record<string, number | null>>({});
   const [releases, setReleases] = useState<Record<string, number>>({});
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Release counts (Spotify) and listener counts (Last.fm) load after the results show, never blocking them.
   useEffect(() => {
@@ -80,6 +81,8 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
     cancel();
     onQueryChange("");
     update("");
+    // The list closes and the search box keeps focus, so the next artist can be searched straight away.
+    inputRef.current?.focus();
   }
 
   const typed = clean(query);
@@ -111,6 +114,9 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
           ))}
         </ul>
       )}
+      <p className="m-0 text-sm text-muted-foreground" data-testid="artists-hint">
+        {value.length} of {MAX_PICKED_ARTISTS}. Type a comma to add a name that isn&apos;t on Spotify.
+      </p>
       <Command
         shouldFilter={false}
         loop
@@ -120,6 +126,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
         onValueChange={(value) => setActive({ query: state.query, value })}
       >
         <CommandInput
+          ref={inputRef}
           expanded={Boolean(typed)}
           value={query}
           onValueChange={setQuery}

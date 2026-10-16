@@ -98,6 +98,7 @@ export function TimeSlotPicker({
               ))}
             </SelectContent>
           </Select>
+          <p className="m-0 text-xs leading-4 text-muted-foreground">Up to 6 hours</p>
         </div>
       </div>
     </div>

@@ -47,6 +47,7 @@ export function SongSearch({
   onAddTyped?: (song: { title: string; artist: string; own: boolean }) => void;
 }) {
   const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   // The search function is read once (useLiveSearch), so it reads the current chips from a ref.
   const artistsRef = useRef(artists);
   useEffect(() => {
@@ -71,6 +72,7 @@ export function SongSearch({
       onValueChange={(value) => setActive({ query: state.query, value })}
     >
       <CommandInput
+        ref={inputRef}
         expanded={Boolean(typed)}
         value={query}
         onValueChange={(text) => {
@@ -110,13 +112,25 @@ export function SongSearch({
                 const artist = track.artists.map((a) => a.name).join(", ");
                 const added = isAdded(track);
                 return (
-                  <CommandItem key={track.id} value={`spotify:${track.id}`} data-checked={added} onSelect={() => !added && onAdd(track)}>
+                  <CommandItem key={track.id} value={`spotify:${track.id}`} data-checked={added} onSelect={() => {
+                      if (added) return;
+                      onAdd(track);
+                      // B-036: the list closes and the search box stays focused (cleared) for the next song.
+                      setQuery("");
+                      update("");
+                      inputRef.current?.focus();
+                    }}
+                  >
                     <SongCover image={track.image} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-bold">{track.title}</span>
                       <span className="block truncate text-xs text-muted-foreground">{[artist, track.album].filter(Boolean).join(" · ")}</span>
+                      {isByActArtist(track, artists) && (
+                        <span className="mt-0.5 block">
+                          <Badge variant="neutral">By your artist</Badge>
+                        </span>
+                      )}
                     </span>
-                    {isByActArtist(track, artists) && <Badge variant="neutral">By your artist</Badge>}
                     {track.durationMs !== null && <span className="font-mono text-xs text-muted-foreground tabular-nums">{formatDuration(track.durationMs)}</span>}
                     <span className={added ? "font-mono text-[11px] leading-4 font-bold tracking-[0.06em] uppercase" : "sr-only"}>{added ? "Added" : "Add"}</span>
                   </CommandItem>
@@ -133,6 +147,7 @@ export function SongSearch({
                   onAddTyped(parseTypedSong(typed));
                   setQuery("");
                   update("");
+                  inputRef.current?.focus();
                 }}
               >
                 <span className="min-w-0 flex-1 truncate">

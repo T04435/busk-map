@@ -34,7 +34,14 @@ const MAX_PICKED = 60;
 /** The songs you picked: a cover cell, title, "artist · album", a "Your song" badge, the length and a remove button. */
 export function PickedSongs({ songs, onRemove }: { songs: PickedSong[]; onRemove: (song: PickedSong) => void }) {
   if (songs.length === 0) return null;
+  const known = songs.reduce((sum, s) => sum + (s.durationMs ?? 0), 0);
+  const unknown = songs.some((s) => s.durationMs === null);
   return (
+    <div className="flex flex-col gap-1.5">
+      <p className="m-0 font-mono text-xs font-bold tracking-[0.06em] text-muted-foreground uppercase" data-testid="picks-header">
+        Your picks · {songs.length} {songs.length === 1 ? "song" : "songs"}
+        {known > 0 ? ` · ${unknown ? "at least " : ""}${formatDuration(known)}` : ""}
+      </p>
     <ul aria-label="Songs you picked" className="m-0 list-none divide-y divide-border border-2 border-rule bg-card p-0 text-sm">
       {songs.map((song) => (
         <li key={song.key} className="flex items-center gap-3 px-3 py-1.5">
@@ -51,6 +58,7 @@ export function PickedSongs({ songs, onRemove }: { songs: PickedSong[]; onRemove
         </li>
       ))}
     </ul>
+    </div>
   );
 }
 
@@ -132,9 +140,7 @@ export function RepertoirePicker({
       <SongSearch onAdd={(track) => addSongs([toPicked(track, false)])} isAdded={(track) => picked.some((p) => p.key === track.id)} artists={artists} onAddTyped={addTyped} />
       <PickedSongs songs={picked} onRemove={(song) => setPicked((current) => current.filter((p) => p !== song))} />
       <div className="space-y-1">
-        <Label htmlFor={linkId} className="sr-only">
-          Your Spotify artist link
-        </Label>
+        <Label htmlFor={linkId}>Your Spotify artist link (optional)</Label>
         <Input
           id={linkId}
           value={spotifyLink}
@@ -152,7 +158,7 @@ export function RepertoirePicker({
           aria-busy={loading}
           aria-invalid={linkError ? true : undefined}
           aria-describedby={linkError ? `${linkId}-err` : undefined}
-          placeholder="Your Spotify artist link (optional)"
+          placeholder="open.spotify.com/artist/…"
         />
         <div aria-live="polite">
           {loading ? (

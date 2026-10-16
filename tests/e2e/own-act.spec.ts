@@ -42,6 +42,23 @@ test.describe("own act", () => {
     await expect(form.getByText(/Paste your artist link/)).toBeVisible();
   });
 
+  test("B-036..B-040: a pick closes the list and keeps focus; picks header; hints; visible link label", async ({ page }) => {
+    await page.goto("/busks");
+    const form = page.getByRole("form", { name: "Plan for your own act" });
+    await expect(form.getByTestId("artists-hint")).toHaveText(/^0 of 10\. Type a comma to add a name that isn.t on Spotify\.$/);
+    await expect(form.getByText("Up to 6 hours")).toBeVisible();
+    await expect(form.getByText("Your Spotify artist link (optional)")).toBeVisible();
+    const box = form.getByPlaceholder("Search songs, e.g. Riptide");
+    await box.fill("Riptide");
+    const option = form.getByRole("option").first();
+    await expect(option).toBeVisible();
+    await option.click();
+    await expect(form.getByRole("option")).toHaveCount(0);
+    await expect(box).toBeFocused();
+    await expect(box).toHaveValue("");
+    await expect(form.getByTestId("picks-header")).toHaveText(/^Your picks · 1 song/);
+  });
+
   test("live search: artist chips, a picked song ranked by the act's artists, and the date picker", async ({ page }) => {
     await page.goto("/busks");
     const form = page.getByRole("form", { name: "Plan for your own act" });

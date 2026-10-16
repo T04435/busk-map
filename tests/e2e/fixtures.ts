@@ -81,5 +81,5 @@ export const SUNDAY = futureDay(0);
 export async function addTypedSong(form: import("@playwright/test").Locator, text: string) {
   const box = form.getByPlaceholder("Search songs, e.g. Riptide");
   await box.fill(text);
-  await form.getByRole("option", { name: /as typed/ }).click();
+  await form.getByRole("option", { name: /as typed/ }).last().click(); // the song search comes after the artists search
 }

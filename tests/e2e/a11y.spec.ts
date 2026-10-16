@@ -74,13 +74,13 @@ test.describe("accessibility", () => {
         await expect(cta).toBeFocused({ timeout: 500 });
       }).toPass();
       // One ring, an outline (not a second box-shadow layer), and the poster shadow stays as it was.
-      expect(await outline()).toBe("solid 3px rgb(255, 106, 43)"); // an outline 10px out, never a ring box-shadow
+      await expect.poll(outline).toBe("solid 3px rgb(255, 106, 43)"); // an outline 10px out, never a ring box-shadow (polled: outline-color transitions)
       expect(await shadow()).toBe(before);
     }
   });
 
   // F13/F14: one border and one focus ring per field. The ring is a single 2px box-shadow layer; no global rule stacks a second.
-  const visibleLayers = (shadow: string) => shadow.split(/,(?![^(]*\))/).map((s) => s.trim()).filter((s) => s !== "none" && !/rgba\(0, 0, 0, 0\)/.test(s) && /\d/.test(s));
+  const visibleLayers = (shadow: string) => shadow.split(/,(?![^(]*\))/).map((s) => s.trim()).filter((s) => s !== "none" && !/rgba\(0, 0, 0, 0\)/.test(s) && (s.match(/-?[\d.]+px/g) ?? []).some((n) => parseFloat(n) !== 0));
 
   test("a focused InputGroup search and a focused Input each show exactly one ring (F13, F14, B-005)", async ({ page }) => {
     await page.goto("/busks");

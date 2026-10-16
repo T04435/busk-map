@@ -6,6 +6,7 @@
 import { expect, LOCAL, test } from "../fixtures";
 
 type Api = import("@playwright/test").APIRequestContext;
+type Page = import("@playwright/test").Page;
 
 const add = (api: Api, title: string, artist: string, headers?: Record<string, string>) =>
   api.post("/api/playlist/songs", { data: { title, artist }, headers });
@@ -135,10 +136,10 @@ test.describe("QA Repertoire API", () => {
 test.describe("QA Repertoire: plans and examples never write one", () => {
   test.skip(!LOCAL, "Offline server only");
 
-  test("browsing every example, a week, a custom plan and the brain sets no cookie and creates nothing", async ({ page }) => {
+  test("browsing every example, a custom plan and the brain sets no cookie and creates nothing", async ({ page }) => {
     const writes: string[] = [];
     page.on("request", (r) => r.url().includes("/api/playlist") && r.method() !== "GET" && writes.push(`${r.method()} ${r.url()}`));
-    for (const path of ["/", "/plan?example=acoustic", "/plan?example=sax", "/plan?example=folk-duo", "/week?example=sax", "/brain", "/repertoire"]) {
+    for (const path of ["/", "/plan?example=acoustic", "/plan?example=sax", "/plan?example=folk-duo", "/brain", "/repertoire"]) {
       await page.goto(path);
       // An example link redirects on the client to its short link /p/<id>, then the plan streams.
       if (path.startsWith("/plan?example=")) await expect(page.getByRole("region", { name: "Pitches", exact: true })).toBeVisible();
@@ -155,12 +156,28 @@ test.describe("QA Repertoire: plans and examples never write one", () => {
 test.describe("QA Repertoire page: keyboard", () => {
   test.skip(!LOCAL, "Writes a Repertoire");
 
-  test("add with Enter, remove with the keyboard, and the status line says what happened", async ({ page }) => {
+  /**
+   * Plan inputs S4: a song not on Spotify goes in through the no-match fallback ("Type in a song": Title and Artist
+   * prefilled from the search, "Add as typed"). Offline the song search always answers with synthetic results, so the
+   * search is stubbed to Spotify's real empty answer to reach that state.
+   */
+  const addTyped = async (page: Page, song: string) => {
+    await page.getByPlaceholder("Search songs, e.g. Riptide").fill(song);
+    const typed = page.getByRole("group", { name: "Type in a song" });
+    await expect(typed).toBeVisible();
+    const [title, artist] = song.split(" - ");
+    await expect(typed.getByLabel("Song title")).toHaveValue(title);
+    await expect(typed.getByLabel("Artist")).toHaveValue(artist);
+    await typed.getByLabel("Artist").press("Enter");
+    await expect(page.getByRole("list", { name: "Songs you can sing" }).getByText(title, { exact: true })).toBeVisible();
+  };
+  test.beforeEach(async ({ page }) => {
+    await page.route(/\/api\/repertoire\?type=tracks/, (route) => route.fulfill({ json: { mode: "live", reason: null, tracks: [] } }));
+  });
+
+  test("add with Enter (typed, no Spotify match), remove with the keyboard, and the status line says what happened", async ({ page }) => {
     await page.goto("/repertoire");
-    const field = page.getByPlaceholder(/Title - Artist/i).first();
-    await field.focus();
-    await page.keyboard.type("Riptide - Vance Joy");
-    await page.keyboard.press("Enter");
+    await addTyped(page, "Riptide - Vance Joy");
     const list = page.getByRole("list", { name: "Songs you can sing" });
     await expect(list.getByRole("listitem")).toHaveCount(1);
     const remove = page.getByRole("button", { name: "Remove Riptide" });
@@ -168,19 +185,14 @@ test.describe("QA Repertoire page: keyboard", () => {
     await expect(remove).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("status").filter({ hasText: "Removed Riptide." }).first()).toBeAttached();
-    await expect(page.getByText("No songs yet.")).toBeVisible();
+    await expect(page.getByText(/^No songs yet\./)).toBeVisible();
     // B-016: focus must not be lost to <body> when the removed button disappears.
     expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe("BODY");
   });
 
   test("removing a song that isn't the last one keeps focus in the list (B-016)", async ({ page }) => {
     await page.goto("/repertoire");
-    const field = page.getByPlaceholder(/Title - Artist/i).first();
-    for (const song of ["Riptide - Vance Joy", "Scar - Missy Higgins", "Dumb Things - Paul Kelly"]) {
-      await field.fill(song);
-      await page.keyboard.press("Enter");
-      await expect(page.getByRole("list", { name: "Songs you can sing" }).getByText(song.split(" - ")[0])).toBeVisible();
-    }
+    for (const song of ["Riptide - Vance Joy", "Scar - Missy Higgins", "Dumb Things - Paul Kelly"]) await addTyped(page, song);
     await page.getByRole("button", { name: "Remove Scar" }).focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("list", { name: "Songs you can sing" }).getByRole("listitem")).toHaveCount(2);

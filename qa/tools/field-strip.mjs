@@ -5,7 +5,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 const require = createRequire(process.argv[2] + "/package.json");
 const { chromium } = require("@playwright/test");
 const B = `http://localhost:${process.argv[3]}`, OUT = process.argv[4]; mkdirSync(OUT, { recursive: true });
-const ROUTES = process.argv[5] ? process.argv[5].split(",") : ["/busks", "/tips", "/week?example=acoustic", "/"];
+const ROUTES = process.argv[5] ? process.argv[5].split(",") : ["/busks", "/repertoire", "/"];
 const SEL = 'main input:not([type=hidden]):not([type=checkbox]):not([type=radio]), main textarea, main select, main [role=combobox], main button, main [role=switch], main a[data-slot=button]';
 // A radio inside a choice card draws its focus on the CARD (BRAND's ruling: .bm-choice:focus-within), so measure the card.
 const CARD = "[data-slot=choice-card], .bm-choice";

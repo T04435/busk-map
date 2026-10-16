@@ -24,30 +24,30 @@ const titles = (p: { songs: { title: string }[] }) => p.songs.map((s) => s.title
 test.describe("QA Repertoire R2: the planners", () => {
   test.skip(!LOCAL, "Writes to the local offline server's memory store");
 
-  test("switch off: the form drops the Repertoire, the plan uses what was typed, and nothing is saved or recorded", async ({ page }) => {
+  test("Remove all for this busk: the plan sends none of the Repertoire's songs, and nothing is saved or recorded", async ({ page }) => {
+    // Plan inputs S5: the switch became one "Your Repertoire · N songs" block with "Edit for this busk".
     await seed(page.request);
     const before = await state(page.request);
-    await page.goto("/");
+    await page.goto("/busks");
     const f = form(page);
-    const sw = f.getByRole("switch", { name: "Use my Repertoire (2 songs)" });
-    await expect(sw).toBeChecked();
-    await sw.click();
-    await expect(sw).not.toBeChecked();
-    await expect(f.getByText("From your Repertoire")).toHaveCount(0);
-    await expect(f.getByRole("list", { name: "Songs you picked" })).toHaveCount(0);
-    // Back on restores it whole; off again for a typed act.
-    await sw.click();
-    await expect(f.getByRole("list", { name: "Songs you picked" }).getByRole("listitem")).toHaveCount(2);
-    await sw.click();
+    const block = f.getByTestId("repertoire-source");
+    await expect(block.getByTestId("repertoire-summary")).toHaveText(/^Your Repertoire · 2 songs/);
+    await block.getByRole("button", { name: "Edit for this busk" }).click();
+    await expect(block.getByRole("list", { name: "Songs for this busk" }).getByRole("listitem")).toHaveCount(2);
+    await block.getByRole("button", { name: "Remove all" }).click();
+    await expect(block.getByText("0 of 2 selected")).toBeVisible();
+    // Select all restores it whole; then remove all again for a suggested-only busk.
+    await block.getByRole("button", { name: "Select all" }).click();
+    await expect(block.getByText("2 of 2 selected")).toBeVisible();
+    await block.getByRole("button", { name: "Remove all" }).click();
+    await block.getByRole("button", { name: "Done" }).click();
+    await expect(block.getByTestId("suggested-only")).toBeVisible();
 
-    await f.getByLabel("Act name").fill("QA Typed Act");
-    await f.getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Paul Kelly");
-    await page.getByRole("option", { name: /Paul Kelly/ }).first().click();
     const posted = page.waitForRequest((r) => r.url().endsWith("/api/plans") && r.method() === "POST");
-    await f.getByRole("button", { name: "Plan my set" }).click();
+    await f.getByRole("button", { name: /^Plan my busk/ }).click();
     const body = (await posted).postDataJSON();
-    expect(body.performer.name).toBe("QA Typed Act");
     expect(body.performer.songs ?? []).toEqual([]);
+    expect((body.performer.skipSongs ?? []).map((s: { title: string }) => s.title).sort()).toEqual(titles({ songs: SONGS }));
     await waitForPlan(page);
 
     const after = await state(page.request);
@@ -143,34 +143,41 @@ test.describe("QA Repertoire R2: axe on the new states", () => {
   test.skip(!LOCAL, "Writes to the local offline server's memory store");
   const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
 
-  test("form with a Repertoire (and edited), week with its switch, plan offering Save these songs: 0 violations", async ({ page }) => {
+  test("form with a Repertoire (and edited), plan offering Save these songs: 0 violations", async ({ page }) => {
     const { default: AxeBuilder } = await import("@axe-core/playwright");
     const scan = async (what: string) => {
       const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
       expect(violations.map((v) => `${v.impact} ${v.id}`), what).toEqual([]);
     };
-    // No Repertoire yet: a typed busk's plan offers to save its songs.
-    await page.goto("/");
+    // No Repertoire yet: a busk with a song added just for it offers to save its songs.
+    await page.goto("/busks");
     const f = form(page);
     await f.getByLabel("Act name").fill("QA Save Offer");
     await f.getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Paul Kelly");
     await page.getByRole("option", { name: /Paul Kelly/ }).first().click();
-    await f.getByPlaceholder(/One per line/).fill("How to Make Gravy - Paul Kelly");
-    await f.getByRole("button", { name: "Plan my set" }).click();
+    const block = f.getByTestId("repertoire-source");
+    await block.getByRole("button", { name: "Edit for this busk" }).click();
+    await block.getByTestId("add-for-busk").locator("summary").click();
+    await block.getByPlaceholder("Search songs, e.g. Riptide").fill("How to Make Gravy");
+    await page.getByRole("option").first().click();
+    await expect(block.getByRole("list", { name: "Songs for this busk" }).getByRole("listitem")).toHaveCount(1);
+    await block.getByRole("button", { name: "Done" }).click();
+    await f.getByRole("button", { name: /^Plan my busk/ }).click();
     await waitForPlan(page);
     await expect(page.getByTestId("save-as-repertoire")).toBeVisible();
     await scan("plan with Save these songs");
 
     await seed(page.request);
-    await page.goto("/");
-    await expect(form(page).getByText("From your Repertoire")).toBeVisible();
+    await page.goto("/busks");
+    await expect(form(page).getByTestId("repertoire-summary")).toHaveText(/^Your Repertoire · 2 songs/);
     await scan("form with a Repertoire");
-    await form(page).getByRole("button", { name: "Remove Scar" }).click();
-    await expect(form(page).getByText("Edited for this busk")).toBeVisible();
+    await form(page).getByRole("button", { name: "Edit for this busk" }).click();
+    await form(page).getByRole("checkbox").first().click();
+    await expect(form(page).getByText("1 of 2 selected")).toBeVisible();
+    await scan("form editing for this busk");
+    await form(page).getByRole("button", { name: "Done" }).click();
+    await expect(form(page).getByText("Edited for this busk", { exact: true })).toBeVisible();
     await scan("form edited for this busk");
-    await page.goto("/week?example=sax");
-    // Loaded state: the loading skeleton has its own known issue (B-017).
-    await expect(page.getByRole("list", { name: "Top sessions" })).toBeVisible();
-    await scan("week with its switch");
   });
+
 });

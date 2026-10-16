@@ -12,7 +12,7 @@ const B = `http://localhost:${process.argv[3]}`;
 const GLYPHS = "▸►▶▹▷▻◂◄◀◃◁→←↑↓↔↗↘↙↖⇒⇐⟶⟵➜➔➝➞➡⬅✓✔✗✘✕✖★☆✦✧✩◆◇▲▼△▽●○◦•›‹»«";
 // “×” counts only when it stands alone (a close or remove icon); “1280 × 640” and “×3” are copy.
 const GLYPH_RE = new RegExp(`[${GLYPHS}]`);
-const ROUTES = ["/", "/busks", "/week?example=acoustic", "/brain", "/brand", "/privacy", "/terms", "/plan?example=folk-duo", "/this-is-not-a-pitch", "/p/ZZZZZZZZZ"];
+const ROUTES = ["/", "/busks", "/repertoire", "/brain", "/brand", "/privacy", "/terms", "/plan?example=folk-duo", "/this-is-not-a-pitch", "/p/ZZZZZZZZZ"];
 const out = [];
 const b = await chromium.launch();
 for (const w of [1440, 390]) {

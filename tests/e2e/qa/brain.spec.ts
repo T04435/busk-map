@@ -17,22 +17,22 @@ async function open(page: Page) {
 }
 
 test.describe("QA /brain", () => {
-  test("facts strip matches docs/qloo-data-map.md and qloo-map.ts (12 kinds, 24–33 per new busk, 0 on a rerun, 10 parts, ≤ 25 per learn run)", async ({ page }) => {
+  test("facts strip matches docs/qloo-data-map.md and qloo-map.ts (12 kinds, 24–33 per new busk, 0 on a rerun, 9 parts, ≤ 25 per learn run)", async ({ page }) => {
     await open(page);
     const facts = page.getByRole("region", { name: "Qloo calls per busk" }).getByRole("listitem");
-    // Repertoire R4 (cac564d): 12 kinds of call (#5c added), 10 parts (Songs to learn), and the learn-run cap.
-    await expect(facts).toHaveText([/^12\s*kinds of Qloo call$/, /^24–33\s*Qloo calls for a new busk$/, /^0\s*on a rerun: answers cached for 24 h$/, /^10\s*parts of your busk it decides$/, /^≤ 25\s*Qloo calls per learn run$/]);
-    await expect(page.getByTestId("quota-note")).toContainText("10,000 requests a month");
+    // Repertoire R4 (cac564d): 12 kinds of call (#5c added) and the learn-run cap; 9 parts since the Honeycomb integration (8f1391b).
+    await expect(facts).toHaveText([/^12\s*kinds of Qloo call$/, /^24–33\s*Qloo calls for a new busk$/, /^0\s*on a rerun: answers cached for 24 h$/, /^9\s*parts of your busk it decides$/, /^≤ 25\s*Qloo calls per learn run$/]);
+    await expect(page.getByTestId("quota-note")).toContainText("One key's 10,000 calls a month cover roughly 300–400 new busks");
   });
 
   test("keyboard trace: Enter traces and announces; Escape clears, announces, and returns focus to the node", async ({ page }) => {
     await open(page);
-    // Repertoire R4 renamed "Setlist and learn these" to "Suggested set" and added Last.fm as its second other source.
-    const setlist = node(page, /^Suggested set/);
+    // BRAND's batch renamed the setlist part "Set and songs to learn"; Last.fm is its second other source (Repertoire R4).
+    const setlist = node(page, /^Set and songs to learn/);
     await setlist.focus();
     await page.keyboard.press("Enter");
     await expect(setlist).toHaveAttribute("aria-pressed", "true");
-    await expect(status(page)).toHaveText("Tracing. Suggested set comes from 4 Qloo calls, 2 other sources and 6 data points. Other pieces are dimmed.");
+    await expect(status(page)).toHaveText("Tracing. Set and songs to learn comes from 4 Qloo calls, 2 other sources and 6 data points. Other pieces are dimmed.");
     // The panel's claim: four Qloo calls, Spotify and Last.fm meet here.
     const panel = page.getByTestId("trace-panel");
     await expect(panel).toContainText("Comes from:");
@@ -49,7 +49,7 @@ test.describe("QA /brain", () => {
   test("every piece traces by keyboard: Enter selects, announces, opens its panel; Escape clears and keeps focus", async ({ page }) => {
     await open(page);
     const ids = await page.locator("[data-node-id]").evaluateAll((els) => els.map((e) => e.getAttribute("data-node-id")!));
-    expect(ids.length, "12 kinds in 14 shapes (5b, 5c) + 3 sources (Spotify, Ticketmaster, Last.fm) + data points + 10 parts, per qloo-map.ts").toBe(45);
+    expect(ids.length, "12 kinds in 14 shapes (5b, 5c) + 3 sources (Spotify, Ticketmaster, Last.fm) + data points + 9 parts, per qloo-map.ts").toBe(44);
     for (const id of ids) {
       const piece = page.locator(`[data-node-id="${id}"]`);
       await piece.focus();
@@ -66,7 +66,7 @@ test.describe("QA /brain", () => {
 
   test("Next items are labelled as not built", async ({ page }) => {
     await open(page);
-    const next = page.getByRole("heading", { name: "Next (not built yet)" });
+    const next = page.getByRole("heading", { name: "Next · not built yet" });
     await expect(next).toBeVisible();
     await expect(next.locator("xpath=..").getByRole("listitem")).toHaveCount(3);
   });
@@ -83,7 +83,7 @@ test.describe("QA /brain", () => {
 
   test("the sticky trace panel never covers the focused node while tabbing (WCAG 2.4.11)", async ({ page }) => {
     await open(page);
-    await node(page, /^Suggested set/).click();
+    await node(page, /^Set and songs to learn/).click();
     const covered: string[] = [];
     for (let i = 0; i < 40; i++) {
       await page.keyboard.press("Tab");
@@ -106,13 +106,18 @@ test.describe("QA /brain", () => {
       await page.setViewportSize({ width, height: 900 });
       await open(page);
       const columns = await page.getByTestId("brain-grid").evaluate((g) => getComputedStyle(g).gridTemplateColumns.split(" ").length);
-      expect(columns, `${width}px columns`).toBe(wide ? 3 : 1);
-      // Wires: the SVG shows only at ≥1024 and then holds a path per edge. (A straight wire has zero height, so
-      // Playwright's toBeVisible can't be used on a path.)
-      const svg = page.locator("[data-testid=brain-grid] > svg");
-      expect(await svg.evaluate((el) => getComputedStyle(el).display), `${width}px wires`).toBe(wide ? "block" : "none");
-      if (wide) await expect.poll(() => svg.locator("path").count()).toBeGreaterThan(10);
-      await node(page, /^Suggested set/).click();
+      // Honeycomb: three columns with a 72 px wire gutter between each pair (5 tracks) at ≥1024, one stacked column below.
+      expect(columns, `${width}px columns`).toBe(wide ? 5 : 1);
+      // Wires: two aria-hidden gutters, shown only at ≥1024, each an SVG whose paths hold one "M…" segment per edge.
+      // (A straight wire has zero height, so Playwright's toBeVisible can't be used on a path.)
+      const gutters = page.locator("[data-testid=brain-grid] > div[aria-hidden=true]");
+      await expect(gutters).toHaveCount(2);
+      for (const d of await gutters.evaluateAll((els) => els.map((el) => getComputedStyle(el).display))) expect(d, `${width}px wires`).toBe(wide ? "block" : "none");
+      if (wide) {
+        const segments = await gutters.locator("path").evaluateAll((ps) => ps.reduce((n, p) => n + ((p.getAttribute("d") ?? "").match(/M/g)?.length ?? 0), 0));
+        expect(segments, "wire segments").toBeGreaterThan(10);
+      }
+      await node(page, /^Set and songs to learn/).click();
       const dimmed = page.locator('[data-trace="dim"]');
       expect(await dimmed.count()).toBeGreaterThan(0);
       if (wide) await expect(dimmed.first()).toBeVisible();

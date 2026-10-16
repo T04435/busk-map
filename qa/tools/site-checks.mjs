@@ -44,12 +44,12 @@ ok("F12 header and footer use the lockup ([hex mark][wordmark]) on every route; 
 ok("F12 one logo design in the app (outside /brand's specimens): the lockup only; no mark-only or wordmark-only anywhere (the favicon is exempt)", new Set(chrome.map(([k]) => kindOf(k))).size === 1 && kindOf(chrome[0]?.[0] ?? "") === "lockup", [...new Set(chrome.map(([k]) => `${k} (${kindOf(k)})`))].join(" | "));
 out.push("INFO  F12 lettering: compare a header crop with design-handoff/user-feedback-2026-10-17/04-wordmark-only-one.png (new stencil BUSK MAP); the old face with the larger M fails.");
 // Main nav = features only (user rule, 17 Oct): header and bottom-nav items are exactly the feature list (QA_NAV, default
-// "Busks"; "Busks,Repertoire" after the merge); never Brain, Brand, Week or Tips. Checked at 1440 (header) and 390 (bottom nav).
+// "Busks,Repertoire" since the integration on dev/core; "Busks" alone on the old design/honeycomb); never Brain, Brand, Week or Tips. Checked at 1440 (header) and 390 (bottom nav).
 {
-  const want = (process.env.QA_NAV || "Busks").split(",").map((x) => x.trim().toLowerCase());
+  const want = (process.env.QA_NAV || "Busks,Repertoire").split(",").map((x) => x.trim().toLowerCase());
   for (const w of [1440, 390]) {
     const q = await b.newPage({ viewport: { width: w, height: 900 } });
-    for (const r of ["/", "/busks", "/brain", "/brand", "/privacy"]) {
+    for (const r of ["/", "/busks", "/repertoire", "/brain", "/brand", "/privacy"]) {
       await q.goto(B + r); await q.waitForTimeout(800);
       const items = await q.evaluate(() => [...document.querySelectorAll("header nav a, nav[aria-label='Main'] a, nav[aria-label='Main navigation'] a")].filter((a) => a.getBoundingClientRect().width && !a.closest("footer")).map((a) => (a.innerText || a.getAttribute("aria-label") || "").trim()).filter((t) => t && !/busk map home/i.test(t)));
       const got = [...new Set(items.map((t) => t.toLowerCase()))];

@@ -11,8 +11,8 @@ const B = `http://localhost:${process.argv[3]}`;
 const out = [];
 const ok = (n, pass, d = "") => out.push(`${pass ? "PASS" : "FAIL"}  ${n}${d ? "  :: " + d : ""}`);
 const COPY = /plan (my|your) week|week planner|your week\b|this week's|top sessions|plan a week|\bweek from\b/i;
-const ROUTES = ["/", "/busks", "/brain", "/brand", "/privacy", "/terms", "/plan?example=folk-duo", "/no-such-page"];
-const COPY_ROUTES = new Set(["/", "/busks", "/plan?example=folk-duo"]);
+const ROUTES = ["/", "/busks", "/repertoire", "/brain", "/brand", "/privacy", "/terms", "/plan?example=folk-duo", "/no-such-page"];
+const COPY_ROUTES = new Set(["/", "/busks", "/repertoire", "/plan?example=folk-duo"]);
 
 // 1. Rendered pages
 const b = await chromium.launch();

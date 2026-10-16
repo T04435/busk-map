@@ -10,7 +10,7 @@ const B = `http://localhost:${process.argv[3]}`;
 const out = [];
 const ok = (n, pass, d = "") => out.push(`${pass ? "PASS" : "FAIL"}  ${n}${d ? "  :: " + d : ""}`);
 const COPY = /\btip log\b|\btip-log\b|log (your )?takings|your tips\b|tip history|\btakings\b|tips? bonus|from your tips/i;
-const ROUTES = ["/", "/busks", "/week?example=acoustic", "/brain", "/brand", "/privacy", "/terms", "/plan?example=folk-duo", "/no-such-page"];
+const ROUTES = ["/", "/busks", "/repertoire", "/brain", "/brand", "/privacy", "/terms", "/plan?example=folk-duo", "/no-such-page"];
 
 // 1. Rendered pages
 const b = await chromium.launch();

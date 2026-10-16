@@ -58,15 +58,7 @@ test.describe("QA decided rules", () => {
     await expect(page.getByText("Agent vs engine", { exact: true })).toBeVisible();
   });
 
-  for (const example of ["acoustic", "sax", "folk-duo"]) {
-    test(`R-3 week cap: at most 2 sessions per pitch (${example})`, async ({ page }) => {
-      await page.goto(`/week?example=${example}`);
-      const sessions = page.getByRole("list", { name: "Top sessions" }).getByRole("listitem");
-      await expect(sessions.first()).toBeVisible();
-      const pitches = (await sessions.allInnerTexts()).map((t) => t.split("\n")[0].split(" · ").at(-1)!.trim());
-      for (const name of new Set(pitches)) expect(pitches.filter((p) => p === name).length, name).toBeLessThanOrEqual(2);
-    });
-  }
+  // R-3 (week cap) retired: the user removed Week (17 Oct); /week is a 404, checked in the 404 test below.
 });
 
 test.describe("QA judge paths", () => {
@@ -89,10 +81,12 @@ test.describe("QA judge paths", () => {
     const response = await page.goto("/qa-no-such-page");
     expect(response?.status()).toBe(404);
     await expect(page.getByRole("link", { name: /home/i }).first()).toBeVisible();
+    // Week was removed by the user (17 Oct): its route is a 404 too.
+    expect((await page.goto("/week?example=sax"))?.status()).toBe(404);
   });
 
   test("no page needs a login: no sign-in control on the judge paths", async ({ page }) => {
-    for (const path of ["/", "/plan?example=acoustic", "/week?example=sax", "/brain"]) {
+    for (const path of ["/", "/busks", "/plan?example=acoustic", "/repertoire", "/brain"]) {
       await page.goto(path);
       await expect(page.getByRole("button", { name: /sign in|log in/i })).toHaveCount(0);
       await expect(page.getByRole("link", { name: /sign in|log in/i })).toHaveCount(0);

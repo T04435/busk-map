@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { nameKey, songKey } from "./text";
 import { spotifyIdSchema } from "./plan-schema";
+import { parseSpotifyArtistId } from "./spotify-link";
 
 export const SONG_STATES = ["can_sing", "learned"] as const;
 export type SongState = (typeof SONG_STATES)[number];
@@ -30,6 +31,28 @@ export type AddSongInput = z.infer<typeof addSongSchema>;
 export const songStateSchema = z.object({ state: z.enum(SONG_STATES) });
 
 export const soundsLikeSchema = z.array(z.object({ name: line(80), spotifyId: spotifyIdSchema.optional(), qlooId: z.string().max(80).optional() })).max(10);
+/** The act's Spotify artist profile: an open.spotify.com/artist/<id> link, a spotify:artist: URI or a bare id; stored as the id. */
+export const spotifyArtistInputSchema = z
+  .string()
+  .max(300)
+  .transform((value, ctx) => {
+    const id = parseSpotifyArtistId(value);
+    if (!id) {
+      ctx.addIssue({ code: "custom", message: "That isn't a Spotify artist link. It starts with open.spotify.com/artist/." });
+      return z.NEVER;
+    }
+    return id;
+  });
+/** A snapshot of the act's Spotify artist profile, kept so the page need not call Spotify each time. */
+export const spotifyProfileSchema = z.object({
+  name: line(120),
+  images: z.array(z.object({ url: z.string().max(500), width: z.number().int().nullable().optional(), height: z.number().int().nullable().optional() })).max(10),
+  genres: z.array(line(60)).max(20),
+  followers: z.number().int().nonnegative().optional(),
+  fetchedAt: z.string().max(40),
+});
+export type SpotifyProfile = z.infer<typeof spotifyProfileSchema>;
+export const qlooArtistIdSchema = z.string().min(1).max(80);
 export const usualPitchesSchema = z.array(z.object({ name: line(80), lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180) })).max(3);
 
 /**
@@ -42,15 +65,21 @@ export const patchPlaylistSchema = z
     revision: z.number().int().min(1),
     actName: line(80).nullable().optional(),
     soundsLike: soundsLikeSchema.optional(),
+    spotifyArtistId: spotifyArtistInputSchema.nullable().optional(),
+    spotifyProfile: spotifyProfileSchema.nullable().optional(),
+    qlooArtistId: qlooArtistIdSchema.nullable().optional(),
     usualPitches: usualPitchesSchema.optional(),
     songs: z.array(addSongSchema).max(60).optional(),
   })
-  .refine((v) => v.actName !== undefined || v.soundsLike !== undefined || v.usualPitches !== undefined || v.songs !== undefined, { message: "Nothing to change." });
+  .refine((v) => v.actName !== undefined || v.soundsLike !== undefined || v.spotifyArtistId !== undefined || v.spotifyProfile !== undefined || v.qlooArtistId !== undefined || v.usualPitches !== undefined || v.songs !== undefined, { message: "Nothing to change." });
 
 /** POST /api/playlist may seed a new Repertoire ("Save these songs as your Repertoire"); an existing one is returned as it is. */
 export const createPlaylistSchema = z.object({
   actName: line(80).nullable().optional(),
   soundsLike: soundsLikeSchema.optional(),
+  spotifyArtistId: spotifyArtistInputSchema.nullable().optional(),
+  spotifyProfile: spotifyProfileSchema.nullable().optional(),
+  qlooArtistId: qlooArtistIdSchema.nullable().optional(),
   songs: z.array(addSongSchema).max(60).optional(),
 });
 export type CreatePlaylistInput = z.infer<typeof createPlaylistSchema>;
@@ -121,6 +150,11 @@ export type PlaylistView = {
   revision: number;
   actName: string | null;
   soundsLike: SoundsLike[];
+  /** The act's Spotify artist id (the link is derived), or null. */
+  spotifyArtistId: string | null;
+  /** Profile features: the profile snapshot and the act's artist in Qloo (no UI yet). */
+  spotifyProfile?: SpotifyProfile | null;
+  qlooArtistId?: string | null;
   usualPitches: UsualPitch[];
   city: string;
   songs: PlaylistSongView[];

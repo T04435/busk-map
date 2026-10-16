@@ -11,6 +11,7 @@ const view = (over: Partial<PlaylistView> = {}): PlaylistView => ({
   revision: 4,
   actName: "Jess",
   soundsLike: [{ name: "Paul Kelly", spotifyId: SPOTIFY_ID }, { name: "Missy Higgins" }],
+  spotifyArtistId: null,
   usualPitches: [],
   city: "melbourne",
   songs: [

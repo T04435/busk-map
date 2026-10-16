@@ -8,7 +8,7 @@ import { clearCookie, ensurePlaylist, errorResponse, guardMutation, isResponse, 
  *
  * GET     my Repertoire, or { playlist: null }. Never creates one.
  * POST    create it (idempotent: an existing one is returned as it is). Sets the cookie. 10 new an hour per IP.
- *         An optional body seeds a new one: { actName, soundsLike, songs } ("Save these songs as your Repertoire").
+ *         An optional body seeds a new one: { actName, soundsLike, spotifyArtistId, songs } ("Save these songs as your Repertoire").
  * PATCH   act name, sounds like, usual pitches, and the whole set of songs you can sing. Needs the `revision`
  *         last seen: 409 when stale.
  * DELETE  forget: deletes the Repertoire and clears the cookie.
@@ -33,8 +33,8 @@ export async function POST(request: Request) {
   const made = await ensurePlaylist(request, session);
   if (isResponse(made)) return made;
   const seed = seedBody?.data;
-  if (created && seed && (seed.actName !== undefined || seed.soundsLike || seed.songs?.length)) {
-    await session.store.update(made.playlist.id, { revision: made.playlist.revision, actName: seed.actName, soundsLike: seed.soundsLike, songs: seed.songs });
+  if (created && seed && (seed.actName !== undefined || seed.soundsLike || seed.spotifyArtistId !== undefined || seed.spotifyProfile !== undefined || seed.qlooArtistId !== undefined || seed.songs?.length)) {
+    await session.store.update(made.playlist.id, { revision: made.playlist.revision, actName: seed.actName, soundsLike: seed.soundsLike, spotifyArtistId: seed.spotifyArtistId, spotifyProfile: seed.spotifyProfile, qlooArtistId: seed.qlooArtistId, songs: seed.songs });
   }
   return json({ playlist: await viewOf(session.store, made.playlist) }, { status: created ? 201 : 200 }, made.cookies);
 }

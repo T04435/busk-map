@@ -7,7 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Icon } from "@/components/honeycomb/icon";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
+import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
+import { parseSpotifyArtistId, spotifyArtistUrl } from "@/lib/spotify-link";
 import type { ActArtist } from "@/lib/track-rank";
+import { Button } from "@/components/ui/button";
 
 const MAX_OWN = 20;
 
@@ -31,6 +34,8 @@ export function RepertoireAdd({
   onAddTrack,
   onAddTyped,
   onAddOwn,
+  profileId = null,
+  onProfileChange,
 }: {
   artists: readonly ActArtist[];
   isAdded: (track: TrackResult) => boolean;
@@ -38,14 +43,25 @@ export function RepertoireAdd({
   onAddTyped: (song: { title: string; artist: string }) => void | Promise<unknown>;
   /** The songs found on the artist's profile (up to 20). */
   onAddOwn: (tracks: TrackResult[]) => void | Promise<unknown>;
+  /** The Spotify artist id saved with the Repertoire: it fills the link, and its songs are NOT loaded again unless asked. */
+  profileId?: string | null;
+  /** The link was changed and its songs loaded (the id), or cleared (null). The parent decides whether to save it. */
+  onProfileChange?: (id: string | null) => void;
 }) {
-  const [link, setLink] = useState("");
+  const initial = profileId ? spotifyArtistUrl(profileId) : "";
+  const [link, setLink] = useState(initial);
   const [note, setNote] = useState<string | null>(null);
-  const loaded = useRef("");
+  // What the songs were last loaded for. The saved link starts as loaded, so a page load or a blur never calls Spotify.
+  const loaded = useRef(initial);
 
-  async function load() {
+  async function load(force = false) {
     const value = link.trim();
-    if (value.length < 10 || loaded.current === value) return;
+    if (!value) {
+      if (loaded.current) onProfileChange?.(null);
+      loaded.current = "";
+      return;
+    }
+    if (value.length < 10 || (!force && loaded.current === value)) return;
     loaded.current = value;
     setNote("Loading your songs from Spotify…");
     const res = await fetch(`/api/repertoire?${new URLSearchParams({ type: "artist", link: value })}`).catch(() => null);
@@ -57,6 +73,8 @@ export function RepertoireAdd({
       return;
     }
     await onAddOwn(tracks.slice(0, MAX_OWN));
+    const id = parseSpotifyArtistId(value);
+    if (id) onProfileChange?.(id);
     setNote(
       body?.mode === "synthetic"
         ? "Offline test mode: these songs are made up, not from Spotify."
@@ -68,7 +86,6 @@ export function RepertoireAdd({
     <div className="space-y-4" data-testid="repertoire-add">
       <div className="space-y-1">
         <Label htmlFor="spotify-profile">1. Your Spotify artist profile (optional)</Label>
-        <p className="text-sm text-muted-foreground">If you release music, paste your profile link and we add your own songs, tagged Your song. No profile? Skip to step 2.</p>
         <InputGroup>
           <InputGroupAddon>
             <Icon name="spotify" size={18} />
@@ -88,6 +105,11 @@ export function RepertoireAdd({
             autoComplete="off"
           />
         </InputGroup>
+        {link.trim() && (
+          <Button type="button" variant="outline" size="sm" onClick={() => void load(true)}>
+            {COPY.profile.refresh}
+          </Button>
+        )}
         {note && (
           <p className="text-sm text-muted-foreground" role="status">
             {note}

@@ -22,7 +22,7 @@ export function cachedLookupScope(original: { lookupScope: <T>(name: string, arg
 export const pitch = { name: "Bourke Street Mall", lat: -37.8136, lon: 144.9653 };
 
 export function playlist(over: Partial<PlaylistRecord> = {}): PlaylistRecord {
-  return { id: "pl-1", actName: "Test Act", soundsLike: [{ name: "Paul Kelly" }], usualPitches: [pitch], recentBusks: [], city: "melbourne", revision: 1, createdAt: 0, lastSeenAt: 0, ...over };
+  return { id: "pl-1", actName: "Test Act", soundsLike: [{ name: "Paul Kelly" }], spotifyArtistId: null, usualPitches: [pitch], recentBusks: [], city: "melbourne", revision: 1, createdAt: 0, lastSeenAt: 0, ...over };
 }
 
 export const sung = (title: string, artist: string, state: "can_sing" | "learned" = "can_sing") => ({ title, artist, key: playlistSongKey(artist, title), state });

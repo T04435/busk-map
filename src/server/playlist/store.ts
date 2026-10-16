@@ -1,6 +1,6 @@
 import "server-only";
 import { neon } from "@neondatabase/serverless";
-import { playlistSongKey, type AddPlanSuggestionInput, type AddSongInput, type LearnSuggestionView, type PatchPlaylistInput, type PlaylistSongView, type PlaylistView, type SongSource, type SongState, type SoundsLike, type UsualPitch } from "@/lib/playlist-schema";
+import { playlistSongKey, type AddPlanSuggestionInput, type AddSongInput, type LearnSuggestionView, type PatchPlaylistInput, type PlaylistSongView, type PlaylistView, type SongSource, type SongState, type SoundsLike, type SpotifyProfile, type UsualPitch } from "@/lib/playlist-schema";
 import { usualFromBusks, withBusk, type RecentBusk } from "@/lib/playlist-usual";
 import { storeDatabaseUrl } from "@/server/env";
 import { log } from "@/server/log";
@@ -16,6 +16,9 @@ export type PlaylistRecord = {
   id: string;
   actName: string | null;
   soundsLike: SoundsLike[];
+  spotifyArtistId: string | null;
+  spotifyProfile?: SpotifyProfile | null;
+  qlooArtistId?: string | null;
   usualPitches: UsualPitch[];
   /** The last few busks planned with it, newest first (migration 006): where usualPitches comes from. */
   recentBusks: RecentBusk[];
@@ -90,6 +93,9 @@ export function toPlaylistView(playlist: PlaylistRecord, songs: StoredSong[]): P
     revision: playlist.revision,
     actName: playlist.actName,
     soundsLike: playlist.soundsLike,
+    spotifyArtistId: playlist.spotifyArtistId,
+    spotifyProfile: playlist.spotifyProfile ?? null,
+    qlooArtistId: playlist.qlooArtistId ?? null,
     usualPitches: playlist.usualPitches,
     city: playlist.city,
     songs: songs.map(toSongView),
@@ -163,7 +169,7 @@ export class MemoryPlaylistStore implements PlaylistStore {
   }
 
   async create(tokenHash: string, now = Date.now()) {
-    const row = { id: crypto.randomUUID(), tokenHash, actName: null, soundsLike: [], usualPitches: [], recentBusks: [], city: "melbourne", revision: 1, createdAt: now, lastSeenAt: now };
+    const row = { id: crypto.randomUUID(), tokenHash, actName: null, soundsLike: [], spotifyArtistId: null, usualPitches: [], recentBusks: [], city: "melbourne", revision: 1, createdAt: now, lastSeenAt: now };
     this.playlists.set(tokenHash, row);
     this.songRows.set(row.id, []);
     if (this.playlists.size > 1000) {
@@ -238,6 +244,9 @@ export class MemoryPlaylistStore implements PlaylistStore {
     if (row.revision !== patch.revision) return { ok: false, reason: "stale" };
     if (patch.actName !== undefined) row.actName = patch.actName;
     if (patch.soundsLike) row.soundsLike = structuredClone(patch.soundsLike);
+    if (patch.spotifyArtistId !== undefined) row.spotifyArtistId = patch.spotifyArtistId;
+    if (patch.spotifyProfile !== undefined) row.spotifyProfile = patch.spotifyProfile;
+    if (patch.qlooArtistId !== undefined) row.qlooArtistId = patch.qlooArtistId;
     if (patch.usualPitches) row.usualPitches = structuredClone(patch.usualPitches);
     if (patch.songs) this.replaceSongs(row.id, patch.songs);
     row.revision++;
@@ -311,6 +320,9 @@ type PlaylistRow = {
   id: string;
   act_name: string | null;
   sounds_like: SoundsLike[];
+  spotify_artist_id: string | null;
+  spotify_profile?: SpotifyProfile | null;
+  qloo_artist_id?: string | null;
   usual_pitches: UsualPitch[];
   recent_busks: RecentBusk[];
   city: string;
@@ -333,13 +345,16 @@ type SongRow = {
   added_at: Time;
 };
 
-const PLAYLIST_COLUMNS = "id, act_name, sounds_like, usual_pitches, recent_busks, city, revision, created_at, last_seen_at";
+const PLAYLIST_COLUMNS = "id, act_name, sounds_like, spotify_artist_id, spotify_profile, qloo_artist_id, usual_pitches, recent_busks, city, revision, created_at, last_seen_at";
 const SONG_COLUMNS = "id::text AS id, song_key, state, source, title, artist, own, spotify_track_id, year, duration_ms, added_at";
 
 const toRecord = (r: PlaylistRow): PlaylistRecord => ({
   id: r.id,
   actName: r.act_name,
   soundsLike: r.sounds_like,
+  spotifyArtistId: r.spotify_artist_id ?? null,
+  spotifyProfile: r.spotify_profile ?? null,
+  qlooArtistId: r.qloo_artist_id ?? null,
   usualPitches: r.usual_pitches,
   recentBusks: r.recent_busks ?? [],
   city: r.city,
@@ -484,6 +499,9 @@ export class PostgresPlaylistStore implements PlaylistStore {
             SET act_name = CASE WHEN $3::boolean THEN $4::text ELSE act_name END,
                 sounds_like = CASE WHEN $5::boolean THEN $6::jsonb ELSE sounds_like END,
                 usual_pitches = CASE WHEN $7::boolean THEN $8::jsonb ELSE usual_pitches END,
+                spotify_artist_id = CASE WHEN $11::boolean THEN $12::text ELSE spotify_artist_id END,
+                spotify_profile = CASE WHEN $13::boolean THEN $14::jsonb ELSE spotify_profile END,
+                qloo_artist_id = CASE WHEN $15::boolean THEN $16::text ELSE qloo_artist_id END,
                 revision = revision + 1, updated_at = now()
           WHERE id = $1 AND revision = $2
           RETURNING ${PLAYLIST_COLUMNS}
@@ -513,6 +531,12 @@ export class PostgresPlaylistStore implements PlaylistStore {
         JSON.stringify(patch.usualPitches ?? []),
         wanted !== null,
         JSON.stringify(wanted ?? []),
+        patch.spotifyArtistId !== undefined,
+        patch.spotifyArtistId ?? null,
+        patch.spotifyProfile !== undefined,
+        patch.spotifyProfile === null || patch.spotifyProfile === undefined ? null : JSON.stringify(patch.spotifyProfile),
+        patch.qlooArtistId !== undefined,
+        patch.qlooArtistId ?? null,
       ],
     )) as PlaylistRow[];
     if (rows[0]) return { ok: true, playlist: toRecord(rows[0]) };

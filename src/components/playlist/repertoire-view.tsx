@@ -13,7 +13,11 @@ import { formatDuration } from "@/lib/live-search";
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import { playlistSongKey, type PlaylistSongView, type PlaylistView } from "@/lib/playlist-schema";
 import { LearnPanel } from "./learn-panel";
-import { addSong, forgetPlaylist, loadPlaylist, moveSong, removeSong, type PlaylistResult } from "./playlist-api";
+import { addSong, createPlaylist, forgetPlaylist, loadPlaylist, moveSong, removeSong, savePlaylist, type PlaylistResult } from "./playlist-api";
+import { ArtistPicker, typedArtists, type PickedArtist } from "@/components/landing/artist-picker";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { draftOf, repertoireDraft, sameDraft } from "@/lib/repertoire-prefill";
 
 const NO_ARTISTS: never[] = [];
 /** The song search box: the field to land on when a list empties. */
@@ -47,15 +51,27 @@ export function RepertoireView() {
   const [loaded, setLoaded] = useState(false);
   const [message, setMessage] = useState<{ kind: "error" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  // The act fields: edited here, written only by "Save act details".
+  const [actName, setActName] = useState("");
+  const [actArtists, setActArtists] = useState<PickedArtist[]>([]);
+  const [artistQuery, setArtistQuery] = useState("");
   // Where focus goes once a row is gone (B-016): the next row's action, the previous one's, or the add field.
   const focusAfter = useRef<string | null>(null);
+
+  function fillAct(view: PlaylistView) {
+    setActName(view.actName ?? "");
+    setActArtists(view.soundsLike.map((a): PickedArtist => ({ name: a.name, spotifyId: a.spotifyId ?? null, image: null })));
+    setArtistQuery("");
+  }
 
   useEffect(() => {
     let live = true;
     loadPlaylist().then((result) => {
       if (!live) return;
-      if (result.ok) setPlaylist(result.playlist);
-      else setMessage({ kind: "error", text: result.message });
+      if (result.ok) {
+        setPlaylist(result.playlist);
+        if (result.playlist) fillAct(result.playlist);
+      } else setMessage({ kind: "error", text: result.message });
       setLoaded(true);
     });
     return () => {
@@ -130,6 +146,35 @@ export function RepertoireView() {
     if (count > 0) setMessage({ kind: "info", text: `Added ${count} of your songs.` });
   }
 
+  const chosenArtists = () => {
+    const chosen = [...actArtists];
+    for (const typed of typedArtists(artistQuery)) if (!chosen.some((a) => a.name.toLowerCase() === typed.toLowerCase())) chosen.push({ name: typed, spotifyId: null, image: null });
+    return chosen.slice(0, 10);
+  };
+  const actEdited = !sameDraft(
+    draftOf({ name: actName.replace(/\s+/g, " ").trim(), artists: chosenArtists().map((a) => a.name), songs: [] }),
+    repertoireDraft({ actName: playlist?.actName ?? null, soundsLike: playlist?.soundsLike ?? [], songs: [] }),
+  );
+
+  /** The only thing here that writes the act: an explicit save, checked against the revision last seen (a first save creates the Repertoire). */
+  async function saveAct() {
+    const act = {
+      actName: actName.replace(/\s+/g, " ").trim() || null,
+      soundsLike: chosenArtists().map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}) })),
+    };
+    const ok = await run(() => (playlist ? savePlaylist({ revision: playlist.revision, ...act }) : createPlaylist(act)), COPY.act.savedPage);
+    if (ok) setArtistQuery("");
+  }
+
+  /** The Spotify profile link was changed and its songs loaded: keep it in the Repertoire so it is never asked again. */
+  async function saveProfile(id: string | null) {
+    const current = await loadPlaylist();
+    if (!current.ok) return;
+    const saved = await (current.playlist ? savePlaylist({ revision: current.playlist.revision, spotifyArtistId: id }) : createPlaylist({ spotifyArtistId: id }));
+    // Quietly: the "Added N of your songs" line from the load stays on screen.
+    if (saved.ok) setPlaylist(saved.playlist);
+  }
+
   async function forget() {
     if (!window.confirm(COPY.forgetConfirm)) return;
     await run(() => forgetPlaylist(), COPY.forgotten);
@@ -152,11 +197,38 @@ export function RepertoireView() {
         </Alert>
       )}
 
+      <section aria-labelledby="act-heading" className="max-w-2xl space-y-4" data-testid="act-profile">
+        <h2 id="act-heading" className="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
+          {COPY.act.heading}
+        </h2>
+        <p className="text-sm text-muted-foreground">{COPY.act.intro}</p>
+        <div className="space-y-1.5">
+          <Label htmlFor="name">Act name</Label>
+          <Input id="name" value={actName} onChange={(e) => setActName(e.target.value)} placeholder="e.g. Jess on acoustic guitar" maxLength={80} />
+        </div>
+        <ArtistPicker value={actArtists} onChange={setActArtists} query={artistQuery} onQueryChange={setArtistQuery} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" size="sm" disabled={busy || !actEdited} onClick={() => void saveAct()}>
+            {COPY.act.savePage}
+          </Button>
+          {actEdited && (
+            <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => playlist ? fillAct(playlist) : (setActName(""), setActArtists([]), setArtistQuery(""))}>
+              {COPY.act.back}
+            </Button>
+          )}
+        </div>
+      </section>
+
+      <Separator />
+
       <section aria-labelledby="add-heading" className="max-w-2xl space-y-4">
         <h2 id="add-heading" className="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
           {COPY.searchLabel}
         </h2>
         <RepertoireAdd
+          key={loaded ? "loaded" : "loading"}
+          profileId={playlist?.spotifyArtistId ?? null}
+          onProfileChange={(id) => void saveProfile(id)}
           artists={NO_ARTISTS}
           isAdded={(track) => keys.has(playlistSongKey(track.artists[0]?.name ?? "Unknown artist", track.title))}
           onAddTrack={(track) => void run(() => addSong(trackSong(track)), `Added ${track.title}.`)}

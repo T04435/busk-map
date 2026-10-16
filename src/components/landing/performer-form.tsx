@@ -135,9 +135,15 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
   const router = useRouter();
   // The Repertoire is the starting point when there is one with songs; ?again (a plan's act) still wins.
   const [saved, setSaved] = useState<PlaylistView | null>(repertoire && repertoire.songs.length > 0 && !prefill ? repertoire : null);
+  // The act (name, artists, Spotify profile) starts from the Repertoire's, even when it has no songs; ?again still wins for name and artists.
+  const [rep, setRep] = useState<PlaylistView | null>(repertoire);
   const initial = saved ? repertoireFields(saved) : null;
-  const [name, setName] = useState(initial?.name ?? prefill?.performer.name ?? "");
-  const [artists, setArtists] = useState<PickedArtist[]>(() => initial?.artists ?? prefillArtists(prefill));
+  const repAct = rep && !prefill ? repertoireFields(rep) : null;
+  const [name, setName] = useState(repAct?.name ?? initial?.name ?? prefill?.performer.name ?? "");
+  const [artists, setArtists] = useState<PickedArtist[]>(() => repAct?.artists ?? initial?.artists ?? prefillArtists(prefill));
+  const [profileId, setProfileId] = useState<string | null>(repertoire?.spotifyArtistId ?? null);
+  const [actNote, setActNote] = useState<{ kind: "info" | "error" | "stale"; text: string } | null>(null);
+  const [actBusy, setActBusy] = useState(false);
   const [artistQuery, setArtistQuery] = useState("");
   // The block: the Repertoire's songs (or the last busk's), the ones unticked for this busk, and the ones added just for it.
   const [base, setBase] = useState<PickedSong[]>(() => initial?.picked ?? prefillSongs(prefill));
@@ -191,38 +197,74 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
     return { parsedSongs, chosen };
   }
 
-  const edited = saved !== null && !sameDraft(draftOf({ name: clean(name), artists: currentFields().chosen.map((a) => a.name), songs: currentFields().parsedSongs }), repertoireDraft(saved));
+  // The songs and the act are saved separately: each has its own explicit save and its own "back to my Repertoire".
+  const edited = saved !== null && !sameDraft(draftOf({ name: "", artists: [], songs: currentFields().parsedSongs }), repertoireDraft({ actName: null, soundsLike: [], songs: saved.songs }));
+  const actEdited =
+    rep !== null &&
+    (!sameDraft(draftOf({ name: clean(name), artists: currentFields().chosen.map((a) => a.name), songs: [] }), repertoireDraft({ actName: rep.actName, soundsLike: rep.soundsLike, songs: [] })) ||
+      (profileId ?? null) !== (rep.spotifyArtistId ?? null));
 
-  function fillFrom(view: PlaylistView) {
-    const fields = repertoireFields(view);
-    setName(fields.name);
-    setArtists(fields.artists);
-    setArtistQuery("");
-    setBase(fields.picked);
+  function fillSongsFrom(view: PlaylistView) {
+    setBase(repertoireFields(view).picked);
     setRemoved(new Set());
     setAdded([]);
   }
 
+  function fillActFrom(view: PlaylistView) {
+    const fields = repertoireFields(view);
+    setName(fields.name);
+    setArtists(fields.artists);
+    setArtistQuery("");
+    setProfileId(view.spotifyArtistId ?? null);
+  }
+
+  function fillFrom(view: PlaylistView) {
+    fillActFrom(view);
+    fillSongsFrom(view);
+  }
+
   function reset() {
-    if (saved) fillFrom(saved);
+    if (saved) fillSongsFrom(saved);
+  }
+
+  function resetAct() {
+    if (rep) fillActFrom(rep);
+    setActNote(null);
+  }
+
+  /** Explicit save of the act: the name, the artists you sound like and the Spotify profile. Songs are not touched. */
+  async function saveAct() {
+    if (!rep) return;
+    const { chosen } = currentFields();
+    setActBusy(true);
+    setActNote(null);
+    const result = await savePlaylist({
+      revision: rep.revision,
+      actName: clean(name) || null,
+      soundsLike: chosen.slice(0, 10).map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}) })),
+      spotifyArtistId: profileId,
+    });
+    setActBusy(false);
+    if (result.ok && result.playlist) {
+      setRep(result.playlist);
+      if (saved) setSaved({ ...saved, revision: result.playlist.revision });
+      fillActFrom(result.playlist);
+      setActNote({ kind: "info", text: COPY.saved });
+    } else if (!result.ok) setActNote({ kind: result.code === "stale" ? "stale" : "error", text: result.message });
   }
 
   /** The only thing here that writes the Repertoire: an explicit save, checked against the revision last seen. */
   async function saveToRepertoire() {
     if (!saved) return;
-    const { parsedSongs, chosen } = currentFields();
+    const { parsedSongs } = currentFields();
     setRepBusy(true);
     setRepNote(null);
-    const result = await savePlaylist({
-      revision: saved.revision,
-      actName: clean(name) || null,
-      soundsLike: chosen.slice(0, 10).map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}) })),
-      songs: parsedSongs.slice(0, 60),
-    });
+    const result = await savePlaylist({ revision: saved.revision, songs: parsedSongs.slice(0, 60) });
     setRepBusy(false);
     if (result.ok && result.playlist) {
       setSaved(result.playlist);
-      fillFrom(result.playlist);
+      setRep(result.playlist);
+      fillSongsFrom(result.playlist);
       setRepNote({ kind: "info", text: COPY.saved });
     } else if (!result.ok) setRepNote({ kind: result.code === "stale" ? "stale" : "error", text: result.message });
   }
@@ -232,8 +274,10 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
     const result = await loadPlaylist();
     if (result.ok && result.playlist) {
       setSaved(result.playlist);
+      setRep(result.playlist);
       fillFrom(result.playlist);
       setRepNote(null);
+      setActNote(null);
     }
   }
 
@@ -330,10 +374,11 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
   const errorId = (field: Field) => (error?.field === field ? `err-${field}` : undefined);
   const hasError = (field: Field) => error?.field === field;
 
-  const noteView = repNote && (
-    <FormMessage tone={repNote.kind === "info" ? "success" : "error"}>
-      {repNote.text}
-      {repNote.kind === "stale" && (
+  const noteOf = (note: typeof repNote) =>
+    note && (
+    <FormMessage tone={note.kind === "info" ? "success" : "error"}>
+      {note.text}
+      {note.kind === "stale" && (
         <>
           {" "}
           <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={() => void reloadRepertoire()}>
@@ -342,7 +387,8 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
         </>
       )}
     </FormMessage>
-  );
+    );
+  const noteView = noteOf(repNote);
 
   return (
     <form ref={formRef} onSubmit={submit} onKeyDown={keepEnterInFields} className="flex flex-col gap-7 border-2 border-rule bg-card p-4 md:p-7" aria-label="Plan for your own act" aria-busy={submitting || undefined} noValidate>
@@ -364,6 +410,18 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
             </FormMessage>
           )}
         </div>
+        {rep && actEdited && (
+          <div className="flex flex-wrap items-center gap-2" data-testid="save-act">
+            <p className="text-sm text-muted-foreground">{COPY.act.editedHint}</p>
+            <Button type="button" variant="outline" size="sm" disabled={actBusy} onClick={() => void saveAct()}>
+              {actBusy ? COPY.saving : COPY.act.save}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" disabled={actBusy} onClick={resetAct}>
+              {COPY.act.back}
+            </Button>
+          </div>
+        )}
+        {noteOf(actNote)}
       </section>
 
       <div data-field="songs" className="flex flex-col gap-1.5">
@@ -383,6 +441,8 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
               onAddTrack={(track) => addSongs([toPicked(track, false)])}
               onAddTyped={(song) => addSongs([typedSong(song.title, song.artist)])}
               onAddOwn={(tracks) => addSongs(tracks.map((t) => toPicked(t, true)))}
+              profileId={profileId}
+              onProfileChange={setProfileId}
             />
           }
           save={saved ? { edited, busy: repBusy, onSave: () => void saveToRepertoire(), onReset: reset, note: noteView } : null}

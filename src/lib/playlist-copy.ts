@@ -87,6 +87,18 @@ export const PLAYLIST_COPY = {
     removeFromRepertoireToo: "Remove them from my Repertoire too",
   },
 
+  // The act (name, artists you sound like, Spotify profile) kept in the Repertoire
+  act: {
+    heading: "Your act",
+    intro: "Your act name and the artists you sound like. The busk form starts with them, so you aren't asked every time.",
+    save: "Save to my Repertoire",
+    savePage: "Save act details",
+    editedHint: "Your act name, artists and Spotify profile are for this busk only until you save them.",
+    back: "Back to my Repertoire",
+    savedPage: "Act details saved.",
+  },
+  profile: { refresh: "Refresh my songs" },
+
   // Friendly errors
   errors: {
     invalid: "That song couldn't be read. Check the title and artist and try again.",

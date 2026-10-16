@@ -13,17 +13,11 @@ export type ExamplePerformer = {
   startHour: number;
   endHour: number;
   performer: PlanRequest["performer"];
-  /** The two letters in the landing card's hex, as the board draws them ("SX", not the first letters of the words). */
-  monogram: string;
-  /** The three songs the landing card lists after "Plays", as the board shows them. */
-  cardSongs: string[];
 };
 
 export const EXAMPLES: ExamplePerformer[] = [
   {
     id: "acoustic",
-    monogram: "AS",
-    cardSongs: ["How to Make Gravy", "Depreston", "Riptide"],
     label: "Acoustic singer-songwriter",
     blurb: "Guitar and voice, Australian songbook covers. Saturday evening.",
     weekday: "saturday",
@@ -46,8 +40,6 @@ export const EXAMPLES: ExamplePerformer[] = [
   },
   {
     id: "sax",
-    monogram: "SX",
-    cardSongs: ["Superstition", "Valerie", "Nakamarra"],
     label: "Soul and funk sax player",
     blurb: "Solo saxophone over backing loops. Friday after work.",
     weekday: "friday",
@@ -69,8 +61,6 @@ export const EXAMPLES: ExamplePerformer[] = [
   },
   {
     id: "folk-duo",
-    monogram: "FD",
-    cardSongs: ["Big Jet Plane", "Bloom", "The Boxer"],
     label: "Folk duo",
     blurb: "Two voices, guitar and banjo. Sunday afternoon.",
     weekday: "sunday",
@@ -105,6 +95,6 @@ export function exampleWhen(e: Pick<ExamplePerformer, "weekday" | "startHour" | 
 }
 
 /** The first few songs an example plays, for its card ("Plays …"). */
-export function examplePlays(e: Pick<ExamplePerformer, "cardSongs">): string {
-  return e.cardSongs.join(", ");
+export function examplePlays(e: ExamplePerformer, n = 3): string {
+  return e.performer.songs.slice(0, n).map((s) => s.title).join(", ");
 }

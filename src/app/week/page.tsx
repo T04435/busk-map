@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { TIP_COOKIE } from "@/lib/tips";
+import { WeekRepertoire } from "@/components/week/week-repertoire";
 import { WeekView } from "@/components/week/week-view";
 import { DataSources } from "@/components/plan/data-sources";
 import { creditsClaude } from "@/lib/sources";
@@ -13,6 +14,7 @@ import { localToday } from "@/lib/slot";
 import { parseWeekParams, weekSearchParams } from "@/lib/week-url";
 import { buildWeekPlan, WeekQlooUnavailableError } from "@/server/agent/week";
 import { CITIES } from "@/server/cities";
+import { playlistViewForCookie } from "@/server/playlist/read";
 import { adapterContextFor } from "@/server/request";
 
 export const metadata: Metadata = {
@@ -82,8 +84,11 @@ async function WeekContent({ searchParams }: Pick<PageProps<"/week">, "searchPar
       </>
     );
   }
+  // Example weeks never read a Repertoire (§3.5). Otherwise this device's Repertoire, if it has songs, gets a switch.
+  const repertoire = parsed.exampleId ? null : await playlistViewForCookie((await headers()).get("cookie"));
   return (
     <div className="space-y-6">
+      {repertoire && repertoire.songs.length > 0 && <WeekRepertoire repertoire={repertoire} request={parsed.request} />}
       {/* Keyed by the request: a changed URL means a new plan, not stale client state. */}
       <WeekView
         key={`${weekSearchParams(parsed.request, parsed.exampleId)}#${JSON.stringify(parsed.request.history ?? null)}`}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { PerformerForm } from "@/components/landing/performer-form";
@@ -9,6 +10,7 @@ import { EXAMPLES } from "@/lib/examples";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import { localToday, nextWeekday, weekdayOf } from "@/lib/slot";
 import { loadStoredPlan } from "@/server/plans";
+import { playlistViewForCookie } from "@/server/playlist/read";
 import { SOURCES } from "@/lib/sources";
 import { CALLS_PER_NEW_BUSK, callKinds, featureCount } from "@/lib/qloo-map";
 import { Button } from "@/components/ui/button";
@@ -122,7 +124,9 @@ async function OwnActForm({ searchParams }: Pick<PageProps<"/">, "searchParams">
   await connection();
   const today = localToday("Australia/Melbourne");
   const stored = typeof again === "string" ? await loadStoredPlan(again).catch(() => null) : null;
-  if (!stored) return <PerformerForm defaultDate={nextWeekday("saturday", today)} today={today} />;
+  // This device's Repertoire (its cookie), if any: the form pre-fills from it unless ?again names an act.
+  const repertoire = await playlistViewForCookie((await headers()).get("cookie"));
+  if (!stored) return <PerformerForm defaultDate={nextWeekday("saturday", today)} today={today} repertoire={repertoire} />;
   const { performer, permit, slot } = stored.request;
   return (
     <PerformerForm
@@ -130,6 +134,7 @@ async function OwnActForm({ searchParams }: Pick<PageProps<"/">, "searchParams">
       defaultDate={nextWeekday(weekdayOf(slot.date), today)}
       today={today}
       prefill={{ performer, permit, startHour: slot.startHour, endHour: slot.endHour }}
+      repertoire={repertoire}
     />
   );
 }

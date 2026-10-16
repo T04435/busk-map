@@ -1,3 +1,4 @@
+import { AddToRepertoire } from "@/components/playlist/add-to-repertoire";
 import { LearnItMenu } from "@/components/songs/learn-it-menu";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +12,18 @@ export function setLength(setlist: PlanPitch["setlist"]): { ms: number; timed: n
   return { ms: timed.reduce((sum, s) => sum + (s.durationMs ?? 0), 0), timed: timed.length };
 }
 
-export function SetlistPanel({ pitch, learnThese, ageLean = null }: { pitch: PlanPitch; learnThese: Plan["learnThese"]; ageLean?: string | null }) {
+export function SetlistPanel({
+  pitch,
+  learnThese,
+  ageLean = null,
+  canAddToRepertoire = false,
+}: {
+  pitch: PlanPitch;
+  learnThese: Plan["learnThese"];
+  ageLean?: string | null;
+  /** "Add to Repertoire" on each Learn these item. False on example runs: presets never write a Repertoire. */
+  canAddToRepertoire?: boolean;
+}) {
   const length = setLength(pitch.setlist);
   const songs = (n: number) => `${n} song${n === 1 ? "" : "s"}`;
   return (
@@ -86,6 +98,7 @@ export function SetlistPanel({ pitch, learnThese, ageLean = null }: { pitch: Pla
                   <span>
                     <span className="font-medium">{s.title ?? "Any song"}</span> by {s.artist}
                     <span className="block text-muted-foreground">{s.reason}</span>
+                    {s.title && canAddToRepertoire && <AddToRepertoire title={s.title} artist={s.artist} reason={s.reason} growth={s.audienceGrowth ?? null} />}
                   </span>
                   {s.title && <LearnItMenu title={s.title} artist={s.artist} />}
                 </li>

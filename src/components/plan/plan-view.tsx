@@ -8,6 +8,7 @@ import { ComparePanel, useBaseline } from "@/components/compare/compare-panel";
 import { LazyPlanMap } from "@/components/map/lazy-plan-map";
 import { MapLegend } from "@/components/map/map-legend";
 import { DiscoveryBadge, PitchCard } from "@/components/pitch-card/pitch-card";
+import { SaveAsRepertoire } from "@/components/playlist/save-as-repertoire";
 import { SetlistPanel } from "@/components/setlist/setlist-panel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -535,9 +536,11 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
         {selected && !qlooDown && (
           <div className="grid gap-6 lg:grid-cols-2">
             <PitchCard pitch={selected} rank={plan.pitches.indexOf(selected) + 1} model={model} />
-            <SetlistPanel pitch={selected} learnThese={plan.learnThese} ageLean={plan.ageLean} />
+            <SetlistPanel pitch={selected} learnThese={plan.learnThese} ageLean={plan.ageLean} canAddToRepertoire={!exampleId} />
           </div>
         )}
+
+        {!exampleId && !qlooDown && selected && <SaveAsRepertoire performer={request.performer} />}
 
         {!qlooDown && plan.pitches.length > 0 && (
           <TipLogForm

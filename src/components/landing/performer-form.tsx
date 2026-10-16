@@ -3,17 +3,22 @@
 import { XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { loadPlaylist, savePlaylist } from "@/components/playlist/playlist-api";
 import { DatePicker } from "@/components/forms/date-picker";
 import type { TrackResult } from "@/components/forms/repertoire-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { planFormError } from "@/lib/form-errors";
 import { planRequestSchema, type PlanRequest, type PlanRequestInput } from "@/lib/plan-schema";
 import { planSearchParams } from "@/lib/plan-url";
+import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
+import type { PlaylistView } from "@/lib/playlist-schema";
+import { draftOf, repertoireDraft, sameDraft } from "@/lib/repertoire-prefill";
 import { weekSearchParams } from "@/lib/week-url";
 import { formatHour } from "@/lib/slot";
 import { formatDuration } from "@/lib/live-search";
@@ -70,13 +75,31 @@ const prefillSongs = (prefill: FormPrefill | undefined): PickedSong[] =>
     own: song.own,
   }));
 
-/** `today` is the city's local date: a plan is for today or later. */
-export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: string; today: string; prefill?: FormPrefill }) {
+/** The Repertoire as the form's fields (docs/playlist-architecture.md §3.1): name, sounds-like artists, songs. */
+const repertoireFields = (view: PlaylistView) => ({
+  name: view.actName ?? "",
+  artists: view.soundsLike.map((a): PickedArtist => ({ name: a.name, spotifyId: a.spotifyId ?? null, image: null })),
+  picked: view.songs.map(
+    (song): PickedSong => ({ key: `rep-${song.id}`, title: song.title, artist: song.artist, album: null, image: null, durationMs: song.durationMs, own: song.own }),
+  ),
+});
+
+/**
+ * `today` is the city's local date: a plan is for today or later. `repertoire` is this device's Repertoire (read on the
+ * server from its cookie), or null: with none, the form is exactly what it always was.
+ */
+export function PerformerForm({ defaultDate, today, prefill, repertoire = null }: { defaultDate: string; today: string; prefill?: FormPrefill; repertoire?: PlaylistView | null }) {
   const router = useRouter();
-  const [name, setName] = useState(prefill?.performer.name ?? "");
-  const [artists, setArtists] = useState<PickedArtist[]>(() => prefillArtists(prefill));
+  // "Use my Repertoire" is on by default when there is one with songs; ?again (a plan's act) still wins.
+  const [saved, setSaved] = useState<PlaylistView | null>(repertoire && repertoire.songs.length > 0 ? repertoire : null);
+  const [useMine, setUseMine] = useState(Boolean(saved) && !prefill);
+  const initial = useMine && saved ? repertoireFields(saved) : null;
+  const [name, setName] = useState(initial?.name ?? prefill?.performer.name ?? "");
+  const [artists, setArtists] = useState<PickedArtist[]>(() => initial?.artists ?? prefillArtists(prefill));
   const [artistQuery, setArtistQuery] = useState("");
-  const [picked, setPicked] = useState<PickedSong[]>(() => prefillSongs(prefill));
+  const [picked, setPicked] = useState<PickedSong[]>(() => initial?.picked ?? prefillSongs(prefill));
+  const [repNote, setRepNote] = useState<{ kind: "info" | "error" | "stale"; text: string } | null>(null);
+  const [repBusy, setRepBusy] = useState(false);
   const [songs, setSongs] = useState("");
   const [date, setDate] = useState(defaultDate);
   const [from, setFrom] = useState(String(prefill?.startHour ?? 18));
@@ -86,6 +109,67 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
   const [error, setError] = useState<string | null>(null);
   const [searchNote, setSearchNote] = useState<string | null>(null);
   const [spotifyLink, setSpotifyLink] = useState("");
+
+  /** Fill the act, artists and songs from a source (the Repertoire, the ?again act, or nothing). */
+  function fill(fields: { name: string; artists: PickedArtist[]; picked: PickedSong[] }) {
+    setName(fields.name);
+    setArtists(fields.artists);
+    setArtistQuery("");
+    setPicked(fields.picked);
+    setSongs("");
+  }
+
+  function toggleRepertoire(on: boolean) {
+    setUseMine(on);
+    setRepNote(null);
+    if (on && saved) fill(repertoireFields(saved));
+    else fill({ name: prefill?.performer.name ?? "", artists: prefillArtists(prefill), picked: prefillSongs(prefill) });
+  }
+
+  /** What the form holds now, as the request will carry it. */
+  function currentFields() {
+    const parsedSongs = [
+      ...picked.map((p) => ({ title: p.title, artist: p.artist, own: p.own, ...(p.durationMs ? { durationMs: p.durationMs } : {}) })),
+      ...parseSongLines(songs),
+    ];
+    const chosen = [...artists];
+    for (const typed of typedArtists(artistQuery)) {
+      if (!chosen.some((a) => a.name.toLowerCase() === typed.toLowerCase())) chosen.push({ name: typed, spotifyId: null, image: null });
+    }
+    return { parsedSongs, chosen };
+  }
+
+  const edited = useMine && saved !== null && !sameDraft(draftOf({ name: clean(name), artists: currentFields().chosen.map((a) => a.name), songs: currentFields().parsedSongs }), repertoireDraft(saved));
+
+  /** The only thing here that writes the Repertoire: an explicit save, checked against the revision last seen. */
+  async function saveToRepertoire() {
+    if (!saved) return;
+    const { parsedSongs, chosen } = currentFields();
+    setRepBusy(true);
+    setRepNote(null);
+    const result = await savePlaylist({
+      revision: saved.revision,
+      actName: clean(name) || null,
+      soundsLike: chosen.slice(0, 10).map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}) })),
+      songs: parsedSongs.slice(0, 60),
+    });
+    setRepBusy(false);
+    if (result.ok && result.playlist) {
+      setSaved(result.playlist);
+      fill(repertoireFields(result.playlist));
+      setRepNote({ kind: "info", text: COPY.saved });
+    } else if (!result.ok) setRepNote({ kind: result.code === "stale" ? "stale" : "error", text: result.message });
+  }
+
+  /** The Repertoire changed elsewhere (another tab): fetch the latest and fill from it. */
+  async function reloadRepertoire() {
+    const result = await loadPlaylist();
+    if (result.ok && result.playlist) {
+      setSaved(result.playlist);
+      fill(repertoireFields(result.playlist));
+      setRepNote(null);
+    }
+  }
 
   function addSongs(next: PickedSong[]) {
     setPicked((current) => [...current, ...next.filter((song) => !current.some((c) => c.key === song.key))].slice(0, 60));
@@ -127,14 +211,7 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const target = (event.nativeEvent as SubmitEvent).submitter?.getAttribute("value") === "week" ? "week" : "plan";
-    const parsedSongs = [
-      ...picked.map((p) => ({ title: p.title, artist: p.artist, own: p.own, ...(p.durationMs ? { durationMs: p.durationMs } : {}) })),
-      ...parseSongLines(songs),
-    ];
-    const chosen = [...artists];
-    for (const typed of typedArtists(artistQuery)) {
-      if (!chosen.some((a) => a.name.toLowerCase() === typed.toLowerCase())) chosen.push({ name: typed, spotifyId: null, image: null });
-    }
+    const { parsedSongs, chosen } = currentFields();
     const artistList = [
       ...new Set([...chosen.map((a) => a.name), ...parsedSongs.filter((s) => !s.own).map((s) => s.artist)]),
     ].slice(0, 10);
@@ -165,6 +242,39 @@ export function PerformerForm({ defaultDate, today, prefill }: { defaultDate: st
 
   return (
     <form onSubmit={submit} className="space-y-4" aria-label="Plan for your own act">
+      {saved && (
+        <section aria-label={COPY.name} className="space-y-2 rounded-lg border p-3" data-testid="use-repertoire">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <Switch id="use-repertoire" checked={useMine} onCheckedChange={toggleRepertoire} />
+            <Label htmlFor="use-repertoire">{COPY.mineWithCount(saved.songs.length)}</Label>
+            {useMine && <Badge variant={edited ? "secondary" : "outline"}>{edited ? COPY.editedForBusk : COPY.fromRepertoire}</Badge>}
+          </div>
+          {useMine && edited && (
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm text-muted-foreground">{COPY.editedHint}</p>
+              <Button type="button" variant="outline" size="sm" disabled={repBusy} onClick={() => void saveToRepertoire()}>
+                {repBusy ? COPY.saving : COPY.saveChanges}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" disabled={repBusy} onClick={() => toggleRepertoire(true)}>
+                Back to my {COPY.name}
+              </Button>
+            </div>
+          )}
+          {repNote && (
+            <p role={repNote.kind === "info" ? "status" : "alert"} className={repNote.kind === "info" ? "text-sm text-muted-foreground" : "text-sm text-destructive"}>
+              {repNote.text}
+              {repNote.kind === "stale" && (
+                <>
+                  {" "}
+                  <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={() => void reloadRepertoire()}>
+                    {COPY.reload}
+                  </Button>
+                </>
+              )}
+            </p>
+          )}
+        </section>
+      )}
       <div className="space-y-1">
         <Label htmlFor="name">Act name</Label>
         <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Jess on acoustic guitar" maxLength={80} />

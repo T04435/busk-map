@@ -14,11 +14,11 @@ export function cellHeight(width: number): number {
  * The honeycomb cell as an SVG that fills its parent. The stroke is drawn inside the edge (clipped, doubled), so a
  * cell never grows past its box. Colours come from --hex-fill, --hex-stroke, --hex-sw and --hex-dash on an ancestor.
  */
-export function Hex({ className }: { className?: string }) {
+export function Hex({ className, frame }: { className?: string; /** Outline only: the fill is forced transparent, so it can sit over a photo. */ frame?: boolean }) {
   const id = `hx${useId().replace(/:/g, "")}`;
   return (
     <svg
-      className={cn("pointer-events-none absolute inset-0 size-full overflow-visible", className)}
+      className={cn("pointer-events-none absolute inset-0 size-full overflow-visible", frame && "[--hex-fill:transparent]", className)}
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
       aria-hidden="true"
@@ -46,6 +46,8 @@ const cellVariants = cva("relative inline-grid flex-none place-items-center font
       // Orange fill: a 2px rule by day, none at night.
       primary: "text-primary-foreground [--hex-fill:var(--primary)] [--hex-stroke:var(--fill-rule)]",
       muted: "text-muted-foreground [--hex-fill:var(--muted)] [--hex-stroke:var(--border)]",
+      // Song covers and artist cells without a photo: muted fill, the brand rule stroke.
+      media: "text-muted-foreground [--hex-fill:var(--muted)] [--hex-stroke:var(--rule)]",
       error: "text-destructive [--hex-stroke:var(--destructive)]",
       dashed: "text-muted-foreground [--hex-fill:transparent] [--hex-stroke:var(--input)] [--hex-dash:5_4]",
     },
@@ -58,7 +60,7 @@ const cellVariants = cva("relative inline-grid flex-none place-items-center font
   defaultVariants: { tone: "default", lift: "none" },
 });
 
-export type HexTone = "default" | "primary" | "muted" | "error" | "dashed";
+export type HexTone = "default" | "primary" | "muted" | "media" | "error" | "dashed";
 
 export type HexCellProps = {
   /** Width in px; the height follows (0.866 : 1). */
@@ -66,7 +68,7 @@ export type HexCellProps = {
   tone?: HexTone;
   /** Lift the cell by a 4px hard offset (empty and error states). */
   lift?: boolean;
-  /** A picture, clipped to the cell. Falls back to the children if it fails to load. Spotify images are never sent a referrer. */
+  /** A picture, clipped to the cell and framed by the cell's hex stroke. Falls back to the children if it fails to load. Spotify images are never sent a referrer. */
   image?: string | null;
   /** Spoken name. Without it the cell is decorative (aria-hidden). */
   label?: string;
@@ -89,7 +91,12 @@ export function HexCell({ size = 40, tone = "default", lift, image, label, fontS
       data-tone={tone}
     >
       {image ? (
-        <CellImage src={image} fallback={<><Hex /><span className="relative">{children}</span></>} />
+        // The photo, then the hex stroke on top of it, so a photo cell keeps its brand border on the page.
+        // If the photo fails, the fallback draws the filled hex and the frame simply repeats its stroke.
+        <>
+          <CellImage src={image} fallback={<><Hex /><span className="relative">{children}</span></>} />
+          <Hex frame />
+        </>
       ) : (
         <>
           <Hex />

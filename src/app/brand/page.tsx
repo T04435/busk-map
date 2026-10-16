@@ -2,28 +2,16 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowRight, Check, ExternalLink, MapPin, Music } from "lucide-react";
-import { BrandChoiceDemo, BrandSlotDemo } from "@/components/brand/brand-demos";
+import { Check, Download, Music, TriangleAlert } from "lucide-react";
+import { ComponentGroups, PlanStates } from "@/components/brand/brand-components";
+import { IconGrid } from "@/components/brand/brand-icons";
+import { COMPONENT_COUNT, KIT, SCREENS } from "@/components/brand/brand-tables";
 import { PhoneFold } from "@/components/brand/phone-fold";
-import { Banner } from "@/components/honeycomb/banner";
-import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
-import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
-import { EvidenceLine } from "@/components/honeycomb/evidence-line";
-import { ExampleActCard } from "@/components/honeycomb/example-act-card";
-import { FormMessage } from "@/components/honeycomb/form-message";
 import { HexCell } from "@/components/honeycomb/hex-cell";
-import { LeanBar } from "@/components/honeycomb/lean-bar";
-import { Logo } from "@/components/honeycomb/logo";
-import { NoteCard } from "@/components/honeycomb/note-card";
+import { Loader } from "@/components/honeycomb/loader";
+import { Logo, QlooWordmark } from "@/components/honeycomb/logo";
 import { PercentCell } from "@/components/honeycomb/percent-cell";
 import { RankTile } from "@/components/honeycomb/rank-tile";
-import { StatStrip } from "@/components/honeycomb/stat-strip";
-import { StatusCard } from "@/components/status/status-card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { DURATIONS, EASINGS, RADII, SHADOWS, SIZES, SPACE, STROKES, TOKENS, WORDS, type ScaleRow } from "@/lib/brand-data";
 
 export const metadata: Metadata = {
@@ -87,6 +75,9 @@ function Scale({ title, rows }: { title: string; rows: ScaleRow[] }) {
   );
 }
 
+/** The --ring row, one ring (F14); the data file still carries the older two-border sentence. */
+const RING_USE = "Keyboard focus (shadcn --ring): one 2px ring. Fields also turn their border to it; buttons keep a 2px ring with no gap, never a second ring. Bluestone by day, signal orange at night; 3:1 or more on every surface.";
+
 const PRINCIPLES = [
   ["The pitch ring", "An open circle (the crowd) around one paper cell (the performer), in an orange honeycomb cell. It is the logo, the loader, every map pin and the score ring."],
   ["One thing, one cell", "Anything that stands for one thing (a place, a rank, a song, a score, a step) is a pointy-top hexagon. Anything that holds things stays a square box."],
@@ -117,18 +108,24 @@ const COLOURS = [
   ["Footfall", "--footfall", "foot traffic"],
 ] as const;
 
-type Asset = { name: string; src: string; alt: string; w: number; h: number; dark?: boolean };
+type Asset = { name: string; src: string; alt: string; w: number; h: number; dark?: boolean; note?: string };
 const ASSET_GROUPS: { name: string; min: string; files: Asset[] }[] = [
   {
     name: "Logos",
+    min: "260px",
+    files: [
+      { name: "busk-map-lockup-light.svg", src: "/brand/busk-map-lockup-light.svg", alt: "Busk Map logo for light grounds", w: 256, h: 48 },
+      { name: "busk-map-lockup-dark.svg", src: "/brand/busk-map-lockup-dark.svg", alt: "Busk Map logo for dark grounds", w: 256, h: 48, dark: true },
+    ],
+  },
+  {
+    name: "Other brand files (not logos)",
     min: "220px",
     files: [
-      { name: "busk-map-lockup-light.svg", src: "/brand/busk-map-lockup-light.svg", alt: "Busk Map lockup for light grounds", w: 256, h: 48 },
-      { name: "busk-map-lockup-dark.svg", src: "/brand/busk-map-lockup-dark.svg", alt: "Busk Map lockup for dark grounds", w: 256, h: 48, dark: true },
-      { name: "busk-map-mark-light.svg", src: "/brand/busk-map-mark-light.svg", alt: "Busk Map mark for light grounds", w: 64, h: 64 },
-      { name: "busk-map-mark-dark.svg", src: "/brand/busk-map-mark-dark.svg", alt: "Busk Map mark for dark grounds", w: 64, h: 64, dark: true },
-      { name: "busk-map-wordmark-light.svg", src: "/brand/busk-map-wordmark-light.svg", alt: "Busk Map wordmark for light grounds", w: 241, h: 39 },
-      { name: "busk-map-wordmark-dark.svg", src: "/brand/busk-map-wordmark-dark.svg", alt: "Busk Map wordmark for dark grounds", w: 241, h: 39, dark: true },
+      { name: "busk-map-mark-light.svg", src: "/brand/busk-map-mark-light.svg", alt: "Hex mark for light grounds, a file for the icon set only", w: 64, h: 64, note: "Mark only: the icon files are cut from it. Not a logo." },
+      { name: "busk-map-mark-dark.svg", src: "/brand/busk-map-mark-dark.svg", alt: "Hex mark for dark grounds, a file for the icon set only", w: 64, h: 64, dark: true, note: "Mark only: the icon files are cut from it. Not a logo." },
+      { name: "busk-map-wordmark-light.svg", src: "/brand/busk-map-wordmark-light.svg", alt: "Wordmark for light grounds, a file for the lockup only", w: 241, h: 39, note: "The lockup's lettering on its own. Not a logo." },
+      { name: "busk-map-wordmark-dark.svg", src: "/brand/busk-map-wordmark-dark.svg", alt: "Wordmark for dark grounds, a file for the lockup only", w: 241, h: 39, dark: true, note: "The lockup's lettering on its own. Not a logo." },
     ],
   },
   {
@@ -181,25 +178,27 @@ const ASSET_GROUPS: { name: string; min: string; files: Asset[] }[] = [
 /** The brand page: a public, static showcase of the Honeycomb brand with the app's real components. */
 export default function BrandPage() {
   return (
-    <main id="main" className="flex-1">
+    <main id="main" className="flex-1 motion-reduce:[&_*]:!transition-none">
       <section data-theme="dark" aria-labelledby="brand-h" className="bm-grain border-b-[6px] border-primary bg-background text-foreground">
         <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-10 px-4 py-12 md:px-6 md:py-16">
           <div className="flex min-w-0 max-w-3xl flex-col gap-4">
-            <span className="font-mono text-[13px] leading-4 font-bold tracking-[0.08em] text-signal-text uppercase">Busk Map brand · design system v62</span>
+            <span className="font-mono text-[13px] leading-4 font-bold tracking-[0.08em] text-signal-text uppercase">Busk Map design deck · design system v66</span>
             <h1 id="brand-h" className="m-0 font-display text-[clamp(64px,12vw,144px)] leading-[0.86] font-extrabold uppercase">
               Honey<span className="text-signal-text">comb</span>
             </h1>
             <p className="m-0 text-[19px] leading-[29px]">
-              The brand and design system Busk Map is built from: the idea, the words, the colours and type, the components as they render in the app, and every logo and social asset.
+              The brand and design system Busk Map is built from. Enough for a studio to build the whole app from this deck alone: the brand book, the words, tokens mapped to shadcn, every component in every state, every screen, all the assets, and a code handoff.
             </p>
             <nav aria-label="On this page" className="flex flex-wrap gap-x-4.5 gap-y-2 font-mono text-sm leading-5 font-bold">
               {[
                 ["#book", "Brand book"],
                 ["#words", "Words"],
                 ["#foundations", "Foundations"],
-                ["#tokens", "Tokens"],
+                ["#tokens", "Tokens → shadcn"],
                 ["#components", "Components"],
+                ["#screens", "Screens"],
                 ["#assets", "Assets"],
+                ["#handoff", "Handoff"],
               ].map(([href, label]) => (
                 <a key={href} href={href} className="flex min-h-tap items-center text-signal-text underline underline-offset-3 hover:decoration-2">
                   {label}
@@ -230,6 +229,7 @@ export default function BrandPage() {
                   <span>
                     <Rich>{body}</Rich>
                   </span>
+                  {title === "Qloo, our partner" ? <QlooWordmark width={96} className="self-start" /> : null}
                 </li>
               ))}
             </ul>
@@ -300,7 +300,7 @@ export default function BrandPage() {
             <div className={GRID}>
               <div className={CARD}>
                 <span className="font-display text-[56px] leading-[0.9] font-extrabold uppercase">Southbank</span>
-                <b>Big Shoulders 800</b>
+                <b>Big Shoulders Display 800</b>
                 <span className="text-sm text-muted-foreground">--font-display · headlines and pitch names, in capitals</span>
               </div>
               <div className={CARD}>
@@ -317,17 +317,23 @@ export default function BrandPage() {
           </PhoneFold>
 
           <PhoneFold heading="The honeycomb" headingClassName={H3}>
-            <p className="m-0 max-w-3xl">One idea per pointy-top cell: a rank, a person, a song or a score. Never a circle or a square tile. Every 0–100 value is a PercentCell.</p>
+            <p className="m-0 max-w-3xl">One idea per pointy-top cell: a rank, a person, a song or a score. Never a circle or a square tile. Every 0–100 value is a PercentCell; a cell that is waiting is dashed.</p>
             <div className="flex flex-wrap items-center gap-4.5 border-2 border-rule bg-card p-5">
               <HexCell size={56} fontSize={24} tone="primary">1</HexCell>
               <HexCell size={56} fontSize={20}>GW</HexCell>
               <HexCell size={56} tone="muted"><Music className="size-6" aria-hidden="true" /></HexCell>
-              <HexCell size={56} tone="error"><MapPin className="size-6" aria-hidden="true" /></HexCell>
+              <HexCell size={56} tone="error"><TriangleAlert className="size-6" aria-hidden="true" /></HexCell>
               <PercentCell value={91} size={56} label="Score" />
               <PercentCell value={64} size={56} label="Taste match" />
               <PercentCell value={null} size={56} label="Score" />
+              <span className="inline-flex items-center gap-2 text-sm"><HexCell size={56} tone="dashed"><Loader size={22} label="Working" /></HexCell>Working</span>
               <RankTile n={2} />
             </div>
+          </PhoneFold>
+
+          <PhoneFold heading="Iconography" headingClassName={H3}>
+            <p className="m-0 max-w-3xl">One icon set, 24px grid, 2px stroke, square caps. Icons come with a word beside them; they never carry meaning alone.</p>
+            <IconGrid />
           </PhoneFold>
 
           <PhoneFold heading="Space, size, shape and motion" headingClassName={H3}>
@@ -374,15 +380,15 @@ export default function BrandPage() {
                 <tr key={t.name}>
                   <th scope="row" className={`${TD} text-left font-mono text-xs font-bold whitespace-nowrap`}>--{t.name}</th>
                   <td className={`${TD} ${MONO}`}>{t.kind}</td>
-                  <td className={`${TD} ${MONO} whitespace-nowrap`}>
+                  <td className={`${TD} ${MONO} w-[170px] max-w-[170px] break-words`}>
                     <span aria-hidden="true" className="mr-1.5 inline-block h-5 w-7 border-[1.5px] border-rule align-middle" style={{ background: t.lightSw }} />
                     {t.light}
                   </td>
-                  <td className={`${TD} ${MONO} whitespace-nowrap`}>
+                  <td className={`${TD} ${MONO} w-[170px] max-w-[170px] break-words`}>
                     <span aria-hidden="true" className="mr-1.5 inline-block h-5 w-7 border-[1.5px] border-rule align-middle" style={{ background: t.darkSw }} />
                     {t.dark}
                   </td>
-                  <td className={TD}><Rich>{t.use}</Rich></td>
+                  <td className={TD}><Rich>{t.name === "ring" ? RING_USE : t.use}</Rich></td>
                 </tr>
               ))}
             </tbody>
@@ -390,107 +396,46 @@ export default function BrandPage() {
           </PhoneFold>
         </Section>
 
-        <Section id="components" n="05" title="Components" intro="The same components the app renders, live: nothing here is a picture. Switch your system to night to see the other theme.">
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(380px,100%),1fr))] gap-4">
-            <PhoneFold heading="Buttons" headingClassName="font-display text-[22px] leading-none font-extrabold uppercase" wideClassName={`${CARD} gap-3.5`}>
-              <div className="flex flex-wrap items-center gap-2.5">
-                <Button>Plan my busk <ArrowRight aria-hidden="true" /></Button>
-                <Button variant="outline">Week</Button>
-                <Button variant="secondary">Secondary</Button>
-                <Button variant="ghost">Cancel</Button>
-                <Button variant="destructive">Delete</Button>
-                <Button variant="link">A link button</Button>
-                <Button disabled>Disabled</Button>
-              </div>
-              <div className="flex flex-wrap items-center gap-2.5">
-                <Button size="sm">Small</Button>
-                <Button>Default</Button>
-                <Button size="lg">Large</Button>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="brand-input">Act name</Label>
-                <Input id="brand-input" placeholder="e.g. Jess on acoustic guitar" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="brand-input-err">Act name, with an error</Label>
-                <Input id="brand-input-err" aria-invalid="true" aria-describedby="brand-input-err-m" defaultValue="A very long act name" />
-                <FormMessage tone="error" id="brand-input-err-m" alert={false}>Act name: use 80 characters or fewer.</FormMessage>
-              </div>
-            </PhoneFold>
+        <Section
+          id="components"
+          n="05"
+          title="Components"
+          intro={`${COMPONENT_COUNT} reusable components in the design system, grouped by where they live in the app. Each group shows its key pieces live, as the app renders them, then names every component in it. Switch your system to night to see the other theme.`}
+        >
+          <ComponentGroups />
+          <PlanStates />
+        </Section>
 
-            <PhoneFold heading="Badges and status" headingClassName="font-display text-[22px] leading-none font-extrabold uppercase" wideClassName={`${CARD} gap-3.5`}>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="neutral">Neutral</Badge>
-                <Badge variant="solid">Your song</Badge>
-                <DiscoveryBadge discovery="hidden-gem" />
-                <DiscoveryBadge discovery="usual" />
-                <Badge variant="legal">Permit pitch</Badge>
-                <Badge variant="restricted">Restricted</Badge>
-                <Badge variant="event">Event</Badge>
-                <Badge variant="weather">Weather</Badge>
-                <Badge variant="footfall">Foot traffic</Badge>
-                <Badge variant="estimate">Example data</Badge>
-                <Badge variant="destructive">Error</Badge>
-              </div>
-              <div className="flex flex-wrap gap-x-5 gap-y-2">
-                <DataStatusBadge status="live" source="Qloo" />
-                <DataStatusBadge status="cached" source="Weather" />
-                <DataStatusBadge status="test" source="Qloo" />
-                <DataStatusBadge status="estimated" source="Foot traffic" />
-                <DataStatusBadge status="unavailable" source="Events" reason="no answer" />
-              </div>
-              <FormMessage>Loading your songs from Spotify…</FormMessage>
-              <FormMessage tone="error" alert={false}>Pick today or a later date.</FormMessage>
-              <FormMessage tone="success">Logged A$85 at Hardware Lane.</FormMessage>
-            </PhoneFold>
-
-            <PhoneFold heading="Alerts and banners" headingClassName="font-display text-[22px] leading-none font-extrabold uppercase" wideClassName={`${CARD} gap-3.5`}>
-              <Alert variant="info"><AlertTitle>Info</AlertTitle><AlertDescription>Planning again for The Larkspur Two.</AlertDescription></Alert>
-              <Alert variant="warning"><AlertTitle>The city&apos;s sensors didn&apos;t answer</AlertTitle><AlertDescription>Foot traffic is estimated and marked &quot;est.&quot;.</AlertDescription></Alert>
-              <Alert variant="error"><AlertTitle>Plan limit reached</AlertTitle><AlertDescription>No new plan was started.</AlertDescription></Alert>
-              <Alert variant="estimate"><AlertTitle>Estimate</AlertTitle><AlertDescription>This number is modelled, not measured.</AlertDescription></Alert>
-              <Banner tone="test">Test data: nothing here is a real pitch.</Banner>
-              <Banner tone="less">Less data for this city: some sources are missing.</Banner>
-            </PhoneFold>
-
-            <PhoneFold heading="Choice cards and toggles" headingClassName="font-display text-[22px] leading-none font-extrabold uppercase" wideClassName={`${CARD} gap-4`}>
-              <BrandChoiceDemo />
-              <BrandSlotDemo />
-            </PhoneFold>
-
-            <PhoneFold heading="Numbers" headingClassName="font-display text-[22px] leading-none font-extrabold uppercase" wideClassName={`${CARD} gap-4`}>
-              <div className="flex flex-wrap items-center gap-4">
-                <PercentCell value={91} size={64} label="Score" tone="primary" />
-                <PercentCell value={64} size={48} label="Affinity" />
-                <PercentCell value={null} size={48} label="Score" />
-                <RankTile n={1} size="lg" />
-                <RankTile n={4} quiet />
-              </div>
-              <ul className="m-0 flex list-none flex-col gap-2 p-0">
-                <LeanBar label="Age 25–34" lean={0.41} />
-                <LeanBar label="Age 55+" lean={-0.3} />
-              </ul>
-              <StatStrip tone="qloo" label="Qloo in numbers" items={[{ n: 11, label: "kinds of Qloo call" }, { n: "0", label: "on a rerun" }]} />
-              <EvidenceLine>Qloo insights: the strongest folk taste area in your slot.</EvidenceLine>
-            </PhoneFold>
-
-            <PhoneFold heading="Cards" headingClassName="font-display text-[22px] leading-none font-extrabold uppercase" wideClassName={`${CARD} gap-4`}>
-              <ExampleActCard name="Folk duo" blurb="Two voices, guitar and banjo. Sunday afternoon." soundsLike="Gillian Welch" href="/brand#components" />
-              <NoteCard variant="next">Taste from genres as well as artists</NoteCard>
-              <NoteCard title="A note">Short, titled, in a hairline frame.</NoteCard>
-            </PhoneFold>
-
-            <PhoneFold heading="StatusCard" headingClassName="font-display text-[22px] leading-none font-extrabold uppercase" wideClassName={`${CARD} gap-4`}>
-              <StatusCard embedded testId="brand-status-notfound" title="No pitch here" description="This page doesn't exist." actions={<Button asChild variant="outline"><Link href="/">Busk Map home</Link></Button>} footnote="Reference: a1b2c3" />
-            </PhoneFold>
-          </div>
+        <Section id="screens" n="06" title="Screens" intro="Every screen of the app, with the route it lives at. Each is drawn at 390, 768 and 1440 in the design deck's Plan Screens canvas.">
+          <PhoneFold heading="The screens" count={SCREENS.length} headingClassName="sr-only">
+            <TableFrame label="Screens" min={720}>
+              <thead>
+                <tr>
+                  <th scope="col" className={TH}>Screen</th>
+                  <th scope="col" className={TH}>Route</th>
+                  <th scope="col" className={TH}>What it shows</th>
+                </tr>
+              </thead>
+              <tbody>
+                {SCREENS.map((r) => (
+                  <tr key={r.name}>
+                    <th scope="row" className={`${TD} text-left font-bold`}>{r.name}</th>
+                    <td className={`${TD} ${MONO} break-all`}>
+                      {r.route.startsWith("/") && !/[<?]/.test(r.route) ? <Link href={r.route} className="underline underline-offset-3 hover:decoration-2">{r.route}</Link> : r.route}
+                    </td>
+                    <td className={TD}>{r.shows}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </TableFrame>
+          </PhoneFold>
         </Section>
 
         <Section
           id="assets"
-          n="06"
+          n="07"
           title="Assets"
-          intro="The Hive mark: the pitch ring around one paper-coloured cell, inside a signal-orange cell. One inner cell only; clear space is a quarter of the tile on every side; the lockup is never under 24 px high. Every file below is in public/brand."
+          intro="The logo is the hex mark beside the Busk Map wordmark, one file for light grounds and one for dark. The mark alone is only for icon sizes: the pitch ring around one paper-coloured cell, inside a signal-orange cell, with a quarter of the tile as clear space; the logo is never under 24 px high. Every file below is in public/brand."
         >
           {ASSET_GROUPS.map((group) => (
             <PhoneFold key={group.name} heading={group.name} count={group.files.length} headingClassName="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
@@ -500,23 +445,70 @@ export default function BrandPage() {
                     <span className={`flex min-h-[120px] items-center justify-center border-b-2 border-rule p-5 ${file.dark ? "bg-bluestone" : "bg-card"}`}>
                       <Image src={file.src} alt={file.alt} width={file.w} height={file.h} unoptimized className="block h-auto max-h-[200px] w-auto max-w-full object-contain" />
                     </span>
-                    <span className="flex items-center justify-between gap-2 px-3 py-2.5">
-                      <span className="font-mono text-xs leading-4 break-all">{file.name}</span>
-                      <a href={file.src} download className="inline-flex min-h-tap items-center gap-1 font-mono text-[13px] leading-4 font-bold whitespace-nowrap underline underline-offset-3 hover:decoration-2">
-                        Open file
-                        <ExternalLink aria-hidden="true" className="size-3.5" />
-                      </a>
+                    <span className="flex flex-col gap-1 px-3 py-2.5">
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-xs leading-4 break-all">{file.name}</span>
+                        <a href={file.src} download={file.name} aria-label={`Download ${file.name}`} className="inline-flex min-h-tap items-center gap-1 font-mono text-[13px] leading-4 font-bold whitespace-nowrap underline underline-offset-3 hover:decoration-2">
+                          Download
+                          <Download aria-hidden="true" className="size-3.5" />
+                        </a>
+                      </span>
+                      {file.note ? <span className="text-xs text-muted-foreground">{file.note}</span> : null}
                     </span>
                   </li>
                 ))}
               </ul>
             </PhoneFold>
           ))}
+          <PhoneFold heading="Qloo's logo" headingClassName="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
+            <div className="flex flex-wrap items-center gap-4 border-2 border-rule bg-card p-5">
+              <QlooWordmark width={160} />
+              <span className="max-w-md text-sm text-muted-foreground">Qloo&apos;s own logo, shown wherever Busk Map names Qloo as its partner. It always links to qloo.com in a new tab.</span>
+            </div>
+          </PhoneFold>
+          <PhoneFold heading="Submission and video kit" count={KIT.length} headingClassName="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
+            <p className="m-0 max-w-3xl">The pictures for the repository, the Devpost page and the video. Each uses the logo and Qloo&apos;s logo as drawn here; the screenshots are real captures of the app at 1440 and 390.</p>
+            <TableFrame label="Submission and video kit" min={640}>
+              <thead>
+                <tr>
+                  <th scope="col" className={TH}>Asset</th>
+                  <th scope="col" className={TH}>Size</th>
+                  <th scope="col" className={TH}>File</th>
+                </tr>
+              </thead>
+              <tbody>
+                {KIT.map((k) => (
+                  <tr key={k.file}>
+                    <th scope="row" className={`${TD} text-left font-bold`}>{k.name}</th>
+                    <td className={`${TD} ${MONO} whitespace-nowrap`}>{k.size}</td>
+                    <td className={`${TD} ${MONO}`}>
+                      <a href={k.src} download={k.file} className="inline-flex min-h-tap items-center gap-1 break-all underline underline-offset-3 hover:decoration-2">
+                        {k.file}
+                        <Download aria-hidden="true" className="size-3.5 shrink-0" />
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </TableFrame>
+          </PhoneFold>
           <p className="m-0 flex items-center gap-2 text-sm text-muted-foreground">
             <Check aria-hidden="true" className="size-4" />
             Busk Map is open source (MIT). The brand files are in the repository under public/brand.
           </p>
         </Section>
+
+        <section id="handoff" aria-labelledby="handoff-h" data-theme="dark" className="bm-grain flex scroll-mt-6 flex-col gap-4 border-[3px] border-rule bg-background p-6 text-foreground shadow-[8px_8px_0_var(--primary)] md:p-10">
+          <span className="font-mono text-xs leading-4 font-bold tracking-[0.08em] text-signal-text uppercase">08</span>
+          <h2 id="handoff-h" className={H2}>Handoff</h2>
+          <p className="m-0 max-w-3xl text-lg leading-[27px]">Everything a team needs to apply Honeycomb to the app, in <code className="font-mono text-[0.9em]">hackathons/qloo-2026/design-handoff/</code>:</p>
+          <ul className="m-0 flex list-disc flex-col gap-1.5 pl-5">
+            <li><code className="font-mono text-[0.9em]">globals.css</code>: every token, day and night, mapped to shadcn.</li>
+            <li><code className="font-mono text-[0.9em]">fonts.md</code>: the three typefaces and how to load them.</li>
+            <li><code className="font-mono text-[0.9em]">logos/ favicon/ social/ kit/</code>: every file on this page.</li>
+            <li><code className="font-mono text-[0.9em]">restyle-notes.md</code>: the order of work, the rules, and the copy.</li>
+          </ul>
+        </section>
       </div>
     </main>
   );

@@ -44,6 +44,31 @@ test.describe("QA /brain", () => {
     await expect(setlist).toBeFocused();
   });
 
+  test("every piece traces by keyboard: Enter selects, announces, opens its panel; Escape clears and keeps focus", async ({ page }) => {
+    await open(page);
+    const ids = await page.locator("[data-node-id]").evaluateAll((els) => els.map((e) => e.getAttribute("data-node-id")!));
+    expect(ids.length, "11 kinds (12 with 5b) + 2 sources + 15 data points + 9 parts").toBe(38);
+    for (const id of ids) {
+      const piece = page.locator(`[data-node-id="${id}"]`);
+      await piece.focus();
+      await page.keyboard.press("Enter");
+      await expect(piece, id).toHaveAttribute("aria-pressed", "true");
+      await expect(status(page), id).toHaveText(/^Tracing\. .+ Other pieces are dimmed\.$/);
+      await expect(page.getByRole("button", { name: "Clear trace" }), id).toBeVisible();
+      expect(await page.locator('[data-trace="path"]').count(), `${id} lights a path`).toBeGreaterThan(0);
+      await page.keyboard.press("Escape");
+      await expect(piece, id).toHaveAttribute("aria-pressed", "false");
+      await expect(piece, id).toBeFocused();
+    }
+  });
+
+  test("Next items are labelled as not built", async ({ page }) => {
+    await open(page);
+    const next = page.getByRole("heading", { name: "Next (not built yet)" });
+    await expect(next).toBeVisible();
+    await expect(next.locator("xpath=..").getByRole("listitem")).toHaveCount(3);
+  });
+
   test("Clear trace button clears and returns focus to the node", async ({ page }) => {
     await open(page);
     const heatmap = page.locator("[data-node-id]").first();

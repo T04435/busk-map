@@ -29,6 +29,17 @@
 | Layout | ✓ no page scroll, nothing cut off at the right, no cut-off placeholders, no console errors, at all three widths. Screenshots looked at (768 shown stacked, two columns of pieces) |
 | **Focus not obscured (2.4.11)** | **✗ B-015.** With a trace open, Tab scrolls each piece to the bottom edge, under the sticky panel (up to 45vh). Confirmed in screenshots at 390 (c5 hidden) and 1440 (c4 hidden) |
 
+## HQ follow-up checks (same day)
+
+| Check | Result |
+|---|---|
+| Every piece traces, keyboard included | ✓ all **38** pieces (12 call shapes incl. 5b, 2 other sources, 15 data points, 9 parts): Enter sets `aria-pressed`, announces "Tracing. … Other pieces are dimmed.", opens the panel and lights a path; Escape clears and keeps focus on the piece. At 390, 768 and 1440 |
+| "Next" items labelled | ✓ under "Next (not built yet)", a dashed card, 3 items |
+| Counts match the map | ✓ the facts strip matches `qloo-map.ts` and `docs/qloo-data-map.md` (see above) |
+| Try to break the drift test (scratch `git archive` copy, never the repo; deleted afterwards) | ✓ **all 5 mutations caught**: (1) a bare new `qlooGet` call to `/v2/tags` fails at collection ("calls qlooGet outside a lookupScope"); (2) a well-formed new call (`countLookup` + `lookupScope`, `/v2/tags`) missing from the map fails "names exactly the client functions that send a Qloo request"; (3) heatmap sends a different `filter.type`: "each call's endpoint and type match"; (4) `qlooGet` imported in `agent/week.ts`: "qlooGet is used only inside the adapter's client"; (5) the map lists `/v2/trending-fake`: "each call's endpoint and type match" |
+
+Note: the follow-up Playwright run built the working tree, which held DEV's **uncommitted** edit to `src/components/brain/brain-map.tsx`. In that build, B-015's `test.fail` reported "expected to fail, but passed" at all three widths. That's not a committed result: B-015 stays open until DEV commits the fix and QA retests on the commit.
+
 ## Defects
 - **B-015 Medium:** the sticky trace panel hides the focused node. Suggestion: `scroll-padding-bottom` set to the panel's height while a trace is open, or a non-sticky panel at narrow widths.
 - **B-014 Low:** `docs/qloo-data-map.md` §4 still describes the week-prefetch comment as "about 47 Qloo calls"; it now says about N+2.

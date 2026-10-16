@@ -29,6 +29,17 @@
  * the usual-hotspot crowd); places and events = distinct ones in the scored
  * pool's evidence; sensors = slot sensors with a reading; rules = scored = the
  * scored pool; songs = distinct songs across the plan's setlists.
+ *
+ * Qloo usage for the busk (agent runs; optional, so plans stored before them
+ * still parse, and engine-only run=0 plans leave them out):
+ * - qlooCalls:     HTTP requests actually sent to Qloo for this busk (the
+ *                  local mock offline), retries included; cache hits excluded.
+ * - qlooCacheHits: Qloo lookups (one adapter data call, e.g. a heatmap or a
+ *                  crowd read) served from the data cache with no request.
+ * Both cover the agent's tools and the engine's own loads in the run
+ * (src/server/adapters/qloo/usage.ts). Data the run reuses from the engine's
+ * in-memory memo of the same request makes no lookup and counts in neither.
+ * In the live totals event they are the running counts so far.
  */
 import { z } from "zod";
 import { nameKey } from "./text";
@@ -44,6 +55,8 @@ export const researchTotalsSchema = z.object({
   rules: count,
   scored: count,
   songs: count,
+  qlooCalls: count.optional(),
+  qlooCacheHits: count.optional(),
 });
 
 export type ResearchTotals = z.infer<typeof researchTotalsSchema>;

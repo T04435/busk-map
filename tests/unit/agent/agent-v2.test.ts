@@ -247,7 +247,11 @@ describe("Agent v2 runs (mock model)", () => {
     const ends: { tool: string; ok: boolean; output: unknown }[] = [];
     const { plan } = await runPlanAgent(ctx, { onToolEnd: (e) => ends.push(e) }, undefined, { model: createMockPlanner() });
     expect(plan.explanations).toBe("ai");
-    expect(plan.researchTotals).toEqual(fromToolOutputs(ends));
+    // The data totals come from the tool outputs; the Qloo usage fields from the run's counter.
+    const { qlooCalls, qlooCacheHits, ...data } = plan.researchTotals!;
+    expect(data).toEqual(fromToolOutputs(ends));
+    expect(qlooCalls).toBeGreaterThan(0);
+    expect(qlooCacheHits).toBeGreaterThanOrEqual(0);
     const scoring = ends.filter((e) => e.tool === "score_pitches").at(-1)!.output as { poolSize: number };
     expect(plan.researchTotals!.scored).toBe(scoring.poolSize);
     expect(plan.researchTotals!.scored).toBeGreaterThan(0);
@@ -260,7 +264,7 @@ describe("Agent v2 runs (mock model)", () => {
     expect(fallback.explanations).toBe("template");
     const [ranked, cells, footfall] = await Promise.all([failed.ctx.ranked(), failed.ctx.tasteCells(), failed.ctx.footfall()]);
     const engine = fromEngine({ cells: cells.length, crowdReads: 0, pool: ranked, sensors: footfall.sensors, setlists: fallback.pitches.map((p) => p.setlist) });
-    expect({ ...fallback.researchTotals, crowds: 0 }).toEqual(engine);
+    expect({ ...fallback.researchTotals, crowds: 0, qlooCalls: undefined, qlooCacheHits: undefined }).toEqual(engine);
     expect(fallback.researchTotals!.scored).toBe(ranked.length);
     expect(fallback.researchTotals!.taste).toBe(cells.length);
     expect(fallback.researchTotals!.crowds).toBeGreaterThanOrEqual(1);
@@ -268,7 +272,8 @@ describe("Agent v2 runs (mock model)", () => {
     // run=0 (engine only, no agent): the field is there too.
     const { buildEnginePlan } = await import("@/server/agent/preload");
     const engineOnly = await buildEnginePlan(request, OFFLINE, "2026-10-15");
-    expect(engineOnly.researchTotals).toEqual(fallback.researchTotals);
+    // run=0 runs no agent, so it has no busk Qloo usage fields.
+    expect(engineOnly.researchTotals).toEqual({ ...fallback.researchTotals, qlooCalls: undefined, qlooCacheHits: undefined });
   });
 
   it("running totals after each tool-end never decrease, and the last one is the plan's stored totals", async () => {
@@ -286,7 +291,13 @@ describe("Agent v2 runs (mock model)", () => {
     expect(seen.length).toBeGreaterThan(4);
     expect(seen).toEqual(seen.map((_, i) => (i % 2 === 0 ? "end" : "totals")));
     for (let i = 1; i < totals.length; i++) for (const k of Object.keys(totals[i])) expect(totals[i][k]).toBeGreaterThanOrEqual(totals[i - 1][k]);
-    expect(totals.at(-1)).toEqual(plan.researchTotals);
+    // The data totals end on the stored ones; Qloo usage keeps counting while the plan is assembled, so the
+    // stored counts are at least the last running ones (the route sends the stored totals last).
+    const { qlooCalls, qlooCacheHits, ...data } = totals.at(-1)!;
+    const { qlooCalls: storedCalls, qlooCacheHits: storedHits, ...storedData } = plan.researchTotals!;
+    expect(data).toEqual(storedData);
+    expect(storedCalls).toBeGreaterThanOrEqual(qlooCalls);
+    expect(storedHits).toBeGreaterThanOrEqual(qlooCacheHits);
     expect(totals[0]).not.toEqual(totals.at(-1));
   });
 });

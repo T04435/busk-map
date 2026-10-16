@@ -6,6 +6,7 @@ import { addDays } from "@/lib/slot";
 import { env, type QlooBackend } from "@/server/env";
 import { log } from "@/server/log";
 import { QLOO_MOCK_BASE_URL, qlooMockFetch } from "@/server/qloo-mock/fetch";
+import { countLookup, lookupScope, noteQlooRequest } from "./usage";
 import { AdapterError, fetchJson } from "../core";
 import { parseEntities, toEntity, toImpact, toPlace } from "./normalize";
 import {
@@ -97,14 +98,16 @@ export async function qlooGet<S extends z.ZodType>(backend: QlooBackend, path: s
   const { base, apiKey, fetcher } = target(backend);
   if (!apiKey) throw new AdapterError("qloo", "missing_key", "Qloo key is not configured");
   const query = toSearch(params);
-  const once = () =>
-    fetchJson(`${base}${path}?${query}`, {
+  const once = () => {
+    noteQlooRequest();
+    return fetchJson(`${base}${path}?${query}`, {
       adapter: "qloo",
       schema,
       timeoutMs: TIMEOUT_MS,
       fetcher,
       init: { headers: { "X-Api-Key": apiKey, Accept: "application/json" } },
     });
+  };
   if (backend === "mock") return once();
   for (let attempt = 0; ; attempt++) {
     await pace();
@@ -150,45 +153,63 @@ const ids = (list: readonly string[]) => list.join(",");
 
 /** `/search` for one artist name. Returns the best match, or null. */
 export async function searchArtist(backend: QlooBackend, name: string): Promise<QlooEntity | null> {
+  return countLookup("searchArtist", [backend, name], () => searchArtistCached(backend, name));
+}
+
+async function searchArtistCached(backend: QlooBackend, name: string): Promise<QlooEntity | null> {
   "use cache: remote";
-  cacheLife("days");
-  cacheTag("qloo", "qloo:search");
-  const params = { query: name, types: "urn:entity:artist", take: 3 };
-  const results = await orNotFound(async () => (await qlooGet(backend, "/search", params, searchResponseSchema)).results, []);
-  const [best] = listEntities("/search", params, results);
-  return best ? toEntity(best) : null;
+  return lookupScope("searchArtist", [backend, name], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:search");
+    const params = { query: name, types: "urn:entity:artist", take: 3 };
+    const results = await orNotFound(async () => (await qlooGet(backend, "/search", params, searchResponseSchema)).results, []);
+    const [best] = listEntities("/search", params, results);
+    return best ? toEntity(best) : null;
+  });
 }
 
 /** `/entities` by Spotify artist id. */
 export async function entitiesBySpotifyIds(backend: QlooBackend, spotifyIds: string[]): Promise<QlooEntity[]> {
+  return countLookup("entitiesBySpotifyIds", [backend, spotifyIds], () => entitiesBySpotifyIdsCached(backend, spotifyIds));
+}
+
+async function entitiesBySpotifyIdsCached(backend: QlooBackend, spotifyIds: string[]): Promise<QlooEntity[]> {
   "use cache: remote";
-  cacheLife("days");
-  cacheTag("qloo", "qloo:entities");
-  const params = { "external.spotify.ids": ids(spotifyIds) };
-  const results = await orNotFound(async () => (await qlooGet(backend, "/entities", params, entitiesResponseSchema)).results, []);
-  return listEntities("/entities", params, results).map(toEntity);
+  return lookupScope("entitiesBySpotifyIds", [backend, spotifyIds], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:entities");
+    const params = { "external.spotify.ids": ids(spotifyIds) };
+    const results = await orNotFound(async () => (await qlooGet(backend, "/entities", params, entitiesResponseSchema)).results, []);
+    return listEntities("/entities", params, results).map(toEntity);
+  });
 }
 
 /** `urn:heatmap`: where in the area this taste concentrates. */
 export async function heatmap(backend: QlooBackend, entityIds: string[], area: BBox): Promise<HeatCell[]> {
+  return countLookup("heatmap", [backend, entityIds, area], () => heatmapCached(backend, entityIds, area));
+}
+
+async function heatmapCached(backend: QlooBackend, entityIds: string[], area: BBox): Promise<HeatCell[]> {
   "use cache: remote";
-  cacheLife("days");
-  cacheTag("qloo", "qloo:heatmap");
-  const params = {
-    "filter.type": "urn:heatmap",
-    "signal.interests.entities": ids(entityIds),
-    "filter.location": wktPolygon(area),
-  };
-  const body = await qlooGet(backend, "/v2/insights", params, heatmapResponseSchema);
-  logIfEmpty("/v2/insights", params, body.results.heatmap.length);
-  return body.results.heatmap.map((cell) => ({
-    lat: cell.location.latitude,
-    lon: cell.location.longitude,
-    geohash: cell.location.geohash ?? null,
-    affinity: cell.query.affinity,
-    affinityRank: cell.query.affinity_rank ?? null,
-    popularity: cell.query.popularity ?? null,
-  }));
+  return lookupScope("heatmap", [backend, entityIds, area], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:heatmap");
+    const params = {
+      "filter.type": "urn:heatmap",
+      "signal.interests.entities": ids(entityIds),
+      "filter.location": wktPolygon(area),
+    };
+    const body = await qlooGet(backend, "/v2/insights", params, heatmapResponseSchema);
+    logIfEmpty("/v2/insights", params, body.results.heatmap.length);
+    return body.results.heatmap.map((cell) => ({
+      lat: cell.location.latitude,
+      lon: cell.location.longitude,
+      geohash: cell.location.geohash ?? null,
+      affinity: cell.query.affinity,
+      affinityRank: cell.query.affinity_rank ?? null,
+      popularity: cell.query.popularity ?? null,
+    }));
+  });
 }
 
 /**
@@ -203,21 +224,33 @@ export async function places(
   radiusM: number,
   weekday: string | null,
 ): Promise<QlooPlace[]> {
+  return countLookup("places", [backend, entityIds, center, radiusM, weekday], () => placesCached(backend, entityIds, center, radiusM, weekday));
+}
+
+async function placesCached(
+  backend: QlooBackend,
+  entityIds: string[],
+  center: LatLon,
+  radiusM: number,
+  weekday: string | null,
+): Promise<QlooPlace[]> {
   "use cache: remote";
-  cacheLife("days");
-  cacheTag("qloo", "qloo:places");
-  const params = {
-    "filter.type": "urn:entity:place",
-    "filter.location": wktPoint(center),
-    "filter.location.radius": radiusM,
-    "filter.hours": weekday ?? undefined,
-    "signal.interests.entities": ids(entityIds),
-    take: MAX_TAKE,
-  };
-  const body = await qlooGet(backend, "/v2/insights", params, entitiesResponseSchema);
-  return listEntities("/v2/insights", params, body.results)
-    .map(toPlace)
-    .filter((p): p is QlooPlace => p !== null);
+  return lookupScope("places", [backend, entityIds, center, radiusM, weekday], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:places");
+    const params = {
+      "filter.type": "urn:entity:place",
+      "filter.location": wktPoint(center),
+      "filter.location.radius": radiusM,
+      "filter.hours": weekday ?? undefined,
+      "signal.interests.entities": ids(entityIds),
+      take: MAX_TAKE,
+    };
+    const body = await qlooGet(backend, "/v2/insights", params, entitiesResponseSchema);
+    return listEntities("/v2/insights", params, body.results)
+      .map(toPlace)
+      .filter((p): p is QlooPlace => p !== null);
+  });
 }
 
 /**
@@ -226,40 +259,52 @@ export async function places(
  * average effect on the top 3, 5, 10 and all results).
  */
 export async function localArtists(backend: QlooBackend, entityIds: string[], area: BBox, take: number): Promise<LocalArtists> {
+  return countLookup("localArtists", [backend, entityIds, area, take], () => localArtistsCached(backend, entityIds, area, take));
+}
+
+async function localArtistsCached(backend: QlooBackend, entityIds: string[], area: BBox, take: number): Promise<LocalArtists> {
   "use cache: remote";
-  cacheLife("days");
-  cacheTag("qloo", "qloo:artists");
-  const params = {
-    "filter.type": "urn:entity:artist",
-    "signal.location": wktPolygon(area),
-    "signal.interests.entities": ids(entityIds),
-    "feature.explainability": entityIds.length > 0 ? true : undefined,
-    take: Math.min(take, MAX_TAKE),
-  };
-  const body = await qlooGet(backend, "/v2/insights", params, insightsEntitiesResponseSchema);
-  return {
-    artists: listEntities("/v2/insights", params, body.results.entities).map(toEntity),
-    impact: toImpact(body.query?.explainability),
-  };
+  return lookupScope("localArtists", [backend, entityIds, area, take], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:artists");
+    const params = {
+      "filter.type": "urn:entity:artist",
+      "signal.location": wktPolygon(area),
+      "signal.interests.entities": ids(entityIds),
+      "feature.explainability": entityIds.length > 0 ? true : undefined,
+      take: Math.min(take, MAX_TAKE),
+    };
+    const body = await qlooGet(backend, "/v2/insights", params, insightsEntitiesResponseSchema);
+    return {
+      artists: listEntities("/v2/insights", params, body.results.entities).map(toEntity),
+      impact: toImpact(body.query?.explainability),
+    };
+  });
 }
 
 /** Score specific artists for the crowd around one point (`filter.results.entities`). */
 export async function affinityAt(backend: QlooBackend, entityIds: string[], point: LatLon, radiusM: number): Promise<Record<string, number>> {
+  return countLookup("affinityAt", [backend, entityIds, point, radiusM], () => affinityAtCached(backend, entityIds, point, radiusM));
+}
+
+async function affinityAtCached(backend: QlooBackend, entityIds: string[], point: LatLon, radiusM: number): Promise<Record<string, number>> {
   "use cache: remote";
-  cacheLife("days");
-  cacheTag("qloo", "qloo:affinity");
-  const params = {
-    "filter.type": "urn:entity:artist",
-    "filter.results.entities": ids(entityIds),
-    "signal.location": wktPoint(point),
-    "signal.location.radius": radiusM,
-    take: Math.min(entityIds.length, MAX_TAKE),
-  };
-  const body = await qlooGet(backend, "/v2/insights", params, entitiesResponseSchema);
-  const entities = listEntities("/v2/insights", params, body.results);
-  return Object.fromEntries(
-    entities.filter((e) => e.query?.affinity !== undefined).map((e) => [e.entity_id, e.query!.affinity as number]),
-  );
+  return lookupScope("affinityAt", [backend, entityIds, point, radiusM], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:affinity");
+    const params = {
+      "filter.type": "urn:entity:artist",
+      "filter.results.entities": ids(entityIds),
+      "signal.location": wktPoint(point),
+      "signal.location.radius": radiusM,
+      take: Math.min(entityIds.length, MAX_TAKE),
+    };
+    const body = await qlooGet(backend, "/v2/insights", params, entitiesResponseSchema);
+    const entities = listEntities("/v2/insights", params, body.results);
+    return Object.fromEntries(
+      entities.filter((e) => e.query?.affinity !== undefined).map((e) => [e.entity_id, e.query!.affinity as number]),
+    );
+  });
 }
 
 /**
@@ -268,18 +313,24 @@ export async function affinityAt(backend: QlooBackend, entityIds: string[], poin
  * event's crowd by how close its headliner's fans are to the performer's.
  */
 export async function affinityFor(backend: QlooBackend, resultIds: string[], signalIds: string[]): Promise<Record<string, number>> {
+  return countLookup("affinityFor", [backend, resultIds, signalIds], () => affinityForCached(backend, resultIds, signalIds));
+}
+
+async function affinityForCached(backend: QlooBackend, resultIds: string[], signalIds: string[]): Promise<Record<string, number>> {
   "use cache: remote";
-  cacheLife("days");
-  cacheTag("qloo", "qloo:affinity");
-  const params = {
-    "filter.type": "urn:entity:artist",
-    "filter.results.entities": ids(resultIds),
-    "signal.interests.entities": ids(signalIds),
-    take: Math.min(resultIds.length, MAX_TAKE),
-  };
-  const body = await qlooGet(backend, "/v2/insights", params, entitiesResponseSchema);
-  const entities = listEntities("/v2/insights", params, body.results);
-  return Object.fromEntries(entities.filter((e) => e.query?.affinity !== undefined).map((e) => [e.entity_id, e.query!.affinity as number]));
+  return lookupScope("affinityFor", [backend, resultIds, signalIds], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:affinity");
+    const params = {
+      "filter.type": "urn:entity:artist",
+      "filter.results.entities": ids(resultIds),
+      "signal.interests.entities": ids(signalIds),
+      take: Math.min(resultIds.length, MAX_TAKE),
+    };
+    const body = await qlooGet(backend, "/v2/insights", params, entitiesResponseSchema);
+    const entities = listEntities("/v2/insights", params, body.results);
+    return Object.fromEntries(entities.filter((e) => e.query?.affinity !== undefined).map((e) => [e.entity_id, e.query!.affinity as number]));
+  });
 }
 
 /**
@@ -289,34 +340,40 @@ export async function affinityFor(backend: QlooBackend, resultIds: string[], sig
  * string; percentiles are returned here on a 0–100 scale.
  */
 export async function trendingFor(backend: QlooBackend, entityId: string, startDate: string, endDate: string): Promise<TrendRow | null> {
+  return countLookup("trendingFor", [backend, entityId, startDate, endDate], () => trendingForCached(backend, entityId, startDate, endDate));
+}
+
+async function trendingForCached(backend: QlooBackend, entityId: string, startDate: string, endDate: string): Promise<TrendRow | null> {
   "use cache: remote";
-  cacheLife("days");
-  cacheTag("qloo", "qloo:trending");
-  const params = {
-    "signal.interests.entities": entityId,
-    "filter.type": "urn:entity:artist",
-    "filter.start_date": startDate,
-    "filter.end_date": endDate,
-  };
-  const body = await qlooGet(backend, "/v2/trending", params, trendingResponseSchema);
-  logIfEmpty("/v2/trending", params, body.results.trending.length);
-  const rows = body.results.trending.filter((row) => row.entity_id === undefined || row.entity_id === entityId);
-  const [latest] = [...rows].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
-  if (!latest) return null;
-  const oldest = rows.reduce((min, row) => ((row.date ?? "") < (min.date ?? "") ? row : min), latest);
-  const points = (fraction: number) => Math.round(fraction * 100 * 100) / 100;
-  const series = [...rows].sort((a, b) => (a.date ?? "").localeCompare(b.date ?? "")).flatMap((row) => (row.population_percentile === undefined ? [] : [points(row.population_percentile)]));
-  return {
-    entityId,
-    percentDelta: latest.population_percent_delta ?? null,
-    velocity: latest.population_rank_velocity ?? latest.velocity_fold_change ?? null,
-    percentile: latest.population_percentile === undefined ? null : points(latest.population_percentile),
-    windowChange:
-      latest.population_percentile !== undefined && oldest.population_percentile !== undefined && oldest !== latest
-        ? Math.round((points(latest.population_percentile) - points(oldest.population_percentile)) * 100) / 100
-        : null,
-    series,
-  };
+  return lookupScope("trendingFor", [backend, entityId, startDate, endDate], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:trending");
+    const params = {
+      "signal.interests.entities": entityId,
+      "filter.type": "urn:entity:artist",
+      "filter.start_date": startDate,
+      "filter.end_date": endDate,
+    };
+    const body = await qlooGet(backend, "/v2/trending", params, trendingResponseSchema);
+    logIfEmpty("/v2/trending", params, body.results.trending.length);
+    const rows = body.results.trending.filter((row) => row.entity_id === undefined || row.entity_id === entityId);
+    const [latest] = [...rows].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+    if (!latest) return null;
+    const oldest = rows.reduce((min, row) => ((row.date ?? "") < (min.date ?? "") ? row : min), latest);
+    const points = (fraction: number) => Math.round(fraction * 100 * 100) / 100;
+    const series = [...rows].sort((a, b) => (a.date ?? "").localeCompare(b.date ?? "")).flatMap((row) => (row.population_percentile === undefined ? [] : [points(row.population_percentile)]));
+    return {
+      entityId,
+      percentDelta: latest.population_percent_delta ?? null,
+      velocity: latest.population_rank_velocity ?? latest.velocity_fold_change ?? null,
+      percentile: latest.population_percentile === undefined ? null : points(latest.population_percentile),
+      windowChange:
+        latest.population_percentile !== undefined && oldest.population_percentile !== undefined && oldest !== latest
+          ? Math.round((points(latest.population_percentile) - points(oldest.population_percentile)) * 100) / 100
+          : null,
+      series,
+    };
+  });
 }
 
 /** Length of the trending window, and how far back to look for one with data. */
@@ -333,15 +390,21 @@ export type TrendWindow = { start: string; end: string };
  * itself a cached `trendingFor` call, so the probe artist's row is reused.
  */
 export async function trendingWindow(backend: QlooBackend, probeEntityId: string, today: string): Promise<TrendWindow | null> {
+  return countLookup("trendingWindow", [backend, probeEntityId, today], () => trendingWindowCached(backend, probeEntityId, today));
+}
+
+async function trendingWindowCached(backend: QlooBackend, probeEntityId: string, today: string): Promise<TrendWindow | null> {
   "use cache: remote";
-  cacheLife("days");
-  cacheTag("qloo", "qloo:trending");
-  for (let probe = 0; probe < TRENDING_MAX_PROBES; probe++) {
-    const end = addDays(today, -1 - probe * TRENDING_PROBE_STEP_DAYS);
-    const start = addDays(end, -TRENDING_WINDOW_DAYS);
-    if (await trendingFor(backend, probeEntityId, start, end)) return { start, end };
-  }
-  return null;
+  return lookupScope("trendingWindow", [backend, probeEntityId, today], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:trending");
+    for (let probe = 0; probe < TRENDING_MAX_PROBES; probe++) {
+      const end = addDays(today, -1 - probe * TRENDING_PROBE_STEP_DAYS);
+      const start = addDays(end, -TRENDING_WINDOW_DAYS);
+      if (await trendingFor(backend, probeEntityId, start, end)) return { start, end };
+    }
+    return null;
+  });
 }
 
 /** `/v2/trending` for up to five artists, one request each (paced; see `qlooGet`). */
@@ -353,20 +416,26 @@ export async function trending(backend: QlooBackend, entityIds: string[], startD
 
 /** `urn:demographics`: the age and gender lean of fans of these artists. */
 export async function demographics(backend: QlooBackend, entityIds: string[]): Promise<CrowdProfile | null> {
+  return countLookup("demographics", [backend, entityIds], () => demographicsCached(backend, entityIds));
+}
+
+async function demographicsCached(backend: QlooBackend, entityIds: string[]): Promise<CrowdProfile | null> {
   "use cache: remote";
-  cacheLife("days");
-  cacheTag("qloo", "qloo:demographics");
-  const params = { "filter.type": "urn:demographics", "signal.interests.entities": ids(entityIds) };
-  const body = await qlooGet(backend, "/v2/insights", params, demographicsResponseSchema);
-  logIfEmpty("/v2/insights", params, body.results.demographics.length);
-  const rows = body.results.demographics;
-  if (rows.length === 0) return null;
-  const average = (key: "age" | "gender") => {
-    const totals: Record<string, number> = {};
-    for (const row of rows) for (const [band, value] of Object.entries(row.query[key] ?? {})) totals[band] = (totals[band] ?? 0) + value / rows.length;
-    return totals;
-  };
-  return { age: average("age"), gender: average("gender") };
+  return lookupScope("demographics", [backend, entityIds], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:demographics");
+    const params = { "filter.type": "urn:demographics", "signal.interests.entities": ids(entityIds) };
+    const body = await qlooGet(backend, "/v2/insights", params, demographicsResponseSchema);
+    logIfEmpty("/v2/insights", params, body.results.demographics.length);
+    const rows = body.results.demographics;
+    if (rows.length === 0) return null;
+    const average = (key: "age" | "gender") => {
+      const totals: Record<string, number> = {};
+      for (const row of rows) for (const [band, value] of Object.entries(row.query[key] ?? {})) totals[band] = (totals[band] ?? 0) + value / rows.length;
+      return totals;
+    };
+    return { age: average("age"), gender: average("gender") };
+  });
 }
 
 /**
@@ -374,21 +443,27 @@ export async function demographics(backend: QlooBackend, entityIds: string[]): P
  * artists around a point (signal.location), strongest first.
  */
 export async function crowdTags(backend: QlooBackend, entityIds: string[], point: LatLon, radiusM: number, take: number): Promise<TasteTag[]> {
+  return countLookup("crowdTags", [backend, entityIds, point, radiusM, take], () => crowdTagsCached(backend, entityIds, point, radiusM, take));
+}
+
+async function crowdTagsCached(backend: QlooBackend, entityIds: string[], point: LatLon, radiusM: number, take: number): Promise<TasteTag[]> {
   "use cache: remote";
-  cacheLife("days");
-  cacheTag("qloo", "qloo:tags");
-  const params = {
-    "filter.type": "urn:tag",
-    "filter.tag.types": "urn:tag:genre:music",
-    "filter.parents.types": "urn:entity:artist",
-    "signal.interests.entities": ids(entityIds),
-    "signal.location": wktPoint(point),
-    "signal.location.radius": radiusM,
-    take: Math.min(take, MAX_TAKE),
-  };
-  const body = await qlooGet(backend, "/v2/insights", params, tagsResponseSchema);
-  logIfEmpty("/v2/insights", params, body.results.tags.length);
-  return body.results.tags.map((tag) => ({ id: tag.tag_id ?? tag.id ?? "", name: tag.name, affinity: tag.query?.affinity ?? null })).filter((t) => t.id);
+  return lookupScope("crowdTags", [backend, entityIds, point, radiusM, take], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:tags");
+    const params = {
+      "filter.type": "urn:tag",
+      "filter.tag.types": "urn:tag:genre:music",
+      "filter.parents.types": "urn:entity:artist",
+      "signal.interests.entities": ids(entityIds),
+      "signal.location": wktPoint(point),
+      "signal.location.radius": radiusM,
+      take: Math.min(take, MAX_TAKE),
+    };
+    const body = await qlooGet(backend, "/v2/insights", params, tagsResponseSchema);
+    logIfEmpty("/v2/insights", params, body.results.tags.length);
+    return body.results.tags.map((tag) => ({ id: tag.tag_id ?? tag.id ?? "", name: tag.name, affinity: tag.query?.affinity ?? null })).filter((t) => t.id);
+  });
 }
 
 /** The music-genre tag subtype in /v2/analysis/compare groups. */
@@ -401,31 +476,37 @@ export const GENRE_SUBTYPE = "urn:tag:genre:music";
  * value per group is that count over the group's size (0–1).
  */
 export async function compareGenres(backend: QlooBackend, groupA: string[], groupB: string[]): Promise<GenreContrast[]> {
+  return countLookup("compareGenres", [backend, groupA, groupB], () => compareGenresCached(backend, groupA, groupB));
+}
+
+async function compareGenresCached(backend: QlooBackend, groupA: string[], groupB: string[]): Promise<GenreContrast[]> {
   "use cache: remote";
-  cacheLife("days");
-  cacheTag("qloo", "qloo:compare");
-  const params = {
-    "a.signal.interests.entities": ids(groupA),
-    "b.signal.interests.entities": ids(groupB),
-  };
-  const body = await qlooGet(backend, "/v2/analysis/compare", params, compareResponseSchema);
-  const share = (rows: typeof body.results.a, size: number) => {
-    const out = new Map<string, { name: string; value: number }>();
-    for (const row of rows) {
-      if (row.subtype !== GENRE_SUBTYPE || !row.name) continue;
-      const value = Math.min(1, (row.query?.count ?? 0) / Math.max(1, size));
-      const previous = out.get(row.tag_id);
-      if (!previous || value > previous.value) out.set(row.tag_id, { name: row.name, value });
-    }
-    return out;
-  };
-  const a = share(body.results.a, groupA.length);
-  const b = share(body.results.b, groupB.length);
-  logIfEmpty("/v2/analysis/compare", params, a.size + b.size);
-  return [...new Set([...a.keys(), ...b.keys()])].map((id) => ({
-    id,
-    name: (a.get(id) ?? b.get(id))!.name,
-    a: Math.round((a.get(id)?.value ?? 0) * 1000) / 1000,
-    b: Math.round((b.get(id)?.value ?? 0) * 1000) / 1000,
-  }));
+  return lookupScope("compareGenres", [backend, groupA, groupB], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:compare");
+    const params = {
+      "a.signal.interests.entities": ids(groupA),
+      "b.signal.interests.entities": ids(groupB),
+    };
+    const body = await qlooGet(backend, "/v2/analysis/compare", params, compareResponseSchema);
+    const share = (rows: typeof body.results.a, size: number) => {
+      const out = new Map<string, { name: string; value: number }>();
+      for (const row of rows) {
+        if (row.subtype !== GENRE_SUBTYPE || !row.name) continue;
+        const value = Math.min(1, (row.query?.count ?? 0) / Math.max(1, size));
+        const previous = out.get(row.tag_id);
+        if (!previous || value > previous.value) out.set(row.tag_id, { name: row.name, value });
+      }
+      return out;
+    };
+    const a = share(body.results.a, groupA.length);
+    const b = share(body.results.b, groupB.length);
+    logIfEmpty("/v2/analysis/compare", params, a.size + b.size);
+    return [...new Set([...a.keys(), ...b.keys()])].map((id) => ({
+      id,
+      name: (a.get(id) ?? b.get(id))!.name,
+      a: Math.round((a.get(id)?.value ?? 0) * 1000) / 1000,
+      b: Math.round((b.get(id)?.value ?? 0) * 1000) / 1000,
+    }));
+  });
 }

@@ -3,6 +3,7 @@ import { ToolLoopAgent, type LanguageModel, type StopCondition } from "ai";
 import { describeSlot } from "@/lib/slot";
 import type { Plan } from "@/lib/plan-schema";
 import { fromToolOutputs, type ResearchTotals, type ToolResult } from "@/lib/research-totals";
+import { withQlooUsage } from "@/server/adapters/qloo/usage";
 import { providerStatus } from "@/server/env";
 import { log } from "@/server/log";
 import { assemblePlan } from "./assemble";
@@ -105,6 +106,16 @@ export type AgentResult = {
  * plan still completes from the engine with template explanations, labelled.
  */
 export async function runPlanAgent(ctx: PlanContext, events: AgentEvents = {}, abortSignal?: AbortSignal, options: AgentOptions = {}): Promise<AgentResult> {
+  // Qloo usage is counted for this busk only: the agent's tools and the engine's loads in this run (qloo/usage.ts).
+  return withQlooUsage(async (qloo) => {
+    const withQloo = (totals: ResearchTotals): ResearchTotals => ({ ...totals, qlooCalls: qloo.calls, qlooCacheHits: qloo.cacheHits });
+    const result = await runAgent(ctx, { ...events, onTotals: events.onTotals && ((totals) => events.onTotals!(withQloo(totals))) }, abortSignal, options);
+    if (result.plan.researchTotals) result.plan.researchTotals = withQloo(result.plan.researchTotals);
+    return result;
+  });
+}
+
+async function runAgent(ctx: PlanContext, events: AgentEvents, abortSignal: AbortSignal | undefined, options: AgentOptions): Promise<AgentResult> {
   // Qloo is required: check it before spending tokens.
   const artists = await ctx.artists();
   if (ctx.qlooFailed()) throw new QlooUnavailableError();

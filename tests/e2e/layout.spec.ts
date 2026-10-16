@@ -1,7 +1,8 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import type { Locator, Page } from "@playwright/test";
-import { expect, LOCAL, test, waitForPlan } from "./fixtures";
+import type { Page } from "@playwright/test";
+import { expect, LOCAL, SATURDAY, test, waitForPlan } from "./fixtures";
+import { expectNoOverflow, expectOnTop, holdAgentRunning } from "./layout-helpers";
 
 /**
  * Layout at three widths, actually rendered: phone 390, tablet 768, desktop 1440 (user rule).
@@ -22,88 +23,6 @@ const WIDTHS = [
 ] as const;
 
 const SCREENS = process.env.LAYOUT_SCREENS_DIR ?? path.resolve(__dirname, "../../../hackathon/hackathons/qloo-2026/screens");
-
-type Overflow = { what: string; left: number; right: number };
-
-/** Elements whose visible box (after clipping by overflow containers) leaves the viewport horizontally. */
-async function overflowingElements(page: Page): Promise<Overflow[]> {
-  return page.evaluate(() => {
-    const vw = document.documentElement.clientWidth;
-    const out: { what: string; left: number; right: number }[] = [];
-    for (const el of Array.from(document.body.querySelectorAll("*"))) {
-      const style = getComputedStyle(el);
-      if (style.display === "none" || style.visibility === "hidden" || style.display === "contents") continue;
-      const r = el.getBoundingClientRect();
-      if (r.width === 0 || r.height === 0) continue;
-      let left = r.left;
-      let right = r.right;
-      // Clip by every ancestor that clips horizontally (overflow-x other than visible): a sideways scroller,
-      // the map's own container. Its content may be wider; the container itself is checked as an element.
-      for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) {
-        const ox = getComputedStyle(a).overflowX;
-        if (ox === "visible") continue;
-        const ar = a.getBoundingClientRect();
-        left = Math.max(left, ar.left);
-        right = Math.min(right, ar.right);
-      }
-      if (right <= left) continue;
-      if (left < -1 || right > vw + 1) {
-        const id = el.getAttribute("data-testid") ?? el.getAttribute("aria-label") ?? el.id;
-        const text = (el.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 50);
-        out.push({ what: `${el.tagName.toLowerCase()}${id ? `[${id}]` : ""} "${text}"`, left: Math.round(left), right: Math.round(right) });
-      }
-    }
-    return out;
-  });
-}
-
-async function expectNoOverflow(page: Page) {
-  const size = await page.evaluate(() => ({
-    scroll: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
-    inner: window.innerWidth,
-  }));
-  expect(size.scroll, "horizontal page overflow").toBeLessThanOrEqual(size.inner + 1);
-  // Report only the outermost offenders: a too-wide box drags its children with it.
-  const offenders = await overflowingElements(page);
-  expect(offenders.slice(0, 10), "elements past the viewport").toEqual([]);
-  expect(await clippedPlaceholders(page), "placeholders cut off by a too-narrow field").toEqual([]);
-}
-
-/** Empty, visible text fields whose placeholder is wider than the field: the hint is cut off. */
-async function clippedPlaceholders(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
-    const ctx = document.createElement("canvas").getContext("2d")!;
-    const out: string[] = [];
-    for (const input of Array.from(document.querySelectorAll<HTMLInputElement>("input[placeholder]"))) {
-      if (input.value || input.offsetParent === null) continue;
-      const style = getComputedStyle(input);
-      ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-      const available = input.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-      if (ctx.measureText(input.placeholder).width > available + 1) out.push(`${input.getAttribute("aria-label") ?? input.id}: "${input.placeholder}"`);
-    }
-    return out;
-  });
-}
-
-/** Visible, in view and on top: the element at its centre is the control itself or inside it. */
-async function expectOnTop(control: Locator, what: string) {
-  await control.scrollIntoViewIfNeeded();
-  await expect(control, what).toBeVisible();
-  await expect
-    .poll(
-      () =>
-        control.evaluate((el) => {
-          const r = el.getBoundingClientRect();
-          const x = r.left + r.width / 2;
-          const y = r.top + r.height / 2;
-          if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) return `centre out of view (${Math.round(x)}, ${Math.round(y)})`;
-          const hit = document.elementFromPoint(x, y);
-          return hit && (hit === el || el.contains(hit)) ? "on top" : `covered by ${hit?.outerHTML.slice(0, 140) ?? "nothing"}`;
-        }),
-      { message: `${what} is covered or out of view`, timeout: 5_000 },
-    )
-    .toBe("on top");
-}
 
 /** The pitch list buttons beside the map, the top-pitch pins on it, and the legend clear of the pins. */
 async function expectPitchesAndPins(page: Page) {
@@ -126,30 +45,6 @@ async function expectPitchesAndPins(page: Page) {
     const overlaps = pin.x < box.x + box.width && pin.x + pin.width > box.x && pin.y < box.y + box.height && pin.y + pin.height > box.y;
     expect(overlaps, `the map legend covers pin ${i + 1}`).toBe(false);
   }
-}
-
-/**
- * Holds the agent mid-run: the page's /api/plan stream delivers the real events up to the last step started,
- * then stays open. No plan or usage event arrives, so the page shows the agent running.
- */
-async function holdAgentRunning(page: Page) {
-  await page.addInitScript(() => {
-    const original = window.fetch.bind(window);
-    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-      if (new URL(url, location.href).pathname !== "/api/plan") return original(input, init);
-      const response = await original(input, init);
-      const lines = (await response.text()).split("\n").filter(Boolean);
-      const lastStart = lines.findLastIndex((line) => (JSON.parse(line) as { type: string }).type === "tool-start");
-      const kept = lines.slice(0, lastStart + 1).map((line) => `${line}\n`).join("");
-      const body = new ReadableStream<Uint8Array>({
-        start(controller) {
-          controller.enqueue(new TextEncoder().encode(kept)); // and never close: the run is still going
-        },
-      });
-      return new Response(body, { status: response.status, headers: { "Content-Type": "application/x-ndjson" } });
-    };
-  });
 }
 
 type PageCase = {
@@ -182,7 +77,7 @@ const PAGES: PageCase[] = [
     controls: async (page) => {
       await expectOnTop(page.getByRole("link", { name: /^Soul and funk sax player / }), "example card");
       await expectOnTop(page.getByRole("radio", { name: "General permit" }), "General permit");
-      await expectOnTop(page.getByRole("button", { name: "Plan my set" }), "Plan my set");
+      await expectOnTop(page.getByRole("button", { name: "Plan my busk" }), "Plan my busk");
     },
   },
   {
@@ -217,7 +112,7 @@ const PAGES: PageCase[] = [
       await page.goto("/plan?example=sax");
       await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
       await expect(page.getByTestId("plan-pending")).toBeVisible();
-      await expect(page.getByRole("list", { name: "Agent steps" }).getByRole("listitem").first()).toBeVisible();
+      await expect(page.getByRole("list", { name: "Research, newest first" }).getByRole("listitem").first()).toBeVisible();
     },
     controls: async (page) => {
       await expectOnTop(page.getByTestId("copy-link"), "Copy link");
@@ -236,8 +131,89 @@ const PAGES: PageCase[] = [
     },
     controls: async (page) => {
       await expectOnTop(page.getByTestId("copy-link"), "Copy link");
-      await expectOnTop(page.getByRole("button", { name: /^Agent steps \(replayed, \d+\)$/ }), "Agent steps (replayed)");
+      await expectOnTop(page.getByText(/^Every check, from earlier/), "Every check, from earlier");
       await expectPitchesAndPins(page);
+    },
+  },
+  {
+    name: "plan-qloo-down",
+    local: true,
+    open: async (page) => {
+      await page.goto("/plan?example=acoustic&faults=qloo");
+      await expect(page.getByText("Qloo is unavailable")).toBeVisible();
+    },
+    controls: async (page) => {
+      await expect(page.getByRole("button", { name: /try again/i })).toHaveCount(0);
+      await expectOnTop(page.getByText("Qloo is unavailable"), "Qloo is unavailable");
+    },
+  },
+  {
+    name: "plan-no-match",
+    local: true,
+    open: async (page) => {
+      await page.goto(`/plan?name=Nobody%20Knows&artists=Zzyzx%20Nobody|Qqq%20Unknown&date=${SATURDAY}&from=18&to=21`);
+      await waitForPlan(page);
+      await expect(page.getByTestId("unmatched-artists")).toBeVisible();
+    },
+    controls: async (page) => {
+      await expectPitchesAndPins(page);
+    },
+  },
+  {
+    name: "plan-no-pitch",
+    local: true,
+    open: async (page) => {
+      await page.goto("/plan?example=sax&faults=pitches,footfall");
+      await expect(page.getByText("No pitch to recommend")).toBeVisible();
+    },
+    controls: async (page) => {
+      await expect(page.getByRole("link", { name: "Read the council's busking rules" })).toBeVisible();
+    },
+  },
+  {
+    name: "plan-source-down",
+    local: true,
+    open: async (page) => {
+      await page.goto("/plan?example=acoustic&faults=footfall,events,weather");
+      await waitForPlan(page);
+      await expect(page.getByTestId("source-down")).toBeVisible();
+    },
+    controls: async (page) => {
+      await expectPitchesAndPins(page);
+    },
+  },
+  {
+    name: "plan-slot-passed",
+    local: true,
+    open: async (page) => {
+      await page.goto("/plan?name=Past%20Slot%20Duo&artists=Paul%20Kelly&date=2026-10-03&from=12&to=15&permit=premium");
+      await expect(page.getByTestId("slot-passed")).toBeVisible();
+    },
+    controls: async (page) => {
+      await expectOnTop(page.getByRole("link", { name: "Plan again for a new date" }), "Plan again for a new date");
+    },
+  },
+  {
+    name: "plan-not-found",
+    open: async (page) => {
+      await page.goto("/p/ZZZZZZZZZ");
+      await expect(page.getByTestId("plan-not-found")).toBeVisible();
+    },
+    controls: async (page) => {
+      await expectOnTop(page.getByRole("link", { name: "Go to Busk Map home" }), "Go to Busk Map home");
+    },
+  },
+  {
+    name: "plan-sheet",
+    local: true,
+    open: async (page) => {
+      await page.goto("/plan?example=folk-duo");
+      await waitForPlan(page);
+      await page.getByRole("region", { name: "Pitches", exact: true }).getByRole("button", { name: /^Full details/ }).first().click();
+      await expect(page.getByRole("dialog")).toBeVisible();
+    },
+    controls: async (page) => {
+      await expectOnTop(page.getByRole("button", { name: "Close" }), "Close the sheet");
     },
   },
   {

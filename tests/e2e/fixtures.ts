@@ -8,8 +8,8 @@ export const EXPLANATIONS_LABEL = LOCAL ? "Explanations: test model (offline)" :
 /** The Data sources credit for Claude, shown only when Claude wrote the explanations. */
 export const CLAUDE_CREDIT = "Plan explanations written by Claude (Anthropic) via Vercel AI Gateway";
 /** Who the page says wrote the notes, picks and whys (B-010): the test model on the local offline server, Claude on a deploy. */
-export const MODEL_NOTE_PREFIX = LOCAL ? "Test model:" : "Claude:";
-export const AGENT_KEPT_TOP3 = `${LOCAL ? "The test model" : "Claude"} kept the engine's top 3.`;
+export const MODEL_NOTE_PREFIX = LOCAL ? "Test model" : "Claude";
+export const AGENT_KEPT_TOP3 = `${LOCAL ? "The test model" : "Claude"} checked Busk Map's top 3 and kept them`;
 export const EXPLAINED_BY = LOCAL ? "Explained by the test model (offline)" : "Explained by Claude";
 
 export const test = base;
@@ -20,16 +20,33 @@ export async function waitForPlan(page: import("@playwright/test").Page) {
 }
 
 /**
- * The agent's steps list. A run replayed from the cache (e.g. the other project already ran this example)
- * shows its steps collapsed: open them first.
+ * The research feed (newest first). On phones and tablets, and for a replay, it sits folded under "Every check": open it first.
  */
 export async function agentSteps(page: import("@playwright/test").Page) {
-  const list = page.getByRole("list", { name: "Agent steps" });
-  const replayed = page.getByRole("button", { name: /^Agent steps \(replayed, \d+\)$/ });
-  await expect(list.or(replayed).first()).toBeVisible();
-  if (await replayed.isVisible()) await replayed.click();
+  const list = page.getByRole("list", { name: "Research, newest first" });
+  const folded = page.getByText(/^Every check/);
+  await expect(list.or(folded).first()).toBeVisible();
+  if (!(await list.isVisible())) await folded.first().click();
   await expect(list).toBeVisible();
   return list;
+}
+
+/** Turn the page-level "Show raw data" switch on (it appears once the run has finished). */
+export async function showRawData(page: import("@playwright/test").Page) {
+  await agentSteps(page);
+  const toggle = page.getByRole("switch", { name: "Show raw data" });
+  await toggle.scrollIntoViewIfNeeded();
+  await toggle.click();
+  await expect(toggle).toBeChecked();
+}
+
+/** Open "Full details" for the pitch at `index` (0 = the top pitch): the right-hand sheet. */
+export async function openDetails(page: import("@playwright/test").Page, index = 0) {
+  const row = page.getByRole("region", { name: "Pitches", exact: true }).getByRole("listitem").nth(index);
+  await row.getByRole("button", { name: /^Full details/ }).click();
+  const sheet = page.getByRole("dialog");
+  await expect(sheet).toBeVisible();
+  return sheet;
 }
 
 /** YYYY-MM-DD for today plus `days`, in the browser's (test machine's) time zone. */

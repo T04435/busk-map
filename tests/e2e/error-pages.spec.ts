@@ -15,7 +15,7 @@ test.describe("site-wide not-found page", () => {
 
   test("/p/<unknown id> keeps its own not-found state", async ({ page }) => {
     await page.goto("/p/ZZZZZZZZZ");
-    await expect(page.getByTestId("plan-not-found").getByRole("heading", { name: "Plan not found" })).toBeVisible();
+    await expect(page.getByTestId("plan-not-found").getByRole("heading", { name: "We can't find this busk" })).toBeVisible();
     await expect(page.getByTestId("site-not-found")).toHaveCount(0);
   });
 });

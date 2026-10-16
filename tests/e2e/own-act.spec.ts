@@ -1,4 +1,4 @@
-import { EXPLANATIONS_LABEL, expect, isoDay, LOCAL, pickDate, SATURDAY, SUNDAY, test, waitForPlan } from "./fixtures";
+import { EXPLANATIONS_LABEL, expect, isoDay, LOCAL, openDetails, pickDate, SATURDAY, SUNDAY, test, waitForPlan } from "./fixtures";
 
 test.describe("own act", () => {
   test.skip(!LOCAL, "Starts the agent automatically; local offline server only");
@@ -9,13 +9,13 @@ test.describe("own act", () => {
     await form.getByLabel("Act name").fill("Jess on guitar");
     await form.getByLabel("Artists you sound like").fill("Paul Kelly, Missy Higgins");
     await form.getByLabel("Song list").fill("How to Make Gravy - Paul Kelly\nScar - Missy Higgins\nMy Laneway Song - Jess (own)");
-    await form.getByRole("button", { name: "Plan my set" }).click();
+    await form.getByRole("button", { name: "Plan my busk" }).click();
 
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await expect(page.getByRole("heading", { level: 1, name: "Jess on guitar" })).toBeVisible();
     await waitForPlan(page);
     await expect(page.getByText(EXPLANATIONS_LABEL)).toBeVisible();
-    await expect(page.getByText("Your song").first()).toBeVisible();
+    await expect((await openDetails(page)).getByText("Your song").first()).toBeVisible();
   });
 
   test("live search: artist chips, a picked song ranked by the act's artists, and the date picker", async ({ page }) => {
@@ -67,7 +67,7 @@ test.describe("own act", () => {
     const day = isoDay(9);
     await pickDate(page, date, day);
 
-    await form.getByRole("button", { name: "Plan my set" }).click();
+    await form.getByRole("button", { name: "Plan my busk" }).click();
     // The plan opens on its short link; the request (artists with Spotify ids, songs with lengths, the date) is stored behind it.
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await expect(page.getByText(new RegExp(`${day}, 6 pm–9 pm`))).toBeVisible();
@@ -75,9 +75,10 @@ test.describe("own act", () => {
     // Qloo matched the picked artist (by Spotify id first); the setlist shows lengths. The act's own songs get no Learn it;
     // only "Learn these" suggestions do (opening external searches).
     await expect(page.getByTestId("unmatched-artists")).toContainText("This plan uses the artists Qloo did match: Paul Kelly.");
-    await expect(page.getByTestId("set-length")).toHaveText("Set length: 3:07 (1 song).");
+    const sheet = await openDetails(page);
+    await expect(sheet.getByTestId("set-length")).toHaveText("Set length: 3:07 (1 song).");
     await expect(page.getByRole("button", { name: "Learn it: Gravy (synthetic result 1)" })).toHaveCount(0);
-    const learn = page.getByRole("region", { name: "Learn these" }).getByRole("button", { name: /^Learn it: / }).first();
+    const learn = sheet.getByRole("region", { name: "Learn these" }).getByRole("button", { name: /^Learn it: / }).first();
     await learn.click();
     const menu = page.getByRole("menu");
     await expect(menu.getByRole("menuitem", { name: /Karaoke/ })).toHaveAttribute("href", /youtube\.com\/results\?search_query=.+karaoke/);
@@ -95,7 +96,7 @@ test.describe("own act", () => {
     await form.getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Nobody Band Zzq");
     await page.getByRole("option", { name: /Nobody Band Zzq \(synthetic\)/ }).click();
     await expect(form.getByRole("list", { name: "Artists you picked" })).toContainText("Nobody Band Zzq (synthetic)");
-    await form.getByRole("button", { name: "Plan my set" }).click();
+    await form.getByRole("button", { name: "Plan my busk" }).click();
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/, { timeout: 10_000 });
   });
 
@@ -103,7 +104,7 @@ test.describe("own act", () => {
     await page.goto("/busks");
     const form = page.getByRole("form", { name: "Plan for your own act" });
     await form.getByLabel("Act name").fill("No artists");
-    await form.getByRole("button", { name: "Plan my set" }).click();
+    await form.getByRole("button", { name: "Plan my busk" }).click();
     // One alert, naming the field (B-003), and the same words under the field.
     await expect(form.getByRole("alert")).toContainText("Artists you sound like");
     await expect(form.getByRole("alert")).toContainText("Add at least one artist you sound like.");

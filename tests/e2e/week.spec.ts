@@ -1,4 +1,4 @@
-import { EXPLANATIONS_LABEL, expect, LOCAL, test } from "./fixtures";
+import { EXPLANATIONS_LABEL, expect, LOCAL, openDetails, test, waitForPlan } from "./fixtures";
 
 test.describe("week planner", () => {
   test("an example's week: top sessions, the grid and the calendar export", async ({ page, request }) => {
@@ -49,7 +49,10 @@ test.describe("week planner", () => {
     // Example sessions open the example's own plan (with its example tip log).
     // /plan?example=folk-duo&date=… redirects to the session's short link.
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
-    await expect(page.getByRole("heading", { name: /^Setlist for / })).toBeVisible();
+    // The setlist is in the pitch's details sheet.
+    await waitForPlan(page);
+    const sheet = await openDetails(page);
+    await expect(sheet.getByRole("heading", { name: /^Setlist for / })).toBeVisible();
   });
 
   test.describe("live parts (local only)", () => {

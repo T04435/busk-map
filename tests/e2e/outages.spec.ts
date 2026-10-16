@@ -1,4 +1,4 @@
-import { expect, LOCAL, test, waitForPlan } from "./fixtures";
+import { expect, LOCAL, openDetails, test, waitForPlan } from "./fixtures";
 
 test.describe("API-down states", () => {
   test.skip(!LOCAL, "Fault injection is only enabled on the local test server");
@@ -22,6 +22,9 @@ test.describe("API-down states", () => {
     await expect(page.getByText("Foot traffic: unavailable")).toBeVisible();
     await expect(page.getByText("No forecast for this slot, so weather was ignored.")).toBeVisible();
     await expect(page.getByText("Unavailable: simulated outage (test)").first()).toBeVisible();
+    // The panels that need those sources say so, scoped: no page-level alert, and the busk still stands.
+    await expect(page.getByTestId("source-down")).toContainText("Foot traffic");
+    await expect(page.getByTestId("weather-unavailable")).toBeVisible();
   });
 
   test("busking rules down: no recommendation, with a link to the council's rules", async ({ page }) => {
@@ -33,7 +36,8 @@ test.describe("API-down states", () => {
   test("Last.fm down: setlists still order the songs, without play counts", async ({ page }) => {
     await page.goto("/plan?example=acoustic&faults=songs");
     await waitForPlan(page);
-    await expect(page.getByRole("heading", { name: /^Setlist for / })).toBeVisible();
+    const sheet = await openDetails(page);
+    await expect(sheet.getByRole("heading", { name: /^Setlist for / })).toBeVisible();
     await expect(page.getByText(/Last\.fm plays/)).toHaveCount(0);
   });
 });

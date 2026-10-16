@@ -80,3 +80,30 @@ describe("funnelOf: one 'left out' count", () => {
     expect(funnelOf({ artists: 1, crowds: 1, liked: 1, songsChecked: 1, alreadySuggested: 0, dismissedSkipped: 0, alreadyKnown: 0, newSongs: 1 }).map((x) => x.label)).toEqual(["Qloo calls", "artist matched", "crowd read", "artist liked", "song checked", "left out", "new song"]);
   });
 });
+
+describe("the feed and the funnel agree", () => {
+  it("one 'left out' count is the sum of what top_tracks left out, and the same number ends up in the end event", async () => {
+    const { fromLearnOutputs } = await import("@/lib/learn-totals");
+    const { skippedOf } = await import("@/lib/learn-schema");
+    const summary = (s: { alreadySuggested: number; dismissed: number; canSing: number }) => `Picked top tracks on Spotify. Left out ${s.alreadySuggested} songs suggested before and ${s.dismissed} you dismissed`;
+    const a = { alreadySuggested: 4, dismissed: 1, canSing: 2 };
+    const b = { alreadySuggested: 1, dismissed: 0, canSing: 3 };
+    const results = [
+      { tool: "match_playlist", ok: true, output: { songs: 5, artists: [{ name: "A", matched: true }, { name: "B", matched: true }], unmatched: [] } },
+      { tool: "top_tracks", ok: true, output: { summary: summary(a), checked: 12, skipped: a, songs: [] } },
+      { tool: "top_tracks", ok: true, output: { summary: summary(b), checked: 9, skipped: b, songs: [] } },
+    ];
+    const totals = fromLearnOutputs(results);
+    const funnel = funnelOf(totals);
+    const left = funnel.find((x) => x.key === "leftOut")!.value;
+    expect(left).toBe(4 + 1 + 2 + 1 + 0 + 3);
+    expect(left).toBe(skippedOf(totals));
+    expect(funnel.find((x) => x.key === "songsChecked")!.value).toBe(21);
+    expect(funnel.find((x) => x.key === "artists")!.value).toBe(2);
+    // The cards say the same numbers the funnel adds up.
+    const cards = results.filter((r) => r.tool === "top_tracks").map((r) => plainStep({ tool: r.tool, status: "done", output: r.output }).headline);
+    const stated = cards.flatMap((c) => [...c.matchAll(/(\d+) songs suggested before and (\d+) you dismissed/g)].map((m) => Number(m[1]) + Number(m[2])));
+    expect(stated.reduce((x, y) => x + y, 0)).toBe(4 + 1 + 1 + 0);
+    expect(plainStep({ tool: "match_playlist", status: "done", output: results[0].output }).headline).toBe(`Matched your 5 songs to ${funnel.find((x) => x.key === "artists")!.value} artists on Qloo`);
+  });
+});

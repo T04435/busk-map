@@ -26,7 +26,7 @@ export function SiteFooterView({ repo = REPO, dark = false }: { repo?: string; d
         </span>
         <span className="inline-flex flex-wrap items-center gap-x-2.5 gap-y-1">
           <b className="font-display text-base leading-none font-extrabold text-foreground uppercase">Open source</b>
-          <a className="text-foreground underline underline-offset-3 hover:decoration-2" href={repo}>
+          <a className="text-signal-text underline underline-offset-3 hover:decoration-2" href={repo}>
             {repo.replace(/^https?:\/\//, "")}
           </a>
           <span>

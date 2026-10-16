@@ -1,4 +1,5 @@
 import { nameKey, trackKey } from "@/lib/text";
+import { LOCAL_SCENE_BONUS } from "./local-scene";
 
 /**
  * Setlist ordering for one pitch. Only songs the performer picked are used.
@@ -47,6 +48,8 @@ export type SetlistEntry = {
   /** "suggested" for songs Busk Map added from the crowd's taste; the act's own are "repertoire". */
   origin: "repertoire" | "suggested";
   suggestion: SongSuggestion | null;
+  /** The song's artist is in the city's local scene (the act's fans' affinity for it is known): the score includes the local-scene bonus. */
+  localScene: boolean;
 };
 
 /**
@@ -140,6 +143,12 @@ export function buildSetlist(
   playcounts: Record<string, number>,
   maxSongs = DEFAULT_MAX_SONGS,
   era: EraInputs | null = null,
+  /**
+   * The local scene: entity id to the act's fans' affinity (0–1) for that local act. A song by a scene artist gets up to
+   * LOCAL_SCENE_BONUS on its 0–1 score, in proportion to how the act's fans rank that artist within the scene; every
+   * other song scores exactly as before.
+   */
+  scene: Record<string, number> | null = null,
 ): SetlistEntry[] {
   const unique = new Map<string, RepertoireSong>();
   for (const song of songs) {
@@ -156,6 +165,7 @@ export function buildSetlist(
   const maxAffinity = Math.max(proxy, ...known);
   const plays = list.map((s) => playcounts[trackKey(s.artist, s.title)] ?? null);
   const maxPlays = Math.max(0, ...plays.map((p) => p ?? 0));
+  const sceneMax = Math.max(0, ...Object.values(scene ?? {}));
 
   const scored: SetlistEntry[] = list.map((song, i) => {
     const raw = song.artistEntityId ? affinityByEntity[song.artistEntityId] : undefined;
@@ -171,7 +181,9 @@ export function buildSetlist(
       [ERA_WEIGHT, fit],
     ];
     const present = parts.filter((p): p is [number, number] => p[1] !== null);
-    const score = present.reduce((sum, [w, v]) => sum + w * v, 0) / present.reduce((sum, [w]) => sum + w, 0);
+    const base = present.reduce((sum, [w, v]) => sum + w * v, 0) / present.reduce((sum, [w]) => sum + w, 0);
+    const sceneRaw = song.artistEntityId && sceneMax > 0 ? scene?.[song.artistEntityId] : undefined;
+    const score = sceneRaw === undefined ? base : Math.min(1, base + LOCAL_SCENE_BONUS * (sceneRaw / sceneMax));
     const why = [
       source === "qloo"
         ? `Crowd affinity for ${song.artist}: ${Math.round(affinity * 100)}/100`
@@ -182,6 +194,7 @@ export function buildSetlist(
               `Qloo has no local score for ${song.artist} at this pitch: scored with your typical crowd affinity`
             : `No Qloo match for ${song.artist}: scored with your typical crowd affinity`,
     ];
+    if (sceneRaw !== undefined) why.push(`local scene act your fans would like (${Math.round(sceneRaw * 100)}/100)`);
     if (playcount !== null) why.push(`${formatPlays(playcount)} Last.fm plays`);
     if (year !== null && fit !== null) {
       // A fit implies at least one over-represented, known age band.
@@ -203,6 +216,7 @@ export function buildSetlist(
       eraFit: fit === null ? null : Math.round(fit * 1000) / 1000,
       origin: song.suggestion ? "suggested" : "repertoire",
       suggestion: song.suggestion ?? null,
+      localScene: sceneRaw !== undefined,
     };
   });
 

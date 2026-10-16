@@ -40,7 +40,7 @@ export function CrowdPanel({ crowd, resolved, topPitch, qlooMode = "live" }: { c
   const ages = (crowd.demographics?.age ?? []).filter((a) => a.lean > 0.05).sort((a, b) => b.lean - a.lean).slice(0, 2);
   const leanMax = Math.max(0.05, ...(crowd.demographics ? [...crowd.demographics.age, ...crowd.demographics.gender].map((d) => Math.abs(d.lean)) : []));
   const usualNames = new Set((crowd.usualCrowd?.artists ?? []).map((a) => a.name));
-  const empty = crowd.localArtists.length === 0 && crowd.drivers.length === 0 && crowd.genres.length === 0 && !crowd.contrast && !crowd.demographics && !crowd.usualCrowd;
+  const empty = crowd.localArtists.length === 0 && crowd.drivers.length === 0 && crowd.genres.length === 0 && !crowd.contrast && !crowd.demographics && !crowd.usualCrowd && !crowd.localScene;
   return (
     <section aria-label="Who this crowd likes" className="border-2 border-rule bg-card p-4 md:p-6">
       <header className="mb-4 flex items-start justify-between gap-3">
@@ -98,6 +98,26 @@ export function CrowdPanel({ crowd, resolved, topPitch, qlooMode = "live" }: { c
                   )}
                 </div>
                 {a.because.length > 0 && <Why>Because your fans like {a.explained.length > 0 ? list(a.explained.map((e) => `${e.name} (${Math.round(e.score * 100)})`)) : list(a.because)}</Why>}
+              </li>
+            ))}
+          </ul>
+        </Block>
+      )}
+
+      {crowd.localScene && crowd.localScene.acts.length > 0 && (
+        <Block
+          title="Local scene"
+          label="Local scene"
+          evidence="Qloo compare: the genres this city's usual crowd leans to more than global pop; Qloo insights: artists of those genres liked in the plan area, scored for fans of your artists."
+        >
+          <p data-testid="local-scene" className="m-0 text-[15px] leading-[22px]">
+            Local scene: {list(crowd.localScene.genres.map((g) => g.name))}: acts your fans would like: {list(crowd.localScene.acts.map((a) => a.name))}.
+          </p>
+          <ul className="m-0 grid list-none gap-2 p-0">
+            {crowd.localScene.acts.map((a) => (
+              <li key={a.name} className="flex flex-wrap items-center gap-2">
+                {a.affinity !== null && <PercentCell value={a.affinity * 100} size={34} label="Affinity" />}
+                <b>{a.name}</b>
               </li>
             ))}
           </ul>

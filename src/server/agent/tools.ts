@@ -279,7 +279,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
 
     crowd_at: tool({
       description:
-        "Who the crowd around a point is, given the act's taste: artists this crowd likes (with which of the act's artists explain each, Qloo explainability), the genres that characterise it, and the age and gender lean of the act's fans.",
+        "Who the crowd around a point is, given the act's taste: artists this crowd likes (with which of the act's artists explain each, Qloo explainability), the genres that characterise it, and the age and gender lean of the act's fans. Also the city's local scene when Qloo has one: the genres this city leans to more than global pop, and the local acts of those genres that the act's fans would like (city-wide, not specific to the point).",
       inputSchema: z.object({ at: whereSchema, radiusM: z.number().int().min(200).max(1500).optional().describe("Default 400 (snapped to 200, 400, 800 or 1500).") }),
       execute: async ({ at: w, radiusM }) => {
         const point = await where(w);
@@ -288,11 +288,12 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         const entityIds = await ids();
         if (entityIds.length === 0) throw new WhereError("No matched artists: there is no taste to profile.");
         const box = boxAround(snapped, radius, area);
-        const [crowd, genres, profile, resolved] = await Promise.all([
+        const [crowd, genres, profile, resolved, scene] = await Promise.all([
           ctx.trackQloo(`agent:crowd:${JSON.stringify(box)}`, () => qloo.localArtists(entityIds, box, 10, ctx.adapters)),
           ctx.trackQloo(`agent:genres:${snapped.lat},${snapped.lon},${radius}`, () => qloo.crowdTags(entityIds, snapped, radius, 6, ctx.adapters)),
           ctx.crowdProfile(),
           ctx.artists(),
+          ctx.localScene(),
         ]);
         const nameOf = (id: string) => resolved.find((r) => r.entity?.id === id)?.entity?.name ?? null;
         const lean = (rows: Record<string, number> | undefined) =>
@@ -314,6 +315,10 @@ function buildTools(ctx: PlanContext, state: AgentState) {
           genres: genres.map((g) => ({ genre: g.name.trim(), affinity: r2(g.affinity) })),
           fansAge: lean(profile?.age),
           fansGender: lean(profile?.gender),
+          // Additive (the design contract's fields above are unchanged): the city's local scene, when Qloo has one.
+          ...(scene && scene.acts.length > 0
+            ? { localScene: { genres: scene.genres.map((g) => g.name.trim()), acts: scene.acts.slice(0, 6).map((a) => ({ name: a.name, fansWouldLike: r2(a.affinity) })) } }
+            : {}),
         });
       },
     }),
@@ -643,7 +648,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         return seen({
           summary: setlist.length ? `${setlist.length} songs for ${pitch.name}; open with ${setlist[0].title}` : "No songs given",
           pitch: pitch.name,
-          songs: setlist.slice(0, 10).map((s, i) => ({ order: i + 1, song: s.title, artist: s.artist, year: s.year, score: s.score, why: s.reason, ...(s.origin === "suggested" ? { suggested: true } : {}) })),
+          songs: setlist.slice(0, 10).map((s, i) => ({ order: i + 1, song: s.title, artist: s.artist, year: s.year, score: s.score, why: s.reason, ...(s.origin === "suggested" ? { suggested: true } : {}), ...(s.localScene ? { localScene: true } : {}) })),
         });
       },
     }),

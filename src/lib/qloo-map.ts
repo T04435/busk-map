@@ -13,7 +13,7 @@
 
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
-export type CallId = "c1" | "c2" | "c3" | "c4" | "c5" | "c5b" | "c5c" | "c6" | "c7" | "c8" | "c9" | "c10" | "c11" | "c12";
+export type CallId = "c1" | "c2" | "c3" | "c4" | "c5" | "c5b" | "c5c" | "c6" | "c7" | "c7b" | "c8" | "c9" | "c10" | "c11" | "c11b" | "c12" | "c13" | "c14";
 export type SourceId = "spotify" | "ticketmaster" | "lastfm";
 export type DataPointId =
   | "d_id"
@@ -30,6 +30,8 @@ export type DataPointId =
   | "d_demo"
   | "d_genre"
   | "d_contrast"
+  | "d_overindex"
+  | "d_scene"
   | "d_years"
   | "d_taste_artists"
   | "d_tracks"
@@ -172,11 +174,14 @@ export const calls: readonly QlooCall[] = [
     label: "The usual crowd",
     endpoint: "/v2/insights",
     urnType: "urn:entity:artist",
-    keyParams: ["signal.location=<WKT POLYGON around a hotspot>", "take=10", "no interest signal"],
+    keyParams: ["signal.location=<WKT POLYGON around a hotspot>", "take=20", "no interest signal"],
     codeRef: "client.ts:localArtists",
     via: ["context.ts:hotspotCrowd"],
     variantOf: "c5",
-    dataPoints: [{ id: "d_usual", how: "the same question with no taste signal: everyone near a busking hotspot" }],
+    dataPoints: [
+      { id: "d_usual", how: "the same question with no taste signal: everyone near a busking hotspot" },
+      { id: "d_overindex", how: "its top 20 artists are group a of the city over-index compare (c11b)" },
+    ],
   },
   {
     id: "c5c",
@@ -211,6 +216,18 @@ export const calls: readonly QlooCall[] = [
     codeRef: "client.ts:affinityFor",
     via: ["index.ts:tasteMatch"],
     dataPoints: [{ id: "d_headliner", how: "how much your fans like each event’s headliner" }],
+  },
+  {
+    id: "c7b",
+    num: "7b",
+    label: "Local acts, scored for your fans",
+    endpoint: "/v2/insights",
+    urnType: "urn:entity:artist",
+    keyParams: ["filter.results.entities=<local scene list ids>", "signal.interests.entities=<act ids>"],
+    codeRef: "client.ts:affinityFor",
+    via: ["index.ts:tasteMatch", "context.ts:localScene"],
+    variantOf: "c7",
+    dataPoints: [{ id: "d_scene", how: "re-scores the city’s local acts by how much your fans like each" }],
   },
   {
     id: "c8",
@@ -256,6 +273,17 @@ export const calls: readonly QlooCall[] = [
     dataPoints: [{ id: "d_contrast", how: "genre shares for your fans and the usual crowd" }],
   },
   {
+    id: "c11b",
+    num: "11b",
+    label: "The city’s genres vs global pop",
+    endpoint: "/v2/analysis/compare",
+    keyParams: ["a.signal.interests.entities=<usual crowd top 20 (5b)>", "b.signal.interests.entities=<global-pop artists (c13)>"],
+    codeRef: "client.ts:compareGenres",
+    via: ["context.ts:localScene"],
+    variantOf: "c11",
+    dataPoints: [{ id: "d_overindex", how: "the 1–7 genres the city’s crowd leans to by 0.15 or more over global pop" }],
+  },
+  {
     id: "c12",
     num: "12",
     label: "Artists like yours",
@@ -265,6 +293,28 @@ export const calls: readonly QlooCall[] = [
     codeRef: "client.ts:tasteArtists",
     via: ["learn/tools.ts:related_artists"],
     dataPoints: [{ id: "d_taste_artists", how: "artists whose fans overlap your Repertoire’s fans, anywhere, and which of your artists explain each" }],
+  },
+  {
+    id: "c13",
+    num: "13",
+    label: "Global-pop artists",
+    endpoint: "/v2/insights",
+    urnType: "urn:entity:artist",
+    keyParams: ["take=20", "no interest signal", "no location"],
+    codeRef: "client.ts:globalArtists",
+    via: ["index.ts:globalArtists", "context.ts:localScene"],
+    dataPoints: [{ id: "d_overindex", how: "the global-pop set the city’s crowd is compared with; the same for every city, so cached once for all" }],
+  },
+  {
+    id: "c14",
+    num: "14",
+    label: "Local scene artists",
+    endpoint: "/v2/insights",
+    urnType: "urn:entity:artist",
+    keyParams: ["signal.location=<WKT POLYGON, the city box>", "signal.interests.tags=<the city’s genre ids>", "take=20", "no artist signal"],
+    codeRef: "client.ts:sceneArtists",
+    via: ["index.ts:sceneArtists", "context.ts:localScene"],
+    dataPoints: [{ id: "d_scene", how: "artists of the city’s own genres liked in the plan area, shared by every act" }],
   },
 ];
 
@@ -452,6 +502,27 @@ export const dataPoints: readonly DataPoint[] = [
     features: [{ id: "f_fans", how: "your fans lean more towards some genres, less towards others" }],
   },
   {
+    id: "d_overindex",
+    label: "The city’s genres vs global pop",
+    sub: "what the city leans to",
+    fields: ["results.a[].tag_id", "results.b[].tag_id", "name", "subtype", "query.count"],
+    features: [
+      { id: "f_crowd", how: "the genres named in “Local scene”" },
+      { id: "f_agent", how: "the crowd_at tool’s localScene" },
+    ],
+  },
+  {
+    id: "d_scene",
+    label: "Local acts your fans would like",
+    sub: "the local scene, re-scored",
+    fields: ["entity_id", "name", "query.affinity"],
+    features: [
+      { id: "f_crowd", how: "“Local scene: … acts your fans would like”" },
+      { id: "f_setlist", how: "a song by a local act gets a lift in the set order, and local acts are offered as suggested songs" },
+      { id: "f_agent", how: "the crowd_at and build_setlist tools" },
+    ],
+  },
+  {
     id: "d_years",
     label: "Release years",
     sub: "from Spotify",
@@ -550,8 +621,8 @@ export const callKinds = calls.filter((c) => !c.variantOf).length;
 export const featureCount = features.length;
 export const dataPointCount = dataPoints.length;
 
-/** Measured, not derivable (docs/qloo-data-map.md §4): live 24–28, mock 33; a rerun is served from the cache. */
-export const CALLS_PER_NEW_BUSK = "24–33";
+/** Measured, not derivable (docs/qloo-data-map.md §4): live 28–32 (24–28 before the local scene, plus its 4), mock 37; a rerun is served from the cache. */
+export const CALLS_PER_NEW_BUSK = "28–37";
 export const CALLS_ON_RERUN = 0;
 /** A learn run's hard cap (config.ts:LEARN_QLOO_BUDGET): typically 8–9 requests, 25 at worst (docs/playlist-architecture.md §2.9). */
 export const CALLS_PER_LEARN_RUN = "≤ 25";
@@ -574,7 +645,7 @@ export const facts: readonly { value: string; label: string }[] = [
 export const quotaNote =
   `Qloo allows ${QUOTA.requestsPerMonth.toLocaleString("en-AU")} requests a month per key, at ${QUOTA.requestsPerSecond} a second. ` +
   `Busk Map paces its calls to ${QUOTA.pacedPerSecond} a second and caches every answer for ${QUOTA.cacheHours} h, ` +
-  `so a key covers roughly 300–400 new busks a month, and reruns are free.`;
+  `so a key covers roughly 270–360 new busks a month, and reruns are free.`;
 
 // ---- The graph -----------------------------------------------------------
 

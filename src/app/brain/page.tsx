@@ -60,7 +60,7 @@ export default function BrainPage() {
           </NoteCard>
           <NoteCard title="Light on the quota">
             <p className="m-0" data-testid="quota-note">
-              {`Answers are cached for ${QUOTA.cacheHours} hours. Qloo allows ${QUOTA.requestsPerSecond} calls a second; Busk Map paces itself to ${QUOTA.pacedPerSecond}, because bursts of 4 drew rate-limit errors. One key's ${QUOTA.requestsPerMonth.toLocaleString("en-AU")} calls a month cover roughly 300–400 new busks, and reruns are free.`}
+              {`Answers are cached for ${QUOTA.cacheHours} hours. Qloo allows ${QUOTA.requestsPerSecond} calls a second; Busk Map paces itself to ${QUOTA.pacedPerSecond}, because bursts of 4 drew rate-limit errors. One key's ${QUOTA.requestsPerMonth.toLocaleString("en-AU")} calls a month cover roughly 270–360 new busks, and reruns are free.`}
             </p>
           </NoteCard>
           <NoteCard variant="next">

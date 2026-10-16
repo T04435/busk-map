@@ -309,6 +309,52 @@ async function tasteArtistsCached(backend: QlooBackend, entityIds: string[], tak
   });
 }
 
+/**
+ * `urn:entity:artist` with no signal at all: Qloo's globally popular artists, the "global-pop set" that
+ * `/v2/analysis/compare` measures a city's crowd against (local scene, step 1). The same answer for every city, so it is
+ * fetched once per cache lifetime and shared by all busks.
+ */
+export async function globalArtists(backend: QlooBackend, take: number): Promise<QlooEntity[]> {
+  return countLookup("globalArtists", [backend, take], () => globalArtistsCached(backend, take));
+}
+
+async function globalArtistsCached(backend: QlooBackend, take: number): Promise<QlooEntity[]> {
+  "use cache: remote";
+  return lookupScope("globalArtists", [backend, take], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:artists");
+    const params = { "filter.type": "urn:entity:artist", take: Math.min(take, MAX_TAKE) };
+    const body = await qlooGet(backend, "/v2/insights", params, insightsEntitiesResponseSchema);
+    return listEntities("/v2/insights", params, body.results.entities).map(toEntity);
+  });
+}
+
+/**
+ * The local scene (step 2): `urn:entity:artist` liked in the city area AND tagged with the city's over-indexed genres
+ * (`signal.interests.tags`), with no artist signal. Location plus genre tag works where location plus the act's artists
+ * does not: the act swamps the location (research/cities/cities.md, "WHAT: options tested"). Shared by every act in
+ * the city, so it is cached per city and tags.
+ */
+export async function sceneArtists(backend: QlooBackend, tagIds: string[], area: BBox, take: number): Promise<QlooEntity[]> {
+  return countLookup("sceneArtists", [backend, tagIds, area, take], () => sceneArtistsCached(backend, tagIds, area, take));
+}
+
+async function sceneArtistsCached(backend: QlooBackend, tagIds: string[], area: BBox, take: number): Promise<QlooEntity[]> {
+  "use cache: remote";
+  return lookupScope("sceneArtists", [backend, tagIds, area, take], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:artists");
+    const params = {
+      "filter.type": "urn:entity:artist",
+      "signal.location": wktPolygon(area),
+      "signal.interests.tags": ids(tagIds),
+      take: Math.min(take, MAX_TAKE),
+    };
+    const body = await qlooGet(backend, "/v2/insights", params, insightsEntitiesResponseSchema);
+    return listEntities("/v2/insights", params, body.results.entities).map(toEntity);
+  });
+}
+
 /** Score specific artists for the crowd around one point (`filter.results.entities`). */
 export async function affinityAt(backend: QlooBackend, entityIds: string[], point: LatLon, radiusM: number): Promise<Record<string, number>> {
   return countLookup("affinityAt", [backend, entityIds, point, radiusM], () => affinityAtCached(backend, entityIds, point, radiusM));

@@ -92,7 +92,7 @@ describe("buildCandidates", () => {
     expect(candidates.map((c) => c.id)).toEqual(["spot:plaza", "footpath:3", "spot:riverside", "footpath:9"]);
     expect(candidates[0]).toMatchObject({ kind: "public-space", origin: "taste", cell: { rank: 1, affinity: 1 }, usualSpot: null, permit: "general" });
     expect(candidates[0].cautions[0]).toMatch(/clearances/);
-    expect(candidates[1]).toMatchObject({ kind: "footpath", name: "Footpath near Sensor 3" });
+    expect(candidates[1]).toMatchObject({ kind: "footpath", name: "Sensor 3 footpath" });
     expect(candidates[2]).toMatchObject({ amplification: "unamplified-zone", usualSpot: "The famous corner", cell: { rank: 2 } });
     // Four top cells (the minimum), so the weak cell near sensor 9 counts too. The plaza twin is too close to the plaza.
     expect(funnel).toEqual({ cells: 5, topCells: 4, considered: 6, excluded: 1, candidates: 4 });

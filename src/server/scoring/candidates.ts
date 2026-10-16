@@ -186,7 +186,7 @@ export function buildCandidatesWithFunnel({ sites, zones, sensors, spots, cells,
   const fromSpot = (spot: SpotInput, origin: Candidate["origin"], cell: Candidate["cell"]) =>
     add({ id: `spot:${spot.id}`, name: spot.name, lat: spot.lat, lon: spot.lon, kind: "public-space", origin, cell, ...general }, null);
   const fromSensor = (sensor: SensorInput, origin: Candidate["origin"], cell: Candidate["cell"]) =>
-    add({ id: `footpath:${sensor.id}`, name: `Footpath near ${sensor.name}`, lat: sensor.lat, lon: sensor.lon, kind: "footpath", origin, cell, ...general }, null);
+    add({ id: `footpath:${sensor.id}`, name: `${sensor.name} footpath`, lat: sensor.lat, lon: sensor.lon, kind: "footpath", origin, cell, ...general }, null);
 
   const funnel = (top: number) => ({ candidates, funnel: { cells: cells.length, topCells: top, considered, excluded, candidates: candidates.length } });
   /**

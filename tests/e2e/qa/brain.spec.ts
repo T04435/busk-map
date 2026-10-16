@@ -17,12 +17,12 @@ async function open(page: Page) {
 }
 
 test.describe("QA /brain", () => {
-  test("facts strip matches docs/qloo-data-map.md and qloo-map.ts (12 kinds, 24–33 per new busk, 0 on a rerun, 9 parts, ≤ 25 per learn run)", async ({ page }) => {
+  test("facts strip matches docs/qloo-data-map.md and qloo-map.ts (14 kinds, 28–37 per new busk, 0 on a rerun, 9 parts, ≤ 25 per learn run)", async ({ page }) => {
     await open(page);
     const facts = page.getByRole("region", { name: "Qloo calls per busk" }).getByRole("listitem");
-    // Repertoire R4 (cac564d): 12 kinds of call (#5c added) and the learn-run cap; 9 parts since the Honeycomb integration (8f1391b).
-    await expect(facts).toHaveText([/^12\s*kinds of Qloo call$/, /^24–33\s*Qloo calls for a new busk$/, /^0\s*on a rerun: answers cached for 24 h$/, /^9\s*parts of your busk it decides$/, /^≤ 25\s*Qloo calls per learn run$/]);
-    await expect(page.getByTestId("quota-note")).toContainText("One key's 10,000 calls a month cover roughly 300–400 new busks");
+    // 14 kinds since the local scene (cc9e1cb, +2 calls), the learn-run cap (R4), 9 parts since the Honeycomb integration (8f1391b).
+    await expect(facts).toHaveText([/^14\s*kinds of Qloo call$/, /^28–37\s*Qloo calls for a new busk$/, /^0\s*on a rerun: answers cached for 24 h$/, /^9\s*parts of your busk it decides$/, /^≤ 25\s*Qloo calls per learn run$/]);
+    await expect(page.getByTestId("quota-note")).toContainText("One key's 10,000 calls a month cover roughly 270–360 new busks");
   });
 
   test("keyboard trace: Enter traces and announces; Escape clears, announces, and returns focus to the node", async ({ page }) => {
@@ -32,8 +32,8 @@ test.describe("QA /brain", () => {
     await setlist.focus();
     await page.keyboard.press("Enter");
     await expect(setlist).toHaveAttribute("aria-pressed", "true");
-    await expect(status(page)).toHaveText("Tracing. Set and songs to learn comes from 4 Qloo calls, 2 other sources and 6 data points. Other pieces are dimmed.");
-    // The panel's claim: four Qloo calls, Spotify and Last.fm meet here.
+    await expect(status(page)).toHaveText("Tracing. Set and songs to learn comes from 6 Qloo calls, 2 other sources and 7 data points. Other pieces are dimmed.");
+    // The panel's claim: six Qloo calls, Spotify and Last.fm meet here (the four below among them).
     const panel = page.getByTestId("trace-panel");
     await expect(panel).toContainText("Comes from:");
     for (const piece of ["Artists nearby, explained", "Affinity at a pitch", "Trending", "Demographics", "Spotify", "Last.fm"]) await expect(panel).toContainText(piece);
@@ -49,7 +49,7 @@ test.describe("QA /brain", () => {
   test("every piece traces by keyboard: Enter selects, announces, opens its panel; Escape clears and keeps focus", async ({ page }) => {
     await open(page);
     const ids = await page.locator("[data-node-id]").evaluateAll((els) => els.map((e) => e.getAttribute("data-node-id")!));
-    expect(ids.length, "12 kinds in 14 shapes (5b, 5c) + 3 sources (Spotify, Ticketmaster, Last.fm) + data points + 9 parts, per qloo-map.ts").toBe(44);
+    expect(ids.length, "14 kinds (the local scene added 2 calls, cc9e1cb) + 3 sources (Spotify, Ticketmaster, Last.fm) + data points + 9 parts, per qloo-map.ts").toBe(50);
     for (const id of ids) {
       const piece = page.locator(`[data-node-id="${id}"]`);
       await piece.focus();

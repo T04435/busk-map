@@ -17,3 +17,18 @@ test.describe("server HTML (B-006)", () => {
     expect(await selectValues(request, "/week?example=folk-duo")).toEqual(["5", "1"]);
   });
 });
+
+test.describe("server HTML (B-011)", () => {
+  test("the landing search comboboxes are closed before hydration", async ({ request }) => {
+    const response = await request.get("/");
+    expect(response.status()).toBe(200);
+    const html = await response.text();
+    const comboboxes = [...html.matchAll(/<input[^>]*role="combobox"[^>]*>/g)].map((m) => m[0]);
+    expect(comboboxes.map((tag) => tag.match(/placeholder="([^"]*)"/)?.[1])).toEqual(["Search Spotify, e.g. Paul Kelly", "Search songs, e.g. Riptide"]);
+    for (const tag of comboboxes) {
+      expect(tag).toContain('aria-expanded="false"');
+      expect(tag).not.toContain("aria-controls");
+      expect(tag).not.toContain("aria-activedescendant");
+    }
+  });
+});

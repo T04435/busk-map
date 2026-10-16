@@ -22,8 +22,12 @@ test.describe("accessibility", () => {
       await expect(input).toHaveAttribute("aria-expanded", "false");
       await expect(input).not.toHaveAttribute("aria-controls", /./);
 
-      await input.fill("Buena Vista");
-      await expect(input).toHaveAttribute("aria-expanded", "true");
+      // Typed before hydration, the query is lost: retry until the list opens.
+      await expect(async () => {
+        await input.fill("");
+        await input.fill("Buena Vista");
+        await expect(input).toHaveAttribute("aria-expanded", "true", { timeout: 1000 });
+      }).toPass();
       const controls = await input.getAttribute("aria-controls");
       expect(controls).toBeTruthy();
       await expect(page.locator(`[id="${controls}"]`)).toHaveAttribute("role", "listbox");
@@ -41,11 +45,15 @@ test.describe("accessibility", () => {
       const group = input.locator("xpath=ancestor::*[@data-slot='input-group'][1]");
       const ring = () => group.evaluate((el) => getComputedStyle(el).boxShadow);
       expect(await ring()).not.toMatch(/ 3px/);
-      await expect(input).toHaveAttribute("aria-expanded", "false"); // hydrated
-      await input.focus();
-      await page.keyboard.press("Tab");
-      await page.keyboard.press("Shift+Tab");
-      await expect(input).toBeFocused();
+      // The server HTML already says aria-expanded="false" (B-011), so it no longer marks hydration: retry the
+      // keyboard round trip until the hydrated input keeps focus.
+      await expect(input).toHaveAttribute("aria-expanded", "false");
+      await expect(async () => {
+        await input.focus();
+        await page.keyboard.press("Tab");
+        await page.keyboard.press("Shift+Tab");
+        await expect(input).toBeFocused({ timeout: 500 });
+      }).toPass();
       // The default shadcn Input ring (focus-visible:ring-3 ring-ring/50): a 3px box-shadow.
       await expect.poll(ring).toMatch(/ 3px/);
     }

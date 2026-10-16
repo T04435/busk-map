@@ -67,26 +67,16 @@ function CommandDialog({
 
 /**
  * cmdk always renders its input with aria-expanded="true" and aria-controls pointing at its list, even when the
- * list isn't rendered (an inline combobox, not a popover). With `expanded`, the input says whether the list is
- * shown and references the list only while it is. cmdk's own attributes can't be overridden by props, and React
- * doesn't rewrite them while they don't change, so they are corrected after each render.
+ * list isn't rendered (an inline combobox, not a popover), and its own attributes win over props. With `expanded`,
+ * the input is rendered through cmdk's `asChild` slot, where the child's attributes win: it says whether the list
+ * is shown and references the list only while it is, from the first (server) render on (B-004, B-011).
  */
-function useComboboxAria(expanded: boolean | undefined) {
-  const ref = React.useRef<HTMLInputElement>(null)
-  const listId = React.useRef<string | null>(null)
-  React.useLayoutEffect(() => {
-    const input = ref.current
-    if (!input || expanded === undefined) return
-    listId.current ??= input.getAttribute("aria-controls")
-    input.setAttribute("aria-expanded", String(expanded))
-    if (expanded && listId.current) {
-      input.setAttribute("aria-controls", listId.current)
-    } else {
-      input.removeAttribute("aria-controls")
-      input.removeAttribute("aria-activedescendant")
-    }
-  })
-  return ref
+function comboboxAria(expanded: boolean | undefined): React.ComponentProps<"input"> {
+  if (expanded === undefined) return {}
+  // While the list is shown, cmdk's aria-controls and aria-activedescendant stand.
+  return expanded
+    ? { "aria-expanded": true }
+    : { "aria-expanded": false, "aria-controls": undefined, "aria-activedescendant": undefined }
 }
 
 function CommandInput({
@@ -97,19 +87,19 @@ function CommandInput({
   /** Whether the CommandList is rendered (for an inline list shown only while there is a query). */
   expanded?: boolean
 }) {
-  const ref = useComboboxAria(expanded)
   return (
     <div data-slot="command-input-wrapper" className="p-1 pb-0">
       <InputGroup className="h-8! rounded-lg! border-input/30 bg-input/30 shadow-none! *:data-[slot=input-group-addon]:pl-2! has-[[data-slot=command-input]:focus-visible]:border-ring has-[[data-slot=command-input]:focus-visible]:ring-3 has-[[data-slot=command-input]:focus-visible]:ring-ring/50">
-        <CommandPrimitive.Input
-          ref={ref}
-          data-slot="command-input"
-          className={cn(
-            "w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
-            className
-          )}
-          {...props}
-        />
+        <CommandPrimitive.Input {...props} asChild>
+          <input
+            data-slot="command-input"
+            className={cn(
+              "w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+              className
+            )}
+            {...comboboxAria(expanded)}
+          />
+        </CommandPrimitive.Input>
         <InputGroupAddon>
           <SearchIcon className="size-4 shrink-0 opacity-50" />
         </InputGroupAddon>

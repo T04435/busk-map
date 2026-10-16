@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TrackResult } from "@/components/forms/repertoire-api";
 import { SongSearch } from "@/components/landing/song-search";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -17,6 +17,16 @@ import { parseTypedSong, playlistSongKey, type PlaylistSongView, type PlaylistVi
 import { addSong, forgetPlaylist, loadPlaylist, moveSong, removeSong, type PlaylistResult } from "./playlist-api";
 
 const NO_ARTISTS: never[] = [];
+/** The song search box: the field to land on when a list empties. */
+const ADD_FIELD = "add-field";
+const ADD_FIELD_SELECTOR = 'section[aria-labelledby="add-heading"] input[role="combobox"]';
+
+/** The action to focus when `id` leaves `rows`: the next row's, else the previous row's, else the add field. */
+function focusTargetAfter(rows: PlaylistSongView[], id: string, action: "remove" | "move"): string {
+  const i = rows.findIndex((r) => r.id === id);
+  const near = rows[i + 1] ?? rows[i - 1];
+  return near ? `${action}-${near.id}` : ADD_FIELD;
+}
 
 function SongRow({ song, children }: { song: PlaylistSongView; children: React.ReactNode }) {
   return (
@@ -39,6 +49,8 @@ export function RepertoireView() {
   const [message, setMessage] = useState<{ kind: "error" | "info"; text: string } | null>(null);
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
+  // Where focus goes once a row is gone (B-016): the next row's action, the previous one's, or the add field.
+  const focusAfter = useRef<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -52,6 +64,14 @@ export function RepertoireView() {
       live = false;
     };
   }, []);
+
+  useEffect(() => {
+    const target = focusAfter.current;
+    if (!target || busy) return; // buttons are disabled while a request runs
+    focusAfter.current = null;
+    const el = target === ADD_FIELD ? document.querySelector<HTMLElement>(ADD_FIELD_SELECTOR) : document.querySelector<HTMLElement>(`[data-focus-id="${target}"]`);
+    el?.focus();
+  }, [playlist, busy]);
 
   const apply = useCallback((result: PlaylistResult, info?: string) => {
     if (result.ok) {
@@ -72,7 +92,9 @@ export function RepertoireView() {
   async function run(action: () => Promise<PlaylistResult>, info?: string) {
     setBusy(true);
     try {
-      return apply(await action(), info);
+      const ok = apply(await action(), info);
+      if (!ok) focusAfter.current = null;
+      return ok;
     } finally {
       setBusy(false);
     }
@@ -163,7 +185,7 @@ export function RepertoireView() {
               <ul aria-label={COPY.canSing} className="divide-y">
                 {canSing.map((song) => (
                   <SongRow key={song.id} song={song}>
-                    <Button variant="outline" size="sm" disabled={busy} aria-label={`${COPY.remove} ${song.title}`} onClick={() => void run(() => removeSong(song.id), `Removed ${song.title}.`)}>
+                    <Button variant="outline" size="sm" disabled={busy} data-focus-id={`remove-${song.id}`} aria-label={`${COPY.remove} ${song.title}`} onClick={() => { focusAfter.current = focusTargetAfter(canSing, song.id, "remove"); void run(() => removeSong(song.id), `Removed ${song.title}.`); }}>
                       {COPY.remove}
                     </Button>
                   </SongRow>
@@ -182,10 +204,10 @@ export function RepertoireView() {
               <ul aria-label={COPY.learned} className="divide-y">
                 {learned.map((song) => (
                   <SongRow key={song.id} song={song}>
-                    <Button variant="outline" size="sm" disabled={busy} aria-label={`${COPY.moveToCanSing}: ${song.title}`} onClick={() => void run(() => moveSong(song.id, "can_sing"), `${song.title} moved to ${COPY.canSing}.`)}>
+                    <Button variant="outline" size="sm" disabled={busy} data-focus-id={`move-${song.id}`} aria-label={`${COPY.moveToCanSing}: ${song.title}`} onClick={() => { focusAfter.current = focusTargetAfter(learned, song.id, "move"); void run(() => moveSong(song.id, "can_sing"), `${song.title} moved to ${COPY.canSing}.`); }}>
                       {COPY.moveToCanSing}
                     </Button>
-                    <Button variant="outline" size="sm" disabled={busy} aria-label={`${COPY.remove} ${song.title}`} onClick={() => void run(() => removeSong(song.id), `Removed ${song.title}.`)}>
+                    <Button variant="outline" size="sm" disabled={busy} data-focus-id={`remove-${song.id}`} aria-label={`${COPY.remove} ${song.title}`} onClick={() => { focusAfter.current = focusTargetAfter(learned, song.id, "remove"); void run(() => removeSong(song.id), `Removed ${song.title}.`); }}>
                       {COPY.remove}
                     </Button>
                   </SongRow>

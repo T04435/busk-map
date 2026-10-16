@@ -68,6 +68,34 @@ test.describe("Repertoire storage (offline, memory store)", () => {
     await expect(page.getByText("Songs you learn from suggestions show up here.")).toBeVisible();
   });
 
+  test("focus stays in the list after Remove and Move, and lands on the add field when a list empties (B-016)", async ({ page }) => {
+    await page.goto("/repertoire");
+    for (const text of ["One - Artist", "Two - Artist", "Three - Artist"]) await add(page, text);
+    // A middle row: the next row's Remove.
+    await page.getByRole("button", { name: "Remove Two" }).click();
+    await expect(page.getByRole("button", { name: "Remove Three" })).toBeFocused();
+    // The last row: the previous row's Remove.
+    await page.getByRole("button", { name: "Remove Three" }).click();
+    await expect(page.getByRole("button", { name: "Remove One" })).toBeFocused();
+    // Learned rows: Move goes to the next row's Move, Remove to the next row's Remove.
+    await add(page, "Four - Artist");
+    await add(page, "Five - Artist");
+    const all = (await (await page.request.get("/api/playlist")).json()).playlist.songs as { id: string; title: string }[];
+    for (const song of all.filter((s) => ["Four", "Five"].includes(s.title))) await page.request.patch(`/api/playlist/songs/${song.id}`, { data: { state: "learned" } });
+    await page.reload();
+    await page.getByRole("button", { name: /^Move to Songs you can sing: Four/ }).click();
+    await expect(page.getByRole("button", { name: /^Move to Songs you can sing: Five/ })).toBeFocused();
+    await page.getByRole("button", { name: "Remove Five" }).click();
+    // The Learned list is empty: the add field.
+    await expect(page.getByRole("combobox", { name: "Search songs on Spotify" })).toBeFocused();
+    // The only row of Songs you can sing: also the add field.
+    for (const title of ["Four", "One"]) {
+      await page.getByRole("button", { name: `Remove ${title}` }).click();
+    }
+    await expect(page.getByText("No songs yet.")).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Search songs on Spotify" })).toBeFocused();
+  });
+
   test("the Spotify search adds a picked song with its length", async ({ page }) => {
     await page.goto("/repertoire");
     const box = page.getByRole("combobox", { name: "Search songs on Spotify" });

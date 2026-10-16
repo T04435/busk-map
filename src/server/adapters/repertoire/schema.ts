@@ -52,6 +52,15 @@ export const albumsSchema = z.object({
 /** One page of an artist's albums, read only for `total` (the release count). */
 export const albumsTotalSchema = z.object({ total: z.number().int().nonnegative() });
 
+/** GET /artists/{id}: the profile header (name, photo, genres). `followers` is absent for apps created after the 2024 API changes. */
+export const artistSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+  images,
+  genres: z.array(z.string()).optional(),
+  followers: z.object({ total: z.number().int().nonnegative() }).partial().optional(),
+});
+
 export const albumTracksSchema = z.object({
   items: z.array(trackItem.omit({ album: true })),
 });
@@ -94,3 +103,11 @@ export function pickImage(list: z.infer<typeof imageSchema>[] | undefined, minWi
   const wide = list.filter((i) => (i.width ?? 0) >= minWidth).sort((a, b) => (a.width ?? 0) - (b.width ?? 0));
   return (wide[0] ?? list[0]).url;
 }
+
+/** What the profile header needs from Spotify's artist (before the snapshot's fetchedAt is added). */
+export type ArtistProfileRaw = {
+  name: string;
+  images: { url: string; width?: number | null; height?: number | null }[];
+  genres: string[];
+  followers?: number;
+};

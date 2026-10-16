@@ -1,6 +1,6 @@
 // SYNTHETIC FIXTURE: invented catalogue for tests and offline mode. Not Spotify data.
-import { CATALOG, normalizeName } from "@/server/qloo-mock/catalog";
-import type { CatalogueArtist, CatalogueTrack } from "../schema";
+import { CATALOG, GENRES, normalizeName } from "@/server/qloo-mock/catalog";
+import type { ArtistProfileRaw, CatalogueArtist, CatalogueTrack } from "../schema";
 
 const BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
@@ -164,3 +164,18 @@ export const SYNTHETIC_RAW = {
     al3: { items: [{ id: "x4", name: "Second Song (Remastered 2026)", artists: [{ id: "a1", name: "Synthetic Artist" }] }, { id: "x5", name: "Third Song", artists: [{ id: "a1", name: "Synthetic Artist" }] }] },
   },
 };
+
+/**
+ * A made-up artist profile for offline mode. An artist in the Qloo mock's catalogue keeps its name and genres (so the
+ * mock also knows it and offers "sounds like" suggestions); any other id is "Synthetic Performer". No photo, so the
+ * hex mark with initials shows.
+ */
+export function syntheticArtistProfile(artistId: string): ArtistProfileRaw {
+  const known = CATALOG.find((a) => a.spotifyId === artistId);
+  if (!known) return { name: "Synthetic Performer", images: [], genres: ["synthetic folk", "test data"] };
+  const genres = Object.entries(known.genres)
+    .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
+    .slice(0, 3)
+    .map(([key]) => GENRES[key as keyof typeof GENRES].toLowerCase());
+  return { name: known.name, images: [], genres, followers: Math.round(known.popularity * 50_000) };
+}

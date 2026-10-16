@@ -143,6 +143,62 @@ test.describe("Songs to learn: a learn run (offline)", () => {
     expect(state.songs.map((s: { title: string }) => s.title)).toEqual(SONGS.map((s) => s.title));
   });
 
+  test("filter chips: All, New, To learn, Learned and Not for me, with counts, by keyboard (B-031)", async ({ page }) => {
+    await seed(page);
+    await page.goto("/repertoire");
+    await findButton(page).click();
+    await expect(section(page).getByTestId("learn-end")).toHaveAttribute("data-state", "done");
+    await expect(cards(section(page)).first()).toBeVisible();
+    const total = await cards(section(page)).count();
+    expect(total).toBeGreaterThanOrEqual(3);
+    const learned = await idOf(cardAt(group(page, 1), 0));
+    await cardOf(group(page, 1), learned).getByRole("button", { name: /^Mark as learned: / }).click();
+    await expect(cardOf(group(page, 1), learned).getByRole("button", { name: /^Undo: / })).toBeVisible();
+    const dismissed = await idOf(cardAt(group(page, 1), 1));
+    await cardOf(group(page, 1), dismissed).getByRole("button", { name: /^Not for me: / }).click();
+
+    const chips = section(page).getByTestId("learn-filters").getByRole("radio");
+    await expect(chips).toHaveCount(5);
+    const chip = (name: string) => section(page).getByTestId("learn-filters").getByRole("radio", { name: new RegExp(`^${name}`) });
+    await expect(chip("All")).toContainText(String(total));
+    await expect(chip("New")).toContainText(String(total));
+    await expect(chip("To learn")).toContainText(String(total - 2));
+    await expect(chip("Learned")).toContainText("1");
+    await expect(chip("Not for me")).toContainText("1");
+    await expect(chip("All")).toBeChecked();
+
+    // Filtering the list
+    await chip("To learn").click();
+    await expect(chip("To learn")).toBeChecked();
+    await expect(cards(section(page))).toHaveCount(total - 2);
+    await chip("Learned").click();
+    await expect(cards(section(page))).toHaveCount(1);
+    await expect(cardOf(section(page), learned)).toBeVisible();
+    await chip("Not for me").click();
+    await expect(cards(section(page))).toHaveCount(1);
+    await expect(cardOf(section(page), dismissed).getByRole("button", { name: /^Undo: / })).toBeVisible();
+    await chip("New").click();
+    await expect(cards(section(page))).toHaveCount(total - 1);
+    await chip("All").click();
+    await expect(cards(section(page))).toHaveCount(total - 1);
+
+    // Keyboard: arrows move between chips, Space picks one; a picked chip can't be unpicked into nothing.
+    await chip("All").focus();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await expect(chip("To learn")).toBeFocused();
+    await page.keyboard.press("Space");
+    await expect(chip("To learn")).toBeChecked();
+    await expect(cards(section(page))).toHaveCount(total - 2);
+    await page.keyboard.press("Space");
+    await expect(chip("To learn")).toBeChecked();
+    // Marking a song learned under "To learn" takes it out of view; focus stays with the chip.
+    const next = await idOf(cardAt(section(page), 0));
+    await cardOf(section(page), next).getByRole("button", { name: /^Mark as learned: / }).click();
+    await expect(cards(section(page))).toHaveCount(total - 3);
+    await expect(chip("To learn")).toContainText(String(total - 3));
+  });
+
   test("replaying a stored run shows the same steps, labelled a replay, and makes no new run", async ({ page }) => {
     await seed(page);
     await page.goto("/repertoire");

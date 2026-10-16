@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { applyLearnEvent, emptyLive, type LearnLive } from "@/lib/learn-live";
 import type { LearnEnd, LearnListView, LearnRunView, LearnStreamEvent } from "@/lib/learn-schema";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
@@ -130,6 +131,11 @@ function runMeta(run: LearnRunView): string {
   return parts.join(" · ");
 }
 
+export type LearnFilter = "all" | "new" | "pending" | "learned" | "dismissed";
+const FILTERS: LearnFilter[] = ["all", "new", "pending", "learned", "dismissed"];
+/** Whether a song belongs under a filter chip. "New" is `isNew` (the latest finished run's songs). */
+export const inFilter = (s: Pick<LearnSuggestionView, "status" | "isNew">, filter: LearnFilter) => (filter === "all" ? true : filter === "new" ? s.isNew : s.status === filter);
+
 type Group = { key: string; title: string; run: LearnRunView | null; songs: LearnSuggestionView[] };
 
 /** The Songs to learn list, grouped by run (newest first), then "Added from plans", then runs whose row was capped. */
@@ -157,6 +163,7 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
   const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
   const [replays, setReplays] = useState<Record<string, { live: LearnLive | null; state: "loading" | "open" | "failed" }>>({});
+  const [filter, setFilter] = useState<LearnFilter>("all");
   const [folds, setFolds] = useState<Record<string, boolean>>({});
   const focusAfter = useRef<string | null>(null);
   const mounted = useRef(true);
@@ -226,8 +233,9 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
     const target = focusAfter.current;
     if (!target || busy) return;
     focusAfter.current = null;
-    document.querySelector<HTMLElement>(`[data-focus-id="${target}"]`)?.focus();
-  }, [list, busy]);
+    // A song a filter no longer shows can't take focus: the chip that filtered it does.
+    (document.querySelector<HTMLElement>(`[data-focus-id="${target}"]`) ?? document.querySelector<HTMLElement>(`[data-testid="learn-filter-${filter}"]`))?.focus();
+  }, [list, busy, filter]);
 
   async function start() {
     setNotice(null);
@@ -255,7 +263,10 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
   const limit = list?.limit;
   const limited = limit !== undefined && limit.remaining === 0;
   const enough = hasPlaylist && songCount >= MIN_SONGS;
-  const groups = useMemo(() => (list ? groupsOf(list) : []), [list]);
+  const allGroups = useMemo(() => (list ? groupsOf(list) : []), [list]);
+  const counts = Object.fromEntries(FILTERS.map((f) => [f, songs.filter((s) => inFilter(s, f)).length])) as Record<LearnFilter, number>;
+  // A filter hides the groups it empties; the folds stay as they are (the group index is the unfiltered one).
+  const groups = useMemo(() => allGroups.map((g, index) => ({ ...g, index, songs: g.songs.filter((s) => inFilter(s, filter)) })).filter((g) => filter === "all" || g.songs.length > 0), [allGroups, filter]);
 
   async function change(song: LearnSuggestionView, status: "pending" | "learned" | "dismissed") {
     setBusy(true);
@@ -269,7 +280,7 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
         focusAfter.current = `undo-${song.id}`;
       } else if (status === "dismissed") {
         setInfo(COPY.dismissedDone(song.title));
-        const pending = groups.filter((g, i) => folds[g.key] ?? (!g.run || i === 0)).flatMap((g) => g.songs).filter((s) => s.status === "pending" && s.id !== song.id);
+        const pending = groups.filter((g) => folds[g.key] ?? (!g.run || g.index === 0)).flatMap((g) => g.songs).filter((s) => s.status === "pending" && s.id !== song.id);
         const next = pending.find((_, i, all) => all[i - 1]?.id === song.id) ?? pending[0];
         focusAfter.current = next ? `learned-${next.id}` : "learn-run-button";
       } else {
@@ -404,13 +415,36 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
         {info}
       </div>
 
-      {groups.map((group, index) => {
+      {songs.length > 0 && (
+        <div className="space-y-1" data-testid="learn-filters">
+          <ToggleGroup type="single" variant="outline" size="sm" value={filter} onValueChange={(next) => next && setFilter(next as LearnFilter)} aria-label={COPY.filterLabel} className="gap-1.5">
+            {FILTERS.map((f) => (
+              <ToggleGroupItem key={f} value={f} data-testid={`learn-filter-${f}`} className="gap-1.5">
+                {COPY.filters[f]}
+                <span className="tabular-nums" aria-hidden>
+                  {counts[f]}
+                </span>
+                <span className="sr-only">, {counts[f]}</span>
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          {groups.length === 0 && (
+            <p className="text-sm text-muted-foreground" data-testid="learn-filter-empty">
+              {COPY.filterEmpty}
+            </p>
+          )}
+        </div>
+      )}
+
+      {groups.map((group) => {
+        const index = group.index;
         const dismissed = group.songs.filter((s) => s.status === "dismissed");
-        const shown = group.songs.filter((s) => s.status !== "dismissed");
+        // Under "Not for me" the dismissed songs are the list, not a fold inside it.
+        const shown = filter === "dismissed" ? dismissed : group.songs.filter((s) => s.status !== "dismissed");
         const run = group.run;
         const open = run ? replays[run.runId] : undefined;
         // The newest run is open and older runs fold (B-030); a group the performer opened or closed stays that way.
-        const expanded = folds[group.key] ?? (!run || index === 0);
+        const expanded = folds[group.key] ?? (!run || index === 0 || filter !== "all");
         return (
           <Collapsible key={group.key} open={expanded} onOpenChange={(next) => setFolds((current) => ({ ...current, [group.key]: next }))} className="space-y-1" data-testid="learn-group" data-run={run?.number ?? group.key} data-open={expanded ? "true" : "false"}>
             <div className="space-y-1">
@@ -442,7 +476,7 @@ export function LearnPanel({ songCount, hasPlaylist, onSongsChanged }: { songCou
               ) : (
                 run && dismissed.length === 0 && <p className="text-sm text-muted-foreground">{run.status === "failed" ? COPY.errorTitle : COPY.nothingNewTitle}</p>
               )}
-              {dismissed.length > 0 && (
+              {filter !== "dismissed" && dismissed.length > 0 && (
                 <Collapsible>
                   <CollapsibleTrigger asChild>
                     <Button variant="link" size="sm" className="group h-auto px-0 text-muted-foreground">

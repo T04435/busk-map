@@ -133,6 +133,7 @@ test.describe("landing, as the deck draws it", () => {
     expect(lb!.x).toBeGreaterThan(cb!.x + cb!.width - 1);
     expect(Math.abs(lb!.y + lb!.height / 2 - (cb!.y + cb!.height / 2))).toBeLessThan(12);
     // The live PlanMap with example data, three pins and the list beside it.
+    await get.locator('[data-slot="map-frame"]').scrollIntoViewIfNeeded(); // the map loads when it nears the screen
     await expect(get.getByRole("region", { name: "Map of pitches and Qloo taste affinity" })).toBeVisible();
     await expect(get.locator("button[data-pitch-id]")).toHaveCount(3, { timeout: 20_000 });
     await expect(get.locator("figcaption")).toHaveCount(0);

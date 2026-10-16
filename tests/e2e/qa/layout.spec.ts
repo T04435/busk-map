@@ -14,6 +14,7 @@ const SCREENS: { name: string; path: string; ready: (p: Page) => Promise<void> }
   { name: "plan sax", path: "/plan?example=sax", ready: (p) => expect(p.getByRole("region", { name: "Pitches", exact: true })).toBeVisible() },
   { name: "plan folk duo", path: "/plan?example=folk-duo", ready: (p) => expect(p.getByRole("region", { name: "Pitches", exact: true })).toBeVisible() },
   { name: "week sax", path: "/week?example=sax", ready: (p) => expect(p.getByRole("list", { name: "Top sessions" })).toBeVisible() },
+  { name: "brain", path: "/brain", ready: (p) => expect(p.getByRole("heading", { name: "The wiring" })).toBeVisible() },
   { name: "tip log", path: "/tips", ready: (p) => expect(p.getByRole("heading", { level: 1 })).toBeVisible() },
   { name: "not found", path: "/qa-no-such-page", ready: (p) => expect(p.getByText("No pitch here")).toBeVisible() },
   { name: "plan not found", path: "/p/zzzzzzzzz", ready: (p) => expect(p.getByText("Plan not found")).toBeVisible() },

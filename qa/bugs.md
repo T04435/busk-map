@@ -17,6 +17,8 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 | B-011 | Low | Landing search comboboxes say `aria-expanded="true"` in the server HTML until hydration | Fixed (868c371), verified by QA |
 | B-012 | Low | Flaky e2e: example-card test reads the plan stream body after navigating | Fixed (1950bd2), verified by QA |
 | B-013 | Low | Fresh-run limit message gives the retry time in Melbourne time with no zone | Fixed (4b6237b), verified by QA |
+| B-014 | Low | docs/qloo-data-map.md still calls the week-prefetch comment "about 47 Qloo calls" | Open |
+| B-015 | Medium | /brain: the sticky trace panel hides the focused node while tabbing (WCAG 2.2 AA 2.4.11) | Open |
 
 ---
 
@@ -100,3 +102,17 @@ Severity: **High** blocks a judge path, leaks money or data, or breaks a rule. *
 
 ### QA miss (not a bug ID): cut-off placeholder at 390 px
 DEV found and fixed it (8afd14d): at 390 px the landing's "Your Spotify artist link (optional)" placeholder was cut off. QA's baseline phone screenshot (375 px) showed "Your Spotify artist link (opt…", but QA didn't file it. QA's layout spec now fails on any placeholder wider than its field (a canvas text measure against the field's content box). The check was proven on a deliberately cut-off field and passes on dev/core 5c6fdfd at 390, 768 and 1440.
+
+### B-014 · Low · Qloo data map doc is stale about the week-prefetch comment
+- **Found:** /brain retest (dev/core f9edb1a), checking the facts strip against `docs/qloo-data-map.md`.
+- **Actual:** §4 says a comment in `plan-view.tsx` reads "about 47 Qloo calls" and calls it "uncertain, likely stale". 54b1ae3 already changed it to "about N+2 Qloo calls" (`plan-view.tsx:287`).
+- **Expected:** the doc describes the current comment, or drops the note.
+- The facts strip itself matches the doc and `qloo-map.ts`: 11 kinds, 24–33 calls per new busk, 0 on a rerun, 10,000 a month at 5 a second paced to 3, and 9 parts.
+
+### B-015 · Medium · /brain: the sticky trace panel hides the focused node (WCAG 2.2 AA 2.4.11)
+- **Found:** /brain retest (dev/core f9edb1a), `tests/e2e/qa/brain.spec.ts` at 390, 768 and 1440 px, confirmed with screenshots.
+- **Steps:** open `/brain`, trace "Setlist and learn these" (click or Enter), then press Tab through the pieces.
+- **Expected:** every focused piece stays at least partly visible (2.4.11 Focus Not Obscured (Minimum), AA in WCAG 2.2).
+- **Actual:** the browser scrolls each newly focused piece to the bottom edge of the viewport, where the trace panel (`sticky bottom-0`, up to 45vh) sits on top of it. At 390 px, 20 Tab stops landed on fully hidden pieces (c5, c6, Spotify, d_crowd, d_pitchaff, d_trend, f_setlist and others); at 1440, c4 onwards. At 1440 the open panel also covers about half the wiring.
+- **Suggestion:** while a trace is open, set `scroll-padding-bottom` on the page (or the scroll container) to the panel's height, so focus scrolling clears it. Or make the panel non-sticky at narrow widths, or scroll the focused piece to the centre on focus.
+- **Regression test:** marked `test.fail` in `tests/e2e/qa/brain.spec.ts` until it's fixed.

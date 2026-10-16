@@ -194,6 +194,8 @@ export const planSchema = z.object({
       kind: z.enum(PITCH_KINDS),
       discovery: discoverySchema,
       tipPoints: z.number().int().nullable().default(null),
+      /** Ranked above one of the picks but left out: it lies within 250 m of this pick (the top-3 spacing rule). */
+      tooCloseTo: z.object({ id: z.string(), name: z.string() }).nullable().default(null),
     }),
   ),
   /** The tip log behind the personal bonus, when one was used. */
@@ -330,6 +332,8 @@ export const baselineViewSchema = z.object({
       pitchName: z.string().nullable(),
       score: z.number().nullable(),
       beatsOurs: z.boolean(),
+      /** When it beats a pick: the Busk Map pick it lies within 250 m of, so the plan chose a spot further away. */
+      tooCloseTo: z.string().nullable().default(null),
     }),
   ),
 });

@@ -3,7 +3,7 @@ import { formatHour, describeSlot } from "@/lib/slot";
 import { titleCase } from "@/lib/text";
 import { venueDetail } from "@/lib/venue";
 import { planSchema, type Plan, type PlanPitch } from "@/lib/plan-schema";
-import { leadingAgeBand, type ScoredPitch } from "@/server/scoring";
+import { leadingAgeBand, skippedForSpacing, type ScoredPitch } from "@/server/scoring";
 import * as qloo from "@/server/adapters/qloo";
 import { agentChanges } from "@/lib/agent-vs-engine";
 import { fromEngine, fromToolOutputs, type ToolResult } from "@/lib/research-totals";
@@ -172,6 +172,8 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     top = chosen.slice(0, 3);
   }
   const ranked = [...poolById.values()].sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+  // Higher-scored pitches the 250 m spacing left out, with the pick each is too close to.
+  const spacing = skippedForSpacing(ranked, top);
   const genres = top[0] ? await context.crowdGenres(top[0]) : [];
 
   const aiWhy = new Map(valid ? aiPicks.filter((p) => traceable(p.why)).map((p) => [p.pitchId, clip(p.why.trim(), 500)]) : []);
@@ -229,7 +231,9 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     others: (qlooDown ? [] : ranked)
       .filter((p) => !topIds.has(p.id))
       .slice(0, 25)
-      .map((p) => ({ id: p.id, name: p.name, lat: p.lat, lon: p.lon, score: p.score, kind: p.kind, discovery: p.discovery, tipPoints: p.tip ? Math.round(p.tip.bonus * 100) : null })),
+      .map((p) => ({ id: p.id, name: p.name, lat: p.lat, lon: p.lon, score: p.score, kind: p.kind, discovery: p.discovery, tipPoints: p.tip ? Math.round(p.tip.bonus * 100) : null,
+        tooCloseTo: spacing.has(p.id) ? { id: spacing.get(p.id)!.id, name: spacing.get(p.id)!.name } : null,
+      })),
     tipHistory: request.history ? { source: request.history.source, sessions: request.history.sessions, perHour: request.history.perHour } : null,
     funnel,
     tasteCells: cells.map((c) => ({

@@ -9,6 +9,9 @@ import {
   normalizeWeights,
   openDuring,
   pickTopPitches,
+  MIN_PITCH_SPACING_M,
+  skippedForSpacing,
+  tooCloseTo,
   placesFactor,
   rankPitches,
   scorePitch,
@@ -294,6 +297,31 @@ describe("ranking", () => {
     expect(pickTopPitches(ranked, 2).map((p) => p.id)).toEqual(["a-here", "far"]);
     expect(pickTopPitches(ranked, 1).map((p) => p.id)).toEqual(["a-here"]);
     expect(pickTopPitches(ranked, 3, 0)).toHaveLength(3);
+  });
+
+  it("names the higher-scored pitches the 250 m spacing left out, and the pick each is too close to (B-002)", () => {
+    const ranked = rankPitches(
+      [candidate("far", offsetM(1000)), candidate("b-here", here), candidate("a-here", here), candidate("close", offsetM(100))],
+      inputs,
+      DEFAULT_WEIGHTS,
+    );
+    expect(MIN_PITCH_SPACING_M).toBe(250);
+    const picks = pickTopPitches(ranked, 2);
+    expect(picks.map((p) => p.id)).toEqual(["a-here", "far"]);
+    const skipped = skippedForSpacing(ranked, picks);
+    // Everything ranked above "far" except the pick itself sits within 250 m of "a-here".
+    const above = ranked.slice(0, ranked.findIndex((p) => p.id === "far")).filter((p) => p.id !== "a-here");
+    expect([...skipped.keys()].sort()).toEqual(above.map((p) => p.id).sort());
+    expect(above.length).toBeGreaterThan(0);
+    for (const pick of skipped.values()) expect(pick.id).toBe("a-here");
+    // Pitches ranked below the lowest pick were simply scored lower: not marked.
+    expect(skipped.has("far")).toBe(false);
+    expect(skippedForSpacing(ranked, [])).toEqual(new Map());
+    expect(skippedForSpacing(ranked, picks, 0)).toEqual(new Map());
+
+    expect(tooCloseTo(offsetM(100), picks)?.id).toBe("a-here");
+    expect(tooCloseTo(offsetM(600), picks)).toBeNull();
+    expect(tooCloseTo(offsetM(600), picks, 700)?.id).toBe("a-here");
   });
 
   it("adds the personal tip bonus to the score, and only where the history covers the pitch", () => {

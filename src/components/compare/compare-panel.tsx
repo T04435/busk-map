@@ -104,7 +104,9 @@ function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch
     return pitch ? [pitch] : [];
   });
   const onlyPlain = baseline.plain.filter((p) => p.status !== "ours");
-  const better = onlyPlain.filter((p) => p.beatsOurs);
+  // Scored higher than a pick: either left out by the 250 m spacing (tooCloseTo), or a spot the plan missed.
+  const better = onlyPlain.filter((p) => p.beatsOurs && !p.tooCloseTo);
+  const spaced = onlyPlain.filter((p) => p.beatsOurs && p.tooCloseTo);
   const usual = baseline.plain.filter((p) => p.usualSpot).length;
   return (
     <>
@@ -113,6 +115,9 @@ function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch
         {agreed.length > 0 ? `; ${agreed.length} ${agreed.length === 1 ? "is" : "are"} in both answers` : ""}.
         {usual > 0 ? ` The plain AI named ${usual} of Melbourne's usual busking spots, where other buskers already are.` : ""}
         {better.length > 0 ? ` Busk Map itself scores ${better.map((p) => p.name).join(" and ")} higher than one of its own picks: worth a look.` : ""}
+        {spaced.length > 0
+          ? ` Busk Map scores ${spaced.map((p) => `${p.name} (within 250 m of ${p.tooCloseTo})`).join(" and ")} higher than one of its picks, but the top 3 are kept 250 m apart, so the plan picked a spot further away.`
+          : ""}
       </p>
 
       {agreed.length > 0 && (
@@ -171,7 +176,13 @@ function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch
                 <span className="block text-muted-foreground">{spot.why}</span>
                 <span className="block text-muted-foreground">
                   {spot.status === "scored"
-                    ? `Busk Map's score here: ${spot.score}/100${spot.pitchName && spot.pitchName !== spot.name ? ` (as ${spot.pitchName})` : ""}${spot.beatsOurs ? ", higher than one of Busk Map's picks" : ""}.`
+                    ? `Busk Map's score here: ${spot.score}/100${spot.pitchName && spot.pitchName !== spot.name ? ` (as ${spot.pitchName})` : ""}${
+                        spot.tooCloseTo
+                          ? `. Scored higher, but within 250 m of ${spot.tooCloseTo}, so the plan picked a spot further away`
+                          : spot.beatsOurs
+                            ? ", higher than one of Busk Map's picks"
+                            : ""
+                      }.`
                     : spot.status === "not-legal"
                       ? "The council's busking layers rule this spot out."
                       : "Busk Map couldn't place this spot, so it has no data to check it."}

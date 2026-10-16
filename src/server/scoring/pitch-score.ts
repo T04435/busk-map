@@ -319,12 +319,36 @@ export function rankPitches(candidates: Candidate[], inputs: ScoreInputs, weight
     .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
 }
 
+/** The plan's top pitches are at least this far apart, so the options differ (shown in "How pitches are scored"). */
+export const MIN_PITCH_SPACING_M = 250;
+
 /** The best `count` pitches, at least `minSpacingM` apart so the options differ. */
-export function pickTopPitches(ranked: ScoredPitch[], count = 3, minSpacingM = 250): ScoredPitch[] {
+export function pickTopPitches(ranked: ScoredPitch[], count = 3, minSpacingM = MIN_PITCH_SPACING_M): ScoredPitch[] {
   const picked: ScoredPitch[] = [];
   for (const pitch of ranked) {
     if (picked.length === count) break;
     if (picked.every((p) => distanceM(p, pitch) >= minSpacingM)) picked.push(pitch);
   }
   return picked;
+}
+
+/** The first of `picks` (best first) closer than `minSpacingM` to `point`, or null. */
+export function tooCloseTo<T extends LatLon>(point: LatLon, picks: T[], minSpacingM = MIN_PITCH_SPACING_M): T | null {
+  return picks.find((p) => distanceM(p, point) < minSpacingM) ?? null;
+}
+
+/**
+ * Pitches ranked above the plan's lowest pick but left out because they lie within `minSpacingM` of a pick:
+ * pitch id → the pick it is too close to. `ranked` is best first and contains the picks.
+ */
+export function skippedForSpacing(ranked: ScoredPitch[], picks: ScoredPitch[], minSpacingM = MIN_PITCH_SPACING_M): Map<string, ScoredPitch> {
+  const pickIds = new Set(picks.map((p) => p.id));
+  const lastPick = Math.max(0, ...picks.map((p) => ranked.findIndex((r) => r.id === p.id)));
+  const out = new Map<string, ScoredPitch>();
+  for (const pitch of ranked.slice(0, lastPick)) {
+    if (pickIds.has(pitch.id)) continue;
+    const near = tooCloseTo(pitch, picks, minSpacingM);
+    if (near) out.set(pitch.id, near);
+  }
+  return out;
 }

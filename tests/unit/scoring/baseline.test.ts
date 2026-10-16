@@ -128,7 +128,22 @@ describe("compareWithBaseline", () => {
     const weakest = [...base.ranked].sort((a, b) => a.score - b.score).slice(0, 2);
     const result = compareWithBaseline([{ name: "City Square", why: "" }], { ...base, top: weakest });
     expect(result.picks[0]).toMatchObject({ status: "scored", beatsOurs: true });
+    // The square is far from both weak picks, so spacing isn't why it was left out.
+    expect(result.picks[0].tooCloseTo).toBeNull();
     expect(compareWithBaseline([{ name: "City Square", why: "" }], { ...base, top: [] }).picks[0].beatsOurs).toBe(false);
+  });
+
+  it("says when a higher-scored spot was left out for being within 250 m of a pick (B-002)", () => {
+    const base = inputs();
+    const lane = base.ranked.find((p) => p.id === "lane")!;
+    const corner = base.ranked.find((p) => p.id === "corner")!;
+    // Our picks: the lane (400 m north) and the corner (800 m, its score forced to 0). A new spot 600 m north
+    // beats the corner and is 200 m from both: the first (best) pick is the one it is too close to.
+    const result = compareWithBaseline([{ name: "Near the lane", why: "", ...north(600) }], { ...base, top: [lane, { ...corner, score: 0 }] });
+    expect(result.picks[0]).toMatchObject({ status: "scored", beatsOurs: true, tooCloseTo: "lane" });
+    // Not higher than any pick: no spacing note.
+    const none = compareWithBaseline([{ name: "Near the lane", why: "", ...north(600) }], { ...base, top: [{ ...lane, score: 100 }] });
+    expect(none.picks[0]).toMatchObject({ beatsOurs: false, tooCloseTo: null });
   });
 
   it("matches a place within MATCH_RADIUS_M only", () => {

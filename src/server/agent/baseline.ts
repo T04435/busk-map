@@ -62,6 +62,7 @@ async function build(request: PlanRequest, adapters: AdapterContext, day: string
         pitchName: p.pitchName,
         score: p.score,
         beatsOurs: p.beatsOurs,
+        tooCloseTo: p.tooCloseTo,
       })),
     },
   };

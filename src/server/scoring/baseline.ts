@@ -1,7 +1,7 @@
 import { distanceM, inBBox, type BBox, type LatLon } from "@/lib/geo";
 import { nameKey } from "@/lib/text";
 import { candidateAt, type CandidateInputs } from "./candidates";
-import { scorePitch, type ScoreInputs, type ScoredPitch } from "./pitch-score";
+import { scorePitch, tooCloseTo, type ScoreInputs, type ScoredPitch } from "./pitch-score";
 import type { Weights } from "./types";
 
 /**
@@ -73,6 +73,8 @@ export type PlainPick = {
   score: number | null;
   /** Scored higher than at least one of Busk Map's top picks. */
   beatsOurs: boolean;
+  /** When it beats a pick: the pick it lies within the 250 m spacing of, which is why the plan chose a spot further away. */
+  tooCloseTo: string | null;
 };
 
 export type BaselineComparison = {
@@ -107,20 +109,22 @@ export function compareWithBaseline(spots: BaselineSpot[], inputs: BaselineInput
   const lowestTop = top.length > 0 ? Math.min(...top.map((p) => p.score)) : null;
   const picks: PlainPick[] = spots.map((spot, i) => {
     const located = locate(spot, inputs.places, inputs.area);
-    const base = { name: spot.name, why: spot.why, located, pitchId: null, pitchName: null, score: null, beatsOurs: false };
+    const base = { name: spot.name, why: spot.why, located, pitchId: null, pitchName: null, score: null, beatsOurs: false, tooCloseTo: null };
     if (!located) return { ...base, status: "no-data" };
     const ours = nearest(located, top);
     if (ours) return { ...base, status: "ours", pitchId: ours.id, pitchName: ours.name, score: ours.score };
     const known = nearest(located, ranked);
     const scored = known ?? scoreSpot(spot, located, i, inputs);
     if (!scored) return { ...base, status: "not-legal" };
+    const beatsOurs = lowestTop !== null && scored.score > lowestTop;
     return {
       ...base,
       status: "scored",
       pitchId: known?.id ?? null,
       pitchName: known?.name ?? null,
       score: scored.score,
-      beatsOurs: lowestTop !== null && scored.score > lowestTop,
+      beatsOurs,
+      tooCloseTo: beatsOurs ? (tooCloseTo(located, top)?.name ?? null) : null,
     };
   });
   const agreed = new Map<string, string>();

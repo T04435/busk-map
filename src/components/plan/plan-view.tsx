@@ -479,6 +479,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
                             {p.name}
                             {p.discovery === "hidden-gem" ? " · hidden gem" : p.discovery === "usual" ? " · usual spot" : ""}
                             {p.tipPoints ? ` · tips +${p.tipPoints}` : ""}
+                            {p.tooCloseTo ? ` · too close to ${p.tooCloseTo.name}` : ""}
                           </span>
                           <span className="text-muted-foreground">{p.score}/100</span>
                         </li>

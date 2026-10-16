@@ -24,6 +24,10 @@ export function WeightsPanel({ weights }: { weights: Plan["weights"] }) {
           share that crowd. Missing
           sources drop out instead of counting as zero.
         </CardDescription>
+        <CardDescription data-testid="spacing-rule">
+          The top 3 are at least 250 m apart, so each is a different spot. A higher-scored pitch within 250 m of a pick is left out
+          and marked &ldquo;too close to&rdquo; that pick under Other scored pitches.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">

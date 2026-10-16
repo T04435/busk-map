@@ -7,11 +7,12 @@ import { Fold } from "@/components/honeycomb/fold";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Loader } from "@/components/honeycomb/loader";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { formatInput, scalar, type AgentStep } from "@/lib/agent-steps";
 import { modelName, type ExplanationsModel } from "@/lib/sources";
-import { TOOL_ICON, TOOL_UI } from "./tool-results";
+import { TOOL_ICON, TOOL_UI, type MiniPin } from "./tool-results";
 
 /**
  * The research feed: the agent's steps as the busker sees them, newest first, no step numbers, each tool drawn as a plain-words
@@ -87,7 +88,7 @@ export function StepData({ value, view = "table" }: { value: unknown; view?: "ta
   );
 }
 
-function ToolCard({ step, model, raw, rawView, when, fresh }: { step: AgentStep; model: ExplanationsModel | null; raw: boolean; rawView: "table" | "json"; when?: string; fresh: boolean }) {
+function ToolCard({ step, model, raw, rawView, when, pins, fresh }: { step: AgentStep; model: ExplanationsModel | null; raw: boolean; rawView: "table" | "json"; when?: string; pins?: MiniPin[]; fresh: boolean }) {
   const ui = step.tool ? TOOL_UI[step.tool] : undefined;
   const Icon = (step.tool && (TOOL_ICON as Record<string, typeof Users>)[step.tool]) || Dot;
   const running = step.status === "running";
@@ -105,10 +106,10 @@ function ToolCard({ step, model, raw, rawView, when, fresh }: { step: AgentStep;
         <Skeleton className="h-3 w-[45%]" />
       </div>
     );
-  else if (rejected) body = ui?.render(out, step, { when });
+  else if (rejected) body = ui?.render(out, step, { when, pins });
   else if (failed) body = <p className="m-0 text-sm text-muted-foreground">This check didn&apos;t come back, so the plan goes on without it.</p>;
   else if (cut) body = <p className="m-0 text-sm text-muted-foreground">Stopped before it finished.</p>;
-  else if (step.output !== undefined && ui) body = ui.render(out, step, { when });
+  else if (step.output !== undefined && ui) body = ui.render(out, step, { when, pins });
   else if (step.summary) body = <p className="m-0 text-sm text-muted-foreground">{step.summary}</p>;
   return (
     <li
@@ -169,7 +170,9 @@ export function AgentStepStream({
   seconds,
   endNote,
   endCode,
+  onRetry,
   when,
+  pins,
   collapsed = false,
   showRaw,
   onShowRawChange,
@@ -185,7 +188,11 @@ export function AgentStepStream({
   seconds?: number | null;
   endNote?: string | null;
   endCode?: "qloo" | null;
+  /** Qloo down: the Try again button on the stopped feed (Q02). */
+  onRetry?: () => void;
   when?: string;
+  /** The busk's ranked pitches, for the mini map on "Where your crowd gathers". */
+  pins?: MiniPin[];
   collapsed?: boolean;
   showRaw: boolean;
   onShowRawChange: (on: boolean) => void;
@@ -226,7 +233,7 @@ export function AgentStepStream({
         </li>
       ) : null}
       {feed.map((s, i) => (
-        <ToolCard key={s.id} step={s} model={model} raw={raw} rawView={rawView} when={when} fresh={live && i === 0 && !thinking} />
+        <ToolCard key={s.id} step={s} model={model} raw={raw} rawView={rawView} when={when} pins={pins} fresh={live && i === 0 && !thinking} />
       ))}
     </ol>
   );
@@ -235,14 +242,23 @@ export function AgentStepStream({
     foot = (
       <Alert variant="estimate">
         <AlertTitle>Planned from the data alone</AlertTitle>
-        <AlertDescription>{endNote || `${modelName(model, "start")} didn't finish in time, so your pitches come straight from Busk Map's scores, with standard reasons.`}</AlertDescription>
+        <AlertDescription>{endNote || `${modelName(model, "start")} ran out of time, so your spots come straight from Busk Map's scores, with standard reasons.`}</AlertDescription>
       </Alert>
     );
   else if (phase === "error")
     foot = (
       <Alert variant="error">
         <AlertTitle>{endCode === "qloo" ? "Qloo isn't answering" : "Something went wrong"}</AlertTitle>
-        <AlertDescription>{endCode === "qloo" ? "Without taste data there's nothing to plan from. Open the link again in a minute." : "Your act and slot are kept. Open the link again to try."}</AlertDescription>
+        <AlertDescription>
+          {endCode === "qloo" ? "Without taste data there's nothing to plan from. Try again in a minute." : "Your act and slot are kept. Open the link again to try."}
+          {endCode === "qloo" && onRetry ? (
+            <span className="mt-3 block">
+              <Button type="button" variant="outline" onClick={onRetry}>
+                Try again
+              </Button>
+            </span>
+          ) : null}
+        </AlertDescription>
       </Alert>
     );
   else if (phase === "stopped")

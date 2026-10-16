@@ -75,7 +75,7 @@ async function ShortPlan({ params, searchParams }: Pick<PageProps<"/p/[id]">, "p
       minute: "2-digit",
       timeZone: city.timeZone,
     }).format(snapshot.startedAt);
-    replay = { events: snapshotEvents(snapshot), note: `Replaying the agent's run from ${at} (cached, no new model call)` };
+    replay = { events: snapshotEvents(snapshot), note: `Researched at ${at}${sameDay ? " today" : ""}. Opening it again shows that research: nothing new was asked.` };
   }
   return (
     <div className="space-y-6">

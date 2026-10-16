@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
-import { expect, LOCAL, SATURDAY, test, waitForPlan } from "./fixtures";
+import { expect, LOCAL, MODEL_PLAN, SATURDAY, test, waitForPlan } from "./fixtures";
 import { expectNoOverflow, expectOnTop, holdAgentRunning } from "./layout-helpers";
 
 /**
@@ -117,7 +117,7 @@ const PAGES: PageCase[] = [
       await page.goto("/plan?example=acoustic");
       await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
       await waitForPlan(page);
-      await expect(page.getByTestId("agent-status")).toHaveText("The agent's plan.");
+      await expect(page.getByTestId("agent-status")).toHaveText(MODEL_PLAN);
     },
     controls: async (page) => {
       await expectOnTop(page.getByTestId("copy-link"), "Copy link");
@@ -135,7 +135,9 @@ const PAGES: PageCase[] = [
       await expect(page.getByRole("list", { name: "Research, newest first" }).getByRole("listitem").first()).toBeVisible();
     },
     controls: async (page) => {
-      await expectOnTop(page.getByTestId("copy-link"), "Copy link");
+      // R01: no Copy link until the busk exists.
+      await expect(page.getByTestId("copy-link")).toHaveCount(0);
+      await expectOnTop(page.getByTestId("agent-status"), "the status line");
     },
   },
   {
@@ -160,11 +162,10 @@ const PAGES: PageCase[] = [
     local: true,
     open: async (page) => {
       await page.goto("/plan?example=acoustic&faults=qloo");
-      await expect(page.getByText("Qloo is unavailable")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "No plan without taste data" })).toBeVisible();
     },
     controls: async (page) => {
-      await expect(page.getByRole("button", { name: /try again/i })).toHaveCount(0);
-      await expectOnTop(page.getByText("Qloo is unavailable"), "Qloo is unavailable");
+      await expectOnTop(page.getByTestId("qloo-down").getByRole("button", { name: "Try again" }), "Try again");
     },
   },
   {

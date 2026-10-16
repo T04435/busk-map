@@ -21,7 +21,9 @@ test.describe("pitch details sheet", () => {
     await expect(sheet.getByTestId("pitch-card")).toBeVisible();
     await expect(sheet.getByRole("region", { name: "Suggested set" })).toBeVisible();
     await expect(sheet.getByRole("region", { name: "Who this crowd likes" })).toBeVisible();
+    await sheet.getByText("How this score adds up").click();
     await expect(sheet.getByRole("region", { name: "How pitches are scored" })).toBeVisible();
+    await expect(sheet.getByRole("region", { name: "Foot traffic by hour" })).toBeVisible();
     // Focus is inside the sheet and stays there while tabbing.
     for (let i = 0; i < 6; i++) {
       await page.keyboard.press("Tab");
@@ -51,7 +53,7 @@ test.describe("pitch details sheet", () => {
     await page.goto(`${base.pathname}?pitch=${id}`);
     const sheet = page.getByRole("dialog");
     await expect(sheet.getByRole("heading", { name: new RegExp(`^${name}$`, "i") }).first()).toBeVisible();
-    await expect(sheet.getByRole("heading", { name: `Setlist for ${name}` })).toBeVisible();
+    await expect(sheet.getByRole("heading", { name: "Setlist for this pitch" })).toBeVisible();
     // The pitch that opened it is the selected one behind it.
     await page.keyboard.press("Escape");
     await expect(page).toHaveURL(new RegExp(`${base.pathname}$`));
@@ -186,12 +188,14 @@ const WIDTHS = [
 const STATES: { name: string; open: (page: Page) => Promise<void> }[] = [
   { name: "plan ready", open: async (p) => { await p.goto("/plan?example=acoustic"); await waitForPlan(p); } },
   { name: "sheet open", open: async (p) => { await p.goto("/plan?example=folk-duo"); await waitForPlan(p); await openDetails(p); } },
-  { name: "dot popover", open: async (p) => { await p.goto("/plan?example=acoustic"); await waitForPlan(p); await p.getByRole("region", { name: "Map of pitches and Qloo taste affinity" }).scrollIntoViewIfNeeded(); await p.getByTestId("browse-others").focus(); await p.keyboard.press("Enter"); await expect(p.getByTestId("other-pitch-popover")).toBeVisible(); } },
+  { name: "dot popover", open: async (p) => { await p.goto("/plan?example=acoustic"); await waitForPlan(p); await p.getByTestId("browse-others").scrollIntoViewIfNeeded(); await p.getByTestId("browse-others").focus(); await p.keyboard.press("Enter"); await expect(p.getByTestId("other-pitch-popover")).toBeVisible(); } },
   { name: "raw data on", open: async (p) => { await p.goto("/plan?example=sax"); await waitForPlan(p); await showRawData(p); } },
   { name: "replay", open: async (p) => { await p.goto("/plan?example=folk-duo"); await waitForPlan(p); await p.reload(); await waitForPlan(p); } },
-  { name: "qloo down", open: async (p) => { await p.goto("/plan?example=acoustic&faults=qloo"); await expect(p.getByText("Qloo is unavailable")).toBeVisible(); } },
+  { name: "qloo down", open: async (p) => { await p.goto("/plan?example=acoustic&faults=qloo"); await expect(p.getByRole("heading", { name: "No plan without taste data" })).toBeVisible(); } },
   { name: "no artist matched", open: async (p) => { await p.goto(`/plan?name=Nobody%20Knows&artists=Zzyzx%20Nobody|Qqq%20Unknown&date=${SATURDAY}&from=18&to=21`); await waitForPlan(p); } },
   { name: "no legal pitch", open: async (p) => { await p.goto("/plan?example=sax&faults=pitches,footfall"); await expect(p.getByRole("heading", { name: /^No legal pitch for/i })).toBeVisible(); } },
+  { name: "researching", open: async (p) => { await holdAgentRunning(p); await p.goto("/plan?example=sax"); await expect(p.getByTestId("plan-pending")).toBeVisible(); } },
+  { name: "claude ran out of time (fallback)", open: async (p) => { await p.route("**/api/plan", (r) => r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: { message: "The planner is unavailable right now." } }) })); await p.goto("/plan?example=acoustic"); await waitForPlan(p); await expect(p.getByTestId("agent-fallback")).toBeVisible(); } },
   { name: "source down", open: async (p) => { await p.goto("/plan?example=acoustic&faults=footfall,events,weather"); await waitForPlan(p); } },
   { name: "slot passed", open: async (p) => { await p.goto("/plan?name=Past%20Slot%20Duo&artists=Paul%20Kelly&date=2026-10-03&from=12&to=15&permit=premium"); await expect(p.getByTestId("slot-passed")).toBeVisible(); } },
   { name: "run limit", open: async (p) => { await p.goto("/plan?example=sax&faults=fresh-limit"); await expect(p.getByTestId("fresh-limit")).toBeVisible(); } },

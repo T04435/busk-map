@@ -2,14 +2,13 @@ import type { ReactNode } from "react";
 import { Clock } from "lucide-react";
 import Link from "next/link";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { QLOO_TEST_LABEL } from "@/lib/sources";
 
-export type PlanAlertKind = "limit" | "qloo-down" | "agent-error" | "fallback" | "test-data" | "bad-link";
+export type PlanAlertKind = "limit" | "agent-error" | "fallback" | "test-data" | "bad-link";
 
 /**
  * Every plan-level alert the page shows, with its copy, so the states never drift. Titles and bodies are the app's own
- * words (they already match the design). Qloo down has no re-run button: a reload tries again.
+ * words (they already match the design).
  */
 export function PlanAlert({
   kind,
@@ -25,40 +24,33 @@ export function PlanAlert({
   testId?: string;
   children?: ReactNode;
 }) {
-  const home = (label: string) => (
-    <Button asChild variant="outline" className="mt-2">
-      <Link href="/">{label}</Link>
-    </Button>
-  );
   switch (kind) {
     case "limit":
       return (
-        <Alert variant="warning" icon={<Clock className="size-5" />} data-testid={testId ?? "fresh-limit"}>
-          <AlertTitle>Plan limit reached</AlertTitle>
-          <AlertDescription>
-            <p>{message}</p>
-            {home("Back to Busk Map home")}
-          </AlertDescription>
-        </Alert>
-      );
-    case "qloo-down":
-      return (
-        <Alert variant="error" data-testid={testId ?? "qloo-down"}>
-          <AlertTitle>Qloo is unavailable</AlertTitle>
-          <AlertDescription>Busk Map needs Qloo&apos;s taste data to plan. Please try again in a few minutes.</AlertDescription>
-        </Alert>
+        <div className="flex max-w-[760px] flex-col gap-3" data-testid={testId ?? "fresh-limit"}>
+          <Alert variant="warning" icon={<Clock className="size-5" />}>
+            <AlertTitle>Plan limit reached</AlertTitle>
+            <AlertDescription>
+              <p>{message}</p>
+            </AlertDescription>
+          </Alert>
+          {children}
+          <Link className="inline-flex min-h-tap items-center self-start font-bold text-foreground underline underline-offset-3 hover:decoration-2" href="/">
+            Back to Busk Map home
+          </Link>
+        </div>
       );
     case "agent-error":
       return (
         <Alert variant="error" data-testid={testId ?? "agent-error"}>
-          <AlertTitle>The agent could not finish</AlertTitle>
+          <AlertTitle>Claude could not finish</AlertTitle>
           <AlertDescription>{children ?? message}</AlertDescription>
         </Alert>
       );
     case "fallback":
       return (
         <Alert variant="estimate" data-testid={testId ?? "agent-fallback"}>
-          <AlertTitle>Shown: the engine&apos;s plan</AlertTitle>
+          <AlertTitle>Planned from the data alone</AlertTitle>
           <AlertDescription>{note ?? message}</AlertDescription>
         </Alert>
       );

@@ -10,6 +10,15 @@ export const CLAUDE_CREDIT = "Plan explanations written by Claude (Anthropic) vi
 /** Who the page says wrote the notes, picks and whys (B-010): the test model on the local offline server, Claude on a deploy. */
 export const MODEL_NOTE_PREFIX = LOCAL ? "Test model" : "Claude";
 export const AGENT_KEPT_TOP3 = `${LOCAL ? "The test model" : "Claude"} checked Busk Map's top 3 and kept them`;
+/** The plan eyebrow's day, as the page words it: "Mon 26 Oct" (no year, no ISO date). */
+export function shortDay(iso: string): string {
+  return new Intl.DateTimeFormat("en-AU", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`)).replace(/,/g, "");
+}
+
+/** The status line under the research, in brand words: "Claude's plan." (the test model offline). */
+export const MODEL_PLAN = LOCAL ? "The test model's plan." : "Claude's plan.";
+/** The replay line on a stored busk: when it was researched, and that nothing new was asked. */
+export const REPLAY_LINE = /^Researched at .*\. Opening it again shows that research: nothing new was asked\.$/;
 export const EXPLAINED_BY = LOCAL ? "Explained by the test model (offline)" : "Explained by Claude";
 
 export const test = base;

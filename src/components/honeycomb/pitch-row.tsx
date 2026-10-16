@@ -6,8 +6,7 @@ import { RankTile } from "@/components/honeycomb/rank-tile";
 
 /**
  * One pitch in two short lines: [rank] [name @ time] [score] over [badges] [Full details]. The first line is the button that
- * selects it (`aria-pressed`, `data-pitch-name`); the second holds its badges and the Full details link. A selected row gains a
- * ruled frame and an orange offset, so selection never relies on colour alone.
+ * selects it (`aria-pressed`, `data-pitch-name`); the second holds its badges and the Full details link. A selected row is the white card with a ruled frame, the orange offset shadow, a solid rank tile and a filled score cell; the others are tinted with quiet tiles (so selection never relies on colour alone).
  */
 export function PitchRow({
   rank,
@@ -43,7 +42,7 @@ export function PitchRow({
     </>
   );
   return (
-    <li data-slot="pitch-row" data-pitch-id={pitchId} className={cn("border-2 bg-card transition-shadow", selected ? "border-rule shadow-md" : "border-border")}>
+    <li data-slot="pitch-row" data-pitch-id={pitchId} className={cn("border-2 transition-shadow", selected ? "border-rule bg-popover shadow-[5px_5px_0_var(--primary)]" : "border-border bg-secondary/60")}>
       {onSelect ? (
         <button
           type="button"

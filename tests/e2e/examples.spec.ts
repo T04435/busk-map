@@ -1,5 +1,5 @@
 import { EXAMPLES } from "../../src/lib/examples";
-import { AGENT_KEPT_TOP3, agentSteps, CLAUDE_CREDIT, EXPLAINED_BY, EXPLANATIONS_LABEL, expect, LOCAL, MODEL_NOTE_PREFIX, openDetails, SATURDAY, showRawData, test, waitForPlan } from "./fixtures";
+import { AGENT_KEPT_TOP3, agentSteps, CLAUDE_CREDIT, EXPLAINED_BY, EXPLANATIONS_LABEL, expect, LOCAL, MODEL_NOTE_PREFIX, MODEL_PLAN, openDetails, REPLAY_LINE, SATURDAY, showRawData, test, waitForPlan } from "./fixtures";
 
 test.describe("landing", () => {
   test("shows the three example performers and a way to plan your own busk", async ({ page }) => {
@@ -64,7 +64,6 @@ for (const example of EXAMPLES) {
       await page.goto(`/plan?example=${example.id}`);
       await waitForPlan(page);
       const second = page.getByRole("region", { name: "Pitches", exact: true }).locator("button[data-pitch-name]").nth(1);
-      const name = (await second.getAttribute("data-pitch-name"))!;
       await second.focus();
       await page.keyboard.press("Enter");
       await expect(second).toHaveAttribute("aria-pressed", "true");
@@ -72,11 +71,11 @@ for (const example of EXAMPLES) {
       await expect(page).not.toHaveURL(/pitch=/);
       const sheet = await openDetails(page, 1);
       await expect(page).toHaveURL(/pitch=/);
-      await expect(sheet.getByRole("heading", { name: `Setlist for ${name}` })).toBeVisible();
+      await expect(sheet.getByRole("heading", { name: "Setlist for this pitch" })).toBeVisible();
 
       // The link reopens the sheet on that pitch (shareable deep link).
       await page.reload();
-      await expect(page.getByRole("dialog").getByRole("heading", { name: `Setlist for ${name}` })).toBeVisible();
+      await expect(page.getByRole("dialog").getByRole("heading", { name: "Setlist for this pitch" })).toBeVisible();
     });
   });
 }
@@ -110,7 +109,7 @@ test.describe("data-led plans", () => {
         await page.keyboard.press("Escape");
       }
       await expect(page.getByRole("region", { name: "Pitches", exact: true }).getByText("Hidden gem").first()).toBeVisible();
-      await expect(page.getByTestId("plan-funnel")).toContainText("Qloo mapped your taste");
+      await expect(page.getByTestId("funnel-sentence")).toContainText("Qloo mapped your taste");
       await expect(page.getByLabel("Map legend")).toContainText("Taste");
       // The crowd, the weights and the setlist sit in each pitch's details.
       const sheet = await openDetails(page);
@@ -148,7 +147,7 @@ test.describe("live agent (mock model offline)", () => {
     });
     await page.goto(url);
     await expect(page.getByTestId("plan-pending")).toBeVisible();
-    await expect(page.getByTestId("agent-status")).toHaveText(/The plan appears when it finishes/);
+    await expect(page.getByTestId("agent-status")).toHaveText(/Your busk replaces the research here/);
     await expect(page.getByRole("region", { name: "Pitches", exact: true })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: /^Setlist for / })).toHaveCount(0);
     await expect(page.getByText(/^Explanations: /)).toHaveCount(0);
@@ -198,7 +197,7 @@ test.describe("live agent (mock model offline)", () => {
     await page.unroute("**/api/plan");
     await page.reload();
     await waitForPlan(page);
-    await expect(page.getByText(/^Replaying the agent's run from .* \(cached, no new model call\)$/)).toBeVisible();
+    await expect(page.getByText(REPLAY_LINE)).toBeVisible();
     // Labelled as a replay at the top, not only in the folded steps.
     await expect(page.getByTestId("replay-label")).toHaveText("Replay of an earlier run (no new model call)");
     await expect(page.getByText(EXPLANATIONS_LABEL)).toBeVisible();
@@ -211,7 +210,7 @@ test.describe("live agent (mock model offline)", () => {
     await expect(replayedSteps.locator('[data-tool="taste_map"]').getByTestId("agent-step-data").getByRole("columnheader", { name: "affinity" })).toBeVisible();
 
     // Buskers get no re-run button: a reload replays.
-    await expect(page.getByTestId("agent-status")).toHaveText("The agent's plan, replayed.");
+    await expect(page.getByTestId("agent-status")).toHaveText(REPLAY_LINE);
     await expect(page.getByRole("button", { name: /Re-run|Plan with the agent/ })).toHaveCount(0);
     expect(errors.filter((e) => /hydrat/i.test(e))).toEqual([]);
   });
@@ -220,7 +219,7 @@ test.describe("live agent (mock model offline)", () => {
     await page.goto("/plan?example=folk-duo&run=0");
     await waitForPlan(page);
     await expect(page.getByText("Explanations: from the data")).toBeVisible();
-    await expect(page.getByTestId("agent-status")).toHaveText("Shown: the engine's plan from the data, without the agent.");
+    await expect(page.getByTestId("agent-status")).toHaveText("Planned from Busk Map's scores, without a model.");
     await expect(page.getByRole("button", { name: /Re-run|Plan with the agent/ })).toHaveCount(0);
     await expect(page.getByRole("list", { name: "Research, newest first" })).toHaveCount(0);
   });
@@ -240,7 +239,7 @@ test.describe("live agent (mock model offline)", () => {
     await expect(onlyPlain.getByText(/Mock plain-LLM answer/).first()).toBeVisible();
     await expect(onlyPlain.getByText(/^(Scored by Busk Map|Not a legal pitch|No data for this spot)$/).first()).toBeVisible();
     // The baseline is a control: the pitch scores are the same once it has arrived.
-    await expect(page.getByTestId("agent-status")).toHaveText(/^The agent's plan/);
+    await expect(page.getByTestId("agent-status")).toHaveText(new RegExp(`^${MODEL_PLAN}`));
     expect(await scoresOf()).toEqual(scores);
   });
 });

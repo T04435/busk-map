@@ -1,4 +1,4 @@
-import { addTypedSong, EXPLANATIONS_LABEL, expect, isoDay, LOCAL, openDetails, pickDate, SATURDAY, SUNDAY, test, waitForPlan } from "./fixtures";
+import { addTypedSong, EXPLANATIONS_LABEL, expect, isoDay, LOCAL, openDetails, pickDate, SATURDAY, shortDay, SUNDAY, test, waitForPlan } from "./fixtures";
 import { serverDay } from "./clock";
 
 test.describe("own act", () => {
@@ -111,13 +111,13 @@ test.describe("own act", () => {
     await form.getByRole("button", { name: "Plan my busk" }).click();
     // The plan opens on its short link; the request (artists with Spotify ids, songs with lengths, the date) is stored behind it.
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
-    await expect(page.getByText(new RegExp(`${day}, 6 pm–9 pm`))).toBeVisible();
+    await expect(page.getByText(`${shortDay(day)} · 6–9 pm · General permit`).first()).toBeVisible();
     await waitForPlan(page);
     // Qloo matched the picked artist (by Spotify id first); the setlist shows lengths. The act's own songs get no Learn it;
     // only "Learn these" suggestions do (opening external searches).
     await expect(page.getByTestId("unmatched-artists")).toContainText("This plan uses the artists Qloo did match: Paul Kelly.");
     const sheet = await openDetails(page);
-    await expect(sheet.getByTestId("set-length")).toHaveText("Set length: 3:07 (1 song).");
+    await expect(sheet.getByTestId("set-length")).toHaveText("Set length 3:07 · 1 song");
     await expect(page.getByRole("button", { name: "Learn it: Gravy (synthetic result 1)" })).toHaveCount(0);
     const learn = sheet.getByRole("region", { name: "Learn these" }).getByRole("button", { name: /^Learn it: / }).first();
     await learn.click();
@@ -157,7 +157,7 @@ test.describe("own act", () => {
     await page.goto(`/plan?name=Deep%20Link%20Duo&artists=Angus%20%26%20Julia%20Stone&songs=Big%20Jet%20Plane~Angus%20%26%20Julia%20Stone&date=${SUNDAY}&from=12&to=15&permit=general`);
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await expect(page.getByRole("heading", { level: 1, name: "Deep Link Duo" })).toBeVisible();
-    await expect(page.getByText(`Sunday ${SUNDAY}, 12 pm–3 pm`, { exact: false })).toBeVisible();
+    await expect(page.getByText(`${shortDay(SUNDAY)} · 12–3 pm · General permit`).first()).toBeVisible();
     await waitForPlan(page);
   });
 
@@ -184,11 +184,14 @@ test.describe("artists Qloo can't match", () => {
     await page.goto(`/plan?name=Nobody%20Knows&artists=Zzyzx%20Nobody|Qqq%20Unknown&date=${SATURDAY}&from=18&to=21`);
     await waitForPlan(page);
     const alert = page.getByTestId("unmatched-artists");
-    await expect(alert).toContainText("Qloo couldn't match Zzyzx Nobody and Qqq Unknown");
-    await expect(alert).toContainText("taste is left out");
-    await expect(page.getByText("Qloo couldn't match any of your artists, so the agent wasn't run")).toBeVisible();
-    // The plan shown isn't Claude's: said so once the run ends.
-    await expect(page.getByTestId("agent-fallback")).toContainText("template ones");
+    // ONE alert (B-045): taste is left out, with the way to pick artists from Spotify.
+    await expect(alert).toContainText("Qloo couldn't match any of your artists");
+    await expect(alert).toContainText("Taste is left out of this plan");
+    await expect(page.getByRole("link", { name: "Pick your artists from Spotify" })).toBeVisible();
+    // Claude had nothing to research: said once, and no research funnel or feed is drawn.
+    await expect(page.getByTestId("agent-fallback")).toContainText("Claude didn't research this busk");
+    await expect(page.getByTestId("plan-funnel")).toHaveCount(0);
+    await expect(page.getByTestId("agent-stream")).toHaveCount(0);
   });
 });
 
@@ -205,8 +208,8 @@ test.describe("F25: a song Spotify doesn't have is one row in the song search", 
     const picked = form.getByRole("list", { name: "Songs you picked" });
     await expect(picked).toContainText("Typed");
     await picked.getByRole("button", { name: "Edit Wild Song" }).click();
-    await form.getByLabel("Title").fill("Wild Song II");
-    await form.getByLabel("Artist").fill("The Somebodies");
+    await form.getByLabel("Title", { exact: true }).fill("Wild Song II");
+    await form.getByLabel("Artist", { exact: true }).fill("The Somebodies");
     await form.getByRole("button", { name: "Done" }).click();
     await expect(picked).toContainText("Wild Song II");
     await expect(picked).toContainText("The Somebodies");

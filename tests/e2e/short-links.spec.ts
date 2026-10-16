@@ -1,4 +1,5 @@
-import { addTypedSong, agentSteps, EXPLANATIONS_LABEL, expect, LOCAL, openDetails, SATURDAY, test, waitForPlan } from "./fixtures";
+import { EXAMPLE_SATURDAY } from "./clock";
+import { addTypedSong, agentSteps, EXPLANATIONS_LABEL, expect, LOCAL, openDetails, REPLAY_LINE, SATURDAY, test, waitForPlan } from "./fixtures";
 
 const SHORT = /\/p\/([0-9A-Za-z]{9})$/;
 const idOf = (url: string) => SHORT.exec(new URL(url).pathname)?.[1] ?? null;
@@ -73,7 +74,7 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     await expect(page.getByRole("button", { name: /Re-run|Plan with the agent/ })).toHaveCount(0);
 
     // The old long URL for the same act and slot (the form's default: next Saturday 6–9 pm) resolves to the same id.
-    const date = (await page.getByText(/^Melbourne · \w+day \d{4}/).textContent())!.match(/\d{4}-\d{2}-\d{2}/)![0];
+    const date = EXAMPLE_SATURDAY;
     await page.goto(`/plan?name=${encodeURIComponent(name)}&artists=Paul%20Kelly&songs=Dumb%20Things~Paul%20Kelly&date=${date}&from=18&to=21&permit=general&run=1`);
     await expect(page).toHaveURL(SHORT);
     expect(idOf(page.url())).toBe(id);
@@ -83,8 +84,8 @@ test.describe("short plan links with the agent (mock model offline)", () => {
     page.on("request", (r) => r.url().endsWith("/api/plan") && agentCalls.push(r.url()));
     await page.reload();
     await waitForPlan(page);
-    await expect(page.getByText(/^Replaying the agent's run from .* \(cached, no new model call\)$/)).toBeVisible();
-    await expect(page.getByTestId("agent-status")).toHaveText("The agent's plan, replayed.");
+    await expect(page.getByText(REPLAY_LINE)).toBeVisible();
+    await expect(page.getByTestId("agent-status")).toHaveText(REPLAY_LINE);
     await expect((await agentSteps(page)).getByText("Your best pitches so far").first()).toBeVisible();
     await expect(page.getByTestId("agent-usage")).toContainText("model steps");
     expect(agentCalls).toEqual([]);

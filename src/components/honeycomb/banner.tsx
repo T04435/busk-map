@@ -14,10 +14,10 @@ const STYLE: Record<BannerTone, string> = {
 };
 
 /** A full-width strip of context above a page or form: planning again, test data, offline, less data. A polite status. */
-export function Banner({ tone = "info", action, children, className }: { tone?: BannerTone; action?: ReactNode; children: ReactNode; className?: string }) {
+export function Banner({ tone = "info", action, children, className, testId }: { tone?: BannerTone; action?: ReactNode; children: ReactNode; className?: string; testId?: string }) {
   const Icon = ICON[tone];
   return (
-    <div role="status" data-slot="banner" data-tone={tone} className={cn("flex items-center gap-3 border-2 border-rule px-4 py-2.5 text-sm leading-5", STYLE[tone], className)}>
+    <div role="status" data-slot="banner" data-testid={testId} data-tone={tone} className={cn("flex items-center gap-3 border-2 border-rule px-4 py-2.5 text-sm leading-5", STYLE[tone], className)}>
       <Icon aria-hidden="true" className="size-[18px] shrink-0" />
       <span className="min-w-0 flex-1">{children}</span>
       {action}

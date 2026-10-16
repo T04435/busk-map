@@ -13,29 +13,31 @@ const list = (items: string[]) => (items.length <= 1 ? items.join("") : `${items
  * Above the research: did the model keep Busk Map's own top 3, or change it, and why. Keeping it is the common case, so it shows
  * the three pitches ticked. "Agent vs engine" stays only as the small mono label (brand words: busk-facing copy says "Busk Map").
  */
-export function AgentVsEngine({ agent, model }: { agent: NonNullable<Plan["agent"]>; model: ExplanationsModel | null }) {
+export function AgentVsEngine({ agent, model, level = 2 }: { agent: NonNullable<Plan["agent"]>; model: ExplanationsModel | null; /** The heading level: 2 when it stands under the page title, 3 inside "The research" (B-048). */ level?: 2 | 3 }) {
+  const Heading = level === 2 ? "h2" : "h3";
   const kept = agent.changes.length === 0;
   const where = (p: { engineRank: number | null }) => (p.engineRank === null ? `added by ${modelName(model)}` : `Busk Map's no. ${p.engineRank}`);
   return (
-    <section data-testid="agent-vs-engine" aria-label="The model and Busk Map's scores" className="flex flex-col gap-3 border-2 border-rule bg-card p-4">
+    <section data-testid="agent-vs-engine" aria-label="The model and Busk Map's scores" className="flex flex-col gap-3 border-2 border-rule bg-card px-4 py-3">
       <div className="flex items-start gap-3">
         <HexCell size={36} tone={kept ? "default" : "primary"}>
           {kept ? <Check aria-hidden="true" className="size-4" /> : <RefreshCw aria-hidden="true" className="size-4" />}
         </HexCell>
         <div className="min-w-0">
           <span className="font-mono text-[11px] font-bold tracking-[0.08em] text-muted-foreground uppercase">Agent vs engine</span>
-          <h3 className="m-0 font-display text-[26px] leading-none font-extrabold uppercase" data-testid="agent-vs-engine-title">
+          <Heading className="m-0 font-display text-[24px] leading-none font-extrabold uppercase" data-testid="agent-vs-engine-title">
             {agentVsEngineTitle(agent.changes.length, model)}
-          </h3>
+          </Heading>
+          {kept ? <p className="m-0 mt-1 text-sm text-muted-foreground">Kept after checking the crowd, foot traffic, events nearby and the rules.</p> : null}
         </div>
       </div>
       {kept ? (
-        <ol className="m-0 flex list-none flex-col gap-2 p-0">
+        <ol className="m-0 flex list-none flex-wrap gap-2 p-0">
           {agent.engineTop.slice(0, 3).map((p, i) => (
-            <li key={p.id} className="flex items-center gap-3">
+            <li key={p.id} className="flex min-w-0 items-center gap-2 border border-border bg-secondary px-2 py-1.5 max-sm:w-full">
               <RankTile n={i + 1} size="sm" />
-              <span className="min-w-0 flex-1 font-bold">{p.name}</span>
-              <PercentCell value={p.score} size={36} label="Score" />
+              <span className="min-w-0 flex-1 text-sm font-bold">{p.name}</span>
+              <PercentCell value={p.score} size={32} label="Score" />
               <Check aria-label="Kept" className="size-4" strokeWidth={2.5} />
             </li>
           ))}

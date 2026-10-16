@@ -18,6 +18,7 @@ export function PageHeader({
   badges,
   links,
   end,
+  below,
   className,
 }: {
   back?: { href?: string; label?: string } | false;
@@ -28,6 +29,8 @@ export function PageHeader({
   badges?: { label: ReactNode; tone?: BadgeTone; testId?: string }[];
   links?: { label: ReactNode; href: string; prefetch?: boolean }[];
   end?: ReactNode;
+  /** Status tags under the title block. */
+  below?: ReactNode;
   className?: string;
 }) {
   return (
@@ -45,6 +48,7 @@ export function PageHeader({
         </div>
         {end ? <div>{end}</div> : null}
       </div>
+      {below}
       {badges?.length ? (
         <div className="flex flex-wrap gap-x-4 gap-y-2">
           {badges.map((b, i) => (

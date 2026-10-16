@@ -5,14 +5,21 @@ test.describe("API-down states", () => {
 
   test("Qloo down: a clear error and no recommendations", async ({ page }) => {
     await page.goto("/plan?example=acoustic&faults=qloo");
-    await expect(page.getByText("Qloo is unavailable")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "No plan without taste data" })).toBeVisible();
     await expect(page.getByRole("region", { name: "Pitches", exact: true }).getByRole("listitem")).toHaveCount(0);
+    // B-043: the panel has Try again, which plans again with the same act and (Qloo still down) lands on the panel again.
+    const retry = page.getByTestId("qloo-down").getByRole("button", { name: "Try again" });
+    await retry.click();
+    await expect(page.getByRole("heading", { name: "No plan without taste data" })).toBeVisible();
+    await expect(page.getByTestId("qloo-down")).toContainText(/Qloo:\s*Unavailable/);
   });
 
   test("Qloo down during an agent run: the stream ends with the Qloo error", async ({ page }) => {
     await page.goto("/plan?example=folk-duo&faults=qloo");
-    // The agent starts on load; its stream ends with the Qloo error (no re-run button: a reload tries again).
-    await expect(page.getByText("Qloo is unavailable")).toBeVisible();
+    // The agent starts on load; its stream ends with the Qloo error, and the feed has its own Try again.
+    await expect(page.getByText("Qloo isn't answering")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "No plan without taste data" })).toBeVisible();
+    await expect(page.getByTestId("agent-stream").getByRole("button", { name: "Try again" })).toBeVisible();
     await expect(page.getByRole("button", { name: /Re-run/ })).toHaveCount(0);
   });
 
@@ -20,7 +27,7 @@ test.describe("API-down states", () => {
     await page.goto("/plan?example=acoustic&faults=footfall,events,weather");
     await waitForPlan(page);
     await expect(page.getByText("Foot traffic: unavailable")).toBeVisible();
-    await expect(page.getByText("No forecast for this slot, so weather was ignored.")).toBeVisible();
+    await expect(page.getByText("No forecast for this slot")).toBeVisible();
     await expect(page.getByText("Unavailable: simulated outage (test)").first()).toBeVisible();
     // The panels that need those sources say so, scoped: no page-level alert, and the busk still stands.
     await expect(page.getByTestId("source-down")).toContainText("Foot traffic");

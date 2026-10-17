@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BrainMap } from "@/components/brain/brain-map";
 import { QlooWordmark } from "@/components/honeycomb/logo";
 import { Icon } from "@/components/honeycomb/icon";
+import { MeetTheHive } from "@/components/honeycomb/meet-the-hive";
 import { NoteCard } from "@/components/honeycomb/note-card";
 import { StatStrip } from "@/components/honeycomb/stat-strip";
 import { callKinds, facts, next, QUOTA } from "@/lib/qloo-map";
@@ -52,9 +53,10 @@ export default function BrainPage() {
           <h2 id="notes" className="sr-only">
             Notes
           </h2>
+          <MeetTheHive />
           <NoteCard title="Numbers come from data">
             <p className="m-0">
-              Hive, our agent, runs on Claude. It picks which Qloo questions to ask, but never makes up a number: it can only choose among pitches Busk Map&apos;s engine
+              The Hive, our agent, runs on Claude. It picks which Qloo questions to ask, but never makes up a number: it can only choose among pitches Busk Map&apos;s engine
               scored, and a busk that cites a number no call returned is rejected.
             </p>
           </NoteCard>

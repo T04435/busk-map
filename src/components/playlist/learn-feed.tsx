@@ -1,5 +1,6 @@
 "use client";
 
+import { AgentTag } from "@/components/honeycomb/agent-tag";
 import { ChevronRightIcon } from "lucide-react";
 import { Fragment } from "react";
 import { cn } from "cn";
@@ -15,7 +16,6 @@ import type { LearnLive } from "@/lib/learn-live";
 import { funnelOf, plainStep } from "@/lib/learn-plain";
 import { FINISH_TOOLS, toolLabel } from "@/lib/learn-tools";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
-// TODO(BRAND): AgentTag + AiChip (AGENT_MODEL_CREDIT) on the learn feed header; hiveProgressOfSteps in @/lib/agent-persona gives the mark's cells.
 import { modelName } from "@/lib/sources";
 
 const COPY = PLAYLIST_COPY.learn;
@@ -125,7 +125,7 @@ export function LearnFeed({ live, heading, running, raw }: { live: LearnLive; he
                   )}
                   {step.notes.map((note, i) => (
                     <p key={i} className="whitespace-pre-line text-muted-foreground" data-testid={`agent-note-${note.kind}`}>
-                      <span className="font-medium">{note.kind === "reasoning" ? "Thinking (summary): " : `${modelName(live.model, "label")}: `}</span>
+                      {note.kind === "reasoning" ? <span className="font-medium">Thinking (summary): </span> : <AgentTag name={modelName(live.model, "label")} />}
                       {note.text}
                     </p>
                   ))}

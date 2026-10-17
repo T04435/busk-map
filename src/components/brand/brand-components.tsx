@@ -159,7 +159,7 @@ export function PlanStates() {
         </div>
         <div className={SPEC}>
           <h4 className={SPEC_H}>PlanAlert · from the data alone</h4>
-          <PlanAlert kind="fallback" note="Claude is taking too long, so this is Busk Map's plan from the scores. Claude's explanations are left out." testId="brand-alert-fallback" />
+          <PlanAlert kind="fallback" note="The research ran out of time, so this is Busk Map's plan from the scores, without our notes." testId="brand-alert-fallback" />
         </div>
         <div className={SPEC}>
           <h4 className={SPEC_H}>PlanAlert · no legal pitch</h4>
@@ -168,7 +168,7 @@ export function PlanStates() {
         <div className={SPEC}>
           <h4 className={SPEC_H}>AgentStatusLine ×3</h4>
           <AgentStatusLine state="researching" />
-          <AgentStatusLine state="replayed" note="Claude's plan, replayed." />
+          <AgentStatusLine state="replayed" note="Shown as the Hive researched it. Nothing new was asked." />
           <AgentStatusLine state="none" />
         </div>
         <div className={SPEC}>

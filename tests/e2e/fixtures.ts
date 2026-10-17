@@ -16,7 +16,7 @@ export function shortDay(iso: string): string {
 }
 
 /** The status line under the research, in brand words: "The Hive's plan." (the test model offline). */
-export const MODEL_PLAN = LOCAL ? "The test model's plan." : "The Hive's plan.";
+export const MODEL_PLAN = LOCAL ? "Researched by the Hive (offline test model)." : "Researched by the Hive.";
 /** The replay line on a stored busk: when it was researched, and that nothing new was asked. */
 export const REPLAY_LINE = /^Researched at .*\. Opening it again shows that research: nothing new was asked\.$/;
 export const EXPLAINED_BY = LOCAL ? "Explained by the test model (offline)" : "Explained by the Hive";

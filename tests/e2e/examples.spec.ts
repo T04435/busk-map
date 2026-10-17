@@ -152,7 +152,7 @@ test.describe("live agent (mock model offline)", () => {
     });
     await page.goto(url);
     await expect(page.getByTestId("plan-pending")).toBeVisible();
-    await expect(page.getByTestId("agent-status")).toHaveText(/Your busk replaces the research here/);
+    await expect(page.getByTestId("agent-status")).toHaveText(/Your busk replaces this in about half a minute/);
     await expect(page.getByRole("region", { name: "Pitches", exact: true })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: /^Suggested set for / })).toHaveCount(0);
     await expect(page.getByText(/^Explanations: /)).toHaveCount(0);
@@ -224,7 +224,7 @@ test.describe("live agent (mock model offline)", () => {
     await page.goto("/plan?example=folk-duo&run=0");
     await waitForPlan(page);
     await expect(page.getByText("Explanations: from the data")).toBeVisible();
-    await expect(page.getByTestId("agent-status")).toHaveText("Planned from Busk Map's scores, without a model.");
+    await expect(page.getByTestId("agent-status")).toHaveText("Planned from Busk Map's scores. The Hive didn't run.");
     await expect(page.getByRole("button", { name: /Re-run|Plan with the agent/ })).toHaveCount(0);
     await expect(page.getByRole("list", { name: "Research, newest first" })).toHaveCount(0);
   });

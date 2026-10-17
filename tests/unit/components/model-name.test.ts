@@ -24,7 +24,7 @@ const render = (props: Partial<Parameters<typeof AgentStepStream>[0]>) =>
 describe("agent step notes name the model (B-010)", () => {
   it("tags notes with Test model offline", () => {
     const html = render({ model: "mock" });
-    expect(html).toContain("Test model</span>I&#x27;ll start with the taste map.");
+    expect(html).toContain("Test model</span></span>I&#x27;ll start with the taste map.");
     expect(html).not.toContain("Claude");
   });
 

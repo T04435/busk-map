@@ -22,16 +22,16 @@ export function agentName(form: { start?: boolean; tag?: boolean } = {}): string
 
 /** The chip next to the name wherever the Hive speaks (BRAND's AiChip renders it). */
 export const AGENT_MODEL_CREDIT = "AI · powered by Claude";
-/** The Brain card's title (BRAND's MeetTheHive). */
-export const AGENT_RUNS_ON = "Hive, our agent, runs on Claude";
+/** The one-line honesty statement: the agent and the model it runs on. */
+export const AGENT_RUNS_ON = `${AGENT_NAME_START}, our agent, runs on Claude`;
 
 /** The honesty copy, in one place: the Brain card body, the footer and the README credit. */
 export const HONESTY = {
   chip: AGENT_MODEL_CREDIT,
-  brainTitle: AGENT_RUNS_ON,
-  brainBody: `Hive is Busk Map's research agent. It runs on ${AGENT_MODEL}. Hive picks which Qloo questions to ask, but never makes up a number.`,
-  footer: "Hive runs on Claude, by Anthropic",
-  readme: `Hive is Busk Map's research agent, a persona name. It runs on ${AGENT_MODEL}.`,
+  brainTitle: `Meet ${AGENT_NAME_INLINE}`,
+  brainBody: `${AGENT_NAME_START} is Busk Map's research agent. It runs on ${AGENT_MODEL}. ${AGENT_NAME_START} picks which Qloo questions to ask, but never makes up a number.`,
+  footer: `${AGENT_NAME_START} runs on Claude, by Anthropic`,
+  readme: `${AGENT_NAME_START} is Busk Map's research agent; "Hive" is a persona name. It runs on ${AGENT_MODEL}.`,
 } as const;
 
 /**

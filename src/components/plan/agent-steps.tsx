@@ -1,5 +1,6 @@
 "use client";
 
+import { AgentTag } from "@/components/honeycomb/agent-tag";
 import { Fragment, useId, useState, type ReactNode } from "react";
 import { cn } from "cn";
 import { Fold } from "@/components/honeycomb/fold";
@@ -116,10 +117,10 @@ export function StepData({ value, view = "table" }: { value: unknown; view?: "ta
   );
 }
 
-/** The model's tag before its words: "Claude" (or "Test model" offline), mono caps in the signal colour. */
+/** The agent's tag before its words: the Hive's mark and "Hive" (or "Test model" offline, never the Hive's name for the mock). */
 const Say = ({ model, children, testId }: { model: ExplanationsModel | null; children: ReactNode; testId?: string }) => (
   <p className="m-0 text-sm leading-5 text-muted-foreground" data-testid={testId}>
-    <span className="mr-1.5 font-mono text-[10px] leading-4 font-bold tracking-[0.08em] text-signal-text uppercase">{modelName(model, "label")}</span>
+    <AgentTag name={modelName(model, "label")} />
     {children}
   </p>
 );

@@ -13,7 +13,7 @@ describe("agent persona", () => {
     expect(modelName("mock")).toBe("the test model");
     expect(explanationsLabel({ explanations: "ai", explanationsModel: "claude" })).toBe("Written by Hive (runs on Claude)");
     expect(AGENT_MODEL_CREDIT).toBe("AI · powered by Claude");
-    expect(AGENT_RUNS_ON).toBe("Hive, our agent, runs on Claude");
+    expect(AGENT_RUNS_ON).toBe("The Hive, our agent, runs on Claude");
   });
   it("keeps the never-do list in the prompt", () => {
     expect(PERSONA_PROMPT).toMatch(/run on Claude/);

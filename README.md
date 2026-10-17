@@ -6,7 +6,7 @@ Busk Map is an agent for street performers. Pick a city and a time slot, and it 
 
 ## Hive, the agent
 
-Hive is Busk Map's research agent. "Hive" is a persona name: it runs on Claude (Sonnet 5.5), made by Anthropic. It picks which Qloo questions to ask and writes the reasons, but it never makes up a number, a song or a place, and it never says a pitch is legal. The app labels it "AI · powered by Claude" wherever it speaks.
+The Hive is Busk Map's research agent. "Hive" is a persona name: it runs on Claude (Sonnet 5.5), made by Anthropic. It picks which Qloo questions to ask and writes the reasons, but it never makes up a number, a song or a place, and it never says a pitch is legal. The app labels it "AI · powered by Claude" wherever it speaks.
 
 Status: in development.
 

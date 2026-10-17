@@ -1,5 +1,6 @@
 "use client";
 
+import { hiveProgressOfSteps } from "@/lib/agent-persona";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -324,8 +325,9 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
                 ? "replayed"
                 : "done"
               : null;
-  // TODO(BRAND): AiChip (AGENT_MODEL_CREDIT) + HiveMark here; hiveProgressOfSteps(steps, ended) in @/lib/agent-persona gives its 0-7 cells.
-  const statusLine = <AgentStatusLine state={agentState} usage={usage} model={model} note={replayed ? replayNote(replay?.note ?? runNote) : null} />;
+  const statusLine = (
+    <AgentStatusLine state={agentState} usage={usage} model={model} progress={hiveProgressOfSteps(steps)} note={replayed ? replayNote(replay?.note ?? runNote) : null} />
+  );
 
   const sourcesDown = plan ? plan.dataStatus.filter((s) => s.mode === "fallback" && s.source !== "qloo") : [];
   const DOWN: Record<string, { title: string; effect: string }> = {

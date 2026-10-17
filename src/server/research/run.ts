@@ -54,6 +54,11 @@ import {
 } from "@/server/playlist/config";
 import { findOwnOnQloo, soundsLikeFor } from "@/server/playlist/own-artist";
 import type { PlaylistRecord, PlaylistStore } from "@/server/playlist/store";
+
+/** Live Qloo /entities (probe 17 Oct, Hopsin): genre tag types end ":genre" (older shapes: "urn:tag:genre:…"). */
+export const isGenreTag = (type?: string | null) => Boolean(type && (type.startsWith("urn:tag:genre") || type.endsWith(":genre")));
+/** Live Qloo /entities: the audience character tags (Loyal, Passionate, Youthful…) have types ending ":qloo". */
+export const isAudienceTag = (type?: string | null) => Boolean(type && type.endsWith(":qloo") && !isGenreTag(type));
 import { summarise, type SummaryFacts } from "./summary";
 
 /**
@@ -283,8 +288,8 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           if (!hit.entity) return { summary: "Qloo doesn't know this artist yet", matched: false, qlooId: null, name: null, description: null, genres: [], audience: [], popularity: null };
           const detail = await qloo.artistDetail(hit.entity.id, adapters);
           const d = detail.mode === "fallback" ? null : detail.data;
-          const genres = [...new Set((d?.tags ?? hit.entity.tags.map((t) => ({ ...t, type: "urn:tag:genre:music" }))).filter((t) => t.type?.startsWith("urn:tag:genre")).map((t) => t.name))].slice(0, 8);
-          const audience = [...new Set((d?.tags ?? []).filter((t) => t.type && !t.type.startsWith("urn:tag:genre") && !t.type.startsWith("urn:tag:keyword")).map((t) => t.name))].slice(0, 6);
+          const genres = [...new Set((d?.tags ?? hit.entity.tags.map((t) => ({ ...t, type: "urn:tag:genre:music" }))).filter((t) => isGenreTag(t.type)).map((t) => t.name))].slice(0, 8);
+          const audience = [...new Set((d?.tags ?? []).filter((t) => isAudienceTag(t.type)).map((t) => t.name))].slice(0, 6);
           return {
             summary: `Found ${hit.entity.name} on Qloo${audience.length ? `: ${audience.slice(0, 3).join(", ")}` : ""}`,
             matched: true,

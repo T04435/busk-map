@@ -3,6 +3,8 @@
  * for. Client-safe: no secrets here. The UI renders these in the attribution
  * panel and next to the data they produced.
  */
+import { AGENT_NAME, AGENT_NAME_INLINE, AGENT_NAME_START } from "./agent-persona";
+
 export type SourceId =
   | "qloo"
   | "melbourne-pedestrian"
@@ -24,16 +26,16 @@ export type ExplanationsModel = "claude" | "mock";
 /** The header chip for a plan's or week's explanations. Plans stored before explanationsModel existed count as Claude. */
 export function explanationsLabel(plan: { explanations: "ai" | "template"; explanationsModel?: ExplanationsModel | null }): string {
   if (plan.explanations !== "ai") return "Explanations: from the data";
-  return plan.explanationsModel === "mock" ? "Explanations: test model (offline)" : "Explanations: Claude";
+  return plan.explanationsModel === "mock" ? "Explanations: test model (offline)" : `Written by ${AGENT_NAME} (runs on Claude)`;
 }
 
 /**
- * The model's name in running text (B-010): "Claude", or "the test model" when the offline mock model wrote it.
- * `start` capitalises it for the start of a sentence; `label` is the short form before a note ("Test model: …").
- * Null or missing (template text, older plans) counts as Claude, like explanationsLabel.
+ * The agent's name in running text (B-010): "the Hive" (the persona, lib/agent-persona.ts; it runs on Claude), or "the test model"
+ * when the offline mock model wrote it. `start` capitalises it for the start of a sentence; `label` is the short form before a
+ * note ("Hive: …", "Test model: …"). Null or missing (template text, older plans) counts as the Hive, like explanationsLabel.
  */
 export function modelName(model: ExplanationsModel | null | undefined, form: "inline" | "start" | "label" = "inline"): string {
-  if (model !== "mock") return "Claude";
+  if (model !== "mock") return form === "inline" ? AGENT_NAME_INLINE : form === "start" ? AGENT_NAME_START : AGENT_NAME;
   return form === "inline" ? "the test model" : form === "start" ? "The test model" : "Test model";
 }
 

@@ -28,9 +28,9 @@ describe("agent step notes name the model (B-010)", () => {
     expect(html).not.toContain("Claude");
   });
 
-  it("tags notes with Claude otherwise, and for older plans", () => {
-    expect(render({ model: "claude" })).toContain(">Claude</span>");
-    expect(render({})).toContain(">Claude</span>");
+  it("tags notes with Hive otherwise, and for older plans", () => {
+    expect(render({ model: "claude" })).toContain(">Hive</span>");
+    expect(render({})).toContain(">Hive</span>");
   });
 });
 

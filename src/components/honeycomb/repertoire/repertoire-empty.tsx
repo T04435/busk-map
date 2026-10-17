@@ -2,7 +2,9 @@
 
 import { useId, type FormEvent } from "react";
 import { cn } from "cn";
+import { AiChip } from "@/components/honeycomb/ai-chip";
 import { FormMessage } from "@/components/honeycomb/form-message";
+import { AGENT_NAME_START } from "@/lib/agent-persona";
 import { Icon } from "@/components/honeycomb/icon";
 import { Button } from "@/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
@@ -46,9 +48,10 @@ export function RepertoireEmpty({
         Paste your Spotify artist link
       </h1>
       <p className="mt-4 mb-0 max-w-2xl text-lg leading-7 text-muted-foreground">
-        We read your profile, ask Qloo who you sound like and who your fans are, then pick songs your crowd would stop for.
-        About a minute.
+        {AGENT_NAME_START} reads your profile, finds you on Qloo, and builds your Repertoire: your fans, your sound-alikes and songs to
+        learn.
       </p>
+      <AiChip className="mt-3" />
       <form onSubmit={handleSubmit} noValidate className="mt-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
           <InputGroup className="h-14! sm:flex-1">

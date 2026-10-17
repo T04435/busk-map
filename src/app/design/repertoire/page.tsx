@@ -5,9 +5,9 @@ import { RepertoirePreview, type PreviewState } from "@/components/honeycomb/rep
 
 export const metadata: Metadata = { title: "Repertoire research · design preview", robots: { index: false, follow: false } };
 
-const STATES: PreviewState[] = ["empty", "running", "done"];
+const STATES: PreviewState[] = ["empty", "running", "done", "hive"];
 
-/** BRAND's design preview of the Repertoire research flow: ?state=empty|running|done&theme=dark. Sample data; not linked. */
+/** BRAND's design preview of the Repertoire research flow: ?state=empty|running|done|hive&theme=dark. Sample data; not linked. */
 export default function RepertoireDesignPreview({ searchParams }: PageProps<"/design/repertoire">) {
   return (
     <Suspense>
@@ -23,7 +23,7 @@ async function Preview({ searchParams }: Pick<PageProps<"/design/repertoire">, "
   return (
     <main id="main" data-theme={pick(sp.theme) === "dark" ? "dark" : undefined} className="flex-1 bg-background text-foreground">
       <div className="mx-auto w-full max-w-[1200px] px-4 py-8 md:px-8 md:py-12">
-        <PageHeader title="Your Repertoire" />
+        <PageHeader title={state === "hive" ? "The Hive" : "Your Repertoire"} />
         <div className="mt-8">
           <RepertoirePreview state={state} />
         </div>

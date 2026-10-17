@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { HiveSpecimen } from "@/components/honeycomb/repertoire/hive-specimen";
 import { RepertoireEmpty } from "@/components/honeycomb/repertoire/repertoire-empty";
 import { RepertoireProfile } from "@/components/honeycomb/repertoire/repertoire-profile";
 import { RepertoireResearch } from "@/components/honeycomb/repertoire/repertoire-research";
@@ -22,7 +23,7 @@ import {
 } from "@/components/honeycomb/repertoire/sample-data";
 import type { RepertoireResults } from "@/components/honeycomb/repertoire/types";
 
-export type PreviewState = "empty" | "running" | "done";
+export type PreviewState = "empty" | "running" | "done" | "hive";
 
 function results({ r, loading }: { r: RepertoireResults; loading: boolean }) {
   return {
@@ -39,10 +40,11 @@ function results({ r, loading }: { r: RepertoireResults; loading: boolean }) {
 
 /**
  * The design preview of the Repertoire research flow (BRAND, 17 Oct): the empty, running and done states drawn from the
- * honeycomb/repertoire components with sample data, for the user's review before DEV wires the real stream. Not linked.
+ * honeycomb/repertoire components with sample data (plus `hive`, the agent persona specimen), for the user's review before DEV wires the real stream. Not linked.
  */
 export function RepertoirePreview({ state }: { state: PreviewState }) {
   const [folded, setFolded] = useState(true);
+  if (state === "hive") return <HiveSpecimen />;
   if (state === "empty") return <RepertoireEmpty value="" onChange={() => {}} onSubmit={() => {}} />;
   if (state === "running") {
     const s = results({ r: SAMPLE_RESULTS_RUNNING, loading: true });

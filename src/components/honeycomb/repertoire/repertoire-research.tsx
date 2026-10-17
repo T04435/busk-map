@@ -3,6 +3,8 @@
 import { useId } from "react";
 import { cn } from "cn";
 import { HexCell, initialsOf, type HexTone } from "@/components/honeycomb/hex-cell";
+import { AgentLockup } from "@/components/honeycomb/agent-lockup";
+import { HIVE_CELLS, hiveProgress } from "@/lib/agent-persona";
 import { Icon, type IconName } from "@/components/honeycomb/icon";
 import { Loader } from "@/components/honeycomb/loader";
 import { RepertoireFunnel } from "./repertoire-funnel";
@@ -83,8 +85,9 @@ function StepCard({ info, step, n }: { info: RepertoireStepInfo; step: Repertoir
 }
 
 /**
- * The Repertoire research run, drawn like a busk's research: header with Live/Finished tag, the honeycomb funnel, and the nine
- * step cards in order. When done it can fold under "How we built your Repertoire".
+ * The Repertoire research run, drawn like a busk's research: a header with the Hive's lockup (its mark fills as steps finish)
+ * and the Live/Finished tag, the honeycomb funnel, and the nine step cards in order (plain titles; each done step's note is the
+ * agent's). When done it can fold under "How we built your Repertoire".
  */
 export function RepertoireResearch({
   steps,
@@ -115,15 +118,36 @@ export function RepertoireResearch({
   const isFolded = canFold && !!folded;
   const tag = running ? "Live" : done ? "Finished" : "Stopped";
 
-  const heading = (
-    <>
-      <span className={cn(TAG, running ? "bg-primary text-primary-foreground" : "shadow-[inset_0_0_0_1.5px_var(--rule)]")}>{tag}</span>
+  const tagEl = <span className={cn(TAG, running ? "bg-primary text-primary-foreground" : "shadow-[inset_0_0_0_1.5px_var(--rule)]")}>{tag}</span>;
+  // While it runs, the lockup is the heading ("The Hive is researching your act"), so the Live tag rides on the meta line.
+  const title = running ? null : (
+    <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+      {tagEl}
       <span className="font-display text-[28px] leading-8 font-extrabold uppercase [overflow-wrap:anywhere]">
-        {running ? "Researching your act" : done ? "How we built your Repertoire" : "Research stopped"}
+        {done ? "How we built your Repertoire" : "Research stopped"}
       </span>
+    </span>
+  );
+  const lockup = (
+    <AgentLockup
+      live={running}
+      progress={done ? HIVE_CELLS : hiveProgress(finished, REPERTOIRE_STEPS.length)}
+      status={running ? "is researching your act" : done ? "researched your act" : "couldn't finish researching your act"}
+    />
+  );
+  const meta = (
+    <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+      {running ? tagEl : null}
+      <span className="font-mono text-xs font-medium text-muted-foreground">{running ? `${finished} of ${REPERTOIRE_STEPS.length} steps${secs}` : summary}</span>
+    </span>
+  );
+  const header = (
+    <>
+      {title}
+      {lockup}
+      {meta}
     </>
   );
-  const meta = <span className="font-mono text-xs font-medium text-muted-foreground">{running ? `${finished} of ${REPERTOIRE_STEPS.length} steps${secs}` : summary}</span>;
 
   return (
     <section aria-label="Repertoire research" className={cn("border-2 border-rule bg-card", className)}>
@@ -135,17 +159,11 @@ export function RepertoireResearch({
           aria-controls={bodyId}
           className={cn("flex w-full items-center gap-3 bg-transparent p-3 text-left text-foreground", FOCUS)}
         >
-          <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
-            <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">{heading}</span>
-            {meta}
-          </span>
+          <span className="flex min-w-0 flex-1 flex-col items-start gap-3">{header}</span>
           <Icon name={isFolded ? "chevron-down" : "chevron-up"} size={20} className="flex-none" />
         </button>
       ) : (
-        <div className="flex flex-col items-start gap-1.5 p-3">
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">{heading}</div>
-          {meta}
-        </div>
+        <div className="flex flex-col items-start gap-3 p-3">{header}</div>
       )}
       <div id={bodyId} hidden={isFolded}>
         <div className="border-t border-border p-3">

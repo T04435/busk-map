@@ -106,20 +106,20 @@ export const SAMPLE_RESULTS: RepertoireResults = {
 };
 
 const DONE: RepertoireStep[] = [
-  { key: "profile", status: "done", found: "Hana Lee · indie folk, australian singer-songwriter", cells: [{ name: "Hana Lee" }] },
-  { key: "songs", status: "done", found: "2 of your songs, from 1 release", cells: [{ name: "Southbank in the Rain" }, { name: "Paper Lanterns" }] },
-  { key: "qloo", status: "done", found: "Found you on Qloo. Your audience reads Youthful, Mellow, Romantic." },
+  { key: "profile", status: "done", found: "We found Hana Lee on Spotify: indie folk, australian singer-songwriter, 1,840 followers.", cells: [{ name: "Hana Lee" }] },
+  { key: "songs", status: "done", found: "We added your 2 songs from 1 release, tagged Your song.", cells: [{ name: "Southbank in the Rain" }, { name: "Paper Lanterns" }] },
+  { key: "qloo", status: "done", found: "Qloo has you as indie folk, with audience tags Youthful, Mellow and Romantic." },
   {
     key: "soundsLike",
     status: "done",
-    found: "4 artists you sound like",
+    found: "We found 4 artists you sound like. Your fans' strongest overlap is with Angus & Julia Stone and The Paper Kites (Qloo affinity).",
     cells: [{ name: "Angus & Julia Stone" }, { name: "The Paper Kites" }, { name: "Missy Higgins" }, { name: "Vance Joy" }],
   },
-  { key: "fans", status: "done", found: "Your fans lean 18 to 29 and lean female." },
-  { key: "fansLove", status: "done", found: "3 artists your fans love that you don't play yet", cells: [{ name: "Boy & Bear" }, { name: "Julia Jacklin" }, { name: "Hollow Coves" }] },
-  { key: "learn", status: "done", found: "3 songs your fans would stop for, from 40 checked" },
-  { key: "genres", status: "done", found: "indie folk, acoustic pop, singer-songwriter" },
-  { key: "summary", status: "done", found: "Summed up in one paragraph." },
+  { key: "fans", status: "done", found: "Qloo's demographics: your fans lean 18 to 29, with more women." },
+  { key: "fansLove", status: "done", found: "Beyond your sound-alikes, your fans over-index on Boy & Bear, Julia Jacklin and Hollow Coves (Qloo).", cells: [{ name: "Boy & Bear" }, { name: "Julia Jacklin" }, { name: "Hollow Coves" }] },
+  { key: "learn", status: "done", found: "We checked 40 real top tracks on Spotify and kept 3 your fans would stop for. Each one says why." },
+  { key: "genres", status: "done", found: "Qloo tags: indie folk, acoustic pop, singer-songwriter." },
+  { key: "summary", status: "done", found: "We summed up your act in one paragraph, from the steps above." },
 ];
 
 /** Every step done. */

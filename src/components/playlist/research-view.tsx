@@ -1,6 +1,7 @@
 "use client";
 
-// TODO(BRAND): AiChip (AGENT_MODEL_CREDIT) + HiveMark in the research header; view.hiveProgress (0-7) drives the mark.
+import { AiChip } from "@/components/honeycomb/ai-chip";
+import { HiveMark } from "@/components/honeycomb/hive-mark";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { TrackResult } from "@/components/forms/repertoire-api";
@@ -272,17 +273,23 @@ export function ResearchView() {
   const lastTotals = feedEvents?.findLast((e) => e.type === "totals");
   const researchFeed = () =>
     feed.length > 0 ? (
-      <AgentStepStream
-        steps={feed}
-        model={runEvent?.type === "run" && runEvent.model === "claude" ? "claude" : "mock"}
-        phase={live ? "working" : "done"}
-        mode={!events && replay ? "replay" : "live"}
-        modeText={!events && replay ? "Showing the research from your last run. Nothing new was asked." : null}
-        title={live ? R.heading : R.howBuilt}
-        showRaw={showRaw}
-        onShowRawChange={setShowRaw}
-        footer={<ResearchFunnel kind="learn" totals={lastTotals?.type === "totals" ? lastTotals.totals : ZERO_LEARN_TOTALS} running={live} />}
-      />
+      <div className="grid gap-3">
+        <p className="m-0 flex flex-wrap items-center gap-2" data-testid="research-agent">
+          <HiveMark size={24} progress={view.hiveProgress} live={live} />
+          {runEvent?.type === "run" && runEvent.model === "claude" ? <AiChip /> : null}
+        </p>
+        <AgentStepStream
+          steps={feed}
+          model={runEvent?.type === "run" && runEvent.model === "claude" ? "claude" : "mock"}
+          phase={live ? "working" : "done"}
+          mode={!events && replay ? "replay" : "live"}
+          modeText={!events && replay ? "Showing the research from your last run. Nothing new was asked." : null}
+          title={live ? R.heading : R.howBuilt}
+          showRaw={showRaw}
+          onShowRawChange={setShowRaw}
+          footer={<ResearchFunnel kind="learn" totals={lastTotals?.type === "totals" ? lastTotals.totals : ZERO_LEARN_TOTALS} running={live} />}
+        />
+      </div>
     ) : null;
 
   const results = (

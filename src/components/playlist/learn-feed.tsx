@@ -1,5 +1,6 @@
 "use client";
 
+import { AiChip } from "@/components/honeycomb/ai-chip";
 import { AgentTag } from "@/components/honeycomb/agent-tag";
 import { ChevronRightIcon } from "lucide-react";
 import { Fragment } from "react";
@@ -104,6 +105,7 @@ export function LearnFeed({ live, heading, running, raw }: { live: LearnLive; he
           {heading}
           {live.replay && <span className="ml-2 text-sm font-normal text-muted-foreground">(replay)</span>}
         </h3>
+        {live.model === "claude" && <AiChip />}
         {live.status && <p className="text-sm text-muted-foreground">{live.status}</p>}
         <ResearchFunnel kind="learn" totals={live.totals} running={running} />
         {raw && <RawTotals live={live} />}

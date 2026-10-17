@@ -1,5 +1,6 @@
 "use client";
 
+import { AiChip } from "@/components/honeycomb/ai-chip";
 import { hiveProgressOfSteps } from "@/lib/agent-persona";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -325,8 +326,12 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
                 ? "replayed"
                 : "done"
               : null;
+  // The AI chip names the model only when Claude ran: offline the test model is named instead (B-049), never Claude.
   const statusLine = (
-    <AgentStatusLine state={agentState} usage={usage} model={model} progress={hiveProgressOfSteps(steps)} note={replayed ? replayNote(replay?.note ?? runNote) : null} />
+    <div className="flex flex-col items-start gap-2">
+      <AgentStatusLine state={agentState} usage={usage} model={model} progress={hiveProgressOfSteps(steps)} note={replayed ? replayNote(replay?.note ?? runNote) : null} />
+      {model === "claude" && agentState && agentState !== "engine" && agentState !== "none" ? <AiChip className="ml-8" /> : null}
+    </div>
   );
 
   const sourcesDown = plan ? plan.dataStatus.filter((s) => s.mode === "fallback" && s.source !== "qloo") : [];

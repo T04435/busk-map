@@ -164,7 +164,7 @@ export const PLAYLIST_COPY = {
     end: (e: { ok: boolean; mode: "agent" | "fallback" | "mock" | "none"; code: string | null; newCount: number; skippedCount: number; songsChecked?: number }): string => {
       const songs = (n: number) => `${n} ${n === 1 ? "song" : "songs"}`;
       if (!e.ok) {
-        if (e.code === "qloo_unavailable") return "Suggestions need Qloo's taste data, and Qloo isn't answering right now. Try again in a little while.";
+        if (e.code === "qloo_unavailable") return "We can't suggest songs without taste data, and Qloo, where it comes from, isn't answering. Try again in a little while.";
         if (e.code === "no_match") return "Qloo couldn't match your artists, so there is nothing to learn from yet. Add songs by better-known artists and try again.";
         if (e.code === "spotify_not_found") return "Spotify has no artist at that link. Check it and try again. This run didn't count.";
         if (e.code === "spotify_unavailable") return "Spotify isn't answering right now, so your profile couldn't be read. Try again in a minute. This run didn't count.";
@@ -174,14 +174,14 @@ export const PLAYLIST_COPY = {
       if (e.code === "nothing_new" || e.newCount === 0) {
         // B-029: "everything was suggested before" only when songs were checked; with none checked, say that instead.
         if (e.songsChecked === 0) return `Couldn't find songs to check this time. ${PLAYLIST_COPY.learn.nothingNewHint}`;
-        return `Nothing new this time${e.skippedCount ? ` (${e.skippedCount} left out)` : ""}. ${PLAYLIST_COPY.learn.nothingNewHint}`;
+        return `Nothing new this time${e.skippedCount ? `: we left out ${songs(e.skippedCount)} you've already seen` : ""}. ${PLAYLIST_COPY.learn.nothingNewHint}`;
       }
       const left = e.skippedCount ? ` Left out ${songs(e.skippedCount)} you already know or had in earlier runs.` : "";
       if (e.mode === "fallback") {
-        const why = e.code === "timeout" ? "The AI ran out of time" : e.code === "stopped" ? "The AI reached its step limit" : "The AI was unavailable";
+        const why = e.code === "timeout" ? "The Hive ran out of time" : e.code === "stopped" ? "The Hive reached its step limit" : "The Hive was unavailable";
         return `${why}, so these ${songs(e.newCount)} come from the data alone.${left}`;
       }
-      const by = e.mode === "mock" ? "The test model" : "Claude";
+      const by = e.mode === "mock" ? "The test model" : "The Hive";
       return `${by} found ${songs(e.newCount)} to learn.${left}`;
     },
     runStarted: "Looking for songs to learn",
@@ -190,7 +190,7 @@ export const PLAYLIST_COPY = {
 
     // The Songs to learn section of the Repertoire page (docs §7.4)
     intro: "Find songs to learn from the artists your fans, and the crowds where you busk, like. Each run looks at your Repertoire, takes about 30 seconds, and never suggests a song twice.",
-    firstTime: "No runs yet. Press the button and we'll look for songs you could learn next.",
+    firstTime: "No runs yet. Press the button and the Hive will look for songs you could learn next.",
     runsLeft: (n: number) => `${n} ${n === 1 ? "run" : "runs"} left this hour`,
     lastRun: (when: string, n: number) => `Last run ${when}: ${n} new ${n === 1 ? "song" : "songs"}.`,
     running: "Looking for songs to learn…",
@@ -202,7 +202,7 @@ export const PLAYLIST_COPY = {
     /** The run limit's words (docs §2.10): relative, and the network's version doesn't blame the performer. */
     limitMessage: (scope: "repertoire" | "ip", minutes: number, max = 3): string => {
       const wait = `Try again in about ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`;
-      return scope === "repertoire" ? `You've started ${max} runs this hour. ${wait}` : `A lot of runs have started from this network in the last hour. ${wait}`;
+      return scope === "repertoire" ? `You've started ${max} runs this hour. The Hive can run again in about ${minutes} ${minutes === 1 ? "minute" : "minutes"}.` : `A lot of runs have started from this network in the last hour. ${wait}`;
     },
     limitTitle: { repertoire: "Run limit reached", ip: "Lots of runs from this network" },
     qlooDownTitle: "Qloo isn't answering",
@@ -225,7 +225,7 @@ export const PLAYLIST_COPY = {
     earlierRuns: "Earlier runs",
     looked: (songs: number, pitches: number) => `looked at ${songs} ${songs === 1 ? "song" : "songs"}${pitches ? `, ${pitches} ${pitches === 1 ? "pitch" : "pitches"}` : ""}`,
     newCount: (n: number) => `${n} new`,
-    modelLabel: { claude: "Claude", mock: "test model", template: "from the data" },
+    modelLabel: { claude: "Hive", mock: "test model", template: "from the data" },
     statusLabel: { running: "running", done: "done", fallback: "from the data", failed: "didn't finish" },
     learnedBtn: "Mark as learned",
     notForMe: "Not for me",

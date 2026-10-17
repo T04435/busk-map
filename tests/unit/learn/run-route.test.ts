@@ -259,7 +259,7 @@ describe("the refusals before a run starts", () => {
     expect(res.headers.get("retry-after")).toBe(String(45 * 60));
     expect(res.headers.get("cache-control")).toBe("no-store");
     const { error } = await res.json();
-    expect(error).toMatchObject({ code: "limit", message: "You've started 3 runs this hour. Try again in about 45 minutes.", retryAfterS: 2700, limit: { scope: "repertoire", max: 3, windowMinutes: 60, retryInMinutes: 45 } });
+    expect(error).toMatchObject({ code: "limit", message: "You've started 3 runs this hour. The Hive can run again in about 45 minutes.", retryAfterS: 2700, limit: { scope: "repertoire", max: 3, windowMinutes: 60, retryInMinutes: 45 } });
     expect(error.limit.resetAt).toBe(error.retryAt);
     expect(Date.parse(error.retryAt)).toBeGreaterThanOrEqual(before + 2700_000 - 1000);
     expect(error.message).not.toMatch(/\d:\d\d|\b(am|pm)\b/i);
@@ -295,7 +295,7 @@ describe("when the data sources fail", () => {
     const events = await readEvents(await start(m, cookie, { "x-buskmap-faults": "qloo" }));
     const end = events.at(-1) as Extract<LearnStreamEvent, { type: "end" }>;
     expect(end).toMatchObject({ ok: false, mode: "none", newCount: 0, code: "qloo_unavailable" });
-    expect(end.message).toMatch(/Qloo isn't answering/);
+    expect(end.message).toMatch(/Qloo, where it comes from, isn't answering/);
     expect(events.filter((e) => e.type === "tool-start").map((e) => (e as { tool: string }).tool)).toEqual(["match_playlist"]);
     expect(m.mock.mockLearnerCalls).toHaveLength(0);
     const body = await list(m, cookie);

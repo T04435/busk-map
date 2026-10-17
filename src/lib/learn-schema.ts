@@ -165,7 +165,7 @@ export const skippedOf = (t: Pick<LearnTotals, "alreadySuggested" | "dismissedSk
 
 /** "claude" | "mock" | "template" as the run header shows it. */
 export function learnModelLabel(model: LearnModel): string {
-  return model === "claude" ? "Claude" : model === "mock" ? "test model" : "from the data";
+  return model === "claude" ? "Hive" : model === "mock" ? "test model" : "from the data";
 }
 
 /** "Fans of A and B like them": plain words from Qloo explainability (the names of the input artists that drove a result). Null with none. */

@@ -1,5 +1,6 @@
 "use client";
 
+// TODO(BRAND): AiChip (AGENT_MODEL_CREDIT) + HiveMark in the research header; view.hiveProgress (0-7) drives the mark.
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { TrackResult } from "@/components/forms/repertoire-api";

@@ -37,11 +37,11 @@ export const RESEARCH_LABELS: Record<ResearchStepKey, string> = {
   profile: "Reading your Spotify profile",
   songs: "Loading your songs",
   qloo: "Finding you on Qloo",
-  soundsLike: "Who you sound like",
-  fans: "Who your fans are",
-  fansLove: "What your fans also love",
-  learn: "Songs your fans would stop for",
-  genres: "Your sound in genres",
+  soundsLike: "Finding who you sound like",
+  fans: "Learning who your fans are",
+  fansLove: "Finding what your fans also love",
+  learn: "Finding songs your fans would stop for",
+  genres: "Tagging your sound in genres",
   summary: "Summing up your act",
 };
 
@@ -55,7 +55,7 @@ export const RESEARCH_SOURCES: Record<ResearchStepKey, string> = {
   fansLove: "Qloo /v2/insights · urn:entity:artist signalled by you and your sound-alikes, with explainability; they are left out",
   learn: "Spotify top tracks of those artists (Last.fm as backup); songs you sing, were offered or dismissed are left out",
   genres: "Qloo /v2/insights · urn:tag (music genres) signalled by your artist",
-  summary: "Claude ranks the songs found and writes one paragraph; it never adds a song",
+  summary: "Hive (on Claude) ranks the songs found and writes one paragraph; it never adds a song",
 };
 
 export type ResearchMode = "full" | "more";

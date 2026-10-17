@@ -15,6 +15,7 @@ import type { LearnLive } from "@/lib/learn-live";
 import { funnelOf, plainStep } from "@/lib/learn-plain";
 import { FINISH_TOOLS, toolLabel } from "@/lib/learn-tools";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
+// TODO(BRAND): AgentTag + AiChip (AGENT_MODEL_CREDIT) on the learn feed header; hiveProgressOfSteps in @/lib/agent-persona gives the mark's cells.
 import { modelName } from "@/lib/sources";
 
 const COPY = PLAYLIST_COPY.learn;

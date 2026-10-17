@@ -5,6 +5,7 @@
  *
  * Every results field is null until its step has landed: that is what drives the skeletons.
  */
+import { hiveProgressOfRepertoire } from "./agent-persona";
 import type { LearnStreamEvent, LearnSuggestionEvent, LearnTotals } from "./learn-schema";
 import type { LearnSuggestionView, PlaylistSongView, PlaylistView } from "./playlist-schema";
 import { MORE_STEPS, RESEARCH_STEP_OF, RESEARCH_STEPS, type ResearchSnapshot, type ResearchStepKey, type StepOutputs } from "./repertoire-research";
@@ -34,6 +35,8 @@ export type RepertoireView = {
   steps: RepertoireStep[];
   totals: RepertoireTotals;
   results: RepertoireResults;
+  /** How many of the Hive mark's 7 cells are filled (0 to 7): see hiveProgressOfRepertoire in lib/agent-persona.ts. */
+  hiveProgress: number;
   /** The run's `end`, live; null while running and for a saved snapshot. */
   end: Extract<LearnStreamEvent, { type: "end" }> | null;
 };
@@ -190,9 +193,11 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
   };
 
   const phase: RepertoirePhase = run ? (end ? "done" : "running") : snapshot ? "done" : "empty";
+  const mode = liveMode ?? snapshot?.mode ?? null;
   return {
     phase,
-    mode: liveMode ?? snapshot?.mode ?? null,
+    mode,
+    hiveProgress: hiveProgressOfRepertoire({ phase, mode, steps }),
     steps,
     totals: {
       qlooCalls: totals?.qlooCalls ?? 0,

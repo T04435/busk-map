@@ -14,7 +14,7 @@ describe("learnRunGate (docs §2.10)", () => {
     const refused = at(3, now - 20 * 60_000);
     // A second instance sees the same refusal: it reads the same stored runs, not its own memory.
     expect(refused).toMatchObject({ ok: false, scope: "repertoire", max: 3, windowMinutes: 60, retryInMinutes: 40, retryAfterS: 40 * 60 });
-    expect(refused.ok === false && refused.message).toBe("You've started 3 runs this hour. Try again in about 40 minutes.");
+    expect(refused.ok === false && refused.message).toBe("You've started 3 runs this hour. The Hive can run again in about 40 minutes.");
     expect(refused.ok === false && refused.retryAt).toBe(new Date(now + 40 * 60_000).toISOString());
   });
 
@@ -74,7 +74,7 @@ describe("learnRunGate (docs §2.10)", () => {
   });
 
   it("messages stay relative and singular at one minute", () => {
-    expect(learnLimitMessage("repertoire", 30)).toBe("You've started 3 runs this hour. Try again in about 1 minute.");
+    expect(learnLimitMessage("repertoire", 30)).toBe("You've started 3 runs this hour. The Hive can run again in about 1 minute.");
     expect(learnLimitMessage("ip", 120)).toMatch(/about 2 minutes\.$/);
     expect(learnLimitMessage("ip", 120)).not.toMatch(/\d:\d\d|\b(am|pm)\b/i);
   });

@@ -1,4 +1,5 @@
 import "server-only";
+import { PERSONA_PROMPT } from "@/lib/agent-persona";
 import { ToolLoopAgent, type LanguageModel, type StopCondition } from "ai";
 import type { LearnEndCode, LearnModel, LearnTotals } from "@/lib/learn-schema";
 import { fromLearnOutputs } from "@/lib/learn-totals";
@@ -23,7 +24,9 @@ import type { NewSuggestion } from "./types";
  * Two server steps run first and stream like any other step (match_playlist, history). If the model fails, times out or
  * never gives an acceptable answer, the deterministic fallback (fallback.ts) finishes the run from the data, labelled.
  */
-export const LEARN_INSTRUCTIONS = `You are Busk Map's song scout. A street performer wants new songs to learn: songs that fit their taste and voice, that the crowds where they busk will like, and that they haven't been offered before. You investigate with tools. You never invent a song: you choose only from songs that top_tracks returned in this run.
+export const LEARN_INSTRUCTIONS = `${PERSONA_PROMPT}
+
+Your job here: you are Busk Map's song scout. A street performer wants new songs to learn: songs that fit their taste and voice, that the crowds where they busk will like, and that they haven't been offered before. You investigate with tools. You never invent a song: you choose only from songs that top_tracks returned in this run.
 
 What you already know (in the prompt): the songs they can sing, the artists they sound like, their usual pitches, and the history of earlier runs: what was suggested, what they learned, what they dismissed. Build on it. If they learned a song, look for artists close to it. If they dismissed several songs by one kind of artist, look elsewhere. Never offer a song from the history again.
 

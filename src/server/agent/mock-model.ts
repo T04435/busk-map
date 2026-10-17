@@ -58,7 +58,7 @@ function finish(results: ToolResult[], scenario: MockScenario, rejections: numbe
   const invented = scenario === "invented-numbers";
   const badFirst = scenario === "bad-finish" && rejections === 0;
   return {
-    text: "I have enough to recommend three pitches.",
+    text: "We have enough to recommend three pitches.",
     calls: [
       {
         toolName: "finish_plan",
@@ -97,7 +97,7 @@ export function nextMove(results: ToolResult[], tools: string[], scenario: MockS
   // Wrapping up (only score_pitches and finish_plan offered, or finish_plan alone).
   if (!offered("taste_map")) {
     if (scenario === "never-finish") return null;
-    if (!scored && offered("score_pitches")) return { text: "Out of research budget: scoring what I have.", calls: [{ toolName: "score_pitches", input: {} }] };
+    if (!scored && offered("score_pitches")) return { text: "Out of research budget: scoring what we have.", calls: [{ toolName: "score_pitches", input: {} }] };
     return finish(results, scenario, rejections);
   }
   if (scenario === "never-finish") return { text: "Looking at the taste map again.", calls: [{ toolName: "taste_map", input: { radiusM: 200 + 100 * results.length } }] };
@@ -114,11 +114,11 @@ export function nextMove(results: ToolResult[], tools: string[], scenario: MockS
     ];
     return { text: "One more look.", calls: [looks[Math.min(results.length, looks.length - 1)]] };
   }
-  if (!done("taste_map").length) return { text: "I'll start with the taste map to see where this act's fans concentrate.", calls: [{ toolName: "taste_map", input: {} }] };
+  if (!done("taste_map").length) return { text: "We'll start with the taste map to see where this act's fans concentrate.", calls: [{ toolName: "taste_map", input: {} }] };
   const strongest = (done("taste_map")[0]?.output.value as TasteOut | undefined)?.strongest?.find((c) => c.near)?.near ?? "Federation Square";
   if (!done("crowd_at").length) {
     return {
-      reasoning: `The taste map's strongest area is near ${strongest}; who is there, and how busy it is, decides whether it makes my shortlist.`,
+      reasoning: `The taste map's strongest area is near ${strongest}; who is there, and how busy it is, decides whether it makes our shortlist.`,
       text: `Checking who the crowd is near ${strongest}, and how busy it gets at the start of the slot.`,
       calls: [
         { toolName: "crowd_at", input: { at: { place: strongest }, radiusM: 400 } },
@@ -126,18 +126,18 @@ export function nextMove(results: ToolResult[], tools: string[], scenario: MockS
       ],
     };
   }
-  if (!done("check_pitch").length) return { text: "Federation Square is a well-known spot; checking whether the rules allow it, for my shortlist.", calls: [{ toolName: "check_pitch", input: { spot: { place: "Federation Square" } } }] };
+  if (!done("check_pitch").length) return { text: "Federation Square is a well-known spot; checking whether the rules allow it, for our shortlist.", calls: [{ toolName: "check_pitch", input: { spot: { place: "Federation Square" } } }] };
   if (!scored && offered("score_pitches")) {
     const checked = done("check_pitch").at(-1)?.output.value as CheckOut | undefined;
     const add = checked?.pitchId && !checked.inPool ? [checked.pitchId] : [];
-    return { text: "Letting the engine score its pool and my shortlist.", calls: [{ toolName: "score_pitches", input: add.length ? { add } : {} }] };
+    return { text: "Letting the engine score its pool and our shortlist.", calls: [{ toolName: "score_pitches", input: add.length ? { add } : {} }] };
   }
   const rows = lastScores(results);
   const [first, second] = rows;
   // Any time (best_hours is offered only then): the hours of the engine's top pitches, before the crowds are compared.
   if (!done("best_hours").length && tools.includes("best_hours") && first) {
     const ids = rows.filter((r) => r.engineTop3).slice(0, 3).map((r) => r.pitchId);
-    return { text: "This is an any-time busk, so I'll check the best hours for each of the engine's top pitches.", calls: [{ toolName: "best_hours", input: { pitchIds: ids.length ? ids : [first.pitchId] } }] };
+    return { text: "This is an any-time busk, so we'll check the best hours for each of the engine's top pitches.", calls: [{ toolName: "best_hours", input: { pitchIds: ids.length ? ids : [first.pitchId] } }] };
   }
   if (!done("compare_crowds").length && first && second) {
     return { text: `Comparing the crowds at ${first.name} and ${second.name}.`, calls: [{ toolName: "compare_crowds", input: { a: first.pitchId, b: second.pitchId } }] };
@@ -152,7 +152,7 @@ function streamOf(move: Move | null) {
   const parts: unknown[] = [{ type: "stream-start", warnings: [] }];
   const id = String(++ids);
   if (move?.reasoning) parts.push({ type: "reasoning-start", id: `r${id}` }, { type: "reasoning-delta", id: `r${id}`, delta: move.reasoning }, { type: "reasoning-end", id: `r${id}` });
-  const text = move?.text ?? "I can't find a better answer than the engine's.";
+  const text = move?.text ?? "We can't find a better answer than the engine's.";
   parts.push({ type: "text-start", id: `t${id}` }, { type: "text-delta", id: `t${id}`, delta: text }, { type: "text-end", id: `t${id}` });
   for (const [i, call] of (move?.calls ?? []).entries()) {
     parts.push({ type: "tool-call", toolCallId: `mock-${call.toolName}-${id}-${i}`, toolName: call.toolName, input: JSON.stringify(call.input) });

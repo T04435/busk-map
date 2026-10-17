@@ -4,6 +4,10 @@ Know where to play, and what to play there.
 
 Busk Map is an agent for street performers. Pick a city and a time slot, and it finds the pitches whose crowd matches your music, near busy places that are open at that hour. It then builds a setlist for each pitch from the songs you can play. It is built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/).
 
+## Hive, the agent
+
+Hive is Busk Map's research agent. "Hive" is a persona name: it runs on Claude (Sonnet 5.5), made by Anthropic. It picks which Qloo questions to ask and writes the reasons, but it never makes up a number, a song or a place, and it never says a pitch is legal. The app labels it "AI · powered by Claude" wherever it speaks.
+
 Status: in development.
 
 ## Run locally

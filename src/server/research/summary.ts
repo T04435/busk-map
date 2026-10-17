@@ -1,4 +1,5 @@
 import "server-only";
+import { PERSONA_PROMPT } from "@/lib/agent-persona";
 import { generateText, Output, type LanguageModel } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import { z } from "zod";
@@ -37,7 +38,9 @@ export type SummaryResult = {
   usage: { inputTokens: number; outputTokens: number; reasoningTokens: number; steps: number; ms: number; stoppedBy: string } | null;
 };
 
-export const SUMMARY_INSTRUCTIONS = `You are Busk Map's Repertoire writer. A street performer has just had their act researched with Qloo's taste data. You only rank and explain; you never invent data.
+export const SUMMARY_INSTRUCTIONS = `${PERSONA_PROMPT}
+
+Your job here: you are Busk Map's Repertoire writer. A street performer has just had their act researched with Qloo's taste data. You only rank and explain; you never invent data.
 
 1. From SONGS, choose the songs they should learn first, best first: up to ${RESEARCH_SUMMARY_LIMITS.maxPicks}, at most ${LEARN_MAX_PER_ARTIST} by one artist. Use songIds exactly as given. For each, one sentence a busker would find useful, naming the fans it comes from ("Fans of X and Y love this").
 2. Write one plain paragraph (2 to 4 sentences) on who this act is and who their crowd is, from FACTS only.

@@ -67,7 +67,7 @@ function finish(results: ToolResult[], scenario: LearnMockScenario, rejections: 
   }));
   const bad = scenario === "repeat" && rejections === 0 ? [{ songId: "s-999", reason: "Trust me." }, ...picks] : picks;
   return {
-    text: "I have enough to suggest songs.",
+    text: "We have enough to suggest songs.",
     calls: [{ toolName: "finish_suggestions", input: { picks: bad, summary: "Mock summary (offline test mode).", notes: ["Offline test mode: the reasons come from a mock model."] } }],
   };
 }
@@ -95,8 +95,8 @@ export function nextMove(allResults: ToolResult[], offered: Offered[], prompt: s
 
   if (!tried("related_artists")) {
     const text = seen.firstRun
-      ? "This is your first run, so I'll start with the artists your fans also like."
-      : `The history lists ${seen.learned} learned, ${seen.pending} to learn and ${seen.dismissed} dismissed, so I'll steer clear of those and start with artists your fans also like.`;
+      ? "This is your first run, so we'll start with the artists your fans also like."
+      : `The history lists ${seen.learned} learned, ${seen.pending} to learn and ${seen.dismissed} dismissed, so we'll steer clear of those and start with artists your fans also like.`;
     return { reasoning: "Starting from the act's own taste keeps the suggestions close to what they can already sing.", text, calls: [{ toolName: "related_artists", input: { take: 12 } }] };
   }
   const related = value<{ artists?: Artist[] }>(ok("related_artists")[0])?.artists ?? [];
@@ -107,7 +107,7 @@ export function nextMove(allResults: ToolResult[], offered: Offered[], prompt: s
     const choices = ((crowdTool?.inputSchema as { properties?: { pitch?: { enum?: string[] } } } | undefined)?.properties?.pitch?.enum ?? ["city"]) as string[];
     const rising = fresh.slice(0, 3).map((a) => a.artistId);
     return {
-      text: `Checking the crowd at ${choices[0] === "city" ? "the city centre" : choices[0]}, and who is rising among the artists I found.`,
+      text: `Checking the crowd at ${choices[0] === "city" ? "the city centre" : choices[0]}, and who is rising among the artists we found.`,
       calls: [{ toolName: "crowd_at", input: { pitch: choices[0], take: 8 } }, ...(rising.length && can("rising") ? [{ toolName: "rising", input: { artistIds: rising } }] : [])],
     };
   }
@@ -134,7 +134,7 @@ function streamOf(move: Move | null) {
   const parts: unknown[] = [{ type: "stream-start", warnings: [] }];
   const id = String(++ids);
   if (move?.reasoning) parts.push({ type: "reasoning-start", id: `r${id}` }, { type: "reasoning-delta", id: `r${id}`, delta: move.reasoning }, { type: "reasoning-end", id: `r${id}` });
-  const text = move?.text ?? "I can't find a better answer than the data's.";
+  const text = move?.text ?? "We can't find a better answer than the data's.";
   parts.push({ type: "text-start", id: `t${id}` }, { type: "text-delta", id: `t${id}`, delta: text }, { type: "text-end", id: `t${id}` });
   for (const [i, call] of (move?.calls ?? []).entries()) {
     parts.push({ type: "tool-call", toolCallId: `mock-${call.toolName}-${id}-${i}`, toolName: call.toolName, input: JSON.stringify(call.input) });

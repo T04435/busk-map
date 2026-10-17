@@ -1,4 +1,5 @@
 import "server-only";
+import { PERSONA_PROMPT } from "@/lib/agent-persona";
 import { ToolLoopAgent, type LanguageModel, type StopCondition } from "ai";
 import { describeSlot } from "@/lib/slot";
 import type { Plan } from "@/lib/plan-schema";
@@ -27,7 +28,9 @@ export class QlooUnavailableError extends Error {
  * closed until it has (scoringOpen); then the engine scores everything and
  * Claude chooses, ranking against the engine only for a reason in the data.
  */
-export const INSTRUCTIONS = `You are Busk Map's planning agent. A street performer wants the three best pitches for one time slot, and why each crowd fits. You investigate with tools. Busk Map's scoring engine is the calculator: it scores every pitch, and you choose among the pitches it has scored.
+export const INSTRUCTIONS = `${PERSONA_PROMPT}
+
+Your job here: you are Busk Map's planning agent. A street performer wants the three best pitches for one time slot, and why each crowd fits. You investigate with tools. Busk Map's scoring engine is the calculator: it scores every pitch, and you choose among the pitches it has scored.
 
 How to work:
 1. Investigate first. score_pitches stays closed until you have made at least 3 looks with taste_map, crowd_at, events_near, footfall_at, busy_places or check_pitch, and at least one of them is taste_map, crowd_at or events_near. There is no fixed order: decide each next look from what you have found (a strong taste area, an event crowd leaving nearby, a corner worth a footfall check at that hour, what is open nearby).
@@ -264,7 +267,7 @@ async function runAgent(ctx: PlanContext, events: AgentEvents, abortSignal: Abor
     notes.push(
       timedOut
         ? "The agent ran out of time, so this is the engine's plan with reasons generated from the data."
-        : "The AI planner was unavailable, so this is the engine's plan with reasons generated from the data.",
+        : "The Hive was unavailable, so this is the engine's plan with reasons generated from the data.",
     );
     state.answer = null;
   }

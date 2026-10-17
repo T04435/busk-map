@@ -185,7 +185,7 @@ const PAGES: PageCase[] = [
     local: true,
     open: async (page) => {
       await page.goto("/plan?example=sax&faults=pitches,footfall");
-      await expect(page.getByRole("heading", { name: /^No legal pitch for/i })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /^No pitch open for/i })).toBeVisible();
     },
     controls: async (page) => {
       await expect(page.getByRole("link", { name: "Read the council's busking rules" })).toBeVisible();

@@ -217,7 +217,7 @@ export async function buildWeekPlan(
         ai = output;
       } catch (error) {
         log.error("week explanation failed; using template", { error: error instanceof Error ? error.message : "unknown" });
-        notes.push("The AI explainer was unavailable, so the reasons are generated from the data.");
+        notes.push("The Hive was unavailable, so the reasons are generated from the data.");
       }
     }
   }

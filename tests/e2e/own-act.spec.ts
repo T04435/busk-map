@@ -206,7 +206,7 @@ test.describe("artists Qloo can't match", () => {
     await expect(alert).toContainText("Taste is left out of this plan");
     await expect(page.getByRole("link", { name: "Pick your artists from Spotify" })).toBeVisible();
     // Claude had nothing to research: said once, and no research funnel or feed is drawn.
-    await expect(page.getByTestId("agent-fallback")).toContainText("Claude didn't research this busk");
+    await expect(page.getByTestId("agent-fallback")).toContainText("The Hive didn't run");
     await expect(page.getByTestId("plan-funnel")).toHaveCount(0);
     await expect(page.getByTestId("agent-stream")).toHaveCount(0);
   });

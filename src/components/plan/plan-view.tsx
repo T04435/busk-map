@@ -99,8 +99,8 @@ const replayState = (replay: Props["replay"]) => {
 /** If a live run hasn't ended by now, show the engine's plan anyway (the agent itself times out at 90 s). */
 const AGENT_WAIT_MS = 110_000;
 /** Brand words (B-049): Claude, and Busk Map's scores; never "agent" or "engine" in what a busker reads. */
-const ranOutNote = (model: ExplanationsModel | null) => `${modelName(model, "start")} ran out of time, so these pitches come straight from Busk Map's scores. The reasons are standard ones.`;
-const couldntNote = (model: ExplanationsModel | null) => `${modelName(model, "start")} couldn't finish, so these pitches come straight from Busk Map's scores. The reasons are standard ones.`;
+const ranOutNote = (model: ExplanationsModel | null) => `${modelName(model, "start")} ran out of time, so this is Busk Map's plan from the scores, without our notes. The reasons are standard ones.`;
+const couldntNote = (model: ExplanationsModel | null) => `${modelName(model, "start")} couldn't finish, so this is Busk Map's plan from the scores, without our notes. The reasons are standard ones.`;
 
 export function PlanView({ initialPlan, heading, request, center, autoRun, exampleId, faults, shareId = null, replay = null, fresh = false }: Props) {
   // A stored run starts the view finished: its plan, its steps (collapsed, as a replay) and its totals.
@@ -324,6 +324,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
                 ? "replayed"
                 : "done"
               : null;
+  // TODO(BRAND): AiChip (AGENT_MODEL_CREDIT) + HiveMark here; hiveProgressOfSteps(steps, ended) in @/lib/agent-persona gives its 0-7 cells.
   const statusLine = <AgentStatusLine state={agentState} usage={usage} model={model} note={replayed ? replayNote(replay?.note ?? runNote) : null} />;
 
   const sourcesDown = plan ? plan.dataStatus.filter((s) => s.mode === "fallback" && s.source !== "qloo") : [];
@@ -379,7 +380,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
       collapsed={!wide && !pending && !qlooDown}
       showRaw={showRaw}
       onShowRawChange={setShowRaw}
-      subtitle={!wide && !live && !qlooDown ? `Each check ${modelName(model)} ran for the busk above, and what it found.` : undefined}
+      subtitle={!wide && !live && !qlooDown ? `Each check ${modelName(model)} ran for the busk above, and what we found.` : undefined}
       footer={live ? <DataSources status={[]} showAi={false} soFar={sourcesTouched(steps.map((s) => s.tool))} /> : dataSources}
     />
   ) : null;
@@ -431,7 +432,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
       {limited && <PlanAlert kind="limit" message={run.status === "limited" ? run.message : undefined}>{statusLine}</PlanAlert>}
       {/* B-184: with no legal pitch the NoPitchPanel says it all; a note about "these pitches" would point at nothing. */}
       {plan && !pending && plan.pitches.length === 0 ? null : noTaste ? (
-        <Banner testId="agent-fallback">Claude didn&apos;t research this busk: with no taste to go on there&apos;s nothing for it to check. Your pitches come straight from the city&apos;s data.</Banner>
+        <Banner testId="agent-fallback">The Hive didn&apos;t run: with no taste to go on there&apos;s nothing to check. Your pitches come straight from the city&apos;s data.</Banner>
       ) : fallbackNote && !qlooDown ? (
         <Banner testId="agent-fallback">{fallbackNote}</Banner>
       ) : null}

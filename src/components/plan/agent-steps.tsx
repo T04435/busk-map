@@ -337,7 +337,7 @@ export function AgentStepStream({
     foot = (
       <Alert variant="estimate" className="mt-4">
         <AlertTitle>Planned from the data alone</AlertTitle>
-        <AlertDescription>{endNote || `${modelName(model, "start")} ran out of time, so your spots come straight from Busk Map's scores, with standard reasons.`}</AlertDescription>
+        <AlertDescription>{endNote || `${modelName(model, "start")} ran out of time, so this is Busk Map's plan from the scores, without our notes.`}</AlertDescription>
       </Alert>
     );
   else if (phase === "error")

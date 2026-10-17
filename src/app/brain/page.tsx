@@ -54,7 +54,7 @@ export default function BrainPage() {
           </h2>
           <NoteCard title="Numbers come from data">
             <p className="m-0">
-              Claude picks which Qloo questions to ask, but never makes up a number: it can only choose among pitches Busk Map&apos;s engine
+              Hive, our agent, runs on Claude. It picks which Qloo questions to ask, but never makes up a number: it can only choose among pitches Busk Map&apos;s engine
               scored, and a busk that cites a number no call returned is rejected.
             </p>
           </NoteCard>

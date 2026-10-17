@@ -16,7 +16,7 @@ export function QlooDownPanel({ onRetry, busy = false }: { onRetry: () => void; 
       </HexCell>
       <h2 className="m-0 font-display text-xl leading-[26px] font-extrabold tracking-[0.01em] uppercase">No plan without taste data</h2>
       <p className="m-0 max-w-[36ch] text-[15px] leading-[22px] text-muted-foreground">
-        Busk Map plans around your sound, and Qloo, our taste data source, isn&apos;t answering. Your act, day and permit are kept: try again in a minute.
+        We can&apos;t plan without taste data, and Qloo, where it comes from, isn&apos;t answering. Everything you entered is kept. Try again in a minute.
       </p>
       <span className="inline-flex flex-wrap items-center justify-center gap-2">
         <QlooWordmark width={52} />

@@ -169,7 +169,7 @@ const becauseText = (s: string) => s.replace(/ ([\d.]+)(;|$)/g, (_m, v: string, 
 /** Each tool as a busker sees it: what it is doing while it runs, a plain title once done, and its result drawn from the contract fields. */
 export const TOOL_UI: Record<string, ToolUi> = {
   taste_map: {
-    doing: () => "Finding where your kind of crowd gathers",
+    doing: () => "Mapping where your crowd gathers",
     title: () => "Where your crowd gathers",
     render: (o, _s, ctx) => {
       const strongest = arr(o.strongest).filter((c) => num(c.lat) !== null);
@@ -189,7 +189,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
     },
   },
   crowd_at: {
-    doing: (s) => `Getting to know the crowd at ${placeOf(s)}`,
+    doing: (s) => `Learning who gathers at ${placeOf(s)}`,
     title: (s) => `The crowd at ${placeOf(s)}`,
     render: (o) => {
       const artists = arr(o.artists).slice(0, 3);
@@ -228,7 +228,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
     },
   },
   busy_places: {
-    doing: (s) => `Looking for busy places near ${placeOf(s)}`,
+    doing: (s) => `Listing busy places near ${placeOf(s)}`,
     title: (s) => `Busy places near ${placeOf(s)}`,
     render: (o) => {
       const rows = arr(o.places).slice(0, 4);
@@ -256,7 +256,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
     },
   },
   events_near: {
-    doing: (s) => `Checking events near ${placeOf(s)}`,
+    doing: (s) => `Looking for events near ${placeOf(s)}`,
     title: (s) => `Events near ${placeOf(s)}`,
     render: (o) => {
       const events = arr(o.events).slice(0, 3);
@@ -300,7 +300,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
     },
   },
   footfall_at: {
-    doing: (s) => `Counting foot traffic at ${placeOf(s)}`,
+    doing: (s) => `Reading the foot-traffic sensors near ${placeOf(s)}`,
     title: (s) => `Foot traffic at ${placeOf(s)}`,
     render: (o) => {
       const s = arr(o.sensors)[0];
@@ -336,7 +336,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
     },
   },
   score_pitches: {
-    doing: () => "Scoring the pitches",
+    doing: () => "Scoring every pitch your permit allows",
     title: (s) => {
       const add = rec(s.input).add;
       return Array.isArray(add) && add.length > 0 ? "New pitches scored" : "Your best pitches so far";
@@ -448,7 +448,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
     ),
   },
   best_hours: {
-    doing: () => "Finding the best hours at each pitch",
+    doing: () => "Reading the forecast for your slot",
     title: () => "The best hours at each pitch",
     render: (o) => {
       const pitches = arr(o.pitches);
@@ -484,7 +484,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
     render: (_o, s, ctx) => (
       <Foot>
         {s.status === "failed"
-          ? `Busk Map asked ${ctx.model === "mock" ? "the test model" : "Claude"} to look closer before answering. It keeps going.`
+          ? `Busk Map asked ${ctx.model === "mock" ? "the test model" : "the Hive"} to look closer before answering. We keep going.`
           : "Three pitches, a suggested set for each and the reasons, above."}
       </Foot>
     ),

@@ -6,10 +6,10 @@ const engineTop = [p("a", 70), p("b", 66), p("c", 64)];
 const engineOrder = [...engineTop, p("d", 61), p("e", 58)];
 
 describe("Agent vs engine", () => {
-  it("says Claude checked Busk Map's top 3 and kept them when set and order match", () => {
+  it("says The Hive checked Busk Map's top 3 and kept them when set and order match", () => {
     const changes = agentChanges(engineTop, engineTop, engineOrder, () => "x");
     expect(changes).toEqual([]);
-    expect(agentVsEngineLines({ changes })).toEqual(["Claude checked Busk Map's top 3 and kept them."]);
+    expect(agentVsEngineLines({ changes })).toEqual(["The Hive checked Busk Map's top 3 and kept them."]);
   });
 
   it("lists each changed position with both engine ranks and scores, and the reason from the pick's why", () => {
@@ -24,7 +24,7 @@ describe("Agent vs engine", () => {
     ]);
     expect(agentVsEngineLines({ changes })).toEqual([
       "#2: D (Busk Map's no. 4, score 61) over B (Busk Map's no. 2, score 66) because the Comedy Festival crowd leaves next door at 9:30 pm, and its fans rate this act's taste 0.71.",
-      "#3: ADDED (added by Claude, score 55) over C (Busk Map's no. 3, score 64) because busier at 6 pm than anywhere else checked: about 1,900 people an hour.",
+      "#3: ADDED (added by the Hive, score 55) over C (Busk Map's no. 3, score 64) because busier at 6 pm than anywhere else checked: about 1,900 people an hour.",
     ]);
   });
 
@@ -40,8 +40,8 @@ describe("Agent vs engine", () => {
   it("names the test model, not Claude, when the mock model ran (B-010)", () => {
     expect(agentVsEngineLines({ changes: [] }, "mock")).toEqual(["The test model checked Busk Map's top 3 and kept them."]);
     expect(agentVsEngineTitle(0, "mock")).toBe("The test model checked Busk Map's top 3 and kept them");
-    expect(agentVsEngineTitle(2, "claude")).toBe("Claude changed 2 of Busk Map's top 3");
-    expect(agentVsEngineLines({ changes: [] }, "claude")).toEqual(["Claude checked Busk Map's top 3 and kept them."]);
+    expect(agentVsEngineTitle(2, "claude")).toBe("The Hive changed 2 of Busk Map's top 3");
+    expect(agentVsEngineLines({ changes: [] }, "claude")).toEqual(["The Hive checked Busk Map's top 3 and kept them."]);
     const changes = agentChanges(engineTop, [p("a", 70), p("b", 66), p("added", 55)], engineOrder, () => null);
     expect(agentVsEngineLines({ changes }, "mock")).toEqual(["#3: ADDED (added by the test model, score 55) over C (Busk Map's no. 3, score 64)."]);
     expect(agentVsEngineLines({ changes }, "mock").join(" ")).not.toContain("Claude");

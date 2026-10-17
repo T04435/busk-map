@@ -76,7 +76,7 @@ export function PitchDetails({ plan, pitch, rank, model }: { plan: Plan; pitch: 
           <WithCells text={pitch.why} />
         </p>
         {pitch.origin === "agent" && written ? (
-          <p className="m-0 mt-2 text-[13px] leading-[18px] text-muted-foreground">Proposed by the agent: Claude suggested this spot, Busk Map scored it and checked it against the busking rules.</p>
+          <p className="m-0 mt-2 text-[13px] leading-[18px] text-muted-foreground">The Hive suggested this spot. Busk Map scored it and checked it against the busking rules.</p>
         ) : null}
         {pitch.origin === "taste" && pitch.cellRank !== null && (
           <p className="m-0 mt-2 text-[13px] leading-[18px] text-muted-foreground">Found from the data: Qloo taste cell no. {pitch.cellRank} for your artists, snapped to the nearest public space.</p>

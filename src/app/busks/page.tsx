@@ -26,7 +26,7 @@ export default function BusksPage({ searchParams }: PageProps<"/busks">) {
       <PageHeader
         meta="Your act, your hours"
         title="Plan your busk"
-        subtitle="Tell Busk Map who you sound like and what you can play, then pick your hours. Claude researches the pitches as soon as you start."
+        subtitle="Tell Busk Map who you sound like and what you can play, then pick your hours. The Hive researches the pitches as soon as you start."
       />
       <Suspense>
         <OwnAct searchParams={searchParams} />

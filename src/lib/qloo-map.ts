@@ -732,14 +732,14 @@ export const features: readonly Feature[] = [
     how: "diff",
     with: ["a plain AI", "Busk Map"],
   },
-  { id: "f_agent", label: "The agent’s tools", sub: "what Claude asks while it plans", location: "Plan page: Agent steps", how: "direct" },
+  { id: "f_agent", label: "The agent’s tools", sub: "what Hive asks while it plans", location: "Plan page: Agent steps", how: "direct" },
   {
     id: "f_learn",
     label: PLAYLIST_COPY.toLearn,
     sub: "a scouting run",
     location: `${PLAYLIST_COPY.name} page: ${PLAYLIST_COPY.toLearnShort}`,
     how: "combined",
-    with: ["Spotify", "Last.fm", "Claude Sonnet (the learn agent)"],
+    with: ["Spotify", "Last.fm", "Hive, on Claude Sonnet (the learn agent)"],
   },
   {
     id: "f_research",
@@ -747,7 +747,7 @@ export const features: readonly Feature[] = [
     sub: "your act, researched from one link",
     location: `${PLAYLIST_COPY.name} page: the research run and its results`,
     how: "combined",
-    with: ["Spotify", "Last.fm", "Claude Sonnet (one summary call)"],
+    with: ["Spotify", "Last.fm", "Hive, on Claude Sonnet (one summary call)"],
   },
 ];
 

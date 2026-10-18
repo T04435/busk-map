@@ -4,6 +4,7 @@ import { cn } from "cn";
 import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
 import { Chip } from "@/components/honeycomb/chip";
 import { Icon } from "@/components/honeycomb/icon";
+import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { RepertoireProfile as Profile } from "./repertoire/types";
@@ -111,10 +112,11 @@ export function ArtistProfile({
                       href={profile.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex min-h-6 items-center gap-1 text-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none"
+                      aria-label={`${profile.name} on Spotify (opens in a new tab)`}
+                      className="inline-flex min-h-6 items-center text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none"
                     >
-                      Spotify
-                      <span className="sr-only"> (opens in a new tab)</span>
+                      {/* U29: the source is its mark, the name only in the label. */}
+                      <SourceLogo source="spotify" height={16} />
                     </a>
                   ) : null}
                 </p>
@@ -142,7 +144,10 @@ export function ArtistProfile({
           ) : null}
           {profile.audience.length > 0 ? (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <span className="font-mono text-xs font-bold tracking-[0.08em] text-qloo uppercase">Your audience, by Qloo</span>
+              <span className="inline-flex items-center gap-1.5 font-mono text-xs font-bold tracking-[0.08em] text-muted-foreground uppercase">
+                Your audience
+                <SourceLogo source="qloo" height={14} />
+              </span>
               <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
                 {profile.audience.map((a) => (
                   <li key={a}>

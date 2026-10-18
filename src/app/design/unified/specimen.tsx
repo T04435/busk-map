@@ -306,7 +306,7 @@ export function UnifiedSpecimen() {
           <Case id="Reason" replaces="WithCells, evidence-line, 'because' line">
             <div className="flex flex-col gap-4 py-3">
               <Reason text="Your crowd at this spot sings along to it." />
-              <Reason text="Scores 87/100 for this slot, because fans of these artists love it." because={because} />
+              <Reason text="Fits this slot, because fans of these artists love it." because={because} />
             </div>
           </Case>
           <Case id="SongActions md" replaces="text Buttons, ghost icons, 'Add'/'Added' labels (44px)">

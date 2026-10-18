@@ -9,7 +9,7 @@ describe("example act cards", () => {
     expect(exampleWhen({ weekday: "sunday", startHour: 10, endHour: 14 })).toBe("Sunday · 10 am–2 pm");
   });
   it("list the first three songs", () => {
-    expect(examplePlays(EXAMPLES[0])).toBe("How to Make Gravy, Dumb Things, Depreston");
-    expect(examplePlays(EXAMPLES[2], 2)).toBe("Big Jet Plane, Bloom");
+    expect(examplePlays(EXAMPLES[0]).map((s) => s.title)).toEqual(["How to Make Gravy", "Dumb Things", "Depreston"]);
+    expect(examplePlays(EXAMPLES[2], 2).map((s) => s.title)).toEqual(["Big Jet Plane", "Bloom"]);
   });
 });

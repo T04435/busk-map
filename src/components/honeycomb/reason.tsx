@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import { cn } from "cn";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
@@ -8,7 +7,7 @@ export type ReasonArtist = { name: string; image?: string | null; score?: number
 
 /**
  * THE why line: the reason in plain words, and the artists behind it ("because fans of X") as small ArtistChips in one row
- * that wraps. Never truncated. A score written as "87/100" in server prose becomes a ScoreCell, never text.
+ * that wraps. Never truncated. Plain text only: a score never sits in prose (it is the row's one ScoreCell, or an InfoTag).
  */
 export function Reason({
   text,
@@ -22,16 +21,9 @@ export function Reason({
   scoreLabel?: string;
   className?: string;
 }) {
-  const parts = text.split(/(\d{1,3}\/100)/);
   return (
     <div data-slot="reason" className={cn("flex flex-col gap-2", className)}>
-      <p className="m-0 text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]">
-        {parts.map((part, i) => {
-          const m = /^(\d{1,3})\/100$/.exec(part);
-          if (!m) return <Fragment key={i}>{part}</Fragment>;
-          return <ScoreCell key={i} value={Number(m[1])} size="sm" className="mx-1 align-middle" />;
-        })}
-      </p>
+      <p className="m-0 text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]">{text}</p>
       {because && because.length > 0 ? (
         <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0">
           {because.map((a) => (

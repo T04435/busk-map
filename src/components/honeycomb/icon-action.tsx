@@ -9,8 +9,8 @@ const variants = {
 } as const;
 
 /**
- * A square icon-only button: 44px, or 36px (`sm`) in dense rows. The `label` is required: it is the accessible name and
- * the tooltip. Square, one focus ring, no glyph characters: the icon is always a DS Icon.
+ * A square icon-only button: 44px, or 36px (`sm`) in dense rows. The `label` is required: it is the accessible name (no
+ * tooltip). Square, one focus ring, no glyph characters: the icon is always a DS Icon.
  */
 export function IconAction({
   icon,
@@ -22,7 +22,7 @@ export function IconAction({
   ...rest
 }: Omit<ComponentProps<"button">, "children" | "aria-label" | "title"> & {
   icon: IconName;
-  /** aria-label and title. */
+  /** The accessible name (no tooltip: the user wants none). */
   label: string;
   /** Makes it a toggle (aria-pressed). */
   pressed?: boolean;
@@ -36,7 +36,6 @@ export function IconAction({
       {...rest}
       data-slot="icon-action"
       aria-label={label}
-      title={label}
       aria-pressed={pressed}
       className={cn(
         "inline-flex flex-none cursor-pointer items-center justify-center rounded-none text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none disabled:cursor-not-allowed disabled:opacity-50",

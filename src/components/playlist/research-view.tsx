@@ -96,7 +96,7 @@ function SuggestionRow({ song, media, busy, onStatus }: { song: LearnSuggestionV
         image={song.image ?? media?.image}
         artistImage={media?.artistImage}
         href={media?.href ?? spotifyHref(song.sourceUrl) ?? undefined}
-        source={media?.source}
+        source={media?.source ?? (song.songSource === "plan" ? undefined : song.songSource)}
         muted={song.status === "dismissed"}
         tags={song.status === "learned" ? <SongTag kind="learned" /> : song.isNew && pending ? <SongTag kind="new" /> : undefined}
         info={info}

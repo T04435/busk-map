@@ -4,7 +4,7 @@ import type { z } from "zod";
 import { nameKey, songKey } from "@/lib/text";
 import { env } from "@/server/env";
 import { AdapterError, errorKindOf, fetchJson } from "../core";
-import { BudgetExhausted, CallBudget, CATALOGUE_CALL_BUDGET, DEFAULT_RETRY_AFTER_S, SHORT_RETRY_AFTER_S, limitSpotifyUntil, paceSpotify, spotifyLimitedUntil } from "./pacer";
+import { BudgetExhausted, CallBudget, CATALOGUE_CALL_BUDGET, CATALOGUE_QUEUE_WAIT_MS, DEFAULT_RETRY_AFTER_S, MAX_QUEUE_WAIT_MS, SHORT_RETRY_AFTER_S, countSpotifyCall, limitSpotifyUntil, paceSpotify, spotifyLimitedUntil } from "./pacer";
 import {
   albumTracksSchema,
   albumsBatchSchema,
@@ -63,17 +63,19 @@ async function accessToken(): Promise<string> {
 }
 
 /**
- * Every Spotify API call goes through here: fail fast while the breaker is open (no network), wait for the pacer's slot,
- * count against the caller's budget, and on a 429 either open the breaker (Retry-After over 30 s) or wait once and retry
+ * Every Spotify API call goes through here: fail fast while the breaker is open (no network), count against the caller's
+ * budget, wait for the pacer's slot (a caller with a budget waits up to CATALOGUE_QUEUE_WAIT_MS for it, anyone else
+ * MAX_QUEUE_WAIT_MS and then fails fast with `rate_limited`), count against the app's daily cap, and on a 429 either open the breaker (Retry-After over 30 s) or wait once and retry
  * once (30 s or less). Never more than one retry.
  */
-async function spotify<S extends z.ZodType>(path: string, schema: S, budget?: CallBudget): Promise<z.infer<S>> {
+async function spotify<S extends z.ZodType>(path: string, schema: S, budget?: CallBudget, maxQueueWaitMs = MAX_QUEUE_WAIT_MS): Promise<z.infer<S>> {
   for (let attempt = 0; ; attempt++) {
     const until = await spotifyLimitedUntil();
     // The message ends like fetchJson's, so errorKindOf still reads "rate_limited" after a "use cache" boundary.
     if (until) throw new AdapterError("repertoire", "rate_limited", `Spotify is limited until ${until.toISOString()} (returned HTTP 429)`, 429);
     budget?.take();
-    await paceSpotify();
+    await paceSpotify(maxQueueWaitMs);
+    await countSpotifyCall();
     try {
       return await fetchJson(`${API}${path}`, {
         adapter: "repertoire",
@@ -256,7 +258,7 @@ export async function fetchArtistCatalogue(artistId: string, market: string): Pr
   })}`;
   try {
     for (let page = 0; path && page < ALBUM_PAGES_SAFETY; page++) {
-      const body: z.infer<typeof albumsSchema> = await spotify(path, albumsSchema, budget);
+      const body: z.infer<typeof albumsSchema> = await spotify(path, albumsSchema, budget, CATALOGUE_QUEUE_WAIT_MS);
       albums.push(...body.items);
       path = body.next ? body.next.replace(API, "") : null;
     }
@@ -271,7 +273,7 @@ export async function fetchArtistCatalogue(artistId: string, market: string): Pr
     for (let from = 0; from < albums.length; from += ALBUMS_PER_BATCH) {
       const ids = albums.slice(from, from + ALBUMS_PER_BATCH).map((a) => a.id);
       const params = new URLSearchParams({ ids: ids.join(","), market });
-      const body: z.infer<typeof albumsBatchSchema> = await spotify(`/albums?${params}`, albumsBatchSchema, budget);
+      const body: z.infer<typeof albumsBatchSchema> = await spotify(`/albums?${params}`, albumsBatchSchema, budget, CATALOGUE_QUEUE_WAIT_MS);
       for (const album of body.albums) {
         if (!album) continue;
         const tracks = album.tracks.items.map((t) => toTrack(t, album));
@@ -279,7 +281,7 @@ export async function fetchArtistCatalogue(artistId: string, market: string): Pr
         let next = album.tracks.next ?? null;
         try {
           for (let page = 0; next && page < ALBUM_PAGES_SAFETY; page++) {
-            const more: z.infer<typeof albumTracksSchema> = await spotify(next.replace(API, ""), albumTracksSchema, budget);
+            const more: z.infer<typeof albumTracksSchema> = await spotify(next.replace(API, ""), albumTracksSchema, budget, CATALOGUE_QUEUE_WAIT_MS);
             tracks.push(...more.items.map((t) => toTrack(t, album)));
             next = more.next ?? null;
           }

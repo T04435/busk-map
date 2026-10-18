@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MemoryBackoffStore, paceSpotify, resetPacerForTests, spotifyLimitedUntil } from "@/server/adapters/repertoire/pacer";
+import { countSpotifyCall, DAILY_MAX_CALLS, MAX_QUEUE_WAIT_MS, MemoryBackoffStore, MemoryUsageStore, paceSpotify, PACE_MS, WINDOW_MAX_CALLS, WINDOW_MS, resetPacerForTests, spotifyLimitedUntil } from "@/server/adapters/repertoire/pacer";
 import { json, LIVE, mockFetch, route } from "../../helpers";
 
 const LINK = "https://open.spotify.com/artist/0SNWoGaDlrCompmg9rXeNq";
@@ -32,7 +32,7 @@ describe("Spotify pacer, budget and breaker (U34)", () => {
   beforeEach(() => {
     vi.stubEnv("SPOTIFY_CLIENT_ID", "synthetic-id");
     vi.stubEnv("SPOTIFY_CLIENT_SECRET", "synthetic-secret");
-    resetPacerForTests({ paceMs: 0 });
+    resetPacerForTests({ paceMs: 0, windowMax: Infinity, dailyMax: Infinity });
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -55,16 +55,16 @@ describe("Spotify pacer, budget and breaker (U34)", () => {
     expect(spotifyCalls(calls)).toHaveLength(26 + 13 + 1);
   });
 
-  it("spaces calls at least 250 ms apart, process-wide", async () => {
+  it("spaces calls at least 500 ms apart, process-wide", async () => {
     vi.useFakeTimers();
-    resetPacerForTests();
+    resetPacerForTests({ windowMax: Infinity, dailyMax: Infinity });
     const times: number[] = [];
     const all = Promise.all(Array.from({ length: 5 }, () => paceSpotify().then(() => times.push(Date.now()))));
     await vi.runAllTimersAsync();
     await all;
     const gaps = times.slice(1).map((t, i) => t - times[i]);
-    expect(gaps.every((g) => g >= 250)).toBe(true);
-    expect(times[4] - times[0]).toBe(1000);
+    expect(gaps.every((g) => g >= 500)).toBe(true);
+    expect(times[4] - times[0]).toBe(2000);
   });
 
   it("stops at the per-fetch call budget (60) and returns what it has", async () => {
@@ -79,7 +79,7 @@ describe("Spotify pacer, budget and breaker (U34)", () => {
   it("a long Retry-After pauses all Spotify calls until it passes, and survives a restart", async () => {
     vi.useFakeTimers();
     const store = new MemoryBackoffStore();
-    resetPacerForTests({ paceMs: 0, store });
+    resetPacerForTests({ paceMs: 0, windowMax: Infinity, dailyMax: Infinity, store });
     const { getArtistCatalogue, findArtists } = await fresh();
     const { calls } = mockFetch([
       tokenRoute,
@@ -101,7 +101,7 @@ describe("Spotify pacer, budget and breaker (U34)", () => {
     expect(spotifyCalls(calls)).toHaveLength(spent);
 
     // A restarted instance reads the stored time.
-    resetPacerForTests({ paceMs: 0, store });
+    resetPacerForTests({ paceMs: 0, windowMax: Infinity, dailyMax: Infinity, store });
     expect(await spotifyLimitedUntil()).toEqual(until);
     expect(await findArtists("x", "AU", LIVE)).toMatchObject({ mode: "fallback", reason: "rate_limited" });
     expect(spotifyCalls(calls)).toHaveLength(spent);
@@ -132,7 +132,7 @@ describe("Spotify pacer, budget and breaker (U34)", () => {
   });
 
   it("never caches a fail-fast: the catalogue throws while limited, so the fallback runs each time", async () => {
-    resetPacerForTests({ paceMs: 0, store: new MemoryBackoffStore() });
+    resetPacerForTests({ paceMs: 0, windowMax: Infinity, dailyMax: Infinity, store: new MemoryBackoffStore() });
     const { limitSpotifyUntil } = await import("@/server/adapters/repertoire/pacer");
     await limitSpotifyUntil(new Date(Date.now() + 3_600_000));
     const { getArtistCatalogue } = await fresh();
@@ -140,5 +140,79 @@ describe("Spotify pacer, budget and breaker (U34)", () => {
     const result = await getArtistCatalogue(LINK, "AU", LIVE);
     expect(result).toMatchObject({ mode: "fallback", reason: "rate_limited", data: [] });
     expect(calls).toHaveLength(0);
+  });
+
+  it("caps a rolling 30 s window at 20 calls, and fails fast past the queue allowance", async () => {
+    vi.useFakeTimers();
+    resetPacerForTests({ paceMs: 0, dailyMax: Infinity });
+    // 20 calls start at once; the 21st would wait 30 s for the first to leave the window: over 4 s, so it fails fast.
+    await Promise.all(Array.from({ length: WINDOW_MAX_CALLS }, () => paceSpotify()));
+    await expect(paceSpotify()).rejects.toMatchObject({ kind: "rate_limited", message: expect.stringMatching(/\(returned HTTP 429\)$/) });
+    // A caller that allows longer (a catalogue fetch) queues for the slot instead, which opens when the window moves on.
+    let started = false;
+    const waiting = paceSpotify(WINDOW_MS).then(() => (started = true));
+    await vi.advanceTimersByTimeAsync(WINDOW_MS - 1);
+    expect(started).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await waiting;
+    expect(started).toBe(true);
+  });
+
+  it("steady load at the pace stays under 20 calls in any 30 s window", async () => {
+    vi.useFakeTimers();
+    resetPacerForTests({ dailyMax: Infinity });
+    const times: number[] = [];
+    const all = Promise.all(Array.from({ length: 60 }, () => paceSpotify(Infinity).then(() => times.push(Date.now()))));
+    await vi.runAllTimersAsync();
+    await all;
+    for (const t of times) expect(times.filter((x) => x >= t && x < t + WINDOW_MS).length).toBeLessThanOrEqual(WINDOW_MAX_CALLS);
+    expect(PACE_MS).toBe(500);
+    expect(MAX_QUEUE_WAIT_MS).toBe(4_000);
+  });
+
+  it("a fail-fast from the window reaches the callers as a rate_limited fallback with no Spotify call", async () => {
+    vi.useFakeTimers();
+    resetPacerForTests({ paceMs: 0, windowMax: 1, dailyMax: Infinity });
+    await paceSpotify();
+    const { findArtists } = await fresh();
+    const { calls } = mockFetch([tokenRoute]);
+    expect(await findArtists("x", "AU", LIVE)).toMatchObject({ mode: "fallback", reason: "rate_limited" });
+    expect(spotifyCalls(calls)).toHaveLength(0);
+  });
+
+  it("the daily cap opens the breaker until the next UTC midnight and fails later calls fast", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-20T15:30:00Z"));
+    const usage = new MemoryUsageStore();
+    const store = new MemoryBackoffStore();
+    resetPacerForTests({ paceMs: 0, windowMax: Infinity, store, usage });
+    for (let i = 1; i < DAILY_MAX_CALLS; i++) await countSpotifyCall();
+    expect(await spotifyLimitedUntil()).toBeNull();
+    await countSpotifyCall(); // the 1,500th call still goes out, and opens the breaker
+    const until = await spotifyLimitedUntil();
+    expect(until!.toISOString()).toBe("2026-10-21T00:00:00.000Z");
+    expect(await store.get("spotify")).toEqual(until);
+    await expect(countSpotifyCall()).rejects.toMatchObject({ kind: "rate_limited" });
+
+    // The next UTC day counts from zero again.
+    vi.setSystemTime(new Date("2026-10-21T00:00:01Z"));
+    expect(await spotifyLimitedUntil()).toBeNull();
+    await expect(countSpotifyCall()).resolves.toBeUndefined();
+  });
+
+  it("a usage-store error is logged and the in-memory count still enforces the cap", async () => {
+    const usage = { increment: vi.fn().mockRejectedValue(new Error("relation does not exist")) };
+    resetPacerForTests({ paceMs: 0, windowMax: Infinity, dailyMax: 3, store: new MemoryBackoffStore(), usage });
+    await countSpotifyCall();
+    await countSpotifyCall();
+    await countSpotifyCall();
+    await expect(countSpotifyCall()).rejects.toMatchObject({ kind: "rate_limited" });
+    expect(usage.increment).toHaveBeenCalledTimes(4);
+  });
+
+  it("the shared count wins when another instance has counted more", async () => {
+    const usage = { increment: vi.fn().mockResolvedValue(DAILY_MAX_CALLS + 1) };
+    resetPacerForTests({ paceMs: 0, windowMax: Infinity, store: new MemoryBackoffStore(), usage });
+    await expect(countSpotifyCall()).rejects.toMatchObject({ kind: "rate_limited" });
   });
 });

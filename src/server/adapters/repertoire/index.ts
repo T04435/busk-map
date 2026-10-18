@@ -78,9 +78,9 @@ export async function findArtistTracks(artist: string, market: string, context: 
 }
 
 /** Ids per release-count lookup (one result list). */
-export const MAX_RELEASE_IDS = 10;
+export const MAX_RELEASE_IDS = 6;
 /** Bound the fan-out (Spotify rate limits per app). */
-const RELEASE_LOOKUPS_AT_ONCE = 4;
+const RELEASE_LOOKUPS_AT_ONCE = 2;
 
 /**
  * Albums and singles per Spotify artist id, loaded after the results show.
@@ -116,8 +116,8 @@ export async function getArtistCatalogue(
 }
 
 /** Songs per release-year lookup (one plan's setlist). */
-export const MAX_YEAR_SONGS = 24;
-const YEAR_LOOKUPS_AT_ONCE = 4;
+export const MAX_YEAR_SONGS = 12;
+const YEAR_LOOKUPS_AT_ONCE = 2;
 
 /**
  * First release year per song (keyed by trackKey), for era matching in the

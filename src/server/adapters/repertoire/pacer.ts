@@ -2,15 +2,30 @@ import "server-only";
 import { neon } from "@neondatabase/serverless";
 import { storeDatabaseUrl } from "@/server/env";
 import { log } from "@/server/log";
+import { AdapterError } from "../core";
 
 /**
  * Spotify politeness (U34, 19 Oct 2026: the app was limited for about 20 h after a 256-release catalogue run).
- * - Pacer: every Spotify call in this process starts at least PACE_MS after the previous one (about 4 a second).
+ * - Pacer: every Spotify call in this process starts at least PACE_MS after the previous one (2 a second), and no more
+ *   than WINDOW_MAX_CALLS start in any rolling WINDOW_MS (Spotify limits on a rolling 30 s window). A call that would
+ *   wait longer than its allowance for a slot (MAX_QUEUE_WAIT_MS; a catalogue fetch allows more) fails fast with
+ *   `rate_limited`, so typeahead and secondary lookups fall back instead of queueing.
  * - Circuit breaker: a 429 with a long Retry-After records "limited until T"; every later call fails fast (no network)
  *   until T. T is kept in memory and in the `adapter_backoff` row (migrations/011), so a restart or another instance
  *   respects it. Without a database (offline, tests) it stays in memory.
+ * - Daily cap: every call is counted per UTC day, app-wide, in `adapter_usage` (migrations/012). At DAILY_MAX_CALLS the
+ *   breaker opens until the next UTC midnight. Instances also count in memory, so a database error never stops the count.
  */
-export const PACE_MS = 250;
+export const PACE_MS = 500;
+/** Spotify's limit is a rolling 30 s window; this process starts at most WINDOW_MAX_CALLS calls in any such window. */
+export const WINDOW_MS = 30_000;
+export const WINDOW_MAX_CALLS = 20;
+/** A call that would wait longer than this for a slot fails fast with `rate_limited` instead of queueing. */
+export const MAX_QUEUE_WAIT_MS = 4_000;
+/** How long a catalogue fetch (which has a call budget) may wait for each slot. */
+export const CATALOGUE_QUEUE_WAIT_MS = 30_000;
+/** Spotify calls the whole app (all instances) may make per UTC day; at this count the breaker opens until midnight UTC. */
+export const DAILY_MAX_CALLS = 1500;
 /** A Retry-After above this opens the breaker; at or below it, the call waits once and retries once. */
 export const SHORT_RETRY_AFTER_S = 30;
 /** Without a Retry-After header, wait this long once. */
@@ -53,11 +68,66 @@ export class PostgresBackoffStore implements BackoffStore {
   }
 }
 
-type State = { untilMs: number; checkedAt: number; nextSlot: number; paceMs: number; store: BackoffStore | undefined };
+export interface UsageStore {
+  /** Adds one call to the adapter's count for the UTC day (YYYY-MM-DD) and returns the new count. */
+  increment(adapter: string, day: string): Promise<number>;
+}
+
+export class MemoryUsageStore implements UsageStore {
+  private readonly rows = new Map<string, number>();
+  async increment(adapter: string, day: string) {
+    const key = `${adapter}:${day}`;
+    const calls = (this.rows.get(key) ?? 0) + 1;
+    this.rows.set(key, calls);
+    return calls;
+  }
+}
+
+export class PostgresUsageStore implements UsageStore {
+  constructor(private readonly sql: Sql) {}
+  async increment(adapter: string, day: string) {
+    const rows = (await this.sql.query(
+      "INSERT INTO adapter_usage (adapter, day, calls) VALUES ($1, $2, 1) ON CONFLICT (adapter, day) DO UPDATE SET calls = adapter_usage.calls + 1 RETURNING calls",
+      [adapter, day],
+    )) as { calls: number | string }[];
+    return Number(rows[0].calls);
+  }
+}
+
+type State = {
+  untilMs: number;
+  checkedAt: number;
+  nextSlot: number;
+  /** Start times of the calls reserved in the last WINDOW_MS, oldest first. */
+  slots: number[];
+  paceMs: number;
+  windowMax: number;
+  dailyMax: number;
+  day: string;
+  dayCalls: number;
+  store: BackoffStore | undefined;
+  usage: UsageStore | undefined;
+};
 const KEY = Symbol.for("buskmap:spotify-pacer");
 function state(): State {
   const g = globalThis as unknown as Record<symbol, State | undefined>;
-  return (g[KEY] ??= { untilMs: 0, checkedAt: 0, nextSlot: 0, paceMs: PACE_MS, store: undefined });
+  return (g[KEY] ??= fresh({}));
+}
+
+function fresh(options: ResetOptions): State {
+  return {
+    untilMs: 0,
+    checkedAt: 0,
+    nextSlot: 0,
+    slots: [],
+    paceMs: options.paceMs ?? PACE_MS,
+    windowMax: options.windowMax ?? WINDOW_MAX_CALLS,
+    dailyMax: options.dailyMax ?? DAILY_MAX_CALLS,
+    day: "",
+    dayCalls: 0,
+    store: options.store,
+    usage: options.usage,
+  };
 }
 
 function store(): BackoffStore {
@@ -69,11 +139,24 @@ function store(): BackoffStore {
   return s.store;
 }
 
-/** Test hook: clears the in-process state and optionally plugs a store. */
-export function resetPacerForTests(options: { store?: BackoffStore; paceMs?: number } = {}) {
-  const g = globalThis as unknown as Record<symbol, State | undefined>;
-  g[KEY] = { untilMs: 0, checkedAt: 0, nextSlot: 0, paceMs: options.paceMs ?? PACE_MS, store: options.store };
+function usageStore(): UsageStore {
+  const s = state();
+  if (!s.usage) {
+    const url = storeDatabaseUrl(false);
+    s.usage = url ? new PostgresUsageStore(neon(url)) : new MemoryUsageStore();
+  }
+  return s.usage;
 }
+
+type ResetOptions = { store?: BackoffStore; usage?: UsageStore; paceMs?: number; windowMax?: number; dailyMax?: number };
+
+/** Test hook: clears the in-process state and optionally plugs the stores and the limits. */
+export function resetPacerForTests(options: ResetOptions = {}) {
+  const g = globalThis as unknown as Record<symbol, State | undefined>;
+  g[KEY] = fresh(options);
+}
+
+const rateLimited = (message: string) => new AdapterError("repertoire", "rate_limited", `${message} (returned HTTP 429)`, 429);
 
 /** When Spotify may be called again, or null when it is not limited. Reads the shared row at most every 30 s. */
 export async function spotifyLimitedUntil(): Promise<Date | null> {
@@ -105,13 +188,51 @@ export async function limitSpotifyUntil(until: Date): Promise<void> {
   }
 }
 
-/** Waits for this call's slot: calls start at least PACE_MS (250 ms) apart, process-wide. */
-export async function paceSpotify(): Promise<void> {
+/**
+ * Waits for this call's slot: calls start at least PACE_MS (500 ms) apart and at most WINDOW_MAX_CALLS (20) in any rolling
+ * WINDOW_MS (30 s), process-wide. When the slot is more than `maxWaitMs` away the call is not queued: it fails fast with
+ * `rate_limited` (the same error the breaker throws).
+ */
+export async function paceSpotify(maxWaitMs = MAX_QUEUE_WAIT_MS): Promise<void> {
   const s = state();
   const now = Date.now();
-  const at = Math.max(now, s.nextSlot);
+  while (s.slots.length > 0 && s.slots[0] <= now - WINDOW_MS) s.slots.shift();
+  let at = Math.max(now, s.nextSlot);
+  // The window is full: the next slot opens when the call WINDOW_MAX_CALLS back leaves the window.
+  if (s.slots.length >= s.windowMax) at = Math.max(at, s.slots[s.slots.length - s.windowMax] + WINDOW_MS);
+  if (at - now > maxWaitMs) throw rateLimited(`Spotify is busy: the next free slot is ${Math.ceil((at - now) / 1000)} s away`);
   s.nextSlot = at + s.paceMs;
+  s.slots.push(at);
   if (at > now) await new Promise((r) => setTimeout(r, at - now));
+}
+
+const midnightUtc = (ms: number) => {
+  const d = new Date(ms);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1));
+};
+
+/**
+ * Counts one Spotify call against today's (UTC) app-wide cap. The call that reaches DAILY_MAX_CALLS still goes out and
+ * opens the breaker until the next UTC midnight; a call past it fails fast. A database error is logged and the
+ * in-memory count carries on.
+ */
+export async function countSpotifyCall(): Promise<void> {
+  const s = state();
+  const now = Date.now();
+  const day = new Date(now).toISOString().slice(0, 10);
+  if (s.day !== day) {
+    s.day = day;
+    s.dayCalls = 0;
+  }
+  s.dayCalls++;
+  try {
+    s.dayCalls = Math.max(s.dayCalls, await usageStore().increment(ADAPTER, day));
+  } catch (error) {
+    // The table may not exist yet (migration pending) or the database may be down: the in-memory count still caps this instance.
+    log.warn("spotify usage could not be counted", { error: error instanceof Error ? error.message : "unknown error" });
+  }
+  if (s.dayCalls > s.dailyMax) throw rateLimited("Spotify's daily call cap for this app is reached");
+  if (s.dayCalls === s.dailyMax) await limitSpotifyUntil(midnightUtc(now));
 }
 
 /** A per-fetch allowance of Spotify calls. */

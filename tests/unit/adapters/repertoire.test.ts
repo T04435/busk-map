@@ -19,7 +19,7 @@ describe("repertoire (Spotify)", () => {
   beforeEach(() => {
     vi.stubEnv("SPOTIFY_CLIENT_ID", "synthetic-id");
     vi.stubEnv("SPOTIFY_CLIENT_SECRET", "synthetic-secret");
-    resetPacerForTests({ paceMs: 0 });
+    resetPacerForTests({ paceMs: 0, windowMax: Infinity, dailyMax: Infinity });
   });
 
   it("parses artist links, URIs and ids", async () => {

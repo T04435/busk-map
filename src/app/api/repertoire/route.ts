@@ -15,13 +15,16 @@ const names = z
   .transform((s) => s.split("|").map((n) => n.trim()).filter(Boolean))
   .pipe(z.array(z.string().max(80)).min(1).max(MAX_LISTENER_ARTISTS));
 
+/** The page may ask for a whole result list (10 ids); only the first MAX_RELEASE_IDS are looked up, the rest on a later call. */
+const RELEASE_IDS_ASKED = 10;
 const ids = z
   .string()
   .trim()
   .min(1)
-  .max(MAX_RELEASE_IDS * 41)
+  .max(RELEASE_IDS_ASKED * 41)
   .transform((s) => s.split("|").map((n) => n.trim()).filter(Boolean))
-  .pipe(z.array(z.string().regex(/^[A-Za-z0-9-]{1,40}$/)).min(1).max(MAX_RELEASE_IDS));
+  .pipe(z.array(z.string().regex(/^[A-Za-z0-9-]{1,40}$/)).min(1).max(RELEASE_IDS_ASKED))
+  .transform((list) => list.slice(0, MAX_RELEASE_IDS));
 
 /** The act's "sounds like" artists for a song search: their versions come first (scoped queries are capped server-side). */
 const actArtists = z

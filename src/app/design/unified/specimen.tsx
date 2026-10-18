@@ -112,7 +112,7 @@ export function UnifiedSpecimen() {
               />
             </ul>
           </Case>
-          <Case id="S8" replaces="plan and landing setlist preview">
+          <Case id="S8" replaces="plan and landing set preview">
             <ul className={list}>
               <SongRow index={1} title="Southbank in the Rain" artist="Hana Lee" durationMs={214000} own />
               <SongRow index={2} title="Scar" artist="Missy Higgins" durationMs={214000} />

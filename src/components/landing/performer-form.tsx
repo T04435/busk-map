@@ -9,7 +9,7 @@ import { PermitPicker } from "@/components/forms/permit-picker";
 import { DatePicker } from "@/components/forms/date-picker";
 import { choiceOf, slotIdOf, TimeSlotPicker } from "@/components/forms/time-slot-picker";
 import { ArtistProfile } from "@/components/honeycomb/artist-profile";
-import { profilePhoto } from "@/components/playlist/profile-header";
+import { profilePhoto } from "@/lib/spotify-profile";
 import { actGenresOf } from "@/lib/repertoire-research";
 import { SoundsLikeSuggestionsList, withSuggested } from "@/components/playlist/sounds-like-suggestions";
 import { RepertoireSource } from "@/components/playlist/repertoire-source";
@@ -287,9 +287,7 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
           hasRepertoire={Boolean(rep && rep.songs.length > 0)}
           header={
             rep?.spotifyArtistId && rep.spotifyProfile ? (
-              <div data-testid="profile-header">
-                <ArtistProfile size="md" maxGenres={5} profile={profileOf(rep.spotifyProfile)} />
-              </div>
+              <ArtistProfile size="md" maxGenres={5} profile={profileOf(rep.spotifyProfile)} />
             ) : null
           }
         />

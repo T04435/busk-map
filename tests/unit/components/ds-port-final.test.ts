@@ -87,6 +87,7 @@ describe("SetlistPanel", () => {
   it("sets LEARN THESE in the display face and keeps no aria-label on a plain span", () => {
     expect(out).toMatch(/<h4[^>]*font-display[^>]*>/);
     expect(out).not.toMatch(/<span[^>]*aria-label="Length/);
-    expect(out).toContain("Length ");
+    // The duration lives inside the one SongRow now (unify rule), not as a separate "Length" label.
+    expect(out).toMatch(/data-slot="song-row"[\s\S]*3:20/);
   });
 });

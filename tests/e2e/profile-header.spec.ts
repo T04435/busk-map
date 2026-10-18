@@ -29,7 +29,7 @@ test.describe("Spotify profile header and sounds-like suggestions (offline)", ()
     const seen = calls(page);
     await page.goto("/busks");
     const f = form(page);
-    await expect(f.getByTestId("profile-header").getByRole("heading")).toHaveText("Paul Kelly");
+    await expect(f.getByTestId("profile-name")).toHaveText("Paul Kelly");
     await expect(f.getByRole("button", { name: /Refresh profile/ })).toHaveCount(0);
     const suggestions = f.getByTestId("sounds-like-suggestions");
     await expect(suggestions).toBeVisible();

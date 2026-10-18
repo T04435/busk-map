@@ -64,6 +64,65 @@ describe("naming the top places worldwide", () => {
   });
 });
 
+describe("U40: the map's cities", () => {
+  const cell = (p: { lat: number; lon: number }, affinity: number) => ({ ...p, geohash: null, affinity, affinityRank: null, popularity: null });
+  /** A 5 x 5 block of cells 0.012 degrees apart around a point, the strongest in the middle. */
+  const block = (p: { lat: number; lon: number }, top: number) =>
+    Array.from({ length: 25 }, (_, k) => {
+      const i = Math.floor(k / 5) - 2;
+      const j = (k % 5) - 2;
+      return cell({ lat: p.lat + i * 0.012, lon: p.lon + j * 0.012 }, top * (1 - 0.02 * (Math.abs(i) + Math.abs(j))));
+    });
+  const MADRID = { lat: 40.41, lon: -3.7 };
+  const MIAMI = { lat: 25.77, lon: -80.2 };
+
+  it("clusters neighbouring cells into one named city each, strongest first, affinity relative to the best", async () => {
+    const { fansMapOutput } = await import("@/server/research/fans-map");
+    const out = fansMapOutput([...block(MIAMI, 0.6), ...block(HAVANA, 1), ...block(MADRID, 0.8)], ["X"]);
+    expect(out.cities!.map((c) => c.name)).toEqual(["Havana", "Madrid", "Miami"]);
+    expect(out.cities![0].affinity).toBe(1);
+    expect(out.cities!.map((c) => c.affinity)).toEqual([...out.cities!.map((c) => c.affinity)].sort((a, b) => b - a));
+    expect(out.cities![1].affinity).toBe(0.8);
+    expect(out.cities![2].affinity).toBe(0.6);
+    // The city sits on its cluster's strongest cell.
+    expect(out.cities![0]).toMatchObject({ lat: HAVANA.lat, lng: HAVANA.lon });
+    expect(out.areas).toEqual(out.cities!.map((c) => c.name));
+  });
+  it("leaves out cells under 0.48 of the strongest", async () => {
+    const { cityClusters } = await import("@/server/research/fans-map");
+    const sorted = [cell(HAVANA, 1), cell(MADRID, 0.47)];
+    expect(cityClusters(sorted).map((c) => c.name)).toHaveLength(1);
+    expect(cityClusters([cell(HAVANA, 1), cell(MADRID, 0.48)])).toHaveLength(2);
+  });
+  it("merges a second cluster of an already named city, and drops clusters no listed city lies near", async () => {
+    const { cityClusters } = await import("@/server/research/fans-map");
+    const sorted = [cell(HAVANA, 1), cell({ lat: 23.2, lon: -82.3 }, 0.9), cell({ lat: -45, lon: -140 }, 0.8)];
+    // Two Havana cells ~13 km apart with no cells between them are separate clusters (tiny spacing), one name.
+    const cities = cityClusters(sorted, [...sorted, cell({ lat: 23.1301, lon: -82.3801 }, 0.1)]);
+    expect(cities.map((c) => c.name)).toEqual(["Havana"]);
+  });
+  it("keeps at most 8 cities", async () => {
+    const { cityClusters } = await import("@/server/research/fans-map");
+    const { WORLD_PLACES } = await import("@/lib/world-places");
+    const sorted = WORLD_PLACES.slice(0, 14).map((w, i) => cell({ lat: w.lat, lon: w.lon }, 1 - i * 0.02));
+    const cities = cityClusters(sorted);
+    expect(cities).toHaveLength(8);
+    expect(new Set(cities.map((c) => c.name)).size).toBe(8);
+  });
+  it("has no cities for no heat, and the props carry them only when there are some", async () => {
+    const { fansMapOutput } = await import("@/server/research/fans-map");
+    expect(fansMapOutput([], []).cities).toEqual([]);
+    const cities = [{ name: "Havana", lat: 23.13, lng: -82.38, affinity: 1 }];
+    const out: FansMapOutput = { summary: "x", cells: [], areas: ["Havana"], planCity: null, cities, signalledBy: [] };
+    expect(fansMapProps(out).cities).toEqual(cities);
+    expect(fansMapProps({ ...out, cities: undefined })).not.toHaveProperty("cities");
+  });
+  it("an old snapshot without cities still maps (no cities prop)", () => {
+    const old: FansMapOutput = { summary: "x", cells: [{ lat: 1, lng: 2, affinity: 1 }], areas: ["A"], signalledBy: [] };
+    expect(fansMapProps(old)).toEqual({ cells: old.cells, topAreas: ["A"], planHref: "/busks" });
+  });
+});
+
 describe("the heatmap call (offline Qloo mock)", () => {
   it("returns relative cells spread worldwide and up to three distinct named places, signalled by the act", async () => {
     vi.resetModules();
@@ -83,6 +142,11 @@ describe("the heatmap call (offline Qloo mock)", () => {
     expect(out.areas.length).toBeLessThanOrEqual(3);
     expect(new Set(out.areas).size).toBe(out.areas.length);
     expect(out.signalledBy).toEqual(["Julia Jacklin"]);
+    // U40: labelled cities for the map, strongest first, at most 8, the first three as the places.
+    expect(out.cities!.length).toBeGreaterThan(0);
+    expect(out.cities!.length).toBeLessThanOrEqual(8);
+    expect(out.cities!.slice(0, 3).map((c) => c.name)).toEqual(out.areas);
+    expect(out.cities![0].affinity).toBe(1);
   });
 
   it("one Qloo call per act: the world is answered from the cache the second time, another area is a new call", async () => {

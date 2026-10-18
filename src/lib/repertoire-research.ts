@@ -94,7 +94,9 @@ export type FansMapCell = { lat: number; lng: number; affinity: number };
  * Optional in saved runs: snapshots from before this step lack it. `city` is retired (the map was per city until U30); old snapshots
  * still carry it and it is ignored.
  */
-export type FansMapOutput = { summary: string; cells: FansMapCell[]; areas: string[]; planCity?: string | null; signalledBy: string[]; /** Retired. */ city?: unknown };
+/** U40: a city the map labels: named after the strongest cell of a cluster of strong cells; `affinity` is relative to the strongest cell (0 to 1). */
+export type FansMapCity = { name: string; lat: number; lng: number; affinity: number };
+export type FansMapOutput = { summary: string; cells: FansMapCell[]; areas: string[]; planCity?: string | null; /** Up to 8, strongest first. Optional: snapshots from before U40 lack it. */ cities?: FansMapCity[]; signalledBy: string[]; /** Retired. */ city?: unknown };
 export type FansLoveOutput = { summary: string; artists: ResearchArtistOut[]; signalledBy: string[]; excluded: number };
 export type LearnOutput = {
   summary: string;

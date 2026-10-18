@@ -2,7 +2,6 @@
 
 import { AiChip } from "@/components/honeycomb/ai-chip";
 import { HiveMark } from "@/components/honeycomb/hive-mark";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { TrackResult } from "@/components/forms/repertoire-api";
 import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
@@ -695,11 +694,6 @@ export function ResearchView() {
         </>
       )}
 
-      <nav className="text-sm">
-        <Link className="underline" href="/">
-          Busk Map home
-        </Link>
-      </nav>
     </div>
   );
 }

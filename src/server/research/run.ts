@@ -24,6 +24,7 @@ import {
   type StepOutputs,
   type StoredStep,
   type SummaryOutput,
+  summaryLine,
 } from "@/lib/repertoire-research";
 import { nameKey } from "@/lib/text";
 import type { AdapterContext } from "@/server/adapters/core";
@@ -418,8 +419,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         nine.usage = result.usage;
         nine.by = result.by;
         const picks = (nine.picks = result.accepted ? buildSuggestions(result.accepted, state, ctx, result.by) : []);
-        const who = result.by === "claude" ? "The Hive" : result.by === "mock" ? "The test model" : "The data";
-        return { summary: `${who} ranked ${plural(picks.length, "song")} and summed up your act`, text: result.text, by: result.by, picks: picks.length };
+        return { summary: summaryLine(result.by, picks.length), text: result.text, by: result.by, picks: picks.length };
       });
 
       const saved = nine.picks.length ? await learn.insertSuggestions(playlist.id, record.id, nine.picks) : [];

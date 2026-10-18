@@ -55,7 +55,7 @@ export const RESEARCH_SOURCES: Record<ResearchStepKey, string> = {
   fansLove: "Qloo /v2/insights · urn:entity:artist signalled by you and your sound-alikes, with explainability; they are left out",
   learn: "Spotify top tracks of those artists (Last.fm as backup); songs you sing, were offered or dismissed are left out",
   genres: "Qloo /v2/insights · urn:tag (music genres) signalled by your artist",
-  summary: "Hive (on Claude) ranks the songs found and writes one paragraph; it never adds a song",
+  summary: "The Hive ranks the songs found and writes one paragraph; it never adds a song",
 };
 
 export type ResearchMode = "full" | "more";
@@ -157,3 +157,12 @@ export type ResearchRequest = z.infer<typeof researchRequestSchema>;
  * mockSpotifyId); tests/unit/research/view.test.ts keeps them equal. Never shown on a live server.
  */
 export const OFFLINE_TEST_ARTIST = { name: "Julia Jacklin", spotifyId: "IBaXCJ49QlTYT2jOrEp66p" } as const;
+
+/**
+ * Step 9's line, in the Hive's voice (U11): "We ranked 6 songs and summed up your act". The model is credited only by the AI chip;
+ * offline the test model is named (B-049), and without a model the line says the data did it.
+ */
+export function summaryLine(by: "claude" | "mock" | "template" | string, picks: number): string {
+  const songs = `${picks} ${picks === 1 ? "song" : "songs"}`;
+  return by === "claude" ? `We ranked ${songs} and summed up your act` : by === "mock" ? `The test model ranked ${songs} and summed up your act` : `We ranked ${songs} from the data and summed up your act, without the Hive`;
+}

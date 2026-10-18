@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { summaryLine } from "@/lib/repertoire-research";
 import { reasonSlots } from "@/components/setlist/reason-slots";
 import { cn } from "cn";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
@@ -209,6 +210,12 @@ export const TOOL_UI: Record<string, ToolUi> = {
   // Repertoire research steps whose result is a list of artists: the names as xs ArtistChips, not a comma list (unify rule).
   research_sounds_like: researchArtists("You sound like", "Qloo found no artists like you"),
   research_fans_love: researchArtists("Your fans also love", "Qloo found no other artists your fans love"),
+  // Step 9 in the Hive's voice from its data, so a saved run from before U11 ("Claude ranked…") reads the same as a new one.
+  research_summary: {
+    doing: (s) => s.label,
+    title: (s) => s.label,
+    render: (o) => <Foot>{summaryLine(str(o.by) ?? "template", num(o.picks) ?? 0)}</Foot>,
+  },
   taste_map: {
     doing: () => "Mapping where your crowd gathers",
     title: () => "Where your crowd gathers",
@@ -549,4 +556,20 @@ export const TOOL_ICON: Record<string, IconName> = {
   learn_these: "learn",
   best_hours: "clock",
   finish_plan: "check",
+  // Learn run (U09: each step its own icon, never the working dots once done).
+  related_artists: "users",
+  rising: "trending",
+  crowd_profile: "users",
+  top_tracks: "music",
+  finish_suggestions: "check",
+  // Repertoire research.
+  research_profile: "spotify",
+  research_songs: "list",
+  research_qloo: "search",
+  research_sounds_like: "volume",
+  research_fans: "users",
+  research_fans_love: "gem",
+  research_learn: "learn",
+  research_genres: "music",
+  research_summary: "pencil",
 };

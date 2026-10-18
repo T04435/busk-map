@@ -2,7 +2,7 @@ import { cn } from "cn";
 import { EvidenceLine } from "@/components/honeycomb/evidence-line";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
-import { PercentCell } from "@/components/honeycomb/percent-cell";
+import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { RankTile } from "@/components/honeycomb/rank-tile";
 import { agentVsEngineTitle, becauseClause } from "@/lib/agent-vs-engine";
 import type { Plan } from "@/lib/plan-schema";
@@ -62,7 +62,7 @@ export function AgentVsEngine({
             <li key={p.id} className="inline-flex items-center gap-2 border border-border bg-background py-1 pr-2.5 pl-1 text-sm font-bold max-sm:w-full">
               <RankTile n={i + 1} size="sm" />
               <span className="min-w-0 flex-1">{p.name}</span>
-              <PercentCell value={p.score} size={34} label="Score" />
+              <ScoreCell value={p.score} size="sm" label="Score" />
               <Icon name="check" size={16} strokeWidth={2.5} label="Kept" className="text-pitch-legal" />
             </li>
           ))}

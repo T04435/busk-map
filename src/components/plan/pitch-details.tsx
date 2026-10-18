@@ -3,10 +3,12 @@ import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { FoundByBadge } from "@/components/honeycomb/found-by-badge";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
-import { PercentCell } from "@/components/honeycomb/percent-cell";
+import { ArtistChip } from "@/components/honeycomb/artist-chip";
+import { InfoTag } from "@/components/honeycomb/info-tag";
+import { Reason } from "@/components/honeycomb/reason";
+import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { RankTile } from "@/components/honeycomb/rank-tile";
 import { ScoreRing } from "@/components/honeycomb/score-ring";
-import { WithCells } from "@/components/honeycomb/with-cells";
 import { Badge } from "@/components/ui/badge";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
 import { explainedByLabel, type ExplanationsModel } from "@/lib/sources";
@@ -72,9 +74,7 @@ export function PitchDetails({ plan, pitch, rank, model }: { plan: Plan; pitch: 
             ))}
           </ul>
         )}
-        <p className="m-0 mt-2 text-[15px] leading-[22px]">
-          <WithCells text={pitch.why} />
-        </p>
+        <Reason text={pitch.why} className="mt-2" />
         {pitch.origin === "agent" && written ? (
           <p className="m-0 mt-2 text-[13px] leading-[18px] text-muted-foreground">The Hive suggested this spot. Busk Map scored it and checked it against the busking rules.</p>
         ) : null}
@@ -132,12 +132,13 @@ export function PitchDetails({ plan, pitch, rank, model }: { plan: Plan; pitch: 
             }
           >
             {e.tasteMatch && (
-              <QlooDetail className="inline-flex items-center gap-2" >
-                <span data-testid="event-taste-match" className="inline-flex items-center gap-2">
-                  <PercentCell value={Math.round(e.tasteMatch.affinity * 100)} size={34} label="Taste match" />
-                  Qloo: {e.tasteMatch.artist}&apos;s fans match your taste
-                </span>
-              </QlooDetail>
+              <div data-testid="event-taste-match">
+                <ArtistChip
+                  name={e.tasteMatch.artist}
+                  score={<ScoreCell value={Math.round(e.tasteMatch.affinity * 100)} size="sm" label="Taste match" />}
+                  info={<InfoTag tone="qloo">Qloo: fans match your taste</InfoTag>}
+                />
+              </div>
             )}
           </Fact>
         ))}

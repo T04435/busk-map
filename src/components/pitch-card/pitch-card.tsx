@@ -1,5 +1,5 @@
 import { Icon, type IconName } from "@/components/honeycomb/icon";
-import { PercentCell } from "@/components/honeycomb/percent-cell";
+import { ScoreCell } from "@/components/honeycomb/score-cell";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
 
 const FACTORS: { key: keyof PlanPitch["factors"]; weight: keyof Plan["weights"]; label: string; icon: IconName }[] = [
@@ -26,7 +26,7 @@ export function ScoreBreakdown({ pitch, weights }: { pitch: PlanPitch; weights?:
   return (
     <section aria-label="Score breakdown" className="flex flex-col gap-4">
       <div className="flex flex-nowrap items-center gap-4">
-        <PercentCell value={pitch.score} size={64} label="Score" />
+        <ScoreCell value={pitch.score} size="md" label="Score" />
         <div>
           <h4 className="m-0 font-display text-lg leading-[22px] font-extrabold tracking-[0.03em] uppercase">How this score adds up</h4>
           <p className="m-0 text-sm leading-5 text-muted-foreground">Each factor, times its weight. Bonuses come on top.</p>
@@ -45,7 +45,7 @@ export function ScoreBreakdown({ pitch, weights }: { pitch: PlanPitch; weights?:
             .join(" · ");
           return (
             <li key={key} className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
-              <PercentCell value={v === null || none ? null : v * 100} size={40} label={label} />
+              <ScoreCell value={v === null || none ? null : v * 100} size="md" label={label} />
               <span className="grid min-w-0 gap-0.5">
                 <span className="flex items-center gap-1.5 font-sans text-[15px] leading-5 font-bold">
                   <Icon name={icon} size={16} />

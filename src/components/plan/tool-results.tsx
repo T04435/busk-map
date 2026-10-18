@@ -4,11 +4,16 @@ import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { EvidenceLine } from "@/components/honeycomb/evidence-line";
 import { FoundByBadge } from "@/components/honeycomb/found-by-badge";
 import { Icon, type IconName } from "@/components/honeycomb/icon";
-import { MeterBar, PercentCell } from "@/components/honeycomb/percent-cell";
+import { ArtistChip } from "@/components/honeycomb/artist-chip";
+import { InfoTag } from "@/components/honeycomb/info-tag";
+import { MeterBar } from "@/components/honeycomb/percent-cell";
 import { PitchRow } from "@/components/honeycomb/pitch-row";
 import { RankTile } from "@/components/honeycomb/rank-tile";
-import { WithCells } from "@/components/honeycomb/with-cells";
-import { LearnItMenu } from "@/components/songs/learn-it-menu";
+import { Reason } from "@/components/honeycomb/reason";
+import { ScoreCell } from "@/components/honeycomb/score-cell";
+import { SongActions } from "@/components/honeycomb/song-actions";
+import { SongRow } from "@/components/honeycomb/song-row";
+import { SongTag } from "@/components/honeycomb/song-tag";
 import type { AgentStep } from "@/lib/agent-steps";
 import type { ExplanationsModel } from "@/lib/sources";
 import { EstimateLabel } from "./estimate-label";
@@ -163,8 +168,8 @@ export type MiniPin = { id: string; name: string; lat: number; lon: number; rank
 type Ctx = { when?: string; pins?: MiniPin[]; model?: ExplanationsModel | null };
 type ToolUi = { doing: (s: AgentStep) => string; title: (s: AgentStep) => string; render: (out: Rec, s: AgentStep, ctx: Ctx) => ReactNode };
 
-/** "Gillian Welch 0.31; The Teskey Brothers 0.22" -> "Gillian Welch (31), The Teskey Brothers (22)" (the DS wording of "because"). */
-const becauseText = (s: string) => s.replace(/ ([\d.]+)(;|$)/g, (_m, v: string, e: string) => ` (${Math.round(Number(v) * 100)})${e ? "," : ""}`);
+/** "Gillian Welch 0.31; The Teskey Brothers 0.22" -> the artists behind it, for a Reason's "because" chips. */
+const becauseArtists = (s: string) => s.split(";").map((part) => ({ name: part.replace(/ [\d.]+$/, "").trim() })).filter((a) => a.name);
 
 /** Each tool as a busker sees it: what it is doing while it runs, a plain title once done, and its result drawn from the contract fields. */
 export const TOOL_UI: Record<string, ToolUi> = {
@@ -201,11 +206,9 @@ export const TOOL_UI: Record<string, ToolUi> = {
               <ul className="m-0 grid list-none gap-2 p-0">
                 {artists.map((a) => (
                   <li key={str(a.name) ?? ""}>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <PercentCell value={pct(a.affinity)} size={34} label="Affinity" />
-                      <b>{str(a.name)}</b>
-                    </div>
-                    {str(a.because) ? <p className="m-0 mt-0.5 text-sm leading-5 text-muted-foreground">Because your fans like {becauseText(str(a.because) as string)}</p> : null}
+                    <ArtistChip name={str(a.name) ?? ""} score={<ScoreCell value={pct(a.affinity)} size="sm" label="Affinity" />}>
+                      {str(a.because) ? <Reason text="Because your fans like" because={becauseArtists(str(a.because) as string)} /> : null}
+                    </ArtistChip>
                   </li>
                 ))}
               </ul>
@@ -287,10 +290,11 @@ export const TOOL_UI: Record<string, ToolUi> = {
                 }
               >
                 {m ? (
-                  <QlooDetail className="inline-flex items-center gap-2">
-                    <PercentCell value={Math.round(Number(m[2]) * 100)} size={34} label="Taste match" />
-                    Qloo: {m[1]}&apos;s fans match your taste
-                  </QlooDetail>
+                  <ArtistChip
+                    name={m[1]}
+                    score={<ScoreCell value={Math.round(Number(m[2]) * 100)} size="sm" label="Taste match" />}
+                    info={<InfoTag tone="qloo">Qloo: fans match your taste</InfoTag>}
+                  />
                 ) : null}
               </Fact>
             );
@@ -385,7 +389,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
               <div className="flex flex-wrap items-center gap-2">
                 <RankTile n={j + 1} size="sm" quiet />
                 <b className="font-display text-[17px] leading-5 font-extrabold uppercase">{name}</b>
-                <PercentCell value={num(scores[name])} size={36} label="Score" />
+                <ScoreCell value={num(scores[name])} size="md" label="Score" />
               </div>
               <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-2 p-0">
                 {genres.map((g) => {
@@ -403,22 +407,20 @@ export const TOOL_UI: Record<string, ToolUi> = {
     doing: () => "Ordering your suggested set",
     title: (s) => `Your suggested set at ${forPitch(s)}`,
     render: (o) => (
-      <ol className="m-0 list-none p-0 [counter-reset:s]">
+      <ol className="m-0 list-none p-0">
         {arr(o.songs).slice(0, 4).map((x, i) => (
-          <li
+          <SongRow
             key={`${str(x.song)}${i}`}
-            className="grid grid-cols-[32px_1fr_auto] items-center gap-x-3 gap-y-0.5 border-t border-border py-3 [counter-increment:s] first:border-t-0 before:font-mono before:text-sm before:font-bold before:text-muted-foreground before:content-[counter(s,decimal-leading-zero)]"
-          >
-            <span>
-              <span className="font-bold">{str(x.song)}</span> <span className="font-normal text-muted-foreground">· {str(x.artist)}{num(x.year) ? `, ${num(x.year)}` : ""}</span>
-            </span>
-            <PercentCell value={num(x.score)} size={36} label="Fit" />
-            {str(x.why) ? (
-              <span className="col-start-2 -col-end-1 text-sm leading-5 text-muted-foreground">
-                <WithCells text={str(x.why) as string} size={28} />
-              </span>
-            ) : null}
-          </li>
+            compact
+            index={i + 1}
+            title={str(x.song) ?? ""}
+            artist={str(x.artist) ?? ""}
+            year={num(x.year)}
+            score={num(x.score)}
+            scoreLabel="Fit"
+            className="border-t border-border first:border-t-0"
+            reason={str(x.why) ? <Reason text={str(x.why) as string} /> : undefined}
+          />
         ))}
       </ol>
     ),
@@ -428,20 +430,17 @@ export const TOOL_UI: Record<string, ToolUi> = {
     title: () => "Songs worth learning",
     render: (o) => (
       <div className="border-2 border-t-4 border-rule border-t-primary p-4">
-        <ol className="m-0 grid list-none gap-2 p-0">
+        <ol className="m-0 list-none p-0">
           {arr(o.songs).slice(0, 3).map((x, i) => (
-            <li key={`${str(x.artist)}${i}`} className="grid grid-cols-[20px_1fr_auto] items-start gap-2 text-[15px] leading-[22px]">
-              <b className="font-mono">{i + 1}</b>
-              <span>
-                <b>{str(x.title) ?? "Any song"}</b> · {str(x.artist)}
-                {str(x.why) ? (
-                  <small className="block text-sm leading-5 opacity-85">
-                    <WithCells text={str(x.why) as string} size={28} />
-                  </small>
-                ) : null}
-              </span>
-              {str(x.title) ? <LearnItMenu title={str(x.title) as string} artist={str(x.artist) ?? ""} /> : <span />}
-            </li>
+            <SongRow
+              key={`${str(x.artist)}${i}`}
+              compact
+              title={str(x.title) ?? "Any song"}
+              artist={str(x.artist) ?? ""}
+              tags={<SongTag kind="suggested" />}
+              reason={str(x.why) ? <Reason text={str(x.why) as string} /> : undefined}
+              actions={str(x.title) ? <SongActions title={str(x.title) as string} artist={str(x.artist) ?? ""} size="sm" learnIt /> : undefined}
+            />
           ))}
         </ol>
       </div>

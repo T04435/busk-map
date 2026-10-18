@@ -5,7 +5,7 @@ import { getVersion, LngLatBounds, Map as MapLibreMap, Marker, NavigationControl
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Icon } from "@/components/honeycomb/icon";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
-import { PercentCell } from "@/components/honeycomb/percent-cell";
+import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { Button } from "@/components/ui/button";
 import { geohashBounds } from "@/lib/geo";
 import { MAP_FRAME, MAP_GESTURES, TASTE_STEP_FROM, orangeCells } from "@/components/map/taste-cells";
@@ -366,7 +366,7 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
         >
           <div className="flex items-center gap-2">
             <b className="min-w-0 flex-1 font-display text-lg leading-5 font-extrabold uppercase">{dot.name}</b>
-            <PercentCell value={dot.score} size={34} label="Score" />
+            <ScoreCell value={dot.score} size="sm" label="Score" />
             <Button type="button" variant="ghost" size="icon-sm" aria-label="Close summary" onClick={closeSummary}>
               <Icon name="x" size={16} />
             </Button>

@@ -2,10 +2,10 @@ import Link from "next/link";
 import { Icon } from "@/components/honeycomb/icon";
 import { AddToRepertoire } from "@/components/playlist/add-to-repertoire";
 import { CopySetButton } from "@/components/setlist/copy-set-button";
-import { PercentCell } from "@/components/honeycomb/percent-cell";
-import { WithCells } from "@/components/honeycomb/with-cells";
-import { LearnItMenu } from "@/components/songs/learn-it-menu";
-import { Badge } from "@/components/ui/badge";
+import { Reason } from "@/components/honeycomb/reason";
+import { SongActions } from "@/components/honeycomb/song-actions";
+import { SongRow } from "@/components/honeycomb/song-row";
+import { SongTag } from "@/components/honeycomb/song-tag";
 import { formatDuration } from "@/lib/live-search";
 import { ageLabel } from "@/lib/age";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
@@ -28,6 +28,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 function setAsText(setlist: SetlistSong[]): string {
   return [
     PLAYLIST_COPY.suggestedSet,
+    // unify-ok: the clipboard text of the set, not a display
     ...setlist.map((s, i) => `${pad(i + 1)} ${s.title} - ${s.artist}${s.year !== null ? `, ${s.year}` : ""}${s.durationMs !== null ? ` (${formatDuration(s.durationMs)})` : ""}`),
   ].join("\n");
 }
@@ -142,52 +143,35 @@ function SetlistPreview({
         <p className="m-0 text-muted-foreground">{PLAYLIST_COPY.suggestedSetEmpty}</p>
       ) : (
         <>
-          <ol className="m-0 flex list-none flex-col gap-3 p-0">
+          <ol className="m-0 flex list-none flex-col p-0">
             {pitch.setlist.map((song, i) => (
-              <li key={song.songId} className="grid grid-cols-[3ch_1fr_auto] items-start gap-x-3 border-b border-border pb-3 last:border-b-0">
-                <span className="font-mono text-sm text-muted-foreground">{pad(i + 1)}</span>
-                <span className="min-w-0">
-                  <span className="font-bold">{song.title}</span>{" "}
-                  <span className="text-muted-foreground">
-                    · {song.artist}
-                    {song.year !== null ? `, ${song.year}` : ""}
+              <SongRow
+                key={song.songId}
+                index={i + 1}
+                title={song.title}
+                artist={song.artist}
+                year={song.year}
+                durationMs={song.durationMs}
+                own={song.own}
+                score={song.score}
+                scoreLabel="Fit"
+                className="border-b border-border last:border-b-0"
+                tags={song.origin === "suggested" ? <span data-testid="suggested-tag"><SongTag kind="suggested" /></span> : undefined}
+                reason={<Reason text={song.reason} />}
+              >
+                {song.origin === "suggested" && song.suggestion && (
+                  <span className="block text-sm text-muted-foreground" data-testid="suggestion-because">
+                    {song.suggestion.because}{" "}
+                    {song.suggestion.sourceUrl ? (
+                      <a className="font-bold text-foreground underline underline-offset-3" href={song.suggestion.sourceUrl} target="_blank" rel="noreferrer">
+                        {song.suggestion.source === "spotify" ? "On Spotify" : "On Last.fm"}
+                      </a>
+                    ) : (
+                      `(from ${song.suggestion.source === "spotify" ? "Spotify" : "Last.fm"})`
+                    )}
                   </span>
-                  {song.own && (
-                    <Badge variant="solid" className="ml-2">
-                      Your song
-                    </Badge>
-                  )}
-                  {song.origin === "suggested" && (
-                    <Badge variant="neutral" className="ml-2" data-testid="suggested-tag">
-                      Suggested
-                    </Badge>
-                  )}
-                  <span className="block text-sm text-muted-foreground">
-                    <WithCells text={song.reason} />
-                  </span>
-                  {song.origin === "suggested" && song.suggestion && (
-                    <span className="block text-sm text-muted-foreground" data-testid="suggestion-because">
-                      {song.suggestion.because}{" "}
-                      {song.suggestion.sourceUrl ? (
-                        <a className="font-bold text-foreground underline underline-offset-3" href={song.suggestion.sourceUrl} target="_blank" rel="noreferrer">
-                          {song.suggestion.source === "spotify" ? "On Spotify" : "On Last.fm"}
-                        </a>
-                      ) : (
-                        `(from ${song.suggestion.source === "spotify" ? "Spotify" : "Last.fm"})`
-                      )}
-                    </span>
-                  )}
-                </span>
-                <span className="flex items-center gap-3">
-                  {song.durationMs !== null && (
-                    <span className="font-mono text-sm text-muted-foreground tabular-nums">
-                      <span className="sr-only">Length </span>
-                      {formatDuration(song.durationMs)}
-                    </span>
-                  )}
-                  <PercentCell value={song.score} size={40} label="Fit" />
-                </span>
-              </li>
+                )}
+              </SongRow>
             ))}
           </ol>
           <p data-testid="set-length" className="m-0 border-t-2 border-rule pt-3 font-mono text-sm font-medium">
@@ -207,21 +191,19 @@ function SetlistPreview({
         {learnThese.length === 0 ? (
           <p className="m-0 text-sm text-muted-foreground">No suggestions for this crowd yet.</p>
         ) : (
-          <ol className="m-0 flex list-none flex-col gap-2 p-0">
+          <ol className="m-0 flex list-none flex-col p-0">
             {learnThese.map((s, i) => (
-              <li key={s.artist} className="flex items-start justify-between gap-2">
-                <span className="flex gap-3">
-                  <b className="font-mono">{i + 1}</b>
-                  <span>
-                    <span className="font-bold">{s.title ?? "Any song"}</span> · {s.artist}
-                    <span className="block text-sm text-muted-foreground">
-                      <WithCells text={s.reason} size={30} />
-                    </span>
-                    {s.title && canAddToRepertoire && <AddToRepertoire title={s.title} artist={s.artist} reason={s.reason} growth={s.audienceGrowth ?? null} />}
-                  </span>
-                </span>
-                {s.title && <LearnItMenu title={s.title} artist={s.artist} />}
-              </li>
+              <SongRow
+                key={s.artist}
+                index={i + 1}
+                title={s.title ?? "Any song"}
+                artist={s.artist}
+                className="border-b border-border last:border-b-0"
+                reason={<Reason text={s.reason} />}
+                actions={s.title ? <SongActions title={s.title} artist={s.artist} learnIt /> : undefined}
+              >
+                {s.title && canAddToRepertoire && <AddToRepertoire title={s.title} artist={s.artist} reason={s.reason} growth={s.audienceGrowth ?? null} />}
+              </SongRow>
             ))}
           </ol>
         )}

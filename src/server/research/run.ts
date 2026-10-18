@@ -266,6 +266,9 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
               ...(t.id ? { spotifyTrackId: t.id } : {}),
               ...(t.year && t.year >= 1900 && t.year <= 2100 ? { year: t.year } : {}),
               ...(t.durationMs && t.durationMs > 0 && t.durationMs <= 3_600_000 ? { durationMs: t.durationMs } : {}),
+              // Covers persist (migration 010): the track or album art, and the act's own photo.
+              ...(t.image && /^https:\/\//.test(t.image) && t.image.length <= 500 ? { image: t.image } : {}),
+              ...(profile.image && /^https:\/\//.test(profile.image) && profile.image.length <= 500 ? { artistImage: profile.image } : {}),
             });
             if (res.ok) out.added++;
             else if (res.reason === "duplicate") out.already++;

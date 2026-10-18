@@ -127,6 +127,27 @@ describe("MemoryPlaylistStore", () => {
 });
 
 /** The SQL the Postgres store sends: parameterised, with the limit and no-repeat rule in the one statement. */
+describe("song covers persist (migration 010)", () => {
+  it("keeps a song's cover and artist photo, and a repeat fills in what the row lacks", async () => {
+    const store = new MemoryPlaylistStore();
+    const playlist = await store.create(hashToken(newToken()));
+    const first = await store.addSong(playlist.id, song(1));
+    expect(first.ok && first.song.image).toBe(null);
+    const again = await store.addSong(playlist.id, song(1, { image: "https://i.scdn.co/image/cover", artistImage: "https://i.scdn.co/image/artist" }));
+    expect(again).toEqual({ ok: false, reason: "duplicate" });
+    const [saved] = await store.songs(playlist.id);
+    expect(saved).toMatchObject({ image: "https://i.scdn.co/image/cover", artistImage: "https://i.scdn.co/image/artist" });
+    const other = await store.addSong(playlist.id, song(2, { image: "https://i.scdn.co/image/two" }));
+    expect(other.ok && other.song).toMatchObject({ image: "https://i.scdn.co/image/two", artistImage: null });
+  });
+
+  it("only takes https images", async () => {
+    const { addSongSchema } = await import("@/lib/playlist-schema");
+    expect(addSongSchema.safeParse(song(1, { image: "http://example.com/a.jpg" })).success).toBe(false);
+    expect(addSongSchema.safeParse(song(1, { image: "https://i.scdn.co/image/a" })).success).toBe(true);
+  });
+});
+
 describe("PostgresPlaylistStore SQL shape", () => {
   function fake(results: unknown[][]) {
     const calls: { text: string; params: unknown[] }[] = [];
@@ -152,7 +173,7 @@ describe("PostgresPlaylistStore SQL shape", () => {
     expect(calls[1].text).not.toMatch(/count\(\*\)/);
     expect(calls[1].text).toMatch(/ON CONFLICT \(playlist_id, song_key\) DO NOTHING/);
     expect(calls[1].params[1]).toBe("artist|song 1");
-    expect(calls[1].params).toHaveLength(9);
+    expect(calls[1].params).toHaveLength(11); // + image and artist_image (migration 010)
     expect(calls[2].text).toMatch(/revision = revision \+ 1/);
   });
 

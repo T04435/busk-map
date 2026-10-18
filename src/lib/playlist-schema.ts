@@ -25,6 +25,9 @@ export const addSongSchema = z.object({
   spotifyTrackId: spotifyIdSchema.optional(),
   year: z.number().int().min(1900).max(2100).optional(),
   durationMs: z.number().int().positive().max(3_600_000).optional(),
+  /** The track's own image or album art, and the artist's photo (https, migration 010): kept so covers persist (U03). */
+  image: z.string().max(500).regex(/^https:\/\//).optional(),
+  artistImage: z.string().max(500).regex(/^https:\/\//).optional(),
 });
 export type AddSongInput = z.infer<typeof addSongSchema>;
 
@@ -116,6 +119,9 @@ export type PlaylistSongView = {
   spotifyTrackId: string | null;
   year: number | null;
   durationMs: number | null;
+  /** The track's own image or album art, and the artist's photo, when known (migration 010). */
+  image: string | null;
+  artistImage: string | null;
   addedAt: string;
 };
 

@@ -199,7 +199,13 @@ export class MemoryPlaylistStore implements PlaylistStore {
     const rows = this.songRows.get(playlistId);
     if (!rows) return { ok: false, reason: "missing" };
     const songKey = playlistSongKey(input.artist, input.title);
-    if (rows.some((s) => s.songKey === songKey)) return { ok: false, reason: "duplicate" };
+    const same = rows.find((s) => s.songKey === songKey);
+    if (same) {
+      // A repeat still fills in a cover the row lacks (covers fill in on the next save or research, migration 010).
+      same.image ??= input.image ?? null;
+      same.artistImage ??= input.artistImage ?? null;
+      return { ok: false, reason: "duplicate" };
+    }
     const song: StoredSong = {
       id: String(this.nextSongId++),
       songKey,
@@ -211,6 +217,8 @@ export class MemoryPlaylistStore implements PlaylistStore {
       spotifyTrackId: input.spotifyTrackId ?? null,
       year: input.year ?? null,
       durationMs: input.durationMs ?? null,
+      image: input.image ?? null,
+      artistImage: input.artistImage ?? null,
       addedAt: Date.now(),
     };
     rows.push(song);
@@ -272,7 +280,7 @@ export class MemoryPlaylistStore implements PlaylistStore {
       keyed.delete(row.songKey);
     }
     for (const [songKey, s] of keyed) {
-      kept.push({ id: String(this.nextSongId++), songKey, title: s.title, artist: s.artist, own: s.own, state: "can_sing", source: s.source, spotifyTrackId: s.spotifyTrackId ?? null, year: s.year ?? null, durationMs: s.durationMs ?? null, addedAt: Date.now() });
+      kept.push({ id: String(this.nextSongId++), songKey, title: s.title, artist: s.artist, own: s.own, state: "can_sing", source: s.source, spotifyTrackId: s.spotifyTrackId ?? null, year: s.year ?? null, durationMs: s.durationMs ?? null, image: s.image ?? null, artistImage: s.artistImage ?? null, addedAt: Date.now() });
     }
     this.songRows.set(playlistId, kept);
   }
@@ -354,11 +362,13 @@ type SongRow = {
   spotify_track_id: string | null;
   year: number | null;
   duration_ms: number | null;
+  image: string | null;
+  artist_image: string | null;
   added_at: Time;
 };
 
 const PLAYLIST_COLUMNS = "id, act_name, sounds_like, spotify_artist_id, spotify_profile, qloo_artist_id, research, usual_pitches, recent_busks, city, revision, created_at, last_seen_at";
-const SONG_COLUMNS = "id::text AS id, song_key, state, source, title, artist, own, spotify_track_id, year, duration_ms, added_at";
+const SONG_COLUMNS = "id::text AS id, song_key, state, source, title, artist, own, spotify_track_id, year, duration_ms, image, artist_image, added_at";
 
 const toRecord = (r: PlaylistRow): PlaylistRecord => ({
   id: r.id,
@@ -387,6 +397,8 @@ const toSong = (r: SongRow): StoredSong => ({
   spotifyTrackId: r.spotify_track_id,
   year: r.year,
   durationMs: r.duration_ms,
+  image: r.image ?? null,
+  artistImage: r.artist_image ?? null,
   addedAt: ms(r.added_at),
 });
 
@@ -463,11 +475,11 @@ export class PostgresPlaylistStore implements PlaylistStore {
     const [, inserted] = (await this.sql.transaction((txn) => [
       txn.query("SELECT id FROM playlists WHERE id = $1::uuid FOR UPDATE", [playlistId]),
       txn.query(
-        `INSERT INTO playlist_songs (playlist_id, song_key, state, source, title, artist, own, spotify_track_id, year, duration_ms)
-         SELECT $1::uuid, $2::text, 'can_sing', $3::text, $4::text, $5::text, $6::boolean, $7::text, $8::smallint, $9::integer
+        `INSERT INTO playlist_songs (playlist_id, song_key, state, source, title, artist, own, spotify_track_id, year, duration_ms, image, artist_image)
+         SELECT $1::uuid, $2::text, 'can_sing', $3::text, $4::text, $5::text, $6::boolean, $7::text, $8::smallint, $9::integer, $10::text, $11::text
          ON CONFLICT (playlist_id, song_key) DO NOTHING
          RETURNING ${SONG_COLUMNS}`,
-        [playlistId, songKey, s.source, s.title, s.artist, s.own, s.spotifyTrackId ?? null, s.year ?? null, s.durationMs ?? null],
+        [playlistId, songKey, s.source, s.title, s.artist, s.own, s.spotifyTrackId ?? null, s.year ?? null, s.durationMs ?? null, s.image ?? null, s.artistImage ?? null],
       ),
     ])) as [unknown, SongRow[]];
     const rows = inserted;
@@ -477,7 +489,12 @@ export class PostgresPlaylistStore implements PlaylistStore {
       await this.sql.query("UPDATE learn_suggestions SET status = 'learned', learned_at = now() WHERE playlist_id = $1 AND song_key = $2 AND status = 'pending'", [playlistId, songKey]);
       return { ok: true, song: toSong(rows[0]) };
     }
-    const existing = (await this.sql.query("SELECT 1 AS one FROM playlist_songs WHERE playlist_id = $1 AND song_key = $2", [playlistId, songKey])) as unknown[];
+    // A repeat still fills in a cover the row lacks (covers fill in on the next save or research, migration 010).
+    const existing = (await this.sql.query(
+      `UPDATE playlist_songs SET image = COALESCE(image, $3::text), artist_image = COALESCE(artist_image, $4::text)
+        WHERE playlist_id = $1 AND song_key = $2 RETURNING 1 AS one`,
+      [playlistId, songKey, s.image ?? null, s.artistImage ?? null],
+    )) as unknown[];
     return { ok: false, reason: existing.length ? "duplicate" : "missing" };
   }
 

@@ -242,6 +242,8 @@ export class MemoryLearnStore implements LearnStore {
           spotifyTrackId: row.spotifyTrackId ?? null,
           year: row.year,
           durationMs: row.durationMs,
+          image: (row as { imageUrl?: string | null }).imageUrl ?? null,
+          artistImage: null,
           addedAt: now,
           suggestionId: row.id,
         } satisfies StoredSong);
@@ -304,7 +306,7 @@ export class MemoryLearnStore implements LearnStore {
   }
 }
 
-function toSongView(song: { id: string; title: string; artist: string; own: boolean; state: "can_sing" | "learned"; source: PlaylistSongView["source"]; spotifyTrackId: string | null; year: number | null; durationMs: number | null; addedAt: number }): PlaylistSongView {
+function toSongView(song: { id: string; title: string; artist: string; own: boolean; state: "can_sing" | "learned"; source: PlaylistSongView["source"]; spotifyTrackId: string | null; year: number | null; durationMs: number | null; image?: string | null; artistImage?: string | null; addedAt: number }): PlaylistSongView {
   return {
     id: song.id,
     title: song.title,
@@ -315,6 +317,8 @@ function toSongView(song: { id: string; title: string; artist: string; own: bool
     spotifyTrackId: song.spotifyTrackId,
     year: song.year,
     durationMs: song.durationMs,
+    image: song.image ?? null,
+    artistImage: song.artistImage ?? null,
     addedAt: new Date(song.addedAt).toISOString(),
   };
 }
@@ -597,8 +601,8 @@ export class PostgresLearnStore implements LearnStore {
           [playlistId, suggestionId],
         ),
         txn.query(
-          `INSERT INTO playlist_songs (playlist_id, song_key, state, source, title, artist, spotify_track_id, qloo_artist_id, year, duration_ms, suggestion_id)
-           SELECT s.playlist_id, s.song_key, 'learned', 'suggested', s.title, s.artist, s.spotify_track_id, s.qloo_artist_id, s.year, s.duration_ms, s.id
+          `INSERT INTO playlist_songs (playlist_id, song_key, state, source, title, artist, spotify_track_id, qloo_artist_id, year, duration_ms, suggestion_id, image)
+           SELECT s.playlist_id, s.song_key, 'learned', 'suggested', s.title, s.artist, s.spotify_track_id, s.qloo_artist_id, s.year, s.duration_ms, s.id, s.image_url
              FROM learn_suggestions s WHERE s.id = $2::bigint AND s.playlist_id = $1::uuid AND s.status = 'learned' AND s.learned_at = now()
            ON CONFLICT (playlist_id, song_key) DO NOTHING
            RETURNING ${SONG_COLUMNS}`,

@@ -519,7 +519,7 @@ export function ResearchView() {
                 artists={[]}
                 isAdded={(t: TrackResult) => keys.has(playlistSongKey(t.artists[0]?.name ?? "Unknown artist", t.title))}
                 onAdd={(t: TrackResult) =>
-                  void act(() => addSong({ title: t.title, artist: t.artists[0]?.name ?? "Unknown artist", source: "spotify", ...(/^[A-Za-z0-9]{22}$/.test(t.id) ? { spotifyTrackId: t.id } : {}), ...(t.durationMs ? { durationMs: t.durationMs } : {}) }), added(t.title))
+                  void act(() => addSong({ title: t.title, artist: t.artists[0]?.name ?? "Unknown artist", source: "spotify", ...(/^[A-Za-z0-9]{22}$/.test(t.id) ? { spotifyTrackId: t.id } : {}), ...(t.durationMs ? { durationMs: t.durationMs } : {}), ...(t.image && /^https:\/\//.test(t.image) ? { image: t.image } : {}) }), added(t.title))
                 }
                 onAddTyped={(s) => act(() => addSong({ ...s, source: "typed" }), added(s.title))}
               />

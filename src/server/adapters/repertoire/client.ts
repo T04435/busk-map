@@ -220,7 +220,6 @@ export async function fetchReleaseCount(artistId: string, market: string): Promi
 /** An artist's own songs: albums and singles, deduplicated by title. */
 export async function fetchArtistCatalogue(artistId: string, market: string): Promise<CatalogueTrack[]> {
   "use cache: remote";
-  cacheLife("days");
   cacheTag("repertoire");
 
   const albums: (RawAlbum & { id: string })[] = [];
@@ -262,6 +261,9 @@ export async function fetchArtistCatalogue(artistId: string, market: string): Pr
   await Promise.all(Array.from({ length: Math.min(ALBUM_TRACKS_CONCURRENCY, albums.length) }, worker));
   // Every release failing is a failed catalogue (the caller falls back to Last.fm); some failing is a partial one.
   if (albums.length > 0 && skipped === albums.length) throw new Error("Spotify returned no album track lists");
+  // A whole catalogue keeps for days; one with a release left out keeps for 10 minutes, so the next research gets the full list.
+  if (skipped > 0) cacheLife({ stale: 60, revalidate: 600, expire: 600 });
+  else cacheLife("days");
 
   const seen = new Set<string>();
   return trackLists.flat().filter((track) => {

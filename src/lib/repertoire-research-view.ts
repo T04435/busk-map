@@ -111,8 +111,9 @@ function mediaOf(o: Outputs, playlist: ViewInput["playlist"], suggestions: reado
 }
 
 const songOf = (s: PlaylistSongView, m: Media, ownPhoto: string | undefined): ResearchSong => {
-  const image = m.trackImage.get(playlistSongKey(s.artist, s.title));
-  const artistImage = (s.own ? ownPhoto : undefined) ?? m.artistImage.get(nameKey(s.artist));
+  // The saved cover first (migration 010), then this run's covers and photos.
+  const image = s.image ?? m.trackImage.get(playlistSongKey(s.artist, s.title));
+  const artistImage = s.artistImage ?? (s.own ? ownPhoto : undefined) ?? m.artistImage.get(nameKey(s.artist));
   const artistHref = (s.own ? m.ownHref : undefined) ?? m.artistHref.get(nameKey(s.artist));
   return {
     id: s.id,

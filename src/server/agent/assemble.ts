@@ -203,6 +203,8 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     context.ownFans(),
   ]);
   const funnel = await context.funnel();
+  // Artist photos already fetched with the crowd (Qloo entities), for the learn-these rows.
+  const photoOf = new Map(locals.flatMap((a) => (a.image && /^https:\/\//.test(a.image) ? [[a.id, a.image] as const] : [])));
   const qlooDown = context.qlooFailed();
   const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
   const unverified = options.unverifiedNumbers ?? [];
@@ -324,6 +326,8 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
           return name === null ? [] : [{ name, score: Math.round(e.score * 100) / 100 }];
         }),
         trend: trends.find((t) => t.entityId === a.id)?.windowChange ?? null,
+        ...(a.image && /^https:\/\//.test(a.image) ? { image: a.image } : {}),
+        ...(a.spotifyId && /^[A-Za-z0-9]{22}$/.test(a.spotifyId) ? { spotifyId: a.spotifyId } : {}),
       })),
       // The local scene: the city's over-indexed genres and its local acts, re-scored for the performer's fans (null: today's crowd only).
       localScene:
@@ -349,7 +353,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
       usualCrowd:
         usual && usual.artists.length > 0 ? { hotspot: usual.hotspot, artists: usual.artists.slice(0, 5).map((a) => ({ name: a.name, affinity: a.affinity })) } : null,
     },
-    learnThese: learn.map((l) => ({ artist: l.artist, title: l.title, playcount: l.playcount, reason: l.reason, audienceGrowth: l.audienceGrowth })),
+    learnThese: learn.map((l) => ({ artist: l.artist, title: l.title, playcount: l.playcount, reason: l.reason, audienceGrowth: l.audienceGrowth, ...(photoOf.get(l.entityId) ? { artistImage: photoOf.get(l.entityId) } : {}) })),
     ageLean: leadingAgeBand(profile?.age ?? null),
     weather: weather
       ? {

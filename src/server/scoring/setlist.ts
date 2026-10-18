@@ -22,7 +22,7 @@ export type RepertoireSong = {
 };
 
 /** Why a suggested song is in the set and where it was found. */
-export type SongSuggestion = { because: string; source: "spotify" | "lastfm"; sourceUrl: string | null; spotifyTrackId: string | null };
+export type SongSuggestion = { because: string; source: "spotify" | "lastfm"; sourceUrl: string | null; spotifyTrackId: string | null; /** The track's image, only when the catalogue had one. */ image?: string };
 
 export type SetlistEntry = {
   songId: string;
@@ -48,6 +48,8 @@ export type SetlistEntry = {
   /** "suggested" for songs Busk Map added from the crowd's taste; the act's own are "repertoire". */
   origin: "repertoire" | "suggested";
   suggestion: SongSuggestion | null;
+  /** The artist's photo, set after scoring when an entity already fetched has one. */
+  artistImage?: string;
   /** The song's artist is in the city's local scene (the act's fans' affinity for it is known): the score includes the local-scene bonus. */
   localScene: boolean;
 };

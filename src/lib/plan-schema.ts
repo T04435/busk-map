@@ -183,9 +183,13 @@ export const planPitchSchema = z.object({
           source: z.enum(["spotify", "lastfm"]),
           sourceUrl: z.string().nullable(),
           spotifyTrackId: z.string().nullable(),
+          /** The track's own image or album art (Spotify), when it came with the catalogue. Optional: older plans have none. */
+          image: z.string().nullable().optional(),
         })
         .nullable()
         .default(null),
+      /** The song's artist's photo (Qloo or Spotify), when one of the entities already fetched carries it. Optional: older plans have none. */
+      artistImage: z.string().nullable().optional(),
     }),
   ),
 });
@@ -254,6 +258,9 @@ export const planSchema = z.object({
         explained: z.array(z.object({ name: z.string(), score: z.number() })).default([]),
         /** Percentile points gained over the trending window (Qloo trending), when known. */
         trend: z.number().nullable().default(null),
+        /** The artist's photo and Spotify id from Qloo's entity, when it sent them. Optional: older plans have none. */
+        image: z.string().nullable().optional(),
+        spotifyId: z.string().nullable().optional(),
       }),
     ),
     /** What the crowd at the busiest busking hotspot likes with no performer signal (Qloo insights): "the usual crowd". */
@@ -290,6 +297,8 @@ export const planSchema = z.object({
       reason: z.string(),
       /** Qloo's audience_growth for the artist with this crowd, when known. */
       audienceGrowth: z.number().nullable().default(null),
+      /** The artist's photo from Qloo's entity, when it sent one. Optional: older plans have none. */
+      artistImage: z.string().nullable().optional(),
     }),
   ),
   /** The crowd's most over-represented age band (Qloo demographics), used for era matching. */

@@ -30,6 +30,8 @@ export type FillTrack = {
   durationMs: number | null;
   url: string | null;
   popularity: number | null;
+  /** The track's image (album art), when the catalogue had one. */
+  image?: string | null;
 };
 
 /** Merge the city crowd's artists and the related artists (first listing wins, explanations join), leaving out artists already in the set. */
@@ -122,6 +124,7 @@ export function fillAsRepertoire(picks: FillPick[], affinityAt: Record<string, n
       source: p.source,
       sourceUrl: p.track.url,
       spotifyTrackId: p.track.spotifyTrackId,
+      ...(p.track.image ? { image: p.track.image } : {}),
     },
   }));
 }

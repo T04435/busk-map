@@ -18,7 +18,7 @@ import { LeanBar } from "@/components/honeycomb/lean-bar";
 import { Loader } from "@/components/honeycomb/loader";
 import { QlooWordmark } from "@/components/honeycomb/logo";
 import { NoteCard } from "@/components/honeycomb/note-card";
-import { PercentCell } from "@/components/honeycomb/percent-cell";
+import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { PitchRow } from "@/components/honeycomb/pitch-row";
 import { PlanAlert } from "@/components/honeycomb/plan-alert";
 import { ResearchFunnel } from "@/components/honeycomb/research-funnel";
@@ -190,9 +190,9 @@ export function PlanStates() {
           <h4 className={SPEC_H}>Loader · Numbers</h4>
           <div className="flex flex-wrap items-center gap-4">
             <HexCell size={56} tone="dashed"><Loader size={22} label="Working" /></HexCell>
-            <PercentCell value={91} size={56} label="Score" tone="primary" />
-            <PercentCell value={64} size={48} label="Taste match" />
-            <PercentCell value={null} size={48} label="Score" />
+            <ScoreCell value={91} size="lg" label="Score" tone="primary" />
+            <ScoreCell value={64} size="md" label="Taste match" />
+            <ScoreCell value={null} size="md" label="Score" />
           </div>
         </div>
         <div className={SPEC}>

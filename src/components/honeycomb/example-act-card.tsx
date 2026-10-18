@@ -3,10 +3,11 @@ import Link from "next/link";
 import { Icon } from "@/components/honeycomb/icon";
 import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
 import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
+import { SongRow } from "@/components/honeycomb/song-row";
 
 /**
  * One of the example acts on the landing: the whole card is the link, an input preset that starts a fresh run (so no
- * prefetch). Initials in an orange cell, the act in display caps with its day and hours, "Sounds like" (xs ArtistChips), "Plays …", then the action.
+ * prefetch). Initials in an orange cell, the act in display caps with its day and hours, "Sounds like" (xs ArtistChips), "Plays" (compact SongRows), then the action.
  * Hover lifts it with an orange offset.
  */
 export function ExampleActCard({
@@ -24,8 +25,8 @@ export function ExampleActCard({
   blurb?: ReactNode;
   /** Artists the act sounds like, drawn as xs ArtistChips. */
   soundsLike?: string[];
-  /** A few songs the act plays, after "Plays". */
-  plays?: string;
+  /** A few songs the act plays, as compact SongRows (not links: the card is the link). */
+  plays?: { title: string; artist: string }[];
   href: string;
   action?: string;
 }) {
@@ -58,10 +59,15 @@ export function ExampleActCard({
           </ArtistChipList>
         </div>
       ) : null}
-      {plays ? (
-        <span className="text-sm leading-5 text-muted-foreground">
-          <b className="text-foreground">Plays</b> {plays}
-        </span>
+      {plays?.length ? (
+        <div className="flex flex-col text-sm leading-5">
+          <b>Plays</b>
+          <ul className="m-0 list-none divide-y divide-border p-0">
+            {plays.map((s) => (
+              <SongRow key={`${s.title}-${s.artist}`} as="li" compact interactive={false} title={s.title} artist={s.artist} />
+            ))}
+          </ul>
+        </div>
       ) : null}
       <span className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-3 text-[15px] font-bold">
         {action}

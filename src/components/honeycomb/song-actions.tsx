@@ -18,6 +18,7 @@ export function SongActions({
   onAdd,
   added,
   onRemove,
+  disabled,
 }: {
   /** Names the song in every label ("Learned: Riptide"). */
   title: string;
@@ -36,21 +37,23 @@ export function SongActions({
   /** The Add action in its done state: a disabled check named "Added". */
   added?: boolean;
   onRemove?: () => void;
+  /** A run is busy: every action stays visible but can't be pressed (Learn it only opens links, so it stays live). */
+  disabled?: boolean;
 }) {
   const count = [learnIt && artist, onLearned, onDismiss, onUndo, onMoveToCanSing, added || onAdd, onRemove].filter(Boolean).length;
   return (
     <div data-slot="song-actions" data-many={count > 2 ? "" : undefined} className="flex flex-none flex-wrap items-center gap-1">
       {learnIt && artist ? <LearnItMenu title={title} artist={artist} iconOnly size={size} /> : null}
-      {onLearned ? <IconAction icon="check" variant="outline" size={size} label={`Learned: ${title}`} onClick={onLearned} /> : null}
-      {onDismiss ? <IconAction icon="x" size={size} label={`Not for me: ${title}`} onClick={onDismiss} /> : null}
-      {onUndo ? <IconAction icon="arrow-left" size={size} label={`Undo: ${title}`} onClick={onUndo} /> : null}
-      {onMoveToCanSing ? <IconAction icon="arrow-right" size={size} label={`Move to can sing: ${title}`} onClick={onMoveToCanSing} /> : null}
+      {onLearned ? <IconAction icon="check" variant="outline" size={size} label={`Learned: ${title}`} onClick={onLearned} disabled={disabled} /> : null}
+      {onDismiss ? <IconAction icon="x" size={size} label={`Not for me: ${title}`} onClick={onDismiss} disabled={disabled} /> : null}
+      {onUndo ? <IconAction icon="arrow-left" size={size} label={`Undo: ${title}`} onClick={onUndo} disabled={disabled} /> : null}
+      {onMoveToCanSing ? <IconAction icon="arrow-right" size={size} label={`Move to can sing: ${title}`} onClick={onMoveToCanSing} disabled={disabled} /> : null}
       {added ? (
         <IconAction icon="check" size={size} label={`Added: ${title}`} disabled pressed />
       ) : onAdd ? (
-        <IconAction icon="plus" variant="outline" size={size} label={`Add ${title}`} onClick={onAdd} />
+        <IconAction icon="plus" variant="outline" size={size} label={`Add ${title}`} onClick={onAdd} disabled={disabled} />
       ) : null}
-      {onRemove ? <IconAction icon="x" size={size} label={`Remove ${title}`} onClick={onRemove} /> : null}
+      {onRemove ? <IconAction icon="x" size={size} label={`Remove ${title}`} onClick={onRemove} disabled={disabled} /> : null}
     </div>
   );
 }

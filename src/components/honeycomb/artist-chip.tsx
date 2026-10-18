@@ -13,7 +13,8 @@ import { SongTag } from "@/components/honeycomb/song-tag";
  * - added: a solid rule and an "Added" tag instead of an action (a search result already in the list);
  * - static: a solid rule, no action (Because, crowd rows, tool cards, event lines, sounds-like lists).
  * `interactive={false}` makes it safe inside a combobox option, which is itself the button: no button inside, the Add icon is a drawing.
- * `size`: xs is the inline unit for "sounds like" and Because lists (small cell, name only), md the row, lg the featured one.
+ * `size`: xs is the inline unit for "sounds like" and Because lists (small cell, the name, and a `<ScoreCell size="xs">` when
+ * the score explains it), md the row, lg the featured one.
  * Slots: `score` (ScoreCell), `info` (InfoTags), `children` (a Reason or other body under the name).
  */
 export function ArtistChip({
@@ -65,6 +66,7 @@ export function ArtistChip({
           {initialsOf(name)}
         </HexCell>
         <span className="min-w-0 text-sm leading-5 font-bold [overflow-wrap:anywhere]">{name}</span>
+        {score ? <span className="flex flex-none items-center self-stretch border-l border-rule pl-1.5">{score}</span> : null}
       </span>
     );
   }
@@ -119,9 +121,21 @@ export function ArtistChip({
 }
 
 /** The grid ArtistChips sit in: as many columns as fit, never narrower than 260px (or the container). `inline` is the wrapping row for xs chips. */
-export function ArtistChipList({ children, inline, className }: { children: React.ReactNode; inline?: boolean; className?: string }) {
+export function ArtistChipList({
+  children,
+  inline,
+  label,
+  className,
+}: {
+  children: React.ReactNode;
+  inline?: boolean;
+  /** Names the list to screen readers ("Artists you sound like"). */
+  label?: string;
+  className?: string;
+}) {
   return (
     <ul
+      aria-label={label}
       className={cn(
         "m-0 list-none p-0",
         inline ? "flex flex-wrap gap-1.5" : "grid grid-cols-[repeat(auto-fill,minmax(min(260px,100%),1fr))] gap-2",

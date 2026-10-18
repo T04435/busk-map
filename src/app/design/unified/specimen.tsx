@@ -190,6 +190,11 @@ export function UnifiedSpecimen() {
           <Case id="A5" replaces="Because cells">
             <div className="py-3">
               <Reason text="Fans of these artists love it." because={because} />
+              <Reason
+                className="mt-3"
+                text="Because your fans like"
+                because={[{ name: "Gillian Welch", score: 31 }, { name: "The Teskey Brothers", score: 22 }]}
+              />
             </div>
           </Case>
           <Case id="A6" replaces="CrowdPanel row">
@@ -289,7 +294,7 @@ export function UnifiedSpecimen() {
               <InfoTag icon="pin">Crowd at Federation Square</InfoTag>
             </div>
           </Case>
-          <Case id="ScoreCell" replaces="PercentCell at 34 and 36 px, inline text">
+          <Case id="ScoreCell" replaces="the old percent cell at 34 and 36 px, inline text">
             <div className="flex flex-wrap items-center gap-4 py-3">
               <ScoreCell value={87} size="sm" label="Fit" />
               <ScoreCell value={87} size="md" label="Fit" />
@@ -301,7 +306,7 @@ export function UnifiedSpecimen() {
           <Case id="Reason" replaces="WithCells, evidence-line, 'because' line">
             <div className="flex flex-col gap-4 py-3">
               <Reason text="Your crowd at this spot sings along to it." />
-              <Reason text="Scores 87/100 for this slot, because fans of these artists love it." because={because} />
+              <Reason text="Fits this slot, because fans of these artists love it." because={because} />
             </div>
           </Case>
           <Case id="SongActions md" replaces="text Buttons, ghost icons, 'Add'/'Added' labels (44px)">

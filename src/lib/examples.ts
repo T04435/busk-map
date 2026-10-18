@@ -97,7 +97,7 @@ export function exampleWhen(e: Pick<ExamplePerformer, "weekday" | "startHour" | 
   return `${e.weekday[0].toUpperCase()}${e.weekday.slice(1)} · ${hours}`;
 }
 
-/** The first few songs an example plays, for its card ("Plays …"). */
-export function examplePlays(e: ExamplePerformer, n = 3): string {
-  return e.performer.songs.slice(0, n).map((s) => s.title).join(", ");
+/** The first few songs an example plays, for its card ("Plays", as compact SongRows). */
+export function examplePlays(e: ExamplePerformer, n = 3): { title: string; artist: string }[] {
+  return e.performer.songs.slice(0, n).map(({ title, artist }) => ({ title, artist }));
 }

@@ -7,22 +7,22 @@ import { leanText } from "@/components/honeycomb/lean-bar";
 import { MobileNavView } from "@/components/honeycomb/mobile-nav";
 import { activeNavId, NAV_ITEMS } from "@/components/honeycomb/nav-items";
 import { Loader } from "@/components/honeycomb/loader";
-import { MeterBar, PercentCell, percentLabel } from "@/components/honeycomb/percent-cell";
+import { MeterBar, ScoreCell, scoreLabel } from "@/components/honeycomb/score-cell";
 import { RankTile } from "@/components/honeycomb/rank-tile";
 
 const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
 
-describe("PercentCell", () => {
+describe("ScoreCell", () => {
   it("names the value for screen readers, rounded and clamped", () => {
-    expect(percentLabel(87, "Score")).toBe("Score 87 out of 100");
-    expect(percentLabel(86.6)).toBe("87 out of 100");
-    expect(percentLabel(120, "Fit")).toBe("Fit 100 out of 100");
-    expect(percentLabel(-4)).toBe("0 out of 100");
-    expect(percentLabel(null, "Score")).toBe("Score no data");
+    expect(scoreLabel(87, "Score")).toBe("Score 87 out of 100");
+    expect(scoreLabel(86.6)).toBe("87 out of 100");
+    expect(scoreLabel(120, "Fit")).toBe("Fit 100 out of 100");
+    expect(scoreLabel(-4)).toBe("0 out of 100");
+    expect(scoreLabel(null, "Score")).toBe("Score no data");
   });
 
   it("is one image named 'Score 87 out of 100', with the rounded number shown and never 'N/100'", () => {
-    const out = html(createElement(PercentCell, { value: 86.6, label: "Score" }));
+    const out = html(createElement(ScoreCell, { value: 86.6, label: "Score" }));
     expect(out).toContain('role="img"');
     expect(out).toContain('aria-label="Score 87 out of 100"');
     expect(out).toContain(">87<");
@@ -32,21 +32,30 @@ describe("PercentCell", () => {
   });
 
   it("shows a dashed cell and the DS minus icon for no data", () => {
-    const out = html(createElement(PercentCell, { value: null, label: "Affinity", size: 36 }));
+    const out = html(createElement(ScoreCell, { value: null, label: "Affinity", size: "sm" }));
     expect(out).toContain('aria-label="Affinity no data"');
     expect(out).toContain('data-tone="dashed"');
     expect(out).toContain('<path d="M6 12h12"');
-    expect(out).toContain('width="15"'); // max(12, round(36 * 0.42))
+    expect(out).toContain('width="14"'); // max(12, round(34 * 0.42))
     expect(out).not.toContain("–");
-    expect(html(createElement(PercentCell, { value: null, size: 24 }))).toContain('width="12"');
+  });
+});
+
+describe("ScoreCell sizes", () => {
+  it("lg is a 56px cell; xs is inline digits with the spoken label, no cell", () => {
+    expect(html(createElement(ScoreCell, { value: 91, size: "lg", label: "Score" }))).toContain("width:56px");
+    const xs = html(createElement(ScoreCell, { value: 31.2, size: "xs", label: "Explained" }));
+    expect(xs).toContain(">31<");
+    expect(xs).toContain("Explained 31 out of 100");
+    expect(xs).not.toContain("<svg");
   });
 });
 
 describe("MeterBar", () => {
-  it("shows the value as a percent cell with its label", () => {
+  it("shows the value as a score cell with its label", () => {
     const out = html(createElement(MeterBar, { label: "Jazz", value: 0.42 }));
     expect(out).toContain('aria-label="Jazz 42 out of 100"');
-    expect(out).toContain("<span>Jazz</span>");
+    expect(out).toContain(">Jazz</span>");
   });
 
   it("noData shows the no-data cell whatever the value is", () => {

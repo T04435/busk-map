@@ -15,6 +15,7 @@
  */
 import path from "node:path";
 import { neon } from "@neondatabase/serverless";
+import { guardOrExit } from "./db-guard.mjs";
 import { gate, runMigrations } from "./migrate-lib.mjs";
 
 const args = process.argv.slice(2);
@@ -27,6 +28,8 @@ if (decision.action === "refuse") {
   console.error(`migrate: refusing. ${decision.reason}`);
   process.exit(1);
 }
+// Never the main (production) database outside the Vercel production build, whatever the gate says.
+guardOrExit("migrate");
 const url = process.env.DATABASE_URL_UNPOOLED;
 if (!url) {
   console.error("migrate: DATABASE_URL_UNPOOLED is not set.");

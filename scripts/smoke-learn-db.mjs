@@ -12,11 +12,13 @@
  * It creates one Repertoire, exercises the flow, checks the rows with SQL, then deletes everything it created (the forget
  * route, then a SQL sweep by its playlist id). It refuses VERCEL_ENV=production and never prints a connection string.
  */
+import { guardOrExit } from "./db-guard.mjs";
 import { neon } from "@neondatabase/serverless";
 
 if (process.env.VERCEL_ENV === "production") throw new Error("Refusing to run with VERCEL_ENV=production.");
 const base = process.argv[2] ?? "http://localhost:3250";
 if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base)) throw new Error("The server must be on localhost.");
+guardOrExit("smoke-learn-db");
 const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL is not set (expected from .env.development.local).");
 const sql = neon(url);

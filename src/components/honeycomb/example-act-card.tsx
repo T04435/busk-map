@@ -2,10 +2,11 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/honeycomb/icon";
 import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
+import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
 
 /**
  * One of the example acts on the landing: the whole card is the link, an input preset that starts a fresh run (so no
- * prefetch). Initials in an orange cell, the act in display caps with its day and hours, "Sounds like …", "Plays …", then the action.
+ * prefetch). Initials in an orange cell, the act in display caps with its day and hours, "Sounds like" (xs ArtistChips), "Plays …", then the action.
  * Hover lifts it with an orange offset.
  */
 export function ExampleActCard({
@@ -21,7 +22,8 @@ export function ExampleActCard({
   /** Day and hours under the name, e.g. "Saturday · 6–9 pm". */
   when?: string;
   blurb?: ReactNode;
-  soundsLike?: string;
+  /** Artists the act sounds like, drawn as xs ArtistChips. */
+  soundsLike?: string[];
   /** A few songs the act plays, after "Plays". */
   plays?: string;
   href: string;
@@ -44,10 +46,17 @@ export function ExampleActCard({
         </span>
       </span>
       {blurb ? <span className="text-sm leading-5 text-muted-foreground">{blurb}</span> : null}
-      {soundsLike ? (
-        <span className="text-sm leading-5">
-          <b>Sounds like</b> {soundsLike}
-        </span>
+      {soundsLike?.length ? (
+        <div className="flex flex-col gap-1.5 text-sm leading-5">
+          <b>Sounds like</b>
+          <ArtistChipList inline>
+            {soundsLike.map((a) => (
+              <li key={a}>
+                <ArtistChip size="xs" name={a} interactive={false} />
+              </li>
+            ))}
+          </ArtistChipList>
+        </div>
       ) : null}
       {plays ? (
         <span className="text-sm leading-5 text-muted-foreground">

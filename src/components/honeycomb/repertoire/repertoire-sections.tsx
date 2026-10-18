@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { cn } from "cn";
 import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
 import { Icon } from "@/components/honeycomb/icon";
@@ -9,7 +9,6 @@ import { mentionArtists } from "@/components/honeycomb/mention";
 import { Reason } from "@/components/honeycomb/reason";
 import { SongActions } from "@/components/honeycomb/song-actions";
 import { SongRow } from "@/components/honeycomb/song-row";
-import { SongTag } from "@/components/honeycomb/song-tag";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { FanLean, LearnSong, ResearchArtist, ResearchSong } from "./types";
@@ -17,7 +16,7 @@ import type { FanLean, LearnSong, ResearchArtist, ResearchSong } from "./types";
 const subLabel = "m-0 font-mono text-xs font-bold tracking-[0.08em] text-muted-foreground uppercase";
 
 /** A section: a 2px rule, a display-caps h2, an optional muted intro and the body. */
-function Section({
+export function Section({
   title,
   aside,
   intro,
@@ -231,7 +230,6 @@ function LearnRow({
       image={song.image}
       durationMs={song.durationMs}
       href={song.href ?? undefined}
-      tags={song.fresh ? <SongTag kind="new" /> : undefined}
       muted={song.status === "dismissed"}
       actions={
         pending ? (
@@ -341,43 +339,100 @@ export function LearnedSection({
 
 /* Layout */
 
+/** Breathing room under the app header for the sticky act column, in px. */
+const STICKY_TOP = 96;
+const STICKY_BOTTOM = 24;
+
 /**
- * Phones: profile, songs to learn, sounds like, fans, can sing, learned. From 1024px: the profile full width, then
- * fans, sounds like, can sing and learned on the left and songs to learn (the payoff) on the right. The folded research
- * block closes the page behind a 2px rule.
+ * The act column's `top` for `position: sticky`. A column that fits under the header pins at the top. A taller one is never clipped or
+ * given its own scroll: it scrolls with the page until its bottom edge reaches the viewport's, then pins there (a negative `top`).
+ */
+function useStickyTop(ref: RefObject<HTMLElement | null>, active: boolean): number {
+  const [top, setTop] = useState(STICKY_TOP);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !active) return;
+    const measure = () => {
+      const h = el.offsetHeight;
+      const vh = window.innerHeight;
+      setTop(h + STICKY_TOP + STICKY_BOTTOM <= vh ? STICKY_TOP : Math.round(vh - h - STICKY_BOTTOM));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [ref, active]);
+  return top;
+}
+
+/**
+ * The Repertoire results (U25). One DOM order in every mode (act, then songs, then the research), and only CSS decides where things sit, so
+ * nothing remounts when the run finishes (the map keeps its tiles).
+ * - Running, and below 1024px: one column. Act (profile, fans, fans map, sounds like, fans also love), then songs (to learn, can sing,
+ *   learned). The research leads while it runs and closes the page when it is done.
+ * - Done, from 1024px: the act in a sticky left column (about 40%), the songs on the right (about 60%), the research full width below.
  */
 export function RepertoireResultsLayout({
+  phase,
   profile,
   fans,
+  fansMap,
   soundsLike,
-  canSing,
+  fansLove,
   toLearn,
+  canSing,
   learned,
   research,
   className,
 }: {
+  phase: "running" | "done";
   profile?: ReactNode;
   fans?: ReactNode;
+  fansMap?: ReactNode;
   soundsLike?: ReactNode;
-  canSing?: ReactNode;
+  /** Optional: the "Your fans also love" artists as their own block. Today they sit inside SoundsLikeSection as suggestions. */
+  fansLove?: ReactNode;
   toLearn?: ReactNode;
+  canSing?: ReactNode;
   learned?: ReactNode;
   research?: ReactNode;
   className?: string;
 }) {
+  const done = phase === "done";
+  const act = useRef<HTMLDivElement>(null);
+  const top = useStickyTop(act, done);
   return (
-    <div data-slot="repertoire-results" className={cn("mx-auto w-full max-w-[1200px]", className)}>
-      {profile}
-      <div className="mt-12 grid grid-cols-1 gap-x-12 gap-y-14 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <div className="order-1 lg:order-2 lg:sticky lg:top-24 lg:self-start">{toLearn}</div>
-        <div className="order-2 flex flex-col gap-14 lg:order-1">
-          {soundsLike ? <div className="lg:order-2">{soundsLike}</div> : null}
-          {fans ? <div className="lg:order-1">{fans}</div> : null}
-          {canSing ? <div className="lg:order-3">{canSing}</div> : null}
-          {learned ? <div className="lg:order-4">{learned}</div> : null}
-        </div>
+    <div
+      data-slot="repertoire-results"
+      data-phase={phase}
+      className={cn("mx-auto flex w-full max-w-[1200px] flex-col gap-14", done && "lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-x-12", className)}
+    >
+      <div
+        ref={act}
+        data-slot="repertoire-act"
+        style={done ? ({ "--act-top": `${top}px` } as CSSProperties) : undefined}
+        className={cn("flex min-w-0 flex-col gap-14", done && "lg:sticky lg:top-(--act-top) lg:self-start")}
+      >
+        {profile}
+        {fans}
+        {fansMap}
+        {soundsLike}
+        {fansLove}
       </div>
-      {research ? <div className="mt-14 border-t-2 border-rule pt-8">{research}</div> : null}
+      <div data-slot="repertoire-songs" className="flex min-w-0 flex-col gap-14">
+        {toLearn}
+        {canSing}
+        {learned}
+      </div>
+      {research ? (
+        <div data-slot="repertoire-research" className={cn("min-w-0", done ? "border-t-2 border-rule pt-8 lg:col-span-2" : "order-first")}>
+          {research}
+        </div>
+      ) : null}
     </div>
   );
 }

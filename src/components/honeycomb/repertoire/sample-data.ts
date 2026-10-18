@@ -142,3 +142,37 @@ export const SAMPLE_RESULTS_RUNNING: RepertoireResults = {
   toLearn: null,
   learned: null,
 };
+
+/** Sample cities for the fans map's switch (Melbourne first). */
+export const SAMPLE_FANS_CITIES = [
+  { id: "melbourne", name: "Melbourne", center: [144.9631, -37.8136] as [number, number], zoom: 12 },
+  { id: "sydney", name: "Sydney", center: [151.2093, -33.8688] as [number, number], zoom: 12 },
+  { id: "brisbane", name: "Brisbane", center: [153.0251, -27.4698] as [number, number], zoom: 12 },
+];
+
+/** Where the sample act's crowd gathers in Melbourne: Fitzroy, Brunswick and the CBD (lng, lat, strength). */
+const FANS_HEAT: [number, number, number][] = [
+  [144.978, -37.7998, 1],
+  [144.9603, -37.7667, 0.8],
+  [144.9631, -37.8136, 0.62],
+  [144.995, -37.775, 0.45],
+];
+
+/** A pointy-top hex lattice about 6 km wide over inner Melbourne, affinity 0 to 1 from the hot spots. */
+export const SAMPLE_FANS_CELLS: { lat: number; lng: number; affinity: number }[] = (() => {
+  const cells: { lat: number; lng: number; affinity: number }[] = [];
+  const stepLng = 0.0055;
+  const stepLat = 0.00377;
+  for (let row = 0; row < 24; row++) {
+    for (let col = 0; col < 20; col++) {
+      const lat = -37.7885 + (row - 12) * stepLat;
+      const lng = 144.9715 + (col - 10) * stepLng + (row % 2 ? stepLng / 2 : 0);
+      let a = 0.05;
+      for (const [hx, hy, k] of FANS_HEAT) a = Math.max(a, k * Math.exp(-(((lng - hx) / 0.017) ** 2 + ((lat - hy) / 0.014) ** 2)));
+      cells.push({ lat, lng, affinity: Math.min(1, a) });
+    }
+  }
+  return cells;
+})();
+
+export const SAMPLE_FANS_AREAS = ["Fitzroy", "Brunswick", "the CBD"];

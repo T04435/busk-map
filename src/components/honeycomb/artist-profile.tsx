@@ -33,6 +33,10 @@ export function ArtistProfile({
   onLoad,
   busy,
   loading,
+  loadLabel = "Load my profile",
+  loadingLabel = "Loading your profile",
+  refreshLabel = "Refresh my research",
+  refreshingLabel = "Refreshing",
   className,
 }: {
   profile: Profile | null;
@@ -47,6 +51,11 @@ export function ArtistProfile({
   /** A refresh or load is running: the buttons are disabled and say so. */
   busy?: boolean;
   loading?: boolean;
+  /** Button copy (PLAYLIST_COPY.profile.* on the form); the defaults are the Repertoire's. */
+  loadLabel?: string;
+  loadingLabel?: string;
+  refreshLabel?: string;
+  refreshingLabel?: string;
   className?: string;
 }) {
   if (!profile && !loading) {
@@ -54,7 +63,7 @@ export function ArtistProfile({
     return (
       <div data-slot="artist-profile" className={className}>
         <Button type="button" variant="outline" size="sm" disabled={busy} onClick={onLoad} className="min-h-12 sm:min-h-0">
-          {busy ? "Loading your profile" : "Load my profile"}
+          {busy ? loadingLabel : loadLabel}
         </Button>
       </div>
     );
@@ -68,7 +77,7 @@ export function ArtistProfile({
     </HexCell>
   );
   return (
-    <header data-slot="artist-profile" className={cn("flex flex-col gap-6", className)}>
+    <header data-slot="artist-profile" data-testid="profile-header" className={cn("flex flex-col gap-6", className)}>
       <div className="flex items-start gap-4 md:gap-8">
         {profile ? (
           <>
@@ -85,6 +94,8 @@ export function ArtistProfile({
           {profile ? (
             <>
               <Heading
+                id="profile-name"
+                data-testid="profile-name"
                 className={cn(
                   "m-0 font-display font-extrabold text-balance uppercase [overflow-wrap:anywhere]",
                   lg ? "text-[clamp(36px,6vw,72px)] leading-[0.98]" : "text-[clamp(26px,4vw,36px)] leading-none",
@@ -160,7 +171,7 @@ export function ArtistProfile({
           {onRefresh ? (
             <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={onRefresh} className="min-h-12 sm:min-h-0">
               <Icon name="refresh" size={16} />
-              {busy ? "Refreshing" : "Refresh my research"}
+              {busy ? refreshingLabel : refreshLabel}
             </Button>
           ) : null}
           {onEditLink ? (

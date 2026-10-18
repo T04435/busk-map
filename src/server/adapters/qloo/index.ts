@@ -6,7 +6,7 @@ import * as client from "./client";
 import type { CrowdProfile, EntityDetail, GenreContrast, HeatCell, LocalArtists, QlooEntity, QlooPlace, TasteTag, TrendRow } from "./schema";
 
 export type { CrowdProfile, EntityDetail, Explanation, GenreContrast, HeatCell, Impact, LocalArtists, QlooEntity, QlooPlace, TasteTag, TrendRow } from "./schema";
-export type { TrendWindow } from "./client";
+export type { HeatmapBoundary, TrendWindow } from "./client";
 /** Requests the trending window probe may send at most (a quarter back at a time). */
 export const TRENDING_PROBES = client.TRENDING_MAX_PROBES;
 
@@ -85,8 +85,8 @@ export function resolveSpotifyArtists(spotifyIds: string[], context: AdapterCont
 }
 
 /** taste_map: heatmap cells for the performer's artists over the area. */
-export function tasteMap(entityIds: string[], area: BBox, context: AdapterContext): Promise<AdapterResult<HeatCell[]>> {
-  return run(context, [], (backend) => client.heatmap(backend, entityIds, area));
+export function tasteMap(entityIds: string[], area: BBox, context: AdapterContext, boundary?: client.HeatmapBoundary): Promise<AdapterResult<HeatCell[]>> {
+  return run(context, [], (backend) => client.heatmap(backend, entityIds, area, boundary));
 }
 
 /** busy_places: places near a point, open on the slot's weekday (or any day, with null). */

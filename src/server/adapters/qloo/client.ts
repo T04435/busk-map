@@ -205,14 +205,17 @@ async function entityDetailCached(backend: QlooBackend, entityId: string): Promi
   });
 }
 
+export type HeatmapBoundary = "city" | "neighborhood";
+
 /** `urn:heatmap`: where in the area this taste concentrates. */
-export async function heatmap(backend: QlooBackend, entityIds: string[], area: BBox): Promise<HeatCell[]> {
-  return countLookup("heatmap", [backend, entityIds, area], () => heatmapCached(backend, entityIds, area));
+/** `boundary` (U40): Qloo's `output.heatmap.boundary` (documented values "city" and "neighborhood"); omitted, cells are geohash squares. */
+export async function heatmap(backend: QlooBackend, entityIds: string[], area: BBox, boundary?: HeatmapBoundary): Promise<HeatCell[]> {
+  return countLookup("heatmap", [backend, entityIds, area, boundary ?? null], () => heatmapCached(backend, entityIds, area, boundary));
 }
 
-async function heatmapCached(backend: QlooBackend, entityIds: string[], area: BBox): Promise<HeatCell[]> {
+async function heatmapCached(backend: QlooBackend, entityIds: string[], area: BBox, boundary?: HeatmapBoundary): Promise<HeatCell[]> {
   "use cache: remote";
-  return lookupScope("heatmap", [backend, entityIds, area], async () => {
+  return lookupScope("heatmap", [backend, entityIds, area, boundary ?? null], async () => {
     // A world-sized area is the Repertoire's "Where your fans are": fresh for 24 h. City-sized areas (the planner) keep "days".
     if (area.east - area.west > 180 || area.north - area.south > 120) cacheLife({ stale: 3600, revalidate: 86400, expire: 86400 });
     else cacheLife("days");
@@ -221,6 +224,7 @@ async function heatmapCached(backend: QlooBackend, entityIds: string[], area: BB
       "filter.type": "urn:heatmap",
       "signal.interests.entities": ids(entityIds),
       "filter.location": wktPolygon(area),
+      ...(boundary ? { "output.heatmap.boundary": boundary } : {}),
     };
     const body = await qlooGet(backend, "/v2/insights", params, heatmapResponseSchema);
     logIfEmpty("/v2/insights", params, body.results.heatmap.length);

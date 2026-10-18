@@ -16,6 +16,12 @@ export const FANS_MAP_NAME_RADIUS_M = 400;
 /** Elsewhere a cell is named after the nearest listed world city, if one lies within this distance. */
 export const FANS_MAP_WORLD_RADIUS_KM = 200;
 
+/**
+ * U40: Qloo's `output.heatmap.boundary` ("city" | "neighborhood"; geohash squares by default). OFF until a live probe confirms the
+ * response shape (cells with latitude/longitude) for a world-sized area; set to "city" to ask Qloo for city-level cells.
+ */
+export const FANS_MAP_BOUNDARY: qloo.HeatmapBoundary | undefined = undefined;
+
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const r5 = (n: number) => Math.round(n * 1e5) / 1e5;
 
@@ -29,7 +35,7 @@ export class FansMapQlooDown extends Error {}
 export async function fansMapFor(args: { own: { id: string; name: string }; alikes: { qlooId: string; name: string }[]; adapters: AdapterContext }): Promise<FansMapOutput> {
   const { own, alikes, adapters } = args;
   const signal = [own.id, ...alikes.map((a) => a.qlooId).filter((id) => id !== own.id)];
-  const res = await qloo.tasteMap(signal, WORLD_BBOX, adapters);
+  const res = await qloo.tasteMap(signal, WORLD_BBOX, adapters, FANS_MAP_BOUNDARY);
   if (res.mode === "fallback") throw new FansMapQlooDown("Qloo didn't answer for where your fans are.");
   return fansMapOutput(res.data, [own.name, ...alikes.map((a) => a.name)]);
 }

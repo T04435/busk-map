@@ -229,7 +229,7 @@ export function ResearchView() {
 
   const fill = (view: PlaylistView | null) => {
     setActName(view?.actName ?? "");
-    setArtists((view?.soundsLike ?? []).map((a): PickedArtist => ({ name: a.name, spotifyId: a.spotifyId ?? null, qlooId: a.qlooId ?? null, image: null })));
+    setArtists((view?.soundsLike ?? []).map((a): PickedArtist => ({ name: a.name, spotifyId: a.spotifyId ?? null, qlooId: a.qlooId ?? null, image: a.image ?? null })));
     setArtistQuery("");
   };
 
@@ -415,6 +415,7 @@ export function ResearchView() {
           mode={!events && replay ? "replay" : "live"}
           modeText={!events && replay ? "Showing the research from your last run. Nothing new was asked." : null}
           title={live ? R.heading : R.howBuilt}
+          wording={R.waiting}
           hideHeading={!live}
           showRaw={showRaw}
           onShowRawChange={setShowRaw}
@@ -539,7 +540,7 @@ export function ResearchView() {
                 size="sm"
                 disabled={busy}
                 onClick={() =>
-                  void act(() => savePlaylist({ revision: playlist.revision, soundsLike: chosenArtists().map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.qlooId ? { qlooId: a.qlooId } : {}) })) }), COPY.act.savedPage)
+                  void act(() => savePlaylist({ revision: playlist.revision, soundsLike: chosenArtists().map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.qlooId ? { qlooId: a.qlooId } : {}), ...(a.image && /^https:\/\//.test(a.image) ? { image: a.image } : {}) })) }), COPY.act.savedPage)
                 }
               >
                 {COPY.act.savePage}

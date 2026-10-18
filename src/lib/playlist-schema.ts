@@ -33,7 +33,8 @@ export type AddSongInput = z.infer<typeof addSongSchema>;
 
 export const songStateSchema = z.object({ state: z.enum(SONG_STATES) });
 
-export const soundsLikeSchema = z.array(z.object({ name: line(80), spotifyId: spotifyIdSchema.optional(), qlooId: z.string().max(80).optional() })).max(10);
+/** `image` (U33): the artist's photo (https, from Spotify or Qloo), saved with the name so "Artists you sound like" never falls back to initials. soundsLike is JSONB, so no migration. */
+export const soundsLikeSchema = z.array(z.object({ name: line(80), spotifyId: spotifyIdSchema.optional(), qlooId: z.string().max(80).optional(), image: z.string().max(500).regex(/^https:\/\//).optional() })).max(10);
 /** The act's Spotify artist profile: an open.spotify.com/artist/<id> link, a spotify:artist: URI or a bare id; stored as the id. */
 export const spotifyArtistInputSchema = z
   .string()

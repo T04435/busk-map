@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { MAX_SONGS } from "@/server/playlist/config";
 import { MemoryPlaylistStore, PostgresPlaylistStore, sweepExpiredLazily, toPlaylistView, type PlaylistStore } from "@/server/playlist/store";
 import { hashToken, newToken } from "@/server/playlist/token";
 
@@ -50,15 +49,15 @@ describe("MemoryPlaylistStore", () => {
     expect((await b.store.addSong(b.playlist.id, song(1))).ok).toBe(true);
   });
 
-  it("refuses the 61st song (can sing + learned together)", async () => {
+  it("has no limit on songs (can sing + learned together): 250 are stored", async () => {
     const { store, playlist } = await make();
-    for (let i = 0; i < MAX_SONGS; i++) {
+    for (let i = 0; i < 250; i++) {
       const r = await store.addSong(playlist.id, song(i));
       expect(r.ok).toBe(true);
       if (i % 2 && r.ok) await store.setSongState(playlist.id, r.song.id, "learned");
     }
-    expect(await store.addSong(playlist.id, song("one more"))).toEqual({ ok: false, reason: "full" });
-    expect(await store.songs(playlist.id)).toHaveLength(MAX_SONGS);
+    expect((await store.addSong(playlist.id, song("one more"))).ok).toBe(true);
+    expect(await store.songs(playlist.id)).toHaveLength(251);
   });
 
   it("moves a song between can_sing and learned, and removes it", async () => {
@@ -121,7 +120,7 @@ describe("MemoryPlaylistStore", () => {
     const { store, playlist } = await make();
     await store.addSong(playlist.id, song(1));
     const view = toPlaylistView((await store.get(playlist.id))!, await store.songs(playlist.id));
-    expect(view.maxSongs).toBe(60);
+    expect(view).not.toHaveProperty("maxSongs");
     expect(JSON.stringify(view)).not.toContain(playlist.id);
     expect(view.songs[0]).not.toHaveProperty("songKey");
   });
@@ -142,7 +141,7 @@ describe("PostgresPlaylistStore SQL shape", () => {
   }
   const songRow = { id: "7", song_key: "artist|song 1", state: "can_sing", source: "typed", title: "Song 1", artist: "Artist", own: false, spotify_track_id: null, year: null, duration_ms: null, added_at: new Date() };
 
-  it("adds a song under a row lock: lock the playlist, then one conditional INSERT (limit + ON CONFLICT), then bump the revision", async () => {
+  it("adds a song under a row lock: lock the playlist, then one INSERT (ON CONFLICT, no song limit), then bump the revision", async () => {
     const { store, calls } = fake([[{ id: "pid" }], [songRow], []]);
     const r = await store.addSong("pid", song(1));
     expect(r).toMatchObject({ ok: true, song: { id: "7", state: "can_sing" } });
@@ -150,28 +149,27 @@ describe("PostgresPlaylistStore SQL shape", () => {
     expect(calls[0].text).toMatch(/^SELECT id FROM playlists WHERE id = \$1::uuid FOR UPDATE$/);
     expect(calls[0].params).toEqual(["pid"]);
     expect(calls[1].text).toMatch(/INSERT INTO playlist_songs/);
-    expect(calls[1].text).toMatch(/count\(\*\) FROM playlist_songs WHERE playlist_id = \$1::uuid AND state IN \('can_sing', 'learned'\)\) < \$10/);
+    expect(calls[1].text).not.toMatch(/count\(\*\)/);
     expect(calls[1].text).toMatch(/ON CONFLICT \(playlist_id, song_key\) DO NOTHING/);
     expect(calls[1].params[1]).toBe("artist|song 1");
-    expect(calls[1].params[9]).toBe(MAX_SONGS);
+    expect(calls[1].params).toHaveLength(9);
     expect(calls[2].text).toMatch(/revision = revision \+ 1/);
   });
 
-  it("tells a repeat from a full list when the INSERT returns nothing", async () => {
+  it("tells a repeat from a missing Repertoire when the INSERT returns nothing", async () => {
     const dup = fake([[{ id: "pid" }], [], [{ one: 1 }]]);
     expect(await dup.store.addSong("pid", song(1))).toEqual({ ok: false, reason: "duplicate" });
-    const full = fake([[{ id: "pid" }], [], []]);
-    expect(await full.store.addSong("pid", song(1))).toEqual({ ok: false, reason: "full" });
+    const gone = fake([[{ id: "pid" }], [], []]);
+    expect(await gone.store.addSong("pid", song(1))).toEqual({ ok: false, reason: "missing" });
   });
 
-  it("the memory store lets two simultaneous saves at 59 songs land only one", async () => {
+  it("the memory store lets simultaneous saves past 60 songs all land", async () => {
     const store = new MemoryPlaylistStore();
     const p = await store.create(hashToken(newToken()));
-    for (let i = 0; i < MAX_SONGS - 1; i++) await store.addSong(p.id, song(i));
-    const results = await Promise.all([store.addSong(p.id, song("x")), store.addSong(p.id, song("y"))]);
-    expect(results.filter((r) => r.ok)).toHaveLength(1);
-    expect(results.filter((r) => !r.ok)).toEqual([{ ok: false, reason: "full" }]);
-    expect(await store.songs(p.id)).toHaveLength(MAX_SONGS);
+    for (let i = 0; i < 59; i++) await store.addSong(p.id, song(i));
+    const results = await Promise.all([store.addSong(p.id, song("x")), store.addSong(p.id, song("y")), store.addSong(p.id, song("z"))]);
+    expect(results.every((r) => r.ok)).toBe(true);
+    expect(await store.songs(p.id)).toHaveLength(62);
   });
 
   it("scopes every song write to the playlist id and never lets a non-numeric id reach the cast", async () => {

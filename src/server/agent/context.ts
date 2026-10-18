@@ -12,6 +12,7 @@ import { getPitches } from "@/server/adapters/pitches";
 import * as qloo from "@/server/adapters/qloo";
 import { findReleaseYears } from "@/server/adapters/repertoire";
 import { getSongs } from "@/server/adapters/songs";
+import { boundSongs, PLAN_SONGS_CONSIDERED } from "@/lib/plan-songs-bound";
 import { getWeather } from "@/server/adapters/weather";
 import { CITIES } from "@/server/cities";
 import { PUBLIC_SPOTS, USUAL_HOTSPOTS } from "@/server/data/spots";
@@ -64,8 +65,8 @@ export const HOTSPOT_CROWD_TAKE = 10;
 export const EVENT_ARTISTS_MAX = 6;
 /** Most entity ids one per-pitch affinity call may carry (Qloo's `take` cap); the act's own artists come first, then the fill's candidates. */
 export const AFFINITY_IDS_MAX = 50;
-/** Upper bound for the ordering pass of a set with suggested songs (the act's 60 songs); trimmed afterwards. */
-const MAX_REPERTOIRE_SET = 60;
+/** Upper bound for the ordering pass of a set with suggested songs (the act's songs, bounded to PLAN_SONGS_CONSIDERED); trimmed afterwards. */
+const MAX_REPERTOIRE_SET = PLAN_SONGS_CONSIDERED;
 
 function widen(box: BBox, factor: number): BBox {
   const dLat = ((box.north - box.south) * (factor - 1)) / 2;
@@ -111,6 +112,8 @@ type Status = { adapter: AdapterName; source: string; mode: AdapterResult<unknow
  */
 export class PlanContext {
   readonly request: PlanRequest;
+  /** The Repertoire the engine works on: the request's songs, bounded (lib/plan-songs-bound.ts). The request itself keeps every song. */
+  readonly songs$: PlanRequest["performer"]["songs"];
   readonly adapters: AdapterContext;
   readonly today: string;
   readonly city;
@@ -125,6 +128,7 @@ export class PlanContext {
 
   constructor(request: PlanRequest, adapters: AdapterContext, today?: string, nowHour?: number) {
     this.request = request;
+    this.songs$ = boundSongs(request.performer.songs, PLAN_SONGS_CONSIDERED);
     this.adapters = adapters;
     this.city = CITIES[request.city];
     this.today = today ?? serverToday(this.city.timeZone);
@@ -467,7 +471,7 @@ export class PlanContext {
 
   /** Last.fm top tracks for the repertoire's artists and the rising artists. */
   async songs() {
-    const repertoireArtists = this.request.performer.songs.map((s) => s.artist);
+    const repertoireArtists = this.songs$.map((s) => s.artist);
     const risingNames = (await this.localArtists()).slice(0, 5).map((a) => a.name);
     return this.track("songs", () => getSongs([...repertoireArtists, ...risingNames], this.adapters));
   }
@@ -660,7 +664,7 @@ export class PlanContext {
         byName.set(nameKey(a.query), a.entity?.id ?? null);
         if (a.entity && !byName.get(nameKey(a.entity.name))) byName.set(nameKey(a.entity.name), a.entity.id);
       }
-      const songs = this.request.performer.songs;
+      const songs = this.songs$;
       const missing = [...new Map(songs.filter((s) => !s.own && !byName.has(nameKey(s.artist))).map((s) => [nameKey(s.artist), s.artist])).values()];
       if (missing.length > 0 && !this.qlooFailed()) {
         const extra = await this.track("songArtists", () => qloo.resolveArtists(missing, this.adapters));
@@ -678,7 +682,7 @@ export class PlanContext {
 
   /** First release year of each song the performer picked (Spotify), for era matching. */
   releaseYears() {
-    const songs = this.request.performer.songs.filter((s) => !s.own);
+    const songs = this.songs$.filter((s) => !s.own);
     if (songs.length === 0) return Promise.resolve({} as Record<string, number>);
     return this.track("years", () => findReleaseYears(songs, this.city.countryCode, this.adapters));
   }
@@ -711,7 +715,7 @@ export class PlanContext {
             return name ? [name] : [];
           }),
       });
-      const inSet = new Set(this.request.performer.songs.map((s) => nameKey(s.artist)));
+      const inSet = new Set(this.songs$.map((s) => nameKey(s.artist)));
       // Local acts your fans would like (the local scene) are fill candidates too: the plan's songs are then local, not only global pop.
       const local = (scene?.acts ?? []).filter((a) => a.affinity !== null).map((a): FillArtist => ({ id: a.id, name: a.name, growth: null, listeners: null, because: [], local: { fit: a.affinity } }));
       return mergeFillArtists([crowd.map(toFill), related.map(toFill), local], inSet);

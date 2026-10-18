@@ -61,7 +61,7 @@ test.describe("Repertoire storage (offline, memory store)", () => {
     await add(page, "My Laneway Song - Jess (own)");
     const list = page.getByRole("list", { name: "Songs you can sing" });
     await expect(list.getByRole("listitem")).toHaveCount(3);
-    await expect(page.getByText("3 of 60 songs")).toBeVisible();
+    await expect(page.getByText("3 songs")).toBeVisible();
 
     // The cookie is httpOnly and holds a 22-character token that never shows in the page or its URL.
     const cookie = (await page.context().cookies()).find((c) => c.name === "buskmap_playlist")!;

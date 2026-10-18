@@ -11,6 +11,7 @@ import { findExample } from "./examples";
 import { artistsParam, fillParam, genresParam, ownParam, parseArtistsParam, parseFillParam, parseGenresParam, parseOwnParam, parseSongsParam, songsParam } from "./performer-url";
 import { parseWeightsParam, weightsParam } from "./weights-url";
 import { planRequestSchema, type PlanRequest } from "./plan-schema";
+import { boundSongs, PLAN_SONGS_CONSIDERED } from "./plan-songs-bound";
 import { isAnyTime, nextSlotDate } from "./slot";
 
 type Params = Record<string, string | string[] | undefined>;
@@ -84,7 +85,8 @@ export function planSearchParams(request: PlanRequest, extra: Record<string, str
   for (const [key, value] of ownParam(request.performer)) params.set(key, value);
   for (const [key, value] of genresParam(request.performer)) params.set(key, value);
   if (request.performer.songs.length) {
-    params.set("songs", songsParam(request.performer.songs));
+    // The engine only works on the bounded set (plan-songs-bound.ts), so the link carries just that: same plan, a URL that fits.
+    params.set("songs", songsParam(boundSongs(request.performer.songs, PLAN_SONGS_CONSIDERED)));
   }
   const w = weightsParam(request.weights);
   if (w) params.set("w", w);

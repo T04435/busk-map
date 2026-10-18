@@ -58,7 +58,7 @@ describe("/api/playlist routes (offline, memory store)", () => {
     expect((await (await root.GET(req("GET", "", undefined, "buskmap_playlist=" + "z".repeat(22)))).json()).playlist).toBeNull();
   });
 
-  it("answers a repeat with 409 already_added and the 61st song with 409 playlist_full, in plain words", async () => {
+  it("answers a repeat with 409 already_added, and takes a 61st song (no limit), in plain words", async () => {
     const { songs } = await load();
     let cookie = "";
     for (let i = 0; i < 60; i++) {
@@ -68,9 +68,8 @@ describe("/api/playlist routes (offline, memory store)", () => {
     const dup = await songs.POST(req("POST", "/songs", { title: "s0", artist: "a" }, cookie));
     expect(dup.status).toBe(409);
     expect((await dup.json()).error).toEqual({ code: "already_added", message: "That song is already in your Repertoire." });
-    const full = await songs.POST(req("POST", "/songs", { title: "S61", artist: "A" }, cookie));
-    expect(full.status).toBe(409);
-    expect((await full.json()).error.code).toBe("playlist_full");
+    const more = await songs.POST(req("POST", "/songs", { title: "S61", artist: "A" }, cookie));
+    expect(more.status).toBe(201);
   });
 
   it("validates input with a friendly 400", async () => {

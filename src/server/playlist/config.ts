@@ -4,8 +4,6 @@
  * for the user's confirmation (HQ cards); the rest is fixed by the architecture or already decided.
  */
 
-/** Songs you can sing + learned: a Repertoire must always fit one plan request (planRequestSchema songs.max(60)). */
-export const MAX_SONGS = 60;
 /** Sounds-like artists (planRequestSchema performer.artists.max(10)). */
 export const MAX_SOUNDS_LIKE = 10;
 /** Usual pitches (D4). */
@@ -107,8 +105,6 @@ export const SUGGEST_RELATED_TAKE = 20;
 
 // --- Repertoire research (hackathons/qloo-2026/repertoire-research-spec.md) ---
 
-/** Your own songs a research run adds to Songs you can sing (step 2), at most: the rest of the 60 stay free for covers. */
-export const RESEARCH_OWN_SONGS_MAX = 20;
 /** Sound-alikes (step 4) saved as your "Artists you sound like" when that list is empty. */
 export const RESEARCH_SOUNDS_LIKE_SAVED = 6;
 /** Sound-alikes that join your own artist in step 6's signal. */

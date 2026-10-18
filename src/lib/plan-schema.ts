@@ -42,14 +42,15 @@ export const planRequestSchema = z.object({
     artists: z.array(text(80)).min(1).max(10),
     /** Spotify ids for artists picked from search: Qloo resolves these by id before trying the name. */
     spotifyArtists: z.array(z.object({ name: text(80), id: spotifyIdSchema })).max(10).default([]),
-    songs: z.array(repertoireSongSchema).max(60).default([]),
+    /** No product cap: the whole Repertoire is sent; the server bounds what it works on (lib/plan-songs-bound.ts). 1000 only stops abuse. */
+    songs: z.array(repertoireSongSchema).max(1000).default([]),
     /**
      * How many suggested songs to add (D4). OPTIONAL and never defaulted: a default would add a key to every
      * parsed old request and change its requestHash, planKey and saved-run checks.
      */
     fillSuggested: z.number().int().min(1).max(8).optional(),
     /** Songs removed for this busk, so the fill leaves them out (D6). Optional, never defaulted. */
-    skipSongs: z.array(z.object({ title: text(120), artist: text(80) })).max(60).optional(),
+    skipSongs: z.array(z.object({ title: text(120), artist: text(80) })).max(1000).optional(),
     /**
      * The act's own artist on Qloo (resolved from the saved Spotify link): its entity joins the taste signal and its fans'
      * age and gender lean is shown against the crowd. OPTIONAL and never defaulted, like fillSuggested: a default would change

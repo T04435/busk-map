@@ -6,7 +6,6 @@ import { testSwitches } from "@/server/env";
 import { log } from "@/server/log";
 import { playlistCreateGate } from "@/server/rate-limit";
 import { clientIp } from "@/server/request";
-import { MAX_SONGS } from "./config";
 import { playlistDurable, playlistStore, toPlaylistView, type PlaylistRecord, type PlaylistStore } from "./store";
 import { clearCookieHeader, hashToken, newToken, setCookieHeader, tokenFromCookieHeader } from "./token";
 
@@ -97,8 +96,6 @@ export async function viewOf(store: PlaylistStore, playlist: PlaylistRecord): Pr
 }
 
 export const clearCookie = () => clearCookieHeader(secureCookie());
-
-export const fullMessage = () => PLAYLIST_COPY.errors.full(MAX_SONGS);
 
 /** The session's existing Repertoire (never creates one): a 404 `no_playlist` when the cookie has none. */
 export async function ensureExisting(request: Request): Promise<(Session & { playlist: PlaylistRecord; cookies: string[] }) | Response> {

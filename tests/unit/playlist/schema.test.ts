@@ -56,6 +56,6 @@ describe("parseTypedSong", () => {
 describe("copy", () => {
   it("names the feature Repertoire", () => {
     expect(PLAYLIST_COPY.name).toBe("Repertoire");
-    expect(PLAYLIST_COPY.errors.full(60)).toContain("60");
+    expect(PLAYLIST_COPY.errors).not.toHaveProperty("full");
   });
 });

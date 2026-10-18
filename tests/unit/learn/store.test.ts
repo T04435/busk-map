@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ZERO_LEARN_TOTALS } from "@/lib/learn-schema";
 import { playlistSongKey } from "@/lib/playlist-schema";
-import { LEARN_LIMITS, LEARN_MAX_RUNS, LEARN_MAX_SUGGESTIONS, MAX_SONGS } from "@/server/playlist/config";
+import { LEARN_LIMITS, LEARN_MAX_RUNS, LEARN_MAX_SUGGESTIONS } from "@/server/playlist/config";
 import { MemoryLearnStore, PostgresLearnStore } from "@/server/learn/store";
 import type { Evidence, FinishRun, NewSuggestion } from "@/server/learn/types";
 import { MemoryPlaylistStore } from "@/server/playlist/store";
@@ -167,12 +167,12 @@ describe("MemoryLearnStore: Learned, Not for me, Undo (§1.3)", () => {
     expect(await store.setStatus(id, "999", "dismissed")).toEqual({ ok: false, reason: "missing" });
   });
 
-  it("refuses Learned when Songs you can sing already holds 60", async () => {
+  it("accepts Learned however many songs the Repertoire already holds", async () => {
     const { store, id, playlists } = await make();
-    for (let i = 0; i < MAX_SONGS; i++) await playlists.addSong(id, { title: `S${i}`, artist: "A", own: false, source: "typed" });
+    for (let i = 0; i < 80; i++) await playlists.addSong(id, { title: `S${i}`, artist: "A", own: false, source: "typed" });
     const { saved } = await oneRun(store, id, [pick("New")]);
-    expect(await store.setStatus(id, saved[0].id, "learned")).toEqual({ ok: false, reason: "full" });
-    expect((await store.list(id)).suggestions[0].status).toBe("pending");
+    expect(await store.setStatus(id, saved[0].id, "learned")).toMatchObject({ ok: true });
+    expect((await store.list(id)).suggestions[0].status).toBe("learned");
   });
 
   it("a song typed into Songs you can sing marks the matching pending suggestion learned", async () => {
@@ -288,14 +288,14 @@ describe("PostgresLearnStore: SQL shape", () => {
     expect(f.calls[0].text).toMatch(/NOT \(COALESCE\(end_code, ''\) = ANY \(\$3::text\[\]\)\)/);
   });
 
-  it("Learned runs in one transaction under the Repertoire's lock and the 60-song limit; Undo deletes the song in the same statement", async () => {
+  it("Learned runs in one transaction under the Repertoire's lock (no song limit); Undo deletes the song in the same statement", async () => {
     const row = { id: "7", run_id: null, run_number: null, rank: null, title: "T", artist: "A", year: null, duration_ms: null, image_url: null, song_source: "plan", source_url: null, reason: "r", evidence: {}, status: "pending", created_at: new Date(), learned_at: null, dismissed_at: null, is_new: false };
     const f = fake([[row], [], [{ id: "7" }], [{ id: "9", song_key: "a|t", state: "learned", source: "suggested", title: "T", artist: "A", own: false, spotify_track_id: null, year: null, duration_ms: null, added_at: new Date() }], [], [{ ...row, status: "learned" }], [{ revision: 4 }]]);
     const learned = await f.store.setStatus("p", "7", "learned");
     expect(learned).toMatchObject({ ok: true, song: { id: "9", state: "learned" }, revision: 4 });
     const texts = f.calls.map((c) => c.text);
     expect(texts.some((t) => /FOR UPDATE/.test(t))).toBe(true);
-    expect(texts.some((t) => /UPDATE learn_suggestions SET status = 'learned'[\s\S]*< \$3::integer/.test(t))).toBe(true);
+    expect(texts.some((t) => /UPDATE learn_suggestions SET status = 'learned'/.test(t) && !/count\(\*\)/.test(t))).toBe(true);
     expect(texts.some((t) => /INSERT INTO playlist_songs[\s\S]*'learned', 'suggested'/.test(t))).toBe(true);
     const undo = fake([[{ ...row, status: "learned" }], [{ moved: 1, removed: 1 }], [{ ...row, status: "pending" }], [{ revision: 5 }]]);
     expect(await undo.store.setStatus("p", "7", "pending")).toMatchObject({ ok: true, song: null, revision: 5 });

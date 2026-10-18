@@ -77,7 +77,7 @@ export type StartRunResult = { ok: true; run: RunRecord } | { ok: false; reason:
 
 export type SetStatusResult =
   | { ok: true; suggestion: LearnSuggestionView; song: import("@/lib/playlist-schema").PlaylistSongView | null; revision: number }
-  | { ok: false; reason: "missing" | "invalid" | "full" };
+  | { ok: false; reason: "missing" | "invalid" };
 
 export type FinishRun = {
   status: Exclude<LearnRunStatus, "running">;

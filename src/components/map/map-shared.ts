@@ -32,6 +32,8 @@ export const fillExpression = (colors: string[]) => ["step", ["get", "affinity"]
 export const baseStyle = (): StyleSpecification => ({
   version: 8,
   sources: {},
+  // The glyphs the plan style uses, so the city labels still draw when only the plain land loads.
+  glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
   layers: [{ id: "base", type: "background", paint: { "background-color": themeColor("--map-land", themeColor("--muted", "#ebe6dc")) } }],
 });
 

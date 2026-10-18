@@ -17,14 +17,17 @@ const TasteHeatMap = dynamic(() => import("@/components/map/taste-heat-map").the
 
 export type FansMapCell = { lat: number; lng: number; affinity: number };
 
+/** A top city: named on the map at every zoom. `affinity` 0 to 1. */
+export type FansMapCity = { name: string; lat: number; lng: number; affinity: number };
+
 /** "Melbourne", "Melbourne and Sydney", "Melbourne, Sydney and London". */
 function nameList(names: string[]): string {
   if (names.length <= 1) return names[0] ?? "";
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
-/** The map box: a fixed-height frame (280px on a phone, 360px from md) that loads MapLibre when it comes near the screen. */
-function MapBox({ cells, label }: { cells: FansMapCell[] | null; label: string }) {
+/** The map box: a fixed-height frame (280px on a phone, 360px from md, 480px from lg: it has the full row now) that loads MapLibre when it comes near the screen. */
+function MapBox({ cells, cities, label }: { cells: FansMapCell[] | null; cities?: FansMapCity[]; label: string }) {
   const frame = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(false);
   useEffect(() => {
@@ -35,8 +38,8 @@ function MapBox({ cells, label }: { cells: FansMapCell[] | null; label: string }
     return () => observer.disconnect();
   }, [near]);
   return (
-    <div ref={frame} data-slot="fans-map-frame" className="relative h-70 w-full overflow-hidden border-2 border-rule bg-muted md:h-90">
-      {cells && near ? <TasteHeatMap cells={cells} label={label} /> : <Skeleton className="size-full" />}
+    <div ref={frame} data-slot="fans-map-frame" className="relative h-70 w-full overflow-hidden border-2 border-rule bg-muted md:h-90 lg:h-120">
+      {cells && near ? <TasteHeatMap cells={cells} cities={cities} label={label} /> : <Skeleton className="size-full" />}
     </div>
   );
 }
@@ -49,12 +52,15 @@ function MapBox({ cells, label }: { cells: FansMapCell[] | null; label: string }
  */
 export function FansMap({
   cells,
+  cities,
   topAreas,
   planHref,
   className,
 }: {
   /** Taste cells worldwide, affinity 0 to 1. `null` = loading; `[]` = Qloo has nothing for this act. */
   cells: FansMapCell[] | null;
+  /** The top cities (strongest first, up to 8): each is a labelled hex marker at every zoom, and the map frames them (U40). Cells draw at their true, city size. */
+  cities?: FansMapCity[];
   /** Up to three places, strongest first ("Havana", "Miami", "Madrid"). */
   topAreas: string[];
   /** Where "Plan a busk" goes (/busks, prefilled with the top place when Busk Map covers it). Omit to hide the button. */
@@ -68,7 +74,7 @@ export function FansMap({
     <Section title="Where your fans are" aside={<SourceLogo source="qloo" height={18} className="self-center" />} className={className}>
       <div data-slot="fans-map" aria-busy={loading ? true : undefined} className="flex flex-col gap-4">
         <div className="flex flex-col">
-          <MapBox cells={cells} label="World map: where your fans' taste concentrates, from Qloo" />
+          <MapBox cells={cells} cities={cities} label="World map: where your fans' taste concentrates, from Qloo" />
           {cells && !empty ? <MapLegend top={false} others={false} className="border-x-2 border-b-2" /> : null}
         </div>
         {cells === null ? (

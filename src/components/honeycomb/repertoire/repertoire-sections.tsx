@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { cn } from "cn";
 import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
 import { Icon } from "@/components/honeycomb/icon";
@@ -10,6 +10,7 @@ import { Reason } from "@/components/honeycomb/reason";
 import { SongActions } from "@/components/honeycomb/song-actions";
 import { SongRow } from "@/components/honeycomb/song-row";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { FanLean, LearnSong, ResearchArtist, ResearchSong } from "./types";
 
@@ -58,6 +59,21 @@ function SkeletonRows({ rows = 3, label }: { rows?: number; label: string }) {
 }
 
 const addButtonClass = "mt-4 min-h-12 sm:min-h-0";
+
+/** The song lists' height limit (U37): 420px on a phone, 560px from lg. A `max-h-*` class string; each list scrolls inside it. */
+export const LIST_MAX_HEIGHT = "max-h-[420px] lg:max-h-[560px]";
+
+/** A song list in the shared ScrollArea (U37): grows to `maxHeight`, then scrolls; the header and the actions stay outside it. */
+function SongScroll({ label, maxHeight = LIST_MAX_HEIGHT, children }: { label: string; maxHeight?: string; children: ReactNode }) {
+  return (
+    <ScrollArea label={label} maxHeight={maxHeight} className="border-y border-border">
+      <div className="pr-3 pl-2">{children}</div>
+    </ScrollArea>
+  );
+}
+
+/** The layout's `canSingFilter` slot, handed to CanSingSection so the filter sits above its list, under its heading. */
+const CanSingFilterContext = createContext<ReactNode>(null);
 
 /* Who your fans are */
 
@@ -157,43 +173,83 @@ export function SoundsLikeSection({
   );
 }
 
+/** "What your fans also love" (U39) as its own section, so the layout can pair it with Artists you sound like. */
+export function FansLoveSection({
+  artists,
+  onAdd,
+  loading,
+  className,
+}: {
+  artists: ResearchArtist[] | null;
+  onAdd?: (artist: ResearchArtist) => void;
+  loading?: boolean;
+  className?: string;
+}) {
+  return (
+    <Section title="What your fans also love" className={className}>
+      {artists ? (
+        <ArtistChipList>
+          {artists.map((a) => (
+            <li key={a.name}>
+              <ArtistChip name={a.name} image={a.image} source={a.source} tags={a.tags} state="suggested" onAdd={onAdd ? () => onAdd(a) : undefined} />
+            </li>
+          ))}
+        </ArtistChipList>
+      ) : loading ? (
+        <SkeletonRows rows={3} label="Finding what your fans also love" />
+      ) : null}
+    </Section>
+  );
+}
+
 /* Songs you can sing */
 
 export function CanSingSection({
   songs,
   onRemove,
   onAddSong,
+  filter,
+  maxHeight,
   loading,
   className,
 }: {
   songs: ResearchSong[] | null;
   onRemove?: (song: ResearchSong) => void;
   onAddSong?: () => void;
+  /** A filter field, above the scrolling list. Falls back to the layout's `canSingFilter` slot. */
+  filter?: ReactNode;
+  /** A `max-h-*` class string for the list's ScrollArea (default 420px, 560px from lg). */
+  maxHeight?: string;
   loading?: boolean;
   className?: string;
 }) {
+  const slotFilter = useContext(CanSingFilterContext);
+  const filterNode = filter ?? slotFilter;
   return (
     <Section
       title="Songs you can sing"
       className={className}
       aside={songs ? <span className="font-mono text-sm text-muted-foreground">{songs.length}</span> : undefined}
     >
+      {filterNode ? <div data-slot="song-filter" className="mb-4">{filterNode}</div> : null}
       {songs ? (
-        <ul className="m-0 list-none divide-y divide-border p-0">
-          {songs.map((s) => (
-            <SongRow
-              key={s.id}
-              title={s.title}
-              artist={s.artist}
-              year={s.year}
-              album={s.album}
-              image={s.image}
-              durationMs={s.durationMs}
-              href={s.href ?? undefined}
-              actions={onRemove ? <SongActions title={s.title} onRemove={() => onRemove(s)} /> : undefined}
-            />
-          ))}
-        </ul>
+        <SongScroll label="Songs you can sing" maxHeight={maxHeight}>
+          <ul className="m-0 list-none divide-y divide-border p-0">
+            {songs.map((s) => (
+              <SongRow
+                key={s.id}
+                title={s.title}
+                artist={s.artist}
+                year={s.year}
+                album={s.album}
+                image={s.image}
+                durationMs={s.durationMs}
+                href={s.href ?? undefined}
+                actions={onRemove ? <SongActions title={s.title} onRemove={() => onRemove(s)} /> : undefined}
+              />
+            ))}
+          </ul>
+        </SongScroll>
       ) : loading ? (
         <SkeletonRows rows={4} label="Loading your songs" />
       ) : null}
@@ -250,6 +306,7 @@ export function ToLearnSection({
   onUndo,
   onFindMore,
   runsLeft,
+  maxHeight,
   loading,
   className,
 }: {
@@ -259,6 +316,8 @@ export function ToLearnSection({
   onUndo?: (song: LearnSong) => void;
   onFindMore?: () => void;
   runsLeft?: number | null;
+  /** A `max-h-*` class string for the list's ScrollArea (default 420px, 560px from lg). */
+  maxHeight?: string;
   loading?: boolean;
   className?: string;
 }) {
@@ -270,13 +329,15 @@ export function ToLearnSection({
     <Section title="Songs you should learn" className={className} intro="Picked for your crowd, with the reason for each.">
       {songs ? (
         <>
-          {rows.length > 0 ? (
-            <ul className="m-0 list-none divide-y divide-border p-0">
-              {rows.map((s) => (
-                <LearnRow key={s.id} song={s} onLearned={onLearned} onDismiss={onDismiss} onUndo={onUndo} />
-              ))}
-            </ul>
-          ) : null}
+          {rows.length > 0 || dismissed.length > 0 ? (
+            <SongScroll label="Songs you should learn" maxHeight={maxHeight}>
+              {rows.length > 0 ? (
+                <ul className="m-0 list-none divide-y divide-border p-0">
+                  {rows.map((s) => (
+                    <LearnRow key={s.id} song={s} onLearned={onLearned} onDismiss={onDismiss} onUndo={onUndo} />
+                  ))}
+                </ul>
+              ) : null}
           {dismissed.length > 0 ? (
             <details data-slot="not-for-me" className="group/nfm mt-6 border-t-2 border-rule">
               <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 font-mono text-xs font-bold tracking-[0.08em] uppercase select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none [&::-webkit-details-marker]:hidden">
@@ -289,6 +350,8 @@ export function ToLearnSection({
                 ))}
               </ul>
             </details>
+          ) : null}
+            </SongScroll>
           ) : null}
         </>
       ) : loading ? (
@@ -310,10 +373,13 @@ export function ToLearnSection({
 
 export function LearnedSection({
   songs,
+  maxHeight = "max-h-[280px] lg:max-h-[320px]",
   loading,
   className,
 }: {
   songs: ResearchSong[] | null;
+  /** A `max-h-*` class string for the list's ScrollArea (default 280px, 320px from lg). */
+  maxHeight?: string;
   loading?: boolean;
   className?: string;
 }) {
@@ -325,11 +391,13 @@ export function LearnedSection({
       aside={songs ? <span className="font-mono text-sm text-muted-foreground">{songs.length}</span> : undefined}
     >
       {songs ? (
-        <ul className="m-0 list-none divide-y divide-border p-0">
-          {songs.map((s) => (
-            <SongRow key={s.id} size="sm" title={s.title} artist={s.artist} year={s.year} album={s.album} image={s.image} href={s.href ?? undefined} className="py-2" />
-          ))}
-        </ul>
+        <SongScroll label="Learned" maxHeight={maxHeight}>
+          <ul className="m-0 list-none divide-y divide-border p-0">
+            {songs.map((s) => (
+              <SongRow key={s.id} size="sm" title={s.title} artist={s.artist} year={s.year} album={s.album} image={s.image} href={s.href ?? undefined} className="py-2" />
+            ))}
+          </ul>
+        </SongScroll>
       ) : (
         <SkeletonRows rows={2} label="Loading what you have learned" />
       )}
@@ -339,100 +407,100 @@ export function LearnedSection({
 
 /* Layout */
 
-/** Breathing room under the app header for the sticky act column, in px. */
-const STICKY_TOP = 96;
-const STICKY_BOTTOM = 24;
+/** A row of the results: one column on a phone, two equal columns from lg. */
+const row = "grid min-w-0 gap-14 lg:grid-cols-2 lg:items-start lg:gap-x-12";
 
 /**
- * The act column's `top` for `position: sticky`. A column that fits under the header pins at the top. A taller one is never clipped or
- * given its own scroll: it scrolls with the page until its bottom edge reaches the viewport's, then pins there (a negative `top`).
- */
-function useStickyTop(ref: RefObject<HTMLElement | null>, active: boolean): number {
-  const [top, setTop] = useState(STICKY_TOP);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || !active) return;
-    const measure = () => {
-      const h = el.offsetHeight;
-      const vh = window.innerHeight;
-      setTop(h + STICKY_TOP + STICKY_BOTTOM <= vh ? STICKY_TOP : Math.round(vh - h - STICKY_BOTTOM));
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    window.addEventListener("resize", measure);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [ref, active]);
-  return top;
-}
-
-/**
- * The Repertoire results (U25). One DOM order in every mode (act, then songs, then the research), and only CSS decides where things sit, so
- * nothing remounts when the run finishes (the map keeps its tiles).
- * - Running, and below 1024px: one column. Act (profile, fans, fans map, sounds like, fans also love), then songs (to learn, can sing,
- *   learned). The research leads while it runs and closes the page when it is done.
- * - Done, from 1024px: the act in a sticky left column (about 40%), the songs on the right (about 60%), the research full width below.
+ * The Repertoire results as rows (U37 to U43; replaces the U25 two-column split). One DOM order in both phases, and only CSS moves the
+ * research, so nothing remounts when the run finishes (the map keeps its tiles). From lg each row is two columns; a phone is one column in
+ * the same order.
+ * 1. The act: left the profile (photo, name, genre tags under the name) and the act name field; right "Your audience".
+ * 2. Fans: left Who your fans are; right Artists you sound like above What your fans also love.
+ * 3. The fans map, full width.
+ * 4. Songs: left Songs you can sing (its filter above its ScrollArea); right Songs you should learn, with Learned under it.
+ * 5. "Your act, in a paragraph", full width, then 6. the research, full width. While it runs the research leads (CSS order).
  */
 export function RepertoireResultsLayout({
   phase,
   profile,
+  actName,
+  audience,
   fans,
-  fansMap,
   soundsLike,
   fansLove,
-  toLearn,
+  fansMap,
+  canSingFilter,
   canSing,
+  toLearn,
   learned,
+  summary,
   research,
   className,
 }: {
   phase: "running" | "done";
+  /** ArtistProfile with `audience={false}` and `summary={false}`. */
   profile?: ReactNode;
+  /** The Act name field, under the profile. */
+  actName?: ReactNode;
+  /** AudienceTags. */
+  audience?: ReactNode;
   fans?: ReactNode;
-  fansMap?: ReactNode;
+  /** Artists you sound like (editable). */
   soundsLike?: ReactNode;
-  /** Optional: the "Your fans also love" artists as their own block. Today they sit inside SoundsLikeSection as suggestions. */
+  /** What your fans also love (FansLoveSection), under soundsLike. */
   fansLove?: ReactNode;
-  toLearn?: ReactNode;
+  fansMap?: ReactNode;
+  /** The filter field for Songs you can sing: drawn inside CanSingSection, above its list. */
+  canSingFilter?: ReactNode;
   canSing?: ReactNode;
+  toLearn?: ReactNode;
   learned?: ReactNode;
+  /** ActSummary: full width after the songs, right before the research. */
+  summary?: ReactNode;
   research?: ReactNode;
   className?: string;
 }) {
   const done = phase === "done";
-  const act = useRef<HTMLDivElement>(null);
-  const top = useStickyTop(act, done);
   return (
-    <div
-      data-slot="repertoire-results"
-      data-phase={phase}
-      className={cn("mx-auto flex w-full max-w-[1200px] flex-col gap-14", done && "lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-x-12", className)}
-    >
-      <div
-        ref={act}
-        data-slot="repertoire-act"
-        style={done ? ({ "--act-top": `${top}px` } as CSSProperties) : undefined}
-        className={cn("flex min-w-0 flex-col gap-14", done && "lg:sticky lg:top-(--act-top) lg:self-start")}
-      >
-        {profile}
-        {fans}
-        {fansMap}
-        {soundsLike}
-        {fansLove}
-      </div>
-      <div data-slot="repertoire-songs" className="flex min-w-0 flex-col gap-14">
-        {toLearn}
-        {canSing}
-        {learned}
-      </div>
-      {research ? (
-        <div data-slot="repertoire-research" className={cn("min-w-0", done ? "border-t-2 border-rule pt-8 lg:col-span-2" : "order-first")}>
-          {research}
+    <CanSingFilterContext.Provider value={canSingFilter ?? null}>
+      <div data-slot="repertoire-results" data-phase={phase} className={cn("mx-auto flex w-full max-w-[1200px] flex-col gap-14", className)}>
+        <div data-slot="repertoire-act" className={row}>
+          <div className="flex min-w-0 flex-col gap-6">
+            {profile}
+            {actName}
+          </div>
+          {audience ? <div className="min-w-0">{audience}</div> : null}
         </div>
-      ) : null}
-    </div>
+        <div data-slot="repertoire-fans" className={row}>
+          <div className="min-w-0">{fans}</div>
+          <div className="flex min-w-0 flex-col gap-14">
+            {soundsLike}
+            {fansLove}
+          </div>
+        </div>
+        {fansMap ? (
+          <div data-slot="repertoire-map" className="min-w-0">
+            {fansMap}
+          </div>
+        ) : null}
+        <div data-slot="repertoire-songs" className={row}>
+          <div className="min-w-0">{canSing}</div>
+          <div className="flex min-w-0 flex-col gap-14">
+            {toLearn}
+            {learned}
+          </div>
+        </div>
+        {summary ? (
+          <div data-slot="repertoire-summary" className="min-w-0">
+            {summary}
+          </div>
+        ) : null}
+        {research ? (
+          <div data-slot="repertoire-research" className={cn("min-w-0", done ? "border-t-2 border-rule pt-8" : "order-first")}>
+            {research}
+          </div>
+        ) : null}
+      </div>
+    </CanSingFilterContext.Provider>
   );
 }

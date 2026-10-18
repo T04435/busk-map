@@ -1,5 +1,7 @@
 "use client";
 
+import { SourceLogo } from "@/components/honeycomb/source-logo";
+import type { MentionSource } from "@/lib/mention";
 import { useId } from "react";
 import { cn } from "cn";
 import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
@@ -10,19 +12,20 @@ import { StepCell } from "@/components/honeycomb/step-cell";
 import { RepertoireFunnel } from "./repertoire-funnel";
 import type { RepertoireStep, RepertoireStepKey, RepertoireTotals, StepStatus } from "./types";
 
-export type RepertoireStepInfo = { key: RepertoireStepKey; title: string; source: string; icon: IconName };
+/** `sources`: the data each step reads, drawn as their icon-only marks (U17); the summary is the Hive's own (credited by the AI chip). */
+export type RepertoireStepInfo = { key: RepertoireStepKey; title: string; sources: MentionSource[]; icon: IconName };
 
 /** The nine steps in order (spec: repertoire-research-spec.md). */
 export const REPERTOIRE_STEPS: RepertoireStepInfo[] = [
-  { key: "profile", title: "Reading your Spotify profile", source: "Spotify", icon: "spotify" },
-  { key: "songs", title: "Loading your songs", source: "Spotify · Last.fm", icon: "music" },
-  { key: "qloo", title: "Finding you on Qloo", source: "Qloo", icon: "search" },
-  { key: "soundsLike", title: "Who you sound like", source: "Qloo", icon: "users" },
-  { key: "fans", title: "Who your fans are", source: "Qloo", icon: "footfall" },
-  { key: "fansLove", title: "What your fans also love", source: "Qloo", icon: "trending" },
-  { key: "learn", title: "Songs your fans would stop for", source: "Qloo · Spotify", icon: "learn" },
-  { key: "genres", title: "Your sound in genres", source: "Qloo", icon: "list" },
-  { key: "summary", title: "Summing up your act", source: "Claude", icon: "pencil" },
+  { key: "profile", title: "Reading your Spotify profile", sources: ["spotify"], icon: "spotify" },
+  { key: "songs", title: "Loading your songs", sources: ["spotify", "lastfm"], icon: "music" },
+  { key: "qloo", title: "Finding you on Qloo", sources: ["qloo"], icon: "search" },
+  { key: "soundsLike", title: "Who you sound like", sources: ["qloo"], icon: "users" },
+  { key: "fans", title: "Who your fans are", sources: ["qloo"], icon: "footfall" },
+  { key: "fansLove", title: "What your fans also love", sources: ["qloo"], icon: "trending" },
+  { key: "learn", title: "Songs your fans would stop for", sources: ["qloo", "spotify"], icon: "learn" },
+  { key: "genres", title: "Your sound in genres", sources: ["qloo"], icon: "list" },
+  { key: "summary", title: "Summing up your act", sources: [], icon: "pencil" },
 ];
 
 const TAG = "px-1.5 py-[3px] font-mono text-[11px] leading-[normal] font-bold tracking-[0.06em] uppercase";
@@ -36,7 +39,6 @@ function StepCard({ info, step, n }: { info: RepertoireStepInfo; step: Repertoir
   const quiet = status === "pending";
   const cells = (step?.cells ?? []).slice(0, 6);
   const tag = STATUS_TAG[status];
-  const qloo = info.source.startsWith("Qloo");
   return (
     <li
       aria-current={running ? "step" : undefined}
@@ -47,6 +49,13 @@ function StepCard({ info, step, n }: { info: RepertoireStepInfo; step: Repertoir
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <h3 className={cn("m-0 text-base leading-5 font-bold [overflow-wrap:anywhere]", quiet && "font-medium text-muted-foreground")}>{info.title}</h3>
+          {info.sources.length > 0 ? (
+            <span className={cn("inline-flex items-center gap-1.5 self-center", quiet && "opacity-60")}>
+              {info.sources.map((src) => (
+                <SourceLogo key={src} source={src} height={14} />
+              ))}
+            </span>
+          ) : null}
           {tag ? (
             <span
               className={cn(
@@ -58,10 +67,6 @@ function StepCard({ info, step, n }: { info: RepertoireStepInfo; step: Repertoir
             </span>
           ) : null}
         </div>
-        <p className={cn("m-0 mt-0.5 font-mono text-[11px] leading-4 font-medium tracking-[0.06em] uppercase", qloo && !quiet ? "text-qloo" : "text-muted-foreground")}>
-          <Icon name={info.icon} size={12} className="mr-1 inline-block align-[-1px]" />
-          {info.source}
-        </p>
         {status === "done" && step?.found ? <p className="m-0 mt-1.5 text-sm leading-5 text-foreground [overflow-wrap:anywhere]">{step.found}</p> : null}
         {(status === "failed" || status === "skipped") && step?.note ? <p className="m-0 mt-1.5 text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]">{step.note}</p> : null}
         {status === "done" && cells.length > 0 ? (

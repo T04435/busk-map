@@ -4,9 +4,9 @@ import type { MentionSource } from "@/lib/mention";
 const NAMES: Record<MentionSource, string> = { spotify: "Spotify", lastfm: "Last.fm", qloo: "Qloo" };
 
 /**
- * A data source as its partner logo, the name only in the accessible label (user feedback U07). Spotify swaps its black and
- * white lockups by theme with CSS; Last.fm has one file. Qloo has no logo file in public/partners, so it stays its name in
- * Qloo purple (the one place the purple is allowed: Qloo is named). `height` is the logo's px height (default 14).
+ * A data source as its partner's icon-only mark at text size, the name only in the accessible label (U07, U17: no wordmarks,
+ * no lockups). Spotify's symbol (cut from the official full logo) swaps black and white by theme with CSS; Last.fm is its red "as" app icon; Qloo is its favicon mark (ink or white ring, the
+ * purple tail), swapped by theme. Sources: design-handoff/logos/partners/SOURCES.md. `height` is the logo's px height (default 14).
  */
 export function SourceLogo({ source, height = 14, className }: { source: MentionSource; height?: number; className?: string }) {
   const name = NAMES[source];
@@ -16,15 +16,16 @@ export function SourceLogo({ source, height = 14, className }: { source: Mention
       {source === "spotify" ? (
         <>
           {/* eslint-disable @next/next/no-img-element -- static partner SVGs, decorative inside a labelled wrapper */}
-          <img src="/partners/spotify-full-logo-black.svg" alt="" height={height} style={{ height }} className={cn(img, "dark:hidden")} />
-          <img src="/partners/spotify-full-logo-white.svg" alt="" height={height} style={{ height }} className={cn(img, "hidden dark:block")} />
+          <img src="/partners/spotify-icon-black.svg" alt="" width={height} height={height} style={{ height, width: height }} className={cn(img, "dark:hidden")} />
+          <img src="/partners/spotify-icon-white.svg" alt="" width={height} height={height} style={{ height, width: height }} className={cn(img, "hidden dark:block")} />
         </>
       ) : source === "lastfm" ? (
-        <img src="/partners/lastfm-logo.svg" alt="" height={height} style={{ height }} className={img} />
+        <img src="/partners/lastfm-icon.png" alt="" width={height} height={height} style={{ height, width: height }} className={img} />
       ) : (
-        <span aria-hidden="true" className="font-display font-extrabold text-qloo" style={{ fontSize: Math.round(height * 1.1), lineHeight: 1 }}>
-          Qloo
-        </span>
+        <>
+          <img src="/partners/qloo-icon-ink.svg" alt="" width={height} height={height} style={{ height, width: height }} className={cn(img, "dark:hidden")} />
+          <img src="/partners/qloo-icon-white.svg" alt="" width={height} height={height} style={{ height, width: height }} className={cn(img, "hidden dark:block")} />
+        </>
       )}
     </span>
   );

@@ -38,7 +38,7 @@ export function StepCell({
   const glyph = Math.round(size * 0.45);
   const spoken = label ?? `${n != null ? `Step ${n}, ` : ""}${WORDS[status]}`;
   return (
-    <span data-slot="step-cell" data-status={status} className={cn("relative inline-flex flex-none", className)}>
+    <span data-slot="step-cell" data-status={status} className={cn("relative inline-flex flex-none self-start", className)}>
       <HexCell size={size} tone={TONE[status]} label={spoken} className={cn(status === "pending" && "opacity-90")}>
         {status === "running" ? (
           <Loader size={glyph} label="Working" />

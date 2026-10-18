@@ -66,6 +66,21 @@ export const albumTracksSchema = z.object({
   next: z.string().nullish(),
 });
 
+/** GET /albums?ids=…: up to 20 albums, each with the first page (up to 50) of its tracks. Unknown ids come back null. */
+export const albumsBatchSchema = z.object({
+  albums: z.array(
+    z
+      .object({
+        id: z.string(),
+        name: z.string(),
+        release_date: z.string().optional(),
+        images,
+        tracks: albumTracksSchema,
+      })
+      .nullable(),
+  ),
+});
+
 export type CatalogueTrack = {
   /** Spotify track id. */
   id: string;

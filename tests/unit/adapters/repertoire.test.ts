@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { spotifyIdSchema } from "@/lib/plan-schema";
 import { SYNTHETIC_RAW, syntheticScopedTrackSearch, syntheticSpotifyId } from "@/server/adapters/repertoire/fixtures/synthetic";
+import { resetPacerForTests } from "@/server/adapters/repertoire/pacer";
 import { json, LIVE, mockFetch, OFFLINE, route } from "../../helpers";
 
 async function fresh() {
@@ -8,12 +9,17 @@ async function fresh() {
   return import("@/server/adapters/repertoire");
 }
 
+/** Get Several Albums: answers `ids` with each album from `albumOf(id)` (name, tracks…). */
+const batchRoute = (albumOf: (id: string) => object | null) =>
+  route((u) => u.pathname === "/v1/albums", (u) => json({ albums: (u.searchParams.get("ids") ?? "").split(",").map(albumOf) }));
+
 const tokenRoute = route((u) => u.host === "accounts.spotify.com", () => json(SYNTHETIC_RAW.token));
 
 describe("repertoire (Spotify)", () => {
   beforeEach(() => {
     vi.stubEnv("SPOTIFY_CLIENT_ID", "synthetic-id");
     vi.stubEnv("SPOTIFY_CLIENT_SECRET", "synthetic-secret");
+    resetPacerForTests({ paceMs: 0 });
   });
 
   it("parses artist links, URIs and ids", async () => {
@@ -155,9 +161,12 @@ describe("repertoire (Spotify)", () => {
     const { getArtistCatalogue } = await fresh();
     const { calls } = mockFetch([
       tokenRoute,
-      route((u) => u.pathname.endsWith("/albums") && u.searchParams.get("offset") === "10", () => json(SYNTHETIC_RAW.albumsPage2)),
-      route((u) => u.pathname.endsWith("/albums"), () => json(SYNTHETIC_RAW.albumsPage1)),
-      route((u) => u.pathname.startsWith("/v1/albums/"), (u) => json(SYNTHETIC_RAW.tracks[u.pathname.split("/")[3] as "al1"])),
+      route((u) => /^\/v1\/artists\/[^/]+\/albums$/.test(u.pathname) && u.searchParams.get("offset") === "10", () => json(SYNTHETIC_RAW.albumsPage2)),
+      route((u) => /^\/v1\/artists\/[^/]+\/albums$/.test(u.pathname), () => json(SYNTHETIC_RAW.albumsPage1)),
+      batchRoute((id) => {
+        const album = [...SYNTHETIC_RAW.albumsPage1.items, ...SYNTHETIC_RAW.albumsPage2.items].find((a) => a.id === id)!;
+        return { ...album, tracks: SYNTHETIC_RAW.tracks[id as "al1"] };
+      }),
     ]);
     const result = await getArtistCatalogue("https://open.spotify.com/artist/0SNWoGaDlrCompmg9rXeNq", "AU", LIVE);
     expect(result.mode).toBe("live");
@@ -175,16 +184,15 @@ describe("repertoire (Spotify)", () => {
     });
     const { calls } = mockFetch([
       tokenRoute,
-      route((u) => u.pathname.endsWith("/albums"), (u) => page(Number(u.searchParams.get("offset") ?? 0) / 10)),
-      route((u) => u.pathname.startsWith("/v1/albums/"), (u) => {
-        const id = u.pathname.split("/")[3];
-        return json({ items: [{ id: `t-${id}`, name: `Song of ${id}`, artists: [{ id: "a1", name: "Synthetic Artist" }] }], next: null });
-      }),
+      route((u) => /^\/v1\/artists\/[^/]+\/albums$/.test(u.pathname), (u) => page(Number(u.searchParams.get("offset") ?? 0) / 10)),
+      batchRoute((id) => ({ id, name: `Album ${id}`, tracks: { items: [{ id: `t-${id}`, name: `Song of ${id}`, artists: [{ id: "a1", name: "Synthetic Artist" }] }], next: null } })),
     ]);
     const result = await getArtistCatalogue("https://open.spotify.com/artist/0SNWoGaDlrCompmg9rXeNq", "AU", LIVE);
     expect(result.data).toHaveLength(80);
-    expect(calls.filter((c) => c.url.pathname.endsWith("/albums"))).toHaveLength(8);
-    expect(calls.filter((c) => c.url.pathname.startsWith("/v1/albums/"))).toHaveLength(80);
+    expect(calls.filter((c) => c.url.pathname.includes("/artists/"))).toHaveLength(8);
+    // 80 releases: four Get Several Albums calls, not 80 track-list calls.
+    expect(calls.filter((c) => c.url.pathname === "/v1/albums")).toHaveLength(4);
+    expect(calls.filter((c) => c.url.pathname.startsWith("/v1/albums/"))).toHaveLength(0);
   });
 
   it("follows an album's track list past one page of 50", async () => {
@@ -192,30 +200,31 @@ describe("repertoire (Spotify)", () => {
     const track = (i: number) => ({ id: `t${i}`, name: `Track ${i}`, artists: [{ id: "a1", name: "Synthetic Artist" }] });
     mockFetch([
       tokenRoute,
-      route((u) => u.pathname.endsWith("/albums"), () => json({ items: [{ id: "big", name: "Big", album_type: "album" }], next: null })),
+      route((u) => /^\/v1\/artists\/[^/]+\/albums$/.test(u.pathname), () => json({ items: [{ id: "big", name: "Big", album_type: "album" }], next: null })),
       route((u) => u.pathname === "/v1/albums/big/tracks" && u.searchParams.get("offset") === "50", () => json({ items: Array.from({ length: 20 }, (_, i) => track(50 + i)), next: null })),
-      route((u) => u.pathname === "/v1/albums/big/tracks", () => json({ items: Array.from({ length: 50 }, (_, i) => track(i)), next: "https://api.spotify.com/v1/albums/big/tracks?offset=50&limit=50" })),
+      batchRoute((id) => ({ id, name: "Big", tracks: { items: Array.from({ length: 50 }, (_, i) => track(i)), next: "https://api.spotify.com/v1/albums/big/tracks?offset=50&limit=50" } })),
     ]);
     const result = await getArtistCatalogue("https://open.spotify.com/artist/0SNWoGaDlrCompmg9rXeNq", "AU", LIVE);
     expect(result.data).toHaveLength(70);
   });
 
-  it("rides out a Spotify 429 on an album: waits, retries, and keeps the whole catalogue (18 Oct live run)", async () => {
+  it("rides out a short Spotify 429 (Retry-After 1 s): waits once, retries once, keeps the whole catalogue", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout"] });
     try {
       const { getArtistCatalogue } = await fresh();
       let hits = 0;
-      mockFetch([
+      const { calls } = mockFetch([
         tokenRoute,
-        route((u) => u.pathname.endsWith("/albums"), () => json({ items: ["a", "b", "c"].map((id) => ({ id, name: `Album ${id}`, album_type: "album" })), next: null })),
-        route((u) => u.pathname === "/v1/albums/b/tracks" && hits++ === 0, () => json({}, 429)),
-        route((u) => u.pathname.startsWith("/v1/albums/"), (u) => json({ items: [{ id: `t-${u.pathname.split("/")[3]}`, name: `Song ${u.pathname.split("/")[3]}`, artists: [{ id: "a1", name: "Synthetic Artist" }] }], next: null })),
+        route((u) => u.pathname.endsWith("/albums") && u.pathname.includes("/artists/"), () => json({ items: ["a", "b", "c"].map((id) => ({ id, name: `Album ${id}`, album_type: "album" })), next: null })),
+        route((u) => u.pathname === "/v1/albums" && hits++ === 0, () => new Response("{}", { status: 429, headers: { "retry-after": "1" } })),
+        batchRoute((id) => ({ id, name: `Album ${id}`, tracks: { items: [{ id: `t-${id}`, name: `Song ${id}`, artists: [{ id: "a1", name: "Synthetic Artist" }] }], next: null } })),
       ]);
       const pending = getArtistCatalogue("https://open.spotify.com/artist/0SNWoGaDlrCompmg9rXeNq", "AU", LIVE);
       await vi.runAllTimersAsync();
       const result = await pending;
-      expect(result.mode).not.toBe("fallback");
+      expect(result.mode).toBe("live");
       expect(result.data.map((t) => t.title).sort()).toEqual(["Song a", "Song b", "Song c"]);
+      expect(calls.filter((c) => c.url.pathname === "/v1/albums")).toHaveLength(2);
     } finally {
       vi.useRealTimers();
     }

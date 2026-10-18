@@ -42,13 +42,16 @@ export class AdapterError extends Error {
   readonly kind: AdapterErrorKind;
   readonly adapter: AdapterName;
   readonly status?: number;
+  /** Seconds the provider asked us to wait (the Retry-After header of a 429), when it sent one. */
+  readonly retryAfterSeconds?: number;
 
-  constructor(adapter: AdapterName, kind: AdapterErrorKind, message: string, status?: number) {
+  constructor(adapter: AdapterName, kind: AdapterErrorKind, message: string, status?: number, retryAfterSeconds?: number) {
     super(message);
     this.name = "AdapterError";
     this.adapter = adapter;
     this.kind = kind;
     this.status = status;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -112,7 +115,14 @@ export async function fetchJson<S extends z.ZodType>(
   if (!response.ok) {
     const kind: AdapterErrorKind =
       response.status === 429 ? "rate_limited" : response.status === 404 ? "not_found" : "http";
-    throw new AdapterError(adapter, kind, `${redactUrl(url)} returned HTTP ${response.status}`, response.status);
+    const retryAfter = kind === "rate_limited" ? Number(response.headers?.get("retry-after")) : NaN;
+    throw new AdapterError(
+      adapter,
+      kind,
+      `${redactUrl(url)} returned HTTP ${response.status}`,
+      response.status,
+      Number.isFinite(retryAfter) && retryAfter >= 0 ? retryAfter : undefined,
+    );
   }
 
   let body: unknown;

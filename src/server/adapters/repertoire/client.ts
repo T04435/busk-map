@@ -3,9 +3,11 @@ import { cacheLife, cacheTag } from "next/cache";
 import type { z } from "zod";
 import { nameKey, songKey } from "@/lib/text";
 import { env } from "@/server/env";
-import { AdapterError, fetchJson } from "../core";
+import { AdapterError, errorKindOf, fetchJson } from "../core";
+import { BudgetExhausted, CallBudget, CATALOGUE_CALL_BUDGET, DEFAULT_RETRY_AFTER_S, SHORT_RETRY_AFTER_S, limitSpotifyUntil, paceSpotify, spotifyLimitedUntil } from "./pacer";
 import {
   albumTracksSchema,
+  albumsBatchSchema,
   albumsSchema,
   albumsTotalSchema,
   artistSchema,
@@ -29,11 +31,8 @@ const TOKEN_URL = "https://accounts.spotify.com/api/token";
 const TIMEOUT_MS = 6_000;
 /** Safety bound against runaway pagination (not a product cap): 50 pages of 10 albums. Spotify ends a list with next = null. */
 const ALBUM_PAGES_SAFETY = 50;
-/** Album track lists fetched at once, kept small for Spotify's rate limit. */
-// Two album track lists at a time: a big catalogue (Al2 El Aldeano: 100+ releases) at 4 tripped Spotify's 429 on 18 Oct.
-const ALBUM_TRACKS_CONCURRENCY = 2;
-/** Waits before retrying a rate-limited call (Spotify 429), then the call gives up. */
-const RATE_LIMIT_BACKOFF_MS = [1000, 2500, 5000];
+/** Albums per Get Several Albums call (Spotify's maximum). */
+export const ALBUMS_PER_BATCH = 20;
 
 // Tokens stay in this instance's memory: never in a cache entry or a log.
 let token: { value: string; expiresAt: number } | undefined;
@@ -63,24 +62,38 @@ async function accessToken(): Promise<string> {
   return token.value;
 }
 
-async function spotify<S extends z.ZodType>(path: string, schema: S): Promise<z.infer<S>> {
-  return fetchJson(`${API}${path}`, {
-    adapter: "repertoire",
-    schema,
-    timeoutMs: TIMEOUT_MS,
-    init: { headers: { Authorization: `Bearer ${await accessToken()}` } },
-  });
-}
-
-/** `spotify()` that waits and retries when Spotify rate-limits (429), so one busy moment doesn't lose a whole catalogue. */
-async function spotifyPatient<S extends z.ZodType>(path: string, schema: S): Promise<z.infer<S>> {
+/**
+ * Every Spotify API call goes through here: fail fast while the breaker is open (no network), wait for the pacer's slot,
+ * count against the caller's budget, and on a 429 either open the breaker (Retry-After over 30 s) or wait once and retry
+ * once (30 s or less). Never more than one retry.
+ */
+async function spotify<S extends z.ZodType>(path: string, schema: S, budget?: CallBudget): Promise<z.infer<S>> {
   for (let attempt = 0; ; attempt++) {
+    const until = await spotifyLimitedUntil();
+    // The message ends like fetchJson's, so errorKindOf still reads "rate_limited" after a "use cache" boundary.
+    if (until) throw new AdapterError("repertoire", "rate_limited", `Spotify is limited until ${until.toISOString()} (returned HTTP 429)`, 429);
+    budget?.take();
+    await paceSpotify();
     try {
-      return await spotify(path, schema);
+      return await fetchJson(`${API}${path}`, {
+        adapter: "repertoire",
+        schema,
+        timeoutMs: TIMEOUT_MS,
+        init: { headers: { Authorization: `Bearer ${await accessToken()}` } },
+      });
     } catch (error) {
-      const limited = error instanceof Error && "kind" in error && (error as { kind?: string }).kind === "rate_limited";
-      if (!limited || attempt >= RATE_LIMIT_BACKOFF_MS.length) throw error;
-      await new Promise((r) => setTimeout(r, RATE_LIMIT_BACKOFF_MS[attempt]));
+      if (!(error instanceof AdapterError) || error.kind !== "rate_limited") throw error;
+      const wait = error.retryAfterSeconds ?? DEFAULT_RETRY_AFTER_S;
+      if (wait > SHORT_RETRY_AFTER_S) {
+        await limitSpotifyUntil(new Date(Date.now() + wait * 1000));
+        throw error;
+      }
+      if (attempt >= 1) {
+        // Limited again right after waiting: pause for a minute rather than keep asking.
+        await limitSpotifyUntil(new Date(Date.now() + 60_000));
+        throw error;
+      }
+      await new Promise((r) => setTimeout(r, wait * 1000));
     }
   }
 }
@@ -217,10 +230,23 @@ export async function fetchReleaseCount(artistId: string, market: string): Promi
   return body.total;
 }
 
-/** An artist's own songs: albums and singles, deduplicated by title. */
+/**
+ * An artist's own songs: albums and singles, deduplicated by title. Spotify calls: the artist's album list (10 per page),
+ * then Get Several Albums (20 per call, each album with its first 50 tracks; `tracks.next` is followed only for longer
+ * albums): about 39 calls for 256 releases, where one call per release took 282. The fetch has a call budget; when it is
+ * used up, or Spotify rate-limits part-way, the songs found so far are returned and cached briefly. Fails (so nothing is
+ * cached and the caller falls back to Last.fm) when nothing was found.
+ */
 export async function fetchArtistCatalogue(artistId: string, market: string): Promise<CatalogueTrack[]> {
   "use cache: remote";
   cacheTag("repertoire");
+  const budget = new CallBudget(CATALOGUE_CALL_BUDGET);
+  let partial: "budget" | "limited" | "error" | null = null;
+  const stop = (error: unknown) => {
+    if (error instanceof BudgetExhausted) return (partial ??= "budget");
+    if (error instanceof Error && "kind" in error) return (partial ??= errorKindOf(error) === "rate_limited" ? "limited" : "error");
+    throw error;
+  };
 
   const albums: (RawAlbum & { id: string })[] = [];
   let path: string | null = `/artists/${encodeURIComponent(artistId)}/albums?${new URLSearchParams({
@@ -228,50 +254,66 @@ export async function fetchArtistCatalogue(artistId: string, market: string): Pr
     limit: "10",
     market,
   })}`;
-  for (let page = 0; path && page < ALBUM_PAGES_SAFETY; page++) {
-    const body: z.infer<typeof albumsSchema> = await spotifyPatient(path, albumsSchema);
-    albums.push(...body.items);
-    path = body.next ? body.next.replace(API, "") : null;
+  try {
+    for (let page = 0; path && page < ALBUM_PAGES_SAFETY; page++) {
+      const body: z.infer<typeof albumsSchema> = await spotify(path, albumsSchema, budget);
+      albums.push(...body.items);
+      path = body.next ? body.next.replace(API, "") : null;
+    }
+  } catch (error) {
+    // The first page failing is a failed catalogue; a later page failing leaves the releases found so far.
+    if (albums.length === 0) throw error;
+    stop(error);
   }
 
-  const trackLists: CatalogueTrack[][] = new Array(albums.length);
-  let skipped = 0;
-  let nextAlbum = 0;
-  const worker = async () => {
-    while (nextAlbum < albums.length) {
-      const i = nextAlbum++;
-      const album = albums[i];
-      const tracks: CatalogueTrack[] = [];
-      // An album longer than one page of 50 tracks is followed to its end (next = null).
-      let trackPath: string | null = `/albums/${encodeURIComponent(album.id)}/tracks?limit=50&market=${market}`;
-      try {
-        for (let page = 0; trackPath && page < ALBUM_PAGES_SAFETY; page++) {
-          const body: z.infer<typeof albumTracksSchema> = await spotifyPatient(trackPath, albumTracksSchema);
-          tracks.push(...body.items.map((t) => toTrack(t, album)));
-          trackPath = body.next ? body.next.replace(API, "") : null;
+  const trackLists: CatalogueTrack[][] = [];
+  try {
+    for (let from = 0; from < albums.length; from += ALBUMS_PER_BATCH) {
+      const ids = albums.slice(from, from + ALBUMS_PER_BATCH).map((a) => a.id);
+      const params = new URLSearchParams({ ids: ids.join(","), market });
+      const body: z.infer<typeof albumsBatchSchema> = await spotify(`/albums?${params}`, albumsBatchSchema, budget);
+      for (const album of body.albums) {
+        if (!album) continue;
+        const tracks = album.tracks.items.map((t) => toTrack(t, album));
+        // An album longer than one page of 50 tracks is followed to its end (next = null).
+        let next = album.tracks.next ?? null;
+        try {
+          for (let page = 0; next && page < ALBUM_PAGES_SAFETY; page++) {
+            const more: z.infer<typeof albumTracksSchema> = await spotify(next.replace(API, ""), albumTracksSchema, budget);
+            tracks.push(...more.items.map((t) => toTrack(t, album)));
+            next = more.next ?? null;
+          }
+        } catch (error) {
+          stop(error);
         }
-      } catch (error) {
-        // One release that still fails after the retries is left out; the rest of the catalogue stands.
-        if (!(error instanceof Error && "kind" in error)) throw error;
-        skipped++;
+        trackLists.push(tracks);
+        if (partial) break;
       }
-      trackLists[i] = tracks;
+      if (partial) break;
     }
-  };
-  await Promise.all(Array.from({ length: Math.min(ALBUM_TRACKS_CONCURRENCY, albums.length) }, worker));
-  // Every release failing is a failed catalogue (the caller falls back to Last.fm); some failing is a partial one.
-  if (albums.length > 0 && skipped === albums.length) throw new Error("Spotify returned no album track lists");
-  // A whole catalogue keeps for days; one with a release left out keeps for 10 minutes, so the next research gets the full list.
-  if (skipped > 0) cacheLife({ stale: 60, revalidate: 600, expire: 600 });
-  else cacheLife("days");
+  } catch (error) {
+    stop(error);
+  }
 
   const seen = new Set<string>();
-  return trackLists.flat().filter((track) => {
+  const result = trackLists.flat().filter((track) => {
     const key = songKey(track.title);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+  // Nothing found is a failed catalogue (never cached; the caller falls back to Last.fm); some found is a partial one.
+  if (albums.length > 0 && result.length === 0) {
+    throw partial === "limited"
+      ? new AdapterError("repertoire", "rate_limited", "Spotify rate-limited every album track list (returned HTTP 429)", 429)
+      : new Error("Spotify returned no album track lists");
+  }
+  // A whole catalogue keeps for days. A partial one never does: 10 minutes when the budget ran out, 1 minute when Spotify
+  // limited us or failed part-way, so the next research gets the full list soon.
+  if (partial === "budget") cacheLife({ stale: 60, revalidate: 600, expire: 600 });
+  else if (partial) cacheLife({ stale: 30, revalidate: 60, expire: 60 });
+  else cacheLife("days");
+  return result;
 }
 
 export { parseSpotifyArtistId } from "@/lib/spotify-link";

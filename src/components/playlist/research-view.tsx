@@ -41,10 +41,10 @@ import { ZERO_LEARN_TOTALS, type LearnListView, type LearnStreamEvent } from "@/
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import { playlistSongKey, type LearnSuggestionView, type PlaylistView } from "@/lib/playlist-schema";
 import { fansMapProps } from "@/lib/fans-map";
-import { OFFLINE_TEST_ARTIST, type FansMapOutput } from "@/lib/repertoire-research";
+import { OFFLINE_TEST_ARTIST } from "@/lib/repertoire-research";
 import { toRepertoireView, type LearnSong, type RepertoireView } from "@/lib/repertoire-research-view";
 import { parseSpotifyArtistId, spotifyArtistUrl } from "@/lib/spotify-link";
-import { joinLearn, loadFansMap, loadLearn, pageFaults, patchSuggestion, startResearch } from "./learn-api";
+import { joinLearn, loadLearn, pageFaults, patchSuggestion, startResearch } from "./learn-api";
 import { ResearchFunnel } from "./learn-feed";
 import { addSong, forgetPlaylist, loadPlaylist, moveSong, removeSong, savePlaylist } from "./playlist-api";
 
@@ -383,21 +383,8 @@ export function ResearchView() {
   const dismissed = (list?.suggestions ?? []).filter((s) => s.status === "dismissed");
   const limit = list?.limit;
   const r = view.results;
-  // "Where your fans are": the saved map, or the one for the city the user switched to (one cached Qloo call, no research run).
-  const [switchedMap, setSwitchedMap] = useState<{ map: FansMapOutput; runId: string | null } | null>(null);
-  const [mapBusy, setMapBusy] = useState(false);
-  const [mapError, setMapError] = useState<string | null>(null);
-  // A new research run replaces the map the user switched away from.
-  const shownMap = switchedMap && !running && switchedMap.runId === (playlist?.research?.runId ?? null) ? switchedMap.map : r.fansMap;
-  const mapProps = shownMap ? fansMapProps(shownMap, mapBusy) : null;
-  const switchMapCity = useCallback(async (id: string) => {
-    setMapBusy(true);
-    setMapError(null);
-    const res = await loadFansMap(id);
-    if (res.ok) setSwitchedMap({ map: res.map, runId: playlist?.research?.runId ?? null });
-    else setMapError(COPY.research.fansMapUnavailable);
-    setMapBusy(false);
-  }, [playlist?.research?.runId]);
+  // "Where your fans are": the saved world map (no city, no switch).
+  const mapProps = r.fansMap ? fansMapProps(r.fansMap) : null;
   const learnMedia = new Map((r.toLearn ?? []).map((s) => [s.id, s]));
   // Every artist and song this page knows, so a reason's names can be drawn in place (U05).
   const known: Mention[] = [
@@ -591,13 +578,7 @@ export function ResearchView() {
       {mapProps ? (
         // FansMap brings its own heading, Qloo mark and honesty line; the plain Section only holds the place while it loads.
         <div id="research-fans-map" data-testid="research-fans-map" className="max-w-2xl space-y-2">
-          {/* Global (the user, 19 Oct): no city switch. DEV: query Qloo's heatmap worldwide and drop the city props. */}
           <FansMap cells={mapProps.cells} topAreas={mapProps.topAreas} planHref={mapProps.planHref} />
-          {mapError ? (
-            <p role="alert" className="m-0 text-sm text-destructive">
-              {mapError}
-            </p>
-          ) : null}
         </div>
       ) : (
         <Section id="research-fans-map" title={R.fansMapHeading} ready={false} live={live} testId="research-fans-map">

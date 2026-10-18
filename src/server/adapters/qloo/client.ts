@@ -213,7 +213,9 @@ export async function heatmap(backend: QlooBackend, entityIds: string[], area: B
 async function heatmapCached(backend: QlooBackend, entityIds: string[], area: BBox): Promise<HeatCell[]> {
   "use cache: remote";
   return lookupScope("heatmap", [backend, entityIds, area], async () => {
-    cacheLife("days");
+    // A world-sized area is the Repertoire's "Where your fans are": fresh for 24 h. City-sized areas (the planner) keep "days".
+    if (area.east - area.west > 180 || area.north - area.south > 120) cacheLife({ stale: 3600, revalidate: 86400, expire: 86400 });
+    else cacheLife("days");
     cacheTag("qloo", "qloo:heatmap");
     const params = {
       "filter.type": "urn:heatmap",

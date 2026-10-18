@@ -54,7 +54,7 @@ export const RESEARCH_SOURCES: Record<ResearchStepKey, string> = {
   qloo: "Qloo /entities by Spotify id (name search as backup), then /entities by id for tags and description",
   soundsLike: "Qloo /v2/insights · urn:entity:artist signalled by your artist",
   fans: "Qloo /v2/insights · urn:demographics signalled by your artist",
-  fansMap: "Qloo /v2/insights · urn:heatmap signalled by your artist and your sound-alikes, over your city",
+  fansMap: "Qloo /v2/insights · urn:heatmap signalled by your artist and your sound-alikes, worldwide",
   fansLove: "Qloo /v2/insights · urn:entity:artist signalled by you and your sound-alikes, with explainability; they are left out",
   learn: "Spotify top tracks of those artists (Last.fm as backup); songs you sing, were offered or dismissed are left out",
   genres: "Qloo /v2/insights · urn:tag (music genres) signalled by your artist",
@@ -88,13 +88,13 @@ export type LeanOut = { key: string; label: string; lean: number };
 export type FansOutput = { summary: string; age: LeanOut[]; gender: LeanOut[]; ageLean: string | null };
 /** One heat cell of "Where your fans are": `affinity` is relative to the strongest cell (0 to 1). BRAND's FansMap takes these as `cells`. */
 export type FansMapCell = { lat: number; lng: number; affinity: number };
-/** The map's city, as BRAND's FansMap takes it: `center` is [lng, lat]. */
-export type FansMapCity = { id: string; name: string; center: [number, number]; zoom: number };
 /**
- * Step 5b, "Where your fans are": the Qloo heatmap (urn:heatmap) of the act and its sound-alikes over one city. `areas` are up to
- * three plain-text place names, strongest first. Optional in saved runs: snapshots from before this step lack it.
+ * Step 5b, "Where your fans are": the Qloo heatmap (urn:heatmap) of the act and its sound-alikes over the whole world. `areas` are up to
+ * three plain-text place names (distinct cities), strongest first; `planCity` is the Busk Map city id of the top place when we cover it.
+ * Optional in saved runs: snapshots from before this step lack it. `city` is retired (the map was per city until U30); old snapshots
+ * still carry it and it is ignored.
  */
-export type FansMapOutput = { summary: string; city: FansMapCity; cells: FansMapCell[]; areas: string[]; signalledBy: string[] };
+export type FansMapOutput = { summary: string; cells: FansMapCell[]; areas: string[]; planCity?: string | null; signalledBy: string[]; /** Retired. */ city?: unknown };
 export type FansLoveOutput = { summary: string; artists: ResearchArtistOut[]; signalledBy: string[]; excluded: number };
 export type LearnOutput = {
   summary: string;

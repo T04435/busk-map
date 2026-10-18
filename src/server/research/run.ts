@@ -53,7 +53,7 @@ import {
   RESEARCH_SOUNDS_LIKE_SAVED,
 } from "@/server/playlist/config";
 import { fansMapFor } from "./fans-map";
-import { resolveFansMapCity } from "@/lib/fans-map";
+import { isMusicGenreTag } from "@/lib/genre-tags";
 import { findOwnOnQloo, soundsLikeFor } from "@/server/playlist/own-artist";
 import type { PlaylistRecord, PlaylistStore } from "@/server/playlist/store";
 
@@ -339,14 +339,13 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         own = { id: q.qlooId, name: q.name ?? playlist.actName ?? "you" };
       }
 
-      // --- Step 6: where your fans are (the Qloo heatmap of you and your sound-alikes over the Repertoire's city). Full runs only: "more" keeps the saved map. ---
+      // --- Step 6: where your fans are (the Qloo heatmap of you and your sound-alikes, worldwide). Full runs only: "more" keeps the saved map. ---
       if (mode === "full") {
         const fresh = (await playlists.get(playlist.id)) ?? playlist;
-        const cityId = resolveFansMapCity(fresh);
         const mapAlikes = fresh.soundsLike.filter((a) => a.qlooId).slice(0, RESEARCH_SIGNAL_SOUND_ALIKES) as (SoundsLike & { qlooId: string })[];
-        await step("fansMap", { city: cityId, signal: [own.name, ...mapAlikes.map((a) => a.name)] }, async (): Promise<FansMapOutput> => {
+        await step("fansMap", { scope: "world", signal: [own.name, ...mapAlikes.map((a) => a.name)] }, async (): Promise<FansMapOutput> => {
           // A heatmap Qloo can't give is a failed step, not a failed run: the other steps don't need it.
-          return fansMapFor({ cityId, own: own!, alikes: mapAlikes, adapters });
+          return fansMapFor({ own: own!, alikes: mapAlikes, adapters });
         });
       }
 
@@ -403,7 +402,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           const seen = new Set<string>();
           const out = tags
             .map((t) => ({ id: t.id, name: t.name.trim().replace(/\b\w/g, (c) => c.toUpperCase()), affinity: r2(t.affinity) }))
-            .filter((t) => t.name && !seen.has(t.id) && seen.add(t.id));
+            .filter((t) => t.name && isMusicGenreTag(t) && !seen.has(t.id) && seen.add(t.id));
           return { summary: out.length ? `Your sound: ${out.slice(0, 3).map((t) => t.name).join(", ")}` : "Qloo has no genres for your sound", tags: out };
         });
       }

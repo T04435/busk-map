@@ -60,7 +60,7 @@ async function OwnAct({ searchParams }: Pick<PageProps<"/busks">, "searchParams"
           <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(min(260px,100%),1fr))] gap-3 p-0">
             {EXAMPLES.map((example) => (
               <li key={example.id}>
-                <ExampleActCard name={example.label} blurb={example.blurb} soundsLike={example.performer.artists.slice(0, 3).join(", ")} href={`/plan?example=${example.id}`} />
+                <ExampleActCard name={example.label} blurb={example.blurb} soundsLike={example.performer.artists.slice(0, 3)} href={`/plan?example=${example.id}`} />
               </li>
             ))}
           </ul>

@@ -130,7 +130,7 @@ export default function Home() {
                 <ExampleActCard
                   name={example.label}
                   when={exampleWhen(example)}
-                  soundsLike={example.performer.artists.slice(0, 3).join(", ")}
+                  soundsLike={example.performer.artists.slice(0, 3)}
                   plays={examplePlays(example)}
                   href={`/plan?example=${example.id}`}
                 />

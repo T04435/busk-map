@@ -183,7 +183,7 @@ export function PlanStates() {
         </div>
         <div className={SPEC}>
           <h4 className={SPEC_H}>ExampleActCard · NoteCard next</h4>
-          <ExampleActCard name="Folk duo" blurb="Fiddle and guitar, Sunday afternoon" soundsLike="Gillian Welch" href="/brand#components" />
+          <ExampleActCard name="Folk duo" blurb="Fiddle and guitar, Sunday afternoon" soundsLike={["Gillian Welch"]} href="/brand#components" />
           <NoteCard variant="next">Taste from genres as well as artists</NoteCard>
         </div>
         <div className={SPEC}>

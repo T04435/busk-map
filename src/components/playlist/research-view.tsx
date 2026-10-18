@@ -1,14 +1,14 @@
 "use client";
 
 import { FansMap } from "@/components/honeycomb/repertoire/fans-map";
-import { RepertoireResultsLayout } from "@/components/honeycomb/repertoire/repertoire-sections";
+import { LIST_MAX_HEIGHT, RepertoireResultsLayout } from "@/components/honeycomb/repertoire/repertoire-sections";
 import { artist as mentionArtist, mentionsIn, song as mentionSong, spotifyHref, type Mention } from "@/lib/mention";
 import { AiChip } from "@/components/honeycomb/ai-chip";
 import { HiveMark } from "@/components/honeycomb/hive-mark";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { TrackResult } from "@/components/forms/repertoire-api";
 import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
-import { ArtistProfile } from "@/components/honeycomb/artist-profile";
+import { ArtistProfile, AudienceTags } from "@/components/honeycomb/artist-profile";
 import { InfoTag } from "@/components/honeycomb/info-tag";
 import { Reason } from "@/components/honeycomb/reason";
 import { SongActions } from "@/components/honeycomb/song-actions";
@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ZERO_LEARN_TOTALS, type LearnListView, type LearnStreamEvent } from "@/lib/learn-schema";
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
@@ -116,59 +117,15 @@ function SuggestionRow({ song, media, known, busy, onStatus }: { song: LearnSugg
   );
 }
 
-/** Rows shown before a long list folds (U16: the Repertoire has no limit, so "Songs you can sing" can run to hundreds). */
-const FOLD_AT = 20;
+/** A long list gets a filter (U37) once it passes this many rows. */
+const FILTER_AT = 20;
 
-/**
- * A list that shows its first rows and folds the rest behind "Show all N songs" (shadcn Collapsible), with a filter
- * (shadcn Input) once it is long. A filter shows every match, folded or not.
- */
-function FoldedList<T extends { id: string }>({ label, rows, render, match }: { label: string; rows: readonly T[]; render: (row: T) => ReactNode; match: (row: T, query: string) => boolean }) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const q = query.trim().toLowerCase();
-  const long = rows.length > FOLD_AT;
-  const shown = q ? rows.filter((row) => match(row, q)) : rows;
-  const head = q || !long ? shown : shown.slice(0, FOLD_AT);
-  const rest = q || !long ? [] : shown.slice(FOLD_AT);
-  const ulClass = "m-0 list-none divide-y divide-border border-2 border-rule bg-card px-3";
+/** A song list in the shared ScrollArea (U37, U41): grows to its max height, then scrolls; the heading, filter and actions stay outside it. */
+function ListScroll({ label, maxHeight = LIST_MAX_HEIGHT, children }: { label: string; maxHeight?: string; children: ReactNode }) {
   return (
-    <div className="space-y-3" data-testid="folded-list">
-      {long && (
-        <Input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          aria-label={COPY.filterLabel}
-          placeholder={COPY.filterPlaceholder}
-          className="max-w-sm"
-          data-testid="folded-list-filter"
-        />
-      )}
-      {q && shown.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{COPY.noFilterMatch}</p>
-      ) : (
-        <Collapsible open={open} onOpenChange={setOpen} className="space-y-3">
-          <ul aria-label={label} className={ulClass}>
-            {head.map(render)}
-          </ul>
-          {rest.length > 0 && (
-            <>
-              <CollapsibleContent>
-                <ul aria-label={`${label}, the rest`} className={ulClass}>
-                  {rest.map(render)}
-                </ul>
-              </CollapsibleContent>
-              <CollapsibleTrigger asChild>
-                <Button variant="link" size="sm" className="h-auto px-0" data-testid="folded-list-toggle">
-                  {open ? COPY.showFewer : COPY.showAll(rows.length)}
-                </Button>
-              </CollapsibleTrigger>
-            </>
-          )}
-        </Collapsible>
-      )}
-    </div>
+    <ScrollArea label={label} maxHeight={maxHeight} className="border-y border-border" data-testid="list-scroll">
+      <div className="pr-3 pl-2">{children}</div>
+    </ScrollArea>
   );
 }
 
@@ -184,7 +141,7 @@ function Section({ id, title, ready, live, children, testId }: { id: string; tit
   // Outside a run, a section with nothing yet (a Repertoire made before research) is left out rather than skeletoned.
   if (!ready && !live) return null;
   return (
-    <section aria-labelledby={id} className="max-w-2xl space-y-3" data-testid={testId} data-ready={ready ? "true" : "false"}>
+    <section aria-labelledby={id} className="w-full space-y-3 border-t-2 border-rule pt-6" data-testid={testId} data-ready={ready ? "true" : "false"}>
       <h2 id={id} className={H2}>
         {title}
       </h2>
@@ -221,6 +178,7 @@ export function ResearchView() {
   const [actName, setActName] = useState("");
   const [artists, setArtists] = useState<PickedArtist[]>([]);
   const [artistQuery, setArtistQuery] = useState("");
+  const [canSingQuery, setCanSingQuery] = useState("");
   const [showRaw, setShowRaw] = useState(false);
   const [offline, setOffline] = useState(false);
   const mounted = useRef(true);
@@ -424,75 +382,87 @@ export function ResearchView() {
       </div>
     ) : null;
 
-  const profileBlock = (
-    <>
-      {/* 1. The profile header: photo, name, genres, audience character; the act name, editable. */}
-      {(r.profile || live) && (
-      <section aria-label={R.profileHeading} className="max-w-2xl space-y-3" data-testid="research-profile" data-ready={r.profile ? "true" : "false"}>
-        <ArtistProfile size="md" profile={r.profile} loading={!r.profile} maxGenres={5} />
-        {r.profile && playlist && !live && (
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="min-w-0 flex-1 basis-56 space-y-1.5">
-              <Label htmlFor="act-name">{R.actName}</Label>
-              <Input id="act-name" value={actName} maxLength={80} onChange={(e) => setActName(e.target.value)} aria-describedby="act-name-hint" />
-              <p id="act-name-hint" className="text-xs text-muted-foreground">
-                {R.actNameHint}
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={busy || actName.trim() === (playlist.actName ?? "") || !actName.trim()}
-              onClick={() => void act(() => savePlaylist({ revision: playlist.revision, actName: actName.replace(/\s+/g, " ").trim() }), COPY.act.savedPage)}
-            >
-              {R.saveActName}
-            </Button>
-          </div>
-        )}
+  // U38: the profile header (photo, name, genre tags under the name) is the layout's `profile`; Your audience and the act name field have their own slots.
+  const profileBlock =
+    r.profile || live ? (
+      <section aria-label={R.profileHeading} className="w-full" data-testid="research-profile" data-ready={r.profile ? "true" : "false"}>
+        <ArtistProfile size="md" profile={r.profile} loading={!r.profile} maxGenres={5} audience={false} summary={false} />
       </section>
-      )}
-    </>
-  );
+    ) : null;
+  const audienceBlock = r.profile ? <AudienceTags profile={r.profile} /> : null;
+  const actNameBlock =
+    r.profile && playlist && !live ? (
+      <div className="flex max-w-md flex-wrap items-end gap-2" data-testid="research-act-name">
+        <div className="min-w-0 flex-1 basis-56 space-y-1.5">
+          <Label htmlFor="act-name">{R.actName}</Label>
+          <Input id="act-name" value={actName} maxLength={80} onChange={(e) => setActName(e.target.value)} aria-describedby="act-name-hint" />
+          <p id="act-name-hint" className="text-xs text-muted-foreground">
+            {R.actNameHint}
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={busy || actName.trim() === (playlist.actName ?? "") || !actName.trim()}
+          onClick={() => void act(() => savePlaylist({ revision: playlist.revision, actName: actName.replace(/\s+/g, " ").trim() }), COPY.act.savedPage)}
+        >
+          {R.saveActName}
+        </Button>
+      </div>
+    ) : null;
+  const canSingQ = canSingQuery.trim().toLowerCase();
+  const canSingShown = canSingQ ? (r.canSing ?? []).filter((row) => [row.title, row.artist].some((text) => text.toLowerCase().includes(canSingQ))) : (r.canSing ?? []);
+  // U37: the filter (once the list is long) sits above the ScrollArea, under the heading.
+  const canSingFilter =
+    (r.canSing?.length ?? 0) > FILTER_AT ? (
+      <Input type="search" value={canSingQuery} onChange={(e) => setCanSingQuery(e.target.value)} aria-label={COPY.filterLabel} placeholder={COPY.filterPlaceholder} className="max-w-sm" data-testid="folded-list-filter" />
+    ) : null;
   const canSingBlock = (
     <>
       {/* 2. Songs you can sing: your own songs straight in, removable. */}
       <Section id="research-can-sing" title={COPY.canSing} ready={r.canSing !== null} live={live} testId="research-can-sing">
         {playlist && <p className="text-sm text-muted-foreground tabular-nums">{COPY.count(songs.length)}</p>}
         {r.canSing && r.canSing.length > 0 ? (
-          <FoldedList
-            label={COPY.canSing}
-            rows={r.canSing}
-            match={(row, q) => [row.title, row.artist].some((text) => text.toLowerCase().includes(q))}
-            render={(song) => (
-              <li key={song.id} data-testid="can-sing-row" data-focus-row={song.id}>
-              <SongRow
-                as="div"
-                title={song.title}
-                artist={song.artist}
-                year={song.year}
-                album={song.album}
-                image={song.image}
-                artistImage={song.artistImage}
-                artistHref={song.artistHref}
-                source={song.source}
-                durationMs={song.durationMs}
-                href={song.href}
-                actions={
-                  <SongActions
-                    title={song.title}
-                    disabled={busy || live}
-                    onRemove={() => {
-                      if (busy || live) return;
-                      focusAfter.current = nextFocus(r.canSing!, song.id, "remove");
-                      void act(() => removeSong(song.id), removed(song.title));
-                    }}
-                  />
-                }
-              />
-              </li>
+          <>
+            {canSingFilter}
+            {canSingQ && canSingShown.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{COPY.noFilterMatch}</p>
+            ) : (
+              <ListScroll label={COPY.canSing}>
+                <ul aria-label={COPY.canSing} className="m-0 list-none divide-y divide-border p-0">
+                  {canSingShown.map((song) => (
+                    <li key={song.id} data-testid="can-sing-row" data-focus-row={song.id}>
+                      <SongRow
+                        as="div"
+                        title={song.title}
+                        artist={song.artist}
+                        year={song.year}
+                        album={song.album}
+                        image={song.image}
+                        artistImage={song.artistImage}
+                        artistHref={song.artistHref}
+                        source={song.source}
+                        durationMs={song.durationMs}
+                        href={song.href}
+                        actions={
+                          <SongActions
+                            title={song.title}
+                            disabled={busy || live}
+                            onRemove={() => {
+                              if (busy || live) return;
+                              focusAfter.current = nextFocus(r.canSing!, song.id, "remove");
+                              void act(() => removeSong(song.id), removed(song.title));
+                            }}
+                          />
+                        }
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </ListScroll>
             )}
-          />
+          </>
         ) : (
           <p className="text-sm text-muted-foreground">{COPY.empty}</p>
         )}
@@ -578,8 +548,8 @@ export function ResearchView() {
       {/* 4b. Where your fans are (U24). BRAND replaces the plain list with the FansMap component. */}
       {mapProps ? (
         // FansMap brings its own heading, Qloo mark and honesty line; the plain Section only holds the place while it loads.
-        <div id="research-fans-map" data-testid="research-fans-map" className="max-w-2xl space-y-2">
-          <FansMap cells={mapProps.cells} topAreas={mapProps.topAreas} planHref={mapProps.planHref} />
+        <div id="research-fans-map" data-testid="research-fans-map" className="w-full space-y-2">
+          <FansMap cells={mapProps.cells} cities={mapProps.cities} topAreas={mapProps.topAreas} planHref={mapProps.planHref} />
         </div>
       ) : (
         <Section id="research-fans-map" title={R.fansMapHeading} ready={false} live={live} testId="research-fans-map">
@@ -607,11 +577,13 @@ export function ResearchView() {
       {/* 6. Songs you should learn, with "Find more songs to learn". */}
       <Section id="research-to-learn" title={COPY.toLearn} ready={r.toLearn !== null || (!live && (list?.suggestions.length ?? 0) > 0)} live={live} testId="research-to-learn">
         {pending.length > 0 ? (
-          <ul aria-label={COPY.toLearn} className="divide-y">
-            {pending.map((song) => (
-              <SuggestionRow key={song.id} song={song} media={learnMedia.get(song.id)} known={known} busy={busy || live} onStatus={(s, status) => void changeSuggestion(s, status)} />
-            ))}
-          </ul>
+          <ListScroll label={COPY.toLearn}>
+            <ul aria-label={COPY.toLearn} className="m-0 list-none divide-y divide-border p-0">
+              {pending.map((song) => (
+                <SuggestionRow key={song.id} song={song} media={learnMedia.get(song.id)} known={known} busy={busy || live} onStatus={(s, status) => void changeSuggestion(s, status)} />
+              ))}
+            </ul>
+          </ListScroll>
         ) : (
           <p className="text-sm text-muted-foreground">{COPY.learn.nothingNewTitle}</p>
         )}
@@ -623,11 +595,13 @@ export function ResearchView() {
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <ul aria-label={COPY.learn.notForMe} className="divide-y">
-                {dismissed.map((song) => (
-                  <SuggestionRow key={song.id} song={song} media={learnMedia.get(song.id)} known={known} busy={busy} onStatus={(s, status) => void changeSuggestion(s, status)} />
-                ))}
-              </ul>
+              <ListScroll label={COPY.learn.notForMe}>
+                <ul aria-label={COPY.learn.notForMe} className="m-0 list-none divide-y divide-border p-0">
+                  {dismissed.map((song) => (
+                    <SuggestionRow key={song.id} song={song} media={learnMedia.get(song.id)} known={known} busy={busy} onStatus={(s, status) => void changeSuggestion(s, status)} />
+                  ))}
+                </ul>
+              </ListScroll>
             </CollapsibleContent>
           </Collapsible>
         )}
@@ -653,12 +627,12 @@ export function ResearchView() {
   const learnedBlock = (
     <>
       {r.learned && !live && (
-        <section aria-labelledby="research-learned" className="max-w-2xl space-y-2" data-testid="research-learned">
+        <section aria-labelledby="research-learned" className="w-full space-y-3 border-t-2 border-rule pt-6" data-testid="research-learned">
           <h2 id="research-learned" className={H2}>
             {COPY.learned}
           </h2>
           {r.learned.length === 0 && <p className="text-sm text-muted-foreground">{COPY.emptyLearned}</p>}
-          {r.learned.length > 0 && <ul aria-label={COPY.learned} className="m-0 list-none divide-y divide-border border-2 border-rule bg-card px-3">
+          {r.learned.length > 0 && <ListScroll label={COPY.learned} maxHeight="max-h-[280px] lg:max-h-[320px]"><ul aria-label={COPY.learned} className="m-0 list-none divide-y divide-border p-0">
             {r.learned.map((s) => (
               <li key={s.id} data-focus-row={s.id}>
                 <SongRow
@@ -693,30 +667,36 @@ export function ResearchView() {
                 />
               </li>
             ))}
-          </ul>}
+          </ul></ListScroll>}
         </section>
       )}
     </>
   );
-  // U25: BRAND's two-column layout once the Repertoire is done (the act left, the songs right, at lg); one column while running.
-  // The research feed stays where it was: on top while running, full width below the results when done.
+  // U37 to U43: BRAND's rows. The act (profile + act name | Your audience), the fans (who | sound-alikes over also love), the map,
+  // the songs (can sing | learn + learned), the summary, then the research. The layout puts the research first while it runs (CSS order).
+  const summaryReady = r.summary !== null || view.end !== null || (!live && research !== null);
+  const researchNode = live ? researchFeed() : research && feed.length > 0 ? (
+    <Fold label={R.howBuilt} count={feed.filter((s) => s.tool).length} defaultOpen data-testid="research-folded">
+      {researchFeed()}
+    </Fold>
+  ) : null;
+  const showResults = (hasContent || running) && (running || !changingLink);
   const results = (
     <div data-testid="research-results">
       <RepertoireResultsLayout
         phase={live ? "running" : "done"}
-        profile={
-          <>
-            {profileBlock}
-            {summaryBlock}
-          </>
-        }
-        fans={fansBlock}
-        fansMap={fansMapBlock}
-        soundsLike={soundsLikeBlock}
-        fansLove={fansLoveBlock}
-        toLearn={toLearnBlock}
-        canSing={canSingBlock}
+        profile={profileBlock}
+        actName={actNameBlock}
+        audience={audienceBlock}
+        fans={r.fans !== null || live ? fansBlock : undefined}
+        soundsLike={r.soundsLike !== null || live ? soundsLikeBlock : undefined}
+        fansLove={r.fansLove !== null || live ? fansLoveBlock : undefined}
+        fansMap={mapProps || live ? fansMapBlock : undefined}
+        canSing={r.canSing !== null || live ? canSingBlock : undefined}
+        toLearn={r.toLearn !== null || (!live && (list?.suggestions.length ?? 0) > 0) || live ? toLearnBlock : undefined}
         learned={learnedBlock}
+        summary={summaryReady || live ? summaryBlock : undefined}
+        research={showResults ? researchNode : undefined}
       />
     </div>
   );
@@ -779,12 +759,10 @@ export function ResearchView() {
             </p>
           )}
 
-          {/* Running: the research on top, the results filling in below. */}
-          {live && researchFeed()}
+          {/* The results, with the research inside the layout (first while it runs, last when done). */}
+          {showResults ? results : researchNode}
 
-          {(hasContent || running) && (running || !changingLink) && results}
-
-          {/* Done: the actions, then the research, folded. */}
+          {/* Done: the actions. */}
           {!live && research && (
             <div className="flex max-w-2xl flex-wrap items-center gap-2" data-testid="research-actions">
               <Button type="button" variant="outline" size="sm" disabled={busy || running} onClick={() => void start({ link: research.spotifyArtistId, refresh: true })}>
@@ -795,12 +773,6 @@ export function ResearchView() {
               </Button>
             </div>
           )}
-          {!live && research && feed.length > 0 && (
-            <Fold label={R.howBuilt} count={feed.filter((s) => s.tool).length} defaultOpen data-testid="research-folded">
-              {researchFeed()}
-            </Fold>
-          )}
-
           {playlist && !live && (
             <section className="max-w-2xl">
               <AlertDialog>

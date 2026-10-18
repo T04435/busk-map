@@ -135,7 +135,7 @@ export function fansMapOutput(heat: HeatCell[], signalledBy: string[]): FansMapO
   const max = Math.max(0, ...heat.map((c) => c.affinity));
   const sorted = [...heat].sort((a, b) => b.affinity - a.affinity);
   const found = cityClusters(sorted);
-  const cities: FansMapCity[] = found.map(({ cityId: _cityId, ...city }) => city);
+  const cities: FansMapCity[] = found.map(({ name, lat, lng, affinity }) => ({ name, lat, lng, affinity }));
   const { areas, planCity } = found.length > 0 ? { areas: found.slice(0, 3).map((c) => c.name), planCity: found[0].cityId } : topPlaces(sorted);
   const cells = max > 0 ? sorted.slice(0, FANS_MAP_MAX_CELLS).map((c) => ({ lat: r5(c.lat), lng: r5(c.lon), affinity: r2(c.affinity / max) })) : [];
   return { summary: fansMapSummary(areas), cells, areas, planCity, cities, signalledBy };

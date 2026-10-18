@@ -11,6 +11,7 @@ import { SPOTIFY_ARTIST_URL, SPOTIFY_TRACK_URL, spotifyHref } from "./mention";
 import { profilePhoto } from "./spotify-profile";
 import { nameKey } from "./text";
 import { playlistSongKey, type LearnSuggestionView, type PlaylistSongView, type PlaylistView } from "./playlist-schema";
+import type { FansMapOutput } from "./repertoire-research";
 import { MORE_STEPS, RESEARCH_STEP_OF, RESEARCH_STEPS, type ResearchSnapshot, type ResearchStepKey, type StepOutputs } from "./repertoire-research";
 
 export type RepertoireStepStatus = "pending" | "running" | "done" | "failed" | "skipped";
@@ -28,6 +29,8 @@ export type RepertoireResults = {
   profile: { name: string; image?: string; genres: string[]; audience: string[]; followers?: number; href?: string } | null;
   summary: string | null;
   fans: { age: Lean[]; gender: Lean[] } | null;
+  /** "Where your fans are" (U24): the step's output, as BRAND's FansMap takes it (lib/fans-map.ts: fansMapProps). Null until the step lands, and for research saved before it. */
+  fansMap: FansMapOutput | null;
   soundsLike: ResearchArtist[] | null;
   fansLove: ResearchArtist[] | null;
   canSing: ResearchSong[] | null;
@@ -72,6 +75,8 @@ function cellsOf(key: ResearchStepKey, o: Outputs): RepertoireStep["cells"] {
       return o.qloo ? six([...o.qloo.audience, ...o.qloo.genres].map((name) => ({ name }))) : undefined;
     case "soundsLike":
       return o.soundsLike ? six(o.soundsLike.artists.map((a) => ({ name: a.name, ...img(a.image) }))) : undefined;
+    case "fansMap":
+      return o.fansMap ? six(o.fansMap.areas.map((name) => ({ name }))) : undefined;
     case "fansLove":
       return o.fansLove ? six(o.fansLove.artists.map((a) => ({ name: a.name, ...img(a.image) }))) : undefined;
     case "learn":
@@ -236,6 +241,7 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
       : null,
     summary: o.summary?.text ?? null,
     fans: o.fans ? { age: o.fans.age.map(({ label, lean }) => ({ label, lean })), gender: o.fans.gender.map(({ label, lean }) => ({ label, lean })) } : null,
+    fansMap: o.fansMap ?? null,
     soundsLike,
     fansLove: o.fansLove ? o.fansLove.artists.map((a) => ({ name: a.name, source: "qloo" as const, ...img(a.image), ...(a.spotifyId ? { href: SPOTIFY_ARTIST_URL(a.spotifyId) } : {}), ...(a.tags ? { tags: a.tags } : {}) })) : null,
     canSing,

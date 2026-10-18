@@ -11,6 +11,7 @@ import {
   RESEARCH_STEPS,
   RESEARCH_TOOLS,
   type FansLoveOutput,
+  type FansMapOutput,
   type FansOutput,
   type GenresOutput,
   type LearnOutput,
@@ -51,6 +52,8 @@ import {
   RESEARCH_SIGNAL_SOUND_ALIKES,
   RESEARCH_SOUNDS_LIKE_SAVED,
 } from "@/server/playlist/config";
+import { fansMapFor } from "./fans-map";
+import { resolveFansMapCity } from "@/lib/fans-map";
 import { findOwnOnQloo, soundsLikeFor } from "@/server/playlist/own-artist";
 import type { PlaylistRecord, PlaylistStore } from "@/server/playlist/store";
 
@@ -61,12 +64,12 @@ export const isAudienceTag = (type?: string | null) => Boolean(type && type.ends
 import { summarise, type SummaryFacts } from "./summary";
 
 /**
- * One Repertoire research run (hackathons/qloo-2026/repertoire-research-spec.md): nine server steps streamed as tool calls on
+ * One Repertoire research run (hackathons/qloo-2026/repertoire-research-spec.md): ten server steps streamed as tool calls on
  * the learn stream, then the songs to learn saved as learn suggestions and the snapshot saved on the Repertoire. A research
  * run is a learn_runs row (inputs.kind), so it shares the run limit (and the refund when Qloo is down), the history, the
- * no-repeat rule and the replay. Only step 9 calls a model, once. Nothing here throws: the stream ends with one `end`.
+ * no-repeat rule and the replay. Only the last step calls a model, once. Nothing here throws: the stream ends with one `end`.
  *
- * mode "full": every step, for the saved Spotify link. mode "more": steps 6, 7 and 9 only ("Find more songs to learn"),
+ * mode "full": every step, for the saved Spotify link. mode "more": fansLove, learn and summary only ("Find more songs to learn"),
  * from the saved snapshot and the current "Artists you sound like", knowing the history.
  */
 export type ResearchRunArgs = {
@@ -333,7 +336,18 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         own = { id: q.qlooId, name: q.name ?? playlist.actName ?? "you" };
       }
 
-      // --- Step 6: what your fans also love (you + your sound-alikes as the signal, all of them left out). ---
+      // --- Step 6: where your fans are (the Qloo heatmap of you and your sound-alikes over the Repertoire's city). Full runs only: "more" keeps the saved map. ---
+      if (mode === "full") {
+        const fresh = (await playlists.get(playlist.id)) ?? playlist;
+        const cityId = resolveFansMapCity(fresh);
+        const mapAlikes = fresh.soundsLike.filter((a) => a.qlooId).slice(0, RESEARCH_SIGNAL_SOUND_ALIKES) as (SoundsLike & { qlooId: string })[];
+        await step("fansMap", { city: cityId, signal: [own.name, ...mapAlikes.map((a) => a.name)] }, async (): Promise<FansMapOutput> => {
+          // A heatmap Qloo can't give is a failed step, not a failed run: the other steps don't need it.
+          return fansMapFor({ cityId, own: own!, alikes: mapAlikes, adapters });
+        });
+      }
+
+      // --- Step 7: what your fans also love (you + your sound-alikes as the signal, all of them left out). ---
       const current = (await playlists.get(playlist.id)) ?? playlist;
       playlist = current;
       const alikes = playlist.soundsLike.filter((a) => a.qlooId).slice(0, RESEARCH_SIGNAL_SOUND_ALIKES) as (SoundsLike & { qlooId: string })[];
@@ -368,7 +382,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         };
       });
 
-      // --- Step 7: songs to learn from those artists' top tracks, the whole history left out (the learn run's top_tracks). ---
+      // --- Step 8: songs to learn from those artists' top tracks, the whole history left out (the learn run's top_tracks). ---
       if (fansLove && fansLove.artists.length > 0) {
         const pick = fansLove.artists.slice(0, RESEARCH_LEARN_ARTISTS).map((a) => a.qlooId);
         await step("learn", { artists: fansLove.artists.slice(0, RESEARCH_LEARN_ARTISTS).map((a) => a.name) }, async (): Promise<LearnOutput> => {
@@ -379,7 +393,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         });
       }
 
-      // --- Step 8: your sound in genres (full runs only) ---
+      // --- Step 9: your sound in genres (full runs only) ---
       if (mode === "full") {
         await step("genres", {}, async (): Promise<GenresOutput> => {
           const tags = fromQloo(await qloo.actGenres([own!.id], RESEARCH_GENRES_TAKE, adapters), "your genres");
@@ -391,7 +405,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         });
       }
 
-      // --- Step 9: one Claude call ranks the songs and sums up the act ---
+      // --- Step 10: one Claude call ranks the songs and sums up the act ---
       for (const s of Object.values(steps)) if (s?.output) state.seen.add(s.output);
       const p = steps.profile?.output;
       const q = steps.qloo?.output;

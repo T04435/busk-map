@@ -49,7 +49,7 @@ const end = (events: LearnStreamEvent[]) => events.at(-1) as Extract<LearnStream
 beforeEach(() => vi.unstubAllEnvs());
 
 describe("POST /api/playlist/research: the full run on the offline mock artist", () => {
-  it("creates the Repertoire, streams the nine steps in order, saves your songs, act, Qloo artist, sound-alikes, suggestions and the snapshot", async () => {
+  it("creates the Repertoire, streams the ten steps in order, saves your songs, act, Qloo artist, sound-alikes, suggestions and the snapshot", async () => {
     const m = await load();
     const res = await m.research.POST(req("POST", "/research", { link: LINK }));
     expect(res.status).toBe(200);
@@ -70,7 +70,7 @@ describe("POST /api/playlist/research: the full run on the offline mock artist",
     // About 7 Qloo requests cold (spec: 6–9): id match, detail, sound-alikes, fans, fans also love, genres (+ a search miss).
     const calls = totals?.type === "totals" ? totals.totals.qlooCalls : 0;
     expect(calls).toBeGreaterThanOrEqual(6);
-    expect(calls).toBeLessThanOrEqual(9);
+    expect(calls).toBeLessThanOrEqual(10);
 
     const view = (await (await m.playlist.GET(req("GET", "", undefined, cookie))).json()).playlist;
     expect(view.actName).toBe("Julia Jacklin");
@@ -103,7 +103,7 @@ describe("POST /api/playlist/research: the full run on the offline mock artist",
     expect(again.status).toBe(409);
     expect((await again.json()).error.code).toBe("up_to_date");
     const refreshed = await readEvents(await m.research.POST(req("POST", "/research", { link: LINK, refresh: true }, cookie)));
-    expect(tools(refreshed)).toHaveLength(9);
+    expect(tools(refreshed)).toHaveLength(10);
     const songs = refreshed.find((e) => e.type === "tool-end" && e.tool === "research_songs");
     expect(songs).toMatchObject({ output: { added: 0, already: 4 } });
     const view = (await (await m.playlist.GET(req("GET", "", undefined, cookie))).json()).playlist;

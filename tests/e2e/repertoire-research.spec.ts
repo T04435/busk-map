@@ -52,9 +52,9 @@ test.describe("Repertoire research (offline)", () => {
     await expect(stream).toBeVisible();
     await expect(stream.getByRole("heading", { name: "Researching your act" })).toBeVisible();
     await done(page);
-    // Results, in order: profile, songs you can sing, sound-alikes, fans, fans also love, songs to learn, summary.
+    // Results, in order: profile, songs you can sing, sound-alikes, fans, where your fans are, fans also love, songs to learn, summary.
     const order = await page.getByTestId("research-results").locator(":scope > [data-testid]").evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")));
-    expect(order).toEqual(["research-profile", "research-can-sing", "research-sounds-like", "research-fans", "research-fans-love", "research-to-learn", "research-summary"]);
+    expect(order).toEqual(["research-profile", "research-can-sing", "research-sounds-like", "research-fans", "research-fans-map", "research-fans-love", "research-to-learn", "research-summary"]);
     await expect(page.getByTestId("profile-name")).toHaveText(OFFLINE_TEST_ARTIST.name);
     await expect(page.getByTestId("research-profile")).toContainText("Dreamy");
     await expect(page.getByLabel("Act name")).toHaveValue(OFFLINE_TEST_ARTIST.name);
@@ -66,9 +66,9 @@ test.describe("Repertoire research (offline)", () => {
     // The research is folded below the results.
     const folded = page.getByTestId("research-folded");
     await expect(folded).toBeVisible();
-    // U21/U22: the fold is open by default and the nine steps show directly inside it, with no inner fold.
+    // U21/U22: the fold is open by default and the ten steps show directly inside it, with no inner fold.
     await expect(folded.getByRole("button", { name: /How we built your Repertoire/ })).toHaveAttribute("aria-expanded", "true");
-    await expect(folded.getByTestId("agent-step")).toHaveCount(9);
+    await expect(folded.getByTestId("agent-step")).toHaveCount(10);
     await expect(folded.getByTestId("agent-disclosure")).toHaveCount(0);
   });
 

@@ -98,3 +98,13 @@ export async function patchSuggestion(id: string, status: PatchSuggestionInput["
     return network;
   }
 }
+
+/** "Where your fans are" for another city (the map's city switch): one Qloo call per city, cached; never starts a run. */
+export async function loadFansMap(city: string): Promise<{ ok: true; map: import("@/lib/repertoire-research").FansMapOutput } | Refusal> {
+  try {
+    const res = await fetch(`/api/playlist/research/fans-map?city=${encodeURIComponent(city)}`, { credentials: "same-origin", headers: pageFaults() ? { "x-buskmap-faults": pageFaults()! } : undefined });
+    return res.ok ? { ok: true, map: (await res.json()) as import("@/lib/repertoire-research").FansMapOutput } : await refusalOf(res);
+  } catch {
+    return network;
+  }
+}

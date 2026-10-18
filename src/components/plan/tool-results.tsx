@@ -218,6 +218,11 @@ const RESEARCH_UI: Record<string, ToolUi> = {
     return ["Found ", mentionArtist(str(o.name) as string, { image: str(o.image) }), " on ", mentionSource("qloo"), ...(audience.length ? [`: ${audience.slice(0, 4).join(", ")}`] : [])];
   }),
   research_sounds_like: researchUi(artistsLine("You sound like", "Qloo found no artists like you")),
+  research_fans_map: researchUi((o) => {
+    const areas = Array.isArray(o.areas) ? (o.areas as unknown[]).filter((a): a is string => typeof a === "string" && a.length > 0) : [];
+    if (!areas.length) return str(o.summary) ?? "";
+    return [`Your crowd is strongest around ${areas.length === 1 ? areas[0] : `${areas.slice(0, -1).join(", ")} and ${areas[areas.length - 1]}`}`];
+  }),
   research_fans_love: researchUi(artistsLine("Your fans also love", "Qloo found no other artists your fans love")),
   research_learn: researchUi((o) => {
     const songs = arr(o.songs).filter((x) => str(x.title));
@@ -567,6 +572,7 @@ export const TOOL_SOURCES: Record<string, MentionSource[]> = {
   research_qloo: ["qloo"],
   research_sounds_like: ["qloo"],
   research_fans: ["qloo"],
+  research_fans_map: ["qloo"],
   research_fans_love: ["qloo"],
   research_genres: ["qloo"],
   research_learn: ["qloo", "spotify"],
@@ -597,6 +603,7 @@ export const TOOL_ICON: Record<string, IconName> = {
   research_qloo: "search",
   research_sounds_like: "users",
   research_fans: "footfall",
+  research_fans_map: "map",
   research_fans_love: "trending",
   research_learn: "learn",
   research_genres: "list",

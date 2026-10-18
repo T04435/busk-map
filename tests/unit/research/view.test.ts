@@ -38,7 +38,7 @@ describe("toRepertoireView", () => {
     expect(OFFLINE_TEST_ARTIST.spotifyId).toBe(JULIA.spotifyId);
   });
 
-  it("empty: nine pending steps and every result null", () => {
+  it("empty: ten pending steps and every result null", () => {
     const v = toRepertoireView({});
     expect(v.phase).toBe("empty");
     expect(v.steps.map((s) => s.key)).toEqual([...RESEARCH_STEPS]);

@@ -38,10 +38,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ZERO_LEARN_TOTALS, type LearnListView, type LearnStreamEvent } from "@/lib/learn-schema";
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import { playlistSongKey, type LearnSuggestionView, type PlaylistView } from "@/lib/playlist-schema";
-import { OFFLINE_TEST_ARTIST } from "@/lib/repertoire-research";
+import { fansMapProps } from "@/lib/fans-map";
+import { OFFLINE_TEST_ARTIST, type FansMapOutput } from "@/lib/repertoire-research";
 import { toRepertoireView, type LearnSong, type RepertoireView } from "@/lib/repertoire-research-view";
 import { parseSpotifyArtistId, spotifyArtistUrl } from "@/lib/spotify-link";
-import { joinLearn, loadLearn, pageFaults, patchSuggestion, startResearch } from "./learn-api";
+import { joinLearn, loadFansMap, loadLearn, pageFaults, patchSuggestion, startResearch } from "./learn-api";
 import { ResearchFunnel } from "./learn-feed";
 import { addSong, forgetPlaylist, loadPlaylist, moveSong, removeSong, savePlaylist } from "./playlist-api";
 
@@ -380,6 +381,21 @@ export function ResearchView() {
   const dismissed = (list?.suggestions ?? []).filter((s) => s.status === "dismissed");
   const limit = list?.limit;
   const r = view.results;
+  // "Where your fans are": the saved map, or the one for the city the user switched to (one cached Qloo call, no research run).
+  const [switchedMap, setSwitchedMap] = useState<{ map: FansMapOutput; runId: string | null } | null>(null);
+  const [mapBusy, setMapBusy] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  // A new research run replaces the map the user switched away from.
+  const shownMap = switchedMap && !running && switchedMap.runId === (playlist?.research?.runId ?? null) ? switchedMap.map : r.fansMap;
+  const mapProps = shownMap ? fansMapProps(shownMap, mapBusy) : null;
+  const switchMapCity = useCallback(async (id: string) => {
+    setMapBusy(true);
+    setMapError(null);
+    const res = await loadFansMap(id);
+    if (res.ok) setSwitchedMap({ map: res.map, runId: playlist?.research?.runId ?? null });
+    else setMapError(COPY.research.fansMapUnavailable);
+    setMapBusy(false);
+  }, [playlist?.research?.runId]);
   const learnMedia = new Map((r.toLearn ?? []).map((s) => [s.id, s]));
   // Every artist and song this page knows, so a reason's names can be drawn in place (U05).
   const known: Mention[] = [
@@ -554,6 +570,32 @@ export function ResearchView() {
         ) : (
           <p className="text-sm text-muted-foreground">No clear lean in Qloo&apos;s data.</p>
         )}
+      </Section>
+
+      {/* 4b. Where your fans are (U24). BRAND replaces the plain list with the FansMap component. */}
+      <Section id="research-fans-map" title={R.fansMapHeading} ready={shownMap !== null} live={live} testId="research-fans-map">
+        {shownMap ? (
+          <div className="space-y-3">
+            {/* BRAND: FansMap here. Props: fansMapProps(shownMap, mapBusy) plus onCityChange={switchMapCity}. */}
+            <p className="m-0 text-sm" data-testid="fans-map-areas">
+              {mapProps!.topAreas.length > 0 ? shownMap.summary : R.fansMapNone}
+            </p>
+            {mapProps!.cities.length > 1 ? (
+              <div className="flex flex-wrap gap-2" role="group" aria-label="City">
+                {mapProps!.cities.map((c) => (
+                  <Button key={c.id} type="button" size="sm" variant={c.id === mapProps!.city.id ? "default" : "outline"} disabled={mapBusy} aria-pressed={c.id === mapProps!.city.id} onClick={() => void switchMapCity(c.id)}>
+                    {c.name}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+            {mapError ? <p role="alert" className="m-0 text-sm text-destructive">{mapError}</p> : null}
+            <p className="m-0 text-sm text-muted-foreground">{R.fansMapHonesty}</p>
+            <Button asChild variant="outline" size="sm">
+              <a href={mapProps!.planHref}>{R.fansMapPlan}</a>
+            </Button>
+          </div>
+        ) : null}
       </Section>
 
       {/* 5. What your fans also love. */}

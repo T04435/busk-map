@@ -11,7 +11,7 @@ import { spotifyArtistInputSchema } from "./playlist-schema";
  * history, the no-repeat rule and the replay.
  */
 
-export const RESEARCH_STEPS = ["profile", "songs", "qloo", "soundsLike", "fans", "fansLove", "learn", "genres", "summary"] as const;
+export const RESEARCH_STEPS = ["profile", "songs", "qloo", "soundsLike", "fans", "fansMap", "fansLove", "learn", "genres", "summary"] as const;
 export type ResearchStepKey = (typeof RESEARCH_STEPS)[number];
 
 /** The steps "Find more songs to learn" reruns (6, 7 and 9); the rest stay as the last full run left them. */
@@ -24,6 +24,7 @@ export const RESEARCH_TOOLS: Record<ResearchStepKey, string> = {
   qloo: "research_qloo",
   soundsLike: "research_sounds_like",
   fans: "research_fans",
+  fansMap: "research_fans_map",
   fansLove: "research_fans_love",
   learn: "research_learn",
   genres: "research_genres",
@@ -39,6 +40,7 @@ export const RESEARCH_LABELS: Record<ResearchStepKey, string> = {
   qloo: "Finding you on Qloo",
   soundsLike: "Finding who you sound like",
   fans: "Learning who your fans are",
+  fansMap: "Finding where your fans are",
   fansLove: "Finding what your fans also love",
   learn: "Finding songs your fans would stop for",
   genres: "Tagging your sound in genres",
@@ -52,6 +54,7 @@ export const RESEARCH_SOURCES: Record<ResearchStepKey, string> = {
   qloo: "Qloo /entities by Spotify id (name search as backup), then /entities by id for tags and description",
   soundsLike: "Qloo /v2/insights · urn:entity:artist signalled by your artist",
   fans: "Qloo /v2/insights · urn:demographics signalled by your artist",
+  fansMap: "Qloo /v2/insights · urn:heatmap signalled by your artist and your sound-alikes, over your city",
   fansLove: "Qloo /v2/insights · urn:entity:artist signalled by you and your sound-alikes, with explainability; they are left out",
   learn: "Spotify top tracks of those artists (Last.fm as backup); songs you sing, were offered or dismissed are left out",
   genres: "Qloo /v2/insights · urn:tag (music genres) signalled by your artist",
@@ -83,6 +86,15 @@ export type ResearchArtistOut = { name: string; qlooId: string; spotifyId?: stri
 export type SoundsLikeOutput = { summary: string; artists: ResearchArtistOut[]; /** True when they were saved as your "Artists you sound like" (only when that list was empty). */ saved: boolean };
 export type LeanOut = { key: string; label: string; lean: number };
 export type FansOutput = { summary: string; age: LeanOut[]; gender: LeanOut[]; ageLean: string | null };
+/** One heat cell of "Where your fans are": `affinity` is relative to the strongest cell (0 to 1). BRAND's FansMap takes these as `cells`. */
+export type FansMapCell = { lat: number; lng: number; affinity: number };
+/** The map's city, as BRAND's FansMap takes it: `center` is [lng, lat]. */
+export type FansMapCity = { id: string; name: string; center: [number, number]; zoom: number };
+/**
+ * Step 5b, "Where your fans are": the Qloo heatmap (urn:heatmap) of the act and its sound-alikes over one city. `areas` are up to
+ * three plain-text place names, strongest first. Optional in saved runs: snapshots from before this step lack it.
+ */
+export type FansMapOutput = { summary: string; city: FansMapCity; cells: FansMapCell[]; areas: string[]; signalledBy: string[] };
 export type FansLoveOutput = { summary: string; artists: ResearchArtistOut[]; signalledBy: string[]; excluded: number };
 export type LearnOutput = {
   summary: string;
@@ -103,6 +115,7 @@ export type StepOutputs = {
   qloo: QlooOutput;
   soundsLike: SoundsLikeOutput;
   fans: FansOutput;
+  fansMap: FansMapOutput;
   fansLove: FansLoveOutput;
   learn: LearnOutput;
   genres: GenresOutput;

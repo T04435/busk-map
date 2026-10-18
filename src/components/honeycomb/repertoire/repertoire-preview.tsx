@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { HiveSpecimen } from "@/components/honeycomb/repertoire/hive-specimen";
 import { RepertoireEmpty } from "@/components/honeycomb/repertoire/repertoire-empty";
-import { RepertoireProfile } from "@/components/honeycomb/repertoire/repertoire-profile";
+import { ArtistProfile } from "@/components/honeycomb/artist-profile";
 import { RepertoireResearch } from "@/components/honeycomb/repertoire/repertoire-research";
 import {
   CanSingSection,
@@ -27,7 +27,7 @@ export type PreviewState = "empty" | "running" | "done" | "hive";
 
 function results({ r, loading }: { r: RepertoireResults; loading: boolean }) {
   return {
-    profile: <RepertoireProfile profile={r.profile} summary={r.summary} loading={loading && !r.profile} onRefresh={() => {}} onEditLink={() => {}} />,
+    profile: <ArtistProfile profile={r.profile} summary={r.summary} loading={loading && !r.profile} onRefresh={() => {}} onEditLink={() => {}} />,
     fans: <FansSection fans={r.fans} loading={loading && !r.fans} />,
     soundsLike: <SoundsLikeSection artists={r.soundsLike} suggestions={r.fansLove ?? undefined} onAdd={() => {}} onRemove={() => {}} onAddSearch={() => {}} loading={loading && !r.soundsLike} />,
     canSing: <CanSingSection songs={r.canSing} onRemove={() => {}} onAddSong={() => {}} loading={loading && !r.canSing} />,

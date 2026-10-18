@@ -2,10 +2,8 @@ import type { ReactNode } from "react";
 import { cn } from "cn";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
-import { PercentCell } from "@/components/honeycomb/percent-cell";
-
-const tagClass =
-  "inline-flex items-center gap-1.5 border-2 border-rule bg-card px-1.5 py-0.5 font-mono text-[11px] leading-4 font-bold tracking-[0.06em] uppercase";
+import { ScoreCell } from "@/components/honeycomb/score-cell";
+import { SongTag } from "@/components/honeycomb/song-tag";
 
 /** m:ss from milliseconds. */
 function formatDuration(ms: number): string {
@@ -15,9 +13,13 @@ function formatDuration(ms: number): string {
 
 /**
  * THE song component: every place a song shows (repertoire, search results, picked songs, suggested set, songs to
- * learn, learn-run results) uses this row. A cover cell, the title and a meta line, an optional score cell, a body
- * slot for reasons and an actions slot. Titles and artists wrap, never truncate. On a narrow row the actions wrap
- * under the text instead of squeezing it.
+ * learn, learn-run results, setlists, tool cards) uses this row. A cover cell, the title and a meta line, then slots
+ * that take only the unified parts: `tags` (SongTag), `info` (InfoTag), `reason` (Reason), `score` (ScoreCell), `actions`
+ * (SongActions). Duration lives here only. Titles and artists wrap, never truncate.
+ * - size sm|md: 32 or 44px cover. `compact`: the agent tool cards (28px cover, small type, tight rows).
+ * - `index` is the set position (setlists), two digits before the cover.
+ * - `interactive={false}`: a combobox option. Nothing focusable inside (no link, no actions; the option is the control),
+ *   rendered as a div; show the Added state with an "added" SongTag in `tags`.
  */
 export function SongRow({
   title,
@@ -27,17 +29,21 @@ export function SongRow({
   album,
   image,
   size = "md",
+  compact,
+  interactive = true,
   index,
   own,
   ownerImage,
-  badges,
+  tags,
+  info,
+  reason,
   score,
   scoreLabel,
   children,
   actions,
   href,
   muted,
-  as = "li",
+  as,
   className,
 }: {
   title: string;
@@ -49,19 +55,28 @@ export function SongRow({
   image?: string | null;
   /** md = 44px cover; sm = 32px for dense lists such as search results. */
   size?: "md" | "sm";
-  /** Two-digit position before the cover (setlists). */
+  /** The agent tool cards: a 28px cover, small type, tight rows. */
+  compact?: boolean;
+  /** false: no link and no actions, for use inside a combobox option. */
+  interactive?: boolean;
+  /** Two-digit set position before the cover (setlists). */
   index?: number;
   /** Shows the "Your song" tag. */
   own?: boolean;
   /** With `own`: the owner's photo in a small cell next to the tag. */
   ownerImage?: string;
-  /** Extra tags on the meta line ("Suggested", "New this run"). */
-  badges?: ReactNode;
+  /** SongTags on the meta line (Suggested, New, Added). */
+  tags?: ReactNode;
+  /** InfoTags under the meta line (Rising +x, Builds on X). */
+  info?: ReactNode;
+  /** A Reason: why this song, with the artists behind it. */
+  reason?: ReactNode;
+  /** 0-100: shown as a ScoreCell at the right. */
   score?: number | null;
   scoreLabel?: string;
-  /** Body under the title and meta, aligned to the text column. */
+  /** Anything else under the title and meta, aligned to the text column. */
   children?: ReactNode;
-  /** Right-aligned IconAction buttons or small buttons. */
+  /** SongActions, at the right. Ignored when not interactive. */
   actions?: ReactNode;
   /** A Spotify track link: the title becomes a link that opens in a new tab. */
   href?: string;
@@ -70,15 +85,16 @@ export function SongRow({
   as?: "li" | "div";
   className?: string;
 }) {
-  const Tag = as;
+  const Tag = as ?? (interactive ? "li" : "div");
   const meta = [artist, year ?? null, album || null].filter((p) => p != null && p !== "").join(" · ");
   const hasScore = score != null;
-  const hasRight = hasScore || Boolean(actions);
-  const cover = size === "sm" ? 32 : 44;
+  const showActions = interactive && Boolean(actions);
+  const hasRight = hasScore || showActions;
+  const cover = compact ? 28 : size === "sm" ? 32 : 44;
   return (
     <Tag
       data-slot="song-row"
-      className={cn("@container py-3", muted && "opacity-60", className)}
+      className={cn("@container", compact ? "py-1.5" : "py-3", muted && "opacity-60", className)}
     >
       <div
         className={cn(
@@ -101,8 +117,8 @@ export function SongRow({
           <Icon name="music" size={Math.round(cover * 0.45)} />
         </HexCell>
         <div className="min-w-0">
-          <p className="m-0 text-base leading-6 font-bold text-balance [overflow-wrap:anywhere]">
-            {href ? (
+          <p className={cn("m-0 font-bold text-balance [overflow-wrap:anywhere]", compact ? "text-sm leading-5" : "text-base leading-6")}>
+            {href && interactive ? (
               <a
                 href={href}
                 target="_blank"
@@ -117,26 +133,31 @@ export function SongRow({
               title
             )}
           </p>
-          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm leading-5 text-muted-foreground">
+          <div className={cn("flex flex-wrap items-center gap-x-1.5 gap-y-1 leading-5 text-muted-foreground", compact ? "text-xs" : "text-sm")}>
             {meta ? <span className="[overflow-wrap:anywhere]">{meta}</span> : null}
-            {own ? (
-              <span className={tagClass}>
-                {ownerImage ? <HexCell size={22} tone="media" image={ownerImage} /> : null}
-                <span>Your song</span>
-              </span>
-            ) : null}
-            {badges}
+            {own ? <SongTag kind="your-song" image={ownerImage} /> : null}
+            {tags}
             {durationMs != null ? (
               <span className="ml-auto font-mono text-xs tabular-nums">{formatDuration(durationMs)}</span>
             ) : null}
           </div>
+          {info ? <div className="mt-1.5 flex flex-wrap gap-1.5">{info}</div> : null}
+          {reason ? <div className="mt-2">{reason}</div> : null}
           {children ? <div className="mt-2 text-sm">{children}</div> : null}
         </div>
         {hasRight ? (
-          // The score and actions stay at the right on every width: an icon or two is narrower than a wrapped line.
-          <div className="-my-1 flex items-center gap-1">
-            {hasScore ? <PercentCell value={score} size={40} label={scoreLabel} /> : null}
-            {actions}
+          // The score and an icon or two stay at the right on every width; more than two wrap under the text on a narrow row.
+          <div
+            className={cn(
+              "-my-1 flex items-center gap-1",
+              // Three or more actions would squeeze the text on a phone: they drop under it instead.
+              index != null
+                ? "@max-[24rem]:has-[[data-many]]:col-span-2 @max-[24rem]:has-[[data-many]]:col-start-3 @max-[24rem]:has-[[data-many]]:row-start-2 @max-[24rem]:has-[[data-many]]:mt-1"
+                : "@max-[24rem]:has-[[data-many]]:col-span-2 @max-[24rem]:has-[[data-many]]:col-start-2 @max-[24rem]:has-[[data-many]]:row-start-2 @max-[24rem]:has-[[data-many]]:mt-1",
+            )}
+          >
+            {hasScore ? <ScoreCell value={score} size={compact || size === "sm" ? "sm" : "md"} label={scoreLabel} /> : null}
+            {showActions ? actions : null}
           </div>
         ) : null}
       </div>

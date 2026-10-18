@@ -1,4 +1,4 @@
-import type { MouseEventHandler } from "react";
+import type { ComponentProps } from "react";
 import { cn } from "cn";
 import { Icon, type IconName } from "@/components/honeycomb/icon";
 
@@ -15,34 +15,29 @@ const variants = {
 export function IconAction({
   icon,
   label,
-  onClick,
   pressed,
-  disabled,
   variant = "ghost",
   size = "md",
   className,
-}: {
+  ...rest
+}: Omit<ComponentProps<"button">, "children" | "aria-label" | "title"> & {
   icon: IconName;
   /** aria-label and title. */
   label: string;
-  onClick?: MouseEventHandler<HTMLButtonElement>;
   /** Makes it a toggle (aria-pressed). */
   pressed?: boolean;
-  disabled?: boolean;
   variant?: keyof typeof variants;
   /** md = 44px, sm = 36px (dense rows). */
   size?: "md" | "sm";
-  className?: string;
 }) {
   return (
     <button
       type="button"
+      {...rest}
       data-slot="icon-action"
       aria-label={label}
       title={label}
       aria-pressed={pressed}
-      disabled={disabled}
-      onClick={onClick}
       className={cn(
         "inline-flex flex-none cursor-pointer items-center justify-center rounded-none text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none disabled:cursor-not-allowed disabled:opacity-50",
         size === "sm" ? "size-9" : "size-11",

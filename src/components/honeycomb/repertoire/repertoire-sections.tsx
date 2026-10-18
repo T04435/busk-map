@@ -3,18 +3,17 @@
 import type { ReactNode } from "react";
 import { cn } from "cn";
 import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
-import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
-import { IconAction } from "@/components/honeycomb/icon-action";
 import { LeanBar } from "@/components/honeycomb/lean-bar";
+import { Reason } from "@/components/honeycomb/reason";
+import { SongActions } from "@/components/honeycomb/song-actions";
 import { SongRow } from "@/components/honeycomb/song-row";
+import { SongTag } from "@/components/honeycomb/song-tag";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { FanLean, LearnSong, ResearchArtist, ResearchSong } from "./types";
 
 const subLabel = "m-0 font-mono text-xs font-bold tracking-[0.08em] text-muted-foreground uppercase";
-const tagBadge =
-  "inline-flex items-center border-2 border-rule bg-primary px-1.5 py-0.5 font-mono text-[11px] leading-4 font-bold tracking-[0.06em] text-primary-foreground uppercase";
 
 /** A section: a 2px rule, a display-caps h2, an optional muted intro and the body. */
 function Section({
@@ -195,7 +194,7 @@ export function CanSingSection({
               href={s.href ?? undefined}
               own={s.own}
               ownerImage={ownerImage ?? undefined}
-              actions={onRemove ? <IconAction icon="x" label={`Remove ${s.title}`} onClick={() => onRemove(s)} /> : undefined}
+              actions={onRemove ? <SongActions title={s.title} onRemove={() => onRemove(s)} /> : undefined}
             />
           ))}
         </ul>
@@ -213,21 +212,6 @@ export function CanSingSection({
 }
 
 /* Songs you should learn */
-
-function Because({ artists }: { artists: ResearchArtist[] }) {
-  return (
-    <ul className="m-0 mt-2 flex list-none flex-wrap gap-1.5 p-0">
-      {artists.map((a) => (
-        <li key={a.name} className="inline-flex">
-          <HexCell size={24} tone="media" image={a.image} fontSize={9}>
-            {initialsOf(a.name)}
-          </HexCell>
-          <span className="sr-only">{a.name}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 function LearnRow({
   song,
@@ -250,24 +234,17 @@ function LearnRow({
       image={song.image}
       durationMs={song.durationMs}
       href={song.href ?? undefined}
-      badges={song.fresh ? <span className={tagBadge}>New</span> : undefined}
+      tags={song.fresh ? <SongTag kind="new" /> : undefined}
       muted={song.status === "dismissed"}
       actions={
         pending ? (
-          <>
-            <IconAction icon="check" variant="outline" label={`Learned: ${song.title}`} onClick={() => onLearned?.(song)} />
-            <IconAction icon="x" label={`Not for me: ${song.title}`} onClick={() => onDismiss?.(song)} />
-          </>
+          <SongActions title={song.title} onLearned={() => onLearned?.(song)} onDismiss={() => onDismiss?.(song)} />
         ) : (
-          <Button type="button" variant="ghost" size="sm" onClick={() => onUndo?.(song)} className="min-h-11">
-            Undo<span className="sr-only">: {song.title}</span>
-          </Button>
+          <SongActions title={song.title} onUndo={() => onUndo?.(song)} />
         )
       }
-    >
-      <p className="m-0 leading-5">{song.reason}</p>
-      {song.because && song.because.length > 0 ? <Because artists={song.because} /> : null}
-    </SongRow>
+      reason={<Reason text={song.reason} because={song.because} />}
+    />
   );
 }
 

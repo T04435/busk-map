@@ -169,7 +169,6 @@ export type MiniPin = { id: string; name: string; lat: number; lon: number; rank
 type Ctx = { when?: string; pins?: MiniPin[]; model?: ExplanationsModel | null };
 type ToolUi = { doing: (s: AgentStep) => string; title: (s: AgentStep) => string; render: (out: Rec, s: AgentStep, ctx: Ctx) => ReactNode };
 
-/** "Gillian Welch 0.31; The Teskey Brothers 0.22" -> the artists behind it, for a Reason's "because" chips. */
 /** "Gillian Welch 0.31; Paul Kelly 0.2" → the because chips, each with its explained weight (0–100). */
 const becauseArtists = (s: string) =>
   s
@@ -181,8 +180,35 @@ const becauseArtists = (s: string) =>
     })
     .filter((a) => a.name);
 
+/** A research step's artists ({ name, image? }[]) after a lead-in, as an inline list of xs ArtistChips. */
+function researchArtists(lead: string, none: string): ToolUi {
+  return {
+    doing: (s) => s.label,
+    title: (s) => s.label,
+    render: (o) => {
+      const artists = arr(o.artists).filter((a) => str(a.name));
+      if (artists.length === 0) return <Foot>{none}</Foot>;
+      return (
+        <div className="grid gap-2">
+          <p className="m-0 text-[13px] leading-[18px] text-muted-foreground">{lead}</p>
+          <ArtistChipList inline label={lead}>
+            {artists.map((a) => (
+              <li key={str(a.name)}>
+                <ArtistChip size="xs" name={str(a.name) as string} image={str(a.image) ?? undefined} />
+              </li>
+            ))}
+          </ArtistChipList>
+        </div>
+      );
+    },
+  };
+}
+
 /** Each tool as a busker sees it: what it is doing while it runs, a plain title once done, and its result drawn from the contract fields. */
 export const TOOL_UI: Record<string, ToolUi> = {
+  // Repertoire research steps whose result is a list of artists: the names as xs ArtistChips, not a comma list (unify rule).
+  research_sounds_like: researchArtists("You sound like", "Qloo found no artists like you"),
+  research_fans_love: researchArtists("Your fans also love", "Qloo found no other artists your fans love"),
   taste_map: {
     doing: () => "Mapping where your crowd gathers",
     title: () => "Where your crowd gathers",

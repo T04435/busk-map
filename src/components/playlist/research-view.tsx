@@ -1,5 +1,7 @@
 "use client";
 
+import { FansMap } from "@/components/honeycomb/repertoire/fans-map";
+import { RepertoireResultsLayout } from "@/components/honeycomb/repertoire/repertoire-sections";
 import { artist as mentionArtist, mentionsIn, song as mentionSong, spotifyHref, type Mention } from "@/lib/mention";
 import { AiChip } from "@/components/honeycomb/ai-chip";
 import { HiveMark } from "@/components/honeycomb/hive-mark";
@@ -433,8 +435,8 @@ export function ResearchView() {
       </div>
     ) : null;
 
-  const results = (
-    <div className="space-y-10" data-testid="research-results">
+  const profileBlock = (
+    <>
       {/* 1. The profile header: photo, name, genres, audience character; the act name, editable. */}
       {(r.profile || live) && (
       <section aria-label={R.profileHeading} className="max-w-2xl space-y-3" data-testid="research-profile" data-ready={r.profile ? "true" : "false"}>
@@ -461,7 +463,10 @@ export function ResearchView() {
         )}
       </section>
       )}
-
+    </>
+  );
+  const canSingBlock = (
+    <>
       {/* 2. Songs you can sing: your own songs straight in, removable. */}
       <Section id="research-can-sing" title={COPY.canSing} ready={r.canSing !== null} live={live} testId="research-can-sing">
         {playlist && <p className="text-sm text-muted-foreground tabular-nums">{COPY.count(songs.length)}</p>}
@@ -522,7 +527,10 @@ export function ResearchView() {
           </Collapsible>
         )}
       </Section>
-
+    </>
+  );
+  const soundsLikeBlock = (
+    <>
       {/* 3. Artists you sound like (editable). */}
       <Section id="research-sounds-like" title={R.soundsLikeHeading} ready={r.soundsLike !== null} live={live} testId="research-sounds-like">
         {live ? (
@@ -552,7 +560,10 @@ export function ResearchView() {
           </div>
         )}
       </Section>
-
+    </>
+  );
+  const fansBlock = (
+    <>
       {/* 4. Who your fans are. */}
       <Section id="research-fans" title={R.fansHeading} ready={r.fans !== null} live={live} testId="research-fans">
         {r.fans && (r.fans.age.length > 0 || r.fans.gender.length > 0) ? (
@@ -571,33 +582,28 @@ export function ResearchView() {
           <p className="text-sm text-muted-foreground">No clear lean in Qloo&apos;s data.</p>
         )}
       </Section>
-
+    </>
+  );
+  const fansMapBlock = (
+    <>
       {/* 4b. Where your fans are (U24). BRAND replaces the plain list with the FansMap component. */}
       <Section id="research-fans-map" title={R.fansMapHeading} ready={shownMap !== null} live={live} testId="research-fans-map">
-        {shownMap ? (
+        {mapProps ? (
           <div className="space-y-3">
-            {/* BRAND: FansMap here. Props: fansMapProps(shownMap, mapBusy) plus onCityChange={switchMapCity}. */}
-            <p className="m-0 text-sm" data-testid="fans-map-areas">
-              {mapProps!.topAreas.length > 0 ? shownMap.summary : R.fansMapNone}
-            </p>
-            {mapProps!.cities.length > 1 ? (
-              <div className="flex flex-wrap gap-2" role="group" aria-label="City">
-                {mapProps!.cities.map((c) => (
-                  <Button key={c.id} type="button" size="sm" variant={c.id === mapProps!.city.id ? "default" : "outline"} disabled={mapBusy} aria-pressed={c.id === mapProps!.city.id} onClick={() => void switchMapCity(c.id)}>
-                    {c.name}
-                  </Button>
-                ))}
-              </div>
+            <FansMap {...mapProps} onCityChange={(id) => void switchMapCity(id)} />
+            {mapError ? (
+              <p role="alert" className="m-0 text-sm text-destructive">
+                {mapError}
+              </p>
             ) : null}
-            {mapError ? <p role="alert" className="m-0 text-sm text-destructive">{mapError}</p> : null}
             <p className="m-0 text-sm text-muted-foreground">{R.fansMapHonesty}</p>
-            <Button asChild variant="outline" size="sm">
-              <a href={mapProps!.planHref}>{R.fansMapPlan}</a>
-            </Button>
           </div>
         ) : null}
       </Section>
-
+    </>
+  );
+  const fansLoveBlock = (
+    <>
       {/* 5. What your fans also love. */}
       <Section id="research-fans-love" title={R.fansLoveHeading} ready={r.fansLove !== null} live={live} testId="research-fans-love">
         <ArtistChipList inline label={R.fansLoveHeading}>
@@ -608,7 +614,10 @@ export function ResearchView() {
           ))}
         </ArtistChipList>
       </Section>
-
+    </>
+  );
+  const toLearnBlock = (
+    <>
       {/* 6. Songs you should learn, with "Find more songs to learn". */}
       <Section id="research-to-learn" title={COPY.toLearn} ready={r.toLearn !== null || (!live && (list?.suggestions.length ?? 0) > 0)} live={live} testId="research-to-learn">
         {pending.length > 0 ? (
@@ -645,12 +654,18 @@ export function ResearchView() {
           </div>
         )}
       </Section>
-
+    </>
+  );
+  const summaryBlock = (
+    <>
       {/* 7. The summary paragraph. */}
       <Section id="research-summary" title={R.summaryHeading} ready={r.summary !== null || view.end !== null || (!live && research !== null)} live={live} testId="research-summary">
         <p className="max-w-prose">{r.summary ?? R.noSummary}</p>
       </Section>
-
+    </>
+  );
+  const learnedBlock = (
+    <>
       {r.learned && !live && (
         <section aria-labelledby="research-learned" className="max-w-2xl space-y-2" data-testid="research-learned">
           <h2 id="research-learned" className={H2}>
@@ -695,6 +710,28 @@ export function ResearchView() {
           </ul>}
         </section>
       )}
+    </>
+  );
+  // U25: BRAND's two-column layout once the Repertoire is done (the act left, the songs right, at lg); one column while running.
+  // The research feed stays where it was: on top while running, full width below the results when done.
+  const results = (
+    <div data-testid="research-results">
+      <RepertoireResultsLayout
+        phase={live ? "running" : "done"}
+        profile={
+          <>
+            {profileBlock}
+            {summaryBlock}
+          </>
+        }
+        fans={fansBlock}
+        fansMap={fansMapBlock}
+        soundsLike={soundsLikeBlock}
+        fansLove={fansLoveBlock}
+        toLearn={toLearnBlock}
+        canSing={canSingBlock}
+        learned={learnedBlock}
+      />
     </div>
   );
 

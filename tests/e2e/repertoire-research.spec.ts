@@ -52,9 +52,12 @@ test.describe("Repertoire research (offline)", () => {
     await expect(stream).toBeVisible();
     await expect(stream.getByRole("heading", { name: "Researching your act" })).toBeVisible();
     await done(page);
-    // Results, in order: profile, songs you can sing, sound-alikes, fans, where your fans are, fans also love, songs to learn, summary.
-    const order = await page.getByTestId("research-results").locator(":scope > [data-testid]").evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")));
-    expect(order).toEqual(["research-profile", "research-can-sing", "research-sounds-like", "research-fans", "research-fans-map", "research-fans-love", "research-to-learn", "research-summary"]);
+    // Results (U25): the act column (profile, summary, fans, where your fans are, sound-alikes, fans also love), then the songs
+    // column (songs to learn, songs you can sing). Side by side at lg once done, one column below; the DOM order is the same.
+    const act = await page.locator('[data-slot="repertoire-act"] > [data-testid]').evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")));
+    expect(act).toEqual(["research-profile", "research-summary", "research-fans", "research-fans-map", "research-sounds-like", "research-fans-love"]);
+    const songsCol = await page.locator('[data-slot="repertoire-songs"] > [data-testid]').evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")));
+    expect(songsCol.slice(0, 2)).toEqual(["research-to-learn", "research-can-sing"]);
     await expect(page.getByTestId("profile-name")).toHaveText(OFFLINE_TEST_ARTIST.name);
     await expect(page.getByTestId("research-profile")).toContainText("Dreamy");
     await expect(page.getByLabel("Act name")).toHaveValue(OFFLINE_TEST_ARTIST.name);

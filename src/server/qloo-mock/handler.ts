@@ -26,6 +26,7 @@
 import {
   distanceM,
   geohashCenter,
+  geohashEncode,
   geohashesInBBox,
   inBBox,
   parseWkt,
@@ -49,6 +50,7 @@ import {
   type Genre,
 } from "./catalog";
 import { DAYS, MOCK_PLACES, PLACE_BY_ID, categoryTag, placeFit, type MockPlace } from "./places";
+import { WORLD_PLACES } from "@/lib/world-places";
 import { GENRE_DEMOGRAPHICS, MOCK_COVERAGE, cosine, density, liftAt, mixGenres, tasteAt, type GenreVector } from "./taste-field";
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
@@ -425,6 +427,36 @@ const HEATMAP_PRECISION = 7;
 
 let coverageLifts: { key: string; lifts: number[] } | null = null;
 
+/** An area wider than this (degrees) is "the world" to the heatmap mock. */
+const WORLD_SPAN_DEG = 60;
+/** The cities the world heatmap puts synthetic clusters in (names from the world gazetteer). */
+const WORLD_CLUSTERS = ["Havana", "Miami", "Mexico City", "Bogota", "Buenos Aires", "Sao Paulo", "Madrid", "Barcelona", "Lisbon", "London", "Paris", "Berlin", "New York", "Los Angeles", "Toronto", "Lagos", "Johannesburg", "Mumbai", "Tokyo", "Seoul", "Singapore", "Sydney", "Auckland"];
+
+/** Cells for a world-sized area: the Melbourne taste field (its strongest cells) and a 5 x 5 cluster of cells in each cluster city. */
+function worldCells(area: Area, box: BBox, mix: GenreVector, mixKey: string): { geohash: string; center: LatLon; lift: number }[] {
+  const local = geohashesInBBox(MOCK_COVERAGE, HEATMAP_PRECISION)
+    .map((geohash) => ({ geohash, center: geohashCenter(geohash) }))
+    .filter((c) => contains(area, c.center))
+    .map((c) => ({ ...c, lift: liftAt(mix, c.center, `${c.geohash}:${mixKey}`) }))
+    .sort((a, b) => b.lift - a.lift)
+    .slice(0, 60);
+  const out = [...local];
+  for (const name of WORLD_CLUSTERS) {
+    const city = WORLD_PLACES.find((w) => w.name === name);
+    if (!city) continue;
+    const strength = 0.25 + 0.7 * unit(`world:${name}:${mixKey}`);
+    for (let i = -2; i <= 2; i++) {
+      for (let j = -2; j <= 2; j++) {
+        const center = { lat: round(city.lat + i * 0.012, 6), lon: round(city.lon + j * 0.012, 6) };
+        if (!inBBox(center, box) || !contains(area, center)) continue;
+        const geohash = geohashEncode(center, HEATMAP_PRECISION);
+        out.push({ geohash, center, lift: strength * (1 - 0.12 * (Math.abs(i) + Math.abs(j))) + 0.05 * (unit(`${geohash}:${mixKey}`) - 0.5) });
+      }
+    }
+  }
+  return out;
+}
+
 function heatmap(params: Params, key: string): Response {
   const signals = readSignals(params, { location: false });
   requireSignal(signals, params);
@@ -435,10 +467,14 @@ function heatmap(params: Params, key: string): Response {
     return ok({ heatmap: [] }, key);
   }
   const mixKey = JSON.stringify(Object.entries(signals.mix).sort());
-  const cells = geohashesInBBox(areaBBox(area), HEATMAP_PRECISION)
+  const box = areaBBox(area);
+  // A world-sized area (the Repertoire's "Where your fans are") can't be walked cell by cell: the mock answers with the local
+  // Melbourne field plus a few synthetic clusters in cities around the world, so the global map has somewhere to point.
+  const worldwide = box.east - box.west > WORLD_SPAN_DEG || box.north - box.south > WORLD_SPAN_DEG;
+  const cells = (worldwide ? worldCells(area, box, signals.mix, mixKey) : geohashesInBBox(box, HEATMAP_PRECISION)
     .map((geohash) => ({ geohash, center: geohashCenter(geohash) }))
     .filter((c) => contains(area, c.center) && covered(c.center))
-    .map((c) => ({ ...c, lift: liftAt(signals.mix, c.center, `${c.geohash}:${mixKey}`) }))
+    .map((c) => ({ ...c, lift: liftAt(signals.mix, c.center, `${c.geohash}:${mixKey}`) })))
     .sort((a, b) => b.lift - a.lift || a.geohash.localeCompare(b.geohash));
 
   // affinity_rank: percentile against every cell the mock covers (a city-wide baseline).

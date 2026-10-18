@@ -46,6 +46,16 @@ export const SAMPLE_RESULTS: RepertoireResults = {
     { id: "c2", title: "Big Jet Plane", artist: "Angus & Julia Stone", year: 2010, durationMs: 239000 },
     { id: "c3", title: "Bloom", artist: "The Paper Kites", year: 2010, durationMs: 214000 },
     { id: "c4", title: "Scar", artist: "Missy Higgins", year: 2004, durationMs: 214000 },
+    { id: "c5", title: "Mess Is Mine", artist: "Vance Joy", year: 2014, durationMs: 227000 },
+    { id: "c6", title: "Private Lawns", artist: "Angus & Julia Stone", year: 2010, durationMs: 235000 },
+    { id: "c7", title: "Featherstone", artist: "The Paper Kites", year: 2013, durationMs: 258000 },
+    { id: "c8", title: "The Special Two", artist: "Missy Higgins", year: 2004, durationMs: 232000 },
+    { id: "c9", title: "Fire and the Flood", artist: "Vance Joy", year: 2014, durationMs: 253000 },
+    { id: "c10", title: "Draw Your Swords", artist: "Angus & Julia Stone", year: 2010, durationMs: 262000 },
+    { id: "c11", title: "Walking in the Wind", artist: "The Paper Kites", year: 2013, durationMs: 188000 },
+    { id: "c12", title: "Steer", artist: "Missy Higgins", year: 2004, durationMs: 245000 },
+    { id: "c13", title: "Georgia", artist: "Vance Joy", year: 2014, durationMs: 214000 },
+    { id: "c14", title: "Yellow Brick Road", artist: "Angus & Julia Stone", year: 2010, durationMs: 249000 },
   ],
   toLearn: [
     {
@@ -144,28 +154,34 @@ export const SAMPLE_RESULTS_RUNNING: RepertoireResults = {
   learned: null,
 };
 
-/** Where the sample act's taste concentrates worldwide (lng, lat, strength): Melbourne first, then Sydney, London, Portland and Berlin. */
-const FANS_HEAT: [number, number, number][] = [
-  [144.9631, -37.8136, 1],
-  [151.2093, -33.8688, 0.75],
-  [-0.1276, 51.5072, 0.62],
-  [-122.6765, 45.5231, 0.5],
-  [13.405, 52.52, 0.42],
+/**
+ * The sample act's top cities, strongest first: what DEV passes as `cities` (name, centre, affinity 0 to 1). Melbourne leads (affinity 1,
+ * the act's best cell), then Sydney, London, Portland and Berlin.
+ */
+export const SAMPLE_FANS_CITIES: { name: string; lat: number; lng: number; affinity: number }[] = [
+  { name: "Melbourne", lng: 144.9631, lat: -37.8136, affinity: 1 },
+  { name: "Sydney", lng: 151.2093, lat: -33.8688, affinity: 0.75 },
+  { name: "London", lng: -0.1276, lat: 51.5072, affinity: 0.62 },
+  { name: "Portland", lng: -122.6765, lat: 45.5231, affinity: 0.6 },
+  { name: "Berlin", lng: 13.405, lat: 52.52, affinity: 0.52 },
 ];
 
-/** A pointy-top hex lattice of about 1.5° cells around each hot spot, affinity 0 to 1 (a global Qloo heatmap is coarse). */
+/**
+ * City-scale taste cells (U40): a pointy-top hex lattice of about 0.05° (5 km) cells in a small cluster around each top city, strongest
+ * at the centre and falling off over a few km. Not one coarse blob per country: zoom in and the cells resolve to neighbourhoods.
+ */
 export const SAMPLE_FANS_CELLS: { lat: number; lng: number; affinity: number }[] = (() => {
   const cells: { lat: number; lng: number; affinity: number }[] = [];
-  const stepLng = 1.5;
-  const stepLat = 1.03;
-  for (const [hx, hy] of FANS_HEAT) {
-    for (let row = -3; row <= 3; row++) {
-      for (let col = -3; col <= 3; col++) {
+  const stepLng = 0.05;
+  const stepLat = 0.0433;
+  for (const { lng: hx, lat: hy, affinity: peak } of SAMPLE_FANS_CITIES) {
+    for (let row = -7; row <= 7; row++) {
+      for (let col = -7; col <= 7; col++) {
         const lat = hy + row * stepLat;
         const lng = hx + col * stepLng + (row % 2 ? stepLng / 2 : 0);
-        let a = 0;
-        for (const [x, y, k] of FANS_HEAT) a = Math.max(a, k * Math.exp(-(((lng - x) / 2.6) ** 2 + ((lat - y) / 1.8) ** 2)));
-        if (a > 0.12) cells.push({ lat, lng, affinity: Math.min(1, a) });
+        // A lopsided spread so the cluster reads like a city, not a disc.
+        const a = peak * Math.exp(-(((lng - hx) / 0.22) ** 2 + ((lat - hy) / 0.17) ** 2) + 0.15 * Math.sin((lng - hx) * 19 + (lat - hy) * 13));
+        if (a > 0.3) cells.push({ lat, lng, affinity: Math.min(1, a) });
       }
     }
   }

@@ -1,5 +1,6 @@
 "use client";
 
+import { SPOTIFY_ARTIST_URL } from "@/lib/mention";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
 import { AiChip } from "@/components/honeycomb/ai-chip";
 import { hiveProgressOfSteps } from "@/lib/agent-persona";
@@ -417,9 +418,10 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
         qlooDown || limited ? undefined : (
           <span className="inline-flex flex-wrap items-center gap-1.5" data-testid="sounds-like">
             Sounds like
-            {request.performer.artists.slice(0, 3).map((a) => (
-              <ArtistChip key={a} size="xs" name={a} />
-            ))}
+            {request.performer.artists.slice(0, 3).map((a) => {
+              const id = request.performer.spotifyArtists.find((x) => x.name.toLowerCase() === a.toLowerCase())?.id;
+              return <ArtistChip key={a} size="xs" name={a} href={id ? SPOTIFY_ARTIST_URL(id) : undefined} />;
+            })}
           </span>
         )
       }

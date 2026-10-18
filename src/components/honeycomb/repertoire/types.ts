@@ -3,8 +3,8 @@
  * stream events and the saved snapshot onto these shapes; the honeycomb/repertoire components draw them.
  */
 
-/** The nine steps, in order. */
-export type RepertoireStepKey = "profile" | "songs" | "qloo" | "soundsLike" | "fans" | "fansLove" | "learn" | "genres" | "summary";
+/** The ten steps, in order. */
+export type RepertoireStepKey = "profile" | "songs" | "qloo" | "soundsLike" | "fans" | "fansMap" | "fansLove" | "learn" | "genres" | "summary";
 
 export type StepStatus = "pending" | "running" | "done" | "failed" | "skipped";
 

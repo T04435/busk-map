@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { cn } from "cn";
-import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
+import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
+import { Mention } from "@/components/honeycomb/mention";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
 import type { MentionSource } from "@/lib/mention";
@@ -31,6 +32,7 @@ export function SongRow({
   image,
   artistImage,
   artists,
+  artistHref,
   source,
   size = "md",
   compact,
@@ -57,8 +59,10 @@ export function SongRow({
   image?: string | null;
   /** The artist's photo: shown as the artist's small hex in the meta line, and the cover when `image` is missing. */
   artistImage?: string | null;
-  /** Several artists, each its own small hex (overrides `artist` for the cells; `artist` stays the accessible text fallback). */
-  artists?: { name: string; image?: string | null }[];
+  /** Several artists, each an inline mention (overrides `artist`). `href`: the artist on Spotify. */
+  /** The artist on Spotify: their mention becomes a link (U06). */
+  artistHref?: string | null;
+  artists?: { name: string; image?: string | null; href?: string | null }[];
   /** The data source as its logo (Spotify, Last.fm), after the meta. */
   source?: MentionSource;
   /** md = 44px cover; sm = 32px for dense lists such as search results. */
@@ -94,7 +98,7 @@ export function SongRow({
   const hasScore = score != null;
   const showActions = interactive && Boolean(actions);
   const hasRight = hasScore || showActions;
-  const who = artists && artists.length > 0 ? artists : artist ? [{ name: artist, image: artistImage }] : [];
+  const who: { name: string; image?: string | null; href?: string | null }[] = artists && artists.length > 0 ? artists : artist ? [{ name: artist, image: artistImage, href: artistHref }] : [];
   const coverImage = image || artistImage || null;
   const cover = compact ? 28 : size === "sm" ? 32 : 44;
   return (
@@ -140,19 +144,17 @@ export function SongRow({
           </p>
           <div className={cn("flex flex-wrap items-center gap-x-1.5 gap-y-1 leading-5 text-muted-foreground", compact ? "text-xs" : "text-sm")}>
             {who.length > 0 ? (
-              <span data-slot="song-artists" className="inline-flex items-center gap-1">
-                <span className="sr-only">By </span>
+              // The artists as inline mentions (U14): hex photo plus the name in brand orange, the same as in a reason.
+              <span data-slot="song-artists" className="[overflow-wrap:anywhere]">
                 {who.map((a, i) => (
-                  <span key={`${a.name}-${i}`} title={a.name} className="inline-flex">
-                    <HexCell size={compact ? 18 : 22} tone="media" image={a.image} fontSize={8}>
-                      {initialsOf(a.name)}
-                    </HexCell>
-                    <span className="sr-only">{a.name}{i < who.length - 1 ? "," : ""}</span>
+                  <span key={`${a.name}-${i}`}>
+                    {i > 0 ? ", " : null}
+                    <Mention mention={{ kind: "artist", name: a.name, image: a.image, href: interactive ? a.href : null }} />
                   </span>
                 ))}
               </span>
             ) : null}
-            {meta ? <span className="[overflow-wrap:anywhere]">{meta}</span> : null}
+            {meta ? <span className="[overflow-wrap:anywhere]">{who.length > 0 ? `· ${meta}` : meta}</span> : null}
             {source ? <SourceLogo source={source} height={compact ? 12 : 14} /> : null}
             {tags}
             {durationMs != null ? (

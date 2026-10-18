@@ -81,7 +81,6 @@ function SuggestionRow({ song, media, busy, onStatus }: { song: LearnSuggestionV
     ...song.basedOn.filter((b) => b.kind === "crowd").map((b) => <InfoTag key={`c-${b.name}`}>{L.crowdAt(b.name)}</InfoTag>),
     ...(song.growth !== null ? [<InfoTag key="growth">{L.growth}</InfoTag>] : []),
     ...(song.trendDelta !== null ? [<InfoTag key="rising">{L.rising(song.trendDelta)}</InfoTag>] : []),
-    <InfoTag key="source">{L.source[song.songSource]}</InfoTag>,
   ];
   const pending = song.status === "pending";
   return (
@@ -95,7 +94,7 @@ function SuggestionRow({ song, media, busy, onStatus }: { song: LearnSuggestionV
         image={song.image ?? media?.image}
         artistImage={media?.artistImage}
         href={media?.href ?? spotifyHref(song.sourceUrl) ?? undefined}
-        source={media?.source}
+        source={media?.source ?? (song.songSource === "plan" ? undefined : song.songSource)}
         muted={song.status === "dismissed"}
         tags={song.status === "learned" ? <SongTag kind="learned" /> : song.isNew && pending ? <SongTag kind="new" /> : undefined}
         info={info}

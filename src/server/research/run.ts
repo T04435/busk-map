@@ -32,6 +32,7 @@ import type { AdapterContext } from "@/server/adapters/core";
 import * as qloo from "@/server/adapters/qloo";
 import { withQlooUsage, type QlooUsage } from "@/server/adapters/qloo/usage";
 import { getArtistCatalogue, getArtistProfile } from "@/server/adapters/repertoire";
+import { spotifyLimitedUntil } from "@/server/adapters/repertoire/pacer";
 import { getSongs } from "@/server/adapters/songs";
 import { CITIES } from "@/server/cities";
 import { serverToday } from "@/server/clock";
@@ -92,6 +93,37 @@ const SPOTIFY_ID = /^[A-Za-z0-9]{22}$/;
 
 class QlooDown extends Error {}
 
+/** U31: the act name was filled in from the last link (or never set) rather than typed by the user, so a new link replaces it. */
+export function actNameFollowsProfile(actName: string | null, previousProfileName: string | null | undefined): boolean {
+  if (!actName) return true;
+  return Boolean(previousProfileName) && nameKey(actName) === nameKey(previousProfileName as string);
+}
+
+/**
+ * U31: a song's artist is the track's real Spotify artist: the one matching the linked artist id, else the track's first
+ * artist; only a track with no artists falls back to the linked artist's name. `isOwn` is true when it is the linked artist.
+ */
+export function trackArtist(artists: readonly { id: string; name: string }[], linkedId: string, linkedName: string): { name: string; isOwn: boolean } {
+  const own = artists.find((a) => a.id === linkedId);
+  if (own) return { name: linkedName, isOwn: true };
+  const first = artists.find((a) => a.name.trim());
+  return first ? { name: first.name.trim(), isOwn: false } : { name: linkedName, isOwn: true };
+}
+
+/** U33: fills in the photo of saved sound-alikes that have none, by name, from the research's images. Returns null when nothing changed. */
+export function fillSoundsLikeImages(list: readonly SoundsLike[], images: readonly { name: string; image?: string | null }[]): SoundsLike[] | null {
+  const byName = new Map<string, string>();
+  for (const i of images) if (i.image && /^https:\/\//.test(i.image) && i.image.length <= 500 && !byName.has(nameKey(i.name))) byName.set(nameKey(i.name), i.image);
+  let changed = false;
+  const next = list.map((a) => {
+    const image = a.image ? undefined : byName.get(nameKey(a.name));
+    if (!image) return a;
+    changed = true;
+    return { ...a, image };
+  });
+  return changed ? next : null;
+}
+
 /** The run's LearnTotals (the learn funnel's fields), from the step outputs so far. */
 export function researchTotals(steps: ResearchSnapshot["steps"], usage: Pick<QlooUsage, "calls" | "cacheHits">, newSongs = 0): LearnTotals {
   const learn = steps.learn?.output;
@@ -134,6 +166,8 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
   for (const k of mode === "more" ? MORE_STEPS : RESEARCH_STEPS) delete steps[k];
   let playlist = args.playlist;
   let n = 0;
+  /** The act's name for this run's summary: the saved one, or the new profile's when the name follows the profile. */
+  let actLabel: string | null = args.playlist.actName;
   let usageNow: QlooUsage = { calls: 0, cacheHits: 0 };
 
   const finish = async (end: { status: "done" | "failed" | "fallback"; endCode: RunRecord["endCode"]; saved: Awaited<ReturnType<LearnStore["insertSuggestions"]>>; usage: RunRecord["usage"] }) => {
@@ -218,7 +252,10 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             throw new Error(spotify.code === "spotify_not_found" ? "Spotify has no artist at that link" : "Spotify didn't answer");
           }
           const p = res.data;
-          await patch({ spotifyArtistId: args.spotifyId, spotifyProfile: p, ...(playlist.actName ? {} : { actName: p.name.slice(0, 80) }) });
+          // The act name follows the new profile unless the user typed their own (U31): a name that is empty or still the previous profile's is auto-filled.
+          const follows = actNameFollowsProfile(playlist.actName, playlist.spotifyProfile?.name);
+          if (follows) actLabel = p.name.slice(0, 80);
+          await patch({ spotifyArtistId: args.spotifyId, spotifyProfile: p, ...(follows ? { actName: p.name.slice(0, 80) } : {}) });
           const image = p.images.find((i) => (i.width ?? 0) >= 160)?.url ?? p.images[0]?.url ?? null;
           return {
             summary: `Read ${p.name} on Spotify${p.genres.length ? `: ${p.genres.slice(0, 3).join(", ")}` : ""}`,
@@ -240,10 +277,15 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           const market = CITIES[(playlist.city in CITIES ? playlist.city : "melbourne") as keyof typeof CITIES].countryCode;
           const cat = await getArtistCatalogue(args.spotifyId, market, adapters);
           let source: SongsOutput["source"] = "spotify";
+          // Spotify answered nothing: rate-limited (say so plainly) or just down. The songs then come from Last.fm.
+          const spotifyDown = cat.mode === "fallback";
+          const limited = spotifyDown ? Boolean(await spotifyLimitedUntil().catch(() => null)) : false;
           let tracks = (cat.mode === "fallback" ? [] : cat.data).map((t) => ({
             id: SPOTIFY_ID.test(t.id) ? t.id : null,
             title: t.title,
-            artist: profile.name,
+            // The track's real Spotify artist, never the act name blindly (U31).
+            artist: trackArtist(t.artists, args.spotifyId, profile.name).name,
+            own: trackArtist(t.artists, args.spotifyId, profile.name).isOwn,
             year: t.year,
             durationMs: t.durationMs,
             album: t.album ?? null,
@@ -254,9 +296,9 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             const fm = await getSongs([profile.name], adapters);
             const top = fm.mode === "fallback" ? [] : (Object.values(fm.data)[0] ?? []);
             source = top.length ? "lastfm" : "none";
-            tracks = top.map((t) => ({ id: null, title: t.title, artist: profile.name, year: null, durationMs: null, album: null, image: null, href: null }));
+            tracks = top.map((t) => ({ id: null, title: t.title, artist: profile.name, own: true, year: null, durationMs: null, album: null, image: null, href: null }));
           }
-          const out: SongsOutput = { summary: "", source, songs: [], added: 0, already: 0 };
+          const out: SongsOutput = { summary: "", source, songs: [], added: 0, already: 0, ...(spotifyDown ? { spotifyDown: limited ? ("limited" as const) : ("down" as const) } : {}) };
           for (const t of tracks) {
             const res = await playlists.addSong(playlist.id, {
               title: t.title.slice(0, 120),
@@ -268,17 +310,19 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
               ...(t.durationMs && t.durationMs > 0 && t.durationMs <= 3_600_000 ? { durationMs: t.durationMs } : {}),
               // Covers persist (migration 010): the track or album art, and the act's own photo.
               ...(t.image && /^https:\/\//.test(t.image) && t.image.length <= 500 ? { image: t.image } : {}),
-              ...(profile.image && /^https:\/\//.test(profile.image) && profile.image.length <= 500 ? { artistImage: profile.image } : {}),
+              ...(t.own && profile.image && /^https:\/\//.test(profile.image) && profile.image.length <= 500 ? { artistImage: profile.image } : {}),
             });
             if (res.ok) out.added++;
             else if (res.reason === "duplicate") out.already++;
             else break;
-            out.songs.push({ ...t, id: res.ok ? res.song.id : null });
+            out.songs.push({ id: res.ok ? res.song.id : null, title: t.title, artist: t.artist, year: t.year, durationMs: t.durationMs, album: t.album, image: t.image, href: t.href });
           }
+          const R = PLAYLIST_COPY.research;
+          const why = limited ? R.spotifyLimited : spotifyDown ? R.spotifyDown : null;
           out.summary =
             source === "none"
-              ? "Found none of your songs on Spotify or Last.fm"
-              : `Added ${out.added} of your songs to ${PLAYLIST_COPY.canSing}${out.already ? ` (${out.already} already there)` : ""}`;
+              ? limited ? R.spotifyLimitedNone : spotifyDown ? R.spotifyDownNone : "Found none of your songs on Spotify or Last.fm"
+              : `${why ? `${why}. ` : ""}Added ${out.added} of your songs to ${PLAYLIST_COPY.canSing}${out.already ? ` (${out.already} already there)` : ""}`;
           return out;
         });
 
@@ -317,7 +361,14 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           const artists = res.artists.map((a) => ({ ...a, affinity: null }));
           let saved = false;
           if (playlist.soundsLike.length === 0 && artists.length > 0) {
-            saved = await patch({ soundsLike: artists.slice(0, RESEARCH_SOUNDS_LIKE_SAVED).map((a): SoundsLike => ({ name: a.name, qlooId: a.qlooId, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}) })) });
+            // Every saved sound-alike keeps its Qloo photo (U33), so the list never shows initials.
+            saved = await patch({
+              soundsLike: artists.slice(0, RESEARCH_SOUNDS_LIKE_SAVED).map((a): SoundsLike => ({ name: a.name, qlooId: a.qlooId, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.image && /^https:\/\//.test(a.image) && a.image.length <= 500 ? { image: a.image } : {}) })),
+            });
+          } else {
+            // A list the user already has: only photos it lacks are filled in, by name.
+            const filled = fillSoundsLikeImages(playlist.soundsLike, artists);
+            if (filled) await patch({ soundsLike: filled });
           }
           return { summary: artists.length ? `You sound like ${artists.slice(0, 3).map((a) => a.name).join(", ")}` : "Qloo found no artists like you", artists, saved };
         });
@@ -384,6 +435,12 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         };
       });
 
+      // U33: photos the saved "Artists you sound like" still lack, from what fans love and the sound-alikes this run found.
+      {
+        const filled = fillSoundsLikeImages(playlist.soundsLike, [...(fansLove?.artists ?? []), ...(steps.soundsLike?.output?.artists ?? [])]);
+        if (filled) await patch({ soundsLike: filled });
+      }
+
       // --- Step 8: songs to learn from those artists' top tracks, the whole history left out (the learn run's top_tracks). ---
       if (fansLove && fansLove.artists.length > 0) {
         const pick = fansLove.artists.slice(0, RESEARCH_LEARN_ARTISTS).map((a) => a.qlooId);
@@ -413,7 +470,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
       const q = steps.qloo?.output;
       const fans = steps.fans?.output;
       const facts: SummaryFacts = {
-        act: playlist.actName ?? p?.name ?? own.name,
+        act: (mode === "full" ? actLabel : playlist.actName) ?? p?.name ?? own.name,
         spotifyGenres: p?.genres.slice(0, 4) ?? [],
         followers: p?.followers ?? null,
         description: q?.description ?? null,

@@ -259,6 +259,7 @@ export function AgentStepStream({
   hideHeading = false,
   subtitle,
   usage,
+  wording,
 }: {
   steps: AgentStep[];
   model?: ExplanationsModel | null;
@@ -283,6 +284,8 @@ export function AgentStepStream({
   subtitle?: string;
   /** The run's totals, shown under "Raw data" (B50). */
   usage?: RunUsage | null;
+  /** U35: a feed that isn't a busk plan (the Repertoire research) words its waiting lines itself; the busk plan's are the defaults. */
+  wording?: { first: string; next: string; leave: string };
 }) {
   const rawId = useId();
   const [rawView, setRawView] = useState<"table" | "json">("table");
@@ -311,7 +314,7 @@ export function AgentStepStream({
             </HexCell>
             <div className="grid min-w-0 gap-1">
               <b className="font-sans text-base leading-[22px] font-bold">
-                {steps.length === 0 ? "Reading your act, day and permit" : "Thinking about what to check next"}
+                {steps.length === 0 ? (wording?.first ?? "Reading your act, day and permit") : (wording?.next ?? "Thinking about what to check next")}
                 <span aria-hidden="true" className="bm-dots ml-0.5">
                   {[0, 1, 2].map((i) => (
                     <i key={i} className="mx-px inline-block size-1 rounded-full bg-current [animation:bm-blink_1.2s_infinite]" style={{ animationDelay: `${i * 0.2}s` }} />
@@ -357,7 +360,7 @@ export function AgentStepStream({
         {retry}
       </Alert>
     );
-  else if (live) foot = <p className="m-0 mt-3 text-[13px] text-muted-foreground">You can leave this page: the research keeps going and your busk will be here when you&apos;re back.</p>;
+  else if (live) foot = <p className="m-0 mt-3 text-[13px] text-muted-foreground">{wording?.leave ?? "You can leave this page: the research keeps going and your busk will be here when you're back."}</p>;
   const totals: [string, string | number][] | null = raw && usage
     ? [
         ["Steps", usage.steps],

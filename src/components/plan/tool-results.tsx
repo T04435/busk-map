@@ -205,6 +205,10 @@ const RESEARCH_UI: Record<string, ToolUi> = {
     const songs = arr(o.songs).filter((x) => str(x.title));
     if (!songs.length) return str(o.summary) ?? "";
     const from = str(o.source) === "spotify" || str(o.source) === "lastfm" ? [" from ", mentionSource(str(o.source) as "spotify" | "lastfm")] : [];
+    // Spotify gave no catalogue (rate-limited or down): say so plainly, then what was added from Last.fm.
+    if (o.spotifyDown === "limited" || o.spotifyDown === "down") {
+      return [o.spotifyDown === "limited" ? "Spotify isn't answering right now, so " : "Spotify didn't answer, so ", `${num(o.added) ?? songs.length} of your songs come from `, mentionSource("lastfm"), ", including ", ...listOf(songs.slice(0, 3).map((x) => mentionSong(str(x.title) as string, { artist: str(x.artist), image: str(x.image), href: str(x.href) })))];
+    }
     return [
       `Added ${num(o.added) ?? songs.length} of your songs`,
       ...from,

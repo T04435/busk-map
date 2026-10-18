@@ -125,6 +125,12 @@ export const PLAYLIST_COPY = {
     findMore: "Find more songs to learn",
     findingMore: "Finding more songs…",
     moreStarted: "Finding more songs to learn",
+    /** The research feed's waiting lines (U35): never the busk plan's. */
+    waiting: { first: "Reading your Spotify profile", next: "Working on the next step", leave: "You can leave this page: the research keeps going and your Repertoire will be here when you're back." },
+    spotifyLimited: "Spotify isn't answering right now, so these come from Last.fm",
+    spotifyDown: "Spotify didn't answer, so these come from Last.fm",
+    spotifyLimitedNone: "Spotify isn't answering right now and Last.fm had none of your songs",
+    spotifyDownNone: "Spotify didn't answer and Last.fm had none of your songs",
     refresh: "Refresh my research",
     refreshHint: "Reads your profile and asks Qloo again. Your songs and lists stay.",
     changeLink: "Use a different link",

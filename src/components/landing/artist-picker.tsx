@@ -7,6 +7,7 @@ import { useLiveSearch } from "@/components/forms/use-live-search";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
 import { Icon } from "@/components/honeycomb/icon";
 import { Loader } from "@/components/honeycomb/loader";
+import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { formatCount, MIN_QUERY_CHARS } from "@/lib/live-search";
 import { SPOTIFY_ARTIST_URL } from "@/lib/mention";
@@ -180,7 +181,6 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
                   const released = releases[artist.id] ?? artist.releases;
                   const meta = [
                     typeof released === "number" ? `${released} release${released === 1 ? "" : "s"}` : null,
-                    typeof count === "number" ? `${formatCount(count)} Last.fm listeners` : null,
                   ].filter(Boolean);
                   return (
                     <CommandItem
@@ -196,8 +196,14 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
                         tags={meta as string[]}
                         state={has(artist.name) ? "added" : "static"}
                         interactive={false}
-                        className="w-full border-0"
+                        className="min-w-0 flex-1 border-0"
                       />
+                      {typeof count === "number" && (
+                        <span className="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+                          <SourceLogo source="lastfm" height={14} />
+                          {formatCount(count)} listeners
+                        </span>
+                      )}
                     </CommandItem>
                   );
                 })}

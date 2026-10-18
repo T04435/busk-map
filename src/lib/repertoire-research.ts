@@ -67,7 +67,7 @@ export type ResearchMode = "full" | "more";
 
 export type ProfileOutput = { summary: string; spotifyId: string; name: string; image: string | null; genres: string[]; followers: number | null; href: string };
 export type ResearchSongOut = { id: string | null; title: string; artist: string; year: number | null; durationMs: number | null; album: string | null; image: string | null; href: string | null };
-export type SongsOutput = { summary: string; source: "spotify" | "lastfm" | "none"; songs: ResearchSongOut[]; added: number; already: number; /** Retired (U16: no Repertoire limit); stored runs may still carry it. */ full?: boolean };
+export type SongsOutput = { summary: string; source: "spotify" | "lastfm" | "none"; songs: ResearchSongOut[]; added: number; already: number; /** Set when Spotify gave no catalogue: "limited" (rate-limited) or "down"; the songs then come from Last.fm (U34). */ spotifyDown?: "limited" | "down"; /** Retired (U16: no Repertoire limit); stored runs may still carry it. */ full?: boolean };
 export type QlooOutput = {
   summary: string;
   matched: boolean;

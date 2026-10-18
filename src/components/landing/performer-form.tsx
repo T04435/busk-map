@@ -70,7 +70,7 @@ const prefillSongs = (prefill: FormPrefill | undefined): PickedSong[] =>
 /** The Repertoire as the form's fields (docs/playlist-architecture.md §3.1): name, sounds-like artists, songs. */
 const repertoireFields = (view: PlaylistView) => ({
   name: view.actName ?? "",
-  artists: view.soundsLike.map((a): PickedArtist => ({ name: a.name, spotifyId: a.spotifyId ?? null, qlooId: a.qlooId ?? null, image: null })),
+  artists: view.soundsLike.map((a): PickedArtist => ({ name: a.name, spotifyId: a.spotifyId ?? null, qlooId: a.qlooId ?? null, image: a.image ?? null })),
   picked: view.songs.map(
     (song): PickedSong => ({ key: `rep-${song.id}`, title: song.title, artist: song.artist, durationMs: song.durationMs, own: song.own }),
   ),

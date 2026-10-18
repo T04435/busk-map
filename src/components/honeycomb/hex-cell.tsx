@@ -71,6 +71,8 @@ export type HexCellProps = {
   lift?: boolean;
   /** A picture, clipped to the cell and framed by the cell's hex stroke. Falls back to the children if it fails to load. Spotify images are never sent a referrer. */
   image?: string | null;
+  /** Load `image` at once instead of lazily (small inline cells). */
+  eager?: boolean;
   /** Spoken name. Without it the cell is decorative (aria-hidden). */
   label?: string;
   fontSize?: number;
@@ -80,7 +82,7 @@ export type HexCellProps = {
 };
 
 /** One honeycomb cell holds one thing: a person, a song, a score, an icon. */
-export function HexCell({ size = 40, tone = "default", lift, image, label, fontSize, className, style, children }: HexCellProps) {
+export function HexCell({ size = 40, tone = "default", lift, image, eager, label, fontSize, className, style, children }: HexCellProps) {
   return (
     <span
       className={cn(cellVariants({ tone, lift: lift ? (tone === "error" ? "error" : "primary") : "none" }), className)}
@@ -95,7 +97,7 @@ export function HexCell({ size = 40, tone = "default", lift, image, label, fontS
         // The photo, then the hex stroke on top of it, so a photo cell keeps its brand border on the page.
         // If the photo fails, the fallback draws the filled hex and the frame simply repeats its stroke.
         <>
-          <CellImage src={image} fallback={<><Hex /><span className="relative">{children}</span></>} />
+          <CellImage src={image} eager={eager} fallback={<><Hex /><span className="relative">{children}</span></>} />
           <Hex frame />
         </>
       ) : (

@@ -77,13 +77,14 @@ export function FansMap({
           </p>
         ) : empty ? (
           <p className="m-0 text-base leading-6 font-medium">
-            <span className="text-qloo">Qloo</span> has no taste data for your act yet.
+            <SourceLogo source="qloo" height={14} className="mr-1 align-[-2px]" />
+            has no taste data for your act yet.
           </p>
         ) : areas.length > 0 ? (
           <p className="m-0 text-base leading-6 font-medium">Your crowd is strongest in {nameList(areas)}.</p>
         ) : null}
         <p className="m-0 font-mono text-xs text-muted-foreground">
-          Where your taste concentrates, from <span className="text-qloo">Qloo</span>, not head counts.
+          Where your taste concentrates, from <SourceLogo source="qloo" height={12} className="mx-0.5 align-[-2px]" />, not head counts.
         </p>
         {planHref && !empty && cells ? (
           <Button asChild variant="outline" className="min-h-11 self-start">

@@ -41,7 +41,7 @@ const Sw = ({ children }: { children: ReactNode }) => (
  * the taste ramp (orange steps 3 to 5) when there are cells, the numbered top pitches, the other-pitch cells, no-busking cells and
  * events when there are any. It never says "test data".
  */
-export function MapLegend({ taste = true, others = true, zones = false, events = false, className }: { taste?: boolean; others?: boolean; zones?: boolean; events?: boolean; className?: string }) {
+export function MapLegend({ taste = true, top = true, others = true, zones = false, events = false, className }: { taste?: boolean; /** The numbered top pitches; off on a map without pitches (the Repertoire fans map). */ top?: boolean; others?: boolean; zones?: boolean; events?: boolean; className?: string }) {
   return (
     <TooltipProvider>
       <div
@@ -60,12 +60,14 @@ export function MapLegend({ taste = true, others = true, zones = false, events =
             Taste match
           </Key>
         ) : null}
-        <Key tip={TIPS.top}>
-          <Sw>
-            <i className={cn("block h-[21px] w-[18px] [background:radial-gradient(circle_at_50%_50%,#fbf9f5_0_2.2px,var(--primary)_2.7px_5.6px,var(--bluestone)_6.1px)]", HEX)} />
-          </Sw>
-          Top pitch
-        </Key>
+        {top ? (
+          <Key tip={TIPS.top}>
+            <Sw>
+              <i className={cn("block h-[21px] w-[18px] [background:radial-gradient(circle_at_50%_50%,#fbf9f5_0_2.2px,var(--primary)_2.7px_5.6px,var(--bluestone)_6.1px)]", HEX)} />
+            </Sw>
+            Top pitch
+          </Key>
+        ) : null}
         {others ? (
           <Key tip={TIPS.other}>
             <Sw>

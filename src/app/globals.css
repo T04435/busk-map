@@ -445,7 +445,7 @@ html { scroll-padding-bottom: var(--bottom-nav); }
 
 /* MapLibre's own controls (zoom, attribution toggle) at tap-target size. */
 .maplibregl-ctrl.maplibregl-ctrl-group button { width: 44px; height: 44px; }
-.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button { width: 44px; height: 44px; }
+.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button { width: 44px; height: 44px; background-repeat: no-repeat; background-position: center; }
 
 /* MapLibre's cooperative-gestures hint (B-227): "Use two fingers to move the map" on a bluestone veil, in the app's type. */
 .maplibregl-cooperative-gesture-screen { background: color-mix(in oklab, var(--bluestone) 78%, transparent) !important; color: #f2ede4 !important; font: 700 15px/22px var(--font-sans) !important; }

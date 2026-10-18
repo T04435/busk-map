@@ -1,5 +1,5 @@
 import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
-import { QlooWordmark } from "@/components/honeycomb/logo";
+import { SourceLogo } from "@/components/honeycomb/source-logo";
 import type { DataStatus } from "@/lib/plan-schema";
 import { QLOO_TEST_LABEL, SOURCES, type SourceId } from "@/lib/sources";
 
@@ -71,7 +71,7 @@ export function DataSources({ status, showAi, soFar }: { status: DataStatus[]; s
             <li key={id} className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 border-t border-border py-2.5 text-sm leading-5 first:border-t-0">
               <div>
                 <div className="flex flex-wrap items-center gap-x-2 font-bold">
-                  {id === "qloo" ? <QlooWordmark width={52} /> : null}
+                  {id === "qloo" || id === "spotify" || id === "lastfm" ? <SourceLogo source={id} height={14} /> : null}
                   <a className="underline decoration-[1.5px] underline-offset-3 hover:decoration-[2.5px]" href={source.url} target="_blank" rel="noreferrer">
                     {source.credit}
                   </a>

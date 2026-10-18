@@ -1,5 +1,6 @@
 "use client";
 
+import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { StepCell } from "@/components/honeycomb/step-cell";
 import { AgentTag } from "@/components/honeycomb/agent-tag";
 import { Fragment, useId, useState, type ReactNode } from "react";
@@ -14,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { scalar, type AgentStep, type RunUsage } from "@/lib/agent-steps";
 import { modelName, type ExplanationsModel } from "@/lib/sources";
-import { TOOL_ICON, TOOL_UI, type MiniPin } from "./tool-results";
+import { TOOL_ICON, TOOL_SOURCES, TOOL_UI, type MiniPin } from "./tool-results";
 
 /**
  * The research feed: the agent's steps as the busker sees them, newest first, no step numbers, each tool drawn as a plain-words
@@ -214,7 +215,12 @@ function ToolCard({ step, model, raw, rawView, when, pins, fresh }: { step: Agen
       <div className="grid grid-cols-[30px_minmax(0,1fr)] items-start gap-3">
         <StepCell size={30} icon={icon} status={running ? "running" : bad || rejected ? "failed" : cut ? "skipped" : "done"} label={`${title}: ${running ? "working" : bad || rejected ? "didn't work" : cut ? "stopped" : "done"}`} />
         <div className="grid min-w-0 gap-1">
-          <b className={cn(running ? "font-sans text-base leading-[22px] font-bold" : "font-display text-xl leading-6 font-extrabold uppercase")}>{title}</b>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <b className={cn(running ? "font-sans text-base leading-[22px] font-bold" : "font-display text-xl leading-6 font-extrabold uppercase")}>{title}</b>
+            {(step.tool ? (TOOL_SOURCES[step.tool] ?? []) : []).map((s) => (
+              <SourceLogo key={s} source={s} height={14} />
+            ))}
+          </div>
           {say.length ? (
             <Say model={model} testId="agent-note-text">
               {say.join(" ")}

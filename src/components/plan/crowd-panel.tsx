@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
 import { Chip } from "@/components/honeycomb/chip";
 import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
@@ -6,7 +7,6 @@ import { EvidenceLine } from "@/components/honeycomb/evidence-line";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
 import { LeanBar } from "@/components/honeycomb/lean-bar";
-import { QlooWordmark } from "@/components/honeycomb/logo";
 import { MeterBar } from "@/components/honeycomb/score-cell";
 import { InfoTag } from "@/components/honeycomb/info-tag";
 import { Reason } from "@/components/honeycomb/reason";
@@ -79,7 +79,7 @@ export function CrowdPanel({
           <p className="m-0 mt-0.5 text-sm leading-5 text-muted-foreground">From Qloo&apos;s taste graph: aggregate taste around your pitches, never data about individuals.</p>
         </div>
         <span className="inline-flex shrink-0 items-center gap-2">
-          <QlooWordmark width={44} />
+          <SourceLogo source="qloo" height={16} />
           <DataStatusBadge status={qlooMode === "live" ? "live" : "test"} />
         </span>
       </header>

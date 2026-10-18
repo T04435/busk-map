@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { summaryLine } from "@/lib/repertoire-research";
-import { artist as mentionArtist, listOf, song as mentionSong, source as mentionSource, SPOTIFY_ARTIST_URL, type RichText as RichTextData } from "@/lib/mention";
+import { artist as mentionArtist, listOf, song as mentionSong, source as mentionSource, SPOTIFY_ARTIST_URL, type MentionSource, type RichText as RichTextData } from "@/lib/mention";
 import { RichText } from "@/components/honeycomb/mention";
 import { reasonSlots } from "@/components/setlist/reason-slots";
 import { cn } from "cn";
@@ -551,6 +551,27 @@ export const TOOL_UI: Record<string, ToolUi> = {
 };
 
 /** The DS icon for each tool's cell; an unknown tool gets the dots glyph. */
+/** The data sources each tool reads, drawn as their marks after the step title (U17). The Hive's own summary step has none. */
+export const TOOL_SOURCES: Record<string, MentionSource[]> = {
+  taste_map: ["qloo"],
+  crowd_at: ["qloo"],
+  compare_crowds: ["qloo"],
+  build_setlist: ["qloo", "lastfm", "spotify"],
+  learn_these: ["qloo", "lastfm"],
+  related_artists: ["qloo"],
+  rising: ["qloo"],
+  crowd_profile: ["qloo"],
+  top_tracks: ["spotify", "lastfm"],
+  research_profile: ["spotify"],
+  research_songs: ["spotify", "lastfm"],
+  research_qloo: ["qloo"],
+  research_sounds_like: ["qloo"],
+  research_fans: ["qloo"],
+  research_fans_love: ["qloo"],
+  research_genres: ["qloo"],
+  research_learn: ["qloo", "spotify"],
+};
+
 export const TOOL_ICON: Record<string, IconName> = {
   taste_map: "map",
   crowd_at: "users",

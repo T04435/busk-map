@@ -113,6 +113,8 @@ export function SongSearch({
 }) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  /** The photo of the act's artist who made the track, when picked with one: the cover's second choice (U03). */
+  const artistPhoto = (track: TrackResult) => artists.find((a) => a.image && isByActArtist(track, [a]))?.image ?? undefined;
   // The search function is read once (useLiveSearch), so it reads the current chips from a ref.
   const artistsRef = useRef(artists);
   useEffect(() => {
@@ -198,6 +200,8 @@ export function SongSearch({
                       artist={artist}
                       album={track.album}
                       image={track.image}
+                      artistImage={artistPhoto(track)}
+                      source="spotify"
                       durationMs={track.durationMs}
                       className="w-full py-0"
                       tags={

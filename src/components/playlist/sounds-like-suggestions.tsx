@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import type { SoundsLikeSuggestions } from "@/lib/playlist-schema";
 import { MAX_PICKED_ARTISTS, type PickedArtist } from "@/components/landing/artist-picker";
+import { SPOTIFY_ARTIST_URL } from "@/lib/mention";
 import { loadSoundsLike } from "./playlist-api";
 
 /** The picker's list with suggestions added (skipping ones it already has, up to the picker's maximum). A suggestion keeps its Spotify id (when Qloo has one) and its Qloo id, so it is never shown as typed. */
@@ -64,7 +65,7 @@ export function SoundsLikeSuggestionsList({ enabled, refreshKey, picked, onAdd }
       <ArtistChipList>
         {open.map((artist) => (
           <li key={artist.qlooId}>
-            <ArtistChip name={artist.name} image={artist.image} source="qloo" tags={artist.tags} state="suggested" onAdd={() => onAdd([artist])} />
+            <ArtistChip name={artist.name} image={artist.image} href={artist.spotifyId ? SPOTIFY_ARTIST_URL(artist.spotifyId) : undefined} source="qloo" tags={artist.tags} state="suggested" onAdd={() => onAdd([artist])} />
           </li>
         ))}
       </ArtistChipList>

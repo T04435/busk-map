@@ -7,14 +7,21 @@
  */
 import { hiveProgressOfRepertoire } from "./agent-persona";
 import type { LearnStreamEvent, LearnSuggestionEvent, LearnTotals } from "./learn-schema";
-import type { LearnSuggestionView, PlaylistSongView, PlaylistView } from "./playlist-schema";
+import { SPOTIFY_ARTIST_URL, SPOTIFY_TRACK_URL, spotifyHref } from "./mention";
+import { profilePhoto } from "./spotify-profile";
+import { nameKey } from "./text";
+import { playlistSongKey, type LearnSuggestionView, type PlaylistSongView, type PlaylistView } from "./playlist-schema";
 import { MORE_STEPS, RESEARCH_STEP_OF, RESEARCH_STEPS, type ResearchSnapshot, type ResearchStepKey, type StepOutputs } from "./repertoire-research";
 
 export type RepertoireStepStatus = "pending" | "running" | "done" | "failed" | "skipped";
 export type RepertoireStep = { key: ResearchStepKey; status: RepertoireStepStatus; /** One plain-words line. */ found?: string; /** At most 6. */ cells?: { name: string; image?: string }[]; note?: string };
 export type RepertoireTotals = { qlooCalls: number; songs: number; soundsLike: number; fanArtists: number; songsChecked: number; toLearn: number | null };
-export type ResearchArtist = { name: string; image?: string; source?: "spotify" | "qloo" | "typed"; tags?: string[] };
-export type ResearchSong = { id: string; title: string; artist: string; year?: number; album?: string; image?: string; durationMs?: number; href?: string; own?: boolean };
+export type ResearchArtist = { name: string; image?: string; /** open.spotify.com/artist/<id> when the Spotify id is known; otherwise no link (U06). */ href?: string; source?: "spotify" | "qloo" | "typed"; tags?: string[] };
+/**
+ * `image` is the track's own image or its album art; `artistImage` the artist's photo (SongRow falls back image, then artistImage, then
+ * the icon: U03). `href` is a Spotify track URL only (U06). `source` is where the song came from, for the logo.
+ */
+export type ResearchSong = { id: string; title: string; artist: string; year?: number; album?: string; image?: string; artistImage?: string; durationMs?: number; href?: string; source?: "spotify" | "lastfm" | "qloo"; own?: boolean };
 export type LearnSong = ResearchSong & { reason: string; because?: ResearchArtist[]; status: "pending" | "learned" | "dismissed"; fresh?: boolean };
 export type Lean = { label: string; lean: number };
 export type RepertoireResults = {
@@ -46,7 +53,7 @@ export type ViewInput = {
   /** The live (or replayed) run's events, in order. */
   events?: readonly LearnStreamEvent[] | null;
   /** The Repertoire as GET /api/playlist returns it: the current songs and "Artists you sound like" (editable). */
-  playlist?: Pick<PlaylistView, "songs" | "soundsLike"> | null;
+  playlist?: Pick<PlaylistView, "songs" | "soundsLike"> & Partial<Pick<PlaylistView, "spotifyProfile" | "spotifyArtistId">> | null;
   /** The Learn list's suggestions (GET /api/playlist/learn); when given they are the To learn list. */
   suggestions?: readonly LearnSuggestionView[] | null;
 };
@@ -76,19 +83,53 @@ function cellsOf(key: ResearchStepKey, o: Outputs): RepertoireStep["cells"] {
   }
 }
 
-const songOf = (s: PlaylistSongView): ResearchSong => ({
-  id: s.id,
-  title: s.title,
-  artist: s.artist,
-  ...(s.year !== null ? { year: s.year } : {}),
-  ...(s.durationMs !== null ? { durationMs: s.durationMs } : {}),
-  ...(s.spotifyTrackId ? { href: `https://open.spotify.com/track/${s.spotifyTrackId}` } : {}),
-  ...(s.own ? { own: true } : {}),
-});
+/** What the page already knows about songs and artists, by key, so a saved row (which stores no picture) still gets its photo. */
+type Media = { trackImage: Map<string, string>; artistImage: Map<string, string>; artistHref: Map<string, string> };
 
-type AnySuggestion = Pick<LearnSuggestionView, "id" | "title" | "artist" | "year" | "durationMs" | "image" | "sourceUrl" | "reason" | "basedOn" | "status" | "isNew">;
-const learnOf = (s: AnySuggestion): LearnSong => {
-  const because = s.basedOn.filter((b) => b.kind === "soundsLike" || b.kind === "repertoire").map((b): ResearchArtist => ({ name: b.name, source: "qloo" }));
+/** Photos and Spotify links already fetched: the profile, "you sound like", "fans also love", this run's songs and the suggestions. */
+function mediaOf(o: Outputs, playlist: ViewInput["playlist"], suggestions: readonly LearnSuggestionView[]): Media {
+  const m: Media = { trackImage: new Map(), artistImage: new Map(), artistHref: new Map() };
+  const artist = (name: string, image: string | null | undefined, spotifyId?: string | null) => {
+    const k = nameKey(name);
+    if (image && !m.artistImage.has(k)) m.artistImage.set(k, image);
+    if (spotifyId && !m.artistHref.has(k)) m.artistHref.set(k, SPOTIFY_ARTIST_URL(spotifyId));
+  };
+  if (o.profile) artist(o.profile.name, o.profile.image, o.profile.spotifyId);
+  for (const a of o.soundsLike?.artists ?? []) artist(a.name, a.image, a.spotifyId);
+  for (const a of o.fansLove?.artists ?? []) artist(a.name, a.image, a.spotifyId);
+  for (const a of playlist?.soundsLike ?? []) artist(a.name, null, a.spotifyId);
+  for (const s of o.songs?.songs ?? []) if (s.image) m.trackImage.set(playlistSongKey(s.artist, s.title), s.image);
+  for (const s of suggestions) if (s.image) m.trackImage.set(playlistSongKey(s.artist, s.title), s.image);
+  return m;
+}
+
+const songOf = (s: PlaylistSongView, m: Media, ownPhoto: string | undefined): ResearchSong => {
+  const image = m.trackImage.get(playlistSongKey(s.artist, s.title));
+  const artistImage = (s.own ? ownPhoto : undefined) ?? m.artistImage.get(nameKey(s.artist));
+  return {
+    id: s.id,
+    title: s.title,
+    artist: s.artist,
+    ...(s.year !== null ? { year: s.year } : {}),
+    ...(s.durationMs !== null ? { durationMs: s.durationMs } : {}),
+    ...(image ? { image } : {}),
+    ...(artistImage ? { artistImage } : {}),
+    ...(s.spotifyTrackId ? { href: SPOTIFY_TRACK_URL(s.spotifyTrackId) } : {}),
+    ...(s.source === "spotify" || s.source === "lastfm" ? { source: s.source } : {}),
+    ...(s.own ? { own: true } : {}),
+  };
+};
+
+const artistMedia = (m: Media, name: string): { image?: string; href?: string } => {
+  const image = m.artistImage.get(nameKey(name));
+  const href = m.artistHref.get(nameKey(name));
+  return { ...(image ? { image } : {}), ...(href ? { href } : {}) };
+};
+
+type AnySuggestion = Pick<LearnSuggestionView, "id" | "title" | "artist" | "year" | "durationMs" | "image" | "songSource" | "sourceUrl" | "reason" | "basedOn" | "status" | "isNew">;
+const learnOf = (s: AnySuggestion, m: Media): LearnSong => {
+  const because = s.basedOn.filter((b) => b.kind === "soundsLike" || b.kind === "repertoire").map((b): ResearchArtist => ({ name: b.name, source: "qloo", ...artistMedia(m, b.name) }));
+  const artistImage = m.artistImage.get(nameKey(s.artist));
   return {
     id: s.id,
     title: s.title,
@@ -96,7 +137,9 @@ const learnOf = (s: AnySuggestion): LearnSong => {
     ...(s.year !== null ? { year: s.year } : {}),
     ...(s.durationMs !== null ? { durationMs: s.durationMs } : {}),
     ...img(s.image),
-    ...(s.sourceUrl ? { href: s.sourceUrl } : {}),
+    ...(artistImage ? { artistImage } : {}),
+    ...(spotifyHref(s.sourceUrl) ? { href: spotifyHref(s.sourceUrl)! } : {}),
+    ...(s.songSource === "spotify" || s.songSource === "lastfm" ? { source: s.songSource } : {}),
     reason: s.reason,
     ...(because.length ? { because } : {}),
     status: s.status,
@@ -154,23 +197,25 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
 
   const o = outputs;
   const playlist = input.playlist ?? null;
+  const media = mediaOf(o, playlist, input.suggestions ?? []);
+  const ownPhoto = (playlist?.spotifyProfile ? profilePhoto(playlist.spotifyProfile.images) : null) ?? o.profile?.image ?? undefined;
   const tagsByName = new Map((o.soundsLike?.artists ?? []).map((a) => [a.name.toLowerCase(), a]));
   const soundsLike: ResearchArtist[] | null = done("soundsLike") || (playlist && !run && playlist.soundsLike.length > 0)
     ? playlist
       ? playlist.soundsLike.map((a) => {
           const q = tagsByName.get(a.name.toLowerCase());
-          return { name: a.name, source: a.spotifyId ? "spotify" : a.qlooId ? "qloo" : "typed", ...img(q?.image), ...(q?.tags ? { tags: q.tags } : {}) };
+          return { name: a.name, source: a.spotifyId ? "spotify" : a.qlooId ? "qloo" : "typed", ...img(q?.image), ...(a.spotifyId ? { href: SPOTIFY_ARTIST_URL(a.spotifyId) } : {}), ...(q?.tags ? { tags: q.tags } : {}) };
         })
-      : (o.soundsLike?.artists ?? []).map((a) => ({ name: a.name, source: "qloo" as const, ...img(a.image), ...(a.tags ? { tags: a.tags } : {}) }))
+      : (o.soundsLike?.artists ?? []).map((a) => ({ name: a.name, source: "qloo" as const, ...img(a.image), ...(a.spotifyId ? { href: SPOTIFY_ARTIST_URL(a.spotifyId) } : {}), ...(a.tags ? { tags: a.tags } : {}) }))
     : null;
   const songsLanded = done("songs") || (!run && !!playlist) || (liveMode === "more" && !!playlist);
   const canSing = songsLanded
     ? playlist
-      ? playlist.songs.filter((s) => s.state === "can_sing").map(songOf)
-      : (o.songs?.songs ?? []).filter((s) => s.id).map((s) => ({ id: s.id!, title: s.title, artist: s.artist, own: true, ...(s.year ? { year: s.year } : {}), ...(s.album ? { album: s.album } : {}), ...img(s.image), ...(s.durationMs ? { durationMs: s.durationMs } : {}), ...(s.href ? { href: s.href } : {}) }))
+      ? playlist.songs.filter((s) => s.state === "can_sing").map((s) => songOf(s, media, ownPhoto))
+      : (o.songs?.songs ?? []).filter((s) => s.id).map((s): ResearchSong => ({ id: s.id!, title: s.title, artist: s.artist, own: true, ...(s.year ? { year: s.year } : {}), ...(s.album ? { album: s.album } : {}), ...img(s.image), ...(ownPhoto ? { artistImage: ownPhoto } : {}), ...(spotifyHref(s.href) ? { href: spotifyHref(s.href)! } : {}), ...(o.songs!.source !== "none" ? { source: o.songs!.source } : {}), ...(s.durationMs ? { durationMs: s.durationMs } : {}) }))
     : null;
   // To learn: the Learn list when the page has it (current statuses); otherwise this run's suggestions once it ended.
-  const toLearn = input.suggestions && (!run || end) ? input.suggestions.map(learnOf) : end ? live.map((s) => learnOf(s)) : null;
+  const toLearn = input.suggestions && (!run || end) ? input.suggestions.map((s) => learnOf(s, media)) : end ? live.map((s) => learnOf(s, media)) : null;
 
   const results: RepertoireResults = {
     profile: o.profile
@@ -186,10 +231,10 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
     summary: o.summary?.text ?? null,
     fans: o.fans ? { age: o.fans.age.map(({ label, lean }) => ({ label, lean })), gender: o.fans.gender.map(({ label, lean }) => ({ label, lean })) } : null,
     soundsLike,
-    fansLove: o.fansLove ? o.fansLove.artists.map((a) => ({ name: a.name, source: "qloo" as const, ...img(a.image), ...(a.tags ? { tags: a.tags } : {}) })) : null,
+    fansLove: o.fansLove ? o.fansLove.artists.map((a) => ({ name: a.name, source: "qloo" as const, ...img(a.image), ...(a.spotifyId ? { href: SPOTIFY_ARTIST_URL(a.spotifyId) } : {}), ...(a.tags ? { tags: a.tags } : {}) })) : null,
     canSing,
     toLearn,
-    learned: playlist ? playlist.songs.filter((s) => s.state === "learned").map(songOf) : null,
+    learned: playlist ? playlist.songs.filter((s) => s.state === "learned").map((s) => songOf(s, media, ownPhoto)) : null,
   };
 
   const phase: RepertoirePhase = run ? (end ? "done" : "running") : snapshot ? "done" : "empty";

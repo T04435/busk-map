@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { formatDuration } from "@/lib/live-search";
+import { SPOTIFY_TRACK_URL, spotifyHref } from "@/lib/mention";
+import { nameKey } from "@/lib/text";
 import { type PickedArtist } from "./artist-picker";
 import { SongSearch } from "./song-search";
 
@@ -21,17 +23,39 @@ import { SongSearch } from "./song-search";
 const clean = (s: string) => s.replace(/[|~]/g, " ").trim();
 
 /** A song picked from Spotify (search or "Load my songs"), with what the search showed. */
-export type PickedSong = { key: string; title: string; artist: string; album: string | null; image: string | null; durationMs: number | null; own: boolean };
+export type PickedSong = {
+  key: string;
+  title: string;
+  artist: string;
+  album: string | null;
+  /** The track's own image or album art (U03). */
+  image: string | null;
+  /** The artist's photo, when the act picked that artist: the cover's second choice. */
+  artistImage?: string | null;
+  /** open.spotify.com/track/<id>; absent for a typed song (U06). */
+  href?: string | null;
+  durationMs: number | null;
+  own: boolean;
+};
 
-export const toPicked = (track: TrackResult, own: boolean): PickedSong => ({
-  key: track.id,
-  title: clean(track.title),
-  artist: clean(track.artists[0]?.name ?? "") || "Unknown artist",
-  album: track.album,
-  image: track.image,
-  durationMs: track.durationMs,
-  own,
-});
+const SPOTIFY_ID = /^[A-Za-z0-9]{22}$/;
+
+/** A song from Spotify's search. `known` are the artists the act already picked, for their photo. */
+export const toPicked = (track: TrackResult, own: boolean, known: readonly PickedArtist[] = []): PickedSong => {
+  const lead = track.artists[0];
+  const photo = known.find((a) => a.image && ((a.spotifyId && a.spotifyId === lead?.id) || nameKey(a.name) === nameKey(lead?.name ?? "")))?.image;
+  return {
+    key: track.id,
+    title: clean(track.title),
+    artist: clean(lead?.name ?? "") || "Unknown artist",
+    album: track.album,
+    image: track.image,
+    ...(photo ? { artistImage: photo } : {}),
+    href: spotifyHref(track.url) ?? (SPOTIFY_ID.test(track.id) ? SPOTIFY_TRACK_URL(track.id) : null),
+    durationMs: track.durationMs,
+    own,
+  };
+};
 
 /** The most songs one act can pick. */
 const MAX_PICKED = 60;
@@ -80,6 +104,9 @@ function PickedRow({ song, onRemove, onEdit }: { song: PickedSong; onRemove: (so
       artist={song.artist}
       album={song.album}
       image={song.image}
+      artistImage={song.artistImage}
+      href={song.href ?? undefined}
+      source={song.href ? "spotify" : undefined}
       durationMs={song.durationMs}
       tags={typed ? <SongTag kind="typed" /> : undefined}
       className="px-3"
@@ -190,7 +217,7 @@ export function RepertoirePicker({
       );
       return;
     }
-    addSongs(tracks.slice(0, 20).map((t) => toPicked(t, true)));
+    addSongs(tracks.slice(0, 20).map((t) => toPicked(t, true, artists)));
     setSearchNote(
       body?.mode === "synthetic"
         ? "Offline test mode: these songs are made up, not from Spotify."
@@ -216,7 +243,7 @@ export function RepertoirePicker({
   return (
     <fieldset className="m-0 flex min-w-0 flex-col gap-3.5 border-0 p-0" aria-describedby={error ? errorId : undefined}>
       <legend className="mb-1 p-0 text-label font-bold">Songs you can play</legend>
-      <SongSearch onAdd={(track) => addSongs([toPicked(track, false)])} isAdded={(track) => picked.some((p) => p.key === track.id)} artists={artists} onAddTyped={addTyped} />
+      <SongSearch onAdd={(track) => addSongs([toPicked(track, false, artists)])} isAdded={(track) => picked.some((p) => p.key === track.id)} artists={artists} onAddTyped={addTyped} />
       <PicksList songs={picked} onRemove={(song) => setPicked((current) => current.filter((p) => p !== song))} onEdit={editTyped} />
       <div className="space-y-1">
         <Label htmlFor={linkId}>Your Spotify artist link (optional)</Label>

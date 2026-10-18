@@ -102,6 +102,20 @@ describe("toRepertoireView", () => {
     expect(v.results.summary).toBeNull();
   });
 
+  it("U03 U06: a saved song borrows the act's photo and this run's covers; links are Spotify only", async () => {
+    const { events, playlist, list } = await fullRun();
+    // The offline profile has no photo, so give it one the way Spotify's snapshot would.
+    const withPhoto = { ...playlist, spotifyProfile: { ...playlist.spotifyProfile, images: [{ url: "https://i.scdn.co/image/me", width: 300, height: 300 }] } };
+    const v = toRepertoireView({ snapshot: playlist.research, playlist: withPhoto, suggestions: list.suggestions });
+    expect(v.results.canSing?.length).toBeGreaterThan(0);
+    for (const s of v.results.canSing ?? []) expect(s.image ?? s.artistImage, `${s.title} has a photo`).toBeTruthy();
+    for (const s of [...(v.results.canSing ?? []), ...(v.results.toLearn ?? [])]) if (s.href) expect(s.href).toMatch(/^https:\/\/open\.spotify\.com\/track\//);
+    for (const a of [...(v.results.soundsLike ?? []), ...(v.results.fansLove ?? [])]) if (a.href) expect(a.href).toMatch(/^https:\/\/open\.spotify\.com\/artist\//);
+    expect(v.results.canSing?.[0].source).toBe("spotify");
+    // The live stream gives the same songs without any link that is not Spotify's.
+    for (const s of toRepertoireView({ events }).results.canSing ?? []) if (s.href) expect(s.href).toMatch(/^https:\/\/open\.spotify\.com\//);
+  });
+
   it("Qloo down: the steps after Finding you on Qloo are skipped, the profile and songs stay", async () => {
     const { events } = await fullRun({ "x-buskmap-faults": "qloo" });
     const v = toRepertoireView({ events });

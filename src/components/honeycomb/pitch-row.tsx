@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Icon } from "@/components/honeycomb/icon";
 import { cn } from "cn";
-import { PercentCell } from "@/components/honeycomb/percent-cell";
+import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { RankTile } from "@/components/honeycomb/rank-tile";
 
 /**
@@ -48,7 +48,7 @@ export function PitchRow({
         <b className="font-display text-[19px] leading-[22px] font-extrabold text-balance uppercase [overflow-wrap:anywhere]">{name}</b>
         {time}
       </span>
-      <PercentCell value={score} size={40} tone={selected ? "primary" : "default"} label="Score" />
+      <ScoreCell value={score} size="md" tone={selected ? "primary" : "default"} label="Score" />
     </>
   );
   const top = "grid min-h-9 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 text-left";

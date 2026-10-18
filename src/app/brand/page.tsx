@@ -10,7 +10,7 @@ import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
 import { Loader } from "@/components/honeycomb/loader";
 import { Logo, QlooWordmark } from "@/components/honeycomb/logo";
-import { PercentCell } from "@/components/honeycomb/percent-cell";
+import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { RankTile } from "@/components/honeycomb/rank-tile";
 import { DURATIONS, EASINGS, RADII, SHADOWS, SIZES, SPACE, STROKES, TOKENS, WORDS, type ScaleRow } from "@/lib/brand-data";
 
@@ -247,15 +247,15 @@ export default function BrandPage() {
           </PhoneFold>
 
           <PhoneFold heading="The honeycomb" headingClassName={H3}>
-            <p className="m-0 max-w-3xl">One idea per pointy-top cell: a rank, a person, a song or a score. Never a circle or a square tile. Every 0–100 value is a PercentCell; a cell that is waiting is dashed.</p>
+            <p className="m-0 max-w-3xl">One idea per pointy-top cell: a rank, a person, a song or a score. Never a circle or a square tile. Every 0–100 value is a ScoreCell; a cell that is waiting is dashed.</p>
             <div className="flex flex-wrap items-center gap-4.5 border-2 border-rule bg-card p-5">
               <HexCell size={56} fontSize={24} tone="primary">1</HexCell>
               <HexCell size={56} fontSize={20}>GW</HexCell>
               <HexCell size={56} tone="muted"><Icon name="music" size={24} /></HexCell>
               <HexCell size={56} tone="error"><Icon name="warning" size={24} /></HexCell>
-              <PercentCell value={91} size={56} label="Score" />
-              <PercentCell value={64} size={56} label="Taste match" />
-              <PercentCell value={null} size={56} label="Score" />
+              <ScoreCell value={91} size="lg" label="Score" />
+              <ScoreCell value={64} size="lg" label="Taste match" />
+              <ScoreCell value={null} size="lg" label="Score" />
               <span className="inline-flex items-center gap-2 text-sm"><HexCell size={56} tone="dashed"><Loader size={22} label="Working" /></HexCell>Working</span>
               <RankTile n={2} />
             </div>

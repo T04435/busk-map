@@ -6,7 +6,7 @@ import { FoundByBadge } from "@/components/honeycomb/found-by-badge";
 import { Icon, type IconName } from "@/components/honeycomb/icon";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
 import { InfoTag } from "@/components/honeycomb/info-tag";
-import { MeterBar } from "@/components/honeycomb/percent-cell";
+import { MeterBar } from "@/components/honeycomb/score-cell";
 import { PitchRow } from "@/components/honeycomb/pitch-row";
 import { RankTile } from "@/components/honeycomb/rank-tile";
 import { Reason } from "@/components/honeycomb/reason";

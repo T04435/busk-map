@@ -7,7 +7,7 @@ import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
 import { LeanBar } from "@/components/honeycomb/lean-bar";
 import { QlooWordmark } from "@/components/honeycomb/logo";
-import { MeterBar } from "@/components/honeycomb/percent-cell";
+import { MeterBar } from "@/components/honeycomb/score-cell";
 import { InfoTag } from "@/components/honeycomb/info-tag";
 import { Reason } from "@/components/honeycomb/reason";
 import { ScoreCell } from "@/components/honeycomb/score-cell";

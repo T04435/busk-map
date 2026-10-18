@@ -13,7 +13,8 @@ import { SongTag } from "@/components/honeycomb/song-tag";
  * - added: a solid rule and an "Added" tag instead of an action (a search result already in the list);
  * - static: a solid rule, no action (Because, crowd rows, tool cards, event lines, sounds-like lists).
  * `interactive={false}` makes it safe inside a combobox option, which is itself the button: no button inside, the Add icon is a drawing.
- * `size`: xs is the inline unit for "sounds like" and Because lists (small cell, name only), md the row, lg the featured one.
+ * `size`: xs is the inline unit for "sounds like" and Because lists (small cell, the name, and a `<ScoreCell size="xs">` when
+ * the score explains it), md the row, lg the featured one.
  * Slots: `score` (ScoreCell), `info` (InfoTags), `children` (a Reason or other body under the name).
  */
 export function ArtistChip({
@@ -65,6 +66,7 @@ export function ArtistChip({
           {initialsOf(name)}
         </HexCell>
         <span className="min-w-0 text-sm leading-5 font-bold [overflow-wrap:anywhere]">{name}</span>
+        {score ? <span className="flex flex-none items-center self-stretch border-l border-rule pl-1.5">{score}</span> : null}
       </span>
     );
   }

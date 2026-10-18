@@ -7,8 +7,8 @@ export function toPercent(value: number): number {
 
 /**
  * The pitch ring as a gauge: an open 306-degree ring filling clockwise, the number in its core in condensed caps.
- * Prefer PercentCell, which puts this in a honeycomb cell and names the value for screen readers. `--ring-fill` and `--ring-track`
- * recolour it (PercentCell inverts it in a primary cell, where an orange ring on orange would vanish).
+ * Prefer ScoreCell, which puts this in a honeycomb cell and names the value for screen readers. `--ring-fill` and `--ring-track`
+ * recolour it (ScoreCell inverts it in a primary cell, where an orange ring on orange would vanish).
  */
 export function ScoreRing({ value, size = 72, label = true, className }: { value: number; size?: number; label?: boolean; className?: string }) {
   const v = toPercent(value);

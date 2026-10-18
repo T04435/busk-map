@@ -96,7 +96,7 @@ function SuggestionRow({ song, busy, onStatus }: { song: LearnSuggestionView; bu
         muted={song.status === "dismissed"}
         tags={song.status === "learned" ? <SongTag kind="learned" /> : song.isNew && pending ? <SongTag kind="new" /> : undefined}
         info={info}
-        reason={<Reason text={because.length === 0 && song.because ? `${song.reason} ${song.because}.` : song.reason} because={because} />}
+        reason={<Reason text={because.length === 0 && song.because ? `${song.reason} ${song.because}.` : [`${song.reason} Because `, ...because.flatMap((a, i) => (i ? [", ", { kind: "artist" as const, name: a.name }] : [{ kind: "artist" as const, name: a.name }]))]} />}
         actions={<SongActions title={song.title} artist={song.artist} disabled={busy} learnIt onLearned={pending ? go("learned") : undefined} onDismiss={pending ? go("dismissed") : undefined} onUndo={pending ? undefined : go("pending")} />}
       />
     </li>

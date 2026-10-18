@@ -114,7 +114,6 @@ export function ArtistProfile({
                       className="inline-flex min-h-6 items-center gap-1 text-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none"
                     >
                       Spotify
-                      <Icon name="external" size={14} />
                       <span className="sr-only"> (opens in a new tab)</span>
                     </a>
                   ) : null}

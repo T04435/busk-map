@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 import { cn } from "cn";
-import { HexCell } from "@/components/honeycomb/hex-cell";
+import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
+import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { SongTag } from "@/components/honeycomb/song-tag";
+import type { MentionSource } from "@/lib/mention";
 
 /** m:ss from milliseconds. */
 function formatDuration(ms: number): string {
@@ -28,6 +30,9 @@ export function SongRow({
   durationMs,
   album,
   image,
+  artistImage,
+  artists,
+  source,
   size = "md",
   compact,
   interactive = true,
@@ -51,8 +56,14 @@ export function SongRow({
   year?: number | null;
   durationMs?: number | null;
   album?: string | null;
-  /** Album art. Falls back to the music icon. */
+  /** The cover: the track's own image or its album art. Falls back to `artistImage`, then the music icon. */
   image?: string | null;
+  /** The artist's photo: shown as the artist's small hex in the meta line, and the cover when `image` is missing. */
+  artistImage?: string | null;
+  /** Several artists, each its own small hex (overrides `artist` for the cells; `artist` stays the accessible text fallback). */
+  artists?: { name: string; image?: string | null }[];
+  /** The data source as its logo (Spotify, Last.fm), after the meta. */
+  source?: MentionSource;
   /** md = 44px cover; sm = 32px for dense lists such as search results. */
   size?: "md" | "sm";
   /** The agent tool cards: a 28px cover, small type, tight rows. */
@@ -86,10 +97,12 @@ export function SongRow({
   className?: string;
 }) {
   const Tag = as ?? (interactive ? "li" : "div");
-  const meta = [artist, year ?? null, album || null].filter((p) => p != null && p !== "").join(" · ");
+  const meta = [year ?? null, album || null].filter((p) => p != null && p !== "").join(" · ");
   const hasScore = score != null;
   const showActions = interactive && Boolean(actions);
   const hasRight = hasScore || showActions;
+  const who = artists && artists.length > 0 ? artists : artist ? [{ name: artist, image: artistImage }] : [];
+  const coverImage = image || artistImage || null;
   const cover = compact ? 28 : size === "sm" ? 32 : 44;
   return (
     <Tag
@@ -113,7 +126,7 @@ export function SongRow({
             {String(index).padStart(2, "0")}
           </span>
         ) : null}
-        <HexCell size={cover} tone="media" image={image} fontSize={Math.round(cover * 0.4)}>
+        <HexCell size={cover} tone="media" image={coverImage} fontSize={Math.round(cover * 0.4)}>
           <Icon name="music" size={Math.round(cover * 0.45)} />
         </HexCell>
         <div className="min-w-0">
@@ -127,14 +140,27 @@ export function SongRow({
               >
                 {title}
                 <span className="sr-only"> (opens Spotify)</span>
-                <Icon name="external" size={14} className="ml-1" />
               </a>
             ) : (
               title
             )}
           </p>
           <div className={cn("flex flex-wrap items-center gap-x-1.5 gap-y-1 leading-5 text-muted-foreground", compact ? "text-xs" : "text-sm")}>
+            {who.length > 0 ? (
+              <span data-slot="song-artists" className="inline-flex items-center gap-1">
+                <span className="sr-only">By </span>
+                {who.map((a, i) => (
+                  <span key={`${a.name}-${i}`} title={a.name} className="inline-flex">
+                    <HexCell size={compact ? 18 : 22} tone="media" image={a.image} fontSize={8}>
+                      {initialsOf(a.name)}
+                    </HexCell>
+                    <span className="sr-only">{a.name}{i < who.length - 1 ? "," : ""}</span>
+                  </span>
+                ))}
+              </span>
+            ) : null}
             {meta ? <span className="[overflow-wrap:anywhere]">{meta}</span> : null}
+            {source ? <SourceLogo source={source} height={compact ? 12 : 14} /> : null}
             {own ? <SongTag kind="your-song" image={ownerImage} /> : null}
             {tags}
             {durationMs != null ? (

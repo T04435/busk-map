@@ -37,7 +37,7 @@ export const toPicked = (track: TrackResult, own: boolean): PickedSong => ({
 const MAX_PICKED = 60;
 
 /** One picked song. A typed one can be edited in place: the title and artist become two fields until Done. */
-function PickedRow({ song, ownerImage, onRemove, onEdit }: { song: PickedSong; ownerImage?: string; onRemove: (song: PickedSong) => void; onEdit?: (song: PickedSong, edit: { title: string; artist: string }) => void }) {
+function PickedRow({ song, onRemove, onEdit }: { song: PickedSong; onRemove: (song: PickedSong) => void; onEdit?: (song: PickedSong, edit: { title: string; artist: string }) => void }) {
   const typed = song.key.startsWith("typed:");
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(song.title);
@@ -81,8 +81,6 @@ function PickedRow({ song, ownerImage, onRemove, onEdit }: { song: PickedSong; o
       album={song.album}
       image={song.image}
       durationMs={song.durationMs}
-      own={song.own}
-      ownerImage={ownerImage}
       tags={typed ? <SongTag kind="typed" /> : undefined}
       className="px-3"
       actions={
@@ -109,9 +107,8 @@ function PickedRow({ song, ownerImage, onRemove, onEdit }: { song: PickedSong; o
   );
 }
 
-/** The songs you picked: a cover cell, title, "artist · album", a "Your song" badge, the length and a remove button. */
-/** `ownerImage`: the artist photo shown in the "Your song" tag (optional; the tag keeps its icon without it). */
-export function PicksList({ songs, ownerImage, onRemove, onEdit }: { songs: PickedSong[]; ownerImage?: string; onRemove: (song: PickedSong) => void; onEdit?: (song: PickedSong, edit: { title: string; artist: string }) => void }) {
+/** The songs you picked: a cover cell, title, "artist · album", the length and a remove button. */
+export function PicksList({ songs, onRemove, onEdit }: { songs: PickedSong[]; onRemove: (song: PickedSong) => void; onEdit?: (song: PickedSong, edit: { title: string; artist: string }) => void }) {
   if (songs.length === 0) return <p className="m-0 text-sm text-muted-foreground">Search for songs above.</p>;
   const known = songs.reduce((sum, s) => sum + (s.durationMs ?? 0), 0);
   const unknown = songs.some((s) => s.durationMs === null);
@@ -126,7 +123,7 @@ export function PicksList({ songs, ownerImage, onRemove, onEdit }: { songs: Pick
       </div>
       <ul aria-label="Songs you picked" className="m-0 list-none divide-y divide-border overflow-hidden border-2 border-rule bg-card p-0 text-sm">
         {songs.map((song) => (
-          <PickedRow key={song.key} song={song} ownerImage={ownerImage} onRemove={onRemove} onEdit={onEdit} />
+          <PickedRow key={song.key} song={song} onRemove={onRemove} onEdit={onEdit} />
         ))}
       </ul>
     </div>
@@ -144,11 +141,8 @@ export function RepertoirePicker({
   setPicked,
   errorId,
   error,
-  ownerImage,
 }: {
   artists: PickedArtist[];
-  /** Artist photo for the "Your song" tags. */
-  ownerImage?: string;
   picked: PickedSong[];
   setPicked: Dispatch<SetStateAction<PickedSong[]>>;
   errorId?: string;
@@ -223,7 +217,7 @@ export function RepertoirePicker({
     <fieldset className="m-0 flex min-w-0 flex-col gap-3.5 border-0 p-0" aria-describedby={error ? errorId : undefined}>
       <legend className="mb-1 p-0 text-label font-bold">Songs you can play</legend>
       <SongSearch onAdd={(track) => addSongs([toPicked(track, false)])} isAdded={(track) => picked.some((p) => p.key === track.id)} artists={artists} onAddTyped={addTyped} />
-      <PicksList songs={picked} ownerImage={ownerImage} onRemove={(song) => setPicked((current) => current.filter((p) => p !== song))} onEdit={editTyped} />
+      <PicksList songs={picked} onRemove={(song) => setPicked((current) => current.filter((p) => p !== song))} onEdit={editTyped} />
       <div className="space-y-1">
         <Label htmlFor={linkId}>Your Spotify artist link (optional)</Label>
         <InputGroup className="has-[>[data-align=inline-start]]:[&>input]:pl-10">

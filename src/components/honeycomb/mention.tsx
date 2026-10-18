@@ -24,7 +24,7 @@ export function Mention({ mention, className }: { mention: MentionData; classNam
     <span className="font-bold text-signal-text [overflow-wrap:anywhere]">
       {/* The cell and the name's first word never part, so the cell is not left alone at a line end. */}
       <span className="whitespace-nowrap">
-        <HexCell size={18} tone="media" image={mention.image} fontSize={7} className="mr-1 align-[-5px]">
+        <HexCell size={18} tone="media" image={mention.image} fontSize={7} className="mr-1 align-middle">
           {isArtist ? initialsOf(name) : <Icon name="music" size={9} />}
         </HexCell>
         {first}

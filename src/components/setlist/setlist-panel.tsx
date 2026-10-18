@@ -152,7 +152,6 @@ function SetlistPreview({
                 artist={song.artist}
                 year={song.year}
                 durationMs={song.durationMs}
-                own={song.own}
                 score={song.score}
                 scoreLabel="Fit"
                 className="border-b border-border last:border-b-0"

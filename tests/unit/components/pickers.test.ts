@@ -51,11 +51,11 @@ describe("ArtistPicker (B-172, B-175)", () => {
 
 describe("PicksList (B-176)", () => {
   const song = (over: Partial<PickedSong>): PickedSong => ({ key: "a", title: "A very long song title that must never be lost", artist: "Artist", album: null, image: null, durationMs: 180000, own: false, ...over });
-  it("has the Your picks header with the count and total time, and the Your song badge", () => {
+  it("has the Your picks header with the count and total time, and no Your song tag (the user removed it, 18 Oct)", () => {
     const out = html(createElement(PicksList, { songs: [song({ own: true }), song({ key: "b", durationMs: 60000 })], onRemove: () => {} }));
     expect(out).toContain("Your picks");
     expect(out).toContain("2 songs");
     expect(out).toContain("4:00");
-    expect(out).toContain("Your song");
+    expect(out).not.toContain("Your song");
   });
 });

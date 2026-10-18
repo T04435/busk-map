@@ -162,14 +162,12 @@ export function SoundsLikeSection({
 
 export function CanSingSection({
   songs,
-  ownerImage,
   onRemove,
   onAddSong,
   loading,
   className,
 }: {
   songs: ResearchSong[] | null;
-  ownerImage?: string | null;
   onRemove?: (song: ResearchSong) => void;
   onAddSong?: () => void;
   loading?: boolean;
@@ -193,8 +191,6 @@ export function CanSingSection({
               image={s.image}
               durationMs={s.durationMs}
               href={s.href ?? undefined}
-              own={s.own}
-              ownerImage={ownerImage ?? undefined}
               actions={onRemove ? <SongActions title={s.title} onRemove={() => onRemove(s)} /> : undefined}
             />
           ))}

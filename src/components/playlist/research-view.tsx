@@ -372,7 +372,7 @@ export function ResearchView() {
       </section>
       )}
 
-      {/* 2. Songs you can sing: your own songs straight in, tagged Your song, removable. */}
+      {/* 2. Songs you can sing: your own songs straight in, removable. */}
       <Section id="research-can-sing" title={COPY.canSing} ready={r.canSing !== null} live={live} testId="research-can-sing">
         {playlist && <p className="text-sm text-muted-foreground tabular-nums">{COPY.count(songs.length, playlist.maxSongs)}</p>}
         {r.canSing && r.canSing.length > 0 ? (
@@ -388,8 +388,6 @@ export function ResearchView() {
                   image={song.image}
                   durationMs={song.durationMs}
                   href={song.href}
-                  own={song.own}
-                  ownerImage={r.profile?.image}
                   actions={
                     <SongActions
                       title={song.title}

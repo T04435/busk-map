@@ -107,7 +107,7 @@ export const SAMPLE_RESULTS: RepertoireResults = {
 
 const DONE: RepertoireStep[] = [
   { key: "profile", status: "done", found: "We found Hana Lee on Spotify: indie folk, australian singer-songwriter, 1,840 followers.", cells: [{ name: "Hana Lee" }] },
-  { key: "songs", status: "done", found: "We added your 2 songs from 1 release, tagged Your song.", cells: [{ name: "Southbank in the Rain" }, { name: "Paper Lanterns" }] },
+  { key: "songs", status: "done", found: "We added your 2 songs from 1 release.", cells: [{ name: "Southbank in the Rain" }, { name: "Paper Lanterns" }] },
   { key: "qloo", status: "done", found: "Qloo has you as indie folk, with audience tags Youthful, Mellow and Romantic." },
   {
     key: "soundsLike",

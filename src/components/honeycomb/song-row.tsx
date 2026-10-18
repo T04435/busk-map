@@ -4,7 +4,6 @@ import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
-import { SongTag } from "@/components/honeycomb/song-tag";
 import type { MentionSource } from "@/lib/mention";
 
 /** m:ss from milliseconds. */
@@ -37,8 +36,6 @@ export function SongRow({
   compact,
   interactive = true,
   index,
-  own,
-  ownerImage,
   tags,
   info,
   reason,
@@ -72,10 +69,6 @@ export function SongRow({
   interactive?: boolean;
   /** Two-digit set position before the cover (setlists). */
   index?: number;
-  /** Shows the "Your song" tag. */
-  own?: boolean;
-  /** With `own`: the owner's photo in a small cell next to the tag. */
-  ownerImage?: string;
   /** SongTags on the meta line (Suggested, New, Added). */
   tags?: ReactNode;
   /** InfoTags under the meta line (Rising +x, Builds on X). */
@@ -161,7 +154,6 @@ export function SongRow({
             ) : null}
             {meta ? <span className="[overflow-wrap:anywhere]">{meta}</span> : null}
             {source ? <SourceLogo source={source} height={compact ? 12 : 14} /> : null}
-            {own ? <SongTag kind="your-song" image={ownerImage} /> : null}
             {tags}
             {durationMs != null ? (
               <span className="ml-auto font-mono text-xs tabular-nums">{formatDuration(durationMs)}</span>

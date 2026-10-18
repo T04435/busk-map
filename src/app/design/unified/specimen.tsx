@@ -47,7 +47,7 @@ function Case({ id, replaces, children }: { id: string; replaces: string; childr
 const list = "m-0 list-none divide-y divide-border p-0";
 
 export function UnifiedSpecimen() {
-  const tagKinds: SongTagKind[] = ["your-song", "new", "typed", "suggested", "learned", "by-your-artist", "added"];
+  const tagKinds: SongTagKind[] = ["new", "typed", "suggested", "learned", "by-your-artist", "added"];
   return (
     <div className="flex flex-col gap-12">
       <Group title="Songs: SongRow">
@@ -68,7 +68,7 @@ export function UnifiedSpecimen() {
           </Case>
           <Case id="S2" replaces="research-view can-sing row">
             <ul className={list}>
-              <SongRow title="Southbank in the Rain" artist="Hana Lee" year={2024} album="Laneways" durationMs={214000} own actions={<SongActions title="Southbank in the Rain" onRemove={noop} />} />
+              <SongRow title="Southbank in the Rain" artist="Hana Lee" year={2024} album="Laneways" durationMs={214000} actions={<SongActions title="Southbank in the Rain" onRemove={noop} />} />
               <SongRow title="Riptide" artist="Vance Joy" year={2013} durationMs={204000} actions={<SongActions title="Riptide" onRemove={noop} />} />
             </ul>
           </Case>
@@ -100,7 +100,6 @@ export function UnifiedSpecimen() {
                 title="Paper Lanterns"
                 artist="Hana Lee"
                 durationMs={187000}
-                own
                 score={87}
                 scoreLabel="Fit"
                 info={<InfoTag icon="trending">Rising +12</InfoTag>}
@@ -122,7 +121,7 @@ export function UnifiedSpecimen() {
           </Case>
           <Case id="S8" replaces="plan and landing set preview">
             <ul className={list}>
-              <SongRow index={1} title="Southbank in the Rain" artist="Hana Lee" durationMs={214000} own />
+              <SongRow index={1} title="Southbank in the Rain" artist="Hana Lee" durationMs={214000} />
               <SongRow index={2} title="Scar" artist="Missy Higgins" durationMs={214000} />
               <SongRow index={3} title="Bloom" artist="The Paper Kites" durationMs={214000} />
             </ul>

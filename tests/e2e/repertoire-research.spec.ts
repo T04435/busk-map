@@ -55,7 +55,7 @@ test.describe("Repertoire research (offline)", () => {
     // Results, in order: profile, songs you can sing, sound-alikes, fans, fans also love, songs to learn, summary.
     const order = await page.getByTestId("research-results").locator(":scope > [data-testid]").evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")));
     expect(order).toEqual(["research-profile", "research-can-sing", "research-sounds-like", "research-fans", "research-fans-love", "research-to-learn", "research-summary"]);
-    await expect(page.getByTestId("research-profile").getByRole("heading")).toHaveText(OFFLINE_TEST_ARTIST.name);
+    await expect(page.getByTestId("profile-name")).toHaveText(OFFLINE_TEST_ARTIST.name);
     await expect(page.getByTestId("research-profile")).toContainText("Dreamy");
     await expect(page.getByLabel("Act name")).toHaveValue(OFFLINE_TEST_ARTIST.name);
     const canSing = page.getByRole("list", { name: "Songs you can sing" });
@@ -79,7 +79,7 @@ test.describe("Repertoire research (offline)", () => {
     let posts = 0;
     page.on("request", (r) => r.url().endsWith("/api/playlist/research") && r.method() === "POST" && posts++);
     await page.reload();
-    await expect(page.getByTestId("research-profile").getByRole("heading")).toHaveText(OFFLINE_TEST_ARTIST.name);
+    await expect(page.getByTestId("profile-name")).toHaveText(OFFLINE_TEST_ARTIST.name);
     expect(posts).toBe(0);
     await page.getByTestId("research-more").click();
     await done(page);

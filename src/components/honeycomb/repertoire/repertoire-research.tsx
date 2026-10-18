@@ -15,13 +15,14 @@ import type { RepertoireStep, RepertoireStepKey, RepertoireTotals, StepStatus } 
 /** `sources`: the data each step reads, drawn as their icon-only marks (U17); the summary is the Hive's own (credited by the AI chip). */
 export type RepertoireStepInfo = { key: RepertoireStepKey; title: string; sources: MentionSource[]; icon: IconName };
 
-/** The nine steps in order (spec: repertoire-research-spec.md). */
+/** The ten steps in order (spec: repertoire-research-spec.md; Where your fans are added by U24). */
 export const REPERTOIRE_STEPS: RepertoireStepInfo[] = [
   { key: "profile", title: "Reading your Spotify profile", sources: ["spotify"], icon: "spotify" },
   { key: "songs", title: "Loading your songs", sources: ["spotify", "lastfm"], icon: "music" },
   { key: "qloo", title: "Finding you on Qloo", sources: ["qloo"], icon: "search" },
   { key: "soundsLike", title: "Who you sound like", sources: ["qloo"], icon: "users" },
   { key: "fans", title: "Who your fans are", sources: ["qloo"], icon: "footfall" },
+  { key: "fansMap", title: "Where your fans are", sources: ["qloo"], icon: "pin" },
   { key: "fansLove", title: "What your fans also love", sources: ["qloo"], icon: "trending" },
   { key: "learn", title: "Songs your fans would stop for", sources: ["qloo", "spotify"], icon: "learn" },
   { key: "genres", title: "Your sound in genres", sources: ["qloo"], icon: "list" },
@@ -88,7 +89,7 @@ function StepCard({ info, step, n }: { info: RepertoireStepInfo; step: Repertoir
 
 /**
  * The Repertoire research run, drawn like a busk's research: a header with the Hive's lockup (its mark fills as steps finish)
- * and the Live/Finished tag, the honeycomb funnel, and the nine step cards in order (plain titles; each done step's note is the
+ * and the Live/Finished tag, the honeycomb funnel, and the ten step cards in order (plain titles; each done step's note is the
  * agent's). When done it can fold under "How we built your Repertoire".
  */
 export function RepertoireResearch({

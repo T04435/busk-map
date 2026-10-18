@@ -47,7 +47,7 @@ function Case({ id, replaces, children }: { id: string; replaces: string; childr
 const list = "m-0 list-none divide-y divide-border p-0";
 
 export function UnifiedSpecimen() {
-  const tagKinds: SongTagKind[] = ["new", "typed", "suggested", "learned", "by-your-artist", "added"];
+  const tagKinds: SongTagKind[] = ["typed", "suggested", "learned", "by-your-artist", "added"];
   return (
     <div className="flex flex-col gap-12">
       <Group title="Songs: SongRow">
@@ -60,7 +60,6 @@ export function UnifiedSpecimen() {
                 year={2010}
                 durationMs={239000}
                 href="https://open.spotify.com/track/sample"
-                tags={<SongTag kind="new" />}
                 reason={<Reason text={becauseText} />}
                 actions={<SongActions title="Big Jet Plane" artist="Angus & Julia Stone" learnIt onLearned={noop} onDismiss={noop} />}
               />

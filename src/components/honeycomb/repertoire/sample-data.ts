@@ -116,6 +116,7 @@ const DONE: RepertoireStep[] = [
     cells: [{ name: "Angus & Julia Stone" }, { name: "The Paper Kites" }, { name: "Missy Higgins" }, { name: "Vance Joy" }],
   },
   { key: "fans", status: "done", found: "Qloo's demographics: your fans lean 18 to 29, with more women." },
+  { key: "fansMap", status: "done", found: "Qloo places your taste in Melbourne strongest around Fitzroy, Brunswick and the CBD." },
   { key: "fansLove", status: "done", found: "Beyond your sound-alikes, your fans over-index on Boy & Bear, Julia Jacklin and Hollow Coves (Qloo).", cells: [{ name: "Boy & Bear" }, { name: "Julia Jacklin" }, { name: "Hollow Coves" }] },
   { key: "learn", status: "done", found: "We checked 40 real top tracks on Spotify and kept 3 your fans would stop for. Each one says why." },
   { key: "genres", status: "done", found: "Qloo tags: indie folk, acoustic pop, singer-songwriter." },

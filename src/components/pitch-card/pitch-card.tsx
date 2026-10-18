@@ -26,7 +26,7 @@ export function ScoreBreakdown({ pitch, weights }: { pitch: PlanPitch; weights?:
   return (
     <section aria-label="Score breakdown" className="flex flex-col gap-4">
       <div className="flex flex-nowrap items-center gap-4">
-        <ScoreCell value={pitch.score} size="md" label="Score" />
+        <ScoreCell value={pitch.score} size="lg" label="Score" />
         <div>
           <h4 className="m-0 font-display text-lg leading-[22px] font-extrabold tracking-[0.03em] uppercase">How this score adds up</h4>
           <p className="m-0 text-sm leading-5 text-muted-foreground">Each factor, times its weight. Bonuses come on top.</p>

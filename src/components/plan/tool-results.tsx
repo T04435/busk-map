@@ -170,7 +170,16 @@ type Ctx = { when?: string; pins?: MiniPin[]; model?: ExplanationsModel | null }
 type ToolUi = { doing: (s: AgentStep) => string; title: (s: AgentStep) => string; render: (out: Rec, s: AgentStep, ctx: Ctx) => ReactNode };
 
 /** "Gillian Welch 0.31; The Teskey Brothers 0.22" -> the artists behind it, for a Reason's "because" chips. */
-const becauseArtists = (s: string) => s.split(";").map((part) => ({ name: part.replace(/ [\d.]+$/, "").trim() })).filter((a) => a.name);
+/** "Gillian Welch 0.31; Paul Kelly 0.2" → the because chips, each with its explained weight (0–100). */
+const becauseArtists = (s: string) =>
+  s
+    .split(";")
+    .map((part) => {
+      const m = / ([\d.]+)$/.exec(part.trim());
+      const weight = m ? Number(m[1]) : NaN;
+      return { name: part.trim().replace(/ [\d.]+$/, "").trim(), score: Number.isFinite(weight) ? Math.round((weight <= 1 ? weight * 100 : weight)) : undefined };
+    })
+    .filter((a) => a.name);
 
 /** Each tool as a busker sees it: what it is doing while it runs, a plain title once done, and its result drawn from the contract fields. */
 export const TOOL_UI: Record<string, ToolUi> = {

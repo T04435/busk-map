@@ -97,7 +97,7 @@ function SuggestionRow({ song, busy, onStatus }: { song: LearnSuggestionView; bu
         tags={song.status === "learned" ? <SongTag kind="learned" /> : song.isNew && pending ? <SongTag kind="new" /> : undefined}
         info={info}
         reason={<Reason text={because.length === 0 && song.because ? `${song.reason} ${song.because}.` : song.reason} because={because} />}
-        actions={<SongActions title={song.title} artist={song.artist} learnIt onLearned={pending ? go("learned") : undefined} onDismiss={pending ? go("dismissed") : undefined} onUndo={pending ? undefined : go("pending")} />}
+        actions={<SongActions title={song.title} artist={song.artist} disabled={busy} learnIt onLearned={pending ? go("learned") : undefined} onDismiss={pending ? go("dismissed") : undefined} onUndo={pending ? undefined : go("pending")} />}
       />
     </li>
   );
@@ -393,6 +393,7 @@ export function ResearchView() {
                   actions={
                     <SongActions
                       title={song.title}
+                      disabled={busy || live}
                       onRemove={() => {
                         if (busy || live) return;
                         focusAfter.current = nextFocus(r.canSing!, song.id, "remove");
@@ -431,7 +432,7 @@ export function ResearchView() {
       {/* 3. Artists you sound like (editable). */}
       <Section id="research-sounds-like" title={R.soundsLikeHeading} ready={r.soundsLike !== null} live={live} testId="research-sounds-like">
         {live ? (
-          <ArtistChipList inline>
+          <ArtistChipList inline label={R.soundsLikeHeading}>
             {(r.soundsLike ?? []).map((a) => (
               <li key={a.name}>
                 <ArtistChip size="xs" name={a.name} image={a.image} />
@@ -479,7 +480,7 @@ export function ResearchView() {
 
       {/* 5. What your fans also love. */}
       <Section id="research-fans-love" title={R.fansLoveHeading} ready={r.fansLove !== null} live={live} testId="research-fans-love">
-        <ArtistChipList inline>
+        <ArtistChipList inline label={R.fansLoveHeading}>
           {(r.fansLove ?? []).map((a) => (
             <li key={a.name}>
               <ArtistChip size="xs" name={a.name} image={a.image} />
@@ -552,6 +553,7 @@ export function ResearchView() {
                   actions={
                     <SongActions
                       title={s.title}
+                      disabled={busy || live}
                       onMoveToCanSing={() => {
                         if (busy || live) return;
                         focusAfter.current = nextFocus(r.learned!, s.id, "move");

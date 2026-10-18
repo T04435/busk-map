@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ArtistChip } from "@/components/honeycomb/artist-chip";
 import { Chip } from "@/components/honeycomb/chip";
 import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
 import { EvidenceLine } from "@/components/honeycomb/evidence-line";
@@ -6,8 +7,10 @@ import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
 import { LeanBar } from "@/components/honeycomb/lean-bar";
 import { QlooWordmark } from "@/components/honeycomb/logo";
-import { MeterBar, PercentCell } from "@/components/honeycomb/percent-cell";
-import { Badge } from "@/components/ui/badge";
+import { MeterBar } from "@/components/honeycomb/percent-cell";
+import { InfoTag } from "@/components/honeycomb/info-tag";
+import { Reason } from "@/components/honeycomb/reason";
+import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { ageLabel } from "@/lib/age";
 import type { Plan } from "@/lib/plan-schema";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
@@ -112,28 +115,25 @@ export function CrowdPanel({
           <ul className="m-0 grid list-none gap-2 p-0">
             {crowd.localArtists.map((a) => (
               <li key={a.name}>
-                <div className="flex flex-wrap items-center gap-2">
-                  {a.affinity !== null && <PercentCell value={a.affinity * 100} size={34} label="Affinity" />}
-                  <b>{a.name}</b>
-                  {a.trend !== null && a.trend >= 1 && (
-                    <Badge variant="neutral">
-                      <Icon name="trending" size={14} />
-                      Rising +{a.trend.toFixed(1)}
-                    </Badge>
+                <ArtistChip
+                  name={a.name}
+                  score={a.affinity !== null ? <ScoreCell value={a.affinity * 100} size="sm" label="Affinity" /> : undefined}
+                  info={
+                    (a.trend !== null && a.trend >= 1) || usualNames.has(a.name) ? (
+                      <>
+                        {a.trend !== null && a.trend >= 1 && <InfoTag icon="trending">Rising +{a.trend.toFixed(1)}</InfoTag>}
+                        {usualNames.has(a.name) && <InfoTag icon="usual">Usual crowd too</InfoTag>}
+                      </>
+                    ) : undefined
+                  }
+                >
+                  {a.because.length > 0 && (
+                    <Reason
+                      text={`Because your fans like${ownName && a.because.includes(ownName) ? ` (${ownName} is ${FROM_YOUR_MUSIC})` : ""}`}
+                      because={(a.explained.length > 0 ? a.explained.map((e) => e.name) : a.because).map((name) => ({ name }))}
+                    />
                   )}
-                  {usualNames.has(a.name) && (
-                    <Badge variant="usual">
-                      <Icon name="usual" size={14} />
-                      Usual crowd too
-                    </Badge>
-                  )}
-                </div>
-                {a.because.length > 0 && (
-                  <Why>
-                    Because your fans like {a.explained.length > 0 ? list(a.explained.map((e) => `${e.name} (${Math.round(e.score * 100)})`)) : list(a.because)}
-                    {ownName && a.because.includes(ownName) ? ` (${ownName} is ${FROM_YOUR_MUSIC})` : ""}
-                  </Why>
-                )}
+                </ArtistChip>
               </li>
             ))}
           </ul>
@@ -151,9 +151,8 @@ export function CrowdPanel({
           </p>
           <ul className="m-0 grid list-none gap-2 p-0">
             {crowd.localScene.acts.map((a) => (
-              <li key={a.name} className="flex flex-wrap items-center gap-2">
-                {a.affinity !== null && <PercentCell value={a.affinity * 100} size={34} label="Affinity" />}
-                <b>{a.name}</b>
+              <li key={a.name}>
+                <ArtistChip name={a.name} score={a.affinity !== null ? <ScoreCell value={a.affinity * 100} size="sm" label="Affinity" /> : undefined} />
               </li>
             ))}
           </ul>

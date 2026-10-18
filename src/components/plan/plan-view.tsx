@@ -17,7 +17,7 @@ import { PitchRow } from "@/components/honeycomb/pitch-row";
 import { PlanAlert } from "@/components/honeycomb/plan-alert";
 import { ResearchFunnel } from "@/components/honeycomb/research-funnel";
 import { UnmatchedAlert } from "@/components/honeycomb/unmatched-alert";
-import { WithCells } from "@/components/honeycomb/with-cells";
+import { Reason } from "@/components/honeycomb/reason";
 import { LazyPlanMap } from "@/components/map/lazy-plan-map";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -550,16 +550,14 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
                       {heading.slotLabel}: each pitch below has its own best hours.
                     </p>
                   )}
-                  <p className="m-0 text-base leading-6">
-                    <WithCells text={plan.summary} />
-                  </p>
+                  <Reason text={plan.summary} />
                   {plan.notes.filter((note) => !(noTaste && /couldn't match any/i.test(note))).length > 0 && (
                     <ul className="m-0 list-disc pl-5 text-sm text-muted-foreground">
                       {plan.notes
                         .filter((note) => !(noTaste && /couldn't match any/i.test(note)))
                         .map((note) => (
                           <li key={note}>
-                            <WithCells text={note} />
+                            <Reason text={note} />
                           </li>
                         ))}
                     </ul>

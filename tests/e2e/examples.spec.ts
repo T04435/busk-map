@@ -117,7 +117,7 @@ test.describe("data-led plans", () => {
       // The crowd, the weights and the setlist sit in each pitch's details.
       const sheet = await openDetails(page);
       await expect(sheet.getByRole("heading", { name: "Who this crowd likes" })).toBeVisible();
-      await expect(sheet.getByText(/^Because your fans like /).first()).toBeVisible();
+      await expect(sheet.getByText(/^Because your fans like/).first()).toBeVisible();
       // Why this crowd: every block names its Qloo evidence; fans vs the usual crowd; age lean.
       const crowd = sheet.getByRole("region", { name: "Compared with the usual crowd" });
       await expect(crowd.getByRole("heading", { name: "Your fans vs the usual crowd" })).toBeVisible();

@@ -116,7 +116,7 @@ const DONE: RepertoireStep[] = [
     cells: [{ name: "Angus & Julia Stone" }, { name: "The Paper Kites" }, { name: "Missy Higgins" }, { name: "Vance Joy" }],
   },
   { key: "fans", status: "done", found: "Qloo's demographics: your fans lean 18 to 29, with more women." },
-  { key: "fansMap", status: "done", found: "Qloo places your taste in Melbourne strongest around Fitzroy, Brunswick and the CBD." },
+  { key: "fansMap", status: "done", found: "Qloo places your taste strongest in Melbourne, Sydney and London." },
   { key: "fansLove", status: "done", found: "Beyond your sound-alikes, your fans over-index on Boy & Bear, Julia Jacklin and Hollow Coves (Qloo).", cells: [{ name: "Boy & Bear" }, { name: "Julia Jacklin" }, { name: "Hollow Coves" }] },
   { key: "learn", status: "done", found: "We checked 40 real top tracks on Spotify and kept 3 your fans would stop for. Each one says why." },
   { key: "genres", status: "done", found: "Qloo tags: indie folk, acoustic pop, singer-songwriter." },
@@ -144,36 +144,32 @@ export const SAMPLE_RESULTS_RUNNING: RepertoireResults = {
   learned: null,
 };
 
-/** Sample cities for the fans map's switch (Melbourne first). */
-export const SAMPLE_FANS_CITIES = [
-  { id: "melbourne", name: "Melbourne", center: [144.9631, -37.8136] as [number, number], zoom: 12 },
-  { id: "sydney", name: "Sydney", center: [151.2093, -33.8688] as [number, number], zoom: 12 },
-  { id: "brisbane", name: "Brisbane", center: [153.0251, -27.4698] as [number, number], zoom: 12 },
-];
-
-/** Where the sample act's crowd gathers in Melbourne: Fitzroy, Brunswick and the CBD (lng, lat, strength). */
+/** Where the sample act's taste concentrates worldwide (lng, lat, strength): Melbourne first, then Sydney, London, Portland and Berlin. */
 const FANS_HEAT: [number, number, number][] = [
-  [144.978, -37.7998, 1],
-  [144.9603, -37.7667, 0.8],
-  [144.9631, -37.8136, 0.62],
-  [144.995, -37.775, 0.45],
+  [144.9631, -37.8136, 1],
+  [151.2093, -33.8688, 0.75],
+  [-0.1276, 51.5072, 0.62],
+  [-122.6765, 45.5231, 0.5],
+  [13.405, 52.52, 0.42],
 ];
 
-/** A pointy-top hex lattice about 6 km wide over inner Melbourne, affinity 0 to 1 from the hot spots. */
+/** A pointy-top hex lattice of about 1.5° cells around each hot spot, affinity 0 to 1 (a global Qloo heatmap is coarse). */
 export const SAMPLE_FANS_CELLS: { lat: number; lng: number; affinity: number }[] = (() => {
   const cells: { lat: number; lng: number; affinity: number }[] = [];
-  const stepLng = 0.0055;
-  const stepLat = 0.00377;
-  for (let row = 0; row < 24; row++) {
-    for (let col = 0; col < 20; col++) {
-      const lat = -37.7885 + (row - 12) * stepLat;
-      const lng = 144.9715 + (col - 10) * stepLng + (row % 2 ? stepLng / 2 : 0);
-      let a = 0.05;
-      for (const [hx, hy, k] of FANS_HEAT) a = Math.max(a, k * Math.exp(-(((lng - hx) / 0.017) ** 2 + ((lat - hy) / 0.014) ** 2)));
-      cells.push({ lat, lng, affinity: Math.min(1, a) });
+  const stepLng = 1.5;
+  const stepLat = 1.03;
+  for (const [hx, hy] of FANS_HEAT) {
+    for (let row = -3; row <= 3; row++) {
+      for (let col = -3; col <= 3; col++) {
+        const lat = hy + row * stepLat;
+        const lng = hx + col * stepLng + (row % 2 ? stepLng / 2 : 0);
+        let a = 0;
+        for (const [x, y, k] of FANS_HEAT) a = Math.max(a, k * Math.exp(-(((lng - x) / 2.6) ** 2 + ((lat - y) / 1.8) ** 2)));
+        if (a > 0.12) cells.push({ lat, lng, affinity: Math.min(1, a) });
+      }
     }
   }
   return cells;
 })();
 
-export const SAMPLE_FANS_AREAS = ["Fitzroy", "Brunswick", "the CBD"];
+export const SAMPLE_FANS_AREAS = ["Melbourne", "Sydney", "London"];

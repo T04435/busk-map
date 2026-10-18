@@ -30,15 +30,22 @@ function halfWidth(cells: readonly HeatCell[]): number {
   }
   if (nearest.length === 0) return FALLBACK_HALF;
   nearest.sort((x, y) => x - y);
-  return Math.min(nearest[Math.floor(nearest.length / 2)] / 2, 0.02);
+  // At least 1/70 of the area drawn, so a worldwide spread still reads as cells, not specks (the global fans map, 19 Oct).
+  const lngs = pts.map((c) => c.lng);
+  const lats = pts.map((c) => c.lat);
+  const span = Math.max(Math.max(...lngs) - Math.min(...lngs), (Math.max(...lats) - Math.min(...lats)) * 1.5);
+  return Math.min(Math.max(nearest[Math.floor(nearest.length / 2)] / 2, span / 70), 5);
 }
 
 /**
  * The bare taste map: MapLibre on the plan's OpenFreeMap style (the plain land base when the tiles cannot load) with only the orange
  * honeycomb cells of the taste ramp drawn over it, as on the plan map. No pins. Cooperative gestures, so one finger scrolls the page.
- * Frames the cells, or the city centre when there are none. Share: map-shared.ts and taste-cells.ts hold what PlanMap also uses.
+ * Frames the cells, or `center` (the whole world by default) when there are none. Share: map-shared.ts and taste-cells.ts hold what PlanMap also uses.
  */
-export function TasteHeatMap({ center, zoom = 12, cells, label }: { center: [number, number]; zoom?: number; cells: readonly HeatCell[]; label: string }) {
+/** The whole world, for a map without a place of its own (the act's global fans map). */
+const WORLD: [number, number] = [10, 20];
+
+export function TasteHeatMap({ center = WORLD, zoom = 1, cells, label }: { center?: [number, number]; zoom?: number; cells: readonly HeatCell[]; label: string }) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const bounds = useRef<LngLatBounds | null>(null);

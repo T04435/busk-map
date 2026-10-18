@@ -590,7 +590,8 @@ export function ResearchView() {
       {mapProps ? (
         // FansMap brings its own heading, Qloo mark and honesty line; the plain Section only holds the place while it loads.
         <div id="research-fans-map" data-testid="research-fans-map" className="max-w-2xl space-y-2">
-          <FansMap {...mapProps} onCityChange={(id) => void switchMapCity(id)} />
+          {/* Global (the user, 19 Oct): no city switch. DEV: query Qloo's heatmap worldwide and drop the city props. */}
+          <FansMap cells={mapProps.cells} topAreas={mapProps.topAreas} planHref={mapProps.planHref} />
           {mapError ? (
             <p role="alert" className="m-0 text-sm text-destructive">
               {mapError}

@@ -17,8 +17,7 @@ import {
 import {
   SAMPLE_FANS_AREAS,
   SAMPLE_FANS_CELLS,
-  SAMPLE_FANS_CITIES,
-  SAMPLE_RESULTS,
+    SAMPLE_RESULTS,
   SAMPLE_RESULTS_RUNNING,
   SAMPLE_STEPS_DONE,
   SAMPLE_STEPS_RUNNING,
@@ -49,20 +48,7 @@ function results({ r, loading, fansMap }: { r: RepertoireResults; loading: boole
  */
 export function RepertoirePreview({ state }: { state: PreviewState }) {
   const [folded, setFolded] = useState(true);
-  const [cityId, setCityId] = useState("melbourne");
-  const city = SAMPLE_FANS_CITIES.find((c) => c.id === cityId) ?? SAMPLE_FANS_CITIES[0];
-  // Only Melbourne has sample heat; the other cities show the empty state.
-  const melbourne = city.id === "melbourne";
-  const map = (loading: boolean) => (
-    <FansMap
-      city={city}
-      cities={SAMPLE_FANS_CITIES}
-      onCityChange={setCityId}
-      cells={loading ? null : melbourne ? SAMPLE_FANS_CELLS : []}
-      topAreas={melbourne ? SAMPLE_FANS_AREAS : []}
-      planHref="/busks"
-    />
-  );
+  const map = (loading: boolean) => <FansMap cells={loading ? null : SAMPLE_FANS_CELLS} topAreas={SAMPLE_FANS_AREAS} planHref="/busks" />;
   if (state === "hive") return <HiveSpecimen />;
   if (state === "empty") return <RepertoireEmpty value="" onChange={() => {}} onSubmit={() => {}} />;
   if (state === "running") {

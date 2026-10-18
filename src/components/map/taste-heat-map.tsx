@@ -3,33 +3,49 @@
 import { useEffect, useRef, useState } from "react";
 import { LngLatBounds, Map as MapLibreMap, NavigationControl, type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { STYLE_URL, baseStyle, fillExpression, hexagon, rampColors, themeColor, whenStyle } from "@/components/map/map-shared";
+import { STYLE_URL, baseStyle, fillExpression, hexagon, rampColors, whenStyle } from "@/components/map/map-shared";
 import { MAP_FRAME, MAP_GESTURES, orangeCells } from "@/components/map/taste-cells";
 
 export type HeatCell = { lat: number; lng: number; affinity: number };
 
 const FALLBACK_HALF = 0.0015;
 
-/** Half the width of one cell: the closest pair of centres is one hex width apart on the lattice Qloo's heatmap gives. */
+/**
+ * Half the width of one cell. Qloo's heatmap points are not an exact lattice, so the closest pair is often far closer than the
+ * real spacing (that drew dots, not a heatmap, on the live check). The median of each point's nearest-neighbour distance is the
+ * typical spacing: one hex width.
+ */
 function halfWidth(cells: readonly HeatCell[]): number {
   const pts = cells.slice(0, 400);
-  let best = Infinity;
+  const nearest: number[] = [];
   for (let i = 0; i < pts.length; i++) {
-    for (let j = i + 1; j < pts.length; j++) {
-      const k = Math.cos((pts[i].lat * Math.PI) / 180);
-      const d = Math.hypot((pts[i].lng - pts[j].lng) * 1, (pts[i].lat - pts[j].lat) / (k || 1));
+    const k = Math.cos((pts[i].lat * Math.PI) / 180) || 1;
+    let best = Infinity;
+    for (let j = 0; j < pts.length; j++) {
+      if (i === j) continue;
+      const d = Math.hypot(pts[i].lng - pts[j].lng, (pts[i].lat - pts[j].lat) / k);
       if (d > 1e-6 && d < best) best = d;
     }
+    if (Number.isFinite(best)) nearest.push(best);
   }
-  return Number.isFinite(best) ? Math.min(best / 2, 0.02) : FALLBACK_HALF;
+  if (nearest.length === 0) return FALLBACK_HALF;
+  nearest.sort((x, y) => x - y);
+  // At least 1/70 of the area drawn, so a worldwide spread still reads as cells, not specks (the global fans map, 19 Oct).
+  const lngs = pts.map((c) => c.lng);
+  const lats = pts.map((c) => c.lat);
+  const span = Math.max(Math.max(...lngs) - Math.min(...lngs), (Math.max(...lats) - Math.min(...lats)) * 1.5);
+  return Math.min(Math.max(nearest[Math.floor(nearest.length / 2)] / 2, span / 70), 5);
 }
 
 /**
  * The bare taste map: MapLibre on the plan's OpenFreeMap style (the plain land base when the tiles cannot load) with only the orange
  * honeycomb cells of the taste ramp drawn over it, as on the plan map. No pins. Cooperative gestures, so one finger scrolls the page.
- * Frames the cells, or the city centre when there are none. Share: map-shared.ts and taste-cells.ts hold what PlanMap also uses.
+ * Frames the cells, or `center` (the whole world by default) when there are none. Share: map-shared.ts and taste-cells.ts hold what PlanMap also uses.
  */
-export function TasteHeatMap({ center, zoom = 12, cells, label }: { center: [number, number]; zoom?: number; cells: readonly HeatCell[]; label: string }) {
+/** The whole world, for a map without a place of its own (the act's global fans map). */
+const WORLD: [number, number] = [10, 20];
+
+export function TasteHeatMap({ center = WORLD, zoom = 1, cells, label }: { center?: [number, number]; zoom?: number; cells: readonly HeatCell[]; label: string }) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const bounds = useRef<LngLatBounds | null>(null);
@@ -85,7 +101,7 @@ export function TasteHeatMap({ center, zoom = 12, cells, label }: { center: [num
     const half = halfWidth(drawn);
     const data = {
       type: "FeatureCollection" as const,
-      features: drawn.map((c) => ({ type: "Feature" as const, properties: { affinity: c.affinity }, geometry: { type: "Polygon" as const, coordinates: hexagon(c.lat, c.lng, half) } })),
+      features: drawn.map((c) => ({ type: "Feature" as const, properties: { affinity: c.affinity }, geometry: { type: "Polygon" as const, coordinates: hexagon(c.lat, c.lng, half * 0.9) } })),
     };
     if (drawn.length > 0) {
       const b = new LngLatBounds();
@@ -103,12 +119,10 @@ export function TasteHeatMap({ center, zoom = 12, cells, label }: { center: [num
       if (source) {
         source.setData(data);
         instance.setPaintProperty("taste", "fill-color", fillExpression(colors));
-        instance.setPaintProperty("taste-outline", "line-color", themeColor("--card", "#fbf9f5"));
         return;
       }
       instance.addSource("taste", { type: "geojson", data });
       instance.addLayer({ id: "taste", type: "fill", source: "taste", paint: { "fill-color": fillExpression(colors), "fill-opacity": 0.85 } });
-      instance.addLayer({ id: "taste-outline", type: "line", source: "taste", paint: { "line-color": themeColor("--card", "#fbf9f5"), "line-width": 1.5 } });
     };
     whenStyle(instance, apply);
   }, [cells, themeTick, lng, lat, zoom]);

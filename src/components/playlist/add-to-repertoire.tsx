@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { SongActions } from "@/components/honeycomb/song-actions";
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import { addPlanSuggestion } from "./playlist-api";
 
@@ -25,16 +25,14 @@ export function AddToRepertoire({ title, artist, reason, growth }: { title: stri
 
   return (
     <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-      <Button
-        type="button"
-        variant="outline"
-        size="xs"
-        aria-label={`${COPY.addTo}: ${title}`}
-        disabled={state.kind === "adding" || state.kind === "done"}
-        onClick={() => void add()}
-      >
-        {state.kind === "adding" ? COPY.adding : COPY.addTo}
-      </Button>
+      <SongActions
+        title={title}
+        size="sm"
+        added={state.kind === "done"}
+        onAdd={() => {
+          if (state.kind !== "adding") void add();
+        }}
+      />
       <span role="status" className={state.kind === "error" ? "text-destructive" : "text-muted-foreground"}>
         {state.kind === "done" || state.kind === "error" ? state.text : ""}
       </span>

@@ -34,7 +34,7 @@ test.describe("Spotify profile header and sounds-like suggestions (offline)", ()
     const suggestions = f.getByTestId("sounds-like-suggestions");
     await expect(suggestions).toBeVisible();
     const first = suggestions.getByRole("listitem").first();
-    const name = (await first.locator('[data-slot="chip"]').innerText()).trim();
+    const name = (await first.locator('[data-slot="artist-chip"] p').first().innerText()).trim();
     await first.getByRole("button", { name: `Add ${name}` }).click();
     const picked = f.getByRole("list", { name: "Artists you picked" });
     await expect(picked).toContainText(name);

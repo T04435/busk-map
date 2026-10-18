@@ -5,9 +5,14 @@ import { HiveMark } from "@/components/honeycomb/hive-mark";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { TrackResult } from "@/components/forms/repertoire-api";
-import { Chip } from "@/components/honeycomb/chip";
+import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
+import { ArtistProfile } from "@/components/honeycomb/artist-profile";
+import { InfoTag } from "@/components/honeycomb/info-tag";
+import { Reason } from "@/components/honeycomb/reason";
+import { SongActions } from "@/components/honeycomb/song-actions";
+import { SongRow } from "@/components/honeycomb/song-row";
+import { SongTag } from "@/components/honeycomb/song-tag";
 import { Fold } from "@/components/honeycomb/fold";
-import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
 import { LeanBar } from "@/components/honeycomb/lean-bar";
 import { PageHeader } from "@/components/honeycomb/page-header";
 import { ArtistPicker, typedArtists, type PickedArtist } from "@/components/landing/artist-picker";
@@ -25,14 +30,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ZERO_LEARN_TOTALS, type LearnListView, type LearnStreamEvent } from "@/lib/learn-schema";
-import { formatDuration } from "@/lib/live-search";
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import { playlistSongKey, type LearnSuggestionView, type PlaylistView } from "@/lib/playlist-schema";
 import { OFFLINE_TEST_ARTIST } from "@/lib/repertoire-research";
@@ -40,7 +43,6 @@ import { toRepertoireView, type RepertoireView } from "@/lib/repertoire-research
 import { parseSpotifyArtistId, spotifyArtistUrl } from "@/lib/spotify-link";
 import { joinLearn, loadLearn, pageFaults, patchSuggestion, startResearch } from "./learn-api";
 import { ResearchFunnel } from "./learn-feed";
-import { LearnSongCard } from "./learn-song-card";
 import { addSong, forgetPlaylist, loadPlaylist, moveSong, removeSong, savePlaylist } from "./playlist-api";
 
 /** Where focus goes when a row leaves its list (B-016): the next row's action, else the previous one's, else the page's main field. */
@@ -50,6 +52,56 @@ function nextFocus(rows: readonly { id: string }[], id: string, action: "remove"
   return near ? `${action}-${near.id}` : MAIN_FIELD;
 }
 const MAIN_FIELD = "main-field";
+const removed = (title: string) => `Removed ${title}.`;
+const added = (title: string) => `Added ${title}.`;
+const moved = (title: string) => `${title} moved to ${COPY.canSing}.`;
+
+/** The action button inside a row (rows carry `data-focus-row`; SongActions names its buttons "Remove X" and "Move to can sing: X"). */
+function focusTarget(target: string): HTMLElement | null {
+  if (target === MAIN_FIELD) return document.querySelector<HTMLElement>("#spotify-link, [data-focus-id='add-song']");
+  const m = /^(remove|move)-(.+)$/.exec(target);
+  if (!m) return null;
+  return document.querySelector<HTMLElement>(`[data-focus-row="${CSS.escape(m[2])}"] [aria-label^="${m[1] === "remove" ? "Remove" : "Move to"}"]`);
+}
+
+/**
+ * One suggestion in Songs you should learn (docs/playlist-architecture.md §7.3): THE song row with its tags (New, Learned),
+ * the model's reason with the artists behind it, the evidence as info tags (builds on, the crowd, growth, rising, source),
+ * and the actions: Learn it, Learned and Not for me on a pending song, Undo on a learned or dismissed one.
+ */
+function SuggestionRow({ song, busy, onStatus }: { song: LearnSuggestionView; busy: boolean; onStatus: (song: LearnSuggestionView, status: "pending" | "learned" | "dismissed") => void }) {
+  const L = COPY.learn;
+  const go = (status: "pending" | "learned" | "dismissed") => () => {
+    if (!busy) onStatus(song, status);
+  };
+  const because = song.basedOn.filter((b) => b.kind === "soundsLike" || b.kind === "repertoire").map((b) => ({ name: b.name }));
+  const info = [
+    ...song.basedOn.filter((b) => b.kind === "learned").map((b) => <InfoTag key={`b-${b.name}`}>{L.buildsOn(b.name)}</InfoTag>),
+    ...song.basedOn.filter((b) => b.kind === "crowd").map((b) => <InfoTag key={`c-${b.name}`}>{L.crowdAt(b.name)}</InfoTag>),
+    ...(song.growth !== null ? [<InfoTag key="growth">{L.growth}</InfoTag>] : []),
+    ...(song.trendDelta !== null ? [<InfoTag key="rising">{L.rising(song.trendDelta)}</InfoTag>] : []),
+    <InfoTag key="source">{L.source[song.songSource]}</InfoTag>,
+  ];
+  const pending = song.status === "pending";
+  return (
+    <li data-testid="learn-card" data-song={song.title} data-artist={song.artist} data-status={song.status}>
+      <SongRow
+        as="div"
+        title={song.title}
+        artist={song.artist}
+        year={song.year}
+        durationMs={song.durationMs}
+        image={song.image}
+        href={song.sourceUrl ?? undefined}
+        muted={song.status === "dismissed"}
+        tags={song.status === "learned" ? <SongTag kind="learned" /> : song.isNew && pending ? <SongTag kind="new" /> : undefined}
+        info={info}
+        reason={<Reason text={because.length === 0 && song.because ? `${song.reason} ${song.because}.` : song.reason} because={because} />}
+        actions={<SongActions title={song.title} artist={song.artist} learnIt onLearned={pending ? go("learned") : undefined} onDismiss={pending ? go("dismissed") : undefined} onUndo={pending ? undefined : go("pending")} />}
+      />
+    </li>
+  );
+}
 
 const R = COPY.research;
 const H2 = "m-0 font-display text-[26px] leading-none font-extrabold uppercase";
@@ -191,8 +243,7 @@ export function ResearchView() {
     const target = focusAfter.current;
     if (!target || busy) return;
     focusAfter.current = null;
-    const el = target === MAIN_FIELD ? document.querySelector<HTMLElement>("#spotify-link, [data-focus-id='add-song']") : document.querySelector<HTMLElement>(`[data-focus-id="${target}"]`);
-    el?.focus();
+    focusTarget(target)?.focus();
   }, [playlist, busy]);
 
   async function start(body: { link?: string; refresh?: boolean; mode?: "full" | "more" }) {
@@ -296,46 +347,8 @@ export function ResearchView() {
     <div className="space-y-10" data-testid="research-results">
       {/* 1. The profile header: photo, name, genres, audience character; the act name, editable. */}
       {(r.profile || live) && (
-      <section aria-labelledby="research-profile" className="max-w-2xl space-y-3" data-testid="research-profile" data-ready={r.profile ? "true" : "false"}>
-        <h2 id="research-profile" className="sr-only">
-          {R.profileHeading}
-        </h2>
-        {r.profile ? (
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-            <HexCell size={88} image={r.profile.image ?? null} tone="muted">
-              {initialsOf(r.profile.name)}
-            </HexCell>
-            <div className="flex min-w-0 flex-1 basis-56 flex-col gap-2">
-              <p className="m-0 font-display text-[clamp(26px,4vw,36px)] leading-none font-extrabold uppercase [overflow-wrap:anywhere]" data-testid="profile-name">
-                {r.profile.name}
-              </p>
-              {r.profile.genres.length > 0 && (
-                <ul aria-label="Genres" className="m-0 flex list-none flex-wrap gap-2 p-0">
-                  {r.profile.genres.map((g) => (
-                    <li key={g}>
-                      <Chip>{g}</Chip>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {r.profile.audience.length > 0 && (
-                <ul aria-label="Audience character" className="m-0 flex list-none flex-wrap gap-2 p-0" data-testid="profile-audience">
-                  {r.profile.audience.map((a) => (
-                    <li key={a}>
-                      <Badge variant="secondary">{a}</Badge>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {typeof r.profile.followers === "number" && <p className="m-0 font-mono text-xs text-muted-foreground">{COPY.profile.followers(r.profile.followers)}</p>}
-            </div>
-          </div>
-        ) : (
-          <div aria-hidden="true" className="flex items-center gap-4">
-            <Skeleton className="size-22" />
-            <Skeleton className="h-8 w-48" />
-          </div>
-        )}
+      <section aria-label={R.profileHeading} className="max-w-2xl space-y-3" data-testid="research-profile" data-ready={r.profile ? "true" : "false"}>
+        <ArtistProfile size="md" profile={r.profile} loading={!r.profile} maxGenres={5} />
         {r.profile && playlist && !live && (
           <div className="flex flex-wrap items-end gap-2">
             <div className="min-w-0 flex-1 basis-56 space-y-1.5">
@@ -365,16 +378,29 @@ export function ResearchView() {
         {r.canSing && r.canSing.length > 0 ? (
           <ul aria-label={COPY.canSing} className="m-0 list-none divide-y divide-border border-2 border-rule bg-card px-3">
             {r.canSing.map((song) => (
-              <li key={song.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3" data-testid="can-sing-row">
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-bold">{song.title}</span>
-                  <span className="block truncate text-sm text-muted-foreground">{song.artist}</span>
-                </span>
-                {song.own && <Badge variant="secondary">{COPY.yourSong}</Badge>}
-                {song.durationMs !== undefined && <span className="font-mono text-xs text-muted-foreground tabular-nums">{formatDuration(song.durationMs)}</span>}
-                <Button variant="outline" size="sm" disabled={busy || live} data-focus-id={`remove-${song.id}`} aria-label={`${COPY.remove} ${song.title}`} onClick={() => ((focusAfter.current = nextFocus(r.canSing!, song.id, "remove")), void act(() => removeSong(song.id), `Removed ${song.title}.`))}>
-                  {COPY.remove}
-                </Button>
+              <li key={song.id} data-testid="can-sing-row" data-focus-row={song.id}>
+                <SongRow
+                  as="div"
+                  title={song.title}
+                  artist={song.artist}
+                  year={song.year}
+                  album={song.album}
+                  image={song.image}
+                  durationMs={song.durationMs}
+                  href={song.href}
+                  own={song.own}
+                  ownerImage={r.profile?.image}
+                  actions={
+                    <SongActions
+                      title={song.title}
+                      onRemove={() => {
+                        if (busy || live) return;
+                        focusAfter.current = nextFocus(r.canSing!, song.id, "remove");
+                        void act(() => removeSong(song.id), removed(song.title));
+                      }}
+                    />
+                  }
+                />
               </li>
             ))}
           </ul>
@@ -393,9 +419,9 @@ export function ResearchView() {
                 artists={[]}
                 isAdded={(t: TrackResult) => keys.has(playlistSongKey(t.artists[0]?.name ?? "Unknown artist", t.title))}
                 onAdd={(t: TrackResult) =>
-                  void act(() => addSong({ title: t.title, artist: t.artists[0]?.name ?? "Unknown artist", source: "spotify", ...(/^[A-Za-z0-9]{22}$/.test(t.id) ? { spotifyTrackId: t.id } : {}), ...(t.durationMs ? { durationMs: t.durationMs } : {}) }), `Added ${t.title}.`)
+                  void act(() => addSong({ title: t.title, artist: t.artists[0]?.name ?? "Unknown artist", source: "spotify", ...(/^[A-Za-z0-9]{22}$/.test(t.id) ? { spotifyTrackId: t.id } : {}), ...(t.durationMs ? { durationMs: t.durationMs } : {}) }), added(t.title))
                 }
-                onAddTyped={(s) => act(() => addSong({ ...s, source: "typed" }), `Added ${s.title}.`)}
+                onAddTyped={(s) => act(() => addSong({ ...s, source: "typed" }), added(s.title))}
               />
             </CollapsibleContent>
           </Collapsible>
@@ -405,13 +431,13 @@ export function ResearchView() {
       {/* 3. Artists you sound like (editable). */}
       <Section id="research-sounds-like" title={R.soundsLikeHeading} ready={r.soundsLike !== null} live={live} testId="research-sounds-like">
         {live ? (
-          <ul aria-label={R.soundsLikeHeading} className="m-0 flex list-none flex-wrap gap-2 p-0">
+          <ArtistChipList inline>
             {(r.soundsLike ?? []).map((a) => (
               <li key={a.name}>
-                <Chip>{a.name}</Chip>
+                <ArtistChip size="xs" name={a.name} image={a.image} />
               </li>
             ))}
-          </ul>
+          </ArtistChipList>
         ) : (
           <div className="space-y-2">
             <ArtistPicker value={artists} onChange={setArtists} query={artistQuery} onQueryChange={setArtistQuery} />
@@ -453,13 +479,13 @@ export function ResearchView() {
 
       {/* 5. What your fans also love. */}
       <Section id="research-fans-love" title={R.fansLoveHeading} ready={r.fansLove !== null} live={live} testId="research-fans-love">
-        <ul aria-label={R.fansLoveHeading} className="m-0 flex list-none flex-wrap gap-2 p-0">
+        <ArtistChipList inline>
           {(r.fansLove ?? []).map((a) => (
             <li key={a.name}>
-              <Chip>{a.name}</Chip>
+              <ArtistChip size="xs" name={a.name} image={a.image} />
             </li>
           ))}
-        </ul>
+        </ArtistChipList>
       </Section>
 
       {/* 6. Songs you should learn, with "Find more songs to learn". */}
@@ -467,7 +493,7 @@ export function ResearchView() {
         {pending.length > 0 ? (
           <ul aria-label={COPY.toLearn} className="divide-y">
             {pending.map((song) => (
-              <LearnSongCard key={song.id} song={song} busy={busy || live} onStatus={(s, status) => void changeSuggestion(s, status)} />
+              <SuggestionRow key={song.id} song={song} busy={busy || live} onStatus={(s, status) => void changeSuggestion(s, status)} />
             ))}
           </ul>
         ) : (
@@ -483,7 +509,7 @@ export function ResearchView() {
             <CollapsibleContent>
               <ul aria-label={COPY.learn.notForMe} className="divide-y">
                 {dismissed.map((song) => (
-                  <LearnSongCard key={song.id} song={song} busy={busy} onStatus={(s, status) => void changeSuggestion(s, status)} />
+                  <SuggestionRow key={song.id} song={song} busy={busy} onStatus={(s, status) => void changeSuggestion(s, status)} />
                 ))}
               </ul>
             </CollapsibleContent>
@@ -512,19 +538,33 @@ export function ResearchView() {
           {r.learned.length === 0 && <p className="text-sm text-muted-foreground">{COPY.emptyLearned}</p>}
           {r.learned.length > 0 && <ul aria-label={COPY.learned} className="m-0 list-none divide-y divide-border border-2 border-rule bg-card px-3">
             {r.learned.map((s) => (
-              <li key={s.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-bold">{s.title}</span>
-                  <span className="block truncate text-sm text-muted-foreground">{s.artist}</span>
-                </span>
-                <span className="flex gap-2">
-                  <Button variant="outline" size="sm" disabled={busy || live} data-focus-id={`move-${s.id}`} aria-label={`${COPY.moveToCanSing}: ${s.title}`} onClick={() => ((focusAfter.current = nextFocus(r.learned!, s.id, "move")), void act(() => moveSong(s.id, "can_sing"), `${s.title} moved to ${COPY.canSing}.`))}>
-                    {COPY.moveToCanSing}
-                  </Button>
-                  <Button variant="outline" size="sm" disabled={busy || live} data-focus-id={`remove-${s.id}`} aria-label={`${COPY.remove} ${s.title}`} onClick={() => ((focusAfter.current = nextFocus(r.learned!, s.id, "remove")), void act(() => removeSong(s.id), `Removed ${s.title}.`))}>
-                    {COPY.remove}
-                  </Button>
-                </span>
+              <li key={s.id} data-focus-row={s.id}>
+                <SongRow
+                  as="div"
+                  title={s.title}
+                  artist={s.artist}
+                  year={s.year}
+                  album={s.album}
+                  image={s.image}
+                  durationMs={s.durationMs}
+                  href={s.href}
+                  tags={<SongTag kind="learned" />}
+                  actions={
+                    <SongActions
+                      title={s.title}
+                      onMoveToCanSing={() => {
+                        if (busy || live) return;
+                        focusAfter.current = nextFocus(r.learned!, s.id, "move");
+                        void act(() => moveSong(s.id, "can_sing"), moved(s.title));
+                      }}
+                      onRemove={() => {
+                        if (busy || live) return;
+                        focusAfter.current = nextFocus(r.learned!, s.id, "remove");
+                        void act(() => removeSong(s.id), removed(s.title));
+                      }}
+                    />
+                  }
+                />
               </li>
             ))}
           </ul>}

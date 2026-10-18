@@ -7,6 +7,7 @@ import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
 import { Loader } from "@/components/honeycomb/loader";
 import { SongRow } from "@/components/honeycomb/song-row";
+import { SPOTIFY_ARTIST_URL } from "@/lib/mention";
 import { SongTag } from "@/components/honeycomb/song-tag";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -201,6 +202,7 @@ export function SongSearch({
                       album={track.album}
                       image={track.image}
                       artistImage={artistPhoto(track)}
+                      artistHref={track.artists[0]?.id && /^[A-Za-z0-9]{22}$/.test(track.artists[0].id) ? SPOTIFY_ARTIST_URL(track.artists[0].id) : undefined}
                       source="spotify"
                       durationMs={track.durationMs}
                       className="w-full py-0"

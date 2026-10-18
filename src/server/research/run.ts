@@ -43,13 +43,11 @@ import type { LearnStore } from "@/server/learn/store";
 import { buildSuggestions, LearnState, runTopTracks } from "@/server/learn/tools";
 import type { RunRecord } from "@/server/learn/types";
 import {
-  MAX_SONGS,
   RESEARCH_FANS_LOVE_KEPT,
   RESEARCH_FANS_LOVE_TAKE,
   RESEARCH_GENRES_TAKE,
   RESEARCH_LEARN_ARTISTS,
   RESEARCH_LEARN_PER_ARTIST,
-  RESEARCH_OWN_SONGS_MAX,
   RESEARCH_SIGNAL_SOUND_ALIKES,
   RESEARCH_SOUNDS_LIKE_SAVED,
 } from "@/server/playlist/config";
@@ -255,8 +253,8 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             source = top.length ? "lastfm" : "none";
             tracks = top.map((t) => ({ id: null, title: t.title, artist: profile.name, year: null, durationMs: null, album: null, image: null, href: null }));
           }
-          const out: SongsOutput = { summary: "", source, songs: [], added: 0, already: 0, full: false };
-          for (const t of tracks.slice(0, RESEARCH_OWN_SONGS_MAX)) {
+          const out: SongsOutput = { summary: "", source, songs: [], added: 0, already: 0 };
+          for (const t of tracks) {
             const res = await playlists.addSong(playlist.id, {
               title: t.title.slice(0, 120),
               artist: t.artist.slice(0, 80),
@@ -268,16 +266,13 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             });
             if (res.ok) out.added++;
             else if (res.reason === "duplicate") out.already++;
-            else {
-              out.full = true;
-              break;
-            }
+            else break;
             out.songs.push({ ...t, id: res.ok ? res.song.id : null });
           }
           out.summary =
             source === "none"
               ? "Found none of your songs on Spotify or Last.fm"
-              : `Added ${out.added} of your songs to ${PLAYLIST_COPY.canSing}${out.already ? ` (${out.already} already there)` : ""}${out.full ? `; your Repertoire is full (${MAX_SONGS})` : ""}`;
+              : `Added ${out.added} of your songs to ${PLAYLIST_COPY.canSing}${out.already ? ` (${out.already} already there)` : ""}`;
           return out;
         });
 

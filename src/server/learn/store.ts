@@ -4,7 +4,7 @@ import { becauseText, type LearnInputs, type LearnModel, type LearnRunStatus, ty
 import { playlistSongKey, type LearnSuggestionView, type PlaylistSongView } from "@/lib/playlist-schema";
 import { storeDatabaseUrl } from "@/server/env";
 import { processMap } from "@/server/memo";
-import { LEARN_LIMITS, LEARN_MAX_RUNS, LEARN_MAX_SUGGESTIONS, LEARN_STEPS_KEPT_DAYS, LEARN_STEPS_KEPT_RUNS, LEARN_UNCOUNTED_END_CODES, MAX_SONGS } from "@/server/playlist/config";
+import { LEARN_LIMITS, LEARN_MAX_RUNS, LEARN_MAX_SUGGESTIONS, LEARN_STEPS_KEPT_DAYS, LEARN_STEPS_KEPT_RUNS, LEARN_UNCOUNTED_END_CODES } from "@/server/playlist/config";
 import { MemoryPlaylistStore, playlistStore, type PlaylistStore, type StoredSong } from "@/server/playlist/store";
 import type { Evidence, FinishRun, HistoryData, MemorySuggestion, NewSuggestion, RunRecord, RunUsage, SetStatusResult, StartRunResult } from "./types";
 
@@ -228,7 +228,6 @@ export class MemoryLearnStore implements LearnStore {
     };
     if (row.status === "pending" && status === "learned") {
       const have = songs.find((s) => s.songKey === row.songKey);
-      if (!have && songs.length >= MAX_SONGS) return { ok: false, reason: "full" };
       Object.assign(row, { status: "learned", learnedAt: iso(now), dismissedAt: null });
       const song =
         have ??
@@ -588,16 +587,14 @@ export class PostgresLearnStore implements LearnStore {
     const from = before.status;
 
     if (from === "pending" && status === "learned") {
-      // One transaction: lock the Repertoire, then move the suggestion and add the song, under the 60-song limit.
+      // One transaction: lock the Repertoire, then move the suggestion and add the song, (no limit on songs).
       const [, moved, songRows] = (await this.sql.transaction((txn) => [
         txn.query("SELECT id FROM playlists WHERE id = $1::uuid FOR UPDATE", [playlistId]),
         txn.query(
           `UPDATE learn_suggestions SET status = 'learned', learned_at = now(), dismissed_at = NULL
             WHERE id = $2::bigint AND playlist_id = $1::uuid AND status = 'pending'
-              AND ((SELECT count(*) FROM playlist_songs WHERE playlist_id = $1::uuid AND state IN ('can_sing', 'learned')) < $3::integer
-                   OR EXISTS (SELECT 1 FROM playlist_songs WHERE playlist_id = $1::uuid AND song_key = learn_suggestions.song_key))
             RETURNING id`,
-          [playlistId, suggestionId, MAX_SONGS],
+          [playlistId, suggestionId],
         ),
         txn.query(
           `INSERT INTO playlist_songs (playlist_id, song_key, state, source, title, artist, spotify_track_id, qloo_artist_id, year, duration_ms, suggestion_id)
@@ -608,7 +605,7 @@ export class PostgresLearnStore implements LearnStore {
           [playlistId, suggestionId],
         ),
       ])) as [unknown, { id: string }[], SongRow[]];
-      if (moved.length === 0) return { ok: false, reason: "full" };
+      if (moved.length === 0) return { ok: false, reason: "invalid" };
       await this.sql.query("UPDATE playlists SET revision = revision + 1, updated_at = now() WHERE id = $1", [playlistId]);
       const song = songRows[0] ? toSong(songRows[0]) : await this.songOf(playlistId, suggestionId);
       return { ok: true, suggestion: toSuggestion((await read())[0]), song, revision: await revisionOf() };

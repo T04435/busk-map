@@ -27,8 +27,10 @@ import {
 const API = "https://api.spotify.com/v1";
 const TOKEN_URL = "https://accounts.spotify.com/api/token";
 const TIMEOUT_MS = 6_000;
-const MAX_ALBUM_PAGES = 3;
-const MAX_ALBUMS = 15;
+/** Safety bound against runaway pagination (not a product cap): 50 pages of 10 albums. Spotify ends a list with next = null. */
+const ALBUM_PAGES_SAFETY = 50;
+/** Album track lists fetched at once, kept small for Spotify's rate limit. */
+const ALBUM_TRACKS_CONCURRENCY = 4;
 
 // Tokens stay in this instance's memory: never in a cache entry or a log.
 let token: { value: string; expiresAt: number } | undefined;
@@ -211,18 +213,30 @@ export async function fetchArtistCatalogue(artistId: string, market: string): Pr
     limit: "10",
     market,
   })}`;
-  for (let page = 0; path && page < MAX_ALBUM_PAGES; page++) {
+  for (let page = 0; path && page < ALBUM_PAGES_SAFETY; page++) {
     const body: z.infer<typeof albumsSchema> = await spotify(path, albumsSchema);
     albums.push(...body.items);
     path = body.next ? body.next.replace(API, "") : null;
   }
 
-  const trackLists = await Promise.all(
-    albums.slice(0, MAX_ALBUMS).map(async (album) => {
-      const body = await spotify(`/albums/${encodeURIComponent(album.id)}/tracks?limit=50&market=${market}`, albumTracksSchema);
-      return body.items.map((t) => toTrack(t, album));
-    }),
-  );
+  const trackLists: CatalogueTrack[][] = new Array(albums.length);
+  let nextAlbum = 0;
+  const worker = async () => {
+    while (nextAlbum < albums.length) {
+      const i = nextAlbum++;
+      const album = albums[i];
+      const tracks: CatalogueTrack[] = [];
+      // An album longer than one page of 50 tracks is followed to its end (next = null).
+      let trackPath: string | null = `/albums/${encodeURIComponent(album.id)}/tracks?limit=50&market=${market}`;
+      for (let page = 0; trackPath && page < ALBUM_PAGES_SAFETY; page++) {
+        const body: z.infer<typeof albumTracksSchema> = await spotify(trackPath, albumTracksSchema);
+        tracks.push(...body.items.map((t) => toTrack(t, album)));
+        trackPath = body.next ? body.next.replace(API, "") : null;
+      }
+      trackLists[i] = tracks;
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(ALBUM_TRACKS_CONCURRENCY, albums.length) }, worker));
 
   const seen = new Set<string>();
   return trackLists.flat().filter((track) => {

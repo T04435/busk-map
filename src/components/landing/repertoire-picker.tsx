@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { formatDuration } from "@/lib/live-search";
-import { SPOTIFY_TRACK_URL, spotifyHref } from "@/lib/mention";
+import { SPOTIFY_ARTIST_URL, SPOTIFY_TRACK_URL, spotifyHref } from "@/lib/mention";
 import { nameKey } from "@/lib/text";
 import { type PickedArtist } from "./artist-picker";
 import { SongSearch } from "./song-search";
@@ -34,6 +34,8 @@ export type PickedSong = {
   artistImage?: string | null;
   /** open.spotify.com/track/<id>; absent for a typed song (U06). */
   href?: string | null;
+  /** open.spotify.com/artist/<id> for the lead artist, when Spotify gave the id (U16). */
+  artistHref?: string | null;
   durationMs: number | null;
   own: boolean;
 };
@@ -52,13 +54,11 @@ export const toPicked = (track: TrackResult, own: boolean, known: readonly Picke
     image: track.image,
     ...(photo ? { artistImage: photo } : {}),
     href: spotifyHref(track.url) ?? (SPOTIFY_ID.test(track.id) ? SPOTIFY_TRACK_URL(track.id) : null),
+    ...(lead?.id && SPOTIFY_ID.test(lead.id) ? { artistHref: SPOTIFY_ARTIST_URL(lead.id) } : {}),
     durationMs: track.durationMs,
     own,
   };
 };
-
-/** The most songs one act can pick. */
-const MAX_PICKED = 60;
 
 /** One picked song. A typed one can be edited in place: the title and artist become two fields until Done. */
 function PickedRow({ song, onRemove, onEdit }: { song: PickedSong; onRemove: (song: PickedSong) => void; onEdit?: (song: PickedSong, edit: { title: string; artist: string }) => void }) {
@@ -105,6 +105,7 @@ function PickedRow({ song, onRemove, onEdit }: { song: PickedSong; onRemove: (so
       album={song.album}
       image={song.image}
       artistImage={song.artistImage}
+      artistHref={song.artistHref ?? undefined}
       href={song.href ?? undefined}
       source={song.href ? "spotify" : undefined}
       durationMs={song.durationMs}
@@ -185,7 +186,7 @@ export function RepertoirePicker({
   const linkId = useId();
 
   function addSongs(next: PickedSong[]) {
-    setPicked((current) => [...current, ...next.filter((song) => !current.some((c) => c.key === song.key))].slice(0, MAX_PICKED));
+    setPicked((current) => [...current, ...next.filter((song) => !current.some((c) => c.key === song.key))]);
   }
 
   async function loadOwnSongs() {

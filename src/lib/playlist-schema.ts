@@ -69,7 +69,7 @@ export const patchPlaylistSchema = z
     spotifyProfile: spotifyProfileSchema.nullable().optional(),
     qlooArtistId: qlooArtistIdSchema.nullable().optional(),
     usualPitches: usualPitchesSchema.optional(),
-    songs: z.array(addSongSchema).max(60).optional(),
+    songs: z.array(addSongSchema).max(2000).optional(),
   })
   .refine((v) => v.actName !== undefined || v.soundsLike !== undefined || v.spotifyArtistId !== undefined || v.spotifyProfile !== undefined || v.qlooArtistId !== undefined || v.usualPitches !== undefined || v.songs !== undefined, { message: "Nothing to change." });
 
@@ -80,7 +80,7 @@ export const createPlaylistSchema = z.object({
   spotifyArtistId: spotifyArtistInputSchema.nullable().optional(),
   spotifyProfile: spotifyProfileSchema.nullable().optional(),
   qlooArtistId: qlooArtistIdSchema.nullable().optional(),
-  songs: z.array(addSongSchema).max(60).optional(),
+  songs: z.array(addSongSchema).max(2000).optional(),
 });
 export type CreatePlaylistInput = z.infer<typeof createPlaylistSchema>;
 
@@ -160,7 +160,6 @@ export type PlaylistView = {
   usualPitches: UsualPitch[];
   city: string;
   songs: PlaylistSongView[];
-  maxSongs: number;
 };
 
 /** GET /api/playlist/sounds-like: Qloo's artists whose fans overlap the performer's own artist's, to accept or ignore. */

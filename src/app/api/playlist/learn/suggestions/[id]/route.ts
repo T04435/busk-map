@@ -1,6 +1,5 @@
 import { patchSuggestionSchema } from "@/lib/learn-schema";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
-import { fullMessage } from "@/server/playlist/api";
 import { ensureExisting, errorResponse, guardMutation, isResponse, json } from "@/server/playlist/api";
 import { learnStore } from "@/server/learn/store";
 import { testSwitches } from "@/server/env";
@@ -24,7 +23,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const result = await store.setStatus(session.playlist.id, id, parsed.data.status);
   if (!result.ok) {
     if (result.reason === "missing") return errorResponse(404, "not_found", PLAYLIST_COPY.learn.errors.suggestionNotFound, undefined, session.cookies);
-    if (result.reason === "full") return errorResponse(409, "playlist_full", fullMessage(), undefined, session.cookies);
     return errorResponse(400, "invalid_transition", PLAYLIST_COPY.learn.errors.badMove, undefined, session.cookies);
   }
   return json({ suggestion: result.suggestion, song: result.song, revision: result.revision }, {}, session.cookies);

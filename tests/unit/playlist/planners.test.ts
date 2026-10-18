@@ -19,7 +19,6 @@ const view = (over: Partial<PlaylistView> = {}): PlaylistView => ({
     { id: "2", title: "My Laneway Song", artist: "Jess", own: true, state: "can_sing", source: "typed", spotifyTrackId: null, year: null, durationMs: null, addedAt: "2026-10-17T00:00:00Z" },
     { id: "3", title: "Scar", artist: "Missy Higgins", own: false, state: "learned", source: "suggested", spotifyTrackId: null, year: null, durationMs: null, addedAt: "2026-10-17T00:00:00Z" },
   ],
-  maxSongs: 60,
   ...over,
 });
 

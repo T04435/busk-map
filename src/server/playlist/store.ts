@@ -7,7 +7,7 @@ import { log } from "@/server/log";
 import { processMap } from "@/server/memo";
 import type { MemorySuggestion, RunRecord } from "@/server/learn/types";
 import type { ResearchSnapshot } from "@/lib/repertoire-research";
-import { MAX_SONGS, MAX_USUAL_PITCHES, PLAYLIST_EXPIRY_MONTHS, TOUCH_INTERVAL_MS, USUAL_PITCHES_FROM_LAST_PLANS } from "./config";
+import { MAX_USUAL_PITCHES, PLAYLIST_EXPIRY_MONTHS, TOUCH_INTERVAL_MS, USUAL_PITCHES_FROM_LAST_PLANS } from "./config";
 
 /**
  * Repertoires (tables `playlists` and `playlist_songs`, migrations/004_playlists.sql).
@@ -33,7 +33,7 @@ export type PlaylistRecord = {
 
 export type StoredSong = Omit<PlaylistSongView, "addedAt"> & { songKey: string; addedAt: number; /** The learn suggestion this song came from (memory store; Postgres keeps playlist_songs.suggestion_id). */ suggestionId?: string };
 
-export type AddSongResult = { ok: true; song: StoredSong } | { ok: false; reason: "duplicate" | "full" };
+export type AddSongResult = { ok: true; song: StoredSong } | { ok: false; reason: "duplicate" | "missing" };
 /** "Add to Repertoire" from a plan: refused when the song is already suggested (any status) or already sung. */
 export type AddSuggestionResult = { ok: true; suggestion: LearnSuggestionView } | { ok: false; reason: "already_suggested" | "in_repertoire" };
 export type UpdateResult = { ok: true; playlist: PlaylistRecord } | { ok: false; reason: "stale" | "missing" };
@@ -46,7 +46,7 @@ export interface PlaylistStore {
   /** By internal id, without touching last_seen_at (to read the revision after a write). */
   get(playlistId: string): Promise<PlaylistRecord | null>;
   songs(playlistId: string): Promise<StoredSong[]>;
-  /** Adds a "can sing" song. Refuses a repeat (same song key) and the 61st song, in one conditional statement. */
+  /** Adds a "can sing" song. Refuses a repeat (same song key). */
   addSong(playlistId: string, song: AddSongInput): Promise<AddSongResult>;
   setSongState(playlistId: string, songId: string, state: SongState): Promise<StoredSong | null>;
   removeSong(playlistId: string, songId: string): Promise<boolean>;
@@ -105,7 +105,6 @@ export function toPlaylistView(playlist: PlaylistRecord, songs: StoredSong[]): P
     usualPitches: playlist.usualPitches,
     city: playlist.city,
     songs: songs.map(toSongView),
-    maxSongs: MAX_SONGS,
   };
 }
 
@@ -198,10 +197,9 @@ export class MemoryPlaylistStore implements PlaylistStore {
 
   async addSong(playlistId: string, input: AddSongInput): Promise<AddSongResult> {
     const rows = this.songRows.get(playlistId);
-    if (!rows) return { ok: false, reason: "full" };
+    if (!rows) return { ok: false, reason: "missing" };
     const songKey = playlistSongKey(input.artist, input.title);
     if (rows.some((s) => s.songKey === songKey)) return { ok: false, reason: "duplicate" };
-    if (rows.length >= MAX_SONGS) return { ok: false, reason: "full" };
     const song: StoredSong = {
       id: String(this.nextSongId++),
       songKey,
@@ -460,18 +458,16 @@ export class PostgresPlaylistStore implements PlaylistStore {
 
   async addSong(playlistId: string, s: AddSongInput): Promise<AddSongResult> {
     const songKey = playlistSongKey(s.artist, s.title);
-    // One transaction (one HTTP round trip): lock the Repertoire's row, then count and insert. Under READ COMMITTED the
-    // count is read after the lock is held, so two saves at 59 songs can't both land. The limit and the no-repeat rule
-    // (ON CONFLICT) are still checked where the row is written.
+    // One transaction (one HTTP round trip): lock the Repertoire's row, then insert. There is no limit on songs; the
+    // no-repeat rule (ON CONFLICT) is checked where the row is written.
     const [, inserted] = (await this.sql.transaction((txn) => [
       txn.query("SELECT id FROM playlists WHERE id = $1::uuid FOR UPDATE", [playlistId]),
       txn.query(
         `INSERT INTO playlist_songs (playlist_id, song_key, state, source, title, artist, own, spotify_track_id, year, duration_ms)
          SELECT $1::uuid, $2::text, 'can_sing', $3::text, $4::text, $5::text, $6::boolean, $7::text, $8::smallint, $9::integer
-          WHERE (SELECT count(*) FROM playlist_songs WHERE playlist_id = $1::uuid AND state IN ('can_sing', 'learned')) < $10::integer
          ON CONFLICT (playlist_id, song_key) DO NOTHING
          RETURNING ${SONG_COLUMNS}`,
-        [playlistId, songKey, s.source, s.title, s.artist, s.own, s.spotifyTrackId ?? null, s.year ?? null, s.durationMs ?? null, MAX_SONGS],
+        [playlistId, songKey, s.source, s.title, s.artist, s.own, s.spotifyTrackId ?? null, s.year ?? null, s.durationMs ?? null],
       ),
     ])) as [unknown, SongRow[]];
     const rows = inserted;
@@ -482,7 +478,7 @@ export class PostgresPlaylistStore implements PlaylistStore {
       return { ok: true, song: toSong(rows[0]) };
     }
     const existing = (await this.sql.query("SELECT 1 AS one FROM playlist_songs WHERE playlist_id = $1 AND song_key = $2", [playlistId, songKey])) as unknown[];
-    return { ok: false, reason: existing.length ? "duplicate" : "full" };
+    return { ok: false, reason: existing.length ? "duplicate" : "missing" };
   }
 
   async setSongState(playlistId: string, songId: string, state: SongState) {

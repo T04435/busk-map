@@ -5,6 +5,7 @@
  * `off` lists unavailable slots by date and start hour (3-hour slots).
  */
 import { findExample } from "./examples";
+import { boundSongs, PLAN_SONGS_CONSIDERED } from "./plan-songs-bound";
 import { artistsParam, fillParam, parseArtistsParam, parseFillParam, parseSongsParam, songsParam } from "./performer-url";
 import { parseWeightsParam, weightsParam } from "./weights-url";
 import { weekRequestSchema, type WeekRequest } from "./week-schema";
@@ -63,7 +64,7 @@ export function weekSearchParams(request: WeekRequest, exampleId: string | null)
     params.set("name", request.performer.name);
     params.set("artists", artistsParam(request.performer));
     if (request.performer.songs.length) {
-      params.set("songs", songsParam(request.performer.songs));
+      params.set("songs", songsParam(boundSongs(request.performer.songs, PLAN_SONGS_CONSIDERED)));
     }
     for (const [key, value] of fillParam(request.performer)) params.set(key, value);
   }

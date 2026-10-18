@@ -63,6 +63,7 @@ export const artistSchema = z.object({
 
 export const albumTracksSchema = z.object({
   items: z.array(trackItem.omit({ album: true })),
+  next: z.string().nullish(),
 });
 
 export type CatalogueTrack = {

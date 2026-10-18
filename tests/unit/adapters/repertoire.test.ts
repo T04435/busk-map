@@ -162,6 +162,39 @@ describe("repertoire (Spotify)", () => {
     expect(calls.some((c) => c.url.pathname.includes("top-tracks"))).toBe(false);
   });
 
+  it("pages through a whole catalogue: 80 albums over 8 pages, no 3-page or 15-album cap", async () => {
+    const { getArtistCatalogue } = await fresh();
+    const page = (n: number) => json({
+      items: Array.from({ length: 10 }, (_, i) => ({ id: `al${n * 10 + i}`, name: `Album ${n * 10 + i}`, album_type: "album" })),
+      next: n < 7 ? `https://api.spotify.com/v1/artists/0SNWoGaDlrCompmg9rXeNq/albums?offset=${(n + 1) * 10}&limit=10` : null,
+    });
+    const { calls } = mockFetch([
+      tokenRoute,
+      route((u) => u.pathname.endsWith("/albums"), (u) => page(Number(u.searchParams.get("offset") ?? 0) / 10)),
+      route((u) => u.pathname.startsWith("/v1/albums/"), (u) => {
+        const id = u.pathname.split("/")[3];
+        return json({ items: [{ id: `t-${id}`, name: `Song of ${id}`, artists: [{ id: "a1", name: "Synthetic Artist" }] }], next: null });
+      }),
+    ]);
+    const result = await getArtistCatalogue("https://open.spotify.com/artist/0SNWoGaDlrCompmg9rXeNq", "AU", LIVE);
+    expect(result.data).toHaveLength(80);
+    expect(calls.filter((c) => c.url.pathname.endsWith("/albums"))).toHaveLength(8);
+    expect(calls.filter((c) => c.url.pathname.startsWith("/v1/albums/"))).toHaveLength(80);
+  });
+
+  it("follows an album's track list past one page of 50", async () => {
+    const { getArtistCatalogue } = await fresh();
+    const track = (i: number) => ({ id: `t${i}`, name: `Track ${i}`, artists: [{ id: "a1", name: "Synthetic Artist" }] });
+    mockFetch([
+      tokenRoute,
+      route((u) => u.pathname.endsWith("/albums"), () => json({ items: [{ id: "big", name: "Big", album_type: "album" }], next: null })),
+      route((u) => u.pathname === "/v1/albums/big/tracks" && u.searchParams.get("offset") === "50", () => json({ items: Array.from({ length: 20 }, (_, i) => track(50 + i)), next: null })),
+      route((u) => u.pathname === "/v1/albums/big/tracks", () => json({ items: Array.from({ length: 50 }, (_, i) => track(i)), next: "https://api.spotify.com/v1/albums/big/tracks?offset=50&limit=50" })),
+    ]);
+    const result = await getArtistCatalogue("https://open.spotify.com/artist/0SNWoGaDlrCompmg9rXeNq", "AU", LIVE);
+    expect(result.data).toHaveLength(70);
+  });
+
   it("returns nothing for an unrecognised link", async () => {
     const { getArtistCatalogue } = await fresh();
     const { calls } = mockFetch([]);

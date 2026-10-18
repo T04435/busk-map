@@ -95,6 +95,7 @@ function SuggestionRow({ song, media, busy, onStatus }: { song: LearnSuggestionV
         durationMs={song.durationMs}
         image={song.image ?? media?.image}
         artistImage={media?.artistImage}
+        artistHref={media?.artistHref}
         href={media?.href ?? spotifyHref(song.sourceUrl) ?? undefined}
         source={media?.source ?? (song.songSource === "plan" ? undefined : song.songSource)}
         muted={song.status === "dismissed"}
@@ -104,6 +105,62 @@ function SuggestionRow({ song, media, busy, onStatus }: { song: LearnSuggestionV
         actions={<SongActions title={song.title} artist={song.artist} disabled={busy} learnIt onLearned={pending ? go("learned") : undefined} onDismiss={pending ? go("dismissed") : undefined} onUndo={pending ? undefined : go("pending")} />}
       />
     </li>
+  );
+}
+
+/** Rows shown before a long list folds (U16: the Repertoire has no limit, so "Songs you can sing" can run to hundreds). */
+const FOLD_AT = 20;
+
+/**
+ * A list that shows its first rows and folds the rest behind "Show all N songs" (shadcn Collapsible), with a filter
+ * (shadcn Input) once it is long. A filter shows every match, folded or not.
+ */
+function FoldedList<T extends { id: string }>({ label, rows, render, match }: { label: string; rows: readonly T[]; render: (row: T) => ReactNode; match: (row: T, query: string) => boolean }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const long = rows.length > FOLD_AT;
+  const shown = q ? rows.filter((row) => match(row, q)) : rows;
+  const head = q || !long ? shown : shown.slice(0, FOLD_AT);
+  const rest = q || !long ? [] : shown.slice(FOLD_AT);
+  const ulClass = "m-0 list-none divide-y divide-border border-2 border-rule bg-card px-3";
+  return (
+    <div className="space-y-3" data-testid="folded-list">
+      {long && (
+        <Input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label={COPY.filterLabel}
+          placeholder={COPY.filterPlaceholder}
+          className="max-w-sm"
+          data-testid="folded-list-filter"
+        />
+      )}
+      {q && shown.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{COPY.noFilterMatch}</p>
+      ) : (
+        <Collapsible open={open} onOpenChange={setOpen} className="space-y-3">
+          <ul aria-label={label} className={ulClass}>
+            {head.map(render)}
+          </ul>
+          {rest.length > 0 && (
+            <>
+              <CollapsibleContent>
+                <ul aria-label={`${label}, the rest`} className={ulClass}>
+                  {rest.map(render)}
+                </ul>
+              </CollapsibleContent>
+              <CollapsibleTrigger asChild>
+                <Button variant="link" size="sm" className="h-auto px-0" data-testid="folded-list-toggle">
+                  {open ? COPY.showFewer : COPY.showAll(rows.length)}
+                </Button>
+              </CollapsibleTrigger>
+            </>
+          )}
+        </Collapsible>
+      )}
+    </div>
   );
 }
 
@@ -380,37 +437,41 @@ export function ResearchView() {
 
       {/* 2. Songs you can sing: your own songs straight in, removable. */}
       <Section id="research-can-sing" title={COPY.canSing} ready={r.canSing !== null} live={live} testId="research-can-sing">
-        {playlist && <p className="text-sm text-muted-foreground tabular-nums">{COPY.count(songs.length, playlist.maxSongs)}</p>}
+        {playlist && <p className="text-sm text-muted-foreground tabular-nums">{COPY.count(songs.length)}</p>}
         {r.canSing && r.canSing.length > 0 ? (
-          <ul aria-label={COPY.canSing} className="m-0 list-none divide-y divide-border border-2 border-rule bg-card px-3">
-            {r.canSing.map((song) => (
+          <FoldedList
+            label={COPY.canSing}
+            rows={r.canSing}
+            match={(row, q) => [row.title, row.artist].some((text) => text.toLowerCase().includes(q))}
+            render={(song) => (
               <li key={song.id} data-testid="can-sing-row" data-focus-row={song.id}>
-                <SongRow
-                  as="div"
-                  title={song.title}
-                  artist={song.artist}
-                  year={song.year}
-                  album={song.album}
-                  image={song.image}
-                  artistImage={song.artistImage}
-                  source={song.source}
-                  durationMs={song.durationMs}
-                  href={song.href}
-                  actions={
-                    <SongActions
-                      title={song.title}
-                      disabled={busy || live}
-                      onRemove={() => {
-                        if (busy || live) return;
-                        focusAfter.current = nextFocus(r.canSing!, song.id, "remove");
-                        void act(() => removeSong(song.id), removed(song.title));
-                      }}
-                    />
-                  }
-                />
+              <SongRow
+                as="div"
+                title={song.title}
+                artist={song.artist}
+                year={song.year}
+                album={song.album}
+                image={song.image}
+                artistImage={song.artistImage}
+                artistHref={song.artistHref}
+                source={song.source}
+                durationMs={song.durationMs}
+                href={song.href}
+                actions={
+                  <SongActions
+                    title={song.title}
+                    disabled={busy || live}
+                    onRemove={() => {
+                      if (busy || live) return;
+                      focusAfter.current = nextFocus(r.canSing!, song.id, "remove");
+                      void act(() => removeSong(song.id), removed(song.title));
+                    }}
+                  />
+                }
+              />
               </li>
-            ))}
-          </ul>
+            )}
+          />
         ) : (
           <p className="text-sm text-muted-foreground">{COPY.empty}</p>
         )}
@@ -554,6 +615,7 @@ export function ResearchView() {
                   album={s.album}
                   image={s.image}
                   artistImage={s.artistImage}
+                  artistHref={s.artistHref}
                   source={s.source}
                   durationMs={s.durationMs}
                   href={s.href}

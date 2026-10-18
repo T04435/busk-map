@@ -9,6 +9,7 @@ import { providerStatus } from "@/server/env";
 import { log } from "@/server/log";
 import { assemblePlan } from "./assemble";
 import type { PlanContext } from "./context";
+import { boundSongs, PLAN_PROMPT_SONGS } from "@/lib/plan-songs-bound";
 import { createMockPlanner } from "./mock-model";
 import { LIMITS, MODELS, PLANNER_PROVIDER_OPTIONS } from "./models";
 import { AFTER_SCORING, AgentState, createTools, finishSchema, scoringOpen, TOOL_LABELS, TOOL_SOURCES } from "./tools";
@@ -52,7 +53,7 @@ Rules:
 
 export function buildPrompt(ctx: PlanContext, matched: { query: string; match: string | null }[]): string {
   const { request } = ctx;
-  const songs = request.performer.songs.map((s) => `${s.title} (${s.artist}${s.own ? ", own song" : ""})`).join("; ");
+  const songs = boundSongs(ctx.songs$, PLAN_PROMPT_SONGS).map((s) => `${s.title} (${s.artist}${s.own ? ", own song" : ""})`).join("; ");
   const box = ctx.city.bbox;
   const found = matched.filter((m) => m.match);
   const missing = matched.filter((m) => !m.match).map((m) => m.query);

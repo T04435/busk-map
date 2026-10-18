@@ -48,10 +48,10 @@ describe("performer.fillSuggested and skipSongs (D4, D6)", () => {
     expect(parse({ songs: [], fillSuggested: 6 }).success).toBe(true);
     expect(parse({ artists: [] }).success).toBe(false);
   });
-  it("skipSongs holds up to 60 title/artist pairs", () => {
+  it("skipSongs holds up to 1000 title/artist pairs", () => {
     const song = { title: "A", artist: "B" };
-    expect(parse({ fillSuggested: 3, skipSongs: Array(60).fill(song) }).success).toBe(true);
-    expect(parse({ fillSuggested: 3, skipSongs: Array(61).fill(song) }).success).toBe(false);
+    expect(parse({ fillSuggested: 3, skipSongs: Array(200).fill(song) }).success).toBe(true);
+    expect(parse({ fillSuggested: 3, skipSongs: Array(1001).fill(song) }).success).toBe(false);
     expect(parse({ fillSuggested: 3, skipSongs: [{ title: "", artist: "B" }] }).success).toBe(false);
   });
 });

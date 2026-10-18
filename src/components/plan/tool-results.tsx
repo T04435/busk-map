@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
+import { reasonSlots } from "@/components/setlist/reason-slots";
 import { cn } from "cn";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { EvidenceLine } from "@/components/honeycomb/evidence-line";
 import { FoundByBadge } from "@/components/honeycomb/found-by-badge";
 import { Icon, type IconName } from "@/components/honeycomb/icon";
-import { ArtistChip } from "@/components/honeycomb/artist-chip";
+import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
 import { InfoTag } from "@/components/honeycomb/info-tag";
 import { MeterBar } from "@/components/honeycomb/percent-cell";
 import { PitchRow } from "@/components/honeycomb/pitch-row";
@@ -187,8 +188,17 @@ export const TOOL_UI: Record<string, ToolUi> = {
         <>
           <MiniTasteMap cells={strongest} pins={pins} />
           <EvidenceLine>
-            Qloo heatmap: the strongest of {num(o.cells) ?? strongest.length} taste cells for {signals.length ? signals.join(", ") : "your artists"}.
+            Qloo heatmap: the strongest of {num(o.cells) ?? strongest.length} taste cells for {signals.length ? "these artists:" : "your artists."}
           </EvidenceLine>
+          {signals.length > 0 && (
+            <ArtistChipList inline>
+              {signals.map((a) => (
+                <li key={a}>
+                  <ArtistChip size="xs" name={a} />
+                </li>
+              ))}
+            </ArtistChipList>
+          )}
         </>
       );
     },
@@ -419,7 +429,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
             score={num(x.score)}
             scoreLabel="Fit"
             className="border-t border-border first:border-t-0"
-            reason={str(x.why) ? <Reason text={str(x.why) as string} /> : undefined}
+            {...reasonSlots(str(x.why))}
           />
         ))}
       </ol>
@@ -438,7 +448,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
               title={str(x.title) ?? "Any song"}
               artist={str(x.artist) ?? ""}
               tags={<SongTag kind="suggested" />}
-              reason={str(x.why) ? <Reason text={str(x.why) as string} /> : undefined}
+              {...reasonSlots(str(x.why))}
               actions={str(x.title) ? <SongActions title={str(x.title) as string} artist={str(x.artist) ?? ""} size="sm" learnIt /> : undefined}
             />
           ))}

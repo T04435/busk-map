@@ -1,5 +1,6 @@
 "use client";
 
+import { ArtistChip } from "@/components/honeycomb/artist-chip";
 import { AiChip } from "@/components/honeycomb/ai-chip";
 import { hiveProgressOfSteps } from "@/lib/agent-persona";
 import Link from "next/link";
@@ -412,7 +413,16 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     <PageHeader
       meta={eyebrow}
       title={heading.performerName}
-      subtitle={qlooDown || limited ? undefined : `Sounds like ${request.performer.artists.slice(0, 3).join(", ")}`}
+      subtitle={
+        qlooDown || limited ? undefined : (
+          <span className="inline-flex flex-wrap items-center gap-1.5" data-testid="sounds-like">
+            Sounds like
+            {request.performer.artists.slice(0, 3).map((a) => (
+              <ArtistChip key={a} size="xs" name={a} />
+            ))}
+          </span>
+        )
+      }
       below={limited ? undefined : tags}
       end={
         noTaste ? (

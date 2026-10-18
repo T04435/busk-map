@@ -40,7 +40,7 @@ test.describe("landing, as the deck draws it", () => {
     const cards = page.locator('[data-slot="example-act-card"]');
     await expect(cards).toHaveCount(3);
     await expect(cards.nth(0)).toContainText("Saturday · 6–9 pm");
-    await expect(cards.nth(0)).toContainText("Sounds like Paul Kelly, Courtney Barnett, Vance Joy");
+    for (const name of ["Paul Kelly", "Courtney Barnett", "Vance Joy"]) await expect(cards.nth(0).locator('[data-slot="artist-chip"]', { hasText: name })).toHaveCount(1);
     await expect(cards.nth(0)).toContainText("Plays How to Make Gravy, Dumb Things, Depreston");
     await expect(cards.nth(1)).toContainText("Friday · 5–8 pm");
     await expect(cards.nth(2)).toContainText("Sunday · 12–3 pm");

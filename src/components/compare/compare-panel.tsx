@@ -1,10 +1,10 @@
 "use client";
 
+import { SongRow } from "@/components/honeycomb/song-row";
 import { useEffect, useState } from "react";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { BothAgreeBadge } from "@/components/honeycomb/both-agree-badge";
 import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
-import { Reason } from "@/components/honeycomb/reason";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -223,7 +223,14 @@ function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch
           </ul>
         )}
         {baseline.setlist.length > 0 && (
-          <Reason text={`Plain AI ${PLAYLIST_COPY.suggestedSetNoun}: ${baseline.setlist.join(", ")}`} />
+          <div className="grid gap-1" data-testid="baseline-set">
+            <p className="m-0 text-sm leading-5 text-muted-foreground">Plain AI {PLAYLIST_COPY.suggestedSetNoun}:</p>
+            <ol className="m-0 list-none p-0">
+              {baseline.setlist.map((title, i) => (
+                <SongRow key={`${title}${i}`} compact interactive={false} index={i + 1} title={title} artist="" className="border-t border-border first:border-t-0" />
+              ))}
+            </ol>
+          </div>
         )}
       </Section>
     </>

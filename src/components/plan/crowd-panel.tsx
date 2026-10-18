@@ -102,9 +102,15 @@ export function CrowdPanel({
               <b>{ownName}</b> explains {Math.round(ownArtist.share * 100)}% of this crowd&apos;s picks: {FROM_YOUR_MUSIC}.
             </p>
           )}
-          <ul className={meters}>
+          <ul className="m-0 grid list-none gap-2 p-0">
             {crowd.drivers.map((d) => (
-              <MeterBar key={d.name} label={d.name === ownName ? `${d.name} (${FROM_YOUR_MUSIC})` : d.name} value={Math.min(1, d.share)} />
+              <li key={d.name}>
+                <ArtistChip
+                  name={d.name}
+                  info={d.name === ownName ? <InfoTag>{FROM_YOUR_MUSIC}</InfoTag> : undefined}
+                  score={<ScoreCell value={Math.round(Math.min(1, d.share) * 100)} size="sm" label="Share of picks" />}
+                />
+              </li>
             ))}
           </ul>
         </Block>
@@ -147,7 +153,7 @@ export function CrowdPanel({
           evidence="Qloo compare: the genres this city's usual crowd leans to more than global pop; Qloo insights: artists of those genres liked in the plan area, scored for fans of your artists."
         >
           <p data-testid="local-scene" className="m-0 text-[15px] leading-[22px]">
-            Local scene: {list(crowd.localScene.genres.map((g) => g.name))}: acts your fans would like: {list(crowd.localScene.acts.map((a) => a.name))}.
+            Local scene: {list(crowd.localScene.genres.map((g) => g.name))}: acts your fans would like:
           </p>
           <ul className="m-0 grid list-none gap-2 p-0">
             {crowd.localScene.acts.map((a) => (

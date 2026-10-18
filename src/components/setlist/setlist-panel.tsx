@@ -1,8 +1,8 @@
 import Link from "next/link";
+import { reasonSlots } from "@/components/setlist/reason-slots";
 import { Icon } from "@/components/honeycomb/icon";
 import { AddToRepertoire } from "@/components/playlist/add-to-repertoire";
 import { CopySetButton } from "@/components/setlist/copy-set-button";
-import { Reason } from "@/components/honeycomb/reason";
 import { SongActions } from "@/components/honeycomb/song-actions";
 import { SongRow } from "@/components/honeycomb/song-row";
 import { SongTag } from "@/components/honeycomb/song-tag";
@@ -157,7 +157,7 @@ function SetlistPreview({
                 scoreLabel="Fit"
                 className="border-b border-border last:border-b-0"
                 tags={song.origin === "suggested" ? <span data-testid="suggested-tag"><SongTag kind="suggested" /></span> : undefined}
-                reason={<Reason text={song.reason} />}
+                {...reasonSlots(song.reason)}
               >
                 {song.origin === "suggested" && song.suggestion && (
                   <span className="block text-sm text-muted-foreground" data-testid="suggestion-because">
@@ -199,7 +199,7 @@ function SetlistPreview({
                 title={s.title ?? "Any song"}
                 artist={s.artist}
                 className="border-b border-border last:border-b-0"
-                reason={<Reason text={s.reason} />}
+                {...reasonSlots(s.reason)}
                 actions={s.title ? <SongActions title={s.title} artist={s.artist} learnIt /> : undefined}
               >
                 {s.title && canAddToRepertoire && <AddToRepertoire title={s.title} artist={s.artist} reason={s.reason} growth={s.audienceGrowth ?? null} />}

@@ -94,7 +94,7 @@ export function syntheticReleaseCount(id: string): number {
 
 /**
  * The performer's own songs. An artist in the Qloo mock's catalogue (the offline research artist) gets its own name and
- * Spotify-shaped ids, so the research run's "Your song" rows look real; any other id keeps "Synthetic Performer".
+ * Spotify-shaped ids, so the research run's own-song rows look real; any other id keeps "Synthetic Performer".
  */
 export function syntheticCatalogue(artistId: string): CatalogueTrack[] {
   const known = CATALOG.find((a) => a.spotifyId === artistId);

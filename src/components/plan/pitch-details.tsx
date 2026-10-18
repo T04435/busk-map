@@ -1,4 +1,6 @@
 import { Chip } from "@/components/honeycomb/chip";
+import { mentionsIn } from "@/lib/mention";
+import { planMentions } from "@/lib/plan-mentions";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { FoundByBadge } from "@/components/honeycomb/found-by-badge";
 import { HexCell } from "@/components/honeycomb/hex-cell";
@@ -74,7 +76,7 @@ export function PitchDetails({ plan, pitch, rank, model }: { plan: Plan; pitch: 
             ))}
           </ul>
         )}
-        <Reason text={pitch.why} className="mt-2" />
+        <Reason text={mentionsIn(pitch.why, planMentions(plan))} className="mt-2" />
         {pitch.origin === "agent" && written ? (
           <p className="m-0 mt-2 text-[13px] leading-[18px] text-muted-foreground">The Hive suggested this spot. Busk Map scored it and checked it against the busking rules.</p>
         ) : null}

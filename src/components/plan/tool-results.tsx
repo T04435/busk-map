@@ -479,7 +479,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
             score={num(x.score)}
             scoreLabel="Fit"
             className="border-t border-border first:border-t-0"
-            {...reasonSlots(str(x.why))}
+            {...reasonSlots(str(x.why), str(x.artist) ? [mentionArtist(str(x.artist) as string)] : [])}
           />
         ))}
       </ol>
@@ -498,7 +498,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
               title={str(x.title) ?? "Any song"}
               artist={str(x.artist) ?? ""}
               tags={<SongTag kind="suggested" />}
-              {...reasonSlots(str(x.why))}
+              {...reasonSlots(str(x.why), str(x.artist) ? [mentionArtist(str(x.artist) as string)] : [])}
               actions={str(x.title) ? <SongActions title={str(x.title) as string} artist={str(x.artist) ?? ""} size="sm" learnIt /> : undefined}
             />
           ))}

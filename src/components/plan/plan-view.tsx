@@ -1,6 +1,7 @@
 "use client";
 
-import { SPOTIFY_ARTIST_URL } from "@/lib/mention";
+import { planMentions } from "@/lib/plan-mentions";
+import { mentionsIn, SPOTIFY_ARTIST_URL } from "@/lib/mention";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
 import { AiChip } from "@/components/honeycomb/ai-chip";
 import { hiveProgressOfSteps } from "@/lib/agent-persona";
@@ -562,14 +563,14 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
                       {heading.slotLabel}: each pitch below has its own best hours.
                     </p>
                   )}
-                  <Reason text={plan.summary} />
+                  <Reason text={mentionsIn(plan.summary, planMentions(plan))} />
                   {plan.notes.filter((note) => !(noTaste && /couldn't match any/i.test(note))).length > 0 && (
                     <ul className="m-0 list-disc pl-5 text-sm text-muted-foreground">
                       {plan.notes
                         .filter((note) => !(noTaste && /couldn't match any/i.test(note)))
                         .map((note) => (
                           <li key={note}>
-                            <Reason text={note} />
+                            <Reason text={mentionsIn(note, planMentions(plan))} />
                           </li>
                         ))}
                     </ul>

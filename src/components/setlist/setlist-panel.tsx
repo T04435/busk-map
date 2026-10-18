@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { artist as mentionArtist } from "@/lib/mention";
 import { reasonSlots } from "@/components/setlist/reason-slots";
 import { Icon } from "@/components/honeycomb/icon";
 import { AddToRepertoire } from "@/components/playlist/add-to-repertoire";
@@ -165,7 +166,7 @@ function SetlistPreview({
                 scoreLabel="Fit"
                 className="border-b border-border last:border-b-0"
                 tags={song.origin === "suggested" ? <span data-testid="suggested-tag"><SongTag kind="suggested" /></span> : undefined}
-                {...reasonSlots(song.reason)}
+                {...reasonSlots(song.reason, [mentionArtist(song.artist, { image: song.artistImage })])}
               >
                 {song.origin === "suggested" && song.suggestion && (
                   <span className="block text-sm text-muted-foreground" data-testid="suggestion-because">
@@ -201,7 +202,7 @@ function SetlistPreview({
                 artist={s.artist}
                 artistImage={s.artistImage}
                 className="border-b border-border last:border-b-0"
-                {...reasonSlots(s.reason)}
+                {...reasonSlots(s.reason, [mentionArtist(s.artist, { image: (s as { artistImage?: string | null }).artistImage })])}
                 actions={s.title ? <SongActions title={s.title} artist={s.artist} learnIt /> : undefined}
               >
                 {s.title && canAddToRepertoire && <AddToRepertoire title={s.title} artist={s.artist} reason={s.reason} growth={s.audienceGrowth ?? null} />}

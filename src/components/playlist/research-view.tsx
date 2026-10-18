@@ -1,5 +1,6 @@
 "use client";
 
+import { artist as mentionArtist, mentionsIn, song as mentionSong, spotifyHref, type Mention } from "@/lib/mention";
 import { AiChip } from "@/components/honeycomb/ai-chip";
 import { HiveMark } from "@/components/honeycomb/hive-mark";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -38,7 +39,6 @@ import { ZERO_LEARN_TOTALS, type LearnListView, type LearnStreamEvent } from "@/
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import { playlistSongKey, type LearnSuggestionView, type PlaylistView } from "@/lib/playlist-schema";
 import { OFFLINE_TEST_ARTIST } from "@/lib/repertoire-research";
-import { spotifyHref } from "@/lib/mention";
 import { toRepertoireView, type LearnSong, type RepertoireView } from "@/lib/repertoire-research-view";
 import { parseSpotifyArtistId, spotifyArtistUrl } from "@/lib/spotify-link";
 import { joinLearn, loadLearn, pageFaults, patchSuggestion, startResearch } from "./learn-api";
@@ -69,13 +69,18 @@ function focusTarget(target: string): HTMLElement | null {
  * the model's reason with the artists behind it, the evidence as info tags (builds on, the crowd, growth, rising, source),
  * and the actions: Learn it, Learned and Not for me on a pending song, Undo on a learned or dismissed one.
  */
-function SuggestionRow({ song, media, busy, onStatus }: { song: LearnSuggestionView; /** What the view model knows of it: the artist photo and the Spotify link (U03, U06). */ media?: LearnSong; busy: boolean; onStatus: (song: LearnSuggestionView, status: "pending" | "learned" | "dismissed") => void }) {
+function SuggestionRow({ song, media, known, busy, onStatus }: { song: LearnSuggestionView; /** What the view model knows of it: the artist photo and the Spotify link (U03, U06). */ media?: LearnSong; /** The artists and songs this page knows, for the names inside the reason (U05). */ known: readonly Mention[]; busy: boolean; onStatus: (song: LearnSuggestionView, status: "pending" | "learned" | "dismissed") => void }) {
   const L = COPY.learn;
   const go = (status: "pending" | "learned" | "dismissed") => () => {
     if (!busy) onStatus(song, status);
   };
-  const because = song.basedOn.filter((b) => b.kind === "soundsLike" || b.kind === "repertoire").map((b) => ({ name: b.name }));
-  const becauseOf = new Map((media?.because ?? []).map((a) => [a.name, a]));
+  // U05: the names inside the reason become their mentions where they stand; nothing is tacked on after it.
+  const entities: Mention[] = [
+    ...(media?.because ?? []).map((a) => mentionArtist(a.name, { image: a.image, href: (a as { href?: string | null }).href })),
+    mentionArtist(song.artist, { image: media?.artistImage, href: media?.artistHref }),
+    ...known,
+  ];
+  const reasonText = song.reason && song.because && !song.reason.includes(song.because) && song.basedOn.length === 0 ? `${song.reason} ${song.because}.` : song.reason;
   const info = [
     ...song.basedOn.filter((b) => b.kind === "learned").map((b) => <InfoTag key={`b-${b.name}`}>{L.buildsOn(b.name)}</InfoTag>),
     ...song.basedOn.filter((b) => b.kind === "crowd").map((b) => <InfoTag key={`c-${b.name}`}>{L.crowdAt(b.name)}</InfoTag>),
@@ -101,7 +106,7 @@ function SuggestionRow({ song, media, busy, onStatus }: { song: LearnSuggestionV
         muted={song.status === "dismissed"}
         tags={song.status === "learned" ? <SongTag kind="learned" /> : song.isNew && pending ? <SongTag kind="new" /> : undefined}
         info={info}
-        reason={<Reason text={because.length === 0 && song.because ? `${song.reason} ${song.because}.` : [`${song.reason} Because `, ...because.flatMap((a, i) => (i ? [", ", { kind: "artist" as const, name: a.name, image: becauseOf.get(a.name)?.image, href: becauseOf.get(a.name)?.href }] : [{ kind: "artist" as const, name: a.name, image: becauseOf.get(a.name)?.image, href: becauseOf.get(a.name)?.href }]))]} />}
+        reason={<Reason text={mentionsIn(reasonText, entities)} />}
         actions={<SongActions title={song.title} artist={song.artist} disabled={busy} learnIt onLearned={pending ? go("learned") : undefined} onDismiss={pending ? go("dismissed") : undefined} onUndo={pending ? undefined : go("pending")} />}
       />
     </li>
@@ -376,6 +381,12 @@ export function ResearchView() {
   const limit = list?.limit;
   const r = view.results;
   const learnMedia = new Map((r.toLearn ?? []).map((s) => [s.id, s]));
+  // Every artist and song this page knows, so a reason's names can be drawn in place (U05).
+  const known: Mention[] = [
+    ...(r.profile ? [mentionArtist(r.profile.name, { image: r.profile.image, href: r.profile.href })] : []),
+    ...[...(r.soundsLike ?? []), ...(r.fansLove ?? [])].map((a) => mentionArtist(a.name, { image: a.image, href: (a as { href?: string | null }).href })),
+    ...[...(r.canSing ?? []), ...(r.learned ?? []), ...(r.toLearn ?? [])].map((x) => mentionSong(x.title, { artist: x.artist, image: x.image, href: x.href })),
+  ];
   const photoOf = new Map((r.soundsLike ?? []).map((a) => [a.name.toLowerCase(), a]));
   const chosenArtists = () => {
     const chosen = [...artists];
@@ -561,7 +572,7 @@ export function ResearchView() {
         {pending.length > 0 ? (
           <ul aria-label={COPY.toLearn} className="divide-y">
             {pending.map((song) => (
-              <SuggestionRow key={song.id} song={song} media={learnMedia.get(song.id)} busy={busy || live} onStatus={(s, status) => void changeSuggestion(s, status)} />
+              <SuggestionRow key={song.id} song={song} media={learnMedia.get(song.id)} known={known} busy={busy || live} onStatus={(s, status) => void changeSuggestion(s, status)} />
             ))}
           </ul>
         ) : (
@@ -577,7 +588,7 @@ export function ResearchView() {
             <CollapsibleContent>
               <ul aria-label={COPY.learn.notForMe} className="divide-y">
                 {dismissed.map((song) => (
-                  <SuggestionRow key={song.id} song={song} media={learnMedia.get(song.id)} busy={busy} onStatus={(s, status) => void changeSuggestion(s, status)} />
+                  <SuggestionRow key={song.id} song={song} media={learnMedia.get(song.id)} known={known} busy={busy} onStatus={(s, status) => void changeSuggestion(s, status)} />
                 ))}
               </ul>
             </CollapsibleContent>

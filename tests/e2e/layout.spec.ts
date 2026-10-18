@@ -132,7 +132,7 @@ const PAGES: PageCase[] = [
       await page.goto("/plan?example=sax");
       await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
       await expect(page.getByTestId("plan-pending")).toBeVisible();
-      await expect(page.getByRole("list", { name: "Research, newest first" }).getByRole("listitem").first()).toBeVisible();
+      await expect(page.getByRole("list", { name: "Research, in the order it ran" }).getByRole("listitem").first()).toBeVisible();
     },
     controls: async (page) => {
       // R01: no Copy link until the busk exists.

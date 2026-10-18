@@ -2,11 +2,11 @@
 
 import { useId } from "react";
 import { cn } from "cn";
-import { HexCell, initialsOf, type HexTone } from "@/components/honeycomb/hex-cell";
+import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
 import { AgentLockup } from "@/components/honeycomb/agent-lockup";
 import { HIVE_CELLS, hiveProgress } from "@/lib/agent-persona";
 import { Icon, type IconName } from "@/components/honeycomb/icon";
-import { Loader } from "@/components/honeycomb/loader";
+import { StepCell } from "@/components/honeycomb/step-cell";
 import { RepertoireFunnel } from "./repertoire-funnel";
 import type { RepertoireStep, RepertoireStepKey, RepertoireTotals, StepStatus } from "./types";
 
@@ -22,14 +22,13 @@ export const REPERTOIRE_STEPS: RepertoireStepInfo[] = [
   { key: "fansLove", title: "What your fans also love", source: "Qloo", icon: "trending" },
   { key: "learn", title: "Songs your fans would stop for", source: "Qloo · Spotify", icon: "learn" },
   { key: "genres", title: "Your sound in genres", source: "Qloo", icon: "list" },
-  { key: "summary", title: "Summing up your act", source: "Claude", icon: "info" },
+  { key: "summary", title: "Summing up your act", source: "Claude", icon: "pencil" },
 ];
 
 const TAG = "px-1.5 py-[3px] font-mono text-[11px] leading-[normal] font-bold tracking-[0.06em] uppercase";
 const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none";
 
 const STATUS_TAG: Partial<Record<StepStatus, string>> = { running: "Working", failed: "Didn't work", skipped: "Skipped" };
-const CELL_TONE: Record<StepStatus, HexTone> = { pending: "dashed", running: "primary", done: "default", failed: "error", skipped: "muted" };
 
 function StepCard({ info, step, n }: { info: RepertoireStepInfo; step: RepertoireStep | undefined; n: number }) {
   const status: StepStatus = step?.status ?? "pending";
@@ -44,9 +43,7 @@ function StepCard({ info, step, n }: { info: RepertoireStepInfo; step: Repertoir
       data-status={status}
       className={cn("flex gap-3 p-3", running ? "my-1 mr-1 border-2 border-rule bg-popover shadow-[4px_4px_0_var(--primary)]" : "border-t border-border first:border-t-0")}
     >
-      <HexCell size={40} tone={CELL_TONE[status]} label={`Step ${n}, ${status === "done" ? "done" : status === "pending" ? "waiting" : (tag ?? status).toLowerCase()}`} className={cn(status === "running" && "text-primary-foreground")}>
-        {running ? <Loader size={18} label="Working" /> : status === "failed" ? <Icon name="x" size={18} /> : <span className={cn("font-mono font-bold", quiet && "text-muted-foreground")}>{n}</span>}
-      </HexCell>
+      <StepCell size={40} status={status} icon={info.icon} n={n} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <h3 className={cn("m-0 text-base leading-5 font-bold [overflow-wrap:anywhere]", quiet && "font-medium text-muted-foreground")}>{info.title}</h3>

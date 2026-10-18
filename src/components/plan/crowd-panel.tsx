@@ -135,8 +135,11 @@ export function CrowdPanel({
                 >
                   {a.because.length > 0 && (
                     <Reason
-                      text={`Because your fans like${ownName && a.because.includes(ownName) ? ` (${ownName} is ${FROM_YOUR_MUSIC})` : ""}`}
-                      because={a.explained.length > 0 ? a.explained.map((e) => ({ name: e.name, score: Math.round(e.score <= 1 ? e.score * 100 : e.score) })) : a.because.map((name) => ({ name }))}
+                      text={[
+                        "Because your fans like ",
+                        ...(a.explained.length > 0 ? a.explained.map((e) => ({ name: e.name, score: Math.round(e.score <= 1 ? e.score * 100 : e.score) })) : a.because.map((name) => ({ name }))).flatMap((x, i) => [...(i ? [", "] : []), { kind: "artist" as const, ...x }]),
+                        ownName && a.because.includes(ownName) ? ` (${ownName} is ${FROM_YOUR_MUSIC})` : "",
+                      ]}
                     />
                   )}
                 </ArtistChip>

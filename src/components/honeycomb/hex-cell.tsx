@@ -33,7 +33,7 @@ export function Hex({ className, frame }: { className?: string; /** Outline only
         points={HEX_POINTS}
         clipPath={`url(#${id})`}
         vectorEffect="non-scaling-stroke"
-        className="fill-[var(--hex-fill,var(--card))] stroke-[var(--hex-stroke,var(--rule))] [stroke-dasharray:var(--hex-dash,none)] [stroke-width:var(--hex-sw,4px)]"
+        className="fill-[var(--hex-fill,var(--card))] stroke-[var(--hex-stroke,var(--primary))] [stroke-dasharray:var(--hex-dash,none)] [stroke-width:var(--hex-sw,4px)]"
       />
     </svg>
   );
@@ -42,12 +42,13 @@ export function Hex({ className, frame }: { className?: string; /** Outline only
 const cellVariants = cva("relative inline-grid flex-none place-items-center font-display font-extrabold leading-none", {
   variants: {
     tone: {
-      default: "text-foreground",
+      // The brand outline: orange, day and night.
+      default: "text-foreground [--hex-stroke:var(--primary)]",
       // Orange fill: a 2px rule by day, none at night.
       primary: "text-primary-foreground [--hex-fill:var(--primary)] [--hex-stroke:var(--fill-rule)]",
       muted: "text-muted-foreground [--hex-fill:var(--muted)] [--hex-stroke:var(--border)]",
-      // Song covers and artist cells without a photo: muted fill, the brand rule stroke.
-      media: "text-muted-foreground [--hex-fill:var(--muted)] [--hex-stroke:var(--rule)]",
+      // Song covers and artist cells (photo or not): muted fill, the brand orange stroke.
+      media: "text-muted-foreground [--hex-fill:var(--muted)] [--hex-stroke:var(--primary)]",
       error: "text-destructive [--hex-stroke:var(--destructive)]",
       dashed: "text-muted-foreground [--hex-fill:transparent] [--hex-stroke:var(--input)] [--hex-dash:5_4]",
     },

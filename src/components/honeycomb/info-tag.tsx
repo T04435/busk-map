@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { cn } from "cn";
 import { Icon, type IconName } from "@/components/honeycomb/icon";
+import { SourceLogo } from "@/components/honeycomb/source-logo";
+import type { MentionSource } from "@/lib/mention";
 
 const tones = {
   neutral: "border-input text-foreground",
@@ -17,13 +19,17 @@ export function InfoTag({
   children,
   icon,
   tone = "neutral",
+  source,
   className,
 }: {
-  children: ReactNode;
+  children?: ReactNode;
   icon?: IconName;
   tone?: keyof typeof tones;
+  /** A data source: the tag is its logo only (Spotify, Last.fm, Qloo), the name in the accessible label. Replaces the words. */
+  source?: MentionSource;
   className?: string;
 }) {
+  if (source) return <SourceLogo source={source} height={14} className={cn("py-0.5", className)} />;
   return (
     <span
       data-slot="info-tag"

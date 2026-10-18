@@ -5,6 +5,7 @@ import { cn } from "cn";
 import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
 import { Icon } from "@/components/honeycomb/icon";
 import { LeanBar } from "@/components/honeycomb/lean-bar";
+import { mentionArtists } from "@/components/honeycomb/mention";
 import { Reason } from "@/components/honeycomb/reason";
 import { SongActions } from "@/components/honeycomb/song-actions";
 import { SongRow } from "@/components/honeycomb/song-row";
@@ -161,14 +162,12 @@ export function SoundsLikeSection({
 
 export function CanSingSection({
   songs,
-  ownerImage,
   onRemove,
   onAddSong,
   loading,
   className,
 }: {
   songs: ResearchSong[] | null;
-  ownerImage?: string | null;
   onRemove?: (song: ResearchSong) => void;
   onAddSong?: () => void;
   loading?: boolean;
@@ -192,8 +191,6 @@ export function CanSingSection({
               image={s.image}
               durationMs={s.durationMs}
               href={s.href ?? undefined}
-              own={s.own}
-              ownerImage={ownerImage ?? undefined}
               actions={onRemove ? <SongActions title={s.title} onRemove={() => onRemove(s)} /> : undefined}
             />
           ))}
@@ -243,7 +240,7 @@ function LearnRow({
           <SongActions title={song.title} onUndo={() => onUndo?.(song)} />
         )
       }
-      reason={<Reason text={song.reason} because={song.because} />}
+      reason={<Reason text={mentionArtists(song.reason, (song.because ?? []).map((a) => ({ kind: "artist" as const, name: a.name, image: a.image })))} />}
     />
   );
 }

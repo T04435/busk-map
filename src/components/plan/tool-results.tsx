@@ -259,7 +259,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
                 {artists.map((a) => (
                   <li key={str(a.name) ?? ""}>
                     <ArtistChip name={str(a.name) ?? ""} score={<ScoreCell value={pct(a.affinity)} size="sm" label="Affinity" />}>
-                      {str(a.because) ? <Reason text="Because your fans like" because={becauseArtists(str(a.because) as string)} /> : null}
+                      {str(a.because) ? <Reason text={["Because your fans like ", ...becauseArtists(str(a.because) as string).flatMap((x, i) => [...(i ? [", "] : []), { kind: "artist" as const, ...x }])]} /> : null}
                     </ArtistChip>
                   </li>
                 ))}

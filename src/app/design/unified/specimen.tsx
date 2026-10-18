@@ -4,6 +4,12 @@ import type { ReactNode } from "react";
 import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
 import { ArtistProfile } from "@/components/honeycomb/artist-profile";
 import { InfoTag } from "@/components/honeycomb/info-tag";
+import type { Mention, RichText } from "@/lib/mention";
+import { Mention as MentionView } from "@/components/honeycomb/mention";
+import { SourceLogo } from "@/components/honeycomb/source-logo";
+import { StepCell, type StepCellStatus } from "@/components/honeycomb/step-cell";
+import { REPERTOIRE_STEPS } from "@/components/honeycomb/repertoire/repertoire-research";
+import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Reason } from "@/components/honeycomb/reason";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { SongActions } from "@/components/honeycomb/song-actions";
@@ -12,7 +18,9 @@ import { SongTag, type SongTagKind } from "@/components/honeycomb/song-tag";
 import { SAMPLE_RESULTS } from "@/components/honeycomb/repertoire/sample-data";
 
 const noop = () => {};
-const because = [{ name: "Angus & Julia Stone" }, { name: "The Paper Kites" }, { name: "Boy & Bear" }];
+const art = (name: string, score?: number): Mention => ({ kind: "artist", name, score });
+const becauseText: RichText = ["Fans of ", art("Angus & Julia Stone"), " and ", art("The Paper Kites"), " love this."];
+const wolfine: RichText = ["Fans of ", art("Wolfine"), " and ", art("Residente"), " love this, and ", art("Residente"), " is the closest match to the act's socially conscious crowd, so it's a safe opener."];
 const LONG = "Mumford & Sons and the Very Long Named Touring Orchestra of the Southern Laneways";
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
@@ -39,7 +47,7 @@ function Case({ id, replaces, children }: { id: string; replaces: string; childr
 const list = "m-0 list-none divide-y divide-border p-0";
 
 export function UnifiedSpecimen() {
-  const tagKinds: SongTagKind[] = ["your-song", "new", "typed", "suggested", "learned", "by-your-artist", "added"];
+  const tagKinds: SongTagKind[] = ["new", "typed", "suggested", "learned", "by-your-artist", "added"];
   return (
     <div className="flex flex-col gap-12">
       <Group title="Songs: SongRow">
@@ -53,14 +61,14 @@ export function UnifiedSpecimen() {
                 durationMs={239000}
                 href="https://open.spotify.com/track/sample"
                 tags={<SongTag kind="new" />}
-                reason={<Reason text="Fans of Angus & Julia Stone and The Paper Kites love this." because={because} />}
+                reason={<Reason text={becauseText} />}
                 actions={<SongActions title="Big Jet Plane" artist="Angus & Julia Stone" learnIt onLearned={noop} onDismiss={noop} />}
               />
             </ul>
           </Case>
           <Case id="S2" replaces="research-view can-sing row">
             <ul className={list}>
-              <SongRow title="Southbank in the Rain" artist="Hana Lee" year={2024} album="Laneways" durationMs={214000} own actions={<SongActions title="Southbank in the Rain" onRemove={noop} />} />
+              <SongRow title="Southbank in the Rain" artist="Hana Lee" year={2024} album="Laneways" durationMs={214000} actions={<SongActions title="Southbank in the Rain" onRemove={noop} />} />
               <SongRow title="Riptide" artist="Vance Joy" year={2013} durationMs={204000} actions={<SongActions title="Riptide" onRemove={noop} />} />
             </ul>
           </Case>
@@ -92,7 +100,6 @@ export function UnifiedSpecimen() {
                 title="Paper Lanterns"
                 artist="Hana Lee"
                 durationMs={187000}
-                own
                 score={87}
                 scoreLabel="Fit"
                 info={<InfoTag icon="trending">Rising +12</InfoTag>}
@@ -114,7 +121,7 @@ export function UnifiedSpecimen() {
           </Case>
           <Case id="S8" replaces="plan and landing set preview">
             <ul className={list}>
-              <SongRow index={1} title="Southbank in the Rain" artist="Hana Lee" durationMs={214000} own />
+              <SongRow index={1} title="Southbank in the Rain" artist="Hana Lee" durationMs={214000} />
               <SongRow index={2} title="Scar" artist="Missy Higgins" durationMs={214000} />
               <SongRow index={3} title="Bloom" artist="The Paper Kites" durationMs={214000} />
             </ul>
@@ -147,9 +154,9 @@ export function UnifiedSpecimen() {
                 artist={LONG}
                 info={
                   <>
-                    <InfoTag icon="spotify">Spotify</InfoTag>
-                    <InfoTag>Last.fm</InfoTag>
-                    <InfoTag tone="qloo">Qloo</InfoTag>
+                    <InfoTag source="spotify" />
+                    <InfoTag source="lastfm" />
+                    <InfoTag source="qloo" />
                     <InfoTag>Builds on Angus & Julia Stone</InfoTag>
                   </>
                 }
@@ -157,6 +164,71 @@ export function UnifiedSpecimen() {
               />
             </ul>
           </Case>
+        </div>
+      </Group>
+
+      <Group title="User feedback U01-U09">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Case id="U01 U02" replaces="boxed chips, rule-coloured hexes">
+            <div className="flex flex-col gap-3 py-3">
+              <ArtistChip name="Wolfine" state="picked" onRemove={noop} href="https://open.spotify.com/artist/x" />
+              <ArtistChip name="Residente" state="suggested" onAdd={noop} />
+              <ArtistChip name="Rxnde Akozta" state="added" />
+              <ArtistChipList inline>
+                <li><ArtistChip size="xs" name="Wolfine" /></li>
+                <li><ArtistChip size="xs" name="Residente" state="suggested" /></li>
+              </ArtistChipList>
+              <div className="flex flex-wrap items-center gap-3">
+                <HexCell size={44}>A</HexCell>
+                <HexCell size={44} tone="media">B</HexCell>
+                <HexCell size={44} tone="primary">C</HexCell>
+                <HexCell size={44} tone="muted">D</HexCell>
+                <HexCell size={44} tone="dashed">E</HexCell>
+                <HexCell size={44} tone="error">F</HexCell>
+                <ScoreCell value={72} size="md" label="Fit" />
+              </div>
+            </div>
+          </Case>
+          <Case id="U03 U04" replaces="song cover and artist text: cover image / artist photo / icon, artist as a hex with the name in a tooltip">
+            <ul className={list}>
+              <SongRow title="With cover" artist="Residente" image="/brand/favicon/favicon-32.png" year={2017} />
+              <SongRow title="Artist photo as fallback" artist="Wolfine" artistImage="/brand/favicon/favicon-32.png" year={2021} album="Album" />
+              <SongRow title="Icon fallback" artist="Rxnde Akozta" />
+              <SongRow title="Two artists, and a source" artists={[{ name: "Wolfine" }, { name: "Residente" }]} artist="Wolfine, Residente" source="spotify" href="https://open.spotify.com/track/x" />
+            </ul>
+          </Case>
+          <Case id="U05 U06 U08" replaces="Reason with a chip row; inline mentions in a sentence">
+            <div className="flex flex-col gap-3 py-3">
+              <Reason text={wolfine} />
+              <p className="m-0 text-sm leading-6 text-muted-foreground">
+                You sound like <MentionView mention={{ kind: "artist", name: "Residente", href: "https://open.spotify.com/artist/x" }} />,{" "}
+                <MentionView mention={art("Rxnde Akozta")} /> and <MentionView mention={art("Wolfine", 31)} />. Read{" "}
+                <MentionView mention={{ kind: "song", title: "Bzrp Session 53" }} /> on <MentionView mention={{ kind: "source", source: "spotify" }} />, found on{" "}
+                <MentionView mention={{ kind: "source", source: "qloo" }} /> and <MentionView mention={{ kind: "source", source: "lastfm" }} />.
+              </p>
+            </div>
+          </Case>
+          <Case id="U07" replaces="text source tags">
+            <div className="flex flex-wrap items-center gap-4 py-3">
+              <SourceLogo source="spotify" />
+              <SourceLogo source="lastfm" />
+              <SourceLogo source="qloo" />
+              <InfoTag source="spotify" />
+            </div>
+          </Case>
+        </div>
+        <div className="flex flex-col gap-4">
+          <h3 className="m-0 font-mono text-xs font-bold text-muted-foreground">U09 StepCell: each of the nine icons, in done / running / pending / failed / skipped</h3>
+          {(["done", "running", "pending", "failed", "skipped"] as StepCellStatus[]).map((st) => (
+            <ul key={st} className="m-0 flex list-none flex-wrap gap-3 p-0">
+              {REPERTOIRE_STEPS.map((s, i) => (
+                <li key={s.key} className="flex flex-col items-center gap-1 font-mono text-[10px] text-muted-foreground">
+                  <StepCell status={st} icon={s.icon} n={i + 1} />
+                  {st} {s.key}
+                </li>
+              ))}
+            </ul>
+          ))}
         </div>
       </Group>
 
@@ -189,11 +261,10 @@ export function UnifiedSpecimen() {
           </Case>
           <Case id="A5" replaces="Because cells">
             <div className="py-3">
-              <Reason text="Fans of these artists love it." because={because} />
+              <Reason text={becauseText} />
               <Reason
                 className="mt-3"
-                text="Because your fans like"
-                because={[{ name: "Gillian Welch", score: 31 }, { name: "The Teskey Brothers", score: 22 }]}
+                text={["Because your fans like ", art("Gillian Welch", 31), ", ", art("The Teskey Brothers", 22)]}
               />
             </div>
           </Case>
@@ -287,9 +358,9 @@ export function UnifiedSpecimen() {
             <div className="flex flex-wrap gap-2 py-3">
               <InfoTag icon="trending" tone="signal">Rising +12</InfoTag>
               <InfoTag icon="usual">Usual crowd too</InfoTag>
-              <InfoTag icon="spotify">Spotify</InfoTag>
-              <InfoTag>Last.fm</InfoTag>
-              <InfoTag tone="qloo">Qloo</InfoTag>
+              <InfoTag source="spotify" />
+              <InfoTag source="lastfm" />
+              <InfoTag source="qloo" />
               <InfoTag>Builds on Angus & Julia Stone</InfoTag>
               <InfoTag icon="pin">Crowd at Federation Square</InfoTag>
             </div>
@@ -306,7 +377,7 @@ export function UnifiedSpecimen() {
           <Case id="Reason" replaces="WithCells, evidence-line, 'because' line">
             <div className="flex flex-col gap-4 py-3">
               <Reason text="Your crowd at this spot sings along to it." />
-              <Reason text="Fits this slot, because fans of these artists love it." because={because} />
+              <Reason text={["Fits this slot, because fans of ", art("Boy & Bear"), " love it."]} />
             </div>
           </Case>
           <Case id="SongActions md" replaces="text Buttons, ghost icons, 'Add'/'Added' labels (44px)">

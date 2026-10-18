@@ -104,7 +104,7 @@ function SuggestionRow({ song, media, known, busy, onStatus }: { song: LearnSugg
         href={media?.href ?? spotifyHref(song.sourceUrl) ?? undefined}
         source={media?.source ?? (song.songSource === "plan" ? undefined : song.songSource)}
         muted={song.status === "dismissed"}
-        tags={song.status === "learned" ? <SongTag kind="learned" /> : song.isNew && pending ? <SongTag kind="new" /> : undefined}
+        tags={song.status === "learned" ? <SongTag kind="learned" /> : undefined}
         info={info}
         reason={<Reason text={mentionsIn(reasonText, entities)} />}
         actions={<SongActions title={song.title} artist={song.artist} disabled={busy} learnIt onLearned={pending ? go("learned") : undefined} onDismiss={pending ? go("dismissed") : undefined} onUndo={pending ? undefined : go("pending")} />}
@@ -731,7 +731,7 @@ export function ResearchView() {
             </div>
           )}
           {!live && research && feed.length > 0 && (
-            <Fold label={R.howBuilt} count={feed.filter((s) => s.tool).length} data-testid="research-folded">
+            <Fold label={R.howBuilt} count={feed.filter((s) => s.tool).length} defaultOpen data-testid="research-folded">
               {researchFeed()}
             </Fold>
           )}

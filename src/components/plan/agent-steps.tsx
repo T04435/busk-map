@@ -5,7 +5,6 @@ import { StepCell } from "@/components/honeycomb/step-cell";
 import { AgentTag } from "@/components/honeycomb/agent-tag";
 import { Fragment, useId, useState, type ReactNode } from "react";
 import { cn } from "cn";
-import { Fold } from "@/components/honeycomb/fold";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
 import { Loader } from "@/components/honeycomb/loader";
@@ -253,7 +252,6 @@ export function AgentStepStream({
   onRetry,
   when,
   pins,
-  collapsed = false,
   showRaw,
   onShowRawChange,
   footer,
@@ -274,7 +272,6 @@ export function AgentStepStream({
   when?: string;
   /** The busk's ranked pitches, for the mini map on "Where your crowd gathers". */
   pins?: MiniPin[];
-  collapsed?: boolean;
   showRaw: boolean;
   onShowRawChange: (on: boolean) => void;
   /** "Data used", at the foot. */
@@ -286,13 +283,7 @@ export function AgentStepStream({
 }) {
   const rawId = useId();
   const [rawView, setRawView] = useState<"table" | "json">("table");
-  // Each time Raw data is turned on the folded feed remounts open; turning it off again leaves the feed open (not folded shut
-  // under the reader).
-  const [rawOpens, setRawOpens] = useState(0);
-  const onRawChange = (on: boolean) => {
-    if (on) setRawOpens((n) => n + 1);
-    onShowRawChange(on);
-  };
+  const onRawChange = onShowRawChange;
   const live = phase === "starting" || phase === "working" || phase === "thinking";
   const raw = showRaw && !live;
   // Once the run is over, a step still marked running was cut short.
@@ -433,14 +424,8 @@ export function AgentStepStream({
           ))}
         </dl>
       ) : null}
-      {collapsed || mode === "replay" ? (
-        // A replay opens already folded; a run that just finished folds with a short animation (the phone and tablet layout). Raw data opens it.
-        <Fold key={`list-${rawOpens}`} label={mode === "replay" ? "Every check, from earlier" : "Every check"} count={calls.length} arriving={mode !== "replay" && rawOpens === 0} defaultOpen={raw || rawOpens > 0} data-testid="agent-disclosure">
-          {list}
-        </Fold>
-      ) : (
-        list
-      )}
+      {/* U22: the steps are always shown, never behind an inner fold (busk plan and Repertoire alike). */}
+      {list}
       {foot}
       {footer ? <div className="mt-4 border-t-2 border-rule pt-4">{footer}</div> : null}
     </section>

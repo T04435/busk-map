@@ -387,7 +387,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
       onRetry={qlooDown ? retry : undefined}
       when={slotShort}
       pins={plan ? plan.pitches.map((p, i) => ({ id: p.id, name: p.name, lat: p.lat, lon: p.lon, rank: i + 1 })) : undefined}
-      collapsed={!wide && !pending && !qlooDown}
       showRaw={showRaw}
       onShowRawChange={setShowRaw}
       subtitle={!wide && !live && !qlooDown ? `Each check ${modelName(model)} ran for the busk above, and what we found.` : undefined}

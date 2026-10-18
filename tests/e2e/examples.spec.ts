@@ -159,7 +159,7 @@ test.describe("live agent (mock model offline)", () => {
     release();
 
     // The feed, newest first: plain-words cards, with Claude's note before a call. No tool names, inputs or step numbers.
-    // (On phones and tablets it folds into "Every check" once the plan arrives.)
+    // (It stays open on every width: no inner fold, U22.)
     await waitForPlan(page);
     await expect(page.getByTestId("plan-pending")).toHaveCount(0);
     const feed = await agentSteps(page);
@@ -206,8 +206,7 @@ test.describe("live agent (mock model offline)", () => {
     // Labelled as a replay at the top, not only in the folded steps.
     await expect(page.getByTestId("replay-label")).toHaveText("Replay of an earlier run (no new model call)");
     await expect(page.getByText(EXPLANATIONS_LABEL)).toBeVisible();
-    await expect(page.getByRole("list", { name: "Research, newest first" })).toHaveCount(0);
-    await page.getByText(/^Every check, from earlier/).click();
+    // U22: the replayed steps show directly, with no inner fold.
     const replayedSteps = page.getByRole("list", { name: "Research, newest first" });
     await expect(replayedSteps.getByText("Your best pitches so far").first()).toBeVisible();
     // The replay keeps each step's data: raw data shows it.

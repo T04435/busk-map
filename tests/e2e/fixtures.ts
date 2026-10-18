@@ -28,14 +28,9 @@ export async function waitForPlan(page: import("@playwright/test").Page) {
   await expect(page.getByRole("region", { name: "Pitches", exact: true })).toBeVisible();
 }
 
-/**
- * The research feed (newest first). On phones and tablets, and for a replay, it sits folded under "Every check": open it first.
- */
+/** The research feed (newest first): always shown, never folded (U22). */
 export async function agentSteps(page: import("@playwright/test").Page) {
   const list = page.getByRole("list", { name: "Research, newest first" });
-  const folded = page.getByText(/^Every check/);
-  await expect(list.or(folded).first()).toBeVisible();
-  if (!(await list.isVisible())) await folded.first().click();
   await expect(list).toBeVisible();
   return list;
 }

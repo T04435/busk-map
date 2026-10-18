@@ -155,7 +155,8 @@ test.describe("the research feed", () => {
     await waitForPlan(page);
     await expect(page.getByTestId("replay-label")).toHaveText("Replay of an earlier run (no new model call)");
     await expect(page.getByTestId("agent-tag")).toHaveText("Replay");
-    await expect(page.getByText(/^Every check, from earlier/)).toBeVisible();
+    // U22: the replayed steps show directly, no "Every check, from earlier" fold.
+    await expect(page.getByRole("list", { name: "Research, newest first" })).toBeVisible();
   });
 
   test("the funnel fills from the totals", async ({ page }) => {

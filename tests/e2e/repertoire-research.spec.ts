@@ -66,9 +66,10 @@ test.describe("Repertoire research (offline)", () => {
     // The research is folded below the results.
     const folded = page.getByTestId("research-folded");
     await expect(folded).toBeVisible();
-    await expect(folded.getByRole("button", { name: /How we built your Repertoire/ })).toHaveAttribute("aria-expanded", "false");
-    await folded.getByRole("button", { name: /How we built your Repertoire/ }).click();
+    // U21/U22: the fold is open by default and the nine steps show directly inside it, with no inner fold.
+    await expect(folded.getByRole("button", { name: /How we built your Repertoire/ })).toHaveAttribute("aria-expanded", "true");
     await expect(folded.getByTestId("agent-step")).toHaveCount(9);
+    await expect(folded.getByTestId("agent-disclosure")).toHaveCount(0);
   });
 
   test("a reload shows the saved research without a new run; Find more reruns three steps and never repeats a song", async ({ page }) => {

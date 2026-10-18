@@ -169,14 +169,7 @@ function SetlistPreview({
               >
                 {song.origin === "suggested" && song.suggestion && (
                   <span className="block text-sm text-muted-foreground" data-testid="suggestion-because">
-                    {song.suggestion.because}{" "}
-                    {suggestionHref(song.suggestion) ? (
-                      <a className="font-bold text-foreground underline underline-offset-3" href={suggestionHref(song.suggestion)} target="_blank" rel="noreferrer">
-                        On Spotify
-                      </a>
-                    ) : (
-                      `(from ${song.suggestion.source === "spotify" ? "Spotify" : "Last.fm"})`
-                    )}
+                    {song.suggestion.because}
                   </span>
                 )}
               </SongRow>

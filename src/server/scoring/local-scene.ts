@@ -55,20 +55,20 @@ export function preferActGenres(handles: GenreHandle[], act: readonly { id: stri
   return { handles: [...mine, ...handles.filter((h) => !shared(h))], yours: mine.map((h) => h.id) };
 }
 
-export type SceneAct = { id: string; name: string; /** The act's fans' Qloo affinity for this local act (0–1), null when Qloo left it out of the re-score. */ affinity: number | null };
+export type SceneAct = { id: string; name: string; /** The act's fans' Qloo affinity for this local act (0–1), null when Qloo left it out of the re-score. */ affinity: number | null; /** Qloo's photo of the act, when it has one. */ image?: string };
 
 /**
  * The local scene list re-scored for the act's fans ("local acts your fans would like"): scored acts first, best first;
  * acts Qloo left out of the re-score follow in the scene's own order. The act's own artists are never offered back.
  */
-export function rankSceneActs(scene: { id: string; name: string }[], affinity: Record<string, number>, exclude: ReadonlySet<string>): SceneAct[] {
+export function rankSceneActs(scene: { id: string; name: string; image?: string | null }[], affinity: Record<string, number>, exclude: ReadonlySet<string>): SceneAct[] {
   const seen = new Set<string>();
   const acts: SceneAct[] = [];
   for (const a of scene) {
     if (exclude.has(a.id) || seen.has(a.id) || seen.has(nameKey(a.name))) continue;
     seen.add(a.id);
     seen.add(nameKey(a.name));
-    acts.push({ id: a.id, name: a.name, affinity: affinity[a.id] ?? null });
+    acts.push({ id: a.id, name: a.name, affinity: affinity[a.id] ?? null, ...(a.image ? { image: a.image } : {}) });
   }
   const order = new Map(acts.map((a, i) => [a.id, i]));
   return acts.sort((x, y) => (y.affinity ?? -1) - (x.affinity ?? -1) || order.get(x.id)! - order.get(y.id)!);

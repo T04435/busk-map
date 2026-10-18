@@ -81,7 +81,8 @@ function SuggestionRow({ song, media, busy, onStatus }: { song: LearnSuggestionV
     ...song.basedOn.filter((b) => b.kind === "crowd").map((b) => <InfoTag key={`c-${b.name}`}>{L.crowdAt(b.name)}</InfoTag>),
     ...(song.growth !== null ? [<InfoTag key="growth">{L.growth}</InfoTag>] : []),
     ...(song.trendDelta !== null ? [<InfoTag key="rising">{L.rising(song.trendDelta)}</InfoTag>] : []),
-    <InfoTag key="source">{L.source[song.songSource]}</InfoTag>,
+    // U15: Spotify and Last.fm show as the row's source logo only; a song added from a plan still says so.
+    ...(song.songSource === "plan" ? [<InfoTag key="source">{L.source.plan}</InfoTag>] : []),
   ];
   const pending = song.status === "pending";
   return (

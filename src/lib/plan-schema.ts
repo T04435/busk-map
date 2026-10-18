@@ -273,7 +273,7 @@ export const planSchema = z.object({
       .object({
         /** `yours`: a genre the act's own sound shares (Repertoire research), absent otherwise. */
         genres: z.array(z.object({ name: z.string(), over: z.number(), yours: z.boolean().optional() })),
-        acts: z.array(z.object({ name: z.string(), affinity: z.number().nullable() })),
+        acts: z.array(z.object({ name: z.string(), affinity: z.number().nullable(), image: z.string().optional() })),
       })
       .nullable()
       .default(null),

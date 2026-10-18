@@ -76,6 +76,8 @@ export type QlooOutput = {
   /** Qloo's other descriptive tags on the entity (the audience character: "Youthful", "Energetic"). */
   audience: string[];
   popularity: number | null;
+  /** The act's photo (Spotify profile), for the inline mention in the step card. Optional: older saved runs lack it. */
+  image?: string | null;
 };
 export type ResearchArtistOut = { name: string; qlooId: string; spotifyId?: string; image?: string; tags?: string[]; affinity: number | null; because?: string[] };
 export type SoundsLikeOutput = { summary: string; artists: ResearchArtistOut[]; /** True when they were saved as your "Artists you sound like" (only when that list was empty). */ saved: boolean };
@@ -84,7 +86,7 @@ export type FansOutput = { summary: string; age: LeanOut[]; gender: LeanOut[]; a
 export type FansLoveOutput = { summary: string; artists: ResearchArtistOut[]; signalledBy: string[]; excluded: number };
 export type LearnOutput = {
   summary: string;
-  songs: { songId: string; title: string; artist: string; artistId: string; year: number | null; durationMs: number | null; source: "spotify" | "lastfm"; popularity: number | null }[];
+  songs: { songId: string; title: string; artist: string; artistId: string; year: number | null; durationMs: number | null; source: "spotify" | "lastfm"; popularity: number | null; /** The artist's Qloo photo, when Qloo gave one. */ artistImage?: string }[];
   checked: number;
   skipped: { alreadySuggested: number; dismissed: number; canSing: number };
   overRepresented: string[];

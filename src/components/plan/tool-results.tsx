@@ -215,14 +215,14 @@ const RESEARCH_UI: Record<string, ToolUi> = {
   research_qloo: researchUi((o) => {
     if (!o.matched || !str(o.name)) return str(o.summary) ?? "";
     const audience = Array.isArray(o.audience) ? (o.audience as string[]) : [];
-    return ["Found ", mentionArtist(str(o.name) as string), " on ", mentionSource("qloo"), ...(audience.length ? [`: ${audience.slice(0, 4).join(", ")}`] : [])];
+    return ["Found ", mentionArtist(str(o.name) as string, { image: str(o.image) }), " on ", mentionSource("qloo"), ...(audience.length ? [`: ${audience.slice(0, 4).join(", ")}`] : [])];
   }),
   research_sounds_like: researchUi(artistsLine("You sound like", "Qloo found no artists like you")),
   research_fans_love: researchUi(artistsLine("Your fans also love", "Qloo found no other artists your fans love")),
   research_learn: researchUi((o) => {
     const songs = arr(o.songs).filter((x) => str(x.title));
     return songs.length
-      ? [`Found ${songs.length} ${songs.length === 1 ? "song" : "songs"} your fans would stop for, like `, ...listOf(songs.slice(0, 3).map((x) => mentionSong(str(x.title) as string, { artist: str(x.artist) })))]
+      ? [`Found ${songs.length} ${songs.length === 1 ? "song" : "songs"} your fans would stop for, like `, ...listOf(songs.slice(0, 3).map((x) => mentionSong(str(x.title) as string, { artist: str(x.artist), image: str(x.artistImage) })))]
       : (str(o.summary) ?? "");
   }),
   // Step 9 in the Hive's voice from its data, so a saved run from before U11 ("Claude ranked…") reads the same as a new one.

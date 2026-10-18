@@ -334,7 +334,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
         localScene && localScene.acts.length > 0
           ? {
               genres: localScene.genres.map((g) => ({ name: titleCase(g.name), over: g.over, ...(localScene.yours?.includes(g.id) ? { yours: true } : {}) })),
-              acts: localScene.acts.slice(0, SCENE_ACTS_SHOWN).map((a) => ({ name: a.name, affinity: a.affinity === null ? null : Math.round(a.affinity * 100) / 100 })),
+              acts: localScene.acts.slice(0, SCENE_ACTS_SHOWN).map((a) => ({ name: a.name, affinity: a.affinity === null ? null : Math.round(a.affinity * 100) / 100, ...(a.image ? { image: a.image } : {}) })),
             }
           : null,
       // Qloo genre names arrive in mixed case ("indie", "Alternative Rock"): shown in title case.

@@ -164,7 +164,7 @@ export function CrowdPanel({
           <ul className="m-0 grid list-none gap-2 p-0">
             {crowd.localScene.acts.map((a) => (
               <li key={a.name}>
-                <ArtistChip name={a.name} score={a.affinity !== null ? <ScoreCell value={a.affinity * 100} size="sm" label="Affinity" /> : undefined} />
+                <ArtistChip name={a.name} image={a.image} score={a.affinity !== null ? <ScoreCell value={a.affinity * 100} size="sm" label="Affinity" /> : undefined} />
               </li>
             ))}
           </ul>

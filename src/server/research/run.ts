@@ -300,6 +300,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             genres,
             audience,
             popularity: r2(d?.popularity ?? hit.entity.popularity),
+            ...(profile.image ? { image: profile.image } : {}),
           };
         });
         if (!found?.matched || !found.qlooId) {
@@ -376,7 +377,9 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
       if (fansLove && fansLove.artists.length > 0) {
         const pick = fansLove.artists.slice(0, RESEARCH_LEARN_ARTISTS).map((a) => a.qlooId);
         await step("learn", { artists: fansLove.artists.slice(0, RESEARCH_LEARN_ARTISTS).map((a) => a.name) }, async (): Promise<LearnOutput> => {
-          const out = await runTopTracks(ctx, state, pick, RESEARCH_LEARN_PER_ARTIST);
+          const found = await runTopTracks(ctx, state, pick, RESEARCH_LEARN_PER_ARTIST);
+          const photo = new Map(fansLove.artists.filter((a) => a.image).map((a) => [a.qlooId, a.image as string]));
+          const out = { ...found, songs: found.songs.map((s) => (photo.has(s.artistId) ? { ...s, artistImage: photo.get(s.artistId) } : s)) };
           return { ...out, summary: out.songs.length ? `Found ${plural(out.songs.length, "song")} your fans would stop for` : out.summary };
         });
       }

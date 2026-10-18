@@ -95,7 +95,7 @@ test.describe("Repertoire storage (offline, memory store)", () => {
     const learned = page.getByRole("list", { name: "Learned", exact: true });
     await expect(learned).toContainText("How to Make Gravy");
     await expect(page.getByRole("list", { name: "Songs you can sing" })).not.toContainText("How to Make Gravy");
-    await page.getByRole("button", { name: /^Move to Songs you can sing: How to Make Gravy/ }).click();
+    await page.getByRole("button", { name: /^Move to can sing: How to Make Gravy/ }).click();
     await expect(page.getByRole("list", { name: "Songs you can sing" })).toContainText("How to Make Gravy");
     await expect(page.getByText("Songs you learn from suggestions show up here.")).toBeVisible();
   });
@@ -115,8 +115,8 @@ test.describe("Repertoire storage (offline, memory store)", () => {
     const all = (await (await page.request.get("/api/playlist")).json()).playlist.songs as { id: string; title: string }[];
     for (const song of all.filter((s) => ["Four", "Five"].includes(s.title))) await page.request.patch(`/api/playlist/songs/${song.id}`, { data: { state: "learned" } });
     await page.reload();
-    await page.getByRole("button", { name: /^Move to Songs you can sing: Four/ }).click();
-    await expect(page.getByRole("button", { name: /^Move to Songs you can sing: Five/ })).toBeFocused();
+    await page.getByRole("button", { name: /^Move to can sing: Four/ }).click();
+    await expect(page.getByRole("button", { name: /^Move to can sing: Five/ })).toBeFocused();
     await page.getByRole("button", { name: "Remove Five" }).click();
     // The Learned list is empty: the page's main field (the research link, as there is no research yet).
     await expect(page.getByLabel("Your Spotify artist link")).toBeFocused();

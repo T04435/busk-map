@@ -6,9 +6,10 @@ import { ChevronRightIcon } from "lucide-react";
 import { Fragment } from "react";
 import { cn } from "cn";
 import { HexCell } from "@/components/honeycomb/hex-cell";
+import { InfoTag } from "@/components/honeycomb/info-tag";
+import { Reason } from "@/components/honeycomb/reason";
 import { Loader } from "@/components/honeycomb/loader";
 import { StepData } from "@/components/plan/agent-steps";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -119,8 +120,8 @@ export function LearnFeed({ live, heading, running, raw }: { live: LearnLive; he
                   {step.tool ? (
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium break-words">{plain.headline}</span>
-                      {step.status === "running" && <Badge variant="outline">working</Badge>}
-                      {rejected && <Badge variant="outline">rejected</Badge>}
+                      {step.status === "running" && <InfoTag>working</InfoTag>}
+                      {rejected && <InfoTag>rejected</InfoTag>}
                     </div>
                   ) : (
                     <p className="font-medium">{step.label}</p>
@@ -140,7 +141,7 @@ export function LearnFeed({ live, heading, running, raw }: { live: LearnLive; he
                     <ul aria-label="Because" className="flex flex-wrap gap-1.5">
                       {plain.chips.map((chip) => (
                         <li key={chip}>
-                          <Badge variant="outline">{chip}</Badge>
+                          <Reason text={chip} />
                         </li>
                       ))}
                     </ul>

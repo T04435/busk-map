@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { profilePhoto } from "@/components/playlist/profile-header";
+import { profilePhoto } from "@/lib/spotify-profile";
 import { artistSource } from "@/components/landing/artist-picker";
 import { withSuggested } from "@/components/playlist/sounds-like-suggestions";
 import { CATALOG } from "@/server/qloo-mock/catalog";

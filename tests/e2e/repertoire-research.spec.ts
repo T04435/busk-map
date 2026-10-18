@@ -56,7 +56,7 @@ test.describe("Repertoire research (offline)", () => {
     const order = await page.getByTestId("research-results").locator(":scope > [data-testid]").evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")));
     expect(order).toEqual(["research-profile", "research-can-sing", "research-sounds-like", "research-fans", "research-fans-love", "research-to-learn", "research-summary"]);
     await expect(page.getByTestId("profile-name")).toHaveText(OFFLINE_TEST_ARTIST.name);
-    await expect(page.getByTestId("profile-audience")).toContainText("Dreamy");
+    await expect(page.getByTestId("research-profile")).toContainText("Dreamy");
     await expect(page.getByLabel("Act name")).toHaveValue(OFFLINE_TEST_ARTIST.name);
     const canSing = page.getByRole("list", { name: "Songs you can sing" });
     await expect(canSing.getByRole("listitem")).toHaveCount(4);

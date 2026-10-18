@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import type { TrackResult } from "@/components/forms/repertoire-api";
 import { SongSearch } from "@/components/landing/song-search";
-import { Input } from "@/components/ui/input";
 import { Icon } from "@/components/honeycomb/icon";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";

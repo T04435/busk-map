@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Chip } from "@/components/honeycomb/chip";
+import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
 import { Button } from "@/components/ui/button";
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import type { SoundsLikeSuggestions } from "@/lib/playlist-schema";
@@ -61,16 +61,13 @@ export function SoundsLikeSuggestionsList({ enabled, refreshKey, picked, onAdd }
         </Button>
       </div>
       <p className="m-0 text-sm text-muted-foreground">{COPY.soundsLike.intro}</p>
-      <ul aria-label={COPY.soundsLike.heading} className="m-0 flex list-none flex-wrap gap-2 p-0">
+      <ArtistChipList>
         {open.map((artist) => (
-          <li key={artist.qlooId} className="flex items-center gap-1">
-            <Chip>{artist.name}</Chip>
-            <Button type="button" variant="outline" size="sm" aria-label={`${COPY.soundsLike.add} ${artist.name}`} onClick={() => onAdd([artist])}>
-              {COPY.soundsLike.add}
-            </Button>
+          <li key={artist.qlooId}>
+            <ArtistChip name={artist.name} image={artist.image} source="qloo" tags={artist.tags} state="suggested" onAdd={() => onAdd([artist])} />
           </li>
         ))}
-      </ul>
+      </ArtistChipList>
     </div>
   );
 }

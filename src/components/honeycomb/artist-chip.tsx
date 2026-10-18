@@ -121,9 +121,21 @@ export function ArtistChip({
 }
 
 /** The grid ArtistChips sit in: as many columns as fit, never narrower than 260px (or the container). `inline` is the wrapping row for xs chips. */
-export function ArtistChipList({ children, inline, className }: { children: React.ReactNode; inline?: boolean; className?: string }) {
+export function ArtistChipList({
+  children,
+  inline,
+  label,
+  className,
+}: {
+  children: React.ReactNode;
+  inline?: boolean;
+  /** Names the list to screen readers ("Artists you sound like"). */
+  label?: string;
+  className?: string;
+}) {
   return (
     <ul
+      aria-label={label}
       className={cn(
         "m-0 list-none p-0",
         inline ? "flex flex-wrap gap-1.5" : "grid grid-cols-[repeat(auto-fill,minmax(min(260px,100%),1fr))] gap-2",

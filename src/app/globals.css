@@ -52,6 +52,13 @@
   --qloo: #5b5ba3;
   --qloo-brand: #8C8CC8;
   --signal-text: #b13a00;
+  /* Source colours for the Hive mark's centre cell (single-source steps): Qloo's bluestone with a white mark, Spotify's green with a black mark, Last.fm's red with a white mark. Brand colours, the same in both themes. */
+  --source-qloo: #141c21;
+  --source-qloo-ink: #ffffff;
+  --source-spotify: #1ed760;
+  --source-spotify-ink: #000000;
+  --source-lastfm: #d51007;
+  --source-lastfm-ink: #ffffff;
   --zone-pink: #e0337a;
   --rule: #141c21;
   --taste-1: #fbe3d2;

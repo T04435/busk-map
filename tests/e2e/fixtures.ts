@@ -4,7 +4,7 @@ import { test as base, expect } from "@playwright/test";
 export const LOCAL = !process.env.PLAYWRIGHT_BASE_URL;
 
 /** The explanations chip: the local offline server's mock model says so; a deploy's Claude says Claude (B-007). */
-export const EXPLANATIONS_LABEL = LOCAL ? "Explanations: test model (offline)" : "Written by Hive (runs on Claude)";
+export const EXPLANATIONS_LABEL = LOCAL ? "Explanations: test model (offline)" : "Written by Hive";
 /** The Data sources credit for Claude, shown only when Claude wrote the explanations. */
 export const CLAUDE_CREDIT = "Plan explanations written by Claude (Anthropic) via Vercel AI Gateway";
 /** Who the page says wrote the notes, picks and whys (B-010): the test model on the local offline server, Claude on a deploy. */

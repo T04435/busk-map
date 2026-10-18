@@ -6,13 +6,12 @@ import { useId } from "react";
 import { cn } from "cn";
 import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
 import { AgentLockup } from "@/components/honeycomb/agent-lockup";
-import { HIVE_CELLS, hiveProgress } from "@/lib/agent-persona";
 import { Icon, type IconName } from "@/components/honeycomb/icon";
 import { StepCell } from "@/components/honeycomb/step-cell";
 import { RepertoireFunnel } from "./repertoire-funnel";
 import type { RepertoireStep, RepertoireStepKey, RepertoireTotals, StepStatus } from "./types";
 
-/** `sources`: the data each step reads, drawn as their icon-only marks (U17); the summary is the Hive's own (credited by the AI chip). */
+/** `sources`: the data each step reads, drawn as their icon-only marks (U17); the summary is the Hive's own. */
 export type RepertoireStepInfo = { key: RepertoireStepKey; title: string; sources: MentionSource[]; icon: IconName };
 
 /** The ten steps in order (spec: repertoire-research-spec.md; Where your fans are added by U24). */
@@ -46,7 +45,7 @@ function StepCard({ info, step, n }: { info: RepertoireStepInfo; step: Repertoir
       data-status={status}
       className={cn("flex gap-3 p-3", running ? "my-1 mr-1 border-2 border-rule bg-popover shadow-[4px_4px_0_var(--primary)]" : "border-t border-border first:border-t-0")}
     >
-      <StepCell size={40} status={status} icon={info.icon} n={n} />
+      <StepCell size={40} status={status} icon={info.icon} n={n} source={info.sources.length === 1 ? info.sources[0] : undefined} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <h3 className={cn("m-0 text-base leading-5 font-bold [overflow-wrap:anywhere]", quiet && "font-medium text-muted-foreground")}>{info.title}</h3>
@@ -134,7 +133,6 @@ export function RepertoireResearch({
   const lockup = (
     <AgentLockup
       live={running}
-      progress={done ? HIVE_CELLS : hiveProgress(finished, REPERTOIRE_STEPS.length)}
       status={running ? "is researching your act" : done ? "researched your act" : "couldn't finish researching your act"}
     />
   );

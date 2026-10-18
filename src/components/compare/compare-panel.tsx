@@ -89,7 +89,7 @@ const Section = ({ label, title, count, children }: { label: string; title: stri
  * can't know), and only plain AI (with Busk Map's own score for the pitch where it can score it). Agreement is a badge only:
  * the baseline never changes a score.
  */
-/** `model`: the model this server runs; offline the plain AI is the test model, not Claude Haiku (B-010). */
+/** `model`: the model this server runs; offline the plain AI is the test model, not a real model (B-010). */
 export function ComparePanel({ state, pitches, model = null }: { state: BaselineState; pitches: Pitch[]; model?: ExplanationsModel | null }) {
   const mock = state.status === "done" ? state.baseline.model === "mock" : model === "mock";
   return (
@@ -97,7 +97,7 @@ export function ComparePanel({ state, pitches, model = null }: { state: Baseline
       <header className="space-y-1">
         <h2 className="m-0 font-display text-[32px] leading-none font-extrabold uppercase">Busk Map vs a plain AI</h2>
         <p className="m-0 text-sm text-muted-foreground">
-          The same question (your act, songs, city, day and slot) sent to {mock ? `${modelName("mock")} (offline)` : "Claude Haiku"} with no tools and no data: no Qloo, no sensors, no rules.
+          The same question (your act, songs, city, day and slot) sent to {mock ? `${modelName("mock")} (offline)` : "a plain AI model"} with no tools and no data: no Qloo, no sensors, no rules.
           It runs alongside every plan as a control and never changes a score.
         </p>
       </header>

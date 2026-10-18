@@ -3,8 +3,8 @@
  *
  * ONE source for the display name and the voice. Client-safe, no I/O. Every user-facing "Claude researches / found / ranked"
  * goes through `modelName()` (lib/sources.ts), which reads AGENT_NAME from here; the copy helpers below are the lines more
- * than one component needs. The honesty rule is part of the persona, not an extra: the Hive is a persona name and Claude is
- * the model, stated plainly wherever the Hive is introduced (HONESTY).
+ * than one component needs. In the product UI the agent is only ever called the Hive: no model name, credit or logo. The
+ * system prompt below (server only) still tells the model to say what it is if it is asked.
  */
 
 /** The persona's name. Mid-sentence it is "the Hive", at the start of one "The Hive", and as a tag "Hive". */
@@ -12,27 +12,10 @@ export const AGENT_NAME = "Hive";
 export const AGENT_NAME_INLINE = `the ${AGENT_NAME}`;
 export const AGENT_NAME_START = `The ${AGENT_NAME}`;
 
-/** The model the Hive runs on, stated plainly (never another AI). */
-export const AGENT_MODEL = "Claude (Sonnet 5.5), made by Anthropic";
-
 /** The agent's name in the form a sentence needs: "the Hive" mid-sentence, "The Hive" at its start, "Hive" as a tag. */
 export function agentName(form: { start?: boolean; tag?: boolean } = {}): string {
   return form.tag ? AGENT_NAME : form.start ? AGENT_NAME_START : AGENT_NAME_INLINE;
 }
-
-/** The chip next to the name wherever the Hive speaks (BRAND's AiChip renders it). */
-export const AGENT_MODEL_CREDIT = "AI · powered by Claude";
-/** The one-line honesty statement: the agent and the model it runs on. */
-export const AGENT_RUNS_ON = `${AGENT_NAME_START}, our agent, runs on Claude`;
-
-/** The honesty copy, in one place: the Brain card body, the footer and the README credit. */
-export const HONESTY = {
-  chip: AGENT_MODEL_CREDIT,
-  brainTitle: `Meet ${AGENT_NAME_INLINE}`,
-  brainBody: `${AGENT_NAME_START} is Busk Map's research agent. It runs on ${AGENT_MODEL}. ${AGENT_NAME_START} picks which Qloo questions to ask, but never makes up a number.`,
-  footer: `${AGENT_NAME_START} runs on Claude, by Anthropic`,
-  readme: `${AGENT_NAME_START} is Busk Map's research agent; "Hive" is a persona name. It runs on ${AGENT_MODEL}.`,
-} as const;
 
 /**
  * The persona block that opens every agent system prompt (busk agent, learn agent, Repertoire summary). It adds a voice and a

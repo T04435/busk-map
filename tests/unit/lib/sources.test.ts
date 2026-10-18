@@ -3,11 +3,11 @@ import { creditsClaude, explainedByLabel, explanationsLabel, modelName } from "@
 
 describe("explanations label and Claude credit (B-007)", () => {
   it("names the model that wrote the explanations", () => {
-    expect(explanationsLabel({ explanations: "ai", explanationsModel: "claude" })).toBe("Written by Hive (runs on Claude)");
+    expect(explanationsLabel({ explanations: "ai", explanationsModel: "claude" })).toBe("Written by Hive");
     expect(explanationsLabel({ explanations: "ai", explanationsModel: "mock" })).toBe("Explanations: test model (offline)");
     expect(explanationsLabel({ explanations: "template", explanationsModel: null })).toBe("Explanations: from the data");
     // Plans stored before the field existed were written by Claude.
-    expect(explanationsLabel({ explanations: "ai" })).toBe("Written by Hive (runs on Claude)");
+    expect(explanationsLabel({ explanations: "ai" })).toBe("Written by Hive");
   });
 
   it("credits Claude only when Claude wrote them", () => {

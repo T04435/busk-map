@@ -57,7 +57,7 @@ export function agentVsEngineLines(agent: { changes: AgentChange[] }, model?: Ex
   );
 }
 
-/** The headline: "Claude checked Busk Map's top 3 and kept them" or "Claude changed N of Busk Map's top 3". */
+/** The headline: "The Hive checked Busk Map's top 3 and kept them" or "The Hive changed N of Busk Map's top 3". */
 export function agentVsEngineTitle(changes: number, model?: ExplanationsModel | null): string {
   return changes === 0 ? `${modelName(model, "start")} checked Busk Map's top 3 and kept them` : `${modelName(model, "start")} changed ${changes} of Busk Map's top 3`;
 }

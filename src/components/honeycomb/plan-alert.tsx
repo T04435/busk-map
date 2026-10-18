@@ -43,7 +43,7 @@ export function PlanAlert({
     case "agent-error":
       return (
         <Alert variant="error" data-testid={testId ?? "agent-error"}>
-          <AlertTitle>Claude could not finish</AlertTitle>
+          <AlertTitle>The Hive could not finish</AlertTitle>
           <AlertDescription>{children ?? message}</AlertDescription>
         </Alert>
       );

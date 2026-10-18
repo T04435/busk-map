@@ -6,7 +6,7 @@ import { AGENT_NAME } from "@/lib/agent-persona";
 export function AgentTag({ name = AGENT_NAME, className }: { name?: string; className?: string }) {
   return (
     <span data-slot="agent-tag" className={cn("mr-1.5 inline-flex items-center gap-1 align-[-2px] whitespace-nowrap", className)}>
-      <HiveMark size={14} />
+      <HiveMark size={14} decorative className="text-signal-text" />
       <span className="font-mono text-[11px] leading-4 font-bold tracking-[0.08em] text-signal-text uppercase">{name}</span>
     </span>
   );

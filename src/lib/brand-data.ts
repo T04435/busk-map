@@ -39,11 +39,11 @@ export const WORDS: Word[] = [
   },
   {
     "t": "The research",
-    "b": "What Claude checked to build the busk. Plain results, never tool names; raw data waits behind its toggle."
+    "b": "What the Hive checked to build the busk. Plain results, never tool names; raw data waits behind its toggle."
   },
   {
     "t": "The engine",
-    "b": "Busk Map’s scoring: plain code, no AI. Claude can only pick among pitches it scored."
+    "b": "Busk Map’s scoring: plain code, no AI. The Hive can only pick among pitches it scored."
   },
   {
     "t": "Honeycomb",

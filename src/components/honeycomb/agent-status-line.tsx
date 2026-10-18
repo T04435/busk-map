@@ -28,22 +28,20 @@ const text = (state: AgentState, model: ExplanationsModel | null | undefined): s
 };
 
 /**
- * One line under the header saying what the agent is doing, with the Hive's mark (24), the run's note and usage. Keeps
- * `agent-status` and `agent-usage`. `progress` fills the mark while live (default 0: the centre pulses).
+ * One line under the header saying what the agent is doing, with the Hive's mark (24, decorative: the sentence carries the state),
+ * the run's note and usage. Keeps `agent-status` and `agent-usage`. Working while it researches, resting when done, and the
+ * dashed plain hex when the Hive didn't run.
  */
 export function AgentStatusLine({
   state,
   note,
   usage,
   model,
-  progress,
 }: {
   state: AgentState | null;
   note?: string | null;
   usage?: RunUsage | null;
   model?: ExplanationsModel | null;
-  /** Cells filled while researching or checking again, 0–6 (hiveProgressOfSteps in lib/agent-persona). */
-  progress?: number;
 }) {
   const live = state === "researching" || state === "rerun";
   return (
@@ -51,13 +49,7 @@ export function AgentStatusLine({
       {state ? (
         <p className="m-0 flex items-start gap-2 font-mono text-sm leading-5 font-medium">
           {/* -2px top and bottom: the 24px mark centres on the first 20px line, and wrapped lines run on under the text. */}
-          <HiveMark
-            className="-my-0.5"
-            size={24}
-            live={live}
-            muted={state === "none"}
-            progress={live ? (progress ?? 0) : state === "done" || state === "replayed" ? 7 : 0}
-          />
+          <HiveMark className="-my-0.5" size={24} state={live ? "working" : "rest"} muted={state === "none" || state === "engine"} decorative />
           <span data-testid="agent-status">
             {note && state === "replayed" ? note : text(state, model)}
           </span>

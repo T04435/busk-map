@@ -2,7 +2,6 @@
 
 import { useId, type FormEvent } from "react";
 import { cn } from "cn";
-import { AiChip } from "@/components/honeycomb/ai-chip";
 import { FormMessage } from "@/components/honeycomb/form-message";
 import { AGENT_NAME_START } from "@/lib/agent-persona";
 import { Icon } from "@/components/honeycomb/icon";
@@ -51,7 +50,6 @@ export function RepertoireEmpty({
         {AGENT_NAME_START} reads your profile, finds you on Qloo, and builds your Repertoire: your fans, your sound-alikes and songs to
         learn.
       </p>
-      <AiChip className="mt-3" />
       <form onSubmit={handleSubmit} noValidate className="mt-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
           <InputGroup className="h-14! sm:flex-1">

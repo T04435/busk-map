@@ -26,7 +26,7 @@ export type ExplanationsModel = "claude" | "mock";
 /** The header chip for a plan's or week's explanations. Plans stored before explanationsModel existed count as Claude. */
 export function explanationsLabel(plan: { explanations: "ai" | "template"; explanationsModel?: ExplanationsModel | null }): string {
   if (plan.explanations !== "ai") return "Explanations: from the data";
-  return plan.explanationsModel === "mock" ? "Explanations: test model (offline)" : `Written by ${AGENT_NAME} (runs on Claude)`;
+  return plan.explanationsModel === "mock" ? "Explanations: test model (offline)" : `Written by ${AGENT_NAME}`;
 }
 
 /**
@@ -123,8 +123,8 @@ export const SOURCES: Record<SourceId, SourceInfo> = {
   },
   ai: {
     id: "ai",
-    name: "Claude via Vercel AI Gateway",
-    credit: "Plan explanations written by Claude (Anthropic) via Vercel AI Gateway",
+    name: "The Hive, via Vercel AI Gateway",
+    credit: "Plan explanations written by the Hive, via Vercel AI Gateway",
     url: "https://vercel.com/ai-gateway",
     licence: "Generated text; checked against the data above",
   },

@@ -87,7 +87,6 @@ test.describe("landing, as the deck draws it", () => {
     for (const name of ["Privacy", "Terms", "Brain", "Brand"]) await expect(footer.getByRole("link", { name })).toBeVisible();
     await expect(footer.getByRole("link", { name: "Busk Map on GitHub" })).toHaveAttribute("href", "https://github.com/T04435/busk-map");
     await expect(footer.getByRole("link", { name: "T04435", exact: true })).toHaveAttribute("href", "https://github.com/T04435");
-    await expect(footer.getByRole("link", { name: "Built with Claude Code (opens in a new tab)", exact: true })).toHaveAttribute("href", "https://claude.com/claude-code");
     await expect(footer.getByRole("link", { name: "Busk Map home" })).toHaveAttribute("href", "/");
     await expect(footer.getByRole("navigation", { name: "Site" })).toContainText("·");
     // Same tab everywhere except Qloo (B-159).
@@ -166,7 +165,6 @@ test.describe("landing, as the deck draws it", () => {
 // L21b (F23-F24): Thanks to, just before the Brain teaser.
 test.describe("landing: Thanks to (L21b)", () => {
   const BUILT_WITH = [
-    ["Claude", "https://www.anthropic.com/claude"],
     ["Vercel", "https://vercel.com"],
     ["Neon", "https://neon.com"],
     ["Spotify", "https://www.spotify.com"],
@@ -195,7 +193,7 @@ test.describe("landing: Thanks to (L21b)", () => {
     await expect(qloo).toHaveAttribute("rel", "noopener noreferrer");
   });
 
-  test("it lists the 9 Built with names, each linked to its site in the same tab", async ({ page }) => {
+  test("it lists the 8 Built with names, each linked to its site in the same tab", async ({ page }) => {
     await page.goto("/");
     const items = page.getByTestId("partners").getByRole("list", { name: "Built with" }).getByRole("listitem");
     await expect(items).toHaveCount(BUILT_WITH.length);

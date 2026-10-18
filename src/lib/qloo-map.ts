@@ -739,7 +739,7 @@ export const features: readonly Feature[] = [
     sub: "a scouting run",
     location: `${PLAYLIST_COPY.name} page: ${PLAYLIST_COPY.toLearnShort}`,
     how: "combined",
-    with: ["Spotify", "Last.fm", "Hive, on Claude Sonnet (the learn agent)"],
+    with: ["Spotify", "Last.fm", "The Hive (the learn agent)"],
   },
   {
     id: "f_research",
@@ -747,7 +747,7 @@ export const features: readonly Feature[] = [
     sub: "your act, researched from one link",
     location: `${PLAYLIST_COPY.name} page: the research run and its results`,
     how: "combined",
-    with: ["Spotify", "Last.fm", "Hive, on Claude Sonnet (one summary call)"],
+    with: ["Spotify", "Last.fm", "The Hive (one summary call)"],
   },
 ];
 

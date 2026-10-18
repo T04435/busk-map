@@ -3,8 +3,6 @@
 import { planMentions } from "@/lib/plan-mentions";
 import { mentionsIn, SPOTIFY_ARTIST_URL } from "@/lib/mention";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
-import { AiChip } from "@/components/honeycomb/ai-chip";
-import { hiveProgressOfSteps } from "@/lib/agent-persona";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -329,13 +327,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
                 ? "replayed"
                 : "done"
               : null;
-  // The AI chip names the model only when Claude ran: offline the test model is named instead (B-049), never Claude.
-  const statusLine = (
-    <div className="flex flex-col items-start gap-2">
-      <AgentStatusLine state={agentState} usage={usage} model={model} progress={hiveProgressOfSteps(steps)} note={replayed ? replayNote(replay?.note ?? runNote) : null} />
-      {model === "claude" && agentState && agentState !== "engine" && agentState !== "none" ? <AiChip className="ml-8" /> : null}
-    </div>
-  );
+  const statusLine = <AgentStatusLine state={agentState} usage={usage} model={model} note={replayed ? replayNote(replay?.note ?? runNote) : null} />;
 
   const sourcesDown = plan ? plan.dataStatus.filter((s) => s.mode === "fallback" && s.source !== "qloo") : [];
   const DOWN: Record<string, { title: string; effect: string }> = {

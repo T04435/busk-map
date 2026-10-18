@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AGENT_NAME, AGENT_MODEL_CREDIT, AGENT_RUNS_ON, PERSONA_PROMPT, agentName, hiveProgress, hiveProgressOfRepertoire, hiveProgressOfSteps } from "@/lib/agent-persona";
+import { AGENT_NAME, PERSONA_PROMPT, agentName, hiveProgress, hiveProgressOfRepertoire, hiveProgressOfSteps } from "@/lib/agent-persona";
 import { explanationsLabel, modelName } from "@/lib/sources";
 
 describe("agent persona", () => {
@@ -11,9 +11,7 @@ describe("agent persona", () => {
     expect(modelName(null, "start")).toBe("The Hive");
     expect(modelName("claude", "label")).toBe("Hive");
     expect(modelName("mock")).toBe("the test model");
-    expect(explanationsLabel({ explanations: "ai", explanationsModel: "claude" })).toBe("Written by Hive (runs on Claude)");
-    expect(AGENT_MODEL_CREDIT).toBe("AI · powered by Claude");
-    expect(AGENT_RUNS_ON).toBe("The Hive, our agent, runs on Claude");
+    expect(explanationsLabel({ explanations: "ai", explanationsModel: "claude" })).toBe("Written by Hive");
   });
   it("keeps the never-do list in the prompt", () => {
     expect(PERSONA_PROMPT).toMatch(/run on Claude/);

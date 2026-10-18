@@ -182,6 +182,7 @@ function ToolCard({ step, model, raw, rawView, when, pins, fresh }: { step: Agen
   const rejected = failed && step.tool === "finish_plan";
   const bad = failed && !rejected;
   const cut = step.status === "cut";
+  const sources = step.tool ? (TOOL_SOURCES[step.tool] ?? []) : [];
   const say = step.notes.filter((n) => n.kind === "text").map((n) => n.text);
   const title = running ? `${ui?.doing(step) ?? step.label}…` : (ui?.title(step) ?? step.label);
   const out = step.output !== null && typeof step.output === "object" ? (step.output as Record<string, unknown>) : {};
@@ -212,11 +213,11 @@ function ToolCard({ step, model, raw, rawView, when, pins, fresh }: { step: Agen
       )}
     >
       <div className="grid grid-cols-[30px_minmax(0,1fr)] items-start gap-3">
-        <StepCell size={30} icon={icon} status={running ? "running" : bad || rejected ? "failed" : cut ? "skipped" : "done"} label={`${title}: ${running ? "working" : bad || rejected ? "didn't work" : cut ? "stopped" : "done"}`} />
+        <StepCell size={30} icon={icon} status={running ? "running" : bad || rejected ? "failed" : cut ? "skipped" : "done"} source={sources.length === 1 ? sources[0] : undefined} label={`${title}: ${running ? "working" : bad || rejected ? "didn't work" : cut ? "stopped" : "done"}`} />
         <div className="grid min-w-0 gap-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <b className={cn(running ? "font-sans text-base leading-[22px] font-bold" : "font-display text-xl leading-6 font-extrabold uppercase")}>{title}</b>
-            {(step.tool ? (TOOL_SOURCES[step.tool] ?? []) : []).map((s) => (
+            {sources.map((s) => (
               <SourceLogo key={s} source={s} height={14} />
             ))}
           </div>

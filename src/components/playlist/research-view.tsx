@@ -3,7 +3,6 @@
 import { FansMap } from "@/components/honeycomb/repertoire/fans-map";
 import { LIST_MAX_HEIGHT, RepertoireResultsLayout } from "@/components/honeycomb/repertoire/repertoire-sections";
 import { artist as mentionArtist, mentionsIn, song as mentionSong, spotifyHref, type Mention } from "@/lib/mention";
-import { AiChip } from "@/components/honeycomb/ai-chip";
 import { HiveMark } from "@/components/honeycomb/hive-mark";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { TrackResult } from "@/components/forms/repertoire-api";
@@ -363,8 +362,7 @@ export function ResearchView() {
     feed.length > 0 ? (
       <div className="grid gap-3">
         <p className="m-0 flex flex-wrap items-center gap-2" data-testid="research-agent">
-          <HiveMark size={24} progress={view.hiveProgress} live={live} />
-          {runEvent?.type === "run" && runEvent.model === "claude" ? <AiChip /> : null}
+          <HiveMark size={24} state={live ? "working" : "rest"} />
         </p>
         <AgentStepStream
           steps={feed}

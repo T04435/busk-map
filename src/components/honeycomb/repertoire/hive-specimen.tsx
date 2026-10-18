@@ -2,10 +2,11 @@ import type { ReactNode } from "react";
 import { AgentLockup } from "@/components/honeycomb/agent-lockup";
 import { AgentStatusLine, type AgentState } from "@/components/honeycomb/agent-status-line";
 import { AgentTag } from "@/components/honeycomb/agent-tag";
-import { AiChip } from "@/components/honeycomb/ai-chip";
-import { HiveMark } from "@/components/honeycomb/hive-mark";
+import { HiveMark, type HiveAnim, type HiveSource } from "@/components/honeycomb/hive-mark";
 import { MeetTheHive } from "@/components/honeycomb/meet-the-hive";
 
+const ANIMS: HiveAnim[] = ["origami", "flip", "bud", "comet", "wave"];
+const SOURCES: HiveSource[] = ["qloo", "spotify", "lastfm"];
 const STATES: AgentState[] = ["researching", "rerun", "done", "replayed", "engine", "none"];
 
 function Block({ title, children }: { title: string; children: ReactNode }) {
@@ -30,54 +31,57 @@ function Fig({ caption, children }: { caption: string; children: ReactNode }) {
 export function HiveSpecimen() {
   return (
     <div className="flex flex-col gap-10">
-      <Block title="The mark · sizes">
+      <Block title="The mark · at rest, sizes">
         <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
-          <Fig caption="96 · Brain">
-            <HiveMark size={96} />
-          </Fig>
-          <Fig caption="40 · header">
-            <HiveMark size={40} />
-          </Fig>
-          <Fig caption="24 · running, 3">
-            <HiveMark size={24} live progress={3} label="The Hive, 3 of 7 steps done" />
-          </Fig>
-          <Fig caption="24 · done">
-            <HiveMark size={24} />
-          </Fig>
-          <Fig caption="14 · tag">
-            <HiveMark size={14} />
-          </Fig>
-          <Fig caption="24 · none">
+          {[104, 72, 28, 24, 16, 14].map((n) => (
+            <Fig key={n} caption={String(n)}>
+              <HiveMark size={n} />
+            </Fig>
+          ))}
+          <Fig caption="24 · Hive didn't run">
             <HiveMark size={24} muted />
           </Fig>
         </div>
       </Block>
-      <Block title="Progress 0–7 · 40, live">
-        <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
-          {[0, 1, 2, 3, 4, 5, 6, 7].map((n) => (
-            <Fig key={n} caption={String(n)}>
-              <HiveMark size={40} progress={n} live />
-            </Fig>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
-          {[0, 1, 2, 3, 4, 5, 6, 7].map((n) => (
-            <Fig key={n} caption={`${n} · 24`}>
-              <HiveMark size={24} progress={n} />
+      <Block title="Working · the five animations (origami is the default)">
+        {[104, 24, 16, 14].map((n) => (
+          <div key={n} className="flex flex-wrap items-end gap-x-8 gap-y-4">
+            {ANIMS.map((a) => (
+              <Fig key={a} caption={`${a} · ${n}`}>
+                <HiveMark size={n} state="working" anim={a} />
+              </Fig>
+            ))}
+          </div>
+        ))}
+        <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
+          {ANIMS.map((a) => (
+            <Fig key={a} caption={`${a} · frozen`}>
+              <HiveMark size={48} state="working" anim={a} motion={false} />
             </Fig>
           ))}
         </div>
       </Block>
+      <Block title="Working · the centre cell shows the source (logo from 20px)">
+        {[48, 24, 16].map((n) => (
+          <div key={n} className="flex flex-wrap items-end gap-x-8 gap-y-4">
+            {SOURCES.map((src) => (
+              <Fig key={src} caption={`${src} · ${n}`}>
+                <HiveMark size={n} state="working" source={src} />
+              </Fig>
+            ))}
+          </div>
+        ))}
+      </Block>
       <Block title="Research header lockup">
         <div className="grid gap-6 md:grid-cols-2">
-          <AgentLockup live progress={3} status="is researching your busk" />
-          <AgentLockup progress={7} status="researched your act" />
+          <AgentLockup live status="is researching your busk" />
+          <AgentLockup status="researched your act" />
         </div>
       </Block>
       <Block title="Status line · every state">
         <div className="flex flex-col gap-4">
           {STATES.map((s) => (
-            <AgentStatusLine key={s} state={s} progress={s === "researching" ? 3 : undefined} />
+            <AgentStatusLine key={s} state={s} />
           ))}
           <AgentStatusLine state="done" model="mock" />
         </div>
@@ -90,11 +94,6 @@ export function HiveSpecimen() {
       </Block>
       <Block title="Brain card">
         <MeetTheHive className="max-w-2xl" />
-      </Block>
-      <Block title="AI chip">
-        <div>
-          <AiChip />
-        </div>
       </Block>
     </div>
   );

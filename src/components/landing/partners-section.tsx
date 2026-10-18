@@ -23,7 +23,6 @@ export type Partner = {
 
 /** "Built with" (L21b, F23-F24), as BRAND's PartnersSection v66 lists it. */
 export const BUILT_WITH: Partner[] = [
-  { name: "Claude", role: "Powers Hive: researches each busk and writes why", href: "https://www.anthropic.com/claude", logo: { light: "/partners/claude-logo-slate.svg", dark: "/partners/claude-logo-ivory.svg" }, h: 27 },
   { name: "Vercel", role: "Hosting and AI SDK", href: "https://vercel.com", logo: { light: "/partners/vercel-logotype-black.svg", dark: "/partners/vercel-logotype-white.svg" }, h: 24 },
   { name: "Neon", role: "Postgres for plans, runs and Repertoires", href: "https://neon.com", logo: { light: "/partners/neon-logo-light-color.svg", dark: "/partners/neon-logo-dark-color.svg" }, h: 28 },
   { name: "Spotify", role: "Songs, artists and release years", href: "https://www.spotify.com", logo: { light: "/partners/spotify-full-logo-black.svg", dark: "/partners/spotify-full-logo-white.svg" }, h: 32 },

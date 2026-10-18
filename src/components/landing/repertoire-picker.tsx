@@ -93,6 +93,7 @@ function PickedRow({ song, ownerImage, onRemove, onEdit }: { song: PickedSong; o
               icon="pencil"
               size="sm"
               data-edit-for={song.key}
+              // unify-ok: an aria-label, not visible song text
               label={`Edit ${song.title}`}
               onClick={() => {
                 setTitle(song.title);
@@ -110,7 +111,7 @@ function PickedRow({ song, ownerImage, onRemove, onEdit }: { song: PickedSong; o
 
 /** The songs you picked: a cover cell, title, "artist · album", a "Your song" badge, the length and a remove button. */
 /** `ownerImage`: the artist photo shown in the "Your song" tag (optional; the tag keeps its icon without it). */
-export function PickedSongs({ songs, ownerImage, onRemove, onEdit }: { songs: PickedSong[]; ownerImage?: string; onRemove: (song: PickedSong) => void; onEdit?: (song: PickedSong, edit: { title: string; artist: string }) => void }) {
+export function PicksList({ songs, ownerImage, onRemove, onEdit }: { songs: PickedSong[]; ownerImage?: string; onRemove: (song: PickedSong) => void; onEdit?: (song: PickedSong, edit: { title: string; artist: string }) => void }) {
   if (songs.length === 0) return <p className="m-0 text-sm text-muted-foreground">Search for songs above.</p>;
   const known = songs.reduce((sum, s) => sum + (s.durationMs ?? 0), 0);
   const unknown = songs.some((s) => s.durationMs === null);
@@ -222,7 +223,7 @@ export function RepertoirePicker({
     <fieldset className="m-0 flex min-w-0 flex-col gap-3.5 border-0 p-0" aria-describedby={error ? errorId : undefined}>
       <legend className="mb-1 p-0 text-label font-bold">Songs you can play</legend>
       <SongSearch onAdd={(track) => addSongs([toPicked(track, false)])} isAdded={(track) => picked.some((p) => p.key === track.id)} artists={artists} onAddTyped={addTyped} />
-      <PickedSongs songs={picked} ownerImage={ownerImage} onRemove={(song) => setPicked((current) => current.filter((p) => p !== song))} onEdit={editTyped} />
+      <PicksList songs={picked} ownerImage={ownerImage} onRemove={(song) => setPicked((current) => current.filter((p) => p !== song))} onEdit={editTyped} />
       <div className="space-y-1">
         <Label htmlFor={linkId}>Your Spotify artist link (optional)</Label>
         <InputGroup className="has-[>[data-align=inline-start]]:[&>input]:pl-10">

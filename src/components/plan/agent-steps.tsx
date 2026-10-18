@@ -17,7 +17,7 @@ import { modelName, type ExplanationsModel } from "@/lib/sources";
 import { TOOL_ICON, TOOL_SOURCES, TOOL_UI, type MiniPin } from "./tool-results";
 
 /**
- * The research feed: the agent's steps as the busker sees them, newest first, no step numbers, each tool drawn as a plain-words
+ * The research feed: the agent's steps as the busker sees them, in the order they ran (U23), no step numbers, each tool drawn as a plain-words
  * result card from its output fields. Tool names, inputs and the returned data appear only behind the card's own "Raw data"
  * switch (`showRaw`). Ported from the DS AgentStepStream.
  */
@@ -256,6 +256,7 @@ export function AgentStepStream({
   onShowRawChange,
   footer,
   title,
+  hideHeading = false,
   subtitle,
   usage,
 }: {
@@ -277,6 +278,8 @@ export function AgentStepStream({
   /** "Data used", at the foot. */
   footer?: ReactNode;
   title?: string;
+  /** The fold around it already shows the title (/repertoire, U28): the heading stays for screen readers only. */
+  hideHeading?: boolean;
   subtitle?: string;
   /** The run's totals, shown under "Raw data" (B50). */
   usage?: RunUsage | null;
@@ -289,13 +292,17 @@ export function AgentStepStream({
   // Once the run is over, a step still marked running was cut short.
   const calls = steps.filter((s) => s.tool).map((s) => (!live && s.status === "running" ? { ...s, status: "cut" as const } : s));
   const pending = steps.length > 0 && steps[steps.length - 1].tool === null ? steps[steps.length - 1] : null;
-  const feed = calls.slice().reverse();
+  // U23: run order, step 1 at the top; only finished steps and the one running now (no rows for steps not yet started).
+  const feed = calls;
   const thinking = live && (pending || phase === "thinking" || steps.length === 0);
   const count = `${calls.length} ${calls.length === 1 ? "check" : "checks"}${seconds != null ? ` · ${Math.round(seconds)} s` : ""}`;
   const tag = mode === "replay" ? "Replay" : mode === "joined" ? "Joined" : phase === "done" || phase === "fallback" ? "Finished" : phase === "error" || phase === "stopped" ? "Stopped" : "Live";
   const heading = title ?? (live ? "Finding your best pitches" : "How we found your pitches");
   const list = (
-    <ol aria-live={mode === "replay" ? "off" : "polite"} aria-label="Research, newest first" className="m-0 grid list-none gap-3 p-0" data-testid="agent-feed">
+    <ol aria-live={mode === "replay" ? "off" : "polite"} aria-label="Research, in the order it ran" className="m-0 grid list-none gap-3 p-0" data-testid="agent-feed">
+      {feed.map((s, i) => (
+        <ToolCard key={s.id} step={s} model={model} raw={raw} rawView={rawView} when={when} pins={pins} fresh={live && i === feed.length - 1 && !thinking} />
+      ))}
       {thinking ? (
         <li className="grid min-w-0 gap-3 border-2 border-dashed border-input bg-background p-4" data-testid="agent-thinking">
           <div className="grid grid-cols-[30px_minmax(0,1fr)] items-start gap-3">
@@ -316,9 +323,6 @@ export function AgentStepStream({
           </div>
         </li>
       ) : null}
-      {feed.map((s, i) => (
-        <ToolCard key={s.id} step={s} model={model} raw={raw} rawView={rawView} when={when} pins={pins} fresh={live && i === 0 && !thinking} />
-      ))}
     </ol>
   );
   const retry = onRetry ? (
@@ -374,7 +378,7 @@ export function AgentStepStream({
     >
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="m-0 font-display text-2xl leading-[26px] font-extrabold tracking-[0.01em] uppercase">{heading}</h2>
+          <h2 className={cn("m-0 font-display text-2xl leading-[26px] font-extrabold tracking-[0.01em] uppercase", hideHeading && "sr-only")}>{heading}</h2>
           {subtitle ? <p className="m-0 mt-0.5 text-sm leading-5 text-muted-foreground">{subtitle}</p> : null}
         </div>
         <span className="inline-flex flex-wrap items-center gap-2">

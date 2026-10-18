@@ -28,9 +28,9 @@ export async function waitForPlan(page: import("@playwright/test").Page) {
   await expect(page.getByRole("region", { name: "Pitches", exact: true })).toBeVisible();
 }
 
-/** The research feed (newest first): always shown, never folded (U22). */
+/** The research feed (in the order it ran, U23): always shown, never folded (U22). */
 export async function agentSteps(page: import("@playwright/test").Page) {
-  const list = page.getByRole("list", { name: "Research, newest first" });
+  const list = page.getByRole("list", { name: "Research, in the order it ran" });
   await expect(list).toBeVisible();
   return list;
 }

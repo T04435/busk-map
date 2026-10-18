@@ -1,7 +1,15 @@
-/** Normalise a song title so remasters, edits and live takes collapse into one song. */
+/** Accents off ("Amándote" and "Amandote" are one song, U26). */
+const plain = (s: string) => s.normalize("NFD").replace(/\p{M}+/gu, "");
+
+/**
+ * Normalise a song title so remasters, edits, live takes and featured-artist credits collapse into one song: lowercase,
+ * accents stripped, "(feat. X)" / "ft. X" dropped. A remix stays its own song ("Darte" and "Darte Remix" are two).
+ */
 export function songKey(title: string): string {
-  return title
+  return plain(title)
     .toLowerCase()
+    .replace(/\s*[([]\s*(feat|ft|featuring|con|with)\.?\s[^)\]]*[)\]]/gi, "")
+    .replace(/\s+(feat|ft|featuring)\.?\s.*$/i, "")
     .replace(/\s*[-–]\s*(remaster|radio edit|live|single|mono|stereo|demo|acoustic|edit|version|mix).*$/i, "")
     .replace(/\s*[([].*?(remaster|edit|live|version|mix|deluxe|demo|mono|stereo).*?[)\]]/gi, "")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
@@ -10,7 +18,7 @@ export function songKey(title: string): string {
 
 /** Case- and punctuation-insensitive key for artist names. */
 export function nameKey(name: string): string {
-  return name
+  return plain(name)
     .toLowerCase()
     .replace(/^the\s+/, "")
     .replace(/[^\p{L}\p{N}]+/gu, " ")

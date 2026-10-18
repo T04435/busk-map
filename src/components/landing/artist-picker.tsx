@@ -35,10 +35,12 @@ type Props = {
   /** The text in the search box; whatever is left there on submit counts as typed artists. */
   query: string;
   onQueryChange: (query: string) => void;
+  /** The section around it already says "Artists you sound like" (/repertoire, U28): no second visible label. */
+  hideLabel?: boolean;
 };
 
 /** "Artists you sound like": a multi-select chip picker over live Spotify search, with free text as a fallback. */
-export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
+export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel = false }: Props) {
   const { state, update, cancel } = useLiveSearch<ArtistResult>(searchArtists);
   const [listeners, setListeners] = useState<Record<string, number | null>>({});
   const [releases, setReleases] = useState<Record<string, number>>({});
@@ -101,9 +103,11 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
 
   return (
     <div className="space-y-2">
-      <p className="text-label font-bold" aria-hidden>
-        {LABEL}
-      </p>
+      {hideLabel ? null : (
+        <p className="text-label font-bold" aria-hidden>
+          {LABEL}
+        </p>
+      )}
       {value.length > 0 && (
         <ul aria-label="Artists you picked" className="m-0 flex list-none flex-col items-stretch gap-2 p-0">
           {value.map((artist) => (

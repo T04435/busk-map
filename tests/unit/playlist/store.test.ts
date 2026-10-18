@@ -148,6 +148,19 @@ describe("song covers persist (migration 010)", () => {
   });
 });
 
+describe("one song, one row (U26)", () => {
+  it("a Spotify copy takes over a Last.fm one with the same normalised key (accents, feat.)", async () => {
+    const store = new MemoryPlaylistStore();
+    const playlist = await store.create(hashToken(newToken()));
+    await store.addSong(playlist.id, { title: "Amandote", artist: "Al2 El Aldeano", own: true, source: "lastfm" });
+    const again = await store.addSong(playlist.id, { title: "Amándote (feat. Jhamy)", artist: "Al2 El Aldeano", own: true, source: "spotify", spotifyTrackId: "3kRkQCnUhv5w2vcLu1pTjs", year: 2018 });
+    expect(again).toEqual({ ok: false, reason: "duplicate" });
+    const songs = await store.songs(playlist.id);
+    expect(songs).toHaveLength(1);
+    expect(songs[0]).toMatchObject({ source: "spotify", title: "Amándote (feat. Jhamy)", spotifyTrackId: "3kRkQCnUhv5w2vcLu1pTjs", year: 2018 });
+  });
+});
+
 describe("PostgresPlaylistStore SQL shape", () => {
   function fake(results: unknown[][]) {
     const calls: { text: string; params: unknown[] }[] = [];

@@ -40,9 +40,9 @@ describe("the research feed", () => {
     { id: "b", tool: "crowd_at", label: "Who the crowd is", status: "done", notes: [{ kind: "reasoning", text: "Crowds first." }], output: { at: { label: "Hardware Lane" }, artists: [{ name: "Vance Joy", affinity: 0.86 }], genres: [] } },
   ];
 
-  it("lists the newest first, with no step numbers, and keeps tool names out until raw data is on", () => {
+  it("lists the steps in run order (U23), with no step numbers, and keeps tool names out until raw data is on", () => {
     const html = render({ steps: two });
-    expect(html.indexOf("The crowd at Hardware Lane")).toBeLessThan(html.indexOf("Where your crowd gathers"));
+    expect(html.indexOf("Where your crowd gathers")).toBeLessThan(html.indexOf("The crowd at Hardware Lane"));
     // data-tool is an attribute for tests; the tool's name is never text.
     expect(html).not.toContain("<code>");
     expect(html).not.toContain("zoom: x");

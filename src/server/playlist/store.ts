@@ -201,7 +201,11 @@ export class MemoryPlaylistStore implements PlaylistStore {
     const songKey = playlistSongKey(input.artist, input.title);
     const same = rows.find((s) => s.songKey === songKey);
     if (same) {
-      // A repeat still fills in a cover the row lacks (covers fill in on the next save or research, migration 010).
+      // A repeat still fills in a cover the row lacks (covers fill in on the next save or research, migration 010), and a
+      // Spotify copy takes over a Last.fm or typed one (U26): its title, id, year and length win.
+      if (input.source === "spotify" && same.source !== "spotify" && same.source !== "suggested") {
+        Object.assign(same, { source: "spotify", title: input.title, spotifyTrackId: input.spotifyTrackId ?? same.spotifyTrackId, year: input.year ?? same.year, durationMs: input.durationMs ?? same.durationMs });
+      }
       same.image ??= input.image ?? null;
       same.artistImage ??= input.artistImage ?? null;
       return { ok: false, reason: "duplicate" };
@@ -490,10 +494,18 @@ export class PostgresPlaylistStore implements PlaylistStore {
       return { ok: true, song: toSong(rows[0]) };
     }
     // A repeat still fills in a cover the row lacks (covers fill in on the next save or research, migration 010).
+    // A repeat still fills in a cover the row lacks (migration 010), and a Spotify copy takes over a Last.fm or typed one
+    // (U26): its title, track id, year and length win; the row, its state and its id stay.
+    const upgrade = s.source === "spotify";
     const existing = (await this.sql.query(
-      `UPDATE playlist_songs SET image = COALESCE(image, $3::text), artist_image = COALESCE(artist_image, $4::text)
+      `UPDATE playlist_songs SET
+          image = COALESCE(image, $3::text), artist_image = COALESCE(artist_image, $4::text),
+          title = CASE WHEN $5::boolean AND source IN ('lastfm', 'typed') THEN $6::text ELSE title END,
+          spotify_track_id = CASE WHEN $5::boolean AND source IN ('lastfm', 'typed') THEN COALESCE($7::text, spotify_track_id) ELSE spotify_track_id END,
+          year = COALESCE(year, $8::smallint), duration_ms = COALESCE(duration_ms, $9::integer),
+          source = CASE WHEN $5::boolean AND source IN ('lastfm', 'typed') THEN 'spotify' ELSE source END
         WHERE playlist_id = $1 AND song_key = $2 RETURNING 1 AS one`,
-      [playlistId, songKey, s.image ?? null, s.artistImage ?? null],
+      [playlistId, songKey, s.image ?? null, s.artistImage ?? null, upgrade, s.title, s.spotifyTrackId ?? null, s.year ?? null, s.durationMs ?? null],
     )) as unknown[];
     return { ok: false, reason: existing.length ? "duplicate" : "missing" };
   }

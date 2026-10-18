@@ -428,6 +428,7 @@ export function ResearchView() {
           mode={!events && replay ? "replay" : "live"}
           modeText={!events && replay ? "Showing the research from your last run. Nothing new was asked." : null}
           title={live ? R.heading : R.howBuilt}
+          hideHeading={!live}
           showRaw={showRaw}
           onShowRawChange={setShowRaw}
           footer={<ResearchFunnel kind="learn" totals={lastTotals?.type === "totals" ? lastTotals.totals : ZERO_LEARN_TOTALS} running={live} />}
@@ -543,7 +544,7 @@ export function ResearchView() {
           </ArtistChipList>
         ) : (
           <div className="space-y-2">
-            <ArtistPicker value={artists.map((a) => ({ ...a, image: a.image ?? photoOf.get(a.name.toLowerCase())?.image ?? null }))} onChange={setArtists} query={artistQuery} onQueryChange={setArtistQuery} />
+            <ArtistPicker hideLabel value={artists.map((a) => ({ ...a, image: a.image ?? photoOf.get(a.name.toLowerCase())?.image ?? null }))} onChange={setArtists} query={artistQuery} onQueryChange={setArtistQuery} />
             {playlist && (
               <Button
                 type="button"

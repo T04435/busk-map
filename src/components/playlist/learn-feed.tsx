@@ -93,12 +93,12 @@ function RawTotals({ live }: { live: LearnLive }) {
 }
 
 /**
- * The run's feed: the funnel, then each step as a plain-words card, newest first and with no step numbers. Tool names,
+ * The run's feed: the funnel, then each step as a plain-words card, in the order it ran (U23) and with no step numbers. Tool names,
  * Qloo endpoints, ids and JSON appear only with `raw` (the page's "Show raw data" switch). Built for the learn stream; the
  * plan page keeps its own step view.
  */
 export function LearnFeed({ live, heading, running, raw }: { live: LearnLive; heading: string; running: boolean; raw: boolean }) {
-  const steps = [...live.steps].reverse();
+  const steps = live.steps; // U23: run order, step 1 at the top
   return (
     <div className="space-y-3 border-2 border-rule bg-card p-4" data-testid="learn-feed">
       <div className="space-y-3" data-testid="learn-run" data-run={live.number ?? ""} data-replay={live.replay ? "true" : "false"}>

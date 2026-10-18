@@ -158,7 +158,7 @@ test.describe("live agent (mock model offline)", () => {
     await expect(page.getByText(/^Explanations: /)).toHaveCount(0);
     release();
 
-    // The feed, newest first: plain-words cards, with Claude's note before a call. No tool names, inputs or step numbers.
+    // The feed, in run order (U23): plain-words cards, with Claude's note before a call. No tool names, inputs or step numbers.
     // (It stays open on every width: no inner fold, U22.)
     await waitForPlan(page);
     await expect(page.getByTestId("plan-pending")).toHaveCount(0);
@@ -189,8 +189,8 @@ test.describe("live agent (mock model offline)", () => {
     await expect(page.getByTestId("agent-vs-engine")).toContainText("Agent vs engine");
     await expect(page.getByTestId("agent-vs-engine")).toContainText(AGENT_KEPT_TOP3);
     await expect(feed.getByTestId("agent-note-text").first()).toContainText(MODEL_NOTE_PREFIX);
-    // Claude investigates first: score_pitches comes after three looks, one of them about the crowd. The feed lists newest first.
-    const order = (await feed.getByTestId("agent-step").evaluateAll((els) => els.map((el) => el.getAttribute("data-tool")).filter(Boolean))).reverse();
+    // Claude investigates first: score_pitches comes after three looks, one of them about the crowd. The feed lists in run order (U23).
+    const order = await feed.getByTestId("agent-step").evaluateAll((els) => els.map((el) => el.getAttribute("data-tool")).filter(Boolean));
     expect(order.indexOf("score_pitches")).toBeGreaterThanOrEqual(3);
     expect(order.slice(0, order.indexOf("score_pitches")).some((t) => ["taste_map", "crowd_at", "events_near"].includes(t!))).toBe(true);
     expect(order.at(-1)).toBe("finish_plan");
@@ -207,7 +207,7 @@ test.describe("live agent (mock model offline)", () => {
     await expect(page.getByTestId("replay-label")).toHaveText("Replay of an earlier run (no new model call)");
     await expect(page.getByText(EXPLANATIONS_LABEL)).toBeVisible();
     // U22: the replayed steps show directly, with no inner fold.
-    const replayedSteps = page.getByRole("list", { name: "Research, newest first" });
+    const replayedSteps = page.getByRole("list", { name: "Research, in the order it ran" });
     await expect(replayedSteps.getByText("Your best pitches so far").first()).toBeVisible();
     // The replay keeps each step's data: raw data shows it.
     await page.getByRole("switch", { name: "Raw data" }).click();
@@ -225,7 +225,7 @@ test.describe("live agent (mock model offline)", () => {
     await expect(page.getByText("Explanations: from the data")).toBeVisible();
     await expect(page.getByTestId("agent-status")).toHaveText("Planned from Busk Map's scores. The Hive didn't run.");
     await expect(page.getByRole("button", { name: /Re-run|Plan with the agent/ })).toHaveCount(0);
-    await expect(page.getByRole("list", { name: "Research, newest first" })).toHaveCount(0);
+    await expect(page.getByRole("list", { name: "Research, in the order it ran" })).toHaveCount(0);
   });
 
   test("always sets a plain-AI baseline beside the plan, in three buckets, without changing a score", async ({ page }) => {

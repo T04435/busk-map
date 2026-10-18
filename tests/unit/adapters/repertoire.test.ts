@@ -30,7 +30,12 @@ describe("repertoire (Spotify)", () => {
     const { songKey } = await fresh();
     expect(songKey("Synthetic Original - Radio Edit")).toBe("synthetic original");
     expect(songKey("Second Song (Remastered 2026)")).toBe("second song");
-    expect(songKey("Café del Mar")).toBe("café del mar");
+    // U26: accents and featured-artist credits don't make a second song; a remix does.
+    expect(songKey("Café del Mar")).toBe("cafe del mar");
+    expect(songKey("Amándote")).toBe(songKey("Amandote"));
+    expect(songKey("A Pesar de Todo (feat. EL B, Gabylonia)")).toBe("a pesar de todo");
+    expect(songKey("Tu Eres ft. Raymond Daniel")).toBe("tu eres");
+    expect(songKey("Darte Remix")).not.toBe(songKey("Darte"));
   });
 
   it("searches tracks and artists with a client-credentials token", async () => {

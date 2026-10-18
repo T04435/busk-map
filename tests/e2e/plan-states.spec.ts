@@ -143,7 +143,7 @@ test.describe("the research feed", () => {
     await page.goto("/plan?example=sax");
     await expect(page.getByTestId("plan-pending")).toBeVisible();
     await expect(page.getByTestId("agent-tag")).toHaveText("Live");
-    await expect(page.getByRole("list", { name: "Research, newest first" }).getByRole("listitem").first()).toBeVisible();
+    await expect(page.getByRole("list", { name: "Research, in the order it ran" }).getByRole("listitem").first()).toBeVisible();
     await expect(page.getByRole("switch", { name: "Raw data" })).toHaveCount(0);
     await expect(page.getByTestId("plan-funnel")).toBeVisible();
   });
@@ -156,7 +156,7 @@ test.describe("the research feed", () => {
     await expect(page.getByTestId("replay-label")).toHaveText("Replay of an earlier run (no new model call)");
     await expect(page.getByTestId("agent-tag")).toHaveText("Replay");
     // U22: the replayed steps show directly, no "Every check, from earlier" fold.
-    await expect(page.getByRole("list", { name: "Research, newest first" })).toBeVisible();
+    await expect(page.getByRole("list", { name: "Research, in the order it ran" })).toBeVisible();
   });
 
   test("the funnel fills from the totals", async ({ page }) => {

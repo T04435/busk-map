@@ -221,7 +221,7 @@ const RESEARCH_UI: Record<string, ToolUi> = {
   research_fans_map: researchUi((o) => {
     const areas = Array.isArray(o.areas) ? (o.areas as unknown[]).filter((a): a is string => typeof a === "string" && a.length > 0) : [];
     if (!areas.length) return str(o.summary) ?? "";
-    return [`Your crowd is strongest around ${areas.length === 1 ? areas[0] : `${areas.slice(0, -1).join(", ")} and ${areas[areas.length - 1]}`}`];
+    return [`Your crowd is strongest in ${areas.length === 1 ? areas[0] : `${areas.slice(0, -1).join(", ")} and ${areas[areas.length - 1]}`}`];
   }),
   research_fans_love: researchUi(artistsLine("Your fans also love", "Qloo found no other artists your fans love")),
   research_learn: researchUi((o) => {

@@ -9,6 +9,7 @@ import { Icon } from "@/components/honeycomb/icon";
 import { Loader } from "@/components/honeycomb/loader";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { formatCount, MIN_QUERY_CHARS } from "@/lib/live-search";
+import { SPOTIFY_ARTIST_URL } from "@/lib/mention";
 
 /** An artist chip: picked from Spotify (with its id), suggested by Qloo (qlooId, and a spotifyId when Qloo has one), or typed as free text (both null). */
 export type PickedArtist = { name: string; spotifyId: string | null; image: string | null; qlooId?: string | null };
@@ -110,6 +111,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
               <ArtistChip
                 name={artist.name}
                 image={artist.image}
+                href={artist.spotifyId ? SPOTIFY_ARTIST_URL(artist.spotifyId) : undefined}
                 source={artistSource(artist) === "spotify" ? undefined : artistSource(artist)}
                 state="picked"
                 onRemove={() => onChange(value.filter((a) => a !== artist))}
@@ -186,6 +188,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
                       <ArtistChip
                         name={artist.name}
                         image={artist.image}
+                        href={SPOTIFY_ARTIST_URL(artist.id)}
                         tags={meta as string[]}
                         state={has(artist.name) ? "added" : "static"}
                         interactive={false}

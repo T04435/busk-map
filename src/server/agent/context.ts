@@ -760,7 +760,11 @@ export class PlanContext {
       };
       addPlaycounts(songs);
       const currentYear = Number(this.today.slice(0, 4));
-      if (!fill) return buildSetlist(repertoire, affinity, playcounts, undefined, { years, ageLean: profile?.age ?? null, currentYear, ageLabel }, scene);
+      const photos = new Map<string, string>();
+      for (const e of [...(await this.artists()).flatMap((r) => (r.entity ? [r.entity] : [])), ...(await this.localArtists())]) if (e.image && /^https:\/\//.test(e.image) && !photos.has(nameKey(e.name))) photos.set(nameKey(e.name), e.image);
+      // The artists' photos from entities already fetched (the act's, the crowd's): a song with no cover shows its artist.
+      const withArtistPhotos = (entries: ReturnType<typeof buildSetlist>) => entries.map((e) => (photos.has(nameKey(e.artist)) ? { ...e, artistImage: photos.get(nameKey(e.artist))! } : e));
+      if (!fill) return withArtistPhotos(buildSetlist(repertoire, affinity, playcounts, undefined, { years, ageLean: profile?.age ?? null, currentYear, ageLabel }, scene));
 
       const have = new Set(repertoire.map((s) => trackKey(s.artist, s.title)));
       const skip = new Set((this.request.performer.skipSongs ?? []).map((s) => trackKey(s.artist, s.title)));
@@ -776,7 +780,8 @@ export class PlanContext {
       // Room for all the suggested songs on top of the act's own 12, so a long Repertoire can't push them out.
       const ordered = buildSetlist([...repertoire, ...suggested], affinity, playcounts, MAX_REPERTOIRE_SET + fill, { years: eraYears, ageLean: profile?.age ?? null, currentYear, ageLabel }, scene);
       let ownKept = 0;
-      return ordered.filter((e) => e.origin === "suggested" || ownKept++ < DEFAULT_MAX_SONGS);
+      // The artists' photos from entities already fetched (the act's, the crowd's), so a song can show its artist when it has no cover.
+      return withArtistPhotos(ordered.filter((e) => e.origin === "suggested" || ownKept++ < DEFAULT_MAX_SONGS));
     });
   }
 

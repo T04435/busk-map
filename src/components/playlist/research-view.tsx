@@ -38,7 +38,8 @@ import { ZERO_LEARN_TOTALS, type LearnListView, type LearnStreamEvent } from "@/
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import { playlistSongKey, type LearnSuggestionView, type PlaylistView } from "@/lib/playlist-schema";
 import { OFFLINE_TEST_ARTIST } from "@/lib/repertoire-research";
-import { toRepertoireView, type RepertoireView } from "@/lib/repertoire-research-view";
+import { spotifyHref } from "@/lib/mention";
+import { toRepertoireView, type LearnSong, type RepertoireView } from "@/lib/repertoire-research-view";
 import { parseSpotifyArtistId, spotifyArtistUrl } from "@/lib/spotify-link";
 import { joinLearn, loadLearn, pageFaults, patchSuggestion, startResearch } from "./learn-api";
 import { ResearchFunnel } from "./learn-feed";
@@ -68,12 +69,13 @@ function focusTarget(target: string): HTMLElement | null {
  * the model's reason with the artists behind it, the evidence as info tags (builds on, the crowd, growth, rising, source),
  * and the actions: Learn it, Learned and Not for me on a pending song, Undo on a learned or dismissed one.
  */
-function SuggestionRow({ song, busy, onStatus }: { song: LearnSuggestionView; busy: boolean; onStatus: (song: LearnSuggestionView, status: "pending" | "learned" | "dismissed") => void }) {
+function SuggestionRow({ song, media, busy, onStatus }: { song: LearnSuggestionView; /** What the view model knows of it: the artist photo and the Spotify link (U03, U06). */ media?: LearnSong; busy: boolean; onStatus: (song: LearnSuggestionView, status: "pending" | "learned" | "dismissed") => void }) {
   const L = COPY.learn;
   const go = (status: "pending" | "learned" | "dismissed") => () => {
     if (!busy) onStatus(song, status);
   };
   const because = song.basedOn.filter((b) => b.kind === "soundsLike" || b.kind === "repertoire").map((b) => ({ name: b.name }));
+  const becauseOf = new Map((media?.because ?? []).map((a) => [a.name, a]));
   const info = [
     ...song.basedOn.filter((b) => b.kind === "learned").map((b) => <InfoTag key={`b-${b.name}`}>{L.buildsOn(b.name)}</InfoTag>),
     ...song.basedOn.filter((b) => b.kind === "crowd").map((b) => <InfoTag key={`c-${b.name}`}>{L.crowdAt(b.name)}</InfoTag>),
@@ -90,12 +92,14 @@ function SuggestionRow({ song, busy, onStatus }: { song: LearnSuggestionView; bu
         artist={song.artist}
         year={song.year}
         durationMs={song.durationMs}
-        image={song.image}
-        href={song.sourceUrl ?? undefined}
+        image={song.image ?? media?.image}
+        artistImage={media?.artistImage}
+        href={media?.href ?? spotifyHref(song.sourceUrl) ?? undefined}
+        source={media?.source}
         muted={song.status === "dismissed"}
         tags={song.status === "learned" ? <SongTag kind="learned" /> : song.isNew && pending ? <SongTag kind="new" /> : undefined}
         info={info}
-        reason={<Reason text={because.length === 0 && song.because ? `${song.reason} ${song.because}.` : [`${song.reason} Because `, ...because.flatMap((a, i) => (i ? [", ", { kind: "artist" as const, name: a.name }] : [{ kind: "artist" as const, name: a.name }]))]} />}
+        reason={<Reason text={because.length === 0 && song.because ? `${song.reason} ${song.because}.` : [`${song.reason} Because `, ...because.flatMap((a, i) => (i ? [", ", { kind: "artist" as const, name: a.name, image: becauseOf.get(a.name)?.image, href: becauseOf.get(a.name)?.href }] : [{ kind: "artist" as const, name: a.name, image: becauseOf.get(a.name)?.image, href: becauseOf.get(a.name)?.href }]))]} />}
         actions={<SongActions title={song.title} artist={song.artist} disabled={busy} learnIt onLearned={pending ? go("learned") : undefined} onDismiss={pending ? go("dismissed") : undefined} onUndo={pending ? undefined : go("pending")} />}
       />
     </li>
@@ -313,6 +317,8 @@ export function ResearchView() {
   const dismissed = (list?.suggestions ?? []).filter((s) => s.status === "dismissed");
   const limit = list?.limit;
   const r = view.results;
+  const learnMedia = new Map((r.toLearn ?? []).map((s) => [s.id, s]));
+  const photoOf = new Map((r.soundsLike ?? []).map((a) => [a.name.toLowerCase(), a]));
   const chosenArtists = () => {
     const chosen = [...artists];
     for (const typed of typedArtists(artistQuery)) if (!chosen.some((a) => a.name.toLowerCase() === typed.toLowerCase())) chosen.push({ name: typed, spotifyId: null, image: null });
@@ -385,6 +391,8 @@ export function ResearchView() {
                   year={song.year}
                   album={song.album}
                   image={song.image}
+                  artistImage={song.artistImage}
+                  source={song.source}
                   durationMs={song.durationMs}
                   href={song.href}
                   actions={
@@ -432,13 +440,13 @@ export function ResearchView() {
           <ArtistChipList inline label={R.soundsLikeHeading}>
             {(r.soundsLike ?? []).map((a) => (
               <li key={a.name}>
-                <ArtistChip size="xs" name={a.name} image={a.image} />
+                <ArtistChip size="xs" name={a.name} image={a.image} href={a.href} />
               </li>
             ))}
           </ArtistChipList>
         ) : (
           <div className="space-y-2">
-            <ArtistPicker value={artists} onChange={setArtists} query={artistQuery} onQueryChange={setArtistQuery} />
+            <ArtistPicker value={artists.map((a) => ({ ...a, image: a.image ?? photoOf.get(a.name.toLowerCase())?.image ?? null }))} onChange={setArtists} query={artistQuery} onQueryChange={setArtistQuery} />
             {playlist && (
               <Button
                 type="button"
@@ -480,7 +488,7 @@ export function ResearchView() {
         <ArtistChipList inline label={R.fansLoveHeading}>
           {(r.fansLove ?? []).map((a) => (
             <li key={a.name}>
-              <ArtistChip size="xs" name={a.name} image={a.image} />
+              <ArtistChip size="xs" name={a.name} image={a.image} href={a.href} />
             </li>
           ))}
         </ArtistChipList>
@@ -491,7 +499,7 @@ export function ResearchView() {
         {pending.length > 0 ? (
           <ul aria-label={COPY.toLearn} className="divide-y">
             {pending.map((song) => (
-              <SuggestionRow key={song.id} song={song} busy={busy || live} onStatus={(s, status) => void changeSuggestion(s, status)} />
+              <SuggestionRow key={song.id} song={song} media={learnMedia.get(song.id)} busy={busy || live} onStatus={(s, status) => void changeSuggestion(s, status)} />
             ))}
           </ul>
         ) : (
@@ -507,7 +515,7 @@ export function ResearchView() {
             <CollapsibleContent>
               <ul aria-label={COPY.learn.notForMe} className="divide-y">
                 {dismissed.map((song) => (
-                  <SuggestionRow key={song.id} song={song} busy={busy} onStatus={(s, status) => void changeSuggestion(s, status)} />
+                  <SuggestionRow key={song.id} song={song} media={learnMedia.get(song.id)} busy={busy} onStatus={(s, status) => void changeSuggestion(s, status)} />
                 ))}
               </ul>
             </CollapsibleContent>
@@ -544,6 +552,8 @@ export function ResearchView() {
                   year={s.year}
                   album={s.album}
                   image={s.image}
+                  artistImage={s.artistImage}
+                  source={s.source}
                   durationMs={s.durationMs}
                   href={s.href}
                   tags={<SongTag kind="learned" />}

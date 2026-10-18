@@ -6,6 +6,20 @@ import { buildSetlist } from "@/server/scoring/setlist";
 const artist = (id: string, name: string, extra: Partial<FillArtist> = {}): FillArtist => ({ id, name, growth: null, listeners: null, because: [], ...extra });
 const track = (artistName: string, title: string, extra: Partial<FillTrack> = {}): FillTrack => ({ title, artist: artistName, spotifyTrackId: null, year: null, durationMs: null, url: `https://x/${title}`, popularity: null, ...extra });
 
+describe("suggested fill: pictures (U03)", () => {
+  it("a suggested song keeps its track image when the catalogue had one, and carries no key when it had none", () => {
+    const [withImage, without] = fillAsRepertoire(
+      [
+        { artist: artist("a", "Alpha"), track: track("Alpha", "One", { image: "https://i.scdn.co/image/x" }), source: "spotify" },
+        { artist: artist("b", "Beta"), track: track("Beta", "Two"), source: "lastfm" },
+      ],
+      {},
+    );
+    expect(withImage.suggestion).toMatchObject({ image: "https://i.scdn.co/image/x" });
+    expect(without.suggestion).not.toHaveProperty("image");
+  });
+});
+
 describe("suggested fill: candidates", () => {
   it("merges the crowd's and the related artists once, joins explanations, and leaves out artists already in the set", () => {
     const merged = mergeFillArtists(

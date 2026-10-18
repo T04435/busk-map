@@ -12,6 +12,7 @@ import { InfoTag } from "@/components/honeycomb/info-tag";
 import { Reason } from "@/components/honeycomb/reason";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { ageLabel } from "@/lib/age";
+import { SPOTIFY_ARTIST_URL } from "@/lib/mention";
 import type { Plan } from "@/lib/plan-schema";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
@@ -123,6 +124,8 @@ export function CrowdPanel({
               <li key={a.name}>
                 <ArtistChip
                   name={a.name}
+                  image={a.image ?? undefined}
+                  href={a.spotifyId ? SPOTIFY_ARTIST_URL(a.spotifyId) : undefined}
                   score={a.affinity !== null ? <ScoreCell value={a.affinity * 100} size="sm" label="Affinity" /> : undefined}
                   info={
                     (a.trend !== null && a.trend >= 1) || usualNames.has(a.name) ? (

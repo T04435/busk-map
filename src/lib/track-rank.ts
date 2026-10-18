@@ -1,7 +1,7 @@
 import { nameKey } from "@/lib/text";
 
 /** An artist the act sounds like (a "sounds like" chip): Spotify id when picked from search, else just the typed name. */
-export type ActArtist = { name: string; spotifyId: string | null };
+export type ActArtist = { name: string; spotifyId: string | null; /** Their photo, when the picker has it (a result's cover falls back to it). */ image?: string | null };
 
 type RankedTrack = { id: string; artists: readonly { id: string; name: string }[] };
 

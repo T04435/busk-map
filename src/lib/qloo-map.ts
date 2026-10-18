@@ -658,7 +658,7 @@ export const dataPoints: readonly DataPoint[] = [
     label: "Your profile and songs",
     sub: "from your Spotify artist link",
     fields: ["name", "images", "genres", "followers", "track title", "album", "release year", "duration"],
-    features: [{ id: "f_research", how: "the profile header, and your songs straight into Songs you can sing, tagged Your song" }],
+    features: [{ id: "f_research", how: "the profile header, and your songs straight into Songs you can sing" }],
   },
   {
     id: "d_sound_alikes",

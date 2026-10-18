@@ -60,7 +60,6 @@ test.describe("Repertoire research (offline)", () => {
     await expect(page.getByLabel("Act name")).toHaveValue(OFFLINE_TEST_ARTIST.name);
     const canSing = page.getByRole("list", { name: "Songs you can sing" });
     await expect(canSing.getByRole("listitem")).toHaveCount(4);
-    await expect(canSing).toContainText("Your song");
     await expect(page.getByTestId("research-fans").getByRole("img").first()).toBeVisible();
     await expect(page.getByRole("list", { name: "Songs you should learn" }).getByTestId("learn-card").first()).toContainText("Mock reason: fans of");
     await expect(page.getByTestId("research-summary")).toContainText("Mock summary (offline test mode)");

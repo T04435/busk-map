@@ -234,7 +234,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           return;
         }
 
-        // 2. Your songs, straight into Songs you can sing, tagged Your song.
+        // 2. Your songs, straight into Songs you can sing.
         await step("songs", { artist: profile.name }, async (): Promise<SongsOutput> => {
           const market = CITIES[(playlist.city in CITIES ? playlist.city : "melbourne") as keyof typeof CITIES].countryCode;
           const cat = await getArtistCatalogue(args.spotifyId, market, adapters);
@@ -253,7 +253,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             const fm = await getSongs([profile.name], adapters);
             const top = fm.mode === "fallback" ? [] : (Object.values(fm.data)[0] ?? []);
             source = top.length ? "lastfm" : "none";
-            tracks = top.map((t) => ({ id: null, title: t.title, artist: profile.name, year: null, durationMs: null, album: null, image: null, href: t.url }));
+            tracks = top.map((t) => ({ id: null, title: t.title, artist: profile.name, year: null, durationMs: null, album: null, image: null, href: null }));
           }
           const out: SongsOutput = { summary: "", source, songs: [], added: 0, already: 0, full: false };
           for (const t of tracks.slice(0, RESEARCH_OWN_SONGS_MAX)) {

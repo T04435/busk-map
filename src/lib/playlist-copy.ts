@@ -41,7 +41,6 @@ export const PLAYLIST_COPY = {
   emptyLearned: "Songs you learn from suggestions show up here.",
   remove: "Remove",
   moveToCanSing: "Move to Songs you can sing",
-  yourSong: "Your song",
   count: (n: number, max: number) => `${n} of ${max} songs`,
   forget: "Forget my Repertoire",
   forgetTitle: "Forget your Repertoire?",

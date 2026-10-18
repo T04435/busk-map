@@ -8,13 +8,18 @@ import { SongRow } from "@/components/honeycomb/song-row";
 import { SongTag } from "@/components/honeycomb/song-tag";
 import { formatDuration } from "@/lib/live-search";
 import { ageLabel } from "@/lib/age";
+import { SPOTIFY_TRACK_URL, spotifyHref } from "@/lib/mention";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
 /** The parts of a plan's song and "learn these" entry the panel shows, so the landing can feed it labelled example data. */
 type SetlistSong = Pick<PlanPitch["setlist"][number], "songId" | "title" | "artist" | "own" | "score" | "reason" | "durationMs" | "year"> &
-  Partial<Pick<PlanPitch["setlist"][number], "origin" | "suggestion">>;
-type LearnThese = (Pick<Plan["learnThese"][number], "artist" | "title" | "reason"> & Partial<Pick<Plan["learnThese"][number], "audienceGrowth">>)[];
+  Partial<Pick<PlanPitch["setlist"][number], "origin" | "suggestion" | "artistImage">>;
+type LearnThese = (Pick<Plan["learnThese"][number], "artist" | "title" | "reason"> & Partial<Pick<Plan["learnThese"][number], "audienceGrowth" | "artistImage">>)[];
+
+/** A suggested song's Spotify link: its track URL, else built from the track id; Last.fm (or no) source means no link (U06). */
+const suggestionHref = (s: SetlistSong["suggestion"] | undefined): string | undefined =>
+  (s && (spotifyHref(s.sourceUrl) ?? (s.spotifyTrackId && /^[A-Za-z0-9]{22}$/.test(s.spotifyTrackId) ? SPOTIFY_TRACK_URL(s.spotifyTrackId) : null))) || undefined;
 
 /** Total length of the songs with a known length, and how many those are. */
 export function setLength(setlist: Pick<SetlistSong, "durationMs">[]): { ms: number; timed: number } {
@@ -152,6 +157,10 @@ function SetlistPreview({
                 artist={song.artist}
                 year={song.year}
                 durationMs={song.durationMs}
+                image={song.suggestion?.image}
+                artistImage={song.artistImage}
+                href={suggestionHref(song.suggestion)}
+                source={song.suggestion?.source}
                 score={song.score}
                 scoreLabel="Fit"
                 className="border-b border-border last:border-b-0"
@@ -161,9 +170,9 @@ function SetlistPreview({
                 {song.origin === "suggested" && song.suggestion && (
                   <span className="block text-sm text-muted-foreground" data-testid="suggestion-because">
                     {song.suggestion.because}{" "}
-                    {song.suggestion.sourceUrl ? (
-                      <a className="font-bold text-foreground underline underline-offset-3" href={song.suggestion.sourceUrl} target="_blank" rel="noreferrer">
-                        {song.suggestion.source === "spotify" ? "On Spotify" : "On Last.fm"}
+                    {suggestionHref(song.suggestion) ? (
+                      <a className="font-bold text-foreground underline underline-offset-3" href={suggestionHref(song.suggestion)} target="_blank" rel="noreferrer">
+                        On Spotify
                       </a>
                     ) : (
                       `(from ${song.suggestion.source === "spotify" ? "Spotify" : "Last.fm"})`
@@ -197,6 +206,7 @@ function SetlistPreview({
                 index={i + 1}
                 title={s.title ?? "Any song"}
                 artist={s.artist}
+                artistImage={s.artistImage}
                 className="border-b border-border last:border-b-0"
                 {...reasonSlots(s.reason)}
                 actions={s.title ? <SongActions title={s.title} artist={s.artist} learnIt /> : undefined}

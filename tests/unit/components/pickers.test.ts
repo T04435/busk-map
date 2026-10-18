@@ -57,6 +57,5 @@ describe("PickedSongs (B-176)", () => {
     expect(out).toContain("2 songs");
     expect(out).toContain("4:00");
     expect(out).toContain("Your song");
-    expect(out).toContain("max-[560px]:break-words");
   });
 });

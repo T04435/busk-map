@@ -4,15 +4,18 @@ import { useId, useRef, useState, type Dispatch, type SetStateAction } from "rea
 import type { TrackResult } from "@/components/forms/repertoire-api";
 import { FormMessage } from "@/components/honeycomb/form-message";
 import { Icon } from "@/components/honeycomb/icon";
+import { IconAction } from "@/components/honeycomb/icon-action";
 import { Loader } from "@/components/honeycomb/loader";
-import { Badge } from "@/components/ui/badge";
+import { SongActions } from "@/components/honeycomb/song-actions";
+import { SongRow } from "@/components/honeycomb/song-row";
+import { SongTag } from "@/components/honeycomb/song-tag";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { formatDuration } from "@/lib/live-search";
 import { type PickedArtist } from "./artist-picker";
-import { SongCover, SongSearch } from "./song-search";
+import { SongSearch } from "./song-search";
 
 // "|" and "~" separate values in the plan URL.
 const clean = (s: string) => s.replace(/[|~]/g, " ").trim();
@@ -71,34 +74,37 @@ function PickedRow({ song, ownerImage, onRemove, onEdit }: { song: PickedSong; o
       </li>
     );
   return (
-    <li className="flex min-h-tap flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2.5 max-[560px]:py-2">
-      <SongCover image={song.image} />
-      <span className="min-w-0 flex-1 basis-0">
-        <span className="block text-[15px] leading-5 font-bold max-[560px]:break-words sm:truncate">{song.title}</span>
-        <span className="block truncate text-sm leading-5 text-muted-foreground">{[song.artist, song.album].filter(Boolean).join(" · ")}</span>
-      </span>
-      {(song.own || typed || song.durationMs !== null) && (
-        <span className="inline-flex flex-none items-center gap-3 max-[560px]:order-3 max-[560px]:basis-full max-[560px]:pl-11">
-          {song.own && (
-            <Badge variant="solid">
-              {/* eslint-disable-next-line @next/next/no-img-element -- a 16px external Spotify photo */}
-              {ownerImage ? <img src={ownerImage} alt="" width={16} height={16} className="size-4 rounded-full object-cover" /> : <Icon name="music" size={14} strokeWidth={2.5} />}
-              Your song
-            </Badge>
-          )}
-          {typed && <Badge variant="neutral">Typed</Badge>}
-          {song.durationMs !== null && <span className="font-mono text-sm leading-5 text-muted-foreground tabular-nums">{formatDuration(song.durationMs)}</span>}
-        </span>
-      )}
-      {typed && onEdit ? (
-        <Button ref={editRef} type="button" variant="ghost" size="icon-xs" className="max-[560px]:order-2" data-edit-for={song.key} aria-label={`Edit ${song.title}`} onClick={() => { setTitle(song.title); setArtist(song.artist); setEditing(true); }}>
-          <Icon name="pencil" size={16} />
-        </Button>
-      ) : null}
-      <Button type="button" variant="ghost" size="icon-xs" className="max-[560px]:order-2" aria-label={`Remove ${song.title}`} onClick={() => onRemove(song)}>
-        <Icon name="x" size={16} />
-      </Button>
-    </li>
+    <SongRow
+      size="sm"
+      title={song.title}
+      artist={song.artist}
+      album={song.album}
+      image={song.image}
+      durationMs={song.durationMs}
+      own={song.own}
+      ownerImage={ownerImage}
+      tags={typed ? <SongTag kind="typed" /> : undefined}
+      className="px-3"
+      actions={
+        <>
+          {typed && onEdit ? (
+            <IconAction
+              ref={editRef}
+              icon="pencil"
+              size="sm"
+              data-edit-for={song.key}
+              label={`Edit ${song.title}`}
+              onClick={() => {
+                setTitle(song.title);
+                setArtist(song.artist);
+                setEditing(true);
+              }}
+            />
+          ) : null}
+          <SongActions size="sm" title={song.title} onRemove={() => onRemove(song)} />
+        </>
+      }
+    />
   );
 }
 

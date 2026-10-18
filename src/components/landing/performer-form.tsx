@@ -8,7 +8,8 @@ import { CityPicker } from "@/components/forms/city-picker";
 import { PermitPicker } from "@/components/forms/permit-picker";
 import { DatePicker } from "@/components/forms/date-picker";
 import { choiceOf, slotIdOf, TimeSlotPicker } from "@/components/forms/time-slot-picker";
-import { ProfileHeader } from "@/components/playlist/profile-header";
+import { ArtistProfile } from "@/components/honeycomb/artist-profile";
+import { profilePhoto } from "@/components/playlist/profile-header";
 import { actGenresOf } from "@/lib/repertoire-research";
 import { SoundsLikeSuggestionsList, withSuggested } from "@/components/playlist/sounds-like-suggestions";
 import { RepertoireSource } from "@/components/playlist/repertoire-source";
@@ -21,7 +22,7 @@ import { fieldLabel, planFormError } from "@/lib/form-errors";
 import { planRequestSchema, type PlanRequest, type PlanRequestInput } from "@/lib/plan-schema";
 import { planSearchParams } from "@/lib/plan-url";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
-import { type PlaylistView } from "@/lib/playlist-schema";
+import { type PlaylistView, type SpotifyProfile } from "@/lib/playlist-schema";
 import { choiceForHours, hoursOf, type TimeChoice } from "@/lib/time-slots";
 import { ArtistPicker, typedArtists, type PickedArtist } from "./artist-picker";
 
@@ -74,6 +75,9 @@ const repertoireFields = (view: PlaylistView) => ({
     (song): PickedSong => ({ key: `rep-${song.id}`, title: song.title, artist: song.artist, durationMs: song.durationMs, own: song.own }),
   ),
 });
+
+/** The Repertoire's saved Spotify profile as ArtistProfile draws it (read-only here: no audience tags, no refresh). */
+const profileOf = (profile: SpotifyProfile) => ({ name: profile.name, image: profilePhoto(profile.images), genres: profile.genres, audience: [], followers: profile.followers ?? null });
 
 /** The time choice a prefill starts on: any time by default (also when planning again), or the hours of an old plan as the matching named slot or a custom one. */
 const initialTime = (prefill: FormPrefill | undefined): TimeChoice => (prefill && !prefill.anyTime ? choiceForHours(prefill.startHour, prefill.endHour) : { kind: "any" });
@@ -281,7 +285,13 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
           heading={prefill ? PLAYLIST_COPY.source.headingLastBusk : PLAYLIST_COPY.source.heading}
           songs={songs}
           hasRepertoire={Boolean(rep && rep.songs.length > 0)}
-          header={rep ? <ProfileHeader profile={rep.spotifyProfile} hasLink={Boolean(rep.spotifyArtistId)} /> : null}
+          header={
+            rep?.spotifyArtistId && rep.spotifyProfile ? (
+              <div data-testid="profile-header">
+                <ArtistProfile size="md" maxGenres={5} profile={profileOf(rep.spotifyProfile)} />
+              </div>
+            ) : null
+          }
         />
         {hasError("songs") && (
           <FormMessage tone="error" id="err-songs" alert={false}>

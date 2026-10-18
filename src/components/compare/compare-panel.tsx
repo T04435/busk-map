@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { BothAgreeBadge } from "@/components/honeycomb/both-agree-badge";
 import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
-import { PercentCell } from "@/components/honeycomb/percent-cell";
-import { WithCells } from "@/components/honeycomb/with-cells";
+import { Reason } from "@/components/honeycomb/reason";
+import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { baselineViewSchema, type BaselineView, type PlanPitch, type PlanRequest } from "@/lib/plan-schema";
@@ -153,7 +153,7 @@ function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch
           <ul className="m-0 flex list-none flex-col gap-3 p-0">
             {agreed.map((a) => (
               <li key={a.pitchId} className="flex flex-wrap items-center gap-3">
-                <PercentCell value={a.pitch.score} size={36} label="Score" />
+                <ScoreCell value={a.pitch.score} size="sm" label="Score" />
                 <b>{a.pitch.name}</b>
                 <BothAgreeBadge />
                 <span className="text-sm text-muted-foreground">the plain AI named &ldquo;{a.plainName}&rdquo;</span>
@@ -171,7 +171,7 @@ function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch
             {onlyOurs.map((pitch) => (
               <li key={pitch.id} className="space-y-2">
                 <span className="flex flex-wrap items-center gap-3">
-                  <PercentCell value={pitch.score} size={36} label="Score" />
+                  <ScoreCell value={pitch.score} size="sm" label="Score" />
                   <b>{pitch.name}</b>
                   {pitch.discovery === "hidden-gem" && <DiscoveryBadge discovery="hidden-gem" />}
                 </span>
@@ -197,7 +197,7 @@ function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch
             {onlyPlain.map((spot, i) => (
               <li key={`${spot.name}-${i}`} className="space-y-1">
                 <span className="flex flex-wrap items-center gap-3">
-                  {spot.status === "scored" && <PercentCell value={spot.score} size={36} label="Busk Map's score" />}
+                  {spot.status === "scored" && <ScoreCell value={spot.score} size="sm" label="Busk Map's score" />}
                   <b>{spot.name}</b>
                   <Badge variant={STATUS_VARIANT[spot.status]}>{STATUS_LABEL[spot.status]}</Badge>
                   {spot.usualSpot && <DiscoveryBadge discovery="usual" />}
@@ -223,9 +223,7 @@ function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch
           </ul>
         )}
         {baseline.setlist.length > 0 && (
-          <p className="m-0 text-sm text-muted-foreground">
-            Plain AI {PLAYLIST_COPY.suggestedSetNoun}: <WithCells text={baseline.setlist.join(", ")} />
-          </p>
+          <Reason text={`Plain AI ${PLAYLIST_COPY.suggestedSetNoun}: ${baseline.setlist.join(", ")}`} />
         )}
       </Section>
     </>

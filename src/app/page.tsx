@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ExampleActCard } from "@/components/honeycomb/example-act-card";
 import { QlooLink } from "@/components/honeycomb/logo";
-import { PercentCell } from "@/components/honeycomb/percent-cell";
+import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { Button } from "@/components/ui/button";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { HeroGlow } from "@/components/landing/hero-glow";
@@ -257,7 +257,7 @@ export default function Home() {
               <HexCell size={36} tone="primary" fontSize={16}>
                 1
               </HexCell>
-              <PercentCell value={91} size={44} label="" />
+              <ScoreCell value={91} label="" />
             </div>
             <div className="grid grid-cols-3 gap-2 text-center font-mono text-[10px] leading-3 text-muted-foreground">
               {[

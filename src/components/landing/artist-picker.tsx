@@ -4,10 +4,9 @@ import { useEffect, useId, useRef, useState } from "react";
 import { cn } from "cn";
 import { loadListeners, loadReleases, searchArtists, type ArtistResult } from "@/components/forms/repertoire-api";
 import { useLiveSearch } from "@/components/forms/use-live-search";
-import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
+import { ArtistChip } from "@/components/honeycomb/artist-chip";
 import { Icon } from "@/components/honeycomb/icon";
 import { Loader } from "@/components/honeycomb/loader";
-import { Button } from "@/components/ui/button";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { formatCount, MIN_QUERY_CHARS } from "@/lib/live-search";
 
@@ -107,26 +106,14 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
       {value.length > 0 && (
         <ul aria-label="Artists you picked" className="m-0 flex list-none flex-col items-stretch gap-2 p-0">
           {value.map((artist) => (
-            <li key={artist.name} className="box-border flex h-control w-full max-w-full items-center gap-2 border-2 border-rule bg-card pl-1.5 text-sm leading-5">
-              <HexCell size={26} image={artist.image} fontSize={11}>
-                {initialsOf(artist.name)}
-              </HexCell>
-              <span className="min-w-0 flex-1 truncate font-bold" title={artist.name}>
-                {artist.name}
-              </span>
-              {artistSource(artist) !== "spotify" && (
-                <span className="shrink-0 font-mono text-[11px] leading-4 font-medium tracking-[0.06em] text-muted-foreground uppercase">{artistSource(artist) === "qloo" ? "Qloo" : "Typed"}</span>
-              )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                className="h-full w-10 shrink-0 rounded-none border-0 border-l border-border"
-                aria-label={`Remove ${artist.name}`}
-                onClick={() => onChange(value.filter((a) => a !== artist))}
-              >
-                <Icon name="x" size={16} strokeWidth={2.5} />
-              </Button>
+            <li key={artist.name}>
+              <ArtistChip
+                name={artist.name}
+                image={artist.image}
+                source={artistSource(artist) === "spotify" ? undefined : artistSource(artist)}
+                state="picked"
+                onRemove={() => onChange(value.filter((a) => a !== artist))}
+              />
             </li>
           ))}
         </ul>
@@ -196,14 +183,14 @@ export function ArtistPicker({ value, onChange, query, onQueryChange }: Props) {
                       data-checked={has(artist.name)}
                       onSelect={() => pick({ name: clean(artist.name), spotifyId: artist.id, image: artist.image })}
                     >
-                      <HexCell size={32} image={artist.image} fontSize={12}>
-                        {initialsOf(artist.name)}
-                      </HexCell>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-bold">{artist.name}</span>
-                        {meta.length > 0 && <span className="block font-mono text-xs text-muted-foreground">{meta.join(" · ")}</span>}
-                      </span>
-                      {has(artist.name) && <span className="font-mono text-[11px] leading-4 font-bold tracking-[0.06em] uppercase">Added</span>}
+                      <ArtistChip
+                        name={artist.name}
+                        image={artist.image}
+                        tags={meta as string[]}
+                        state={has(artist.name) ? "added" : "static"}
+                        interactive={false}
+                        className="w-full border-0"
+                      />
                     </CommandItem>
                   );
                 })}

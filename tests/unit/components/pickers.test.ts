@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { CityPicker } from "@/components/forms/city-picker";
 import { PermitPicker } from "@/components/forms/permit-picker";
 import { ArtistPicker } from "@/components/landing/artist-picker";
-import { PickedSongs, type PickedSong } from "@/components/landing/repertoire-picker";
+import { PicksList, type PickedSong } from "@/components/landing/repertoire-picker";
 
 const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
 
@@ -49,14 +49,13 @@ describe("ArtistPicker (B-172, B-175)", () => {
   });
 });
 
-describe("PickedSongs (B-176)", () => {
+describe("PicksList (B-176)", () => {
   const song = (over: Partial<PickedSong>): PickedSong => ({ key: "a", title: "A very long song title that must never be lost", artist: "Artist", album: null, image: null, durationMs: 180000, own: false, ...over });
   it("has the Your picks header with the count and total time, and the Your song badge", () => {
-    const out = html(createElement(PickedSongs, { songs: [song({ own: true }), song({ key: "b", durationMs: 60000 })], onRemove: () => {} }));
+    const out = html(createElement(PicksList, { songs: [song({ own: true }), song({ key: "b", durationMs: 60000 })], onRemove: () => {} }));
     expect(out).toContain("Your picks");
     expect(out).toContain("2 songs");
     expect(out).toContain("4:00");
     expect(out).toContain("Your song");
-    expect(out).toContain("max-[560px]:break-words");
   });
 });

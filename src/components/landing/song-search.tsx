@@ -6,13 +6,14 @@ import { useLiveSearch } from "@/components/forms/use-live-search";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
 import { Loader } from "@/components/honeycomb/loader";
-import { Badge } from "@/components/ui/badge";
+import { SongRow } from "@/components/honeycomb/song-row";
+import { SongTag } from "@/components/honeycomb/song-tag";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "cn";
-import { formatDuration, MIN_QUERY_CHARS } from "@/lib/live-search";
+import { MIN_QUERY_CHARS } from "@/lib/live-search";
 import { isByActArtist, rankByActArtists, type ActArtist } from "@/lib/track-rank";
 
 const LABEL = "Search songs on Spotify";
@@ -190,19 +191,22 @@ export function SongSearch({
                       inputRef.current?.focus();
                     }}
                   >
-                    <SongCover image={track.image} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-bold">{track.title}</span>
-                      <span className="block truncate text-xs text-muted-foreground">{[artist, track.album].filter(Boolean).join(" · ")}</span>
-                    </span>
-                    {isByActArtist(track, artists) && (
-                      <Badge variant="neutral">
-                        <Icon name="users" size={14} strokeWidth={2.5} />
-                        By your artist
-                      </Badge>
-                    )}
-                    {track.durationMs !== null && <span className="font-mono text-xs text-muted-foreground tabular-nums">{formatDuration(track.durationMs)}</span>}
-                    <span className={added ? "font-mono text-[11px] leading-4 font-bold tracking-[0.06em] uppercase" : "sr-only"}>{added ? "Added" : "Add"}</span>
+                    <SongRow
+                      interactive={false}
+                      size="sm"
+                      title={track.title}
+                      artist={artist}
+                      album={track.album}
+                      image={track.image}
+                      durationMs={track.durationMs}
+                      className="w-full py-0"
+                      tags={
+                        <>
+                          {isByActArtist(track, artists) && <SongTag kind="by-your-artist" />}
+                          {added && <SongTag kind="added" />}
+                        </>
+                      }
+                    />
                   </CommandItem>
                 );
               })}

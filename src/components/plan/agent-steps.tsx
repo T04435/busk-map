@@ -1,5 +1,6 @@
 "use client";
 
+import { StepCell } from "@/components/honeycomb/step-cell";
 import { AgentTag } from "@/components/honeycomb/agent-tag";
 import { Fragment, useId, useState, type ReactNode } from "react";
 import { cn } from "cn";
@@ -211,9 +212,7 @@ function ToolCard({ step, model, raw, rawView, when, pins, fresh }: { step: Agen
       )}
     >
       <div className="grid grid-cols-[30px_minmax(0,1fr)] items-start gap-3">
-        <HexCell size={30} tone={running ? "primary" : bad ? "error" : cut ? "dashed" : "default"}>
-          {running ? <Loader size={18} label="Working" /> : bad ? <Icon name="x" size={15} strokeWidth={3} /> : <Icon name={icon} size={15} />}
-        </HexCell>
+        <StepCell size={30} icon={icon} status={running ? "running" : bad || rejected ? "failed" : cut ? "skipped" : "done"} label={`${title}: ${running ? "working" : bad || rejected ? "didn't work" : cut ? "stopped" : "done"}`} />
         <div className="grid min-w-0 gap-1">
           <b className={cn(running ? "font-sans text-base leading-[22px] font-bold" : "font-display text-xl leading-6 font-extrabold uppercase")}>{title}</b>
           {say.length ? (

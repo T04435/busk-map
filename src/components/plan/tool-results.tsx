@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 import { summaryLine } from "@/lib/repertoire-research";
+import { artist as mentionArtist, listOf, song as mentionSong, source as mentionSource, SPOTIFY_ARTIST_URL, type RichText as RichTextData } from "@/lib/mention";
+import { RichText } from "@/components/honeycomb/mention";
 import { reasonSlots } from "@/components/setlist/reason-slots";
 import { cn } from "cn";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { EvidenceLine } from "@/components/honeycomb/evidence-line";
 import { FoundByBadge } from "@/components/honeycomb/found-by-badge";
 import { Icon, type IconName } from "@/components/honeycomb/icon";
-import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
+import { ArtistChip } from "@/components/honeycomb/artist-chip";
 import { InfoTag } from "@/components/honeycomb/info-tag";
 import { MeterBar } from "@/components/honeycomb/score-cell";
 import { PitchRow } from "@/components/honeycomb/pitch-row";
@@ -181,41 +183,55 @@ const becauseArtists = (s: string) =>
     })
     .filter((a) => a.name);
 
-/** A research step's artists ({ name, image? }[]) after a lead-in, as an inline list of xs ArtistChips. */
-function researchArtists(lead: string, none: string): ToolUi {
-  return {
-    doing: (s) => s.label,
-    title: (s) => s.label,
-    render: (o) => {
-      const artists = arr(o.artists).filter((a) => str(a.name));
-      if (artists.length === 0) return <Foot>{none}</Foot>;
-      return (
-        <div className="grid gap-2">
-          <p className="m-0 text-[13px] leading-[18px] text-muted-foreground">{lead}</p>
-          <ArtistChipList inline label={lead}>
-            {artists.map((a) => (
-              <li key={str(a.name)}>
-                <ArtistChip size="xs" name={str(a.name) as string} image={str(a.image) ?? undefined} />
-              </li>
-            ))}
-          </ArtistChipList>
-        </div>
-      );
-    },
-  };
-}
+/** A research step's line as RichText (U08): artists, songs and sources named inline through Mention, never as plain names. */
+const researchUi = (line: (o: Rec) => RichTextData | string): ToolUi => ({
+  doing: (s) => s.label,
+  title: (s) => s.label,
+  render: (o) => (
+    <Foot>
+      <RichText text={line(o)} />
+    </Foot>
+  ),
+});
+const artistOf = (a: Rec) =>
+  mentionArtist(str(a.name) ?? "", { image: str(a.image), href: str(a.href) ?? (str(a.spotifyId) ? SPOTIFY_ARTIST_URL(str(a.spotifyId) as string) : null) });
+const artistsLine = (lead: string, none: string) => (o: Rec) => {
+  const artists = arr(o.artists).filter((a) => str(a.name));
+  return artists.length ? [`${lead} `, ...listOf(artists.slice(0, 6).map(artistOf))] : none;
+};
+const RESEARCH_UI: Record<string, ToolUi> = {
+  research_profile: researchUi((o) => (str(o.name) ? ["Read ", artistOf(o), " on ", mentionSource("spotify")] : (str(o.summary) ?? ""))),
+  research_songs: researchUi((o) => {
+    const songs = arr(o.songs).filter((x) => str(x.title));
+    if (!songs.length) return str(o.summary) ?? "";
+    const from = str(o.source) === "spotify" || str(o.source) === "lastfm" ? [" from ", mentionSource(str(o.source) as "spotify" | "lastfm")] : [];
+    return [
+      `Added ${num(o.added) ?? songs.length} of your songs`,
+      ...from,
+      ", including ",
+      ...listOf(songs.slice(0, 3).map((x) => mentionSong(str(x.title) as string, { artist: str(x.artist), image: str(x.image), href: str(x.href) }))),
+    ];
+  }),
+  research_qloo: researchUi((o) => {
+    if (!o.matched || !str(o.name)) return str(o.summary) ?? "";
+    const audience = Array.isArray(o.audience) ? (o.audience as string[]) : [];
+    return ["Found ", mentionArtist(str(o.name) as string), " on ", mentionSource("qloo"), ...(audience.length ? [`: ${audience.slice(0, 4).join(", ")}`] : [])];
+  }),
+  research_sounds_like: researchUi(artistsLine("You sound like", "Qloo found no artists like you")),
+  research_fans_love: researchUi(artistsLine("Your fans also love", "Qloo found no other artists your fans love")),
+  research_learn: researchUi((o) => {
+    const songs = arr(o.songs).filter((x) => str(x.title));
+    return songs.length
+      ? [`Found ${songs.length} ${songs.length === 1 ? "song" : "songs"} your fans would stop for, like `, ...listOf(songs.slice(0, 3).map((x) => mentionSong(str(x.title) as string, { artist: str(x.artist) })))]
+      : (str(o.summary) ?? "");
+  }),
+  // Step 9 in the Hive's voice from its data, so a saved run from before U11 ("Claude ranked…") reads the same as a new one.
+  research_summary: researchUi((o) => summaryLine(str(o.by) ?? "template", num(o.picks) ?? 0)),
+};
 
 /** Each tool as a busker sees it: what it is doing while it runs, a plain title once done, and its result drawn from the contract fields. */
 export const TOOL_UI: Record<string, ToolUi> = {
-  // Repertoire research steps whose result is a list of artists: the names as xs ArtistChips, not a comma list (unify rule).
-  research_sounds_like: researchArtists("You sound like", "Qloo found no artists like you"),
-  research_fans_love: researchArtists("Your fans also love", "Qloo found no other artists your fans love"),
-  // Step 9 in the Hive's voice from its data, so a saved run from before U11 ("Claude ranked…") reads the same as a new one.
-  research_summary: {
-    doing: (s) => s.label,
-    title: (s) => s.label,
-    render: (o) => <Foot>{summaryLine(str(o.by) ?? "template", num(o.picks) ?? 0)}</Foot>,
-  },
+  ...RESEARCH_UI,
   taste_map: {
     doing: () => "Mapping where your crowd gathers",
     title: () => "Where your crowd gathers",
@@ -230,17 +246,9 @@ export const TOOL_UI: Record<string, ToolUi> = {
         <>
           <MiniTasteMap cells={strongest} pins={pins} />
           <EvidenceLine>
-            Qloo heatmap: the strongest of {num(o.cells) ?? strongest.length} taste cells for {signals.length ? "these artists:" : "your artists."}
+            Qloo heatmap: the strongest of {num(o.cells) ?? strongest.length} taste cells for{" "}
+            {signals.length ? <RichText text={listOf(signals.map((a) => mentionArtist(a)))} /> : "your artists"}.
           </EvidenceLine>
-          {signals.length > 0 && (
-            <ArtistChipList inline>
-              {signals.map((a) => (
-                <li key={a}>
-                  <ArtistChip size="xs" name={a} />
-                </li>
-              ))}
-            </ArtistChipList>
-          )}
         </>
       );
     },
@@ -564,12 +572,12 @@ export const TOOL_ICON: Record<string, IconName> = {
   finish_suggestions: "check",
   // Repertoire research.
   research_profile: "spotify",
-  research_songs: "list",
+  research_songs: "music",
   research_qloo: "search",
-  research_sounds_like: "volume",
-  research_fans: "users",
-  research_fans_love: "gem",
+  research_sounds_like: "users",
+  research_fans: "footfall",
+  research_fans_love: "trending",
   research_learn: "learn",
-  research_genres: "music",
+  research_genres: "list",
   research_summary: "pencil",
 };

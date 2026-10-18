@@ -587,19 +587,21 @@ export function ResearchView() {
   const fansMapBlock = (
     <>
       {/* 4b. Where your fans are (U24). BRAND replaces the plain list with the FansMap component. */}
-      <Section id="research-fans-map" title={R.fansMapHeading} ready={shownMap !== null} live={live} testId="research-fans-map">
-        {mapProps ? (
-          <div className="space-y-3">
-            <FansMap {...mapProps} onCityChange={(id) => void switchMapCity(id)} />
-            {mapError ? (
-              <p role="alert" className="m-0 text-sm text-destructive">
-                {mapError}
-              </p>
-            ) : null}
-            <p className="m-0 text-sm text-muted-foreground">{R.fansMapHonesty}</p>
-          </div>
-        ) : null}
-      </Section>
+      {mapProps ? (
+        // FansMap brings its own heading, Qloo mark and honesty line; the plain Section only holds the place while it loads.
+        <div id="research-fans-map" data-testid="research-fans-map" className="max-w-2xl space-y-2">
+          <FansMap {...mapProps} onCityChange={(id) => void switchMapCity(id)} />
+          {mapError ? (
+            <p role="alert" className="m-0 text-sm text-destructive">
+              {mapError}
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <Section id="research-fans-map" title={R.fansMapHeading} ready={false} live={live} testId="research-fans-map">
+          {null}
+        </Section>
+      )}
     </>
   );
   const fansLoveBlock = (

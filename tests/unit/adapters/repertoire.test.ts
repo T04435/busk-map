@@ -195,6 +195,27 @@ describe("repertoire (Spotify)", () => {
     expect(result.data).toHaveLength(70);
   });
 
+  it("rides out a Spotify 429 on an album: waits, retries, and keeps the whole catalogue (18 Oct live run)", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout"] });
+    try {
+      const { getArtistCatalogue } = await fresh();
+      let hits = 0;
+      mockFetch([
+        tokenRoute,
+        route((u) => u.pathname.endsWith("/albums"), () => json({ items: ["a", "b", "c"].map((id) => ({ id, name: `Album ${id}`, album_type: "album" })), next: null })),
+        route((u) => u.pathname === "/v1/albums/b/tracks" && hits++ === 0, () => json({}, 429)),
+        route((u) => u.pathname.startsWith("/v1/albums/"), (u) => json({ items: [{ id: `t-${u.pathname.split("/")[3]}`, name: `Song ${u.pathname.split("/")[3]}`, artists: [{ id: "a1", name: "Synthetic Artist" }] }], next: null })),
+      ]);
+      const pending = getArtistCatalogue("https://open.spotify.com/artist/0SNWoGaDlrCompmg9rXeNq", "AU", LIVE);
+      await vi.runAllTimersAsync();
+      const result = await pending;
+      expect(result.mode).not.toBe("fallback");
+      expect(result.data.map((t) => t.title).sort()).toEqual(["Song a", "Song b", "Song c"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("returns nothing for an unrecognised link", async () => {
     const { getArtistCatalogue } = await fresh();
     const { calls } = mockFetch([]);

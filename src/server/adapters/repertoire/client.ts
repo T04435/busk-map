@@ -30,7 +30,10 @@ const TIMEOUT_MS = 6_000;
 /** Safety bound against runaway pagination (not a product cap): 50 pages of 10 albums. Spotify ends a list with next = null. */
 const ALBUM_PAGES_SAFETY = 50;
 /** Album track lists fetched at once, kept small for Spotify's rate limit. */
-const ALBUM_TRACKS_CONCURRENCY = 4;
+// Two album track lists at a time: a big catalogue (Al2 El Aldeano: 100+ releases) at 4 tripped Spotify's 429 on 18 Oct.
+const ALBUM_TRACKS_CONCURRENCY = 2;
+/** Waits before retrying a rate-limited call (Spotify 429), then the call gives up. */
+const RATE_LIMIT_BACKOFF_MS = [1000, 2500, 5000];
 
 // Tokens stay in this instance's memory: never in a cache entry or a log.
 let token: { value: string; expiresAt: number } | undefined;
@@ -67,6 +70,19 @@ async function spotify<S extends z.ZodType>(path: string, schema: S): Promise<z.
     timeoutMs: TIMEOUT_MS,
     init: { headers: { Authorization: `Bearer ${await accessToken()}` } },
   });
+}
+
+/** `spotify()` that waits and retries when Spotify rate-limits (429), so one busy moment doesn't lose a whole catalogue. */
+async function spotifyPatient<S extends z.ZodType>(path: string, schema: S): Promise<z.infer<S>> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await spotify(path, schema);
+    } catch (error) {
+      const limited = error instanceof Error && "kind" in error && (error as { kind?: string }).kind === "rate_limited";
+      if (!limited || attempt >= RATE_LIMIT_BACKOFF_MS.length) throw error;
+      await new Promise((r) => setTimeout(r, RATE_LIMIT_BACKOFF_MS[attempt]));
+    }
+  }
 }
 
 type RawImage = { url: string; width?: number | null };
@@ -214,12 +230,13 @@ export async function fetchArtistCatalogue(artistId: string, market: string): Pr
     market,
   })}`;
   for (let page = 0; path && page < ALBUM_PAGES_SAFETY; page++) {
-    const body: z.infer<typeof albumsSchema> = await spotify(path, albumsSchema);
+    const body: z.infer<typeof albumsSchema> = await spotifyPatient(path, albumsSchema);
     albums.push(...body.items);
     path = body.next ? body.next.replace(API, "") : null;
   }
 
   const trackLists: CatalogueTrack[][] = new Array(albums.length);
+  let skipped = 0;
   let nextAlbum = 0;
   const worker = async () => {
     while (nextAlbum < albums.length) {
@@ -228,15 +245,23 @@ export async function fetchArtistCatalogue(artistId: string, market: string): Pr
       const tracks: CatalogueTrack[] = [];
       // An album longer than one page of 50 tracks is followed to its end (next = null).
       let trackPath: string | null = `/albums/${encodeURIComponent(album.id)}/tracks?limit=50&market=${market}`;
-      for (let page = 0; trackPath && page < ALBUM_PAGES_SAFETY; page++) {
-        const body: z.infer<typeof albumTracksSchema> = await spotify(trackPath, albumTracksSchema);
-        tracks.push(...body.items.map((t) => toTrack(t, album)));
-        trackPath = body.next ? body.next.replace(API, "") : null;
+      try {
+        for (let page = 0; trackPath && page < ALBUM_PAGES_SAFETY; page++) {
+          const body: z.infer<typeof albumTracksSchema> = await spotifyPatient(trackPath, albumTracksSchema);
+          tracks.push(...body.items.map((t) => toTrack(t, album)));
+          trackPath = body.next ? body.next.replace(API, "") : null;
+        }
+      } catch (error) {
+        // One release that still fails after the retries is left out; the rest of the catalogue stands.
+        if (!(error instanceof Error && "kind" in error)) throw error;
+        skipped++;
       }
       trackLists[i] = tracks;
     }
   };
   await Promise.all(Array.from({ length: Math.min(ALBUM_TRACKS_CONCURRENCY, albums.length) }, worker));
+  // Every release failing is a failed catalogue (the caller falls back to Last.fm); some failing is a partial one.
+  if (albums.length > 0 && skipped === albums.length) throw new Error("Spotify returned no album track lists");
 
   const seen = new Set<string>();
   return trackLists.flat().filter((track) => {

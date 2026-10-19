@@ -318,7 +318,7 @@ export function AgentStepStream({
         <li className="grid min-w-0 gap-3 py-4 first:pt-0 last:pb-0" data-testid="agent-thinking">
           <div className="grid items-start gap-3" style={STEP_COLS}>
             <HexCell size={HIVE_SIZES.stepCell} tone="dashed">
-              <Loader size={HIVE_SIZES.step} label="Thinking" className="bm-loader-think text-primary" />
+              <Loader size={HIVE_SIZES.stepLoader} label="Thinking" className="bm-loader-think text-primary" />
             </HexCell>
             <div className="grid min-w-0 gap-1">
               <b className="font-sans text-base leading-[22px] font-bold">

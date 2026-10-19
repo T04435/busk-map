@@ -10,7 +10,7 @@ import { cn } from "cn";
  *
  * - `state="rest"`: all seven cells full (done, replayed, standing). `state="working"`: the centre is full and the outer cells
  *   move per `anim`. Reduced motion (checked live) and `motion={false}` hold the anim's fixed working frame.
- * - `source`: the centre cell takes the source's colour (tokens `--source-*`) and, from 20px up, its logo (larger below 48px: logoWidth). Outer cells keep
+ * - `source`: the centre cell takes the source's colour (tokens `--source-*`) and, from 20px up, its logo (larger below 40px: logoWidth). Outer cells keep
  *   animating in Hive orange. Mixed-source steps omit it.
  * - `muted`: the dashed plain hex used when the Hive didn't run (the design's engine-only state does not use the mark).
  */
@@ -29,9 +29,11 @@ export const HIVE_SIZES = {
   eyebrow: 24,
   /** The research status line (board 24). */
   status: 29,
-  /** The running step marker (board 22), inside a step cell of `stepCell` (board 48). */
-  step: 26,
+  /** The running step marker (board 22), inside a step cell of `stepCell` (board 48): about 70% of the cell (user, 20 Oct: keep the hex, make the Hive bigger). */
+  step: 40,
   stepCell: 57,
+  /** The "Thinking" loader in its dashed step cell: it stays at the size it had (not the Hive mark). */
+  stepLoader: 26,
   /** The research header lockup (board 28). */
   lockup: 34,
   /** Meet the Hive card (board 72–104). */
@@ -100,13 +102,13 @@ const LOGOS: Record<HiveSource, { viewBox: string; ink: string; body: React.Reac
 };
 
 /**
- * The logo's width in the 24-unit box: the board's 4.6 from 48px up; below that it grows smoothly to 6.6 at 26px and under, so it
+ * The logo's width in the 24-unit box: the board's 4.6 from 40px up (the running step marker); below that it grows smoothly to 6.6 at 26px and under, so it
  * still reads in the running step marker (user, after QA). 6.6 keeps a margin inside the centre hex (its inner circle is 7.1 across).
  */
 export function logoWidth(size: number): number {
-  if (size >= 48) return 4.6;
+  if (size >= 40) return 4.6;
   if (size <= 26) return 6.6;
-  return +(6.6 - ((size - 26) / 22) * 2).toFixed(3);
+  return +(6.6 - ((size - 26) / 14) * 2).toFixed(3);
 }
 
 const ease = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x));
@@ -280,7 +282,7 @@ export function HiveMark({ state = "rest", anim = "origami", source, size = 24, 
         ))}
         {logo ? (
           <>
-            {/* The logo never leaves the centre cell: clipped to it, 0.3 units in (a no-op at the board's 4.6 from 48px up). */}
+            {/* The logo never leaves the centre cell: clipped to it, 0.3 units in (a no-op at the board's 4.6 from 40px up). */}
             <clipPath id={clip}>
               <polygon points={hex(12, 12, 3.8)} />
             </clipPath>

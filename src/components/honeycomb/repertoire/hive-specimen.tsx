@@ -145,7 +145,7 @@ const PRODUCT: { key: keyof typeof HIVE_SIZES; use: string; source?: HiveSource;
   { key: "tag", use: "inline tag" },
   { key: "badge", use: "found-by, proposed spot" },
   { key: "eyebrow", use: "agent vs engine" },
-  { key: "step", use: "running step", source: "qloo", working: true },
+  { key: "step", use: "running step (in a 57 cell)", source: "qloo", working: true },
   { key: "status", use: "status line", working: true },
   { key: "lockup", use: "research header" },
   { key: "card", use: "meet the hive" },

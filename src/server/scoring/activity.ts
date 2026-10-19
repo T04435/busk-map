@@ -1,5 +1,5 @@
 import { distanceM, type LatLon } from "@/lib/geo";
-import { NEUTRAL_ACTIVITY, type ActivityBasis } from "@/lib/activity";
+import { NEUTRAL_ACTIVITY, wordLevel, type ActivityBasis } from "@/lib/activity";
 import { FINE_TASTE_RADIUS_M, TASTE_RADIUS_M, isFineHeatmap } from "./heatmap";
 import { openDuring } from "./hours";
 import type { HeatCellInput, PlaceInput } from "./types";
@@ -149,13 +149,15 @@ export function placesOpenByHour(places: PlaceInput[], weekday: string, fromHour
 }
 
 /**
- * A level relative to the pitches scored in the same plan: 0 at the least active, 1 at the most active. Live Qloo is not
- * calibrated, so the words (Quiet to Very busy) are read from this, not from the absolute level, and the plan says so. Null
- * with fewer than three levels or no spread, where the absolute level is used instead.
+ * The level the words (Quiet to Very busy, fixed bands in lib/activity) are read from. Live Qloo is not calibrated, so the
+ * level is compared with every pitch scored in the same plan (0 at the least active, 1 at the most active); the word then
+ * takes the LOWER of that and the absolute level (`wordLevel`). A pitch reads "Very busy" only when it is among the busiest of
+ * the pool and its own level is high, so a narrow pool does not make its top three all "Very busy". Null with fewer than
+ * three levels or no spread, where the absolute level is used instead.
  */
 export function relativeActivity(level: number, levels: number[]): number | null {
   if (levels.length < 3) return null;
   const min = Math.min(...levels);
   const max = Math.max(...levels);
-  return max - min < 0.05 ? null : Math.min(1, Math.max(0, (level - min) / (max - min)));
+  return max - min < 0.05 ? null : wordLevel(level, Math.min(1, Math.max(0, (level - min) / (max - min))));
 }

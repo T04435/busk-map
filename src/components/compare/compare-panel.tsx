@@ -9,7 +9,8 @@ import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { baselineViewSchema, type BaselineView, type PlanPitch, type PlanRequest } from "@/lib/plan-schema";
-import { activitySourceNote, activityWord } from "@/lib/activity";
+import { strengthPhrase } from "@/lib/plain-scores";
+import { activitySourceNote, activityWord, wordLevel } from "@/lib/activity";
 import { modelName, type ExplanationsModel } from "@/lib/sources";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
@@ -51,7 +52,6 @@ export function useBaseline(request: PlanRequest, faults: string | null, enabled
   return state;
 }
 
-const pct = (n: number | null) => (n === null ? "n/a" : String(Math.round(n * 100)));
 
 const STATUS_LABEL: Record<BaselineView["plain"][number]["status"], string> = {
   ours: "Both agree",
@@ -66,8 +66,8 @@ type Pitch = Pick<PlanPitch, "id" | "name" | "score" | "discovery" | "factors" |
 /** What Busk Map knows about a pitch that a plain AI can't. */
 function evidenceLines(pitch: Pitch): string[] {
   const lines: string[] = [];
-  if (pitch.factors.taste !== null) lines.push(`Qloo taste match ${pct(pitch.factors.taste)} out of 100${pitch.cellRank ? ` (your no. ${pitch.cellRank} area on Qloo's heatmap)` : ""}`);
-  if (pitch.evidence.activity) lines.push(`${activityWord(pitch.evidence.activity.relative ?? pitch.evidence.activity.level)} here in your slot (${activitySourceNote(pitch.activityBasis)})`);
+  if (pitch.factors.taste !== null) lines.push(`Qloo taste match: ${strengthPhrase(pitch.factors.taste)}${pitch.cellRank ? ` (your no. ${pitch.cellRank} area on Qloo's heatmap)` : ""}`);
+  if (pitch.evidence.activity) lines.push(`${activityWord(wordLevel(pitch.evidence.activity.level, pitch.evidence.activity.relative))} here in your slot (${activitySourceNote(pitch.activityBasis)})`);
   for (const event of pitch.evidence.events.slice(0, 1)) lines.push(`${event.name}: crowd ${event.moment === "leaving" ? "leaves" : "arrives"} around ${event.localTime}`);
   lines.push(`The council's busking layers don't rule it out${pitch.amplification === "unamplified-zone" ? " (unamplified only)" : ""}`);
   return lines;

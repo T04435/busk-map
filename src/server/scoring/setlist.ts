@@ -1,3 +1,4 @@
+import { strengthPhrase, strengthWord } from "@/lib/plain-scores";
 import { nameKey, trackKey } from "@/lib/text";
 import { LOCAL_SCENE_BONUS } from "./local-scene";
 
@@ -188,7 +189,7 @@ export function buildSetlist(
     const score = sceneRaw === undefined ? base : Math.min(1, base + LOCAL_SCENE_BONUS * (sceneRaw / sceneMax));
     const why = [
       source === "qloo"
-        ? `Crowd affinity for ${song.artist}: ${Math.round(affinity * 100)}/100`
+        ? `${strengthWord(affinity)} crowd affinity for ${song.artist}`
         : song.own
           ? "Your own song: scored with your typical crowd affinity"
           : song.artistEntityId
@@ -196,7 +197,7 @@ export function buildSetlist(
               `Qloo has no local score for ${song.artist} at this pitch: scored with your typical crowd affinity`
             : `No Qloo match for ${song.artist}: scored with your typical crowd affinity`,
     ];
-    if (sceneRaw !== undefined) why.push(`local scene act your fans would like (${Math.round(sceneRaw * 100)}/100)`);
+    if (sceneRaw !== undefined) why.push(`local scene act your fans would like (${strengthPhrase(sceneRaw)} match)`);
     if (playcount !== null) why.push(`${formatPlays(playcount)} Last.fm plays`);
     if (year !== null && fit !== null) {
       // A fit implies at least one over-represented, known age band.

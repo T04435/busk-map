@@ -1,3 +1,4 @@
+import { strengthPhrase } from "@/lib/plain-scores";
 import { nameKey, trackKey } from "@/lib/text";
 import type { RepertoireSong } from "./setlist";
 
@@ -64,10 +65,10 @@ export function rankFillArtists(artists: FillArtist[], affinityAt: Record<string
 
 const formatListeners = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
 
-/** "Liked by the crowd here (affinity 82/100), fans also like Paul Kelly": every number comes from the data. */
+/** "Liked by the crowd here (strong affinity), fans also like Paul Kelly": words for strengths, never a score. */
 export function suggestionBecause(artist: FillArtist, affinity: number | undefined): string {
-  const bits = [affinity !== undefined ? `Liked by the crowd here (affinity ${Math.round(affinity * 100)}/100)` : "Liked by this city's crowd"];
-  if (artist.local) bits.unshift(artist.local.fit !== null ? `A local act your fans would like (${Math.round(artist.local.fit * 100)}/100)` : "A local act");
+  const bits = [affinity !== undefined ? `Liked by the crowd here (${strengthPhrase(affinity)} affinity)` : "Liked by this city's crowd"];
+  if (artist.local) bits.unshift(artist.local.fit !== null ? `A local act your fans would like (${strengthPhrase(artist.local.fit)} match)` : "A local act");
   if (artist.because.length > 0) bits.push(`fans also like ${artist.because.slice(0, 2).join(" and ")}`);
   if (artist.listeners) bits.push(`${formatListeners(artist.listeners)} Last.fm listeners`);
   return bits.join(", ");

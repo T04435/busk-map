@@ -1,6 +1,7 @@
 import "server-only";
 import { formatHour, describeSlot, DEFAULT_SLOT_HOURS } from "@/lib/slot";
 import { activityPhrase, activitySentence } from "@/lib/activity";
+import { plainScores, strengthPhrase, strengthWord } from "@/lib/plain-scores";
 import { noBuskingCells } from "./zone-cells";
 import { titleCase } from "@/lib/text";
 import { venueDetail } from "@/lib/venue";
@@ -25,7 +26,7 @@ export function templateWhy(pitch: ScoredPitch, weekday: string, startHour: numb
   const parts: string[] = [];
   if (pitch.factors.taste !== null) {
     const area = pitch.cell ? (pitch.cell.rank === 1 ? "your strongest area on Qloo's taste map" : `your no. ${pitch.cell.rank} area on Qloo's taste map`) : "this part of the city";
-    parts.push(`Taste match ${Math.round(pitch.factors.taste * 100)}/100: ${area}.`);
+    parts.push(`${strengthWord(pitch.factors.taste)} taste match: ${area}.`);
   }
   if (pitch.discovery === "hidden-gem") parts.push("Off the usual busking circuit, so less competition for this crowd.");
   if (pitch.discovery === "usual" && pitch.usualSpot) parts.push(`A well-known busking spot (${pitch.usualSpot}): expect other buskers.`);
@@ -38,7 +39,7 @@ export function templateWhy(pitch: ScoredPitch, weekday: string, startHour: numb
   const event = pitch.evidence.events[0];
   if (event) {
     const time = TIME_FORMAT.format(new Date(event.moment === "leaving" ? event.end : event.start));
-    const match = event.tasteMatch ? ` Qloo rates ${event.tasteMatch.artist}'s fans ${Math.round(event.tasteMatch.affinity * 100)}/100 for your taste.` : "";
+    const match = event.tasteMatch ? ` Qloo rates ${event.tasteMatch.artist}'s fans a ${strengthPhrase(event.tasteMatch.affinity)} match for your taste.` : "";
     parts.push(`${event.name} crowd ${event.moment === "leaving" ? "leaves" : "arrives"} around ${time}${event.endEstimated && event.moment === "leaving" ? " (estimated)" : ""}.${match}`);
   }
   return parts.join(" ") || "Scored on the data available for this slot.";
@@ -224,7 +225,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
   const spacing = skippedForSpacing(ranked, top);
   const genres = top[0] ? await context.crowdGenres(top[0]) : [];
 
-  const aiWhy = new Map(valid ? aiPicks.filter((p) => traceable(p.why)).map((p) => [p.pitchId, clip(p.why.trim(), 500)]) : []);
+  const aiWhy = new Map(valid ? aiPicks.filter((p) => traceable(p.why)).map((p) => [p.pitchId, clip(plainScores(p.why.trim()), 500)]) : []);
   const poolLevels = ranked.filter((p) => p.activityBasis !== "none").map((p) => p.evidence.activity.level);
   const pitches = await Promise.all(
     (qlooDown ? [] : top).map(async (pitch) => {
@@ -289,13 +290,13 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     explanations: usedAi ? "ai" : "template",
     explanationsModel: usedAi ? (options.model ?? "claude") : null,
     summary:
-      (usedAi && ai?.summary.trim() && traceable(ai.summary) && clip(ai.summary.trim(), 600)) ||
+      (usedAi && ai?.summary.trim() && traceable(ai.summary) && clip(plainScores(ai.summary.trim()), 600)) ||
       (qlooDown
         ? "Without Qloo's taste data Busk Map can't tell where your crowd is, so nothing is recommended."
         : pitches.length > 0
-        ? `Top pitch: ${pitches[0].name} (score ${pitches[0].score}/100).`
+        ? `Top pitch: ${pitches[0].name}.`
         : "No pitch could be recommended for this slot with the data available."),
-    notes: [...context.notes, ...(options.agentNotes ?? []), ...(usedAi ? (ai?.notes ?? []).filter(traceable).slice(0, 3).map((n) => clip(n, 240)) : [])],
+    notes: [...context.notes, ...(options.agentNotes ?? []), ...(usedAi ? (ai?.notes ?? []).filter(traceable).slice(0, 3).map((n) => clip(plainScores(n), 240)) : [])],
     weights: context.weights,
     pitches,
     others: (qlooDown ? [] : ranked)

@@ -2,6 +2,7 @@ import "server-only";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { activitySentence } from "@/lib/activity";
+import { NO_SCORES_RULE, plainScores, strengthWord } from "@/lib/plain-scores";
 import { addDays, formatHour, weekdayOf, zonedHourToUtc } from "@/lib/slot";
 import { weekPlanSchema, type WeekPlan, type WeekRequest, type WeekSession } from "@/lib/week-schema";
 import type { AdapterContext, AdapterName, AdapterResult } from "@/server/adapters/core";
@@ -83,7 +84,7 @@ export const sessionKey = (date: string, startHour: number) => `${date}@${startH
 export function templateSessionWhy(cell: WeekCell & { best: ScoredPitch }): string {
   const p = cell.best;
   const parts: string[] = [];
-  if (p.factors.taste !== null) parts.push(`Taste match ${Math.round(p.factors.taste * 100)}/100 here (Qloo).`);
+  if (p.factors.taste !== null) parts.push(`${strengthWord(p.factors.taste)} taste match here (Qloo).`);
   if (p.activityBasis !== "none") parts.push(`${activitySentence({ level: p.evidence.activity.level, basis: p.activityBasis, weekday: cell.weekday, startHour: cell.startHour })}.`);
   if (p.evidence.events[0]) parts.push(`${p.evidence.events[0].name} crowd ${p.evidence.events[0].moment === "leaving" ? "leaving" : "arriving"} nearby.`);
   if (p.factors.weatherPenalty !== null && p.factors.weatherPenalty > 0.3) parts.push("Some weather risk in the forecast.");
@@ -193,7 +194,7 @@ export async function buildWeekPlan(
           maxOutputTokens: 900,
           abortSignal: AbortSignal.timeout(45_000),
           system:
-            "You explain a street performer's best busking sessions for the week. Use only the evidence given. Never invent numbers, places or events. Activity is a relative estimate from Qloo (popular places open nearby), never a count of people: say 'estimate'. Say 'estimate' for estimated event times too. One or two sentences per session. Australian English.",
+            "You explain a street performer's best busking sessions for the week. Use only the evidence given. Never invent numbers, places or events. " + NO_SCORES_RULE + " Activity is a relative estimate from Qloo (popular places open nearby), never a count of people: say 'estimate'. Say 'estimate' for estimated event times too. One or two sentences per session. Australian English.",
           prompt: JSON.stringify({
             performer: request.performer.name,
             soundsLike: request.performer.artists,
@@ -217,7 +218,7 @@ export async function buildWeekPlan(
       }
     }
   }
-  const aiWhy = new Map((ai?.sessions ?? []).filter((s) => chosenKeys.has(s.key)).map((s) => [s.key, s.why.trim()]));
+  const aiWhy = new Map((ai?.sessions ?? []).filter((s) => chosenKeys.has(s.key)).map((s) => [s.key, plainScores(s.why.trim())]));
 
   const sessions: WeekSession[] = chosen.map((c) => {
     const key = sessionKey(c.date, c.startHour);
@@ -284,8 +285,8 @@ export async function buildWeekPlan(
     explanations: usedAi ? "ai" : "template",
     explanationsModel: usedAi ? (adapters.offline ? "mock" : "claude") : null,
     summary:
-      (usedAi && ai?.summary.trim()) ||
-      (sessions.length > 0 ? `Best session: ${sessions[0].label} at ${sessions[0].pitch.name} (${sessions[0].score}/100).` : "No session could be recommended this week with the data available."),
+      (usedAi && ai?.summary.trim() && plainScores(ai.summary.trim())) ||
+      (sessions.length > 0 ? `Best session: ${sessions[0].label} at ${sessions[0].pitch.name}.` : "No session could be recommended this week with the data available."),
     notes,
     qlooMode: qloo.qlooMode(adapters),
     qlooFailed: false,

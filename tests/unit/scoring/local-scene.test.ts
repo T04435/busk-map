@@ -97,7 +97,7 @@ describe("local scene: set ordering (buildSetlist)", () => {
     expect(by(withScene, "3").score).toBeLessThan(by(withScene, "2").score);
     expect(by(withScene, "1").score).toBe(by(base, "1").score);
     expect(by(withScene, "2")).toMatchObject({ localScene: true });
-    expect(by(withScene, "2").reason).toContain("local scene act your fans would like (90/100)");
+    expect(by(withScene, "2").reason).toContain("local scene act your fans would like (very strong match)");
     expect(by(withScene, "1").localScene).toBe(false);
   });
 
@@ -124,7 +124,7 @@ describe("local scene: suggested fill candidates", () => {
     expect(merged.map((a) => a.local)).toEqual([{ fit: 0.8 }, { fit: null }]);
     const kept = mergeFillArtists([[artist("a", "Alpha", { local: { fit: 0.3 } })], [artist("a", "Alpha", { local: { fit: 0.9 } })]], new Set());
     expect(kept[0].local).toEqual({ fit: 0.3 });
-    expect(suggestionBecause(merged[0], 0.7)).toBe("A local act your fans would like (80/100), Liked by the crowd here (affinity 70/100)");
+    expect(suggestionBecause(merged[0], 0.7)).toBe("A local act your fans would like (strong match), Liked by the crowd here (strong affinity)");
     expect(suggestionBecause(merged[1], undefined)).toBe("A local act, Liked by this city's crowd");
     const pick = { artist: merged[0], track: { title: "T", artist: "Alpha", spotifyTrackId: null, year: null, durationMs: null, url: null, popularity: null }, source: "spotify" as const };
     expect(fillAsRepertoire([pick], { a: 0.7 })[0].suggestion?.because).toContain("A local act your fans would like");

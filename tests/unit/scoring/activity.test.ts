@@ -203,10 +203,22 @@ describe("placesOpenByHour (the week planner's day comparison)", () => {
 
 describe("relativeActivity (the words read against the plan's own pitches)", () => {
   const levels = [0.14, 0.5, 0.76, 0.81, 0.92];
-  it("scales between the least and the most active pitch scored, 0 to 1", () => {
-    expect(relativeActivity(0.92, levels)).toBe(1);
+  it("scales between the least and the most active pitch scored, never above the absolute level", () => {
+    expect(relativeActivity(0.92, levels)).toBe(0.92);
     expect(relativeActivity(0.14, levels)).toBe(0);
     expect(relativeActivity(0.5, levels)).toBeCloseTo((0.5 - 0.14) / 0.78);
+  });
+  it("live numbers (Melbourne, Sat 6-9 pm): the top three at 0.70, 0.70 and 0.68 in a pool topping out at 0.70 are not all Very busy", () => {
+    const pool = [0.7, 0.7, 0.68, 0.66, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.33];
+    const words = [0.7, 0.7, 0.68].map((l) => activityWord(relativeActivity(l, pool) ?? l));
+    expect(words).toEqual(["Busy", "Busy", "Busy"]);
+    expect(activityWord(relativeActivity(0.45, pool) ?? 0.45)).toBe("Fairly quiet");
+    expect(activityWord(relativeActivity(0.33, pool) ?? 0.33)).toBe("Quiet");
+  });
+  it("is Very busy only when it is high in the pool and high in itself", () => {
+    const pool = [0.95, 0.9, 0.5, 0.4, 0.3];
+    expect(activityWord(relativeActivity(0.95, pool) ?? 0.95)).toBe("Very busy");
+    expect(activityWord(relativeActivity(0.5, pool) ?? 0.5)).toBe("Fairly quiet");
   });
   it("is null with too few pitches or no spread, so the absolute level is used", () => {
     expect(relativeActivity(0.5, [0.5, 0.9])).toBeNull();

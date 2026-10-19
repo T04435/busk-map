@@ -1,3 +1,4 @@
+import { strengthWord } from "@/lib/plain-scores";
 import { Chip } from "@/components/honeycomb/chip";
 import { mentionsIn } from "@/lib/mention";
 import { planMentions } from "@/lib/plan-mentions";
@@ -39,7 +40,7 @@ export function PitchDetails({ plan, pitch, rank, model }: { plan: Plan; pitch: 
   const winds = inSlot.map((h) => h.windKmh).filter((w): w is number => w !== null);
   const event = pitch.evidence.events[0];
   const chips = [
-    pitch.factors.taste !== null ? `Taste match ${pitch.factors.taste.toFixed(2)} (Qloo)` : null,
+    pitch.factors.taste !== null ? `${strengthWord(pitch.factors.taste)} taste match (Qloo)` : null,
     event ? `${event.name} ${event.moment === "leaving" ? "lets out" : "starts"} ${event.localTime ?? ""}`.trim() : null,
     pitch.discovery === "hidden-gem" ? "Few other buskers" : null,
     pitch.evidence.places.length > 0 ? `${pitch.evidence.places.length} busy place${pitch.evidence.places.length === 1 ? "" : "s"} nearby` : null,

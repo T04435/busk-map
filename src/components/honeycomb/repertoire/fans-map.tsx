@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
+import { cityList } from "@/lib/fans-map";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapLegend } from "@/components/map/map-legend";
 import { orangeCells } from "@/components/map/taste-cells";
@@ -49,7 +50,7 @@ export function FansMap({
 }: {
   /** Taste cells worldwide, affinity 0 to 1. `null` = loading; `[]` = Qloo has nothing for this act. */
   cells: FansMapCell[] | null;
-  /** The top cities (strongest first, up to 8): each is a labelled hex marker at every zoom, and the map frames them (U40). Cells draw at their true, city size. */
+  /** The top cities (strongest first, the same ones the step names): each is a labelled hex marker at every zoom, and the map frames them (U40). Cells draw at their true, city size. */
   cities?: FansMapCity[];
   className?: string;
 }) {
@@ -62,6 +63,11 @@ export function FansMap({
           <MapBox cells={cells} cities={cities} label="World map: where your fans' taste concentrates, from Qloo" />
           {cells && !empty ? <MapLegend top={false} others={false} className="border-x-2 border-b-2" /> : null}
         </div>
+        {cities?.length && !empty ? (
+          <p data-testid="fans-map-cities" className="m-0 text-sm leading-5 text-muted-foreground">
+            Cities marked on the map: {cityList(cities)}.
+          </p>
+        ) : null}
         {cells === null ? (
           <p role="status" className="m-0 text-sm leading-5 text-muted-foreground">
             Finding where your fans are.

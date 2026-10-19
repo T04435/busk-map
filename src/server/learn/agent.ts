@@ -1,5 +1,6 @@
 import "server-only";
 import { PERSONA_PROMPT } from "@/lib/agent-persona";
+import { NO_SCORES_RULE } from "@/lib/plain-scores";
 import { ToolLoopAgent, type LanguageModel, type StopCondition } from "ai";
 import type { LearnEndCode, LearnModel, LearnTotals } from "@/lib/learn-schema";
 import { fromLearnOutputs } from "@/lib/learn-totals";
@@ -40,6 +41,7 @@ Before each tool call, write one short sentence saying what you will check next 
 
 Rules:
 - Every number in a reason must come from a tool result. Don't add numbers you weren't given.
+- ${NO_SCORES_RULE}
 - Say "builds on <song>" only for a song in their Learned list.
 - Taste data is aggregate. Never describe an individual.
 - Be brief and concrete. Australian English.`;

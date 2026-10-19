@@ -18,6 +18,16 @@ export function activityWord(level: number): string {
   return "Quiet";
 }
 
+/**
+ * The level the word is read from. `relative` is the plan's pool-relative reading (0 at the least active scored pitch, 1 at
+ * the most active); the word is the LOWER of that and the absolute level, so a pitch is only "Very busy" when it is among the
+ * busiest of the plan's pitches AND the level itself is high (the top pick is not "Very busy" just for being the top of a
+ * narrow pool). Idempotent, so plans saved with an already-combined value read the same.
+ */
+export function wordLevel(level: number, relative: number | null | undefined): number {
+  return relative === null || relative === undefined ? level : Math.min(level, relative);
+}
+
 /** "mornings", "afternoons", "evenings", "nights": a word for the hours a slot starts in. */
 export function dayPartOf(startHour: number): "mornings" | "afternoons" | "evenings" | "nights" {
   if (startHour >= 21 || startHour < 5) return "nights";

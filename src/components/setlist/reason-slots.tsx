@@ -1,3 +1,4 @@
+import { strengthPhrase } from "@/lib/plain-scores";
 import { InfoTag } from "@/components/honeycomb/info-tag";
 import { mentionsIn, type Mention } from "@/lib/mention";
 import { Reason } from "@/components/honeycomb/reason";
@@ -13,7 +14,7 @@ export function reasonSlots(text: string | null | undefined, known: readonly Men
       <>
         {scores.map((s, i) => (
           <InfoTag key={`${s.label}${i}`}>
-            {s.label} {s.value}
+            {s.label}: {strengthPhrase(s.value / 100)}
           </InfoTag>
         ))}
       </>

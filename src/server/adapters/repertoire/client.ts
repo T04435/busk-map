@@ -3,6 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import type { z } from "zod";
 import { nameKey, songKey } from "@/lib/text";
 import { env } from "@/server/env";
+import { log } from "@/server/log";
 import { AdapterError, errorKindOf, fetchJson } from "../core";
 import { BudgetExhausted, CallBudget, CATALOGUE_CALL_BUDGET, CATALOGUE_QUEUE_WAIT_MS, DEFAULT_RETRY_AFTER_S, MAX_QUEUE_WAIT_MS, SHORT_RETRY_AFTER_S, countSpotifyCall, limitSpotifyUntil, paceSpotify, spotifyLimitedUntil } from "./pacer";
 import {
@@ -34,11 +35,19 @@ const ALBUM_PAGES_SAFETY = 50;
 /** Albums per Get Several Albums call (Spotify's maximum). */
 export const ALBUMS_PER_BATCH = 20;
 
+/** After Spotify refuses Get Several Albums, how long this instance reads albums one by one before trying the batch again. */
+const BATCH_RETRY_AFTER_MS = 60 * 60_000;
+let batchRefusedUntil = 0;
+/** A refusal of the batch call itself (HTTP 4xx other than 429, or a response we can't read), not a rate limit or an outage. */
+const batchRefused = (error: unknown) =>
+  error instanceof AdapterError && (error.kind === "invalid_response" || error.kind === "not_found" || (error.kind === "http" && (error.status ?? 0) >= 400 && (error.status ?? 0) < 500));
+
 // Tokens stay in this instance's memory: never in a cache entry or a log.
 let token: { value: string; expiresAt: number } | undefined;
 
 export function resetSpotifyTokenForTests() {
   token = undefined;
+  batchRefusedUntil = 0;
 }
 
 async function accessToken(): Promise<string> {
@@ -269,28 +278,56 @@ export async function fetchArtistCatalogue(artistId: string, market: string): Pr
   }
 
   const trackLists: CatalogueTrack[][] = [];
+  /** An album's first page of tracks, from either route, with its own next link. */
+  type AlbumTracks = { album: RawAlbum; items: z.infer<typeof albumTracksSchema>["items"]; next: string | null };
+  const take = async (found: AlbumTracks[]) => {
+    for (const { album, items, next: first } of found) {
+      const tracks = items.map((t) => toTrack(t, album));
+      // An album longer than one page of 50 tracks is followed to its end (next = null).
+      let next = first;
+      try {
+        for (let page = 0; next && page < ALBUM_PAGES_SAFETY; page++) {
+          const more: z.infer<typeof albumTracksSchema> = await spotify(next.replace(API, ""), albumTracksSchema, budget, CATALOGUE_QUEUE_WAIT_MS);
+          tracks.push(...more.items.map((t) => toTrack(t, album)));
+          next = more.next ?? null;
+        }
+      } catch (error) {
+        stop(error);
+      }
+      trackLists.push(tracks);
+      if (partial) break;
+    }
+  };
   try {
     for (let from = 0; from < albums.length; from += ALBUMS_PER_BATCH) {
-      const ids = albums.slice(from, from + ALBUMS_PER_BATCH).map((a) => a.id);
-      const params = new URLSearchParams({ ids: ids.join(","), market });
-      const body: z.infer<typeof albumsBatchSchema> = await spotify(`/albums?${params}`, albumsBatchSchema, budget, CATALOGUE_QUEUE_WAIT_MS);
-      for (const album of body.albums) {
-        if (!album) continue;
-        const tracks = album.tracks.items.map((t) => toTrack(t, album));
-        // An album longer than one page of 50 tracks is followed to its end (next = null).
-        let next = album.tracks.next ?? null;
+      const group = albums.slice(from, from + ALBUMS_PER_BATCH);
+      let found: AlbumTracks[] | null = null;
+      if (Date.now() >= batchRefusedUntil) {
         try {
-          for (let page = 0; next && page < ALBUM_PAGES_SAFETY; page++) {
-            const more: z.infer<typeof albumTracksSchema> = await spotify(next.replace(API, ""), albumTracksSchema, budget, CATALOGUE_QUEUE_WAIT_MS);
-            tracks.push(...more.items.map((t) => toTrack(t, album)));
-            next = more.next ?? null;
-          }
+          const params = new URLSearchParams({ ids: group.map((a) => a.id).join(","), market });
+          const body: z.infer<typeof albumsBatchSchema> = await spotify(`/albums?${params}`, albumsBatchSchema, budget, CATALOGUE_QUEUE_WAIT_MS);
+          found = body.albums.flatMap((album) => (album ? [{ album, items: album.tracks.items, next: album.tracks.next ?? null }] : []));
         } catch (error) {
-          stop(error);
+          if (!batchRefused(error)) throw error;
+          // Spotify refused the batch call itself (an endpoint closed to this app, or a shape we don't read): say why once, and
+          // read the albums one by one from here on (within the call budget) instead of losing the whole catalogue.
+          batchRefusedUntil = Date.now() + BATCH_RETRY_AFTER_MS;
+          log.warn("spotify batch albums refused; reading albums one by one", { kind: (error as AdapterError).kind, status: (error as AdapterError).status ?? null });
         }
-        trackLists.push(tracks);
-        if (partial) break;
       }
+      if (found === null) {
+        found = [];
+        for (const album of group) {
+          try {
+            const body: z.infer<typeof albumTracksSchema> = await spotify(`/albums/${encodeURIComponent(album.id)}/tracks?${new URLSearchParams({ limit: "50", market })}`, albumTracksSchema, budget, CATALOGUE_QUEUE_WAIT_MS);
+            found.push({ album, items: body.items, next: body.next ?? null });
+          } catch (error) {
+            stop(error);
+            break;
+          }
+        }
+      }
+      await take(found);
       if (partial) break;
     }
   } catch (error) {

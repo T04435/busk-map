@@ -1,3 +1,4 @@
+import { plainScores } from "@/lib/plain-scores";
 import "server-only";
 import { tool } from "ai";
 import { z } from "zod";
@@ -210,7 +211,7 @@ function validBuildsOn(title: string | undefined, ctx: Pick<LearnContext, "learn
 export function acceptAnswer(answer: FinishAnswer, ctx: Pick<LearnContext, "learned">): AcceptedAnswer {
   const seen = new Set<string>();
   return {
-    picks: answer.picks.filter((p) => !seen.has(p.songId) && seen.add(p.songId)).map((p) => ({ songId: p.songId, reason: p.reason, buildsOn: validBuildsOn(p.buildsOn, ctx), templated: false })),
+    picks: answer.picks.filter((p) => !seen.has(p.songId) && seen.add(p.songId)).map((p) => ({ songId: p.songId, reason: plainScores(p.reason), buildsOn: validBuildsOn(p.buildsOn, ctx), templated: false })),
     summary: answer.summary,
     notes: answer.notes,
   };
@@ -235,7 +236,7 @@ export function salvageAnswer(answer: FinishAnswer, state: LearnState, ctx: Pick
     const info = state.artists.get(song.artistId);
     kept.push({
       songId: p.songId,
-      reason: templated ? templateReason(info ?? { name: song.artist, because: [], pitch: null, related: false }) : p.reason,
+      reason: templated ? templateReason(info ?? { name: song.artist, because: [], pitch: null, related: false }) : plainScores(p.reason),
       buildsOn: validBuildsOn(p.buildsOn, ctx),
       templated,
     });
@@ -279,7 +280,7 @@ export function buildSuggestions(accepted: AcceptedAnswer, state: LearnState, ct
         imageUrl: song.image && song.image.startsWith("https://i.scdn.co/") ? song.image : null,
         sourceUrl: song.sourceUrl,
         songSource: song.source,
-        reason: pick.reason.slice(0, 240),
+        reason: plainScores(pick.reason).slice(0, 240),
         rank: i + 1,
         evidence: {
           ranker: pick.templated ? "template" : ranker,

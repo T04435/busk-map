@@ -170,7 +170,8 @@ export class PlanContext {
       const extra = optionalQlooFeature(key);
       if (result.adapter === "qloo" && result.mode === "fallback" && extra && !this.qlooFailed()) {
         // A Qloo extra that failed (often a slow call timing out) leaves the rest of the plan intact: say so, don't call Qloo down.
-        const note = `Qloo didn't answer in time for ${extra}, so this plan goes without it.`;
+        // "In time" only for a timeout; a refused or failed call just says Qloo couldn't answer.
+        const note = `Qloo ${result.reason === "timeout" ? "didn't answer in time" : "couldn't answer"} for ${extra}, so this plan goes without it.`;
         if (!this.notes.includes(note)) this.notes.push(note);
         return result.data;
       }
@@ -515,7 +516,7 @@ export class PlanContext {
       const none = (what: string) => {
         // A failed call already left its own note (track); an answer with no data says so here.
         const note = `Qloo had no ${what}, so the plan goes without a local scene.`;
-        if (!this.qlooFailed() && !this.notes.some((n) => n.startsWith("Qloo didn't answer in time for the local scene")) && !this.notes.includes(note)) this.notes.push(note);
+        if (!this.qlooFailed() && !this.notes.some((n) => /^Qloo (didn't answer in time|couldn't answer) for the local scene/.test(n)) && !this.notes.includes(note)) this.notes.push(note);
         return null;
       };
       const global = await this.track("scene:global", () => qloo.globalArtists(GLOBAL_POP_TAKE, this.adapters));

@@ -1,5 +1,5 @@
 import { EstimateLabel } from "@/components/plan/estimate-label";
-import { activitySentence, activitySourceNote, activityWord, type ActivityBasis } from "@/lib/activity";
+import { activitySentence, activitySourceNote, activityWord, wordLevel, type ActivityBasis } from "@/lib/activity";
 import { formatHour } from "@/lib/slot";
 
 const W = 300;
@@ -37,14 +37,14 @@ export function ActivityChart({
   const flat = n > 0 && Math.max(...values) - Math.min(...values) < 0.01;
   const slotX0 = x(slot.startHour);
   const slotX1 = x(Math.min(23, slot.endHour));
-  const sentence = activity ? activitySentence({ level: activity.relative ?? activity.level, basis, weekday, startHour: slot.startHour }) : null;
+  const sentence = activity ? activitySentence({ level: wordLevel(activity.level, activity.relative), basis, weekday, startHour: slot.startHour }) : null;
   return (
     <section aria-label="Estimated activity by hour" className="grid gap-1.5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h4 className="m-0 font-mono text-[11px] leading-4 font-medium tracking-[0.06em] text-muted-foreground uppercase">Estimated activity by hour</h4>
         {activity ? (
           <p className="m-0 flex items-baseline gap-1 text-sm leading-5" data-testid="sheet-activity">
-            <b className="font-display text-[22px] leading-none">{activityWord(activity.relative ?? activity.level)}</b>
+            <b className="font-display text-[22px] leading-none">{activityWord(wordLevel(activity.level, activity.relative))}</b>
             <EstimateLabel tag="est." basis={`${activitySourceNote(basis)}${activity.relative !== null ? ". The word compares this pitch with the other pitches scored for this plan" : ""}`} />
             <span className="text-muted-foreground">in your slot</span>
           </p>

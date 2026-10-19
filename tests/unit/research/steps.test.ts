@@ -99,4 +99,24 @@ describe("step 9: the summary only ranks and explains", () => {
     expect(result.accepted?.picks.every((p) => p.templated)).toBe(true);
     expect(result.usage?.stoppedBy).toBe("error");
   });
+
+  it("an answer cut off mid-JSON (live: 'could not parse the response') is asked for once more before the data answers", async () => {
+    const { summary, ctx, state, facts } = await withSongs();
+    const { MockLanguageModelV4 } = await import("ai/test");
+    const good = summary.createMockResearchWriter("ok");
+    let calls = 0;
+    const usage = { inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined }, outputTokens: { total: 10, text: 10, reasoning: undefined } };
+    const model = new MockLanguageModelV4({
+      modelId: "cut-off-then-fine",
+      doGenerate: async (options) => {
+        calls++;
+        if (calls === 1) return { content: [{ type: "text", text: '{"picks":[{"songId":"s-1","rea' }], finishReason: { unified: "length", raw: undefined }, usage, warnings: [] };
+        return good.doGenerate(options);
+      },
+    });
+    const result = await summary.summarise(facts, state, ctx, { offline: true, model });
+    expect(calls).toBe(2);
+    expect(result.accepted?.picks.map((p) => p.songId)).toEqual(["s-1", "s-2"]);
+    expect(result.accepted?.picks.some((p) => p.templated)).toBe(false);
+  });
 });

@@ -55,6 +55,22 @@ describe("Spotify pacer, budget and breaker (U34)", () => {
     expect(spotifyCalls(calls)).toHaveLength(26 + 13 + 1);
   });
 
+  it("when Spotify refuses Get Several Albums (HTTP 403), reads the albums one by one instead of losing the catalogue to Last.fm", async () => {
+    const { getArtistCatalogue } = await fresh();
+    const { calls } = mockFetch([
+      tokenRoute,
+      artistAlbums(25),
+      route((u) => u.pathname === "/v1/albums", () => new Response("{}", { status: 403 })),
+      route((u) => /^\/v1\/albums\/[^/]+\/tracks$/.test(u.pathname), (u) => json({ items: [track(u.pathname.split("/")[3])], next: null })),
+    ]);
+    const result = await getArtistCatalogue(LINK, "AU", LIVE);
+    expect(result.mode).toBe("live");
+    expect(result.data).toHaveLength(25);
+    // One refused batch call, then 25 single-album calls; the second group of 20 does not retry the batch.
+    expect(albumCalls(calls)).toHaveLength(1);
+    expect(calls.filter((c) => /\/v1\/albums\/[^/]+\/tracks$/.test(c.url.pathname))).toHaveLength(25);
+  });
+
   it("spaces calls at least 500 ms apart, process-wide", async () => {
     vi.useFakeTimers();
     resetPacerForTests({ windowMax: Infinity, dailyMax: Infinity });

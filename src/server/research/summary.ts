@@ -1,12 +1,13 @@
 import "server-only";
 import { PERSONA_PROMPT } from "@/lib/agent-persona";
+import { NO_SCORES_RULE, plainScores } from "@/lib/plain-scores";
 import { generateText, Output, type LanguageModel } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import { z } from "zod";
 import { providerStatus } from "@/server/env";
 import { log } from "@/server/log";
 import { LEARN_MAX_PER_ARTIST, RESEARCH_SUMMARY_LIMITS } from "@/server/playlist/config";
-import { LEARN_MODEL_ID } from "@/server/learn/models";
+import { LEARN_MODEL_ID, LEARN_PROVIDER_OPTIONS } from "@/server/learn/models";
 import type { LearnContext } from "@/server/learn/context";
 import { fallbackAnswer } from "@/server/learn/fallback";
 import { checkPicks, salvageAnswer, type AcceptedAnswer, type LearnState } from "@/server/learn/tools";
@@ -47,7 +48,7 @@ Your job here: you are Busk Map's Repertoire writer. A street performer has just
 
 If FACTS.basedOnSoundsLike is true, Qloo doesn't know this act yet: the crowd was read from the artists it sounds like, never from the act itself, so word each reason that way.
 
-Rules: every number you write must appear in FACTS or SONGS. Taste data is aggregate: never describe an individual. Be brief and concrete. Australian English.`;
+Rules: every number you write must appear in FACTS or SONGS. ${NO_SCORES_RULE} Taste data is aggregate: never describe an individual. Be brief and concrete. Australian English.`;
 
 const answerSchema = z.object({
   picks: z
@@ -57,11 +58,18 @@ const answerSchema = z.object({
 });
 export type SummaryAnswer = z.infer<typeof answerSchema>;
 
+/** Why a call failed, for the log: the message plus, for an unparseable answer, how the model stopped and how much it wrote (never the text). */
+function describe(error: unknown): string {
+  if (!(error instanceof Error)) return "unknown";
+  const e = error as { finishReason?: string; usage?: { outputTokens?: number } };
+  return [error.message, e.finishReason ? `finishReason=${e.finishReason}` : "", e.usage?.outputTokens !== undefined ? `outputTokens=${e.usage.outputTokens}` : ""].filter(Boolean).join(" ");
+}
+
 const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
 
 export function summaryPrompt(f: SummaryFacts, state: Pick<LearnState, "found" | "artists">): string {
   const songs = [...state.found.values()].map((s) => ({ songId: s.songId, title: s.title, artist: s.artist, year: s.year, fansOf: state.artists.get(s.artistId)?.because ?? [] }));
-  return [`FACTS_JSON: ${JSON.stringify(f)}`, `SONGS_JSON: ${JSON.stringify(songs)}`, "", "Rank the songs and write the paragraph."].join("\n");
+  return [`FACTS_JSON: ${JSON.stringify(f)}`, `SONGS_JSON: ${JSON.stringify(songs)}`, "", "Rank the songs and give one reason each."].join("\n");
 }
 
 /** Offline and tests: a deterministic writer that reads the two JSON lines of the prompt. Names only, never a number. */
@@ -106,7 +114,7 @@ export function acceptSummary(answer: SummaryAnswer, state: LearnState, ctx: Lea
   const problems = answer.picks.length ? checkPicks(finish, state, ctx) : [{ kind: "count" as const, message: "no picks" }];
   if (problems.length === 0) {
     const seen = new Set<string>();
-    const picks = answer.picks.filter((p) => !seen.has(p.songId) && seen.add(p.songId)).map((p) => ({ songId: p.songId, reason: p.reason, buildsOn: null, templated: false }));
+    const picks = answer.picks.filter((p) => !seen.has(p.songId) && seen.add(p.songId)).map((p) => ({ songId: p.songId, reason: plainScores(p.reason), buildsOn: null, templated: false }));
     return { accepted: { picks, summary: "", notes: [] }, by };
   }
   const salvaged = salvageAnswer(finish, state, ctx);
@@ -128,13 +136,22 @@ export async function summarise(facts: SummaryFacts, state: LearnState, ctx: Lea
   };
   if (!model) return fromData("model_unavailable");
   try {
-    const result = await generateText({
-      model,
-      system: SUMMARY_INSTRUCTIONS,
-      prompt,
-      output: Output.object({ schema: answerSchema }),
-      maxOutputTokens: RESEARCH_SUMMARY_LIMITS.maxOutputTokens,
-      abortSignal: AbortSignal.any([AbortSignal.timeout(RESEARCH_SUMMARY_LIMITS.timeoutMs), ...(options.signal ? [options.signal] : [])]),
+    const ask = () =>
+      generateText({
+        model,
+        system: SUMMARY_INSTRUCTIONS,
+        prompt,
+        output: Output.object({ schema: answerSchema }),
+        maxOutputTokens: RESEARCH_SUMMARY_LIMITS.maxOutputTokens,
+        // The mock writer takes no provider options; the real model gets the learn run's (adaptive thinking, effort medium).
+        ...(by === "claude" ? { providerOptions: LEARN_PROVIDER_OPTIONS } : {}),
+        abortSignal: AbortSignal.any([AbortSignal.timeout(RESEARCH_SUMMARY_LIMITS.timeoutMs), ...(options.signal ? [options.signal] : [])]),
+      });
+    // A model sometimes breaks the JSON: one retry (not after a timeout or an abort), then the data answers.
+    const result = await ask().catch((error: unknown) => {
+      if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) throw error;
+      log.warn("research summary: first answer unusable, asking once more", { error: describe(error) });
+      return ask();
     });
     const usage = {
       inputTokens: result.usage.inputTokens ?? 0,
@@ -146,7 +163,7 @@ export async function summarise(facts: SummaryFacts, state: LearnState, ctx: Lea
     };
     return { ...acceptSummary(result.output, state, ctx, by), usage };
   } catch (error) {
-    log.error("research summary failed; using the data", { error: error instanceof Error ? error.message : "unknown" });
+    log.error("research summary failed; using the data", { error: describe(error) });
     return fromData("error");
   }
 }

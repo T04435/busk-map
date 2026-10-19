@@ -97,13 +97,13 @@ describe("U40: the map's cities", () => {
     const cities = cityClusters(sorted, [...sorted, cell({ lat: 23.1301, lon: -82.3801 }, 0.1)]);
     expect(cities.map((c) => c.name)).toEqual(["Havana"]);
   });
-  it("keeps at most 8 cities", async () => {
+  it("keeps at most 3 cities, the ones the step names", async () => {
     const { cityClusters } = await import("@/server/research/fans-map");
     const { WORLD_PLACES } = await import("@/lib/world-places");
     const sorted = WORLD_PLACES.slice(0, 14).map((w, i) => cell({ lat: w.lat, lon: w.lon }, 1 - i * 0.02));
     const cities = cityClusters(sorted);
-    expect(cities).toHaveLength(8);
-    expect(new Set(cities.map((c) => c.name)).size).toBe(8);
+    expect(cities).toHaveLength(3);
+    expect(new Set(cities.map((c) => c.name)).size).toBe(3);
   });
   it("has no cities for no heat, and the props carry them only when there are some", async () => {
     const { fansMapOutput } = await import("@/server/research/fans-map");
@@ -112,6 +112,12 @@ describe("U40: the map's cities", () => {
     const out: FansMapOutput = { summary: "x", cells: [], areas: ["Havana"], planCity: null, cities, signalledBy: [] };
     expect(fansMapProps(out).cities).toEqual(cities);
     expect(fansMapProps({ ...out, cities: undefined })).not.toHaveProperty("cities");
+  });
+  it("research saved with eight markers maps only the cities the step names (live: step said Medellin, Cali and Bogota, map showed Lima and Santiago)", () => {
+    const names = ["Medellin", "Cali", "Bogota", "Lima", "Santiago", "Quito", "Caracas", "Havana"];
+    const cities = names.map((name, i) => ({ name, lat: i, lng: i, affinity: 1 - i * 0.05 }));
+    const out: FansMapOutput = { summary: "x", cells: [], areas: ["Medellin", "Cali", "Bogota"], planCity: null, cities, signalledBy: [] };
+    expect(fansMapProps(out).cities?.map((c) => c.name)).toEqual(["Medellin", "Cali", "Bogota"]);
   });
   it("an old snapshot without cities still maps (no cities prop)", () => {
     const old: FansMapOutput = { summary: "x", cells: [{ lat: 1, lng: 2, affinity: 1 }], areas: ["A"], signalledBy: [] };

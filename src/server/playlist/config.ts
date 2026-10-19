@@ -118,4 +118,9 @@ export const RESEARCH_LEARN_PER_ARTIST = 2;
 /** Genre tags asked of Qloo in step 8. */
 export const RESEARCH_GENRES_TAKE = 8;
 /** Step 9: one short call. */
-export const RESEARCH_SUMMARY_LIMITS = { maxOutputTokens: 800, timeoutMs: 30_000, maxPicks: 6 } as const;
+/**
+ * Step 9's one model call. `maxOutputTokens` counts the model's thinking too: at 800 the adaptive thinking Sonnet 5.5 does
+ * by default used the budget and the JSON came back cut off ("No object generated: could not parse the response", live
+ * 19 Oct), so the Hive was reported unavailable. 4,000 is the busk agent's per-step bound.
+ */
+export const RESEARCH_SUMMARY_LIMITS = { maxOutputTokens: 4000, timeoutMs: 30_000, maxPicks: 6 } as const;

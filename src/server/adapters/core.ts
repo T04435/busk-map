@@ -113,6 +113,11 @@ export async function fetchJson<S extends z.ZodType>(
   if (!response.ok) {
     const kind: AdapterErrorKind =
       response.status === 429 ? "rate_limited" : response.status === 404 ? "not_found" : "http";
+    if (response.status === 400 || response.status === 422) {
+      // A provider refusing the request itself (not an outage): its own words say which parameter, so keep a short piece of them.
+      const detail = await response.text().then((t) => t.replace(/\s+/g, " ").slice(0, 240), () => "");
+      log.warn("provider rejected the request", { adapter, url: redactUrl(url), status: response.status, detail });
+    }
     const retryAfter = kind === "rate_limited" ? Number(response.headers?.get("retry-after")) : NaN;
     throw new AdapterError(
       adapter,

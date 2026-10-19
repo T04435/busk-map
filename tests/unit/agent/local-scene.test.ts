@@ -200,7 +200,7 @@ describe("local scene: weighs into the set and the suggested fill", () => {
     expect(scene).toContain("Josh Pyke");
     const entry = plan.pitches[0].setlist.find((s) => s.artist === "Josh Pyke")!;
     expect(entry.localScene).toBe(true);
-    expect(entry.reason).toMatch(/local scene act your fans would like \(\d+\/100\)/);
+    expect(entry.reason).toMatch(/local scene act your fans would like \((very strong|strong|good|some|weak) match\)/);
     cache.clear();
     failWhen = (u) => u.searchParams.has("signal.interests.tags");
     const without = await busk(withLocal);

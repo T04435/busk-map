@@ -21,8 +21,8 @@ export const FANS_MAP_CITY_MIN_AFFINITY = 0.48;
 export const FANS_MAP_CLUSTER_SPACINGS = 3;
 /** Reach never exceeds this (m), so sparse or very coarse cells can't swallow neighbouring cities into one. */
 export const FANS_MAP_MAX_REACH_M = 40_000;
-/** The map labels at most this many cities. */
-export const FANS_MAP_MAX_CITIES = 8;
+/** The map marks at most this many cities: the same ones the step names (see lib/fans-map topCities). */
+export const FANS_MAP_MAX_CITIES = 3;
 /** The cells looked at to find the median spacing (the strongest), so the pairwise pass stays cheap. */
 const SPACING_SAMPLE = 1500;
 

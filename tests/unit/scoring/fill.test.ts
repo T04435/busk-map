@@ -60,7 +60,7 @@ describe("suggested fill: candidates", () => {
 
   it("words the reason from the data only", () => {
     expect(suggestionBecause(artist("a", "A", { because: ["Paul Kelly", "Archie Roach", "Third"], listeners: 1_200_000 }), 0.824)).toBe(
-      "Liked by the crowd here (affinity 82/100), fans also like Paul Kelly and Archie Roach, 1.2M Last.fm listeners",
+      "Liked by the crowd here (strong affinity), fans also like Paul Kelly and Archie Roach, 1.2M Last.fm listeners",
     );
     expect(suggestionBecause(artist("a", "A"), undefined)).toBe("Liked by this city's crowd");
     expect(suggestionBecause(artist("a", "A", { listeners: 48_400 }), 0.5)).toMatch(/48k Last\.fm listeners/);
@@ -110,7 +110,7 @@ describe("suggested fill: songs", () => {
     expect(set).toHaveLength(2);
     for (const e of set) expect(e.origin).toBe("suggested");
     const one = set.find((e) => e.title === "One")!;
-    expect(one.suggestion).toEqual({ because: "Liked by the crowd here (affinity 80/100), fans also like Seed", source: "spotify", sourceUrl: "https://x/One", spotifyTrackId: "t1" });
+    expect(one.suggestion).toEqual({ because: "Liked by the crowd here (strong affinity), fans also like Seed", source: "spotify", sourceUrl: "https://x/One", spotifyTrackId: "t1" });
     expect(one.own).toBe(false);
   });
 

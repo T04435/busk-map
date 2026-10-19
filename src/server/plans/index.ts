@@ -1,6 +1,7 @@
+import { plainScores } from "@/lib/plain-scores";
 import "server-only";
 import { isPlanId, planPath } from "@/lib/plan-id";
-import { planRequestSchema, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
+import { planRequestSchema, type Plan, type PlanRequest, type PlanStreamEvent } from "@/lib/plan-schema";
 import type { ParsedPlanUrl } from "@/lib/plan-url";
 import { serverNow } from "@/server/clock";
 import { anyTimeWindowsLeft, isAnyTime, localHour, localToday, slotUtcRange, type RequestSlot } from "@/lib/slot";
@@ -83,10 +84,21 @@ export function snapshotFor(stored: StoredPlan, request: PlanRequest, offline: b
   return s && planKey(request, offline, s.runDay) === s.runKey ? s : null;
 }
 
+/** A plan stored before the no-raw-scores rule: its model-written text read through `plainScores` (N/100 and decimals rewritten to words). */
+function plainPlan(plan: Plan): Plan {
+  const text = (v: string | undefined) => (typeof v === "string" ? plainScores(v) : v);
+  return {
+    ...plan,
+    ...(typeof plan.summary === "string" ? { summary: plainScores(plan.summary) } : {}),
+    ...(Array.isArray(plan.notes) ? { notes: plan.notes.map(plainScores) } : {}),
+    ...(Array.isArray(plan.pitches) ? { pitches: plan.pitches.map((p) => ({ ...p, why: text(p.why) as string, ...(p.window ? { window: { ...p.window, why: text(p.window.why) as string } } : {}) })) } : {}),
+  };
+}
+
 /** The snapshot's events as a replay stream (the plan event last). */
 export function snapshotEvents(s: PlanSnapshot): PlanStreamEvent[] {
   // A snapshot stored before the totals events still ends on the plan's totals, when the plan has them.
-  return withFinalTotals([...s.events, { type: "plan", plan: s.plan }]);
+  return withFinalTotals([...s.events, { type: "plan", plan: plainPlan(s.plan) }]);
 }
 
 /** Whether the slot has ended (city time). */

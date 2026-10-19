@@ -1,5 +1,6 @@
 import "server-only";
 import { PERSONA_PROMPT } from "@/lib/agent-persona";
+import { NO_SCORES_RULE } from "@/lib/plain-scores";
 import { ToolLoopAgent, type LanguageModel, type StopCondition } from "ai";
 import { describeSlot } from "@/lib/slot";
 import type { Plan } from "@/lib/plan-schema";
@@ -46,6 +47,7 @@ Before each tool call, write one short sentence saying what you will check next 
 
 Rules:
 - Never invent a number, a place, an event or a song. Every number you write must come from a tool result.
+- ${NO_SCORES_RULE}
 - Activity is a relative estimate from Qloo (popular places open nearby and where activity concentrates), never a count of people; event end times are estimates too: say so.
 - Busk Map never claims a pitch is legal. Mention cautions when a tool lists them.
 - Taste data is aggregate. Never describe an individual.
@@ -196,6 +198,7 @@ async function runAgent(ctx: PlanContext, events: AgentEvents, abortSignal: Abor
       const text = b?.text.trim();
       if (b && text) events.onNote?.({ kind: b.kind, text });
     };
+    const unshown = new Set<string>();
     let inputTokens = 0;
     let outputTokens = 0;
     let reasoningTokens = 0;
@@ -225,6 +228,13 @@ async function runAgent(ctx: PlanContext, events: AgentEvents, abortSignal: Abor
           flush(`t:${part.id}`);
           break;
         case "tool-call":
+          // A call whose input the model garbled (live: events_near sent with an empty input) is not a look the performer
+          // should see as "failed": the model gets the error back and retries, so the step is not shown.
+          if (part.invalid) {
+            unshown.add(part.toolCallId);
+            log.warn("agent sent a tool call with unusable input; the model is told and retries", { tool: part.toolName });
+            break;
+          }
           for (const key of [...buffers.keys()]) flush(key);
           events.onToolStart?.({ id: part.toolCallId, tool: part.toolName, label: TOOL_LABELS[part.toolName] ?? part.toolName, source: TOOL_SOURCES[part.toolName], input: part.input });
           break;
@@ -237,6 +247,7 @@ async function runAgent(ctx: PlanContext, events: AgentEvents, abortSignal: Abor
           break;
         }
         case "tool-error": {
+          if (unshown.has(part.toolCallId)) break;
           const message = part.error instanceof Error ? part.error.message : String(part.error);
           toolResults.push({ tool: part.toolName, ok: false });
           events.onToolEnd?.({ id: part.toolCallId, tool: part.toolName, ok: false, summary: message.slice(0, 300), output: { error: message.slice(0, 600) } });

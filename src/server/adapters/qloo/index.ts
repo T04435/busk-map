@@ -70,13 +70,18 @@ export function resolveArtists(
           const [byId] = await client.entitiesBySpotifyIds(backend, [spotifyId]).catch(() => []);
           if (byId) return byId;
         }
-        return client.searchArtist(backend, name);
+        return (await client.searchArtist(backend, name))[0] ?? null;
       };
       const settled = await Promise.allSettled(unique.map(resolveOne));
       if (unique.length > 0 && settled.every((s) => s.status === "rejected")) throw (settled[0] as PromiseRejectedResult).reason;
       return unique.map((query, i) => ({ query, entity: settled[i].status === "fulfilled" ? (settled[i] as PromiseFulfilledResult<QlooEntity | null>).value : null }));
     },
   );
+}
+
+/** resolve_repertoire for one name: all of /search's top hits (at most three), for the matcher to weigh. The same cached call as resolveArtists. */
+export function searchArtistHits(name: string, context: AdapterContext): Promise<AdapterResult<QlooEntity[]>> {
+  return run<QlooEntity[]>(context, [], (backend) => client.searchArtist(backend, name));
 }
 
 /** resolve_repertoire by Spotify id, where Qloo's external-id lookup works. */

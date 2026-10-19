@@ -123,6 +123,26 @@ export const PLAYLIST_COPY = {
     heading: "Researching your act",
     howBuilt: "How we built your Repertoire",
     findMore: "Find more songs to learn",
+    /** Qloo may not know the act by this name: the Hive asks, then (if still unknown) goes on from the artists the performer sounds like. */
+    candidates: {
+      heading: "Is one of these you?",
+      hint: "Qloo doesn't list your name exactly, so we can't be sure which artist is you. Pick yours, or say none of these. We'll remember your answer for this link.",
+      pick: "This is me",
+      pickLabel: (name: string) => `This is me: ${name}`,
+      none: "None of these",
+      noGenres: "No genres listed",
+      summary: "Qloo has a few artists that could be you",
+    },
+    /** The label for a run that goes on from "Artists you sound like" because Qloo doesn't know the act. */
+    fallback: {
+      label: "Qloo doesn't know you yet, so this is based on the artists you sound like",
+      basedOn: "Based on the artists you sound like",
+      pickHeading: "Pick 2 or 3 artists you sound like",
+      pickHint: "Qloo doesn't know you yet, so we need a few artists you sound like to find your fans. Add them below, then carry on.",
+      pickLabel: "Artists you sound like",
+      carryOn: "Carry on",
+      pickSummary: "Qloo doesn't know you yet; pick the artists you sound like to go on",
+    },
     findingMore: "Finding more songs…",
     moreStarted: "Finding more songs to learn",
     /** The research feed's waiting lines (U35): never the busk plan's. */
@@ -137,21 +157,17 @@ export const PLAYLIST_COPY = {
     actName: "Act name",
     actNameHint: "From your Spotify name. Change it if you busk under another name.",
     saveActName: "Save act name",
-    summaryHeading: "Your act, in a paragraph",
     profileHeading: "Your profile",
     fansHeading: "Who your fans are",
     soundsLikeHeading: "Artists you sound like",
     fansMapHeading: "Where your fans are",
-    fansMapHonesty: "This shows where your fans\u2019 taste concentrates across the world, not head counts.",
-    fansMapPlan: "Plan a busk here",
     fansLoveHeading: "What your fans also love",
-    noSummary: "No summary this time.",
     done: (n: number) => (n > 0 ? `Your research is done: ${n} ${n === 1 ? "song" : "songs"} to learn.` : "Your research is done."),
     errors: {
       badLink: "That isn't a Spotify artist link. It starts with open.spotify.com/artist/.",
       upToDate: "Your research is up to date for this link. Use Refresh my research to run it again.",
       noResearch: "Research your act first, then find more songs to learn.",
-      noMatch: "Qloo doesn't know this artist yet, so there are no taste results. Your songs are saved.",
+      noMatch: "Qloo doesn't know this artist yet, so there are no taste results.",
     },
   },
 
@@ -184,6 +200,8 @@ export const PLAYLIST_COPY = {
         if (e.code === "timeout") return "The run ran out of time before it found songs. Try again.";
         return "The run stopped before it found songs. Try again in a little while.";
       }
+      if (e.code === "needs_choice") return "Qloo has a few artists that could be you. Pick yours to carry on.";
+      if (e.code === "needs_sounds_like") return "Qloo doesn't know you yet. Pick 2 or 3 artists you sound like to carry on.";
       if (e.code === "nothing_new" || e.newCount === 0) {
         // B-029: "everything was suggested before" only when songs were checked; with none checked, say that instead.
         if (e.songsChecked === 0) return `Couldn't find songs to check this time. ${PLAYLIST_COPY.learn.nothingNewHint}`;

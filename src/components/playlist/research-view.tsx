@@ -13,7 +13,6 @@ import { Reason } from "@/components/honeycomb/reason";
 import { SongActions } from "@/components/honeycomb/song-actions";
 import { SongRow } from "@/components/honeycomb/song-row";
 import { SongTag } from "@/components/honeycomb/song-tag";
-import { Fold } from "@/components/honeycomb/fold";
 import { LeanBar } from "@/components/honeycomb/lean-bar";
 import { PageHeader } from "@/components/honeycomb/page-header";
 import { ArtistPicker, typedArtists, type PickedArtist } from "@/components/landing/artist-picker";
@@ -41,11 +40,12 @@ import { ZERO_LEARN_TOTALS, type LearnListView, type LearnStreamEvent } from "@/
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import { playlistSongKey, type LearnSuggestionView, type PlaylistView } from "@/lib/playlist-schema";
 import { fansMapProps } from "@/lib/fans-map";
-import { OFFLINE_TEST_ARTIST } from "@/lib/repertoire-research";
+import { OFFLINE_TEST_ARTIST, researchUsable, researchWaiting, type QlooOutput } from "@/lib/repertoire-research";
 import { toRepertoireView, type LearnSong, type RepertoireView } from "@/lib/repertoire-research-view";
 import { parseSpotifyArtistId, spotifyArtistUrl } from "@/lib/spotify-link";
 import { joinLearn, loadLearn, pageFaults, patchSuggestion, startResearch } from "./learn-api";
 import { ResearchFunnel } from "./learn-feed";
+import { FallbackNote, QlooCandidates, RESEARCH_H2 as H2, SoundsLikePrompt } from "./qloo-prompts";
 import { addSong, forgetPlaylist, loadPlaylist, moveSong, removeSong, savePlaylist } from "./playlist-api";
 
 /** Where focus goes when a row leaves its list (B-016): the next row's action, else the previous one's, else the page's main field. */
@@ -129,7 +129,6 @@ function ListScroll({ label, maxHeight = LIST_MAX_HEIGHT, children }: { label: s
 }
 
 const R = COPY.research;
-const H2 = "m-0 font-display text-[26px] leading-none font-extrabold uppercase";
 /** shadcn's destructive description is destructive/90 (4.49:1): full strength passes AA. */
 const DESTRUCTIVE = "*:data-[slot=alert-description]:text-destructive";
 
@@ -159,7 +158,7 @@ function Section({ id, title, ready, live, children, testId }: { id: string; tit
 /**
  * The Repertoire page as Repertoire research (hackathons/qloo-2026/repertoire-research-spec.md): ONE input, the Spotify
  * artist link. Submitting it starts a streamed research run: the research on top while it runs, then the results on top
- * with the research folded below ("How we built your Repertoire"). Rendered from lib/repertoire-research-view.ts, with
+ * with the research below it ("How we built your Repertoire", always shown). Rendered from lib/repertoire-research-view.ts, with
  * plain existing pieces (PageHeader, HexCell, Chip, LeanBar, AgentStepStream, the learn funnel); BRAND restyles later.
  */
 export function ResearchView() {
@@ -272,7 +271,7 @@ export function ResearchView() {
     focusTarget(target)?.focus();
   }, [playlist, busy]);
 
-  async function start(body: { link?: string; refresh?: boolean; mode?: "full" | "more" }) {
+  async function start(body: { link?: string; refresh?: boolean; mode?: "full" | "more"; qlooChoice?: { id: string } | { none: true } }) {
     setNotice(null);
     setInfo("");
     setRunning(true);
@@ -356,6 +355,19 @@ export function ResearchView() {
     return chosen.slice(0, 10);
   };
 
+  const soundsLikePatch = () => chosenArtists().map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.qlooId ? { qlooId: a.qlooId } : {}), ...(a.image && /^https:\/\//.test(a.image) ? { image: a.image } : {}) }));
+  // The run paused on a question (Qloo wasn't sure which artist is the act, or doesn't know it and no sound-alikes are set).
+  const waiting = !running && !live ? researchWaiting(research) : null;
+  const askedFor = research?.steps.qloo?.output?.candidates ?? [];
+  // The qloo step's output: this run's, else the saved one. `fallback` says the later steps used "Artists you sound like".
+  const liveQloo = events?.findLast((e) => e.type === "tool-end" && e.tool === "research_qloo" && e.ok);
+  const qlooOut = (liveQloo?.type === "tool-end" ? (liveQloo.output as QlooOutput) : null) ?? research?.steps.qloo?.output ?? null;
+  async function carryOn() {
+    if (!playlist || !research) return;
+    const saved = await act(() => savePlaylist({ revision: playlist.revision, soundsLike: soundsLikePatch() }));
+    if (saved) void start({ link: research.spotifyArtistId, refresh: true });
+  }
+
   const runEvent = feedEvents?.find((e) => e.type === "run");
   const lastTotals = feedEvents?.findLast((e) => e.type === "totals");
   const researchFeed = () =>
@@ -373,7 +385,6 @@ export function ResearchView() {
           modeText={!events && replay ? "Showing the research from your last run. Nothing new was asked." : null}
           title={live ? R.heading : R.howBuilt}
           wording={R.waiting}
-          hideHeading={!live}
           showRaw={showRaw}
           onShowRawChange={setShowRaw}
           footer={<ResearchFunnel kind="learn" totals={lastTotals?.type === "totals" ? lastTotals.totals : ZERO_LEARN_TOTALS} running={live} />}
@@ -509,7 +520,7 @@ export function ResearchView() {
                 size="sm"
                 disabled={busy}
                 onClick={() =>
-                  void act(() => savePlaylist({ revision: playlist.revision, soundsLike: chosenArtists().map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.qlooId ? { qlooId: a.qlooId } : {}), ...(a.image && /^https:\/\//.test(a.image) ? { image: a.image } : {}) })) }), COPY.act.savedPage)
+                  void act(() => savePlaylist({ revision: playlist.revision, soundsLike: soundsLikePatch() }), COPY.act.savedPage)
                 }
               >
                 {COPY.act.savePage}
@@ -548,7 +559,7 @@ export function ResearchView() {
       {mapProps ? (
         // FansMap brings its own heading, Qloo mark and honesty line; the plain Section only holds the place while it loads.
         <div id="research-fans-map" data-testid="research-fans-map" className="w-full space-y-2">
-          <FansMap cells={mapProps.cells} cities={mapProps.cities} topAreas={mapProps.topAreas} planHref={mapProps.planHref} />
+          <FansMap cells={mapProps.cells} cities={mapProps.cities} />
         </div>
       ) : (
         <Section id="research-fans-map" title={R.fansMapHeading} ready={false} live={live} testId="research-fans-map">
@@ -604,7 +615,7 @@ export function ResearchView() {
             </CollapsibleContent>
           </Collapsible>
         )}
-        {research?.steps.qloo?.output?.matched && !live && (
+        {researchUsable(research) && !live && (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Button type="button" data-testid="research-more" disabled={busy || running || limit?.remaining === 0} onClick={() => void start({ mode: "more" })}>
               {R.findMore}
@@ -612,14 +623,6 @@ export function ResearchView() {
             {limit && <span className="text-sm text-muted-foreground">{COPY.learn.runsLeft(limit.remaining)}</span>}
           </div>
         )}
-      </Section>
-    </>
-  );
-  const summaryBlock = (
-    <>
-      {/* 7. The summary paragraph. */}
-      <Section id="research-summary" title={R.summaryHeading} ready={r.summary !== null || view.end !== null || (!live && research !== null)} live={live} testId="research-summary">
-        <p className="max-w-prose">{r.summary ?? R.noSummary}</p>
       </Section>
     </>
   );
@@ -672,13 +675,9 @@ export function ResearchView() {
     </>
   );
   // U37 to U43: BRAND's rows. The act (profile + act name | Your audience), the fans (who | sound-alikes over also love), the map,
-  // the songs (can sing | learn + learned), the summary, then the research. The layout puts the research first while it runs (CSS order).
-  const summaryReady = r.summary !== null || view.end !== null || (!live && research !== null);
-  const researchNode = live ? researchFeed() : research && feed.length > 0 ? (
-    <Fold label={R.howBuilt} count={feed.filter((s) => s.tool).length} defaultOpen data-testid="research-folded">
-      {researchFeed()}
-    </Fold>
-  ) : null;
+  // the songs (can sing | learn + learned), then the research. The layout puts the research first while it runs (CSS order).
+  // U21/U22: the research is always shown, in one surface: no fold, no chevron, no card inside it.
+  const researchNode = live ? researchFeed() : research && feed.length > 0 ? <div data-testid="research-steps">{researchFeed()}</div> : null;
   const showResults = (hasContent || running) && (running || !changingLink);
   const results = (
     <div data-testid="research-results">
@@ -692,9 +691,8 @@ export function ResearchView() {
         fansLove={r.fansLove !== null || live ? fansLoveBlock : undefined}
         fansMap={mapProps || live ? fansMapBlock : undefined}
         canSing={r.canSing !== null || live ? canSingBlock : undefined}
-        toLearn={r.toLearn !== null || (!live && (list?.suggestions.length ?? 0) > 0) || live ? toLearnBlock : undefined}
+        toLearn={!waiting && (r.toLearn !== null || (!live && (list?.suggestions.length ?? 0) > 0) || live) ? toLearnBlock : undefined}
         learned={learnedBlock}
-        summary={summaryReady || live ? summaryBlock : undefined}
         research={showResults ? researchNode : undefined}
       />
     </div>
@@ -753,11 +751,25 @@ export function ResearchView() {
               </AlertDescription>
             </Alert>
           )}
-          {view.end?.ok && !running && (
+          {view.end?.ok && !running && view.end.code !== "needs_choice" && view.end.code !== "needs_sounds_like" && (
             <p role="status" className="text-sm" data-testid="research-end" data-code={view.end.code ?? ""}>
               {view.end.message}
             </p>
           )}
+
+          {/* The run paused: Qloo wasn't sure which artist is the act, or doesn't know it and no sound-alikes are set. */}
+          {waiting === "choice" && research && (
+            <QlooCandidates
+              candidates={askedFor}
+              busy={busy}
+              onPick={(id) => void start({ link: research.spotifyArtistId, refresh: true, qlooChoice: { id } })}
+              onNone={() => void start({ link: research.spotifyArtistId, refresh: true, qlooChoice: { none: true } })}
+            />
+          )}
+          {waiting === "soundsLike" && (
+            <SoundsLikePrompt value={artists} onChange={setArtists} query={artistQuery} onQueryChange={setArtistQuery} count={chosenArtists().length} busy={busy} onCarryOn={() => void carryOn()} />
+          )}
+          {qlooOut?.fallback === "soundsLike" && !qlooOut.waiting && (live || research) && <FallbackNote />}
 
           {/* The results, with the research inside the layout (first while it runs, last when done). */}
           {showResults ? results : researchNode}

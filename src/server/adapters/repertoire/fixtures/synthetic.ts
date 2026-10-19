@@ -1,4 +1,5 @@
 // SYNTHETIC FIXTURE: invented catalogue for tests and offline mode. Not Spotify data.
+import { OFFLINE_TEST_ACTS } from "@/lib/repertoire-research";
 import { CATALOG, GENRES, normalizeName } from "@/server/qloo-mock/catalog";
 import type { ArtistProfileRaw, CatalogueArtist, CatalogueTrack } from "../schema";
 
@@ -176,6 +177,9 @@ export const SYNTHETIC_RAW = {
  * hex mark with initials shows.
  */
 export function syntheticArtistProfile(artistId: string): ArtistProfileRaw {
+  // The Repertoire research test acts (lib/repertoire-research.ts): a name and genres Qloo's mock knows only through name variants.
+  const act = Object.values(OFFLINE_TEST_ACTS).find((t) => t.spotifyId === artistId);
+  if (act) return { name: act.name, images: [], genres: [...act.genres], followers: 1_200 };
   const known = CATALOG.find((a) => a.spotifyId === artistId);
   if (!known) return { name: "Synthetic Performer", images: [], genres: ["synthetic folk", "test data"] };
   const genres = Object.entries(known.genres)

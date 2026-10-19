@@ -61,8 +61,8 @@ export const LEARN_MAX_RUNS = 50;
 export const LEARN_STEPS_MAX_BYTES = 256 * 1024;
 /** The window of the run limit. */
 export const LEARN_WINDOW_MINUTES = 60;
-/** Runs that ended before the model got any data (Qloo down, nothing matched) cost nothing and don't count towards either limit (B-028). */
-export const LEARN_UNCOUNTED_END_CODES: readonly string[] = ["qloo_unavailable", "no_match", "spotify_unavailable", "spotify_not_found"];
+/** Runs that ended before the model got any data (Qloo down, nothing matched, or paused to ask the performer which artist they are) cost nothing and don't count towards either limit (B-028). */
+export const LEARN_UNCOUNTED_END_CODES: readonly string[] = ["qloo_unavailable", "no_match", "spotify_unavailable", "spotify_not_found", "needs_choice", "needs_sounds_like"];
 /** Busk plan runs that ended because Qloo was down cost nothing and don't count towards the 5-an-hour fresh-run limit (B-043, like B-028 for learn runs). */
 export const PLAN_UNCOUNTED_END_CODES: readonly string[] = ["qloo_unavailable"];
 /** Max picks that one artist may have in a run, and the songs across the Repertoire that make an artist "over-represented". */
@@ -118,4 +118,4 @@ export const RESEARCH_LEARN_PER_ARTIST = 2;
 /** Genre tags asked of Qloo in step 8. */
 export const RESEARCH_GENRES_TAKE = 8;
 /** Step 9: one short call. */
-export const RESEARCH_SUMMARY_LIMITS = { maxOutputTokens: 1500, timeoutMs: 30_000, maxPicks: 6, summaryChars: 700 } as const;
+export const RESEARCH_SUMMARY_LIMITS = { maxOutputTokens: 800, timeoutMs: 30_000, maxPicks: 6 } as const;

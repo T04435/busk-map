@@ -133,7 +133,8 @@ export function SongRow({
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none"
+                // A block of its own, one line high: the title link is a 24px target (WCAG 2.2 target size) even with the artist link right under it.
+                className="inline-block max-w-full min-h-6 text-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none"
               >
                 {title}
                 <span className="sr-only"> (opens Spotify)</span>

@@ -81,7 +81,7 @@ describe("toRepertoireView", () => {
     const v = toRepertoireView({ events });
     expect(v.phase).toBe("done");
     expect(v.steps.every((s) => s.status === "done")).toBe(true);
-    expect(v.results.summary).toMatch(/^Mock summary/);
+    expect(v.results.summary).toBeNull(); // the paragraph about the act is retired
     expect(v.results.fans?.age.length).toBeGreaterThan(0);
     expect(v.results.soundsLike?.every((a) => a.source === "qloo")).toBe(true);
     expect(v.results.fansLove?.length).toBeGreaterThan(0);

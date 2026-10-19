@@ -2,7 +2,8 @@ import "server-only";
 import { nameKey } from "@/lib/text";
 import type { SoundsLikeSuggestions, SoundsLikeStatus, SpotifyProfile } from "@/lib/playlist-schema";
 import type { AdapterContext } from "@/server/adapters/core";
-import { resolveArtists, resolveSpotifyArtists, tasteArtists, type QlooEntity } from "@/server/adapters/qloo";
+import { decideMatch, MAX_EXTRA_SEARCHES, nameVariants, type MatchCandidate, type MatchDecision, type QlooCandidateView } from "@/lib/qloo-match";
+import { resolveSpotifyArtists, searchArtistHits, tasteArtists, type QlooEntity } from "@/server/adapters/qloo";
 import { getArtistProfile } from "@/server/adapters/repertoire";
 import type { PlaylistRecord } from "./store";
 
@@ -28,33 +29,70 @@ export type ProfileRefresh = {
 };
 
 /**
- * Loads the Spotify artist and finds the same artist in Qloo. Two Qloo lookups at most, both cached: the external-id
- * lookup first (it can't pick a namesake), then a name search accepted only when the name matches exactly.
+ * Loads the Spotify artist and finds the same artist in Qloo (findOwnOnQloo: the external-id lookup first, then name
+ * searches the confidence rule accepts; an uncertain match is left unknown here, research asks the user).
  * Called when the link changes or on an explicit refresh, never on page load.
  */
 export async function refreshOwnArtist(spotifyId: string, context: AdapterContext): Promise<ProfileRefresh> {
   const spotify = await getArtistProfile(spotifyId, context);
   if (!spotify.data) return { profile: null, qlooArtistId: null, qloo: "unavailable", spotify: spotify.reason === "not_found" ? "not_found" : "unavailable" };
   const profile = spotify.data;
-  const found = await findOwnOnQloo(spotifyId, profile.name, context);
+  const found = await findOwnOnQloo(spotifyId, profile.name, context, { genres: profile.genres });
   return { profile, qlooArtistId: found.entity?.id ?? null, qloo: found.qloo, spotify: "ok" };
 }
 
+export type OwnOnQloo = {
+  entity: QlooEntity | null;
+  qloo: ProfileRefresh["qloo"];
+  /** How it was found: "id" (Qloo's Spotify-id lookup: certain), "name" (a name search the confidence rule accepted), or null. */
+  by: "id" | "name" | null;
+  /** Qloo answered but nothing was certain: up to three plausible artists for the user to confirm (empty when nothing came close). */
+  candidates: QlooCandidateView[];
+  /** The /search calls made (never more than 1 + MAX_EXTRA_SEARCHES). */
+  searches: number;
+};
+
+const toMatchCandidate = (e: QlooEntity): MatchCandidate => ({ id: e.id, name: e.name, popularity: e.popularity, genres: e.tags.map((t) => t.name), image: e.image ?? null });
+export const candidateView = (c: MatchCandidate): QlooCandidateView => ({
+  qlooId: c.id,
+  name: c.name,
+  ...(c.image && /^https:\/\//.test(c.image) && c.image.length <= 500 ? { image: c.image } : {}),
+  genres: [...new Set(c.genres.map((g) => g.trim()).filter(Boolean))].slice(0, 2),
+});
+
 /**
- * The act's own artist on Qloo, from its Spotify id and name: the external-id lookup first (it can't pick a namesake), then
- * a name search accepted only when the name matches exactly. Shared by the profile refresh and Repertoire research step 3.
+ * The act's own artist on Qloo, from its Spotify id and name. Shared by the profile refresh and Repertoire research step 3.
+ * 1. The external-id lookup: a certain match (it can't pick a namesake).
+ * 2. Name searches with variants (accents, "feat." and brackets, "The" on and off, short and long forms), at most 1 + 4 of them,
+ *    stopping at the first one the confidence rule (lib/qloo-match.ts) accepts. Both calls are the cached /search and /entities.
+ * 3. Otherwise the plausible artists come back as `candidates` for the user to confirm; nothing is ever silently guessed.
  */
-export async function findOwnOnQloo(spotifyId: string, name: string, context: AdapterContext): Promise<{ entity: QlooEntity | null; qloo: ProfileRefresh["qloo"] }> {
+export async function findOwnOnQloo(spotifyId: string, name: string, context: AdapterContext, options: { actName?: string | null; genres?: readonly string[] } = {}): Promise<OwnOnQloo> {
   const byId = await resolveSpotifyArtists([spotifyId], context);
-  let entity = byId.data[0] ?? null;
-  let answered = byId.mode !== "fallback";
-  if (!entity && answered) {
-    const byName = await resolveArtists([name], context);
-    answered = answered && byName.mode !== "fallback";
-    const hit = byName.data[0]?.entity ?? null;
-    if (hit && nameKey(hit.name) === nameKey(name)) entity = hit;
+  const viaId = byId.data[0] ?? null;
+  if (viaId) return { entity: viaId, qloo: "matched", by: "id", candidates: [], searches: 0 };
+  if (byId.mode === "fallback") return { entity: null, qloo: "unavailable", by: null, candidates: [], searches: 0 };
+
+  const variants = nameVariants([name, options.actName]);
+  const plan = variants.slice(0, 1 + MAX_EXTRA_SEARCHES);
+  const genres = options.genres ?? [];
+  const pool = new Map<string, QlooEntity>();
+  let searches = 0;
+  let decision: MatchDecision = { kind: "none" };
+  for (const v of plan) {
+    const res = await searchArtistHits(v.text, context);
+    searches++;
+    if (res.mode === "fallback") {
+      // Qloo stopped answering: weigh what the earlier searches found, or report an outage when there is none.
+      if (pool.size === 0) return { entity: null, qloo: "unavailable", by: null, candidates: [], searches };
+      break;
+    }
+    for (const e of res.data) if (!pool.has(e.id)) pool.set(e.id, e);
+    decision = decideMatch([...pool.values()].map(toMatchCandidate), variants, genres);
+    if (decision.kind === "match") break;
   }
-  return { entity, qloo: entity ? "matched" : answered ? "unknown" : "unavailable" };
+  if (decision.kind === "match") return { entity: pool.get(decision.best.id) ?? null, qloo: "matched", by: "name", candidates: [], searches };
+  return { entity: null, qloo: "unknown", by: null, candidates: decision.kind === "ask" ? decision.candidates.map(candidateView) : [], searches };
 }
 
 /**

@@ -1,10 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapLegend } from "@/components/map/map-legend";
 import { orangeCells } from "@/components/map/taste-cells";
@@ -19,12 +17,6 @@ export type FansMapCell = { lat: number; lng: number; affinity: number };
 
 /** A top city: named on the map at every zoom. `affinity` 0 to 1. */
 export type FansMapCity = { name: string; lat: number; lng: number; affinity: number };
-
-/** "Melbourne", "Melbourne and Sydney", "Melbourne, Sydney and London". */
-function nameList(names: string[]): string {
-  if (names.length <= 1) return names[0] ?? "";
-  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-}
 
 /** The map box: a fixed-height frame (280px on a phone, 360px from md, 480px from lg: it has the full row now) that loads MapLibre when it comes near the screen. */
 function MapBox({ cells, cities, label }: { cells: FansMapCell[] | null; cities?: FansMapCity[]; label: string }) {
@@ -53,21 +45,14 @@ function MapBox({ cells, cities, label }: { cells: FansMapCell[] | null; cities?
 export function FansMap({
   cells,
   cities,
-  topAreas,
-  planHref,
   className,
 }: {
   /** Taste cells worldwide, affinity 0 to 1. `null` = loading; `[]` = Qloo has nothing for this act. */
   cells: FansMapCell[] | null;
   /** The top cities (strongest first, up to 8): each is a labelled hex marker at every zoom, and the map frames them (U40). Cells draw at their true, city size. */
   cities?: FansMapCity[];
-  /** Up to three places, strongest first ("Havana", "Miami", "Madrid"). */
-  topAreas: string[];
-  /** Where "Plan a busk" goes (/busks, prefilled with the top place when Busk Map covers it). Omit to hide the button. */
-  planHref?: string;
   className?: string;
 }) {
-  const areas = topAreas.slice(0, 3);
   const empty = cells !== null && orangeCells(cells).length === 0;
   const loading = cells === null;
   return (
@@ -86,16 +71,6 @@ export function FansMap({
             <SourceLogo source="qloo" height={14} className="mr-1 align-[-2px]" />
             has no taste data for your act yet.
           </p>
-        ) : areas.length > 0 ? (
-          <p className="m-0 text-base leading-6 font-medium">Your crowd is strongest in {nameList(areas)}.</p>
-        ) : null}
-        <p className="m-0 font-mono text-xs text-muted-foreground">
-          Where your taste concentrates, from <SourceLogo source="qloo" height={12} className="mx-0.5 align-[-2px]" />, not head counts.
-        </p>
-        {planHref && !empty && cells ? (
-          <Button asChild variant="outline" className="min-h-11 self-start">
-            <Link href={planHref}>Plan a busk</Link>
-          </Button>
         ) : null}
       </div>
     </Section>

@@ -61,40 +61,34 @@ describe("step 9: the summary only ranks and explains", () => {
     return { tools, summary, ctx, state, facts };
   }
 
-  it("the template paragraph uses names only, never a number it wasn't given", async () => {
-    const { summary, facts } = await withSongs();
-    const text = summary.templateParagraph(facts);
-    expect(text).toContain("Julia Jacklin");
-    expect(text).toContain("Indie Folk");
-    expect(text.replace("25–29", "")).not.toMatch(/\d/);
-  });
-
-  it("the offline writer picks this run's songs (2 per artist at most) and its paragraph passes the numbers check", async () => {
+  it("the offline writer picks this run's songs (2 per artist at most), with no paragraph", async () => {
     const { summary, ctx, state, facts } = await withSongs();
     const result = await summary.summarise(facts, state, ctx, { offline: true });
     expect(result.by).toBe("mock");
     expect(result.accepted?.picks.map((p) => p.songId)).toEqual(["s-1", "s-2"]);
-    expect(result.text).toMatch(/^Mock summary \(offline test mode\): Test Act sounds like Julia Jacklin/);
+    expect(result).not.toHaveProperty("text");
+    expect(result.accepted?.summary).toBe("");
     expect(result.usage).toMatchObject({ steps: 1, stoppedBy: "finished" });
   });
 
+  it("the prompt asks for a ranking only, not a paragraph about the act", async () => {
+    const { summary } = await withSongs();
+    expect(summary.SUMMARY_INSTRUCTIONS).not.toMatch(/paragraph/i);
+  });
+
   it("an invented number in a reason is replaced by the template reason; a song not from this run is dropped", async () => {
-    const { summary, ctx, state, facts } = await withSongs();
-    const out = summary.acceptSummary({ picks: [{ songId: "s-1", reason: "98765 fans love this." }, { songId: "s-99", reason: "Trust me." }], summary: "Fine words." }, state, ctx, facts, "claude");
+    const { summary, ctx, state } = await withSongs();
+    const out = summary.acceptSummary({ picks: [{ songId: "s-1", reason: "98765 fans love this." }, { songId: "s-99", reason: "Trust me." }] }, state, ctx, "claude");
     // checkPicks fails (pool + numbers); one valid pick is too few for 2 achievable, so the data's picks stand, templated.
     expect(out.accepted?.picks.map((p) => [p.songId, p.reason, p.templated])).toEqual([
       ["s-1", "Fans of Julia Jacklin also like Gordi.", true],
       ["s-2", "Fans of Julia Jacklin also like Gordi.", true],
     ]);
     expect(out.by).toBe("template");
-    expect(out.text).toBe("Fine words.");
     // With one bad reason among valid picks, the salvage keeps the picks and templates only that reason.
-    const salvaged = summary.acceptSummary({ picks: [{ songId: "s-1", reason: "98765 fans love this." }, { songId: "s-2", reason: "Good one." }], summary: "Fine." }, state, ctx, facts, "claude");
+    const salvaged = summary.acceptSummary({ picks: [{ songId: "s-1", reason: "98765 fans love this." }, { songId: "s-2", reason: "Good one." }] }, state, ctx, "claude");
     expect(salvaged.accepted?.picks.map((p) => p.templated)).toEqual([true, false]);
     expect(salvaged.by).toBe("claude");
-    const bad = summary.acceptSummary({ picks: [{ songId: "s-1", reason: "Good." }, { songId: "s-3", reason: "Good." }], summary: "They have 4444 fans." }, state, ctx, facts, "claude");
-    expect(bad.text).toBe(summary.templateParagraph(facts));
-    expect(bad.by).toBe("template");
   });
 
   it("a failing model falls back to the data: songs and paragraph from templates", async () => {

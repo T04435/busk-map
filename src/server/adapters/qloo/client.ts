@@ -152,20 +152,24 @@ const ids = (list: readonly string[]) => list.join(",");
 
 // ---- Tool calls (spec.md, Agent design) ----------------------------------
 
-/** `/search` for one artist name. Returns the best match, or null. */
-export async function searchArtist(backend: QlooBackend, name: string): Promise<QlooEntity | null> {
-  return countLookup("searchArtist", [backend, name], () => searchArtistCached(backend, name));
+/**
+ * `/search` for one artist name: its (at most three) hits, best first. Callers take the first, or weigh them all (the matcher in
+ * lib/qloo-match.ts, which asks the performer when none is certain).
+ */
+export async function searchArtist(backend: QlooBackend, name: string): Promise<QlooEntity[]> {
+  const found = await countLookup("searchArtist", [backend, name], () => searchArtistCached(backend, name));
+  // A value cached before this call kept every hit holds one entity (or null).
+  return Array.isArray(found) ? found : found ? [found] : [];
 }
 
-async function searchArtistCached(backend: QlooBackend, name: string): Promise<QlooEntity | null> {
+async function searchArtistCached(backend: QlooBackend, name: string): Promise<QlooEntity[]> {
   "use cache: remote";
   return lookupScope("searchArtist", [backend, name], async () => {
     cacheLife("days");
     cacheTag("qloo", "qloo:search");
     const params = { query: name, types: "urn:entity:artist", take: 3 };
     const results = await orNotFound(async () => (await qlooGet(backend, "/search", params, searchResponseSchema)).results, []);
-    const [best] = listEntities("/search", params, results);
-    return best ? toEntity(best) : null;
+    return listEntities("/search", params, results).map(toEntity);
   });
 }
 

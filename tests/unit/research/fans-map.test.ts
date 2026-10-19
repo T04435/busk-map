@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fansMapProps, fansMapSummary, planBuskHref } from "@/lib/fans-map";
+import { fansMapProps, fansMapSummary } from "@/lib/fans-map";
 import type { LearnStreamEvent } from "@/lib/learn-schema";
 import { RESEARCH_STEPS, RESEARCH_TOOLS, type FansMapOutput, type ResearchSnapshot } from "@/lib/repertoire-research";
 import { toRepertoireView } from "@/lib/repertoire-research-view";
@@ -17,16 +17,12 @@ const HAVANA = { lat: 23.13, lon: -82.38 };
 
 beforeEach(() => cache.clear());
 
-describe("the /busks link and the FansMap props", () => {
-  it("links to /busks, with the city prefilled only when Busk Map covers the top place", () => {
-    expect(planBuskHref("melbourne")).toBe("/busks?city=melbourne");
-    expect(planBuskHref(null)).toBe("/busks");
-    expect(planBuskHref()).toBe("/busks");
-  });
+describe("the FansMap props", () => {
   it("maps the output onto BRAND's props with no city", () => {
     const out: FansMapOutput = { summary: "x", cells: [{ lat: -37.8, lng: 144.9, affinity: 1 }], areas: ["A", "B", "C", "D"], planCity: "melbourne", signalledBy: ["Julia Jacklin"] };
-    expect(fansMapProps(out)).toEqual({ cells: out.cells, topAreas: ["A", "B", "C"], planHref: "/busks?city=melbourne" });
-    expect(fansMapProps({ ...out, planCity: null }).planHref).toBe("/busks");
+    expect(fansMapProps(out)).toEqual({ cells: out.cells });
+    expect(fansMapProps(out)).not.toHaveProperty("topAreas");
+    expect(fansMapProps(out)).not.toHaveProperty("planHref");
   });
   it("says the places in the Hive's voice, with no city", () => {
     expect(fansMapSummary(["Havana", "Miami", "Madrid"])).toBe("Your crowd is strongest in Havana, Miami and Madrid");
@@ -119,7 +115,7 @@ describe("U40: the map's cities", () => {
   });
   it("an old snapshot without cities still maps (no cities prop)", () => {
     const old: FansMapOutput = { summary: "x", cells: [{ lat: 1, lng: 2, affinity: 1 }], areas: ["A"], signalledBy: [] };
-    expect(fansMapProps(old)).toEqual({ cells: old.cells, topAreas: ["A"], planHref: "/busks" });
+    expect(fansMapProps(old)).toEqual({ cells: old.cells });
   });
 });
 
@@ -206,7 +202,7 @@ describe("the research step (offline)", () => {
 describe("saved research from before the map was global", () => {
   it("a snapshot that still carries `city` parses and the view ignores it", () => {
     const old = { summary: "x", city: { id: "melbourne", name: "Melbourne", center: [144.96, -37.81], zoom: 12 }, cells: [{ lat: -37.8, lng: 144.9, affinity: 1 }], areas: ["Fitzroy"], signalledBy: ["X"] } as FansMapOutput;
-    expect(fansMapProps(old)).toEqual({ cells: old.cells, topAreas: ["Fitzroy"], planHref: "/busks" });
+    expect(fansMapProps(old)).toEqual({ cells: old.cells });
   });
 });
 

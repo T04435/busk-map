@@ -188,4 +188,3 @@ export const SAMPLE_FANS_CELLS: { lat: number; lng: number; affinity: number }[]
   return cells;
 })();
 
-export const SAMPLE_FANS_AREAS = ["Melbourne", "Sydney", "London"];

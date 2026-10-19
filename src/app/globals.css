@@ -423,11 +423,6 @@ html { scroll-padding-bottom: var(--bottom-nav); }
 .hc-ticker { width: max-content; animation: hc-roll 40s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .hc-ticker { animation: none; } }
 
-/* The research feed folding under the busk (phones, tablets): the box shrinks and fades instead of vanishing. Only on arrival. */
-@keyframes hc-fold { from { grid-template-rows: 1fr; opacity: 1; } to { grid-template-rows: 0fr; opacity: 0; } }
-.hc-fold-arrive { animation: hc-fold 400ms var(--ease-out, ease) backwards; }
-@media (prefers-reduced-motion: reduce) { .hc-fold-arrive { animation: none; } }
-
 /* The landing hero's taste map fills in cell by cell, coolest first, then the pins drop; the hot cells breathe. Static under reduced motion. */
 @keyframes hc-cell-in { from { opacity: 0; transform: scale(0.4); } }
 @keyframes hc-pin-in { from { opacity: 0; transform: translateY(-14px) scale(0.8); } }

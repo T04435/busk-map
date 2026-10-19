@@ -246,7 +246,8 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
           href: o.profile.href,
         }
       : null,
-    summary: o.summary?.text ?? null,
+    // The paragraph about the act is retired (the page has no such section); old snapshots' text is ignored.
+    summary: null,
     fans: o.fans ? { age: o.fans.age.map(({ label, lean }) => ({ label, lean })), gender: o.fans.gender.map(({ label, lean }) => ({ label, lean })) } : null,
     fansMap: o.fansMap ?? null,
     soundsLike,

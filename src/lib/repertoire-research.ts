@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { spotifyArtistInputSchema } from "./playlist-schema";
+import type { QlooCandidateView } from "./qloo-match";
 
 /**
  * Repertoire research (hackathons/qloo-2026/repertoire-research-spec.md, approved 17 Oct): one Spotify artist link starts a
@@ -44,7 +45,7 @@ export const RESEARCH_LABELS: Record<ResearchStepKey, string> = {
   fansLove: "Finding what your fans also love",
   learn: "Finding songs your fans would stop for",
   genres: "Tagging your sound in genres",
-  summary: "Summing up your act",
+  summary: "Ranking songs to learn",
 };
 
 /** The data call behind each step, shown under Raw data. */
@@ -58,7 +59,7 @@ export const RESEARCH_SOURCES: Record<ResearchStepKey, string> = {
   fansLove: "Qloo /v2/insights · urn:entity:artist signalled by you and your sound-alikes, with explainability; they are left out",
   learn: "Spotify top tracks of those artists (Last.fm as backup); songs you sing, were offered or dismissed are left out",
   genres: "Qloo /v2/insights · urn:tag (music genres) signalled by your artist",
-  summary: "The Hive ranks the songs found and writes one paragraph; it never adds a song",
+  summary: "The Hive ranks the songs found and says why; it never adds a song",
 };
 
 export type ResearchMode = "full" | "more";
@@ -81,11 +82,24 @@ export type QlooOutput = {
   popularity: number | null;
   /** The act's photo (Spotify profile), for the inline mention in the step card. Optional: older saved runs lack it. */
   image?: string | null;
+  /** How the act was found: Qloo's Spotify-id lookup, a name search the confidence rule accepted, the user's pick, or the id saved on the Repertoire. */
+  by?: "id" | "name" | "chosen" | "saved";
+  /** The run is paused on this step: "choice" (the candidates below wait for the user) or "soundsLike" (the user picks 2 or 3 artists they sound like). */
+  waiting?: "choice" | "soundsLike";
+  /** Up to three plausible artists to confirm, when no name was certain. */
+  candidates?: QlooCandidateView[];
+  /** The user said none of the candidates is them; remembered for this link so they are not asked again. */
+  declined?: boolean;
+  /** Qloo doesn't know the act, so the later steps use "Artists you sound like" as the signal. */
+  fallback?: "soundsLike";
 };
+
+/** The signal came from "Artists you sound like", not from the act (set on the steps that used it). */
+export type BasedOn = { basedOn?: "soundsLike" };
 export type ResearchArtistOut = { name: string; qlooId: string; spotifyId?: string; image?: string; tags?: string[]; affinity: number | null; because?: string[] };
 export type SoundsLikeOutput = { summary: string; artists: ResearchArtistOut[]; /** True when they were saved as your "Artists you sound like" (only when that list was empty). */ saved: boolean };
 export type LeanOut = { key: string; label: string; lean: number };
-export type FansOutput = { summary: string; age: LeanOut[]; gender: LeanOut[]; ageLean: string | null };
+export type FansOutput = BasedOn & { summary: string; age: LeanOut[]; gender: LeanOut[]; ageLean: string | null };
 /** One heat cell of "Where your fans are": `affinity` is relative to the strongest cell (0 to 1). BRAND's FansMap takes these as `cells`. */
 export type FansMapCell = { lat: number; lng: number; affinity: number };
 /**
@@ -96,8 +110,8 @@ export type FansMapCell = { lat: number; lng: number; affinity: number };
  */
 /** U40: a city the map labels: named after the strongest cell of a cluster of strong cells; `affinity` is relative to the strongest cell (0 to 1). */
 export type FansMapCity = { name: string; lat: number; lng: number; affinity: number };
-export type FansMapOutput = { summary: string; cells: FansMapCell[]; areas: string[]; planCity?: string | null; /** Up to 8, strongest first. Optional: snapshots from before U40 lack it. */ cities?: FansMapCity[]; signalledBy: string[]; /** Retired. */ city?: unknown };
-export type FansLoveOutput = { summary: string; artists: ResearchArtistOut[]; signalledBy: string[]; excluded: number };
+export type FansMapOutput = BasedOn & { summary: string; cells: FansMapCell[]; areas: string[]; planCity?: string | null; /** Up to 8, strongest first. Optional: snapshots from before U40 lack it. */ cities?: FansMapCity[]; signalledBy: string[]; /** Retired. */ city?: unknown };
+export type FansLoveOutput = BasedOn & { summary: string; artists: ResearchArtistOut[]; signalledBy: string[]; excluded: number };
 export type LearnOutput = {
   summary: string;
   songs: { songId: string; title: string; artist: string; artistId: string; year: number | null; durationMs: number | null; source: "spotify" | "lastfm"; popularity: number | null; /** The artist's Qloo photo, when Qloo gave one. */ artistImage?: string }[];
@@ -108,8 +122,8 @@ export type LearnOutput = {
   lookedUp: string[];
 };
 export type GenreOut = { id: string; name: string; affinity: number | null };
-export type GenresOutput = { summary: string; tags: GenreOut[] };
-export type SummaryOutput = { summary: string; text: string; by: "claude" | "mock" | "template"; picks: number };
+export type GenresOutput = BasedOn & { summary: string; tags: GenreOut[] };
+export type SummaryOutput = { summary: string; /** Retired: the paragraph about the act. Old snapshots still carry it; it is ignored. */ text?: string; by: "claude" | "mock" | "template"; picks: number };
 
 export type StepOutputs = {
   profile: ProfileOutput;
@@ -165,6 +179,8 @@ export const researchRequestSchema = z.object({
   link: spotifyArtistInputSchema.optional(),
   mode: z.enum(["full", "more"]).default("full"),
   refresh: z.boolean().default(false),
+  /** The user's answer to "Is one of these you?": a candidate's Qloo id, or none of them. Only with a link, only for a candidate the last run offered. */
+  qlooChoice: z.union([z.object({ id: z.string().min(1).max(80) }), z.object({ none: z.literal(true) })]).optional(),
 });
 export type ResearchRequest = z.infer<typeof researchRequestSchema>;
 
@@ -176,10 +192,35 @@ export type ResearchRequest = z.infer<typeof researchRequestSchema>;
 export const OFFLINE_TEST_ARTIST = { name: "Julia Jacklin", spotifyId: "IBaXCJ49QlTYT2jOrEp66p" } as const;
 
 /**
- * Step 9's line, in the Hive's voice (U11): "We ranked 6 songs and summed up your act". The model is credited only by the AI chip;
+ * Offline test mode only: deterministic test acts for each way Qloo can (not) know a performer. Julia Jacklin above is the exact
+ * Spotify-id match. The profile fixture (adapters/repertoire/fixtures) and the Qloo mock (qloo-mock/catalog.ts: SCENARIO_ARTISTS)
+ * both read these; tests/unit/qloo-mock/scenarios.test.ts keeps them in step.
+ * - variant: Qloo has "Zelia Marquez" (no id link), found by the name without accent and "feat." part.
+ * - candidates: Qloo has "Mara Ellison" and "Maria Ellis", neither certain, so the user confirms.
+ * - unknown: Qloo has nothing, so the run falls back to the artists the performer sounds like.
+ */
+export const OFFLINE_TEST_ACTS = {
+  variant: { name: "Zélia Marquez (feat. Ro Dias)", spotifyId: "MockVariantAct0000001a", qlooName: "Zelia Marquez", genres: ["indie folk"] },
+  candidates: { name: "Mara Ellis", spotifyId: "MockCandidates00000002", qlooNames: ["Mara Ellison", "Maria Ellis"], genres: ["synthetic ambient"] },
+  unknown: { name: "Qzx Nowhere", spotifyId: "MockUnknownAct00000003", genres: ["synthetic noise"] },
+} as const;
+
+/** Whether the saved research is paused on a question for the user (null when it is not). */
+export function researchWaiting(snapshot: Pick<ResearchSnapshot, "steps"> | null | undefined): "choice" | "soundsLike" | null {
+  return snapshot?.steps.qloo?.output?.waiting ?? null;
+}
+
+/** Whether the saved research can build on (the "Find more songs to learn" button): the act was found, or the run used the artists it sounds like. */
+export function researchUsable(snapshot: Pick<ResearchSnapshot, "steps"> | null | undefined): boolean {
+  const q = snapshot?.steps.qloo?.output;
+  return Boolean(q && !q.waiting && (q.matched || q.fallback === "soundsLike"));
+}
+
+/**
+ * Step 9's line, in the Hive's voice (U11): "We ranked 6 songs". The model is credited only by the AI chip;
  * offline the test model is named (B-049), and without a model the line says the data did it.
  */
 export function summaryLine(by: "claude" | "mock" | "template" | string, picks: number): string {
   const songs = `${picks} ${picks === 1 ? "song" : "songs"}`;
-  return by === "claude" ? `We ranked ${songs} and summed up your act` : by === "mock" ? `The test model ranked ${songs} and summed up your act` : `We ranked ${songs} from the data and summed up your act, without the Hive`;
+  return by === "claude" ? `We ranked ${songs}` : by === "mock" ? `The test model ranked ${songs}` : `We ranked ${songs} from the data, without the Hive`;
 }

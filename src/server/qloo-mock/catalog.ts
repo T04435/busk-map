@@ -4,6 +4,8 @@
 // invented for testing. Entity ids are deterministic UUIDs whose first block
 // is 4D4F434B ("MOCK" in hex), so they can never be mistaken for Qloo ids.
 
+import { OFFLINE_TEST_ACTS } from "@/lib/repertoire-research";
+
 /** Music genre tags, in Qloo's tag-id style. */
 export const GENRES = {
   folk: "Folk",
@@ -249,7 +251,28 @@ export const CATALOG: CatalogArtist[] = ARTISTS.map((artist) => ({
   spotifyId: mockSpotifyId(artist.name),
 }));
 
-export const ARTIST_BY_ID = new Map(CATALOG.map((artist) => [artist.id, artist]));
+/**
+ * Test acts for Repertoire research's matching paths (lib/repertoire-research.ts: OFFLINE_TEST_ACTS). They are NOT in CATALOG, so
+ * no ranking, insight or count changes: only /search finds them (by the queries listed, exact after normalising) and an id lookup
+ * resolves them. None carries the Spotify id of the matching test act, so the Spotify-id lookup never finds them: the matcher has
+ * to work from names.
+ */
+export type ScenarioArtist = CatalogArtist & { searchOn: string[] };
+const scenario = (name: string, popularity: number, genres: MockArtist["genres"], searchOn: string[]): ScenarioArtist => ({
+  name,
+  popularity,
+  genres,
+  id: mockId("artist", name),
+  spotifyId: mockSpotifyId(name),
+  searchOn: searchOn.map(normalizeName),
+});
+export const SCENARIO_ARTISTS: ScenarioArtist[] = [
+  scenario(OFFLINE_TEST_ACTS.variant.qlooName, 0.41, { indie_folk: 0.9, singer_songwriter: 0.5 }, [OFFLINE_TEST_ACTS.variant.qlooName]),
+  scenario(OFFLINE_TEST_ACTS.candidates.qlooNames[0], 0.52, { rock: 0.7, pop: 0.4 }, [OFFLINE_TEST_ACTS.candidates.name, OFFLINE_TEST_ACTS.candidates.qlooNames[0]]),
+  scenario(OFFLINE_TEST_ACTS.candidates.qlooNames[1], 0.34, { folk: 0.6, acoustic: 0.4 }, [OFFLINE_TEST_ACTS.candidates.name, OFFLINE_TEST_ACTS.candidates.qlooNames[1]]),
+];
+
+export const ARTIST_BY_ID = new Map([...CATALOG, ...SCENARIO_ARTISTS].map((artist) => [artist.id, artist]));
 
 /**
  * Profile for a mock artist id, or null for an id the catalogue doesn't hold.

@@ -72,9 +72,8 @@ describe("a new Spotify link", () => {
     const text = await second.text();
     view = (await (await playlist.GET(req("GET", "", undefined, cookie))).json()).playlist;
     expect(view.actName).toBe("Al2 El Aldeano");
-    // U32: the summary names the new act.
-    expect(text).toContain("Mock summary (offline test mode): Al2 El Aldeano");
-    expect(text).not.toContain("Mock summary (offline test mode): El B");
+    // U32: the run is about the new act (the paragraph that named it is retired).
+    expect(text).toContain("Al2 El Aldeano");
     const by = (title: string) => view.songs.filter((s: { title: string }) => s.title === title);
     const artists = (view.songs as { title: string; artist: string }[]).map((s) => `${s.title}|${s.artist}`);
     expect(artists).toContain("Song 1|El B"); // the previous link's own song stays, not relabelled

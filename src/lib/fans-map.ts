@@ -1,6 +1,6 @@
 /**
  * "Where your fans are" (hackathons/qloo-2026/repertoire-fans-map-spec.md, U24; global since U30, the user's call of 19 Oct): the pure
- * parts, client-safe. The world area the heatmap is asked for, the "Plan a busk" link and the props shape BRAND's FansMap takes.
+ * parts, client-safe. The world area the heatmap is asked for, the props shape BRAND's FansMap takes.
  */
 import type { BBox } from "./geo";
 import type { FansMapCell, FansMapCity, FansMapOutput } from "./repertoire-research";
@@ -8,15 +8,12 @@ import type { FansMapCell, FansMapCity, FansMapOutput } from "./repertoire-resea
 /** The whole world, as the heatmap's polygon (latitudes stop short of the poles, where web-mercator maps end). */
 export const WORLD_BBOX: BBox = { south: -85, west: -180, north: 85, east: 180 };
 
-/** "Plan a busk": the busk form, with this city prefilled when Busk Map covers the top place. */
-export const planBuskHref = (cityId?: string | null) => (cityId ? `/busks?city=${encodeURIComponent(cityId)}` : "/busks");
-
 /** What BRAND's FansMap takes (null `cells` while loading, [] when Qloo has no data). */
-export type FansMapProps = { cells: FansMapCell[] | null; topAreas: string[]; planHref: string; cities?: FansMapCity[] };
+export type FansMapProps = { cells: FansMapCell[] | null; cities?: FansMapCity[] };
 
 /** The step's output as FansMap props. */
 export function fansMapProps(out: FansMapOutput): FansMapProps {
-  return { cells: out.cells, topAreas: out.areas.slice(0, 3), planHref: planBuskHref(out.planCity), ...(out.cities?.length ? { cities: out.cities } : {}) };
+  return { cells: out.cells, ...(out.cities?.length ? { cities: out.cities } : {}) };
 }
 
 /** The Hive's line: "Your crowd is strongest in A, B and C". */

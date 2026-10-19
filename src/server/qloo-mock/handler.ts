@@ -40,6 +40,7 @@ import {
   CATALOG,
   GENRES,
   artistById,
+  SCENARIO_ARTISTS,
   fnv1a,
   genreTagId,
   isMockId,
@@ -687,7 +688,8 @@ function searchArtists(query: string): CatalogArtist[] {
   // Partial matches need four characters, so "the" or "jo" don't match half the catalogue.
   const partial = q.length < 4 ? [] : CATALOG.filter((artist) => !exact.includes(artist) && names(artist).some((n) => n.includes(q) || q.includes(n)));
   // Like real Qloo, an artist outside the graph is no match (the caller answers 404 "No results").
-  return [...exact, ...partial];
+  const scenarios = SCENARIO_ARTISTS.filter((artist) => artist.searchOn.includes(q));
+  return [...exact, ...partial, ...scenarios];
 }
 
 function search(params: Params, key: string): Response {

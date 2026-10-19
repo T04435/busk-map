@@ -210,12 +210,10 @@ function ToolCard({ step, model, raw, rawView, when, pins, fresh }: { step: Agen
       data-testid="agent-step"
       data-tool={step.tool ?? ""}
       data-status={rejected ? "rejected" : step.status}
-      className={cn(
-        "grid min-w-0 gap-3 border p-4",
-        running ? "border-2 border-dashed border-input bg-background" : "border-border bg-card",
-        fresh && !running && "border-2 border-rule shadow-sm",
-        failed && "border-destructive",
-      )}
+      // U21/U22: no card inside the stream's panel. The steps sit directly on its surface, set apart by the list's rules; only a failed
+      // step is marked, by a rule at its side.
+      className={cn("grid min-w-0 gap-3 py-4 first:pt-0 last:pb-0", failed && "border-l-2 border-destructive pl-3")}
+      data-fresh={fresh && !running ? "true" : undefined}
     >
       <div className="grid items-start gap-3" style={STEP_COLS}>
         <StepCell icon={icon} status={running ? "running" : bad || rejected ? "failed" : cut ? "skipped" : "done"} source={sources.length === 1 ? sources[0] : undefined} label={`${title}: ${running ? "working" : bad || rejected ? "didn't work" : cut ? "stopped" : "done"}`} />
@@ -312,12 +310,12 @@ export function AgentStepStream({
   const tag = mode === "replay" ? "Replay" : mode === "joined" ? "Joined" : phase === "done" || phase === "fallback" ? "Finished" : phase === "error" || phase === "stopped" ? "Stopped" : "Live";
   const heading = title ?? (live ? "Finding your best pitches" : "How we found your pitches");
   const list = (
-    <ol aria-live={mode === "replay" ? "off" : "polite"} aria-label="Research, in the order it ran" className="m-0 grid list-none gap-3 p-0" data-testid="agent-feed">
+    <ol aria-live={mode === "replay" ? "off" : "polite"} aria-label="Research, in the order it ran" className="m-0 grid list-none divide-y divide-border p-0" data-testid="agent-feed">
       {feed.map((s, i) => (
         <ToolCard key={s.id} step={s} model={model} raw={raw} rawView={rawView} when={when} pins={pins} fresh={live && i === feed.length - 1 && !thinking} />
       ))}
       {thinking ? (
-        <li className="grid min-w-0 gap-3 border-2 border-dashed border-input bg-background p-4" data-testid="agent-thinking">
+        <li className="grid min-w-0 gap-3 py-4 first:pt-0 last:pb-0" data-testid="agent-thinking">
           <div className="grid items-start gap-3" style={STEP_COLS}>
             <HexCell size={HIVE_SIZES.stepCell} tone="dashed">
               <Loader size={HIVE_SIZES.step} label="Thinking" className="bm-loader-think text-primary" />

@@ -19,7 +19,6 @@ import {
   ToLearnSection,
 } from "@/components/honeycomb/repertoire/repertoire-sections";
 import {
-  SAMPLE_FANS_AREAS,
   SAMPLE_FANS_CELLS,
   SAMPLE_FANS_CITIES,
   SAMPLE_RESULTS,
@@ -72,7 +71,7 @@ function results({ r, loading, fansMap }: { r: RepertoireResults; loading: boole
  */
 export function RepertoirePreview({ state }: { state: PreviewState }) {
   const [folded, setFolded] = useState(true);
-  const map = (loading: boolean) => <FansMap cells={loading ? null : SAMPLE_FANS_CELLS} cities={SAMPLE_FANS_CITIES} topAreas={SAMPLE_FANS_AREAS} planHref="/busks" />;
+  const map = (loading: boolean) => <FansMap cells={loading ? null : SAMPLE_FANS_CELLS} cities={SAMPLE_FANS_CITIES} />;
   if (state === "hive") return <HiveSpecimen />;
   if (state === "empty") return <RepertoireEmpty value="" onChange={() => {}} onSubmit={() => {}} />;
   if (state === "running") {

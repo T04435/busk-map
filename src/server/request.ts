@@ -53,6 +53,19 @@ export function learnLimitFaultRequested(faults: string | null | undefined): Lea
 }
 
 /**
+ * Test fault `research-slow`: a Repertoire research run waits this long at the start of every step, so a test can look at the
+ * running state (the Hive heading, the live feed) before the offline run, which is otherwise over in a blink, finishes.
+ * Same gate as the others: never honoured unless fault injection is allowed.
+ */
+export const RESEARCH_SLOW_FAULT = "research-slow";
+export const RESEARCH_SLOW_STEP_MS = 600;
+
+export function researchStepDelayMs(faults: string | null | undefined): number {
+  if (!testSwitches().allowFaults || !faults) return 0;
+  return faults.split(",").some((s) => s.trim() === RESEARCH_SLOW_FAULT) ? RESEARCH_SLOW_STEP_MS : 0;
+}
+
+/**
  * The test faults a page passes on to its API calls: the provider outages plus `fresh-limit`.
  * Empty unless fault injection is allowed (never in production).
  */

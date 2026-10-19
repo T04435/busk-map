@@ -1,5 +1,5 @@
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
-import { researchRequestSchema } from "@/lib/repertoire-research";
+import { researchRequestSchema, researchUsable } from "@/lib/repertoire-research";
 import { limitResponse, limitsExempt, refusal, runStream } from "@/server/learn/api";
 import { LearnRun, registerLearnRun } from "@/server/learn/runs";
 import { learnStore } from "@/server/learn/store";
@@ -9,7 +9,7 @@ import { ensurePlaylist, guardMutation, isResponse, readSession } from "@/server
 import { LEARN_MAX_PENDING, LEARN_WINDOW_MINUTES } from "@/server/playlist/config";
 import { executeResearchRun } from "@/server/research/run";
 import { learnRunGate, refundLearnRun } from "@/server/rate-limit";
-import { adapterContextFor, clientIp, FAULTS_HEADER, learnLimitFaultRequested } from "@/server/request";
+import { adapterContextFor, clientIp, FAULTS_HEADER, learnLimitFaultRequested, researchStepDelayMs } from "@/server/request";
 
 /** A run takes well under a minute; the summary call times out at 30 s, then the data's words are used. */
 export const maxDuration = 120;
@@ -17,7 +17,8 @@ export const maxDuration = 120;
 /**
  * POST /api/playlist/research: Repertoire research (docs/repertoire-research.md). Body `{ link, refresh? }` starts a full
  * run for a Spotify artist link (creating the Repertoire on a first visit, behind the creation limit); `{ mode: "more" }`
- * reruns steps 6, 7 and 9 from the saved research. The answer is the learn stream as NDJSON (run, status, tool-start,
+ * reruns steps 6, 7 and 9 from the saved research. `qlooChoice` ({ id } or { none: true }) answers "Is one of these you?" after a run
+ * paused with candidates (end code needs_choice); a run paused for "Artists you sound like" (needs_sounds_like) is resumed with refresh. The answer is the learn stream as NDJSON (run, status, tool-start,
  * tool-end, totals, suggestion, usage, end). Refused before anything is spent, as plain JSON: 400 bad_link, 409 up_to_date
  * (same link, already researched: send refresh), no_research (more without a research), already_running, list_full,
  * 429 limit (the learn-run limiter: 3 an hour per Repertoire, 6 per IP; a run that ended with Qloo or Spotify down is
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
     const made = await ensurePlaylist(request, session);
     if (isResponse(made)) return made;
     cookies = made.cookies;
-    if (!playlist.research?.steps.qloo?.output?.matched) return refusal(409, "no_research", PLAYLIST_COPY.research.errors.noResearch, {}, cookies);
+    if (!researchUsable(playlist.research)) return refusal(409, "no_research", PLAYLIST_COPY.research.errors.noResearch, {}, cookies);
   } else {
     const made = await ensurePlaylist(request, session);
     if (isResponse(made)) return made;
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
   registerLearnRun(run);
   const ip = clientIp(request.headers);
   const exempt = limitsExempt();
-  void executeResearchRun({ learn, playlists: session.store, playlist, spotifyId, mode: body.mode, adapters: adapterContextFor(faults), record: started.run, run }).then(() => {
+  void executeResearchRun({ learn, playlists: session.store, playlist, spotifyId, mode: body.mode, adapters: adapterContextFor(faults), record: started.run, run, stepDelayMs: researchStepDelayMs(faults), ...(body.mode === "full" && body.qlooChoice ? { qlooChoice: body.qlooChoice } : {}) }).then(() => {
     // A run that ended with Qloo or Spotify down didn't count: its network hit is given back.
     const end = run.events.at(-1);
     if (!exempt && end?.type === "end") refundLearnRun(end.code, ip);

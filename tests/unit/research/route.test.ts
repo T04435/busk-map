@@ -84,7 +84,7 @@ describe("POST /api/playlist/research: the full run on the offline mock artist",
     for (const k of RESEARCH_STEPS) expect(snap.steps[k]?.status, k).toBe("done");
     expect(snap.steps.qloo?.output).toMatchObject({ matched: true, audience: expect.arrayContaining(["Dreamy"]), description: expect.stringContaining("Julia Jacklin") });
     expect(snap.steps.fansLove?.output?.artists.some((a) => a.name === "Julia Jacklin" || view.soundsLike.some((s: { name: string }) => s.name === a.name))).toBe(false);
-    expect(snap.steps.summary?.output).toMatchObject({ by: "mock", text: expect.stringMatching(/^Mock summary/) });
+    expect(snap.steps.summary?.output).toMatchObject({ by: "mock", summary: expect.stringMatching(/^The test model ranked \d+ songs?$/) });
 
     // The learn list shows the run and its songs, and the run replays.
     const list = await (await m.learn.GET(req("GET", "/learn", undefined, cookie))).json();

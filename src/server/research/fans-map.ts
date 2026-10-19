@@ -42,12 +42,13 @@ export class FansMapQlooDown extends Error {}
  * signal = the act's own Qloo entity first, then its sound-alikes; area = the whole world), cached per signal for 24 hours by the
  * Qloo client's remote lookup cache. Throws FansMapQlooDown when Qloo didn't answer.
  */
-export async function fansMapFor(args: { own: { id: string; name: string }; alikes: { qlooId: string; name: string }[]; adapters: AdapterContext }): Promise<FansMapOutput> {
+export async function fansMapFor(args: { own: { id: string; name: string } | null; alikes: { qlooId: string; name: string }[]; adapters: AdapterContext }): Promise<FansMapOutput> {
   const { own, alikes, adapters } = args;
-  const signal = [own.id, ...alikes.map((a) => a.qlooId).filter((id) => id !== own.id)];
+  // No `own` when Qloo doesn't know the act: the sound-alikes alone are the signal.
+  const signal = [...new Set([...(own ? [own.id] : []), ...alikes.map((a) => a.qlooId)])];
   const res = await qloo.tasteMap(signal, WORLD_BBOX, adapters, FANS_MAP_BOUNDARY);
   if (res.mode === "fallback") throw new FansMapQlooDown("Qloo didn't answer for where your fans are.");
-  return fansMapOutput(res.data, [own.name, ...alikes.map((a) => a.name)]);
+  return { ...fansMapOutput(res.data, [...(own ? [own.name] : []), ...alikes.map((a) => a.name)]), ...(own ? {} : { basedOn: "soundsLike" as const }) };
 }
 
 /** The Busk Map city whose planning area holds a point. */

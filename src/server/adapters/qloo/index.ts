@@ -160,6 +160,9 @@ export function globalArtists(take: number, context: AdapterContext): Promise<Ad
   return run<QlooEntity[]>(context, [], (backend) => client.globalArtists(backend, take));
 }
 
+/** Tag ids fit for the local scene's `signal.interests.tags` (none means the call is skipped). */
+export const sceneTags = client.sceneTags;
+
 /** local_scene: artists liked in the city area and tagged with its over-indexed genres (no artist signal). */
 export function sceneArtists(tagIds: string[], area: BBox, take: number, context: AdapterContext): Promise<AdapterResult<QlooEntity[]>> {
   return run<QlooEntity[]>(context, [], (backend) => client.sceneArtists(backend, tagIds, area, take));

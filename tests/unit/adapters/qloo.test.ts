@@ -406,6 +406,24 @@ describe("qloo live behaviour (synthetic payloads in the live shapes)", () => {
     expect(calls[0].url.searchParams.has("filter.subtype")).toBe(false);
   });
 
+  it("local scene: sends only valid tag ids, skips the call with none, and retries the strongest tag when Qloo refuses the list", async () => {
+    const qloo = await fresh();
+    const area = { south: -37.8265, west: 144.9365, north: -37.7985, east: 144.9845 };
+    const refusal = () => json({ errors: [{ message: "at least one valid signal or filter is required for entity insights" }] }, 400);
+    const row = (id: string) => ({ entity_id: id, name: `Act ${id}`, type: "urn:entity:artist" });
+    const { calls } = mockFetch([
+      route((u) => u.searchParams.get("signal.interests.tags")?.includes(",") === true, refusal),
+      route((u) => u.pathname === "/v2/insights", () => json({ success: true, results: { entities: [row("s1")] } })),
+    ]);
+    // Nothing valid to send: no request at all.
+    expect((await qloo.sceneArtists([" ", "rock", "a,b"], area, 20, LIVE)).data).toEqual([]);
+    expect(calls).toHaveLength(0);
+    // A list Qloo refuses falls back to the strongest handle alone.
+    const result = await qloo.sceneArtists(["urn:tag:genre:music:folk", "urn:tag:genre:music:jazz"], area, 20, LIVE);
+    expect(result.data.map((a) => a.id)).toEqual(["s1"]);
+    expect(calls.map((c) => c.url.searchParams.get("signal.interests.tags"))).toEqual(["urn:tag:genre:music:folk,urn:tag:genre:music:jazz", "urn:tag:genre:music:folk"]);
+  });
+
   it("finds the latest trending window with data, a quarter at a time, up to a year back", async () => {
     const qloo = await fresh();
     const { calls } = mockFetch([

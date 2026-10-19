@@ -53,6 +53,13 @@ describe("qloo mock: HTTP contract", () => {
     expect(noisy.body.results).toEqual(plain.body.results);
   });
 
+  it("rejects a tag signal that holds a malformed entry, as Qloo does", async () => {
+    const base = { "filter.type": "urn:entity:artist", "signal.location": "POLYGON((144.95 -37.82, 144.97 -37.82, 144.97 -37.8, 144.95 -37.8, 144.95 -37.82))" };
+    expect((await call("/v2/insights", { ...base, "signal.interests.tags": "urn:tag:genre:music:jazz,rock" })).status).toBe(400);
+    expect((await call("/v2/insights", { ...base, "signal.interests.tags": "urn:tag:genre:music:jazz," })).status).toBe(400);
+    expect((await call("/v2/insights", { ...base, "signal.interests.tags": "urn:tag:genre:music:jazz,urn:tag:genre:music:folk" })).status).toBe(200);
+  });
+
   it("rejects requests whose only signal is an invalid tag", async () => {
     expect(await call("/v2/insights", { "filter.type": "urn:entity:artist", "signal.interests.tags": "urn:tag:not:real" })).toMatchObject({
       status: 400,

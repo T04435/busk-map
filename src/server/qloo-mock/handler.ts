@@ -420,6 +420,8 @@ function insights(params: Params, key: string): Response {
 
 function requireSignal(signals: Signals, params: Params) {
   const sentAny = params.get("signal.interests.entities") !== null || params.get("signal.interests.tags") !== null;
+  // Live Qloo refuses a tag signal that carries anything that is not a tag id (an empty or malformed entry), not only one with no known tag.
+  if ((params.get("signal.interests.tags")?.split(",") ?? []).some((t) => !/^urn:tag:\S+$/.test(t))) throw new BadRequest("at least one valid signal or filter is required");
   if (sentAny && !hasMix(signals.mix)) throw new BadRequest("at least one valid signal or filter is required");
 }
 

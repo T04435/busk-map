@@ -21,11 +21,19 @@ for (const scheme of ["light", "dark"] as const) {
     for (const t of TARGETS) {
       test(`${t.name} (${t.path})`, async ({ page }) => {
         await page.goto(t.path);
+        // A streamed page swaps its Suspense fallbacks for the real nodes after the load event, and React then hydrates them.
+        // Focus given before that lands on a node that is replaced or not yet interactive, and the ring is missing for a moment
+        // (the flake). Wait for the stream to finish and the target to be hydrated: the assertion below is unchanged.
+        await page.waitForFunction(() => !document.querySelector("template[id^='B:'], [id^='S:'][hidden]"));
+        await expect
+          .poll(() => page.locator(t.selector).locator("visible=true").first().evaluate((n) => Object.keys(n).some((k) => k.startsWith("__reactFiber"))), { message: "target hydrated" })
+          .toBe(true);
         await page.addStyleTag({ content: "*, *::before, *::after { transition: none !important; }" });
         const el = page.locator(t.selector).locator("visible=true").first();
         await el.scrollIntoViewIfNeeded();
         await page.keyboard.press("Tab"); // keyboard modality, so :focus-visible matches
         await el.focus();
+        await expect(el).toBeFocused();
         const r = await el.evaluate((node) => {
           const cs = getComputedStyle(node);
           const parse = (c: string) => (c.match(/[\d.]+/g) ?? []).slice(0, 4).map(Number);

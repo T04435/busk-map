@@ -367,7 +367,15 @@ async function globalArtistsCached(backend: QlooBackend, take: number): Promise<
  * the city, so it is cached per city and tags.
  */
 export async function sceneArtists(backend: QlooBackend, tagIds: string[], area: BBox, take: number): Promise<QlooEntity[]> {
-  return countLookup("sceneArtists", [backend, tagIds, area, take], () => sceneArtistsCached(backend, tagIds, area, take));
+  const tags = sceneTags(tagIds);
+  // Nothing valid to send: Qloo answers a tag-less or malformed signal with "at least one valid signal or filter is required".
+  if (tags.length === 0) return [];
+  return countLookup("sceneArtists", [backend, tags, area, take], () => sceneArtistsCached(backend, tags, area, take));
+}
+
+/** Tag ids fit for `signal.interests.tags`: trimmed `urn:tag:` ids with no comma (the list separator), once each, at most 7. */
+export function sceneTags(tagIds: readonly string[]): string[] {
+  return [...new Set(tagIds.map((t) => t.trim()).filter((t) => /^urn:tag:[^\s,]+$/.test(t)))].slice(0, 7);
 }
 
 async function sceneArtistsCached(backend: QlooBackend, tagIds: string[], area: BBox, take: number): Promise<QlooEntity[]> {
@@ -375,14 +383,33 @@ async function sceneArtistsCached(backend: QlooBackend, tagIds: string[], area: 
   return lookupScope("sceneArtists", [backend, tagIds, area, take], async () => {
     cacheLife("days");
     cacheTag("qloo", "qloo:artists");
-    const params = {
-      "filter.type": "urn:entity:artist",
-      "signal.location": wktPolygon(area),
-      "signal.interests.tags": ids(tagIds),
-      take: Math.min(take, MAX_TAKE),
+    const ask = async (tags: string[]) => {
+      const params = {
+        "filter.type": "urn:entity:artist",
+        "signal.location": wktPolygon(area),
+        "signal.interests.tags": ids(tags),
+        take: Math.min(take, MAX_TAKE),
+      };
+      const body = await qlooGet(backend, "/v2/insights", params, insightsEntitiesResponseSchema);
+      return listEntities("/v2/insights", params, body.results.entities).map(toEntity);
     };
-    const body = await qlooGet(backend, "/v2/insights", params, insightsEntitiesResponseSchema);
-    return listEntities("/v2/insights", params, body.results.entities).map(toEntity);
+    const refused = (error: unknown) => error instanceof AdapterError && error.status === 400;
+    try {
+      return await ask(tagIds);
+    } catch (error) {
+      if (!refused(error)) throw error;
+      log.warn("qloo refused the local scene tags", { tags: tagIds });
+    }
+    // One tag Qloo does not know can void the whole list: try the strongest handle alone, then give up (an honest "no local artists").
+    if (tagIds.length > 1) {
+      try {
+        return await ask(tagIds.slice(0, 1));
+      } catch (error) {
+        if (!refused(error)) throw error;
+        log.warn("qloo refused the strongest local scene tag", { tags: tagIds.slice(0, 1) });
+      }
+    }
+    return [];
   });
 }
 

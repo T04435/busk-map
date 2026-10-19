@@ -525,6 +525,8 @@ export class PlanContext {
       const preferred = preferActGenres(overIndexGenres(rows), this.request.performer.genreTags);
       const handles = preferred.handles;
       if (handles.length === 0) return none("genres this city leans to");
+      // Qloo refuses a tag signal with nothing valid in it, so a city whose handles are not usable tag ids skips the call.
+      if (qloo.sceneTags(handles.map((h) => h.id)).length === 0) return none("usable genre tags for this city");
       const own = new Set(ids);
       const scene = (await this.track("scene:artists", () => qloo.sceneArtists(handles.map((h) => h.id), this.city.bbox, SCENE_TAKE, this.adapters))).filter((a) => !own.has(a.id));
       if (scene.length === 0) return none("local artists for those genres");

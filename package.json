@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/copy-maplibre-worker.mjs && next dev",
+    "build": "node scripts/copy-maplibre-worker.mjs && next build",
     "vercel-build": "node scripts/migrate.mjs --if-production && pnpm build",
     "start": "next start",
     "lint": "eslint",
@@ -17,8 +17,6 @@
     "e2e:late": "BUSKMAP_FAKE_NOW=2026-10-16T21:30:00+11:00 playwright test late-clock.spec.ts",
     "check:fixtures": "node scripts/check-fixtures.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm check:fixtures && pnpm build",
-    "predev": "node scripts/copy-maplibre-worker.mjs",
-    "prebuild": "node scripts/copy-maplibre-worker.mjs",
     "db:migrate:dev": "node --env-file=.env.development.local scripts/migrate.mjs"
   },
   "dependencies": {

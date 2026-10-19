@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
   // BotID is checked only on Vercel (VERCEL=1 during Vercel builds); see src/server/bot.ts.
   env: { NEXT_PUBLIC_BUSKMAP_BOTID: process.env.VERCEL ? "1" : "" },
   partialPrefetching: true,
+  // Vercel restores .next/cache between deployments. A stale Turbopack cache served an old globals.css (the create-next-app one:
+  // no Honeycomb tokens, fonts or --taste-*) on a preview, so the build cache is off; builds recompile from the source every time.
+  experimental: { turbopackFileSystemCacheForBuild: false },
 
   turbopack: {
     rules: {

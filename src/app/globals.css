@@ -52,6 +52,12 @@
   --qloo: #5b5ba3;
   --qloo-brand: #8C8CC8;
   --signal-text: #b13a00;
+  /* The Hive mark (Hive Identity): signal-text by day, signal at night. The day and night values and the board's day paper are
+     the same in both themes, so a specimen can show the day mark inside a night panel. */
+  --hive-day: #b13a00;
+  --hive-night: #ff6a2b;
+  --hive-paper: #f7f3ec;
+  --hive: var(--hive-day);
   /* Source colours for the Hive mark's centre cell (single-source steps): Qloo's bluestone with a white mark, Spotify's green with a black mark, Last.fm's red with a white mark. Brand colours, the same in both themes. */
   --source-qloo: #141c21;
   --source-qloo-ink: #ffffff;
@@ -116,6 +122,7 @@
   --qloo: #8C8CC8;
   --qloo-brand: #8C8CC8;
   --signal-text: #ff7f45;
+  --hive: var(--hive-night);
   --zone-pink: #ff5c9d;
   --rule: #f2ede4;
   --taste-1: #33221a;
@@ -172,6 +179,7 @@
     --qloo: #8C8CC8;
     --qloo-brand: #8C8CC8;
     --signal-text: #ff7f45;
+    --hive: var(--hive-night);
     --zone-pink: #ff5c9d;
     --rule: #f2ede4;
     --taste-1: #33221a;
@@ -282,6 +290,8 @@
   --color-qloo: var(--qloo);
   --color-qloo-brand: var(--qloo-brand);
   --color-signal-text: var(--signal-text);
+  --color-hive: var(--hive);
+  --color-hive-paper: var(--hive-paper);
   --color-zone-pink: var(--zone-pink);
   --color-rule: var(--rule);
   --color-taste-1: var(--taste-1);

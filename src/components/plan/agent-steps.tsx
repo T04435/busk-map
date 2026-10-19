@@ -2,8 +2,9 @@
 
 import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { StepCell } from "@/components/honeycomb/step-cell";
+import { HIVE_SIZES } from "@/components/honeycomb/hive-mark";
 import { AgentTag } from "@/components/honeycomb/agent-tag";
-import { Fragment, useId, useState, type ReactNode } from "react";
+import { Fragment, useId, useState, type CSSProperties, type ReactNode } from "react";
 import { cn } from "cn";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
@@ -14,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { scalar, type AgentStep, type RunUsage } from "@/lib/agent-steps";
 import { modelName, type ExplanationsModel } from "@/lib/sources";
-import { TOOL_ICON, TOOL_SOURCES, TOOL_UI, type MiniPin } from "./tool-results";
+import { stepSources, TOOL_ICON, TOOL_UI, type MiniPin } from "./tool-results";
 
 /**
  * The research feed: the agent's steps as the busker sees them, in the order they ran (U23), no step numbers, each tool drawn as a plain-words
@@ -174,6 +175,10 @@ function RawBlock({ step, model, view }: { step: AgentStep; model: ExplanationsM
   );
 }
 
+/** Each card: its step cell (HIVE_SIZES.stepCell, the running Hive mark inside) and the title column; the body lines up under the title from sm up. */
+const STEP_COLS = { gridTemplateColumns: `${HIVE_SIZES.stepCell}px minmax(0,1fr)` } as const;
+const STEP_INDENT = { "--step-indent": `${HIVE_SIZES.stepCell + 12}px` } as CSSProperties;
+
 function ToolCard({ step, model, raw, rawView, when, pins, fresh }: { step: AgentStep; model: ExplanationsModel | null; raw: boolean; rawView: "table" | "json"; when?: string; pins?: MiniPin[]; fresh: boolean }) {
   const ui = step.tool ? TOOL_UI[step.tool] : undefined;
   const icon = (step.tool && TOOL_ICON[step.tool]) || "dots";
@@ -182,7 +187,7 @@ function ToolCard({ step, model, raw, rawView, when, pins, fresh }: { step: Agen
   const rejected = failed && step.tool === "finish_plan";
   const bad = failed && !rejected;
   const cut = step.status === "cut";
-  const sources = step.tool ? (TOOL_SOURCES[step.tool] ?? []) : [];
+  const sources = stepSources(step);
   const say = step.notes.filter((n) => n.kind === "text").map((n) => n.text);
   const title = running ? `${ui?.doing(step) ?? step.label}…` : (ui?.title(step) ?? step.label);
   const out = step.output !== null && typeof step.output === "object" ? (step.output as Record<string, unknown>) : {};
@@ -212,8 +217,8 @@ function ToolCard({ step, model, raw, rawView, when, pins, fresh }: { step: Agen
         failed && "border-destructive",
       )}
     >
-      <div className="grid grid-cols-[30px_minmax(0,1fr)] items-start gap-3">
-        <StepCell size={30} icon={icon} status={running ? "running" : bad || rejected ? "failed" : cut ? "skipped" : "done"} source={sources.length === 1 ? sources[0] : undefined} label={`${title}: ${running ? "working" : bad || rejected ? "didn't work" : cut ? "stopped" : "done"}`} />
+      <div className="grid items-start gap-3" style={STEP_COLS}>
+        <StepCell icon={icon} status={running ? "running" : bad || rejected ? "failed" : cut ? "skipped" : "done"} source={sources.length === 1 ? sources[0] : undefined} label={`${title}: ${running ? "working" : bad || rejected ? "didn't work" : cut ? "stopped" : "done"}`} />
         <div className="grid min-w-0 gap-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <b className={cn(running ? "font-sans text-base leading-[22px] font-bold" : "font-display text-xl leading-6 font-extrabold uppercase")}>{title}</b>
@@ -229,7 +234,11 @@ function ToolCard({ step, model, raw, rawView, when, pins, fresh }: { step: Agen
         </div>
         <span className="sr-only">{rejected ? "rejected" : step.status}</span>
       </div>
-      {body ? <div className="grid min-w-0 gap-3 pl-[42px]">{body}</div> : null}
+      {body ? (
+        <div className="grid min-w-0 gap-3 sm:pl-(--step-indent)" style={STEP_INDENT}>
+          {body}
+        </div>
+      ) : null}
       {raw ? <RawBlock step={step} model={model} view={rawView} /> : null}
     </li>
   );
@@ -309,9 +318,9 @@ export function AgentStepStream({
       ))}
       {thinking ? (
         <li className="grid min-w-0 gap-3 border-2 border-dashed border-input bg-background p-4" data-testid="agent-thinking">
-          <div className="grid grid-cols-[30px_minmax(0,1fr)] items-start gap-3">
-            <HexCell size={30} tone="dashed">
-              <Loader size={20} label="Thinking" className="bm-loader-think text-primary" />
+          <div className="grid items-start gap-3" style={STEP_COLS}>
+            <HexCell size={HIVE_SIZES.stepCell} tone="dashed">
+              <Loader size={HIVE_SIZES.step} label="Thinking" className="bm-loader-think text-primary" />
             </HexCell>
             <div className="grid min-w-0 gap-1">
               <b className="font-sans text-base leading-[22px] font-bold">

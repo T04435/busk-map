@@ -393,6 +393,11 @@ export const streamStatusSchema = z.object({ type: z.literal("status"), message:
 export const streamNoteSchema = z.object({ type: z.literal("note"), kind: z.enum(["reasoning", "text"]), text: z.string() });
 /** `input`: the inputs Claude chose. */
 export const streamToolStartSchema = z.object({ type: z.literal("tool-start"), id: z.string(), tool: z.string(), label: z.string(), source: z.string().optional(), input: z.unknown().optional() });
+/**
+ * The one source a running step is using, when that is only known once it runs (a step with a backup source: Spotify first, then
+ * Last.fm). The step's Hive mark shows it in its centre cell. Live only: replays read it from the step's output.
+ */
+export const streamToolSourceSchema = z.object({ type: z.literal("tool-source"), id: z.string(), source: z.enum(["spotify", "lastfm", "qloo"]) });
 /** `output`: the data the tool returned, exactly as the model saw it. */
 export const streamToolEndSchema = z.object({ type: z.literal("tool-end"), id: z.string(), tool: z.string(), ok: z.boolean(), summary: z.string(), output: z.unknown().optional() });
 /** Run totals, sent before the plan. */

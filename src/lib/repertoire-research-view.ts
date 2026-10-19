@@ -7,7 +7,7 @@
  */
 import { hiveProgressOfRepertoire } from "./agent-persona";
 import type { LearnStreamEvent, LearnSuggestionEvent, LearnTotals } from "./learn-schema";
-import { SPOTIFY_ARTIST_URL, SPOTIFY_TRACK_URL, spotifyHref } from "./mention";
+import { SPOTIFY_ARTIST_URL, SPOTIFY_TRACK_URL, spotifyHref, type MentionSource } from "./mention";
 import { profilePhoto } from "./spotify-profile";
 import { nameKey } from "./text";
 import { playlistSongKey, type LearnSuggestionView, type PlaylistSongView, type PlaylistView } from "./playlist-schema";
@@ -15,7 +15,7 @@ import type { FansMapOutput } from "./repertoire-research";
 import { MORE_STEPS, RESEARCH_STEP_OF, RESEARCH_STEPS, type ResearchSnapshot, type ResearchStepKey, type StepOutputs } from "./repertoire-research";
 
 export type RepertoireStepStatus = "pending" | "running" | "done" | "failed" | "skipped";
-export type RepertoireStep = { key: ResearchStepKey; status: RepertoireStepStatus; /** One plain-words line. */ found?: string; /** At most 6. */ cells?: { name: string; image?: string }[]; note?: string };
+export type RepertoireStep = { key: ResearchStepKey; status: RepertoireStepStatus; /** One plain-words line. */ found?: string; /** At most 6. */ cells?: { name: string; image?: string }[]; note?: string; /** The one source a step with a backup ran on, once known (songs: Spotify, or Last.fm when Spotify gave none). */ source?: MentionSource };
 export type RepertoireTotals = { qlooCalls: number; songs: number; soundsLike: number; fanArtists: number; songsChecked: number; toLearn: number | null };
 export type ResearchArtist = { name: string; image?: string; /** open.spotify.com/artist/<id> when the Spotify id is known; otherwise no link (U06). */ href?: string; source?: "spotify" | "qloo" | "typed"; tags?: string[] };
 /**
@@ -182,12 +182,16 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
   let totals: LearnTotals | null = run ? null : (snapshot?.totals ?? null);
   const live: LearnSuggestionEvent[] = [];
   const ids = new Map<string, ResearchStepKey>();
+  const via = new Map<ResearchStepKey, MentionSource>();
   for (const e of events) {
     if (e.type === "tool-start") {
       const k = RESEARCH_STEP_OF[e.tool];
       if (!k) continue;
       ids.set(e.id, k);
       status.set(k, "running");
+    } else if (e.type === "tool-source") {
+      const k = ids.get(e.id);
+      if (k) via.set(k, e.source);
     } else if (e.type === "tool-end") {
       const k = ids.get(e.id) ?? RESEARCH_STEP_OF[e.tool];
       if (!k) continue;
@@ -203,7 +207,9 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
     // A live run that ended: a step it never started was skipped (or cut short, if it was still running).
     if (end && ran.includes(key) && (st === "pending" || st === "running")) st = st === "running" ? "failed" : "skipped";
     const f = found.get(key);
-    return { key, status: st, ...(f && st === "done" ? { found: f } : {}), ...(st === "done" ? { cells: cellsOf(key, outputs) } : {}), ...(st === "failed" && f ? { note: f } : {}), ...(st === "skipped" ? { note: "Skipped" } : {}) };
+    const songsFrom = key === "songs" && st === "done" && outputs.songs && outputs.songs.source !== "none" ? outputs.songs.source : undefined;
+    const source = via.get(key) ?? songsFrom;
+    return { key, status: st, ...(source ? { source } : {}), ...(f && st === "done" ? { found: f } : {}), ...(st === "done" ? { cells: cellsOf(key, outputs) } : {}), ...(st === "failed" && f ? { note: f } : {}), ...(st === "skipped" ? { note: "Skipped" } : {}) };
   });
   const done = (k: ResearchStepKey) => steps.find((s) => s.key === k)?.status === "done";
 

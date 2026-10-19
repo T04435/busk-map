@@ -5,7 +5,7 @@
  * every learn stream ends with exactly one `end`.
  */
 import { z } from "zod";
-import { streamNoteSchema, streamStatusSchema, streamToolEndSchema, streamToolStartSchema, streamUsageSchema } from "./plan-schema";
+import { streamNoteSchema, streamStatusSchema, streamToolEndSchema, streamToolSourceSchema, streamToolStartSchema, streamUsageSchema } from "./plan-schema";
 
 const count = z.number().int().min(0);
 
@@ -102,6 +102,7 @@ export const learnStreamEventSchema = z.discriminatedUnion("type", [
   streamStatusSchema,
   streamNoteSchema,
   streamToolStartSchema,
+  streamToolSourceSchema,
   streamToolEndSchema,
   z.object({ type: z.literal("totals"), totals: learnTotalsSchema }),
   learnSuggestionEventSchema,
@@ -114,7 +115,7 @@ export type LearnEnd = z.infer<typeof learnEndSchema>;
 export type LearnRunEvent = Extract<LearnStreamEvent, { type: "run" }>;
 
 /** The stored steps of a run: every event except run, suggestion, end, usage and the final totals (docs §1.2). */
-export type StoredLearnStep = Exclude<LearnStreamEvent, { type: "run" | "suggestion" | "end" | "usage" }>;
+export type StoredLearnStep = Exclude<LearnStreamEvent, { type: "run" | "suggestion" | "end" | "usage" | "tool-source" }>;
 
 // --- The Learn list: GET /api/playlist/learn (§7.3) ---
 

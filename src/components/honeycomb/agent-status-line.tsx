@@ -1,4 +1,5 @@
-import { HiveMark } from "@/components/honeycomb/hive-mark";
+import type { CSSProperties } from "react";
+import { HIVE_SIZES, HiveMark } from "@/components/honeycomb/hive-mark";
 import { AGENT_NAME_INLINE, AGENT_NAME_START } from "@/lib/agent-persona";
 import type { RunUsage } from "@/lib/agent-steps";
 import type { ExplanationsModel } from "@/lib/sources";
@@ -28,10 +29,13 @@ const text = (state: AgentState, model: ExplanationsModel | null | undefined): s
 };
 
 /**
- * One line under the header saying what the agent is doing, with the Hive's mark (24, decorative: the sentence carries the state),
+ * One line under the header saying what the agent is doing, with the Hive's mark (HIVE_SIZES.status, decorative: the sentence carries the state),
  * the run's note and usage. Keeps `agent-status` and `agent-usage`. Working while it researches, resting when done, and the
  * dashed plain hex when the Hive didn't run.
  */
+/** The note and usage lines start under the sentence: the mark and the 8px gap. */
+const INDENT = { "--hive-indent": `${HIVE_SIZES.status + 8}px` } as CSSProperties;
+
 export function AgentStatusLine({
   state,
   note,
@@ -45,19 +49,19 @@ export function AgentStatusLine({
 }) {
   const live = state === "researching" || state === "rerun";
   return (
-    <div role="status" aria-live={live ? "polite" : "off"} className="flex flex-col gap-1">
+    <div role="status" aria-live={live ? "polite" : "off"} className="flex flex-col gap-1" style={INDENT}>
       {state ? (
         <p className="m-0 flex items-start gap-2 font-mono text-sm leading-5 font-medium">
-          {/* -2px top and bottom: the 24px mark centres on the first 20px line, and wrapped lines run on under the text. */}
-          <HiveMark className="-my-0.5" size={24} state={live ? "working" : "rest"} muted={state === "none" || state === "engine"} decorative />
+          {/* -4px top and bottom: the mark centres on the first 20px line, and wrapped lines run on under the text. */}
+          <HiveMark className="-my-1" size={HIVE_SIZES.status} state={live ? "working" : "rest"} muted={state === "none" || state === "engine"} decorative />
           <span data-testid="agent-status">
             {note && state === "replayed" ? note : text(state, model)}
           </span>
         </p>
       ) : null}
-      {note && state !== "replayed" ? <p className="m-0 ml-8 font-mono text-xs leading-4 font-medium text-muted-foreground">{note}</p> : null}
+      {note && state !== "replayed" ? <p className="m-0 ml-(--hive-indent) font-mono text-xs leading-4 font-medium text-muted-foreground">{note}</p> : null}
       {usage ? (
-        <p className="m-0 ml-8 font-mono text-xs leading-4 font-medium text-muted-foreground" data-testid="agent-usage">
+        <p className="m-0 ml-(--hive-indent) font-mono text-xs leading-4 font-medium text-muted-foreground" data-testid="agent-usage">
           {usage.steps} model steps · {usage.inputTokens.toLocaleString("en-AU")} input and {usage.outputTokens.toLocaleString("en-AU")} output tokens
           {usage.reasoningTokens ? ` (${usage.reasoningTokens.toLocaleString("en-AU")} thinking)` : ""} · {(usage.ms / 1000).toFixed(1)} s
         </p>

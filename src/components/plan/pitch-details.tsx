@@ -4,6 +4,7 @@ import { planMentions } from "@/lib/plan-mentions";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { FoundByBadge } from "@/components/honeycomb/found-by-badge";
 import { HexCell } from "@/components/honeycomb/hex-cell";
+import { HIVE_SIZES, HiveMark } from "@/components/honeycomb/hive-mark";
 import { Icon } from "@/components/honeycomb/icon";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
 import { InfoTag } from "@/components/honeycomb/info-tag";
@@ -79,7 +80,10 @@ export function PitchDetails({ plan, pitch, rank, model }: { plan: Plan; pitch: 
         )}
         <Reason text={mentionsIn(pitch.why, planMentions(plan))} className="mt-2" />
         {pitch.origin === "agent" && written ? (
-          <p className="m-0 mt-2 text-[13px] leading-[18px] text-muted-foreground">The Hive suggested this spot. Busk Map scored it and checked it against the busking rules.</p>
+          <p className="m-0 mt-2 flex items-start gap-2 text-[13px] leading-[18px] text-muted-foreground">
+            <HiveMark size={HIVE_SIZES.badge} decorative className="-my-px" />
+            <span>The Hive suggested this spot. Busk Map scored it and checked it against the busking rules.</span>
+          </p>
         ) : null}
         {pitch.origin === "taste" && pitch.cellRank !== null && (
           <p className="m-0 mt-2 text-[13px] leading-[18px] text-muted-foreground">Found from the data: Qloo taste cell no. {pitch.cellRank} for your artists, snapped to the nearest public space.</p>

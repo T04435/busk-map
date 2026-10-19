@@ -17,6 +17,8 @@ export type RepertoireStep = {
   cells?: { name: string; image?: string | null }[];
   /** Why it failed or was skipped, in plain words. */
   note?: string | null;
+  /** The one source a step with a backup ran on, once known (songs: Spotify, or Last.fm when Spotify gave none). */
+  source?: "spotify" | "lastfm" | "qloo";
 };
 
 /** The running counts behind the research funnel. */

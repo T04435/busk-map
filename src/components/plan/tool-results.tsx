@@ -565,10 +565,12 @@ export const TOOL_UI: Record<string, ToolUi> = {
 export const TOOL_SOURCES: Record<string, MentionSource[]> = {
   taste_map: ["qloo"],
   crowd_at: ["qloo"],
+  busy_places: ["qloo"],
   activity_at: ["qloo"],
   compare_crowds: ["qloo"],
   build_setlist: ["qloo", "lastfm", "spotify"],
   learn_these: ["qloo", "lastfm"],
+  match_playlist: ["qloo"],
   related_artists: ["qloo"],
   rising: ["qloo"],
   crowd_profile: ["qloo"],
@@ -583,6 +585,18 @@ export const TOOL_SOURCES: Record<string, MentionSource[]> = {
   research_genres: ["qloo"],
   research_learn: ["qloo", "spotify"],
 };
+
+/**
+ * The sources a step shows: the one it ran on when that is known (a live `tool-source` event, or the `source` its output names,
+ * e.g. songs that came from Last.fm only), else every source its tool can read. One source puts that source in the running
+ * mark's centre cell; more than one keeps the plain mark.
+ */
+export function stepSources(step: { tool: string | null; via?: MentionSource; output?: unknown }): MentionSource[] {
+  const all = step.tool ? (TOOL_SOURCES[step.tool] ?? []) : [];
+  const said = step.output !== null && typeof step.output === "object" ? (step.output as { source?: unknown }).source : undefined;
+  const one = step.via ?? all.find((s) => s === said);
+  return one && all.includes(one) ? [one] : all;
+}
 
 export const TOOL_ICON: Record<string, IconName> = {
   taste_map: "map",

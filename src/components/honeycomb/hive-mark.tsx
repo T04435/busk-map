@@ -1,20 +1,42 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import { cn } from "cn";
 
 /**
  * The Hive's mark: seven pointy-top cells in one comb. Ported 1:1 from the design project's HiveMark (Hive Identity): the
- * geometry, timings and easing below are the design's, in its 24-unit box. Colour is `currentColor` (signal orange by default,
- * `text-signal-text` for the 14px inline tag); only the centre cell of a single-source step takes the source's colour.
+ * geometry, timings and easing below are the design's, in its 24-unit box. Colour is `currentColor`, by default the `hive` token
+ * (signal-text by day, signal at night); only the centre cell of a single-source step takes the source's colour.
  *
  * - `state="rest"`: all seven cells full (done, replayed, standing). `state="working"`: the centre is full and the outer cells
  *   move per `anim`. Reduced motion (checked live) and `motion={false}` hold the anim's fixed working frame.
- * - `source`: the centre cell takes the source's colour (tokens `--source-*`) and, from 20px up, its logo. Outer cells keep
+ * - `source`: the centre cell takes the source's colour (tokens `--source-*`) and, from 20px up, its logo (larger below 48px: logoWidth). Outer cells keep
  *   animating in Hive orange. Mixed-source steps omit it.
  * - `muted`: the dashed plain hex used when the Hive didn't run (the design's engine-only state does not use the mark).
  */
 export type HiveAnim = "origami" | "flip" | "bud" | "comet" | "wave";
+
+/**
+ * Every product size of the mark, in px, in one place: the board's README sizes made 20% larger (user, 19 Oct: "can not see it at
+ * current size"). Callers use these, never literal sizes. The board's own sizes (72, 24, 16, 14) stay in the specimen only.
+ */
+export const HIVE_SIZES = {
+  /** The inline "HIVE" tag before the Hive's notes (the minimum; board 14). */
+  tag: 17,
+  /** The Found-by badge and the proposed-spot line (board 16). */
+  badge: 19,
+  /** The Agent vs engine eyebrow (board 20). */
+  eyebrow: 24,
+  /** The research status line (board 24). */
+  status: 29,
+  /** The running step marker (board 22), inside a step cell of `stepCell` (board 48). */
+  step: 26,
+  stepCell: 57,
+  /** The research header lockup (board 28). */
+  lockup: 34,
+  /** Meet the Hive card (board 72–104). */
+  card: 115,
+} as const;
 export type HiveSource = "qloo" | "spotify" | "lastfm";
 
 export type HiveMarkProps = {
@@ -24,7 +46,7 @@ export type HiveMarkProps = {
   anim?: HiveAnim;
   /** The one source a single-source step runs on. Omit for mixed-source steps. */
   source?: HiveSource;
-  /** Width and height in px: 14 (tag, the minimum), 16, 20–24, 28, 72–104. */
+  /** Width and height in px: one of HIVE_SIZES in the product. The logo shows from 20 up. */
   size?: number;
   /** false freezes the working frame. Default true. */
   motion?: boolean;
@@ -76,6 +98,16 @@ const LOGOS: Record<HiveSource, { viewBox: string; ink: string; body: React.Reac
     ),
   },
 };
+
+/**
+ * The logo's width in the 24-unit box: the board's 4.6 from 48px up; below that it grows smoothly to 6.6 at 26px and under, so it
+ * still reads in the running step marker (user, after QA). 6.6 keeps a margin inside the centre hex (its inner circle is 7.1 across).
+ */
+export function logoWidth(size: number): number {
+  if (size >= 48) return 4.6;
+  if (size <= 26) return 6.6;
+  return +(6.6 - ((size - 26) / 22) * 2).toFixed(3);
+}
 
 const ease = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x));
 
@@ -198,6 +230,7 @@ export function HiveMark({ state = "rest", anim = "origami", source, size = 24, 
   const reduced = useSyncExternalStore(subscribeReduced, reducedNow, () => true);
   const animating = working && motion !== false && !reduced && !muted;
   const [t, setT] = useState<number | null>(null);
+  const clip = `hive-logo-${useId().replace(/:/g, "")}`;
   useEffect(() => {
     if (!animating) return;
     const t0 = performance.now();
@@ -222,7 +255,7 @@ export function HiveMark({ state = "rest", anim = "origami", source, size = 24, 
     role: decorative ? undefined : "img",
     "aria-label": spoken,
     "aria-hidden": decorative ? true : undefined,
-    className: cn("inline-flex flex-none align-middle leading-none text-primary", className),
+    className: cn("inline-flex flex-none align-middle leading-none text-hive", className),
     style: { lineHeight: 0 },
   } as const;
 
@@ -238,7 +271,7 @@ export function HiveMark({ state = "rest", anim = "origami", source, size = 24, 
 
   const cells = cellsOf(working, kind, source, size, animating && t !== null ? t : FROZEN[kind]);
   const logo = source && size >= 20 ? LOGOS[source] : null;
-  const lw = 4.6;
+  const lw = logoWidth(size);
   return (
     <span {...common} data-anim={working ? kind : undefined} data-source={source}>
       <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "block", overflow: "visible" }} focusable="false">
@@ -246,9 +279,17 @@ export function HiveMark({ state = "rest", anim = "origami", source, size = 24, 
           <polygon key={i} points={c.points} fill={c.fill} stroke={c.stroke} strokeWidth={c.sw} fillOpacity={c.op} strokeLinejoin="miter" />
         ))}
         {logo ? (
-          <svg x={12 - lw / 2} y={12 - lw / 2} width={lw} height={lw} viewBox={logo.viewBox}>
-            {logo.body}
-          </svg>
+          <>
+            {/* The logo never leaves the centre cell: clipped to it, 0.3 units in (a no-op at the board's 4.6 from 48px up). */}
+            <clipPath id={clip}>
+              <polygon points={hex(12, 12, 3.8)} />
+            </clipPath>
+            <g clipPath={`url(#${clip})`}>
+              <svg x={12 - lw / 2} y={12 - lw / 2} width={lw} height={lw} viewBox={logo.viewBox}>
+                {logo.body}
+              </svg>
+            </g>
+          </>
         ) : null}
       </svg>
     </span>

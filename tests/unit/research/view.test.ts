@@ -63,6 +63,19 @@ describe("toRepertoireView", () => {
     expect(v.totals.toLearn).toBeNull();
   });
 
+  it("Hive Identity: the songs step says its live source (Spotify first) for its running mark, and a done step keeps the source it came from", async () => {
+    const { events } = await fullRun();
+    const startSongs = events.findIndex((e) => e.type === "tool-start" && e.tool === "research_songs");
+    const live = events.slice(startSongs + 1).find((e) => e.type === "tool-source");
+    expect(live).toMatchObject({ type: "tool-source", source: "spotify" });
+    const running = toRepertoireView({ events: events.slice(0, events.indexOf(live!) + 1) });
+    expect(running.steps[1]).toMatchObject({ key: "songs", status: "running", source: "spotify" });
+    const done = toRepertoireView({ events: cutAfter(events, "research_songs").filter((e) => e.type !== "tool-source") });
+    expect(done.steps[1]).toMatchObject({ key: "songs", status: "done", source: "spotify" });
+    const fellBack = toRepertoireView({ events: [...events.slice(0, startSongs + 1), { type: "tool-source", id: (events[startSongs] as { id: string }).id, source: "lastfm" }] });
+    expect(fellBack.steps[1]).toMatchObject({ status: "running", source: "lastfm" });
+  });
+
   it("done, live: every result in place, To learn from the run's suggestions, the totals final", async () => {
     const { events } = await fullRun();
     const v = toRepertoireView({ events });

@@ -2,6 +2,7 @@ import "server-only";
 import type { LanguageModel } from "ai";
 import { ageLabel } from "@/lib/age";
 import { skippedOf, ZERO_LEARN_TOTALS, type LearnStreamEvent, type LearnTotals, type StoredLearnStep } from "@/lib/learn-schema";
+import type { MentionSource } from "@/lib/mention";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import type { SoundsLike } from "@/lib/playlist-schema";
 import {
@@ -198,12 +199,14 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
   };
 
   /** One step: tool-start, the work, tool-end, then the running totals. A thrown error is a failed step (and the run goes on). */
-  async function step<K extends ResearchStepKey>(key: K, input: unknown, work: () => Promise<StepOutputs[K]>): Promise<StepOutputs[K] | null> {
+  async function step<K extends ResearchStepKey>(key: K, input: unknown, work: (via: (source: MentionSource) => void) => Promise<StepOutputs[K]>): Promise<StepOutputs[K] | null> {
     const id = `rs-${++n}`;
     const tool = RESEARCH_TOOLS[key];
     push({ type: "tool-start", id, tool, label: RESEARCH_LABELS[key], source: RESEARCH_SOURCES[key], input });
+    // `via`: a step with a backup source says which one it is on now, so its running mark shows that source.
+    const via = (source: MentionSource) => push({ type: "tool-source", id, source });
     try {
-      const output = await work();
+      const output = await work(via);
       (steps as Record<string, StoredStep>)[key] = { status: "done", output };
       push({ type: "tool-end", id, tool, ok: true, summary: output.summary, output });
       return output;
@@ -273,7 +276,8 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         }
 
         // 2. Your songs, straight into Songs you can sing.
-        await step("songs", { artist: profile.name }, async (): Promise<SongsOutput> => {
+        await step("songs", { artist: profile.name }, async (via): Promise<SongsOutput> => {
+          via("spotify");
           const market = CITIES[(playlist.city in CITIES ? playlist.city : "melbourne") as keyof typeof CITIES].countryCode;
           const cat = await getArtistCatalogue(args.spotifyId, market, adapters);
           let source: SongsOutput["source"] = "spotify";
@@ -293,6 +297,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             href: t.url ?? (SPOTIFY_ID.test(t.id) ? `https://open.spotify.com/track/${t.id}` : null),
           }));
           if (tracks.length === 0) {
+            via("lastfm");
             const fm = await getSongs([profile.name], adapters);
             const top = fm.mode === "fallback" ? [] : (Object.values(fm.data)[0] ?? []);
             source = top.length ? "lastfm" : "none";

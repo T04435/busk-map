@@ -3,7 +3,7 @@
 import { FansMap } from "@/components/honeycomb/repertoire/fans-map";
 import { LIST_MAX_HEIGHT, RepertoireResultsLayout } from "@/components/honeycomb/repertoire/repertoire-sections";
 import { artist as mentionArtist, mentionsIn, song as mentionSong, spotifyHref, type Mention } from "@/lib/mention";
-import { HiveMark } from "@/components/honeycomb/hive-mark";
+import { AgentLockup } from "@/components/honeycomb/agent-lockup";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { TrackResult } from "@/components/forms/repertoire-api";
 import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
@@ -361,8 +361,9 @@ export function ResearchView() {
   const researchFeed = () =>
     feed.length > 0 ? (
       <div className="grid gap-3">
-        <p className="m-0 flex flex-wrap items-center gap-2" data-testid="research-agent">
-          <HiveMark size={24} state={live ? "working" : "rest"} />
+        {/* The research header lockup (Hive Identity board). */}
+        <p className="m-0" data-testid="research-agent">
+          <AgentLockup live={live} status={live ? "is researching your act" : "researched your act"} />
         </p>
         <AgentStepStream
           steps={feed}
@@ -723,11 +724,12 @@ export function ResearchView() {
         <>
           {/* Empty state: one field, one line on what happens. */}
           {showForm && (
-            <form onSubmit={submitLink} className="max-w-2xl space-y-2" aria-label={R.linkLabel} data-testid="research-form">
+            // Named by its action, so the link field stays the only control called "Your Spotify artist link".
+            <form onSubmit={submitLink} className="max-w-2xl space-y-2" aria-labelledby="research-start" data-testid="research-form">
               <Label htmlFor="spotify-link">{R.linkLabel}</Label>
               <div className="flex flex-wrap gap-2">
                 <Input id="spotify-link" className="min-w-0 flex-1 basis-64" value={link} onChange={(e) => setLink(e.target.value)} placeholder={R.linkPlaceholder} autoComplete="off" inputMode="url" aria-describedby="spotify-link-hint" />
-                <Button type="submit" disabled={running || !link.trim()}>
+                <Button id="research-start" type="submit" disabled={running || !link.trim()}>
                   {R.start}
                 </Button>
               </div>

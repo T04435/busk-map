@@ -3,6 +3,7 @@
  * replay). Pure, client-safe.
  */
 import type { LearnStreamEvent } from "./learn-schema";
+import type { MentionSource } from "./mention";
 import type { PlanStreamEvent } from "./plan-schema";
 
 export type StepNote = { kind: "reasoning" | "text"; text: string };
@@ -13,6 +14,8 @@ export type AgentStep = {
   tool: string | null;
   label: string;
   source?: string;
+  /** The one source the running step turned out to use (a `tool-source` event), for its Hive mark. */
+  via?: MentionSource;
   input?: unknown;
   status: "running" | "done" | "failed" | "notes" | "cut";
   summary?: string;
@@ -34,6 +37,9 @@ export function applyStreamEvent(steps: AgentStep[], event: PlanStreamEvent | Le
     const step: AgentStep = { id: event.id, tool: event.tool, label: event.label, source: event.source, input: event.input, status: "running", notes: [] };
     if (last && last.tool === null) return [...steps.slice(0, -1), { ...step, notes: last.notes }];
     return [...steps, step];
+  }
+  if (event.type === "tool-source") {
+    return steps.map((s) => (s.id === event.id ? { ...s, via: event.source } : s));
   }
   if (event.type === "tool-end") {
     return steps.map((s) => (s.id === event.id ? { ...s, status: event.ok ? "done" : "failed", summary: event.summary, output: event.output } : s));

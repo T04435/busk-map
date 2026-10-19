@@ -1,7 +1,7 @@
 import { cn } from "cn";
 import { HexCell, type HexTone } from "@/components/honeycomb/hex-cell";
 import { Icon, type IconName } from "@/components/honeycomb/icon";
-import { HiveMark } from "@/components/honeycomb/hive-mark";
+import { HIVE_SIZES, HiveMark } from "@/components/honeycomb/hive-mark";
 import type { MentionSource } from "@/lib/mention";
 
 export type StepCellStatus = "pending" | "running" | "done" | "failed" | "skipped";
@@ -13,7 +13,9 @@ const WORDS: Record<StepCellStatus, string> = { pending: "waiting", running: "wo
  * One research step's cell (user feedback U09): every step has its own DS icon, and the state is the cell's look, so finished
  * steps no longer all show the waiting "...".
  * - pending: a dashed hex, the step's icon muted;
- * - running: the orange-outlined hex with the Hive's working mark (origami); a step that runs on one known source passes `source`, and the mark's centre cell takes that source's colour and logo (from 20px up); mixed-source steps omit it;
+ * - running: the orange-outlined hex with the Hive's working mark (origami), HIVE_SIZES.step inside HIVE_SIZES.stepCell (the board's
+ *   22 in 48, kept in proportion at other sizes); a step that runs on one known source passes `source`, and the mark's centre cell
+ *   takes that source's colour and logo (from 20px up); mixed-source steps omit it;
  * - done: the solid hex with the orange outline, the step's icon, and a small check cell on the corner;
  * - failed: the error hex with a warning icon;
  * - skipped: the muted hex with the step's icon, quiet.
@@ -22,7 +24,7 @@ const WORDS: Record<StepCellStatus, string> = { pending: "waiting", running: "wo
 export function StepCell({
   status,
   icon,
-  size = 40,
+  size = HIVE_SIZES.stepCell,
   n,
   label,
   source,
@@ -45,7 +47,7 @@ export function StepCell({
     <span data-slot="step-cell" data-status={status} className={cn("relative inline-flex flex-none self-start", className)}>
       <HexCell size={size} tone={TONE[status]} label={spoken} className={cn(status === "pending" && "opacity-90")}>
         {status === "running" ? (
-          <HiveMark size={Math.round(size * 0.5)} state="working" source={source} decorative />
+          <HiveMark size={Math.round((size * HIVE_SIZES.step) / HIVE_SIZES.stepCell)} state="working" source={source} decorative />
         ) : status === "failed" ? (
           <Icon name="warning" size={glyph} />
         ) : (

@@ -39,19 +39,21 @@ function StepCard({ info, step, n }: { info: RepertoireStepInfo; step: Repertoir
   const quiet = status === "pending";
   const cells = (step?.cells ?? []).slice(0, 6);
   const tag = STATUS_TAG[status];
+  // The source it ran on, once known, else every source it can read; one source goes in the running mark's centre cell.
+  const sources = step?.source && info.sources.includes(step.source) ? [step.source] : info.sources;
   return (
     <li
       aria-current={running ? "step" : undefined}
       data-status={status}
       className={cn("flex gap-3 p-3", running ? "my-1 mr-1 border-2 border-rule bg-popover shadow-[4px_4px_0_var(--primary)]" : "border-t border-border first:border-t-0")}
     >
-      <StepCell size={40} status={status} icon={info.icon} n={n} source={info.sources.length === 1 ? info.sources[0] : undefined} />
+      <StepCell status={status} icon={info.icon} n={n} source={sources.length === 1 ? sources[0] : undefined} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <h3 className={cn("m-0 text-base leading-5 font-bold [overflow-wrap:anywhere]", quiet && "font-medium text-muted-foreground")}>{info.title}</h3>
-          {info.sources.length > 0 ? (
+          {sources.length > 0 ? (
             <span className={cn("inline-flex items-center gap-1.5 self-center", quiet && "opacity-60")}>
-              {info.sources.map((src) => (
+              {sources.map((src) => (
                 <SourceLogo key={src} source={src} height={14} />
               ))}
             </span>

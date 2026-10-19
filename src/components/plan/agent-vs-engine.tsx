@@ -1,6 +1,7 @@
 import { cn } from "cn";
 import { EvidenceLine } from "@/components/honeycomb/evidence-line";
 import { HexCell } from "@/components/honeycomb/hex-cell";
+import { HIVE_SIZES, HiveMark } from "@/components/honeycomb/hive-mark";
 import { Icon } from "@/components/honeycomb/icon";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { RankTile } from "@/components/honeycomb/rank-tile";
@@ -15,8 +16,8 @@ const DEFAULT_CHECKED = ["the crowd", "estimated activity", "events nearby", "th
 
 /**
  * Above the research: did the model keep Busk Map's own top 3, or change it, and why. Keeping it is the common case, so it shows
- * the three pitches ticked, as a check that passed. "Agent vs engine" stays only as the small mono label (brand words: busk-facing
- * copy says "Busk Map"). Ported from the DS AgentVsEngine.
+ * the three pitches ticked, as a check that passed. "Agent vs engine" stays only as the small mono label, after the Hive's mark at rest
+ * (HIVE_SIZES.eyebrow; brand words: busk-facing copy says "Busk Map"). Ported from the DS AgentVsEngine.
  */
 export function AgentVsEngine({
   agent,
@@ -45,7 +46,10 @@ export function AgentVsEngine({
           <Icon name={kept ? "check" : "refresh"} size={16} strokeWidth={2.5} />
         </HexCell>
         <div className="min-w-0">
-          <span className="font-mono text-[10px] leading-4 font-bold tracking-[0.08em] text-muted-foreground uppercase">Agent vs engine</span>
+          <span className="flex items-center gap-1.5 font-mono text-[10px] leading-4 font-bold tracking-[0.08em] text-muted-foreground uppercase">
+            <HiveMark size={HIVE_SIZES.eyebrow} decorative className="-my-1" />
+            Agent vs engine
+          </span>
           <Heading className="m-0 font-display text-[22px] leading-6 font-extrabold uppercase" data-testid="agent-vs-engine-title">
             {agentVsEngineTitle(agent.changes.length, model)}
           </Heading>

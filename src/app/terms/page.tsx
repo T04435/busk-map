@@ -47,7 +47,7 @@ export default function TermsPage() {
           The code
         </h2>
         <p className="m-0 text-base leading-6">
-          Busk Map is open source under the MIT licence. Built solo by T04435, with Claude, during the Qloo Agentic Hackathon.
+          Busk Map is open source under the MIT licence. Built solo by T04435 during the Qloo Agentic Hackathon.
         </p>
       </section>
     </main>

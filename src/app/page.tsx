@@ -79,7 +79,7 @@ export default function Home() {
           <div className="flex basis-full flex-wrap items-center justify-center gap-x-7 gap-y-4 pt-4 text-qloo">
             {/* The halo keeps the purple legible when a glowing cell pulses behind it. */}
             <span className="font-display text-[clamp(26px,5vw,44px)] leading-none font-extrabold tracking-[0.02em] whitespace-nowrap uppercase [text-shadow:0_0_3px_var(--background),0_0_8px_var(--background),0_0_14px_var(--background)]">
-              In partnership with
+              Built with
             </span>
             <QlooLink width={160} className="w-[clamp(96px,22vw,160px)]" wordmarkClassName="h-auto w-full text-foreground" />
           </div>

@@ -2,11 +2,11 @@
 
 Know where to play, and what to play there.
 
-Busk Map is an agent for street performers. Pick a city and a time slot, and it finds the pitches whose crowd matches your music, near busy places that are open at that hour. It then builds a setlist for each pitch from the songs you can play. It is built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/).
+Busk Map is an agent for street performers. Pick a city and a time slot, and it finds the pitches whose crowd matches your music, near busy places that are open at that hour. It then builds a setlist for each pitch from the songs you can play. It is built with [Qloo](https://qloo.com) for the [Qloo Agentic Hackathon](https://qloo.devpost.com/). Live at https://buskmap.app.
 
 ## Hive, the agent
 
-The Hive is Busk Map's research agent. "Hive" is a persona name: it runs on Claude (Sonnet 5.5), made by Anthropic. It picks which Qloo questions to ask and writes the reasons, but it never makes up a number, a song or a place, and it never says a pitch is legal. The app labels it "AI · powered by Claude" wherever it speaks.
+The Hive is Busk Map's research agent. It picks which Qloo questions to ask and writes the reasons, but it never makes up a number, a song or a place, and it never says a pitch is legal. The app calls it "the Hive" wherever it speaks.
 
 Status: in development.
 
@@ -20,7 +20,7 @@ vercel env pull .env.local --yes --scope cubanos-dev   # or: cp .env.example .en
 pnpm dev
 ```
 
-Open http://localhost:3000. Try an example performer, plan your own act, or plan a week.
+Open http://localhost:3000. Try an example performer or plan your own act.
 
 Without `QLOO_API_KEY` (or with `QLOO_MOCK=1`), Qloo is served by a local mock of its documented HTTP contract, and every Qloo number is labelled "Qloo test data (local mock)". The other sources stay live. See [docs/qloo-mock.md](docs/qloo-mock.md).
 
@@ -42,7 +42,7 @@ pnpm test:e2e          # builds and starts an offline server, then runs the judg
 ```
 
 ## Data
-- [Qloo](https://qloo.com) taste API (hackathon key; a local mock until it arrives)
+- [Qloo](https://qloo.com) taste API (16 kinds of call, see the /brain page; a local mock without a key)
 - OpenStreetMap public spaces and venue names (© OpenStreetMap contributors, ODbL)
 - City of Melbourne pedestrian counting system and busking locations (CC BY)
 - Ticketmaster Discovery API, Last.fm, Open-Meteo

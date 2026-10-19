@@ -41,10 +41,11 @@ test.describe("landing, as the deck draws it", () => {
     await expect(cards).toHaveCount(3);
     await expect(cards.nth(0)).toContainText("Saturday · 6–9 pm");
     for (const name of ["Paul Kelly", "Courtney Barnett", "Vance Joy"]) await expect(cards.nth(0).locator('[data-slot="artist-chip"]', { hasText: name })).toHaveCount(1);
-    await expect(cards.nth(0)).toContainText("Plays How to Make Gravy, Dumb Things, Depreston");
+    // What it plays: the one SongRow per song (title, then its artist chip), in this order.
+    await expect(cards.nth(0).locator('[data-slot="song-row"]')).toHaveText([/^How to Make Gravy/, /^Dumb Things/, /^Depreston/]);
     await expect(cards.nth(1)).toContainText("Friday · 5–8 pm");
     await expect(cards.nth(2)).toContainText("Sunday · 12–3 pm");
-    await expect(cards.nth(2)).toContainText("Plays Big Jet Plane, Bloom, The Boxer");
+    await expect(cards.nth(2).locator('[data-slot="song-row"]')).toHaveText([/^Big Jet Plane/, /^Bloom/, /^The Boxer/]);
   });
 
   test("the landing setlist's Copy button copies the set as text and says Copied (B-034)", async ({ page, context }) => {

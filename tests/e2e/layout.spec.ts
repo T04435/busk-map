@@ -153,7 +153,8 @@ const PAGES: PageCase[] = [
     },
     controls: async (page) => {
       await expectOnTop(page.getByTestId("copy-link"), "Copy link");
-      await expectOnTop(page.getByText(/^Every check, from earlier/), "Every check, from earlier");
+      // U22: the replayed steps show directly, no "Every check, from earlier" fold; the replay line says what this is.
+      await expectOnTop(page.getByTestId("replay-label"), "the replay line");
       await expectPitchesAndPins(page);
     },
   },

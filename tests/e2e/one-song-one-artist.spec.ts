@@ -6,7 +6,7 @@ import { expect, LOCAL, test, waitForPlan } from "./fixtures";
  * The user's rule (18 Oct 2026): one Song component and one Artist component. On the pages that list songs and artists
  * (/, /p/[id], /repertoire), every place a known song title shows as its own text sits inside [data-slot="song-row"], and
  * every place a known artist name shows sits inside [data-slot="artist-chip"] (or a song row, as the song's artist, or the act's
- * [data-slot="artist-profile"]). The unit twin (tests/unit/one-song-one-artist.test.ts) blocks the markup in source.
+ * [data-slot="artist-profile"]); inside a sentence the one form is the Mention (hex photo plus the name). The unit twin (tests/unit/one-song-one-artist.test.ts) blocks the markup in source.
  */
 type Page = import("@playwright/test").Page;
 
@@ -32,8 +32,9 @@ async function outside(page: Page, names: string[], slots: string): Promise<stri
   );
 }
 
-const SONG = '[data-slot="song-row"]';
-const ARTIST = '[data-slot="artist-chip"], [data-slot="song-row"], [data-slot="artist-profile"]';
+// A Mention is the one inline form of a song or an artist inside a sentence (a step line, a reason; user feedback U05/U08).
+const SONG = '[data-slot="song-row"], [data-slot="mention"]';
+const ARTIST = '[data-slot="artist-chip"], [data-slot="song-row"], [data-slot="artist-profile"], [data-slot="mention"]';
 
 /** Every {title, artist} and every artist {name} in a JSON body (the plan, the playlist, the research). */
 function collect(value: unknown, out = { songs: new Set<string>(), artists: new Set<string>() }, key = "") {
@@ -47,6 +48,11 @@ function collect(value: unknown, out = { songs: new Set<string>(), artists: new 
     for (const [k, v] of Object.entries(o)) collect(v, out, k);
   } else if (typeof value === "string" && /^artists?$|soundsLike/i.test(key)) out.artists.add(value);
   return out;
+}
+
+/** Open every disclosure so the cards inside render. Menus (Learn it) and dialogs (Start over) also say aria-expanded: they are not folds, and one open menu would block the next click. */
+async function openFolds(page: Page) {
+  for (const fold of await page.locator("main button[aria-expanded='false']:not([aria-haspopup]):not([data-slot='alert-dialog-trigger'])").all()) await fold.click({ timeout: 2000 }).catch(() => undefined);
 }
 
 async function expectUnified(page: Page, songs: Iterable<string>, artists: Iterable<string>) {
@@ -76,7 +82,7 @@ test.describe("one Song, one Artist (unify rule)", () => {
     for (const s of example.performer.songs) found.songs.add(s.title);
     for (const a of example.performer.artists) found.artists.add(a);
     // Open every fold so the tool cards and pitch details render too.
-    for (const fold of await page.locator("main [aria-expanded='false']").all()) await fold.click().catch(() => undefined);
+    await openFolds(page);
     await expectUnified(page, found.songs, found.artists);
   });
 
@@ -87,7 +93,7 @@ test.describe("one Song, one Artist (unify rule)", () => {
     await expect(page.getByTestId("research-end")).toBeVisible({ timeout: 20_000 });
     const found = collect([await (await page.request.get("/api/playlist")).json(), await (await page.request.get("/api/repertoire")).json()]);
     found.artists.add(OFFLINE_TEST_ARTIST.name);
-    for (const fold of await page.locator("main [aria-expanded='false']").all()) await fold.click().catch(() => undefined);
+    await openFolds(page);
     await expectUnified(page, found.songs, found.artists);
   });
 });

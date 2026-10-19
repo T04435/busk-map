@@ -136,12 +136,12 @@ test.describe("the brain of Busk Map at three widths", () => {
         const idle = await new AxeBuilder({ page }).withTags(WCAG).analyze();
         expect(idle.violations.map((v) => `${v.impact} ${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
 
-        // Trace it: plays and songs, then Suggested set, Songs you should learn and the agent's tools.
+        // Trace it: plays, songs and your own songs, then Suggested set, Songs you should learn, the agent's tools and the Repertoire research.
         await lastfm.click();
         await expect(lastfm).toHaveAttribute("data-trace", "selected");
-        for (const id of ["d_plays", "d_tracks", "f_setlist", "f_learn", "f_agent"]) await expect(nodeOf(page, id)).toHaveAttribute("data-trace", "path");
+        for (const id of ["d_plays", "d_tracks", "d_own_songs", "f_setlist", "f_learn", "f_agent", "f_research"]) await expect(nodeOf(page, id)).toHaveAttribute("data-trace", "path");
         for (const id of ["ticketmaster", "c3", "f_map"]) await expect(nodeOf(page, id)).toHaveAttribute("data-trace", "dim");
-        await expect(page.getByRole("status")).toContainText("Tracing. Last.fm feeds 2 data points and 3 parts of your busk.");
+        await expect(page.getByRole("status")).toContainText("Tracing. Last.fm feeds 3 data points and 4 parts of your busk.");
         await page.waitForTimeout(300);
         await page.getByRole("heading", { name: "The wiring" }).evaluate((el) => el.scrollIntoView({ block: "start" }));
         if (REPERTOIRE_SHOTS) await page.screenshot({ path: path.join(REPERTOIRE_SHOTS, `r4-brain-lastfm-${width.name}.png`) });

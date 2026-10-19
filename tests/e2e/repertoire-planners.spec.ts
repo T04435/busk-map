@@ -92,7 +92,7 @@ test.describe("planners read the Repertoire (offline)", () => {
     await form(page).getByRole("button", { name: "Plan my busk" }).click();
     await waitForPlan(page);
     const learn = (await openDetails(page)).getByRole("region", { name: "Songs you should learn" });
-    const first = learn.getByRole("button", { name: /^Add to Repertoire: / }).first();
+    const first = learn.getByRole("button", { name: /^Add / }).first();
     await first.scrollIntoViewIfNeeded();
     const name = (await first.getAttribute("aria-label"))!;
     const before = await state(page);
@@ -122,7 +122,8 @@ test.describe("planners read the Repertoire (offline)", () => {
     await expect(page.getByTestId("save-as-repertoire")).toHaveCount(0);
     // No Repertoire switch (the plan's only switch is the research's "Raw data").
     await expect(page.getByRole("switch", { name: /Repertoire/ })).toHaveCount(0);
-    await expect((await openDetails(page)).getByRole("button", { name: /^Add to Repertoire/ })).toHaveCount(0);
+    // (The one song action set names the button "Add <song>"; an example offers none.)
+    await expect((await openDetails(page)).getByRole("region", { name: "Songs you should learn" }).getByRole("button", { name: /^Add / })).toHaveCount(0);
     await page.keyboard.press("Escape");
     // A moment for any stray write to land, then compare.
     await page.waitForTimeout(500);
@@ -153,7 +154,7 @@ test.describe("planners read the Repertoire (offline)", () => {
     await form(page).getByRole("button", { name: "Plan my busk" }).click();
     await waitForPlan(page);
     const learnHere = (await openDetails(page)).getByRole("region", { name: "Songs you should learn" });
-    await learnHere.getByRole("button", { name: /^Add to Repertoire: / }).first().click();
+    await learnHere.getByRole("button", { name: /^Add / }).first().click();
     await expect(learnHere.getByRole("status").filter({ hasText: "Added to Songs you should learn." })).toBeVisible();
     for (const width of widths) {
       await page.setViewportSize({ width, height: 900 });

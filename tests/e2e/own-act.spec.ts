@@ -41,7 +41,7 @@ test.describe("own act", () => {
     await artistBox.pressSequentially("u");
     const paul = form.getByRole("listbox", { name: "Artist results" }).getByRole("option", { name: /Paul Kelly/ });
     await expect(paul).toContainText(/\d+ releases/);
-    await expect(paul).toContainText(/Last\.fm listeners/);
+    await expect(paul).toContainText(/[\d.]+[kM]? listeners/);
     await paul.click();
     const chips = form.getByRole("list", { name: "Artists you picked" });
     await expect(chips.getByRole("listitem")).toHaveText([/Paul Kelly/]);
@@ -203,7 +203,7 @@ test.describe("artists Qloo can't match", () => {
     const alert = page.getByTestId("unmatched-artists");
     // ONE alert (B-045): taste is left out, with the way to pick artists from Spotify.
     await expect(alert).toContainText("Qloo couldn't match any of your artists");
-    await expect(alert).toContainText("Taste is left out of this plan");
+    await expect(alert).toContainText("Taste and the Qloo activity estimate are left out of this plan");
     await expect(page.getByRole("link", { name: "Pick your artists from Spotify" })).toBeVisible();
     // Claude had nothing to research: said once, and no research funnel or feed is drawn.
     await expect(page.getByTestId("agent-fallback")).toContainText("The Hive didn't run");

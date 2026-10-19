@@ -1,5 +1,5 @@
 /**
- * QA: Repertoire R2 (1b81087..8e4cd0d) — the edges DEV's repertoire-planners.spec.ts doesn't cover: the switch off,
+ * QA: Repertoire R2 (1b81087..8e4cd0d) — the edges DEV's repertoire-planners.spec.ts doesn't cover: the read-only Repertoire block,
  * seed and PATCH validation, Add to Repertoire's two 409s and Origin, and usual pitches (only an unedited Repertoire
  * busk counts, once per plan, at most 3). Offline server only; each test has its own cookie jar.
  */
@@ -24,36 +24,29 @@ const titles = (p: { songs: { title: string }[] }) => p.songs.map((s) => s.title
 test.describe("QA Repertoire R2: the planners", () => {
   test.skip(!LOCAL, "Writes to the local offline server's memory store");
 
-  test("Remove all for this busk: the plan sends none of the Repertoire's songs, and nothing is saved or recorded", async ({ page }) => {
-    // Plan inputs S5: the switch became one "Your Repertoire · N songs" block with "Edit for this busk".
+  test("the form's Repertoire block is read-only: the plan sends all of the Repertoire's songs, and nothing is saved", async ({ page }) => {
+    // 5da9698 (user): /busks shows the Repertoire as a summary with a link to edit it on /repertoire; "Edit for this busk" and
+    // "Remove all for this busk" are gone, so a busk always carries the whole Repertoire.
     await seed(page.request);
     const before = await state(page.request);
     await page.goto("/busks");
     const f = form(page);
     const block = f.getByTestId("repertoire-source");
     await expect(block.getByTestId("repertoire-summary")).toHaveText(/^Your Repertoire · 2 songs/);
-    await block.getByRole("button", { name: "Edit for this busk" }).click();
-    await expect(block.getByRole("list", { name: "Songs for this busk" }).getByRole("listitem")).toHaveCount(2);
-    await block.getByRole("button", { name: "Remove all" }).click();
-    await expect(block.getByText("0 of 2 selected")).toBeVisible();
-    // Select all restores it whole; then remove all again for a suggested-only busk.
-    await block.getByRole("button", { name: "Select all" }).click();
-    await expect(block.getByText("2 of 2 selected")).toBeVisible();
-    await block.getByRole("button", { name: "Remove all" }).click();
-    await block.getByRole("button", { name: "Done" }).click();
-    await expect(block.getByTestId("suggested-only")).toBeVisible();
+    await expect(block.getByRole("link", { name: "Edit in your Repertoire" })).toHaveAttribute("href", "/repertoire");
+    for (const control of ["Edit for this busk", "Remove all", "Select all", "Done"]) await expect(block.getByRole("button", { name: control })).toHaveCount(0);
+    await expect(block.getByRole("checkbox")).toHaveCount(0);
 
     const posted = page.waitForRequest((r) => r.url().endsWith("/api/plans") && r.method() === "POST");
     await f.getByRole("button", { name: /^Plan my busk/ }).click();
     const body = (await posted).postDataJSON();
-    expect(body.performer.songs ?? []).toEqual([]);
-    expect((body.performer.skipSongs ?? []).map((s: { title: string }) => s.title).sort()).toEqual(titles({ songs: SONGS }));
+    expect((body.performer.songs ?? []).map((s: { title: string }) => s.title).sort()).toEqual(titles({ songs: SONGS }));
+    expect(body.performer.skipSongs ?? []).toEqual([]);
     await waitForPlan(page);
 
     const after = await state(page.request);
     expect(after.revision).toBe(before.revision);
     expect(titles(after)).toEqual(titles(before));
-    expect(after.usualPitches).toEqual([]);
   });
 
   test("usual pitches: an unedited Repertoire busk records its top pitch once per plan, never more than 3", async ({ request }) => {
@@ -90,7 +83,7 @@ test.describe("QA Repertoire R2: the planners", () => {
 test.describe("QA Repertoire R2: API edges", () => {
   test.skip(!LOCAL, "Writes to the local offline server's memory store");
 
-  test("a seed never overwrites an existing Repertoire; duplicates collapse; over 60 is 400", async ({ request }) => {
+  test("a seed never overwrites an existing Repertoire; duplicates collapse; 61 songs are fine (U16), over the 2000 abuse stop is 400", async ({ request }) => {
     const dup = await request.post("/api/playlist", { data: { songs: [SONGS[0], { ...SONGS[0], title: "how to make gravy!" }, SONGS[1]] } });
     expect(dup.status()).toBe(201);
     expect(titles(await state(request))).toEqual(["How to Make Gravy", "Scar"]);
@@ -100,8 +93,8 @@ test.describe("QA Repertoire R2: API edges", () => {
     expect(titles(kept)).toEqual(["How to Make Gravy", "Scar"]);
     expect(kept.actName).not.toBe("Overwrite?");
 
-    const many = Array.from({ length: 61 }, (_, i) => ({ title: `Song ${i}`, artist: `Artist ${i}`, own: false }));
-    expect((await request.patch("/api/playlist", { data: { revision: kept.revision, songs: many } })).status()).toBe(400);
+    const tooMany = Array.from({ length: 2001 }, (_, i) => ({ title: `Song ${i}`, artist: `Artist ${i}`, own: false }));
+    expect((await request.patch("/api/playlist", { data: { revision: kept.revision, songs: tooMany } })).status()).toBe(400);
     expect(titles(await state(request))).toEqual(["How to Make Gravy", "Scar"]);
   });
 
@@ -143,26 +136,17 @@ test.describe("QA Repertoire R2: axe on the new states", () => {
   test.skip(!LOCAL, "Writes to the local offline server's memory store");
   const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
 
-  test("form with a Repertoire (and edited), plan offering Save these songs: 0 violations", async ({ page }) => {
+  test("form with a Repertoire, plan offering Save these songs: 0 violations", async ({ page }) => {
     const { default: AxeBuilder } = await import("@axe-core/playwright");
     const scan = async (what: string) => {
       const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
       expect(violations.map((v) => `${v.impact} ${v.id}`), what).toEqual([]);
     };
-    // No Repertoire yet: a busk with a song added just for it offers to save its songs.
+    // No Repertoire yet: a busk that arrives with songs (a plan link) offers to save them.
     await page.goto("/busks");
-    const f = form(page);
-    await f.getByLabel("Act name").fill("QA Save Offer");
-    await f.getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Paul Kelly");
-    await page.getByRole("option", { name: /Paul Kelly/ }).first().click();
-    const block = f.getByTestId("repertoire-source");
-    await block.getByRole("button", { name: "Edit for this busk" }).click();
-    await block.getByTestId("add-for-busk").locator("summary").click();
-    await block.getByPlaceholder("Search songs, e.g. Riptide").fill("How to Make Gravy");
-    await page.getByRole("option").first().click();
-    await expect(block.getByRole("list", { name: "Songs for this busk" }).getByRole("listitem")).toHaveCount(1);
-    await block.getByRole("button", { name: "Done" }).click();
-    await f.getByRole("button", { name: /^Plan my busk/ }).click();
+    await expect(form(page).getByTestId("repertoire-empty")).toBeVisible();
+    await scan("form without a Repertoire");
+    await page.goto(`/plan?name=QA%20Save%20Offer&artists=Paul%20Kelly&songs=How%20to%20Make%20Gravy~Paul%20Kelly&date=${SATURDAY}&from=18&to=21`);
     await waitForPlan(page);
     await expect(page.getByTestId("save-as-repertoire")).toBeVisible();
     await scan("plan with Save these songs");
@@ -171,13 +155,6 @@ test.describe("QA Repertoire R2: axe on the new states", () => {
     await page.goto("/busks");
     await expect(form(page).getByTestId("repertoire-summary")).toHaveText(/^Your Repertoire · 2 songs/);
     await scan("form with a Repertoire");
-    await form(page).getByRole("button", { name: "Edit for this busk" }).click();
-    await form(page).getByRole("checkbox").first().click();
-    await expect(form(page).getByText("1 of 2 selected")).toBeVisible();
-    await scan("form editing for this busk");
-    await form(page).getByRole("button", { name: "Done" }).click();
-    await expect(form(page).getByText("Edited for this busk", { exact: true })).toBeVisible();
-    await scan("form edited for this busk");
   });
 
 });

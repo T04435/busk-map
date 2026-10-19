@@ -43,21 +43,15 @@ test.describe("QA Repertoire API", () => {
     expect((await view(request)).songs).toHaveLength(1);
   });
 
-  test("60 songs fit; the 61st is refused with playlist_full, and moving or removing still works", async ({ request }) => {
-    for (let i = 1; i <= 60; i++) expect((await add(request, `Song ${i}`, `Artist ${i}`)).status(), `song ${i}`).toBe(201);
-    const full = await add(request, "Song 61", "Artist 61");
-    expect(full.status()).toBe(409);
-    const err = (await full.json()).error;
-    expect(err.code).toBe("playlist_full");
-    expect(err.message).toContain("60");
+  test("no limit on the songs (U16): the 61st is added, and moving or removing still works", async ({ request }) => {
+    for (let i = 1; i <= 61; i++) expect((await add(request, `Song ${i}`, `Artist ${i}`)).status(), `song ${i}`).toBe(201);
     const songs = (await view(request)).songs;
-    expect(songs).toHaveLength(60);
-    // Learned counts toward the 60 too: moving doesn't free a slot.
+    expect(songs).toHaveLength(61);
     expect((await request.patch(`/api/playlist/songs/${songs[0].id}`, { data: { state: "learned" } })).ok()).toBe(true);
-    expect((await add(request, "Song 61", "Artist 61")).status()).toBe(409);
-    // Removing does.
+    expect((await view(request)).songs).toHaveLength(61);
     expect((await request.delete(`/api/playlist/songs/${songs[1].id}`)).ok()).toBe(true);
-    expect((await add(request, "Song 61", "Artist 61")).status()).toBe(201);
+    expect((await view(request)).songs).toHaveLength(60);
+    expect((await add(request, "Song 62", "Artist 62")).status()).toBe(201);
   });
 
   test("PATCH needs the latest revision: a stale one is 409 stale and changes nothing", async ({ request }) => {
@@ -146,7 +140,8 @@ test.describe("QA Repertoire: plans and examples never write one", () => {
       else await page.waitForLoadState("domcontentloaded");
     }
     await expect(page.getByRole("heading", { level: 1, name: "Your Repertoire" })).toBeVisible();
-    await expect(page.getByText("No songs yet.")).toBeVisible();
+    // An empty Repertoire is the research link field only (docs/repertoire-research.md).
+    await expect(page.getByLabel("Your Spotify artist link")).toBeVisible();
     expect(writes).toEqual([]);
     expect((await page.context().cookies()).some((c) => c.name === "buskmap_playlist")).toBe(false);
     expect(await view(page.request)).toBeNull();
@@ -162,10 +157,20 @@ test.describe("QA Repertoire page: keyboard", () => {
    * search is stubbed to Spotify's real empty answer to reach that state.
    */
   const addTyped = async (page: Page, song: string) => {
-    await page.getByPlaceholder("Search songs, e.g. Riptide").fill(song);
+    const [title, artist] = song.split(" - ");
+    // On an empty Repertoire the page is the research link field only, so the first song goes in through the API.
+    const trigger = page.getByRole("button", { name: "Add a song", exact: true });
+    if ((await trigger.count()) === 0) {
+      expect((await page.request.post("/api/playlist/songs", { data: { title, artist, source: "typed" } })).ok()).toBe(true);
+      await page.reload();
+      await expect(page.getByRole("list", { name: "Songs you can sing" }).getByText(title, { exact: true })).toBeVisible();
+      return;
+    }
+    const search = page.getByRole("combobox", { name: "Search songs on Spotify" });
+    if (!(await search.isVisible())) await trigger.click();
+    await search.fill(song);
     const typed = page.getByRole("group", { name: "Type in a song" });
     await expect(typed).toBeVisible();
-    const [title, artist] = song.split(" - ");
     await expect(typed.getByLabel("Song title")).toHaveValue(title);
     await expect(typed.getByLabel("Artist")).toHaveValue(artist);
     await typed.getByLabel("Artist").press("Enter");
@@ -177,15 +182,16 @@ test.describe("QA Repertoire page: keyboard", () => {
 
   test("add with Enter (typed, no Spotify match), remove with the keyboard, and the status line says what happened", async ({ page }) => {
     await page.goto("/repertoire");
+    await addTyped(page, "Scar - Missy Higgins");
     await addTyped(page, "Riptide - Vance Joy");
     const list = page.getByRole("list", { name: "Songs you can sing" });
-    await expect(list.getByRole("listitem")).toHaveCount(1);
+    await expect(list.getByRole("listitem")).toHaveCount(2);
     const remove = page.getByRole("button", { name: "Remove Riptide" });
     await remove.focus();
     await expect(remove).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("status").filter({ hasText: "Removed Riptide." }).first()).toBeAttached();
-    await expect(page.getByText(/^No songs yet\./)).toBeVisible();
+    await expect(list.getByRole("listitem")).toHaveCount(1);
     // B-016: focus must not be lost to <body> when the removed button disappears.
     expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe("BODY");
   });

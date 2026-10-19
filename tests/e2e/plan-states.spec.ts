@@ -89,8 +89,8 @@ test.describe("other scored pitches are dots on the map", () => {
     await page.getByTestId("other-dot").first().click({ force: true });
     await expect(popover).toBeVisible();
     await page.getByRole("button", { name: "Close summary" }).click();
-    // No events or no-busking zones on the map: only top pins and dots.
-    await expect(page.getByLabel("Map legend")).not.toContainText(/event|no busking/i);
+    // No events on the map (the plan carries no coordinates for them); no-busking streets are hatched cells and the legend lists them only because they are drawn (B-146).
+    await expect(page.getByLabel("Map legend")).not.toContainText(/event/i);
   });
 });
 

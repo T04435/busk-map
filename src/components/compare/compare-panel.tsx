@@ -226,7 +226,7 @@ function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch
             <p className="m-0 text-sm leading-5 text-muted-foreground">Plain AI {PLAYLIST_COPY.suggestedSetNoun}:</p>
             <ol className="m-0 list-none p-0">
               {baseline.setlist.map((title, i) => (
-                <SongRow key={`${title}${i}`} compact interactive={false} index={i + 1} title={title} artist="" className="border-t border-border first:border-t-0" />
+                <SongRow key={`${title}${i}`} as="li" compact interactive={false} index={i + 1} title={title} artist="" className="border-t border-border first:border-t-0" />
               ))}
             </ol>
           </div>

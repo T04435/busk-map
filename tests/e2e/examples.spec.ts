@@ -167,7 +167,7 @@ test.describe("live agent (mock model offline)", () => {
     await expect(page.getByTestId("plan-pending")).toHaveCount(0);
     const feed = await agentSteps(page);
     await expect(feed.getByText("Where your crowd gathers")).toBeVisible();
-    await expect(feed.getByText("I'll start with the taste map to see where this act's fans concentrate.")).toBeVisible();
+    await expect(feed.getByText("We'll start with the taste map to see where this act's fans concentrate.")).toBeVisible();
     await expect(feed.getByText("Your best pitches so far").first()).toBeVisible();
     await expect(feed.getByText("taste_map")).toHaveCount(0);
     await expect(page.getByText("Qloo /v2/insights · urn:heatmap")).toHaveCount(0);
@@ -246,7 +246,7 @@ test.describe("live agent (mock model offline)", () => {
     await expect(onlyPlain.getByText(/Mock plain-LLM answer/).first()).toBeVisible();
     await expect(onlyPlain.getByText(/^(Scored by Busk Map|Not a legal pitch|No data for this spot)$/).first()).toBeVisible();
     // The baseline is a control: the pitch scores are the same once it has arrived.
-    await expect(page.getByTestId("agent-status")).toHaveText(new RegExp(`^${MODEL_PLAN}`));
+    await expect(page.getByTestId("agent-status")).toHaveText(MODEL_PLAN);
     expect(await scoresOf()).toEqual(scores);
   });
 });

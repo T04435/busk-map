@@ -22,4 +22,6 @@ export const BOTID_PROTECTED_ROUTES = [
   // Repertoire research: a learn run with a Spotify link (one summary model call).
   { path: "/api/playlist/research", method: "POST" },
   { path: "/api/playlist/learn/suggestions/*", method: "PATCH" },
+  // Refresh the Repertoire profile (Spotify/Last.fm reads): a write, guarded server-side (T01).
+  { path: "/api/playlist/profile", method: "POST" },
 ] as const;

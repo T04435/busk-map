@@ -63,12 +63,32 @@ test.describe("landing, as the deck draws it", () => {
     }
   });
 
-  test("the demo video slot is a labelled frame with no controls until a video exists (L11)", async ({ page }) => {
+  test("the demo video is a native player that loads nothing but its poster until play (L11)", async ({ page }) => {
+    const videoRequests: string[] = [];
+    page.on("request", (r) => {
+      if (/\/video\/busk-map-demo(\.mp4|\.en\.vtt)/.test(r.url())) videoRequests.push(r.url());
+    });
     await page.goto("/");
     const slot = page.getByTestId("demo-video-slot");
-    await expect(slot).toContainText("[Demo video · 60–90 s]");
-    await expect(slot.getByRole("button")).toHaveCount(0);
-    await expect(slot.locator("video, a, iframe")).toHaveCount(0);
+    const video = slot.locator("video");
+    await video.scrollIntoViewIfNeeded();
+    await expect(video).toHaveAttribute("controls", "");
+    await expect(video).toHaveAttribute("preload", "none");
+    await expect(video).toHaveAttribute("poster", "/video/busk-map-demo-poster.jpg");
+    await expect(video).not.toHaveAttribute("autoplay", /.*/);
+    await expect(video).toHaveAttribute("title", /Busk Map demo/);
+    await expect(video.locator("track[kind=captions][srclang=en]")).toHaveAttribute("src", "/video/busk-map-demo.en.vtt");
+    const box = await video.boundingBox();
+    expect(Math.abs(box!.width / box!.height - 16 / 9)).toBeLessThan(0.05);
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(1500);
+    expect(videoRequests).toEqual([]);
+    expect(await video.evaluate((v: HTMLVideoElement) => v.paused && v.readyState === 0)).toBe(true);
+    // The files are served.
+    for (const path of ["/video/busk-map-demo.mp4", "/video/busk-map-demo.en.vtt", "/video/busk-map-demo-poster.jpg"]) {
+      const res = await page.request.get(path, { headers: { range: "bytes=0-1023" } });
+      expect(res.ok(), path).toBe(true);
+    }
   });
 
   test("the brand teaser shows the numbers and links to /brand (B-019, L23)", async ({ page }) => {

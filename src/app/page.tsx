@@ -109,12 +109,26 @@ export default function Home() {
       </div>
 
       <div className="mx-auto flex max-w-[1360px] flex-col gap-20 px-4 pt-16 pb-16 md:gap-28 md:px-6 md:pt-24">
-        <figure aria-label="Demo video, coming soon" data-testid="demo-video-slot" className="bm-grain m-0 flex aspect-video max-h-[720px] w-full flex-col items-center justify-center gap-4 border-[3px] border-rule bg-background p-6 text-center text-foreground shadow-md" data-theme="dark">
-          <HexCell size={96} tone="primary" fontSize={44}>
-            <Icon name="play" size={40} />
-          </HexCell>
-          <b className="font-display text-[clamp(28px,4vw,44px)] leading-none font-extrabold uppercase">[Demo video · 60–90 s]</b>
-          <figcaption className="m-0 max-w-xl font-mono text-xs leading-4 text-muted-foreground">
+        <figure aria-label="Busk Map demo video" data-testid="demo-video-slot" className="bm-grain m-0 flex w-full flex-col border-[3px] border-rule bg-background text-foreground shadow-md" data-theme="dark">
+          {/* Nothing but the poster loads until play (preload none). The captions are also burned into the picture, so the VTT track is offered in the captions menu but not switched on (it would print every line twice). */}
+          <video
+            controls
+            playsInline
+            preload="none"
+            width={1280}
+            height={720}
+            poster="/video/busk-map-demo-poster.jpg"
+            title="Busk Map demo: a folk duo plans a Sunday busk"
+            aria-label="Busk Map demo video, about a minute and a half, with captions"
+            className="block aspect-video max-h-[720px] w-full bg-background object-contain"
+          >
+            <source src="/video/busk-map-demo.mp4" type="video/mp4" />
+            <track kind="captions" src="/video/busk-map-demo.en.vtt" srcLang="en" label="English" />
+            <p>
+              Your browser can&apos;t play the video. <a href="/video/busk-map-demo.mp4" className="underline">Download the demo (MP4)</a>.
+            </p>
+          </video>
+          <figcaption className="m-0 border-t-2 border-rule px-4 py-3 font-mono text-xs leading-4 text-muted-foreground">
             A folk duo plans a Sunday busk: Qloo&apos;s taste map fills in, the research runs, the busk appears.
           </figcaption>
         </figure>

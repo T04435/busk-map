@@ -178,7 +178,9 @@ test.describe("Repertoire storage (offline, memory store)", () => {
     await page.getByRole("alertdialog", { name: "Forget your Repertoire?" }).getByRole("button", { name: "Delete my Repertoire" }).click();
     await emptyPage(page);
     expect(nativeDialog).toBe(false);
-    expect((await page.context().cookies()).some((c) => c.name === "buskmap_playlist" && c.value)).toBe(false);
+    await expect
+      .poll(async () => (await page.context().cookies()).some((c) => c.name === "buskmap_playlist" && c.value))
+      .toBe(false);
   });
 
   test("the landing and plan pages link to it", async ({ page }) => {

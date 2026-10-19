@@ -5,13 +5,14 @@ import { expect, test } from "@playwright/test";
  * for. Row ids in the test names are the report's rows.
  */
 test.describe("QA Landing · review", () => {
-  test("L07: the hero has no caption; L11: the video slot is a placeholder with no media, autoplay or controls", async ({ page }) => {
+  test("L07: the hero has no caption; L11: the video slot holds one native video with controls, no autoplay and no preload", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("section[aria-labelledby=hero] figcaption")).toHaveCount(0);
     const slot = page.getByTestId("demo-video-slot");
     await expect(slot).toBeVisible();
-    await expect(page.locator("video, audio, iframe, [autoplay]")).toHaveCount(0);
-    await expect(slot.locator("a, button, input, [tabindex]")).toHaveCount(0);
+    await expect(page.locator("audio, iframe, [autoplay]")).toHaveCount(0);
+    await expect(page.locator("video")).toHaveCount(1);
+    await expect(slot.locator("video")).toHaveAttribute("preload", "none");
   });
 
   test("L18: the live map loads only when it nears the screen, and pins and list select each other both ways", async ({ page }) => {

@@ -1,0 +1,42 @@
+database host: <redacted>
+PASS  create a Repertoire (201/200, cookie set)  (status 201)
+PASS  playlists + playlist_songs rows written  (5 songs)
+PASS  stuck-run sweep fails the old running run with end_code timeout  (failed/timeout)
+PASS  list: no running run after the sweep
+PASS  run A streams to an ok end  (37 events, mock, 6 new)
+PASS  learn_runs row: number 2, done, model mock, steps kept, totals set  (done, new_count 6)
+PASS  learn_suggestions rows: pending, ranked, linked to run A, count = new_count  (6 rows)
+PASS  mark learned: suggestion learned, song joins playlist_songs as can_sing/learned  (200 learned)
+PASS  the Repertoire's revision moved when a song joined  (2 -> 3)
+PASS  dismiss: status dismissed, dismissed_at set  (200)
+PASS  dismissed -> learned directly is refused (400 invalid transition)  (400)
+PASS  undo dismiss: back to pending, stamp cleared
+PASS  undo learned: pending again, the song leaves playlist_songs
+PASS  run B streams to an ok end  (mock, 6 new, 2 left out)
+PASS  run B suggests no song from run A (nor the learned or dismissed ones)  (6 new)
+PASS  no duplicate (playlist_id, song_key) rows  (12 rows)
+PASS  the unique index refuses a repeated song (23505)
+PASS  adding an already-suggested song from a plan is refused politely (409)  (409)
+PASS  replay of run A: stored events with replay:true and the same end  (37 events)
+PASS  replay suggestions carry their CURRENT status
+PASS  list shows the allowance used (0 remaining)  (remaining 0)
+PASS  run C is refused with 429 scope repertoire and a Retry-After  (429)
+PASS  a refused run writes no learn_runs row  (3 runs)
+PASS  a second running run is refused by learn_runs_one_running
+PASS  run D (after backdating) streams to an ok end and is numbered 22  (200)
+PASS  step pruning keeps only the last 5 runs: 2, 3, 11, 12 lose their steps  (steps kept on 13,14,15,22)
+PASS  step pruning drops steps older than 30 days even inside the last 5 (run 21)  (steps kept on 13,14,15,22)
+PASS  the newest runs keep their steps (13, 14, 15, 22)  (steps kept on 13,14,15,22)
+PASS  pruned runs keep their rows (only steps go)  (5)
+PASS  replay of a pruned run still works: stepsKept false, no step events, the end and its suggestions  (200, 11 events)
+PASS  run E streams to an ok end  (200, 6 new)
+PASS  the cap holds: 400 suggestions after the run  (421 before, 6 new, 400 after)
+PASS  the dropped rows' keys moved to dismissed_keys (one each, none lost)  (27 keys)
+PASS  no moved key is still a suggestion row
+PASS  the oldest dismissed went first (the highest minute offsets)
+PASS  pending and learned rows are never trimmed  (21)
+PASS  forget my Repertoire (DELETE)  (200)
+PASS  forget cascades: no playlists, songs, runs or suggestions left  ({"p":0,"s":0,"r":0,"g":0})
+PASS  cleanup leaves 0 rows for the smoke Repertoire  ({"p":0,"s":0,"r":0,"g":0})
+
+All checks passed.

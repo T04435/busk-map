@@ -9,9 +9,17 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    // Separate build directories (NEXT_DIST_DIR, e.g. .next-e2e, .next-qa).
+    ".next-*/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated test output.
+    "coverage/**",
+    "playwright-report/**",
+    "test-results/**",
+    // Third-party worker copied at dev/build time.
+    "public/vendor/**",
   ]),
 ]);
 

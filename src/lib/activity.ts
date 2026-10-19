@@ -1,0 +1,53 @@
+/**
+ * Plain wording for the Qloo activity estimate (client-safe). The estimate is a 0-1 relative level, never a head count.
+ * The engine's math is in server/scoring/activity.ts; this file only names its results.
+ */
+
+/** Where an activity estimate came from: the heatmap's popularity, the popular places open in the slot, both, or neither. */
+export type ActivityBasis = "heatmap+places" | "heatmap" | "places" | "none";
+
+/** The level used when Qloo gave nothing to estimate from (shown as "no estimate", never as a quiet or a busy place). */
+export const NEUTRAL_ACTIVITY = 0.5;
+
+/** A level in one word: "Quiet" up to "Very busy". */
+export function activityWord(level: number): string {
+  if (level >= 0.8) return "Very busy";
+  if (level >= 0.6) return "Busy";
+  if (level >= 0.4) return "Moderately busy";
+  if (level >= 0.2) return "Fairly quiet";
+  return "Quiet";
+}
+
+/**
+ * The level the word is read from. `relative` is the plan's pool-relative reading (0 at the least active scored pitch, 1 at
+ * the most active); the word is the LOWER of that and the absolute level, so a pitch is only "Very busy" when it is among the
+ * busiest of the plan's pitches AND the level itself is high (the top pick is not "Very busy" just for being the top of a
+ * narrow pool). Idempotent, so plans saved with an already-combined value read the same.
+ */
+export function wordLevel(level: number, relative: number | null | undefined): number {
+  return relative === null || relative === undefined ? level : Math.min(level, relative);
+}
+
+/** "mornings", "afternoons", "evenings", "nights": a word for the hours a slot starts in. */
+export function dayPartOf(startHour: number): "mornings" | "afternoons" | "evenings" | "nights" {
+  if (startHour >= 21 || startHour < 5) return "nights";
+  if (startHour >= 17) return "evenings";
+  if (startHour >= 12) return "afternoons";
+  return "mornings";
+}
+
+const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+
+/**
+ * "Busy here on Friday evenings (est.)". With no data: "No activity estimate here": honest, and never "quiet".
+ */
+export function activitySentence(input: { level: number; basis: ActivityBasis; weekday: string; startHour: number }): string {
+  if (input.basis === "none") return "No activity estimate here";
+  return `${activityWord(input.level)} here on ${cap(input.weekday)} ${dayPartOf(input.startHour)} (est.)`;
+}
+
+/** A short clause for a window's reason: "busy (est.)". Empty when there is no estimate. */
+export function activityPhrase(level: number, basis: ActivityBasis): string {
+  if (basis === "none") return "";
+  return `${activityWord(level).toLowerCase()} (est.)`;
+}

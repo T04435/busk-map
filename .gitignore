@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.next-*/
 /out/
 
 # production
@@ -40,3 +41,14 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 !.env.example
+
+# test output
+/playwright-report/
+/test-results/
+/blob-report/
+
+# copied at dev/build time (scripts/copy-maplibre-worker.mjs)
+/public/vendor/
+
+# impeccable live mode working files (sessions, journal, config)
+.impeccable/

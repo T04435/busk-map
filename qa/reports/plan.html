@@ -1,0 +1,1396 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan · review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f1ea;--card:#fff;--fg:#17191c;--muted:#5d6168;--line:#d9d4c8;--ok:#1d7a3a;--okbg:#e2f3e7;--bad:#b3141b;--badbg:#fbe3e4;--warn:#8a5a00;--warnbg:#fdf0d3;--held:#4b4f86;--heldbg:#e7e7f6;--accent:#c2410c}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#111416;--card:#1a1e21;--fg:#eceae4;--muted:#a3a8ad;--line:#2d3337;--ok:#6fd38f;--okbg:#14301e;--bad:#ff8c8f;--badbg:#3a1416;--warn:#f2c160;--warnbg:#33280f;--held:#b9b9f0;--heldbg:#25253d;--accent:#ff7a3d}}
+:root[data-theme="dark"]{--bg:#111416;--card:#1a1e21;--fg:#eceae4;--muted:#a3a8ad;--line:#2d3337;--ok:#6fd38f;--okbg:#14301e;--bad:#ff8c8f;--badbg:#3a1416;--warn:#f2c160;--warnbg:#33280f;--held:#b9b9f0;--heldbg:#25253d;--accent:#ff7a3d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.wrap{max-width:1600px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:24px;margin:0} .ver{font-weight:800;margin:6px 0 2px} .chg{color:var(--muted);margin:0 0 12px}
+.strip{display:flex;flex-wrap:wrap;gap:8px;align-items:center;position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0;border-bottom:1px solid var(--line)}
+.stat{padding:6px 12px;border:1px solid var(--line);background:var(--card);font-weight:800}
+.stat.ok{color:var(--ok)} .stat.bad{color:var(--bad)} .stat.warn{color:var(--warn)} .stat.held{color:var(--held)}
+.filter{font:inherit;padding:6px 12px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer;min-height:40px} .filter[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.row{display:grid;grid-template-columns:150px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,.55fr) minmax(0,1.3fr);gap:12px;background:var(--card);border:1px solid var(--line);margin:12px 0;padding:12px;scroll-margin-top:70px}
+.row:target{outline:3px solid var(--accent)}
+.id a{display:inline-block;font-size:22px;font-weight:800;color:var(--fg);text-decoration:none;border:2px solid var(--fg);padding:0 8px} .id span{display:block;margin-top:6px;font-weight:600}
+figure{margin:0;min-width:0} figcaption{font-size:12px;color:var(--muted);margin-bottom:4px}
+img{display:block;max-width:100%;height:auto;max-height:520px;object-fit:contain;object-position:top left;border:1px solid var(--line);background:#fff}
+.box img{max-height:none}
+dl{margin:0;display:grid;gap:6px} dt{font-size:12px;color:var(--muted)} dd{margin:0} .call{font-weight:800;color:var(--accent)} .spec{font-size:12px;color:var(--muted)}
+.chip{font-weight:800;padding:1px 8px} .chip.ok{background:var(--okbg);color:var(--ok)} .chip.bad{background:var(--badbg);color:var(--bad)} .chip.warn{background:var(--warnbg);color:var(--warn)} .chip.held{background:var(--heldbg);color:var(--held)}
+.ph{border:2px dashed var(--muted);color:var(--muted);padding:24px 8px;text-align:center;font-weight:800}
+body.action .row[data-action="false"]{display:none}
+.ready{border:2px solid var(--line);background:var(--card);padding:12px 16px;margin:8px 0 14px} .ready.ready{border-color:var(--ok)} .ready.ready-with-notes{border-color:var(--warn)} .ready.not-ready{border-color:var(--bad)}
+.box{background:var(--card);border:1px solid var(--line);padding:12px 16px;margin-top:20px;overflow-x:auto} .box h2{font-size:16px;margin:0 0 6px}
+.prov{border-left:4px solid var(--accent);padding:6px 10px;background:var(--bg);font-size:13px} .synth{border:2px solid var(--fg);padding:8px 12px;margin:10px 0} .synth h3{margin:0 0 4px;font-size:14px} .box details{margin-top:10px} .box summary{font-weight:800;cursor:pointer;min-height:32px} .box h3,.box h4,.box h5,.box h6{font-size:14px;margin:12px 0 4px} .box table{margin:6px 0} .box code{font-size:12px}
+table{border-collapse:collapse} th,td{border:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top}
+@media (max-width:1100px){.row{grid-template-columns:1fr 1fr} .id{grid-column:1/-1} dl{grid-column:1/-1}}
+@media (max-width:600px){.row{grid-template-columns:1fr}}
+</style></head>
+<body><div class="wrap">
+<h1>Plan · review</h1>
+<p class="ver">v4 · design/honeycomb ＠ f83f1a1 · 17 Oct 2026 · route /p/&lt;id&gt; (from /plan?…)</p>
+<p class="chg">Fixed since v3: Qloo down is the “No plan without taste data” panel with Qloo&#x27;s linked logo, Unavailable and Try again beside the stopped feed (B-043, Q01-Q03); no legal pitch is a panel with Pick another day (B-044, N02); no match has one alert and Pick your artists from Spotify, no taste legend (B-045, B-112, M01-M04); source down is the board&#x27;s warnings (B-046, D01); weather 10:00-16:00 with one Your slot frame (B-047, B21/B22); headings h1 &gt; h2 &gt; h3 (B-048); brand words in the fallback (B-049); Your busk at 635 px (1440) and 500 px (390), was 987/871 (B-050); funnel and compact Agent vs engine (B-051); eyebrow “Sun 18 Oct · 12–3 pm · General permit”, Shared busk prefix, act line, busk title line (B-098..B-100); white selected card, numbered pins with caption (B-101, B-102); crowd-gathers mini map (B-103); the sheet is the board&#x27;s: 720 px, phone bottom sheet with handle, chips, foot-traffic sparkline, setlist Copy, crowd with Qloo logo, scaled lean bars (B-104..B-106, partly B-105); researching line and Data used so far (B-108, B-109); X01 centred, no box (B-111); night focus on orange buttons is a 2 px outline outside the button (B-134); map draws orange cells only and zooms out (B-146), hatched no-busking cells (B-148), Qloo logo where Qloo is a source (B-147), no “test data” in the legend tooltip (B-145); Tips gone from the page. Still open: B-107 (sheet animates under reduced motion, B71), B-136 (attribution “i” tiled), B-137 (legend 2 lines at 390), B-105 partly (no council-rules link row, B58). New: B-183 night taste cells half dark burnt orange (B69), B-184 no-pitch page says “these spots come straight from Busk Map&#x27;s scores” (N01), B-185 Data used so far says Live for test data (R09). Held by DEV: feed and compare cards B24-B48, events B64/B-113, the 13-check no-pitch feed N03/B-110, Repertoire nav B-130. DS parity and glyph rule applied (user, 17 Oct): every component compared with its DS specimen; 22 rows moved to Different (B02, B05, B07, B12, B14, B18, B21, B49, B54, B55, B57, B59, B61, B62, B63, B66, R01, R02, Y03, Q03, S01, S02) with B-186..B-195; the research funnel&#x27;s “▸” connectors and “See the research ↓” cite B-162; held cards B24-B48 name the DS component each should become. The impeccable critique and audit were run for real this round (skill v4.4.0, dual-agent, at f83f1a1, 390/768/1440; provenance at the top of both sections), replacing v3&#x27;s hand-written sections. New from impeccable, verified by QA: B-219 (High: 1,848 px of blank scroll after the footer at 390), B-227 (the map takes vertical swipes on a phone), B-231.</p>
+<section class="ready not-ready" aria-label="Ready for design-approve"><b>Ready for the user's design-approve? Not ready.</b> Against the design system the user would reject the core of the busk on sight: the research funnel joins its cells with “▸” glyphs, not DS ResearchFunnel&#x27;s half-cell connectors (B07, R02; B-162), the pitch rows and pins are not DS PitchRow / PitchPin (B12, B14), and the sheet&#x27;s lean bars and score breakdown are not DS LeanBar / ScoreBreakdown (B62, B54). Board states and the user&#x27;s F-calls are otherwise met. Impeccable adds B-219 (High) and B-227.</section>
+<div class="strip" role="group" aria-label="Summary"><span class="stat ok">51 Present</span><span class="stat warn">28 Different</span><span class="stat bad">0 Missing</span><span class="stat bad">0 Broken</span><span class="stat held">27 Held</span><button class="filter" type="button" aria-pressed="false" id="flt">Needs action only</button></div>
+<p class="chg">v4 build images are in inv/v4/ (v3 in inv/v3/, v2 in inv/build/). Deck: BRAND&#x27;s inventory crops (1440 boards; click-only parts cropped after the click). Build: QA&#x27;s own export of the commit above, offline (mock Qloo, test model, BUSKMAP_FAKE_NOW Wed 14 Oct 12:00), so “Qloo test data” chips, “test model” labels and synthetic place names appear that a live plan won&#x27;t show; they are not judged. States that can&#x27;t be reached offline (Claude ran out of time, a run that changes the engine&#x27;s pick) are judged from the source and say so. Running state held with an init script that stops the /api/plan stream after the last “tool-start” line (as holdAgentRunning). State rows show the top of the viewport. The row id is the ticket.</p>
+<article class="row" id="B01" data-action="true">
+<div class="id"><a href="#B01">B01</a><span>App header</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B01.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B01.jpg" alt="B01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B01-1440.jpg" alt="B01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B01-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B01-390.jpg" alt="B01 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Lockup [hex mark][new wordmark] left; nav Busks · Week · Brain with Busks active (aria-current); no Tips item and no /tips link on the page. No Repertoire item (held by DEV, B-130). Below 721 px the nav is the bottom bar.</dd></div>
+<div><dt>User's call</dt><dd class="call">F12 (corrected 17 Oct): the one logo is the lockup [hex mark][new wordmark] in header and footer; F12 retired only the old wordmark lettering. Wordmark-only or mark-only fails.</dd></div>
+<div><dt>Defect</dt><dd>B-130 (held by DEV)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B02" data-action="true">
+<div class="id"><a href="#B02">B02</a><span>Page header</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B02.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B02.jpg" alt="B02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B02-1440.jpg" alt="B02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B02-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B02-390.jpg" alt="B02 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Eyebrow, H1, act line and Copy link as the board. Differs from DS PageHeader: the DS puts a “Busk Map home” link above the eyebrow and shows the run status as outlined mono badges with icons (“✓ LIVE QLOO DATA”, “FOOT TRAFFIC: CITY SENSORS”, “EXPLANATIONS: CLAUDE”, “REPLAY OF AN EARLIER RUN…”) with “Plan my week instead” under them; the build has no home link and shows the status as a dot plus bold sans text line (“● Foot traffic: city sensors”), with Plan my week moved into the busk panel.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-186</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B03" data-action="true">
+<div class="id"><a href="#B03">B03</a><span>Eyebrow</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B03.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B03.jpg" alt="B03 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B03-1440.jpg" alt="B03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B03-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B03-390.jpg" alt="B03 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “SUN 18 OCT · 12–3 PM · GENERAL PERMIT”: no city, no ISO date (B-098 fixed).</dd></div>
+<div><dt>User's call</dt><dd class="call">F20: no city in the eyebrow or framing copy (“Sun 19 Oct · 12–3 pm · General permit”); a city only where the data is that city&#x27;s.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B04" data-action="false">
+<div class="id"><a href="#B04">B04</a><span>Act name and line</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B04.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B04.jpg" alt="B04 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B04-1440.jpg" alt="B04 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B04-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B04-390.jpg" alt="B04 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> H1 “FOLK DUO” in the display face; the act line under it reads “Sounds like Angus &amp; Julia Stone, The Paper Kites, Simon &amp; Garfunkel” (the example act has no own line) (B-099 fixed).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B05" data-action="true">
+<div class="id"><a href="#B05">B05</a><span>Copy link</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B05.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B05.jpg" alt="B05 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B05-1440.jpg" alt="B05 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B05-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B05-390.jpg" alt="B05 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Outline “COPY LINK”, right of the H1 at 1440, under it at 390; not shown while running. Differs from DS CopyLinkButton (and the board): the build uses a link (chain) icon, the DS a copy icon (two squares). Copied and clipboard-refused states otherwise as the DS.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-187</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B06" data-action="false">
+<div class="id"><a href="#B06">B06</a><span>Copy link: copied</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B06.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B06.jpg" alt="B06 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B06-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B06-1440.jpg" alt="B06 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B06-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B06-390.jpg" alt="B06 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> After the click: check icon and “LINK COPIED”. Clipboard-blocked fallback not forced.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B07" data-action="true">
+<div class="id"><a href="#B07">B07</a><span>Research funnel</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B07.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B07.jpg" alt="B07 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B07-1440.jpg" alt="B07 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B07-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B07-390.jpg" alt="B07 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Unboxed line of 30 px hex count cells with muted labels: “680 taste cells mapped ▸ 1 crowd read ▸ … ▸ 768 data points ▸ 3 pitches”, data points bold, “3 pitches” orange (B-051 fixed). Differs from DS ResearchFunnel (its README: “linked by half a honeycomb cell turned on its side… Never use a &gt; or arrow glyph”): the build joins the cells with a “▸” text glyph (research-funnel.tsx, layout landing), smaller and lighter than the DS half-cell connector.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-162</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B08" data-action="false">
+<div class="id"><a href="#B08">B08</a><span>Agent vs engine: kept</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B08.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B08.jpg" alt="B08 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B08-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B08-1440.jpg" alt="B08 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B08-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B08-390.jpg" alt="B08 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Check cell, “AGENT VS ENGINE”, “THE TEST MODEL CHECKED BUSK MAP&#x27;S TOP 3 AND KEPT THEM”, “Kept after checking the crowd, foot traffic, events nearby and the rules.”, then three inline tiles with rank, name, score ring and check (long synthetic names wrap the third tile) (B-051 fixed).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B09" data-action="false">
+<div class="id"><a href="#B09">B09</a><span>Agent vs engine: changed</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B09.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B09.jpg" alt="B09 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Not reachable offline (the test model keeps the engine&#x27;s picks). Source (agent-vs-engine.tsx) renders “added by &lt;model&gt;” over the struck “Busk Map&#x27;s no. N” per change.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B10" data-action="true">
+<div class="id"><a href="#B10">B10</a><span>Your busk (PlanMap)</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B10.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B10.jpg" alt="B10 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B10-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B10-1440.jpg" alt="B10 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B10-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B10-390.jpg" alt="B10 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> One bordered panel: pitch list left, map right at 1440; map above the list at 390 and 768. Under the rows: others note, the never-confirms line and “Plan my week instead”; no tip lines.</dd></div>
+<div><dt>User's call</dt><dd class="call">F02/F03 (every map, the plan&#x27;s too): keep “Full details →” per pitch row and the zoom buttons; the legend is one line along the bottom of the map with tooltips, never “test data”. F05: on every plan map only the orange taste cells draw (no pale or dark cells, ground shows through), zoomed out a little; both themes.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B11" data-action="false">
+<div class="id"><a href="#B11">B11</a><span>Busk title and summary</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B11.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B11.jpg" alt="B11 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B11-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B11-1440.jpg" alt="B11 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B11-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B11-390.jpg" alt="B11 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “YOUR BUSK”, “Sun 18 Oct · 12–3 pm · General permit” in mono, then the summary (offline: the mock line and two bullets) (B-100 fixed).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B12" data-action="true">
+<div class="id"><a href="#B12">B12</a><span>Pitch rows</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B12.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B12.jpg" alt="B12 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B12-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B12-1440.jpg" alt="B12 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B12-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B12-390.jpg" alt="B12 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Three ranked rows with rank tile, name, time, score cell, badges and “Full details →”; the selected row is the white card with the orange offset (B-101 fixed). Differs from DS PitchRow: the DS row is compact (name in caps on one line with “@ 12–3 pm” beside it, badges under, “FULL DETAILS →” in mono caps, underlined, right of the badges, no rule); the build row is about twice as tall: name about 22 px over two lines, the time on its own line, a full-width rule splitting the head from a footer, and “Full details →” in sans. The Usual pitch badge also differs from DS DiscoveryBadge (a dot icon where the DS has a ringed-target icon).</dd></div>
+<div><dt>User's call</dt><dd class="call">F02/F03 (every map, the plan&#x27;s too): keep “Full details →” per pitch row and the zoom buttons; the legend is one line along the bottom of the map with tooltips, never “test data”.</dd></div>
+<div><dt>Defect</dt><dd>B-165, B-188</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B13" data-action="true">
+<div class="id"><a href="#B13">B13</a><span>Taste map</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B13.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B13.jpg" alt="B13 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B13-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B13-1440.jpg" alt="B13 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B13-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B13-390.jpg" alt="B13 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> By day only the two orange steps draw (taste-3 #f28644, taste-4 #dd6322; no pale, no dark #7f2d0c), 354 cells, streets showing between them; default frame maxZoom 14.2 with 90 px padding (zoomed out a little); river and place names read under the field. No event diamonds (held, B-113). Night: see B69.</dd></div>
+<div><dt>User's call</dt><dd class="call">F05: on every plan map only the orange taste cells draw (no pale or dark cells, ground shows through), zoomed out a little; both themes.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B14" data-action="true">
+<div class="id"><a href="#B14">B14</a><span>Pitch pins</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B14.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B14.jpg" alt="B14 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B14-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B14-1440.jpg" alt="B14 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B14-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B14-390.jpg" alt="B14 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Top-3 pins are buttons (aria-pressed) with rank badges; pitch 1 larger; the selected pin carries its caption (B-102 fixed). Differs from DS PitchPin: the DS top pin is a dark hex with an orange ring and an orange target dot, its rank in a small orange hex badge; the build pin is a black hex with a white hex inside and a square orange rank badge. The DS also has a yellow-diamond Hidden gem pin and a hatched No busking pin; the build draws hidden gems with the same pin as the others.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-166</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B15" data-action="true">
+<div class="id"><a href="#B15">B15</a><span>No-busking zone</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B15.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B15.jpg" alt="B15 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B15-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B15-1440.jpg" alt="B15 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B15-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B15-390.jpg" alt="B15 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Hatched pink honeycomb cells drawn from the plan&#x27;s zone cells (zones layer, fill-pattern hatch), with “No busking” in the legend. With the offline data there are only two cells, at Docklands, just outside the default frame: they show one zoom step out (1440 image) and in the 390 frame (B-148 fixed).</dd></div>
+<div><dt>User's call</dt><dd class="call">F16: no-busking zones are hatched honeycomb cells, never a rectangle, on every map.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B16" data-action="false">
+<div class="id"><a href="#B16">B16</a><span>Other pitches note</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B16.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B16.jpg" alt="B16 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B16-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B16-1440.jpg" alt="B16 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B16-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B16-390.jpg" alt="B16 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Pin icon and “25 more pitches scored. They&#x27;re the small markers on the map: pick one for its summary. The top 3 are kept 250 m apart.”</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B17" data-action="true">
+<div class="id"><a href="#B17">B17</a><span>Full details link</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B17.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B17.jpg" alt="B17 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B17-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B17-1440.jpg" alt="B17 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B17-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B17-390.jpg" alt="B17 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “Full details →” on every row (accessible name “Full details for &lt;pitch&gt;”); opens the sheet.</dd></div>
+<div><dt>User's call</dt><dd class="call">F02/F03 (every map, the plan&#x27;s too): keep “Full details →” per pitch row and the zoom buttons; the legend is one line along the bottom of the map with tooltips, never “test data”.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B18" data-action="true">
+<div class="id"><a href="#B18">B18</a><span>Row and pin selected</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B18.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B18.jpg" alt="B18 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B18-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B18-1440.jpg" alt="B18 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B18-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B18-390.jpg" alt="B18 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Picking row 2 moves the white card, orange offset and filled score cell to pitch 2; its pin gets aria-pressed and the caption; the summary stays. The rows and pins themselves differ from DS PitchRow and DS PitchPin (B12, B14).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-165, B-166</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B19" data-action="true">
+<div class="id"><a href="#B19">B19</a><span>Map legend</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B19.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B19.jpg" alt="B19 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B19-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B19-1440.jpg" alt="B19 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B19-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B19-390.jpg" alt="B19 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> One line along the bottom inside the map at 768 and 1440 (42 px): “Taste match” (two orange cells) · Top pitch · No busking · Other pitch, each a focusable key whose tooltip opens on hover and focus; no “test data” anywhere, tooltip included (B-145 fixed). At 390 it still wraps to two lines (74 px, “Other pitch” alone on line 2).</dd></div>
+<div><dt>User's call</dt><dd class="call">F02/F03 (every map, the plan&#x27;s too): keep “Full details →” per pitch row and the zoom buttons; the legend is one line along the bottom of the map with tooltips, never “test data”.</dd></div>
+<div><dt>Defect</dt><dd>B-137</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B20" data-action="true">
+<div class="id"><a href="#B20">B20</a><span>Zoom buttons</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B20-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B20-1440.jpg" alt="B20 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B20-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B20-390.jpg" alt="B20 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">Not drawn on the plan boards; F02 keeps the map&#x27;s zoom buttons (+ / −) on the plan map.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> + / − (Zoom in, Zoom out, 44 px) top-right at 1440, 768 and 390. Separate fault, still open: the attribution button is 44 px inside a 24 px compact control, so its “i” icon tiles 2x2 at the bottom-right corner.</dd></div>
+<div><dt>User's call</dt><dd class="call">F02/F03 (every map, the plan&#x27;s too): keep “Full details →” per pitch row and the zoom buttons; the legend is one line along the bottom of the map with tooltips, never “test data”.</dd></div>
+<div><dt>Defect</dt><dd>B-136</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B21" data-action="true">
+<div class="id"><a href="#B21">B21</a><span>Weather strip</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B21.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B21.jpg" alt="B21 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B21-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B21-1440.jpg" alt="B21 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B21-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B21-390.jpg" alt="B21 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “WEATHER”, “DRY THROUGH YOUR SLOT”, key, hours 10:00-16:00 with icon, big temperature, rain and wind; source “Open-Meteo forecast (CC BY 4.0)” (B-047 fixed). Differs from DS WeatherStrip: at 390 the DS keeps the hour columns side by side in a horizontally scrolling strip with the slot frame; the build stacks the hours as seven vertical rows. The DS source line also carries “updated &lt;time&gt;”.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-189</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B22" data-action="false">
+<div class="id"><a href="#B22">B22</a><span>Your slot frame</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B22.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B22.jpg" alt="B22 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B22-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B22-1440.jpg" alt="B22 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B22-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B22-390.jpg" alt="B22 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> One bordered, tinted frame around 12:00-14:00 with the orange “YOUR SLOT 12–15” tag, at 1440 and 390 (B-047 fixed).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B23" data-action="false">
+<div class="id"><a href="#B23">B23</a><span>No forecast</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B23-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B23-1440.jpg" alt="B23 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B23-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B23-390.jpg" alt="B23 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">When Open-Meteo has no forecast: dashed cloud cell, “No forecast for this slot”, “Weather is left out of the score.”</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> faults=weather: dashed cell, “No forecast for this slot”, “Weather is left out of the score.”</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B24" data-action="false">
+<div class="id"><a href="#B24">B24</a><span>Busk Map vs a plain AI</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B24.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B24.jpg" alt="B24 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B24-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B24-1440.jpg" alt="B24 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B24-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B24-390.jpg" alt="B24 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS ComparePanel. Seen: title and the control line (“…sent to the test model (offline) with no tools and no data…never changes a score.”).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B25" data-action="true">
+<div class="id"><a href="#B25">B25</a><span>Compare verdict</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B25.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B25.jpg" alt="B25 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B25-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B25-1440.jpg" alt="B25 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B25-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B25-390.jpg" alt="B25 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS ComparePanel. Seen: “2 of Busk Map&#x27;s 3 picks are one the plain AI didn&#x27;t name; 1 is in both answers. The plain AI named 3 of Melbourne&#x27;s usual busking pitches…”: the city is allowed here (the verdict is about that city&#x27;s data).</dd></div>
+<div><dt>User's call</dt><dd class="call">F20: no city in the eyebrow or framing copy (“Sun 19 Oct · 12–3 pm · General permit”); a city only where the data is that city&#x27;s.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B26" data-action="false">
+<div class="id"><a href="#B26">B26</a><span>Both agree</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B26.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B26.jpg" alt="B26 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B26-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B26-1440.jpg" alt="B26 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B26-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B26-390.jpg" alt="B26 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS ComparePanel with BothAgreeBadge. Seen (acoustic run): “BOTH AGREE (1)”, Federation Square 74, Both agree badge, “the plain AI named “Federation Square””.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B27" data-action="false">
+<div class="id"><a href="#B27">B27</a><span>Only Busk Map</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B27.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B27.jpg" alt="B27 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B27-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B27-1440.jpg" alt="B27 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B27-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B27-390.jpg" alt="B27 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS ComparePanel with DiscoveryBadge. Seen: score cell, name, Hidden gem badge and evidence lines per pick.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B28" data-action="false">
+<div class="id"><a href="#B28">B28</a><span>Only plain AI</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B28.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B28.jpg" alt="B28 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B28-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B28-1440.jpg" alt="B28 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B28-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B28-390.jpg" alt="B28 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS ComparePanel. Seen: “ONLY PLAIN AI (UNVERIFIED, NO DATA)” with Not a legal pitch / Scored by Busk Map / Usual pitch badges.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B29" data-action="false">
+<div class="id"><a href="#B29">B29</a><span>Plain AI setlist</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B29.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B29.jpg" alt="B29 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B29-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B29-1440.jpg" alt="B29 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B29-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B29-390.jpg" alt="B29 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS ComparePanel. Seen: “Plain AI setlist: Wonderwall, Hallelujah, Riptide, Shallow”.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B30" data-action="false">
+<div class="id"><a href="#B30">B30</a><span>Compare loading and unavailable</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">Loading “Asking a plain AI the same question…” with skeletons; unavailable “The plain-AI baseline is unavailable right now. Busk Map&#x27;s plan doesn&#x27;t depend on it.”</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS ComparePanel (loading, unavailable). Source (compare-panel.tsx) has the skeletons and the unavailable line; not forced offline.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B31" data-action="false">
+<div class="id"><a href="#B31">B31</a><span>How we found your pitches</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B31.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B31.jpg" alt="B31 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B31-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B31-1440.jpg" alt="B31 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B31-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B31-390.jpg" alt="B31 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS AgentStepStream. Seen: title, “8 CHECKS · 0 S”, Finished, Show raw data, cards newest first, Data used at the foot.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B32" data-action="false">
+<div class="id"><a href="#B32">B32</a><span>Feed meta</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B32.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B32.jpg" alt="B32 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B32-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B32-1440.jpg" alt="B32 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B32-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B32-390.jpg" alt="B32 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS AgentStepStream header with Switch. Seen: mono checks · time, outlined Finished tag, Raw data switch.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B33" data-action="false">
+<div class="id"><a href="#B33">B33</a><span>Card: Your busk is ready</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B33.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B33.jpg" alt="B33 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B33-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B33-1440.jpg" alt="B33 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B33-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B33-390.jpg" alt="B33 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS AgentStepStream card. Seen: check cell, title and “Three pitches, a setlist for each and the reasons, above.”</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B34" data-action="false">
+<div class="id"><a href="#B34">B34</a><span>Card: Songs worth learning</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B34.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B34.jpg" alt="B34 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS AgentStepStream card with LearnItMenu. Not called by the offline test model; its Learn it menu is checked in B35.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B35" data-action="false">
+<div class="id"><a href="#B35">B35</a><span>Learn it menu open</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B35.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B35.jpg" alt="B35 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B35-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B35-1440.jpg" alt="B35 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B35-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B35-390.jpg" alt="B35 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS LearnItMenu. Seen from the sheet&#x27;s Learn these: song and artist, Karaoke (YouTube), Chords (Ultimate Guitar), Lyrics (Genius) each “(opens in a new tab)” (target _blank, noopener noreferrer), and “Busk Map never shows lyrics or chords.”</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B36" data-action="false">
+<div class="id"><a href="#B36">B36</a><span>Card: compare two crowds</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B36.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B36.jpg" alt="B36 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B36-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B36-1440.jpg" alt="B36 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B36-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B36-390.jpg" alt="B36 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS AgentStepStream card. Seen: “&lt;pitch&gt; or &lt;pitch&gt;?” with both pitches&#x27; genre cells (a missing one dashed).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B37" data-action="false">
+<div class="id"><a href="#B37">B37</a><span>Card: setlist</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B37.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B37.jpg" alt="B37 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B37-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B37-1440.jpg" alt="B37 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B37-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B37-390.jpg" alt="B37 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS AgentStepStream card (SetlistPanel rows). Seen: “Your setlist at …” with songs, years, affinity cells and fit scores.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B38" data-action="false">
+<div class="id"><a href="#B38">B38</a><span>Card: new pitches scored</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B38.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B38.jpg" alt="B38 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS AgentStepStream card with PitchRow. Not called offline.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B39" data-action="false">
+<div class="id"><a href="#B39">B39</a><span>Card: sent back</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B39.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B39.jpg" alt="B39 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS AgentStepStream card. Seen on the no-pitch run: “Sent back to check more”.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B40" data-action="false">
+<div class="id"><a href="#B40">B40</a><span>Card: the rules</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B40.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B40.jpg" alt="B40 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B40-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B40-1440.jpg" alt="B40 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B40-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B40-390.jpg" alt="B40 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS AgentStepStream card. Seen: “The rules at Federation Square”, “Not ruled out for your permit”.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B41" data-action="false">
+<div class="id"><a href="#B41">B41</a><span>Card: busy places</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B41.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B41.jpg" alt="B41 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS AgentStepStream card. Not called offline.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B42" data-action="false">
+<div class="id"><a href="#B42">B42</a><span>Card: foot traffic</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B42.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B42.jpg" alt="B42 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B42-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B42-1440.jpg" alt="B42 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B42-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B42-390.jpg" alt="B42 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS AgentStepStream card with EstimateLabel. Seen: “Foot traffic at Lincoln Square”, “≈144 people an hour est.”</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B43" data-action="false">
+<div class="id"><a href="#B43">B43</a><span>Card: events</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B43.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B43.jpg" alt="B43 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS AgentStepStream card. Not called offline (no events in the mock).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B44" data-action="false">
+<div class="id"><a href="#B44">B44</a><span>Card: the crowd</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B44.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B44.jpg" alt="B44 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B44-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B44-1440.jpg" alt="B44 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B44-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B44-390.jpg" alt="B44 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS AgentStepStream card (CrowdPanel parts). Seen: Artists this crowd likes, Sounds of this crowd and Evidence.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B45" data-action="true">
+<div class="id"><a href="#B45">B45</a><span>Card: where your crowd gathers</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B45.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B45.jpg" alt="B45 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B45-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B45-1440.jpg" alt="B45 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B45-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B45-390.jpg" alt="B45 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS AgentStepStream card with TasteMap. Now has a framed mini taste map with numbered pins (B-103 fixed). Seen but not logged (held): offline the mini map has no streets, and its caption (the plan&#x27;s pitch 1 name) is cut off at both sides at 1440 and 390 while the list&#x27;s no. 1 is Lincoln Square.</dd></div>
+<div><dt>User's call</dt><dd class="call">F05: on every plan map only the orange taste cells draw (no pale or dark cells, ground shows through), zoomed out a little; both themes.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B46" data-action="false">
+<div class="id"><a href="#B46">B46</a><span>Card: best pitches so far</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B46.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B46.jpg" alt="B46 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B46-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B46-1440.jpg" alt="B46 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B46-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B46-390.jpg" alt="B46 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS AgentStepStream card with PitchRow. Seen: the engine&#x27;s first top 3 as pitch rows and the Evidence line.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B47" data-action="false">
+<div class="id"><a href="#B47">B47</a><span>Claude&#x27;s line on a card</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B47.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B47.jpg" alt="B47 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B47-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B47-1440.jpg" alt="B47 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B47-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B47-390.jpg" alt="B47 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS AgentStepStream note line. Seen: mono model tag (“TEST MODEL” offline) then its words.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B48" data-action="false">
+<div class="id"><a href="#B48">B48</a><span>Evidence tag</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B48.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B48.jpg" alt="B48 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B48-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B48-1440.jpg" alt="B48 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B48-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B48-390.jpg" alt="B48 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: the plan feed and compare cards (B24-B48) are not re-skinned this round. Should become DS EvidenceLine. Seen: outlined “EVIDENCE” tag then the source in plain words.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B49" data-action="true">
+<div class="id"><a href="#B49">B49</a><span>Data used</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B49.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B49.jpg" alt="B49 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B49-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B49-1440.jpg" alt="B49 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B49-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B49-390.jpg" alt="B49 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “DATA USED · Where every number on this page comes from.” with Qloo&#x27;s logo linked to qloo.com (B-147 fixed); “City of Melbourne” only in source names (F20 allows). Differs from DS SourceAttribution and DS DataStatusBadge: the DS is one list, each source link and its line on the left and a boxed DataStatusBadge (dot, label, reason) on the right; the build is a two-column grid of tiles with the status as an inline dot and bold label under the source.</dd></div>
+<div><dt>User's call</dt><dd class="call">F09/F18: wherever Qloo is named as a source, show Qloo&#x27;s logo linked to qloo.com (new tab, rel=noopener noreferrer). F20: no city in the eyebrow or framing copy (“Sun 19 Oct · 12–3 pm · General permit”); a city only where the data is that city&#x27;s.</dd></div>
+<div><dt>Defect</dt><dd>B-194</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B50" data-action="false">
+<div class="id"><a href="#B50">B50</a><span>Raw data on</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B50.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B50.jpg" alt="B50 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B50-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B50-1440.jpg" alt="B50 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B50-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B50-390.jpg" alt="B50 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Switch on: Table / JSON toggle and a Raw block under each card.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B51" data-action="false">
+<div class="id"><a href="#B51">B51</a><span>Scores and rings</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B51.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B51.jpg" alt="B51 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B51-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B51-1440.jpg" alt="B51 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B51-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B51-390.jpg" alt="B51 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Hex cells with rings filled to the score; missing values dashed with “–”.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B52" data-action="false">
+<div class="id"><a href="#B52">B52</a><span>Live plan data and nulls</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">Summary, pitches, others, heat, events, zones, weather, crowd, ageLean, event.tasteMatch, learn [] and compare verdict each read from the plan, with the stated null states.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Nulls seen: no taste cells and no Taste key on no match; weather box on a weather outage; no zones key when none are drawn (source).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B53" data-action="false">
+<div class="id"><a href="#B53">B53</a><span>Copy link URL</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B53.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B53.jpg" alt="B53 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B53-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B53-1440.jpg" alt="B53 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B53-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B53-390.jpg" alt="B53 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> The clipboard gets the short link http://…/p/&lt;9-char id&gt;.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B54" data-action="true">
+<div class="id"><a href="#B54">B54</a><span>Pitch details sheet</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B54.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B54.jpg" alt="B54 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B54-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B54-1440.jpg" alt="B54 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B54-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B54-390.jpg" alt="B54 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> 720 px from the right at 1440; a bottom sheet with a grab handle at 390 (B-104 fixed); matches DS Sheet. But its folded score breakdown differs from DS ScoreBreakdown: the DS is a bordered card “How this score adds up” with the total ring, one row per factor with an icon, a sub-line and “× weight”, then bonus rows; the build is an unboxed “SCORE BREAKDOWN” list of hex rings with coloured squares and long factor names, no total, no icons, no sub-lines (see the score-breakdown images in the DS parity section).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-190</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B55" data-action="true">
+<div class="id"><a href="#B55">B55</a><span>Sheet: pitch head</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B55.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B55.jpg" alt="B55 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B55-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B55-1440.jpg" alt="B55 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B55-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B55-390.jpg" alt="B55 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Rank tile, “PITCH 01”, Usual pitch badge, name, area line in mono caps (“FOOTPATH, GENERAL PERMIT”), 60 ring, as DS PitchCard; but the Usual pitch badge has a dot icon where DS DiscoveryBadge has a ringed target.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-188</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B56" data-action="false">
+<div class="id"><a href="#B56">B56</a><span>Sheet: why this crowd</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B56.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B56.jpg" alt="B56 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B56-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B56-1440.jpg" alt="B56 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B56-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B56-390.jpg" alt="B56 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “WHY THIS CROWD”, “Explained by the test model (offline)”, chips (“Taste match 0.84 (Qloo)”, “5 busy places nearby”), then the origin lines.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B57" data-action="true">
+<div class="id"><a href="#B57">B57</a><span>Sheet: foot traffic by hour</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B57.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B57.jpg" alt="B57 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B57-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B57-1440.jpg" alt="B57 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B57-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B57-390.jpg" alt="B57 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “FOOT TRAFFIC BY HOUR”, “930 /h est. in your slot”, 24-hour curve with the slot shaded, 00-23 axis and the sensor line. Differs from DS FootfallSparkline: the DS line is a 3 px ochre-brown line (dashed brown when estimated) over a tan fill; the build draws a thin black dotted line.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-191</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B58" data-action="true">
+<div class="id"><a href="#B58">B58</a><span>Sheet: facts</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B58.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B58.jpg" alt="B58 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B58-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B58-1440.jpg" alt="B58 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B58-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B58-390.jpg" alt="B58 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Facts rows with icons: busy places open in your slot (with Qloo lines and distances), “20°, dry through your slot”, General permit pitch with the clearance warning and the never-confirms line; no event row offline. Missing: the council busking-rules link row (board “City of Melbourne busking rules ↗”).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-105 (partly fixed)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B59" data-action="true">
+<div class="id"><a href="#B59">B59</a><span>Sheet: setlist</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B59.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B59.jpg" alt="B59 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B59-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B59-1440.jpg" alt="B59 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B59-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B59-390.jpg" alt="B59 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “SETLIST FOR THIS PITCH”, pitch · best fit first, the Qloo age line, Copy, six songs with fit rings and the length line. Differs from DS SetlistPanel: the build adds a “How the order is worked out” fold under the subtitle, and at 390 moves Copy below that fold (the DS keeps Copy top-right beside the title at every width).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-169</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B60" data-action="false">
+<div class="id"><a href="#B60">B60</a><span>Sheet: learn these</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B60.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B60.jpg" alt="B60 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B60-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B60-1440.jpg" alt="B60 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B60-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B60-390.jpg" alt="B60 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Orange-topped “LEARN THESE” with the ranking line, three songs and Learn it menus.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B61" data-action="true">
+<div class="id"><a href="#B61">B61</a><span>Sheet: crowd panel</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B61.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B61.jpg" alt="B61 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B61-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B61-1440.jpg" alt="B61 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B61-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B61-390.jpg" alt="B61 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “WHO THIS CROWD LIKES” with Qloo&#x27;s logo linked to qloo.com (new tab, noopener noreferrer) and its status (“Test data” offline in place of Live; an inline dot, not the boxed DS DataStatusBadge), What Qloo matched on, Artists this crowd likes, Your fans vs the usual crowd, Genres (B-147 fixed). Otherwise as DS CrowdPanel.</dd></div>
+<div><dt>User's call</dt><dd class="call">F09/F18: wherever Qloo is named as a source, show Qloo&#x27;s logo linked to qloo.com (new tab, rel=noopener noreferrer).</dd></div>
+<div><dt>Defect</dt><dd>B-194</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B62" data-action="true">
+<div class="id"><a href="#B62">B62</a><span>Sheet: who your fans are</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B62.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B62.jpg" alt="B62 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B62-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B62-1440.jpg" alt="B62 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B62-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B62-390.jpg" alt="B62 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Eight full-width diverging lean bars with values (B-106 as filed is fixed). Differs from DS LeanBar: the DS LeanBar (and the board crop) is one inline line, “18–24 | −18 25–34 | +41 35–44 | +22 55+ | −30”, a short tick and the value per group; the build draws a bar chart, one row per group. (BRAND&#x27;s earlier build issue called the ticks a fault; the DS now shows them: needs the user&#x27;s call.)</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-192</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B63" data-action="true">
+<div class="id"><a href="#B63">B63</a><span>Other pitch popover</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B63.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B63.jpg" alt="B63 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B63-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B63-1440.jpg" alt="B63 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B63-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B63-390.jpg" alt="B63 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Browse other pitches opens “Piazza Italia 58 Hidden gem”, “Too close to … within 250 m …”, ‹ › stepping (1 of 25) and close, as the board. But DS OtherPitches (a folding list “Other scored pitches (N)” with rank cell, name, line, score and badges) is not used anywhere on the plan: the others are reachable only through the map dots and this popover.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-168</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B64" data-action="false">
+<div class="id"><a href="#B64">B64</a><span>Event popover</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B64.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B64.jpg" alt="B64 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: no event diamonds on the plan map yet, so no event popover.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-113 (held by DEV)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B65" data-action="false">
+<div class="id"><a href="#B65">B65</a><span>Sheet slides in</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B65.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B65.jpg" alt="B65 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B65-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B65-1440.jpg" alt="B65 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B65-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B65-390.jpg" alt="B65 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Slides in from the right (from the bottom on phones) with a fade, 200 ms. Under reduced motion it still animates: see B71.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-107</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B66" data-action="true">
+<div class="id"><a href="#B66">B66</a><span>Tablet 768: busk first, research folded</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B66.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B66.jpg" alt="B66 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B66-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B66-1440.jpg" alt="B66 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> At 768: “Found from 768 data points · See the research ↓”, the busk first (map above the list), the research below. The “↓” in “See the research ↓” is a text glyph used as an icon (glyph rule).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-162</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B67" data-action="false">
+<div class="id"><a href="#B67">B67</a><span>Phone ≤720: layout</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B67.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B67.jpg" alt="B67 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B67-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B67-1440.jpg" alt="B67 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B67-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B67-390.jpg" alt="B67 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Bottom nav fixed (Busks active), H1 40 px, map above the rows; “Your busk” starts at 500 px (was 871) (B-050 fixed).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B68" data-action="false">
+<div class="id"><a href="#B68">B68</a><span>Phone: The research</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B68.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B68.jpg" alt="B68 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B68-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B68-390.jpg" alt="B68 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “The research” h2, funnel, Agent vs engine, then the feed with “Every check (8)” folded.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B69" data-action="true">
+<div class="id"><a href="#B69">B69</a><span>Night theme</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/B69.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/B69.jpg" alt="B69 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B69-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B69-1440.jpg" alt="B69 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B69-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B69-390.jpg" alt="B69 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Night tokens throughout, axe clean, orange-only cells over the street tiles. But the night ramp&#x27;s step 3 is #a8460f (renders #b15d2f at 0.85), a dark burnt orange: about half the cells read as the dark brown cells F05 removed, beside the bright step 4 (#ff7a2e).</dd></div>
+<div><dt>User's call</dt><dd class="call">F05: on every plan map only the orange taste cells draw (no pale or dark cells, ground shows through), zoomed out a little; both themes.</dd></div>
+<div><dt>Defect</dt><dd>B-183</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B70" data-action="true">
+<div class="id"><a href="#B70">B70</a><span>Focus ring</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/B70-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B70-1440.jpg" alt="B70 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/B70-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/B70-390.jpg" alt="B70 build 390"></a></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">Every interactive part shows the focus ring on :focus-visible; one ring, shadcn&#x27;s pattern.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> One ring: pitch rows a 2 px box-shadow ring; buttons a 2 px outline 2 px outside (dark by day; at night orange against the dark ground, so default orange buttons like “Go to Busk Map home” and “Try again” now show focus) (B-134 fixed). Legend keys, Full details, Copy link, Raw data switch and Learn it all show it.</dd></div>
+<div><dt>User's call</dt><dd class="call">F13-F15: one focus ring, shadcn&#x27;s pattern, on every focusable part; no white gap plus dark ring.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="B71" data-action="true">
+<div class="id"><a href="#B71">B71</a><span>Reduced motion</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">prefers-reduced-motion: every animation and transition at 0 ms.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Global reduce rule zeroes transitions (new), but the sheet and its overlay still run tw-animate “enter” for 200 ms under prefers-reduced-motion: the motion-reduce:animate-none class is on them but loses to data-open:animate-in (measured: getAnimations() = enter 200 ms with matchMedia reduce true).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-107</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="R01" data-action="true">
+<div class="id"><a href="#R01">R01</a><span>Researching line</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/R01.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/R01.jpg" alt="R01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/R01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R01-1440.jpg" alt="R01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/R01-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R01-390.jpg" alt="R01 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “The test model is researching with Qloo and the other sources. Your busk replaces the research here in about half a minute.”; no Copy link while running (B-108 fixed). Differs from DS AgentStatusLine: the DS line is mono with a leading hex state cell (orange filled while running); the build line is muted sans with a small orange hex, not the DS cell.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-193</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="R02" data-action="true">
+<div class="id"><a href="#R02">R02</a><span>Funnel while live</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/R02.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/R02.jpg" alt="R02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/R02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R02-1440.jpg" alt="R02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/R02-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R02-390.jpg" alt="R02 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Counts fill in; dashed “choosing pitches” cell last; cells joined by the “▸” glyph, not DS ResearchFunnel&#x27;s half-cell connector.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-162</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="R03" data-action="false">
+<div class="id"><a href="#R03">R03</a><span>Finding your best pitches</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/R03.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/R03.jpg" alt="R03 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/R03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R03-1440.jpg" alt="R03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/R03-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R03-390.jpg" alt="R03 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “FINDING YOUR BEST PITCHES”, “8 CHECKS”, orange LIVE tag, no Raw data switch.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="R04" data-action="false">
+<div class="id"><a href="#R04">R04</a><span>Running card</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/R04.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/R04.jpg" alt="R04 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/R04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R04-1440.jpg" alt="R04 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/R04-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R04-390.jpg" alt="R04 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Running card on top, dashed, ring loader, model line and skeleton lines (“Putting your busk together…”).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="R05" data-action="false">
+<div class="id"><a href="#R05">R05</a><span>Loaders</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/R05.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/R05.jpg" alt="R05 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/R05-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R05-1440.jpg" alt="R05 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/R05-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R05-390.jpg" alt="R05 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Ring loader (motion-safe), skeletons; still under reduced motion.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="R06" data-action="false">
+<div class="id"><a href="#R06">R06</a><span>Thinking card</span></div>
+<figure><figcaption>Deck</figcaption><div class=ph>Spec only (no crop)</div></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+<div><dt>Spec</dt><dd class="spec">Between tools: dashed cell, breathing loader, “Thinking about what to check next…”; before the first tool “Reading your act, day and permit”.</dd></div>
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> In source (agent-steps.tsx): dashed cell, breathing loader, “Thinking about what to check next” / “Reading your act, day and permit”; not held offline.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="R07" data-action="false">
+<div class="id"><a href="#R07">R07</a><span>Leave note</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/R07.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/R07.jpg" alt="R07 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/R07-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R07-1440.jpg" alt="R07 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/R07-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R07-390.jpg" alt="R07 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “You can leave this page: the research keeps going and your busk will be here when you&#x27;re back.” under the cards.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="R08" data-action="false">
+<div class="id"><a href="#R08">R08</a><span>Cards as they land</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/R08.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/R08.jpg" alt="R08 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/R08-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R08-1440.jpg" alt="R08 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/R08-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R08-390.jpg" alt="R08 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Finished cards stack under the running one, newest first; the crowd-gathers card now has its mini map (card skin held with B24-B48).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="R09" data-action="true">
+<div class="id"><a href="#R09">R09</a><span>Data used so far</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/R09.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/R09.jpg" alt="R09 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/R09-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R09-1440.jpg" alt="R09 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/R09-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R09-390.jpg" alt="R09 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “DATA USED SO FAR · Where every number on this page comes from.” with the sources (B-109 fixed). But every source, Qloo included, is marked “Live” while this run uses the local mock; the finished plan marks the same sources “Qloo test data (local mock)” / “Test data”.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-185</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="R10" data-action="false">
+<div class="id"><a href="#R10">R10</a><span>Phone researching</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/R10.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/R10.jpg" alt="R10 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/R10-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/R10-390.jpg" alt="R10 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Bottom nav (Busks active), eyebrow wraps, researching line, funnel, then the feed; no chips stack above it.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="Y01" data-action="true">
+<div class="id"><a href="#Y01">Y01</a><span>Shared busk eyebrow</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/Y01.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/Y01.jpg" alt="Y01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/Y01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/Y01-1440.jpg" alt="Y01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/Y01-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/Y01-390.jpg" alt="Y01 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “SHARED BUSK · SUN 18 OCT · 12–3 PM · GENERAL PERMIT”: no city (B-098 fixed).</dd></div>
+<div><dt>User's call</dt><dd class="call">F20: no city in the eyebrow or framing copy (“Sun 19 Oct · 12–3 pm · General permit”); a city only where the data is that city&#x27;s.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="Y02" data-action="false">
+<div class="id"><a href="#Y02">Y02</a><span>Replay tags</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/Y02.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/Y02.jpg" alt="Y02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/Y02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/Y02-1440.jpg" alt="Y02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/Y02-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/Y02-390.jpg" alt="Y02 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Chips plus “REPLAY OF AN EARLIER RUN (NO NEW MODEL CALL)”.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="Y03" data-action="true">
+<div class="id"><a href="#Y03">Y03</a><span>Replay line</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/Y03.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/Y03.jpg" alt="Y03 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/Y03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/Y03-1440.jpg" alt="Y03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/Y03-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/Y03-390.jpg" alt="Y03 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “Researched at 4:01 am today. Opening it again shows that research: nothing new was asked.” (B-108 fixed; the time is the real clock, the export fakes noon). Differs from DS AgentStatusLine: the DS replay line is mono with a leading outline hex cell; the build is plain muted sans with no cell.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-193</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="Y04" data-action="false">
+<div class="id"><a href="#Y04">Y04</a><span>Replay feed</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/Y04.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/Y04.jpg" alt="Y04 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/Y04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/Y04-1440.jpg" alt="Y04 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/Y04-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/Y04-390.jpg" alt="Y04 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “Showing the research from earlier. Nothing new was asked.”, cards folded in “Every check, from earlier (8)”.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="S01" data-action="true">
+<div class="id"><a href="#S01">S01</a><span>Slot passed notice</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/S01.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/S01.jpg" alt="S01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/S01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/S01-1440.jpg" alt="S01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/S01-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/S01-390.jpg" alt="S01 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Dashed clock cell, struck “SAT 3 OCT · 12–3 PM”, “THIS SLOT HAS PASSED”, Plan again for a new date; header “SHARED BUSK · SAT 3 OCT · 12–3 PM · PREMIUM PERMIT”. Differs from DS SlotPassed: the DS alone variant is a solid 2 px bordered card with a large display title (about 40 px at 390); the build is a thin dashed box with a small title.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-195</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="S02" data-action="true">
+<div class="id"><a href="#S02">S02</a><span>Slot passed, nothing stored</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/S02.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/S02.jpg" alt="S02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/S02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/S02-1440.jpg" alt="S02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/S02-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/S02-390.jpg" alt="S02 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> “There&#x27;s no stored research for this busk. Plan again with the same act for a new date.”; no busk, no feed; no ISO date. Box and title differ from DS SlotPassed as in S01.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-195</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="E01" data-action="false">
+<div class="id"><a href="#E01">E01</a><span>Ran out of time banner</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/E01.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/E01.jpg" alt="E01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Not reachable offline. Source (plan-view.tsx): “&lt;Claude&gt; ran out of time, so these spots come straight from Busk Map&#x27;s scores. The reasons are standard ones.” (B-049 fixed; the server log note in agent.ts still says “agent”, not shown).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="E02" data-action="false">
+<div class="id"><a href="#E02">E02</a><span>Engine summary</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/E02.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/E02.jpg" alt="E02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> From source: the engine&#x27;s template summary; pitches badged “From the data”, “Found by &lt;model&gt;” only when the model added the spot.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="E03" data-action="false">
+<div class="id"><a href="#E03">E03</a><span>Stopped cards and fallback note</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/E03.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/E03.jpg" alt="E03 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><div class=ph>Not in the build</div></figure>
+<figure><figcaption>Build · 390</figcaption><div class=ph>Not in the build</div></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “Stopped before it finished.” (agent-steps.tsx) and the ran-out note above in brand words.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="N01" data-action="true">
+<div class="id"><a href="#N01">N01</a><span>No-pitch header</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/N01.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/N01.jpg" alt="N01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/N01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/N01-1440.jpg" alt="N01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/N01-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/N01-390.jpg" alt="N01 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Eyebrow “FRI 16 OCT · 5–8 PM · GENERAL PERMIT”, H1, act line (F20 met). But a fallback alert above the panel says “The test model couldn&#x27;t finish, so these spots come straight from Busk Map&#x27;s scores. The reasons are standard ones.” on a page that has no spots.</dd></div>
+<div><dt>User's call</dt><dd class="call">F20: no city in the eyebrow or framing copy (“Sun 19 Oct · 12–3 pm · General permit”); a city only where the data is that city&#x27;s.</dd></div>
+<div><dt>Defect</dt><dd>B-184</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="N02" data-action="false">
+<div class="id"><a href="#N02">N02</a><span>No legal pitch</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/N02.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/N02.jpg" alt="N02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/N02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/N02-1440.jpg" alt="N02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/N02-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/N02-390.jpg" alt="N02 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Panel: no-entry hex, “NO LEGAL PITCH FOR A GENERAL PERMIT ON FRIDAY NIGHT”, “The council&#x27;s busking rules left no pitch for this slot…”, rules link (new tab) and “PICK ANOTHER DAY” (→ /busks). The general-permit button only shows for other permits (B-044 fixed).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="N03" data-action="false">
+<div class="id"><a href="#N03">N03</a><span>No-pitch feed</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/N03.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/N03.jpg" alt="N03 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/N03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/N03-1440.jpg" alt="N03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/N03-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/N03-390.jpg" alt="N03 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip held">Held</span> held by DEV: 13 checks, eight “Sent back to check more” in a row (board: 2 checks).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>B-110 (held by DEV)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="M01" data-action="true">
+<div class="id"><a href="#M01">M01</a><span>No-match header</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/M01.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/M01.jpg" alt="M01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/M01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/M01-1440.jpg" alt="M01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/M01-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/M01-390.jpg" alt="M01 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Eyebrow without city; “Sounds like Zzyzx Nobody, Qqq Unknown”; orange “PICK YOUR ARTISTS FROM SPOTIFY” (B-045 fixed).</dd></div>
+<div><dt>User's call</dt><dd class="call">F20: no city in the eyebrow or framing copy (“Sun 19 Oct · 12–3 pm · General permit”); a city only where the data is that city&#x27;s.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="M02" data-action="false">
+<div class="id"><a href="#M02">M02</a><span>Claude didn&#x27;t research</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/M02.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/M02.jpg" alt="M02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/M02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/M02-1440.jpg" alt="M02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/M02-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/M02-390.jpg" alt="M02 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> One alert: “Claude didn&#x27;t research this busk: with no taste to go on there&#x27;s nothing for it to check. Your spots come straight from the city&#x27;s data.” (B-045, B-049 fixed).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="M03" data-action="false">
+<div class="id"><a href="#M03">M03</a><span>Qloo couldn&#x27;t match</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/M03.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/M03.jpg" alt="M03 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/M03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/M03-1440.jpg" alt="M03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/M03-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/M03-390.jpg" alt="M03 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “QLOO COULDN&#x27;T MATCH ANY OF YOUR ARTISTS · Taste is left out of this plan…”.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="M04" data-action="true">
+<div class="id"><a href="#M04">M04</a><span>Busk without taste</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/M04.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/M04.jpg" alt="M04 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/M04-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/M04-1440.jpg" alt="M04 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/M04-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/M04-390.jpg" alt="M04 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> No taste cells (data-taste-cells 0) and the legend drops the Taste key: “Top pitch · No busking · Other pitch”; rows badged “From the data” (B-112 fixed).</dd></div>
+<div><dt>User's call</dt><dd class="call">F02/F03 (every map, the plan&#x27;s too): keep “Full details →” per pitch row and the zoom buttons; the legend is one line along the bottom of the map with tooltips, never “test data”.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="Q01" data-action="false">
+<div class="id"><a href="#Q01">Q01</a><span>Qloo down layout</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/Q01.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/Q01.jpg" alt="Q01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/Q01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/Q01-1440.jpg" alt="Q01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/Q01-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/Q01-390.jpg" alt="Q01 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Header, funnel (0 data points, choosing pitches), the stopped feed left and the panel right at 1440; stacked at 390 (B-043 fixed).</dd></div>
+<div><dt>User's call</dt><dd class="call">User: when Qloo is down the plan shows “No plan without taste data” with Try again, and that run doesn&#x27;t count against the limit.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="Q02" data-action="false">
+<div class="id"><a href="#Q02">Q02</a><span>Feed stopped</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/Q02.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/Q02.jpg" alt="Q02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/Q02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/Q02-1440.jpg" alt="Q02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/Q02-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/Q02-390.jpg" alt="Q02 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> “HOW WE FOUND YOUR PITCHES · 0 CHECKS · STOPPED” with the error card “QLOO ISN&#x27;T ANSWERING · Without taste data there&#x27;s nothing to plan from. Try again in a minute.” and TRY AGAIN.</dd></div>
+<div><dt>User's call</dt><dd class="call">User: when Qloo is down the plan shows “No plan without taste data” with Try again, and that run doesn&#x27;t count against the limit.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="Q03" data-action="true">
+<div class="id"><a href="#Q03">Q03</a><span>No plan without taste data</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/Q03.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/Q03.jpg" alt="Q03 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/Q03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/Q03-1440.jpg" alt="Q03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/Q03-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/Q03-390.jpg" alt="Q03 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip warn">Different</span> Panel: error hex, “NO PLAN WITHOUT TASTE DATA”, the reason, Qloo&#x27;s logo linked to qloo.com, orange TRY AGAIN (not pressed) (B-043 fixed). Differs from DS DataStatusBadge: the status shows as an inline “■ Unavailable · not responding”; the DS badge is a small bordered box with dot, source, status and reason.</dd></div>
+<div><dt>User's call</dt><dd class="call">User: when Qloo is down the plan shows “No plan without taste data” with Try again, and that run doesn&#x27;t count against the limit.</dd></div>
+<div><dt>Defect</dt><dd>B-194</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="D01" data-action="false">
+<div class="id"><a href="#D01">D01</a><span>Sensors didn&#x27;t answer</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/D01.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/D01.jpg" alt="D01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/D01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/D01-1440.jpg" alt="D01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/D01-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/D01-390.jpg" alt="D01 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Warning alerts above the busk: “THE CITY&#x27;S PEDESTRIAN SENSORS DIDN&#x27;T ANSWER · Foot traffic at each pitch is estimated from busy places and events, and marked “est.”…”, plus Ticketmaster and weather, each with its Unavailable status (B-046 fixed).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="D02" data-action="false">
+<div class="id"><a href="#D02">D02</a><span>Failed check card</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/D02.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/D02.jpg" alt="D02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/D02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/D02-1440.jpg" alt="D02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/D02-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/D02-390.jpg" alt="D02 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Offline the foot-traffic tool absorbs the outage (“No sensor count near here · estimated…”); the error card is in source.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="D03" data-action="false">
+<div class="id"><a href="#D03">D03</a><span>Source unavailable</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/D03.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/D03.jpg" alt="D03 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/D03-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/D03-1440.jpg" alt="D03 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/D03-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/D03-390.jpg" alt="D03 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Data used: Pedestrian counts, Ticketmaster and Open-Meteo read “Unavailable: simulated outage (test)”.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="L01" data-action="true">
+<div class="id"><a href="#L01">L01</a><span>Run limit header</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/L01.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/L01.jpg" alt="L01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/L01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/L01-1440.jpg" alt="L01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/L01-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/L01-390.jpg" alt="L01 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Eyebrow “FRI 16 OCT · 5–8 PM · GENERAL PERMIT”, H1; no city.</dd></div>
+<div><dt>User's call</dt><dd class="call">F20: no city in the eyebrow or framing copy (“Sun 19 Oct · 12–3 pm · General permit”); a city only where the data is that city&#x27;s.</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="L02" data-action="false">
+<div class="id"><a href="#L02">L02</a><span>Plan limit reached</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/L02.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/L02.jpg" alt="L02 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/L02-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/L02-1440.jpg" alt="L02 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/L02-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/L02-390.jpg" alt="L02 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Alert “PLAN LIMIT REACHED · You&#x27;ve started 5 plans this hour. Try again in about 45 minutes.”, “No new plan was started.” and “Back to Busk Map home” in signal text, 760 px column.</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>—</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article><article class="row" id="X01" data-action="false">
+<div class="id"><a href="#X01">X01</a><span>We can&#x27;t find this busk</span></div>
+<figure><figcaption>Deck</figcaption><a href="../screens/honeycomb/plan/inv/deck/X01.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/deck/X01.jpg" alt="X01 deck"></a></figure>
+<figure><figcaption>Build · 1440</figcaption><a href="../screens/honeycomb/plan/inv/v4/X01-1440.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/X01-1440.jpg" alt="X01 build 1440"></a></figure>
+<figure><figcaption>Build · 390</figcaption><a href="../screens/honeycomb/plan/inv/v4/X01-390.jpg"><img loading="lazy" src="../screens/honeycomb/plan/inv/v4/X01-390.jpg" alt="X01 build 390"></a></figure>
+<dl>
+
+<div><dt>DEV status</dt><dd>—</dd></div>
+<div><dt>QA status</dt><dd><span class="chip ok">Present</span> Centred, no card (border 0, transparent): dashed pin hex, “WE CAN&#x27;T FIND THIS BUSK”, the muted line and an orange “GO TO BUSK MAP HOME →”; focus visible day and night (B-111, B-134 fixed). DEV&#x27;s declared limit: /p/&lt;unknown&gt; answers HTTP 200 (Next&#x27;s PPR shell commits before the page code runs); the page carries meta robots “noindex” (checked; it appears twice).</dd></div>
+<div><dt>User's call</dt><dd class="call">—</dd></div>
+<div><dt>Defect</dt><dd>— (HTTP 200: DEV&#x27;s declared limit)</dd></div>
+<div><dt>Last checked</dt><dd><code>f83f1a1</code></dd></div>
+</dl></article>
+<section class="box" id="new-defects"><h2>New defects at f83f1a1</h2><table><tr><th>Id</th><th>Sev</th><th>Rows</th><th>What differs</th></tr><tr><td>B-183</td><td>Low</td><td>B69</td><td>Night map: the night ramp's step 3 (#a8460f, renders #b15d2f) is a dark burnt orange, so about half the plan map's cells read as the dark cells F05 removed; by day both steps are clearly orange. Needs the user's eye (F05: “orange cells only, both themes”).</td></tr><tr><td>B-184</td><td>Low</td><td>N01</td><td>No legal pitch: the fallback alert “The test model couldn't finish, so these spots come straight from Busk Map's scores. The reasons are standard ones.” shows above “No legal pitch…”, where there are no spots.</td></tr><tr><td>B-185</td><td>Low</td><td>R09</td><td>Data used so far (while running) marks every source “Live”, Qloo included, during an offline run on the mock; the finished plan marks the same sources “Qloo test data (local mock)” / “Test data”.</td></tr><tr><td>B-186</td><td>Low</td><td>B02</td><td>DS PageHeader: no “Busk Map home” link above the eyebrow; run status is a dot + bold sans line, not the DS outlined mono badges with icons.</td></tr><tr><td>B-187</td><td>Low</td><td>B05</td><td>DS CopyLinkButton: link (chain) icon where the DS (and board) use the copy icon.</td></tr><tr><td>B-165</td><td>Medium</td><td>B12, B18</td><td>DS PitchRow: build rows about twice as tall (22 px name over two lines, time on its own line, a full-width rule, sans “Full details →”); the DS row is one compact line with badges and mono caps underlined “FULL DETAILS →”.</td></tr><tr><td>B-188</td><td>Low</td><td>B12, B55</td><td>DS DiscoveryBadge: Usual pitch uses a dot icon; the DS uses a ringed-target icon.</td></tr><tr><td>B-166</td><td>Medium</td><td>B14</td><td>DS PitchPin: black hex with a white hex inside and a square rank badge; DS is a dark hex with orange ring and target dot and a hex rank badge; no Hidden gem (yellow diamond) pin variant.</td></tr><tr><td>B-189</td><td>Low</td><td>B21</td><td>DS WeatherStrip: at 390 the build stacks hours as vertical rows; the DS keeps columns in a horizontally scrolling strip; no “updated <time>” on the source line.</td></tr><tr><td>B-190</td><td>Medium</td><td>B54</td><td>DS ScoreBreakdown: build is an unboxed list with coloured squares and long factor names; DS is a bordered “How this score adds up” card with total ring, icons, sub-lines, × weights and bonus rows.</td></tr><tr><td>B-191</td><td>Low</td><td>B57</td><td>DS FootfallSparkline: thin black dotted line; DS is a 3 px ochre-brown line (dashed brown when estimated) on a tan fill.</td></tr><tr><td>B-169</td><td>Low</td><td>B59</td><td>DS SetlistPanel: extra “How the order is worked out” fold; at 390 Copy drops below it instead of sitting top-right.</td></tr><tr><td>B-192</td><td>Medium</td><td>B62</td><td>DS LeanBar: build draws eight full-width diverging bars; DS (and board) is one inline line of “group | tick value”. Conflicts with BRAND's earlier “bare ticks” issue: user's call.</td></tr><tr><td>B-168</td><td>Low</td><td>B63</td><td>DS OtherPitches (folding list of the other scored pitches) not used; others reachable only via map dots and the popover.</td></tr><tr><td>B-193</td><td>Low</td><td>R01, Y03</td><td>DS AgentStatusLine: build line is muted sans without the DS's leading hex state cell in mono.</td></tr><tr><td>B-194</td><td>Low</td><td>B49, Q03, B61</td><td>DS SourceAttribution / DataStatusBadge: build is a two-column tile grid with inline dot status; DS is one list with a boxed badge (dot, label, reason) on the right.</td></tr><tr><td>B-195</td><td>Low</td><td>S01, S02</td><td>DS SlotPassed: build is a thin dashed box with a small title; DS alone variant is a solid 2 px card with a large display title.</td></tr></table><p>Glyph rule: the research funnel's “▸” connectors (B07, R02) and “See the research ↓” (B66) cite the shared B-162.</p><p>Still open at f83f1a1: B-107 (B71, B65), B-136 (B20), B-137 (B19), B-105 partly (B58). Held by DEV: B-110 (N03), B-113 (B64), B-130 (B01), feed and compare cards B24-B48.</p></section><section class="box" id="cited"><h2>Cited defects re-verified at f83f1a1</h2><table><tr><th>Defect</th><th>Rows</th><th>Result</th></tr><tr><td>B-043</td><td>Q01-Q03</td><td><span class="chip ok">Fixed</span> “No plan without taste data” panel, Qloo logo, Unavailable, Try again, stopped feed beside it</td></tr><tr><td>B-044</td><td>N02</td><td><span class="chip ok">Fixed</span> no-pitch panel with Pick another day</td></tr><tr><td>B-045</td><td>M01, M02</td><td><span class="chip ok">Fixed</span> one alert, Pick your artists from Spotify</td></tr><tr><td>B-046</td><td>D01</td><td><span class="chip ok">Fixed</span> the board's warnings with their effect</td></tr><tr><td>B-047</td><td>B21, B22</td><td><span class="chip ok">Fixed</span> 10:00-16:00 with one Your slot frame (“updated” time not shown: trivial)</td></tr><tr><td>B-048</td><td>outline</td><td><span class="chip ok">Fixed</span> page outline h1 > h2 > h3 at every width; h4 subheads inside the held feed cards follow an h2</td></tr><tr><td>B-049</td><td>E01, E03, M02</td><td><span class="chip ok">Fixed</span> Claude / Busk Map's scores in the UI (source; fallback not reachable offline)</td></tr><tr><td>B-050</td><td>B02, B67, R10</td><td><span class="chip ok">Fixed</span> Your busk at 635 px (1440), 500 px (390), 362 px (768)</td></tr><tr><td>B-051</td><td>B07, B08</td><td><span class="chip ok">Fixed</span> unboxed funnel, compact tiles</td></tr><tr><td>B-098</td><td>B03, Y01, N01, L01, S01</td><td><span class="chip ok">Fixed</span> no city, no ISO date</td></tr><tr><td>B-099</td><td>B04</td><td><span class="chip ok">Fixed</span></td></tr><tr><td>B-100</td><td>B11</td><td><span class="chip ok">Fixed</span></td></tr><tr><td>B-101</td><td>B12, B18</td><td><span class="chip ok">Fixed</span></td></tr><tr><td>B-102</td><td>B14</td><td><span class="chip ok">Fixed</span></td></tr><tr><td>B-103</td><td>B45</td><td><span class="chip ok">Fixed</span> mini map (card itself held)</td></tr><tr><td>B-104</td><td>B54</td><td><span class="chip ok">Fixed</span></td></tr><tr><td>B-105</td><td>B55-B59</td><td>Partly fixed: all sections as the board except the council-rules link row (B58)</td></tr><tr><td>B-106</td><td>B62</td><td><span class="chip ok">Fixed</span></td></tr><tr><td>B-107</td><td>B71, B65</td><td>Open: sheet and overlay animate 200 ms under reduced motion</td></tr><tr><td>B-108</td><td>R01, Y03</td><td><span class="chip ok">Fixed</span></td></tr><tr><td>B-109</td><td>R09</td><td><span class="chip ok">Fixed</span> (status wording: B-185)</td></tr><tr><td>B-110</td><td>N03</td><td>Held by DEV</td></tr><tr><td>B-111</td><td>X01</td><td><span class="chip ok">Fixed</span></td></tr><tr><td>B-112</td><td>M04</td><td><span class="chip ok">Fixed</span></td></tr><tr><td>B-113</td><td>B64</td><td>Held by DEV</td></tr><tr><td>B-134</td><td>B70, X01, Q03</td><td><span class="chip ok">Fixed</span> 2 px outline 2 px outside; orange on the night ground</td></tr><tr><td>B-136</td><td>B20</td><td>Open: “i” tiled 2x2</td></tr><tr><td>B-137</td><td>B19</td><td>Open: 2 lines (74 px) at 390</td></tr><tr><td>B-145</td><td>B19</td><td><span class="chip ok">Fixed</span> tooltip has no “test data”</td></tr><tr><td>B-146</td><td>B10, B13</td><td><span class="chip ok">Fixed</span> by day; night step 3: B-183</td></tr><tr><td>B-147</td><td>B49, B61, Q03</td><td><span class="chip ok">Fixed</span> linked Qloo logo</td></tr><tr><td>B-148</td><td>B15</td><td><span class="chip ok">Fixed</span> hatched honeycomb cells</td></tr></table></section><section class="box" id="ds-parity"><h2>DS parity: plan components against BRAND&#x27;s DS specimens (v62/v63)</h2><table><tr><th>DS component</th><th>Rows</th><th>Result</th></tr><tr><td>ResearchFunnel</td><td>B07, R02</td><td>Different: “▸” glyph connectors, not the half cell on its side (B-162)</td></tr><tr><td>AgentVsEngine (README)</td><td>B08</td><td>Matches: check cell, label, title, line, compact tiles with rank, name, ring, check</td></tr><tr><td>PageHeader</td><td>B02</td><td>Different (B-186)</td></tr><tr><td>PlanMap</td><td>B10</td><td>Matches the layout (list beside map, stacked below 1024); map treatment per F05</td></tr><tr><td>PitchRow</td><td>B12, B18</td><td>Different (B-165)</td></tr><tr><td>PitchPin</td><td>B14</td><td>Different (B-166)</td></tr><tr><td>TasteMapLegend</td><td>B19</td><td>The DS specimen is still the boxed 1-5 key; F03 overrides it (one line, tooltips). BRAND to update the specimen; not a build defect</td></tr><tr><td>WeatherStrip</td><td>B21, B22</td><td>Different at 390 (B-189)</td></tr><tr><td>ComparePanel</td><td>B24-B30</td><td>Held by DEV; differs today (section heads, name type, score cell placement)</td></tr><tr><td>SetlistPanel</td><td>B59</td><td>Different (B-169)</td></tr><tr><td>Sheet</td><td>B54</td><td>Matches (720 px right, bottom sheet with handle, orange top rule)</td></tr><tr><td>PitchCard</td><td>B55-B58</td><td>Matches except the council-rules link row (B58, B-105)</td></tr><tr><td>ScoreBreakdown</td><td>B54</td><td>Different (B-190)</td></tr><tr><td>ScoreRing</td><td>B51</td><td>The plan uses the hex ring of DS PitchRow / PitchCard everywhere; the round DS ScoreRing is not used on this page</td></tr><tr><td>LeanBar</td><td>B62</td><td>Different (B-192)</td></tr><tr><td>FootfallSparkline</td><td>B57</td><td>Different (B-191)</td></tr><tr><td>CrowdPanel</td><td>B61</td><td>Matches (head with Qloo logo and status, sections, evidence)</td></tr><tr><td>OtherPitches</td><td>B63</td><td>Not used (B-168)</td></tr><tr><td>AgentStepStream</td><td>B31-B48, R03-R08</td><td>Held by DEV (cards not re-skinned)</td></tr><tr><td>AgentStatusLine</td><td>R01, Y03</td><td>Different (B-193)</td></tr><tr><td>StepData</td><td>B50</td><td>Matches (key/value and table blocks, JSON toggle)</td></tr><tr><td>PlanAlert</td><td>D01, M02, N01, L02</td><td>Matches</td></tr><tr><td>UnmatchedAlert</td><td>M03</td><td>Matches</td></tr><tr><td>SlotPassed</td><td>S01, S02</td><td>Different (B-195)</td></tr><tr><td>PlanNotFound</td><td>X01</td><td>Matches</td></tr><tr><td>CopyLinkButton</td><td>B05, B06</td><td>Different icon (B-187)</td></tr><tr><td>DiscoveryBadge</td><td>B12, B55</td><td>Usual pitch icon differs (B-188)</td></tr><tr><td>BothAgreeBadge</td><td>B26</td><td>Held with the compare panel; badge itself matches</td></tr><tr><td>DataStatusBadge</td><td>B49, Q03, B61</td><td>Different (B-194)</td></tr><tr><td>SourceAttribution</td><td>B49</td><td>Different (B-194)</td></tr></table><p>Score breakdown, build at 1440 (left) and 390; compare DS ScoreBreakdown:</p><a href="../screens/honeycomb/plan/inv/v4/score-breakdown-1440.jpg"><img src="../screens/honeycomb/plan/inv/v4/score-breakdown-1440.jpg" alt="Score breakdown build 1440"></a><p>DS ScoreBreakdown specimen:</p><a href="../screens/honeycomb/ds/ScoreBreakdown-light-390.jpg"><img src="../screens/honeycomb/ds/ScoreBreakdown-light-390.jpg" alt="DS ScoreBreakdown specimen"></a><p>DS ResearchFunnel specimen (half-cell connectors):</p><a href="../screens/honeycomb/ds/ResearchFunnel-light-1440.jpg"><img src="../screens/honeycomb/ds/ResearchFunnel-light-1440.jpg" alt="DS ResearchFunnel specimen"></a></section><section class="box" id="field-strip"><h2>Field strip (F13, F14): plan page</h2><p>/plan?example=acoustic at f83f1a1 (fields9): 19 fields, 18 pass; 74 states, 72 pass. The two fails are “≈612 people an hour est.” at 390, day and night: at 390 it sits in the folded “Every check” list (a hidden ancestor), so the strip could not focus it; with the fold open it shows one ring (v3 confirmed). Focus is visible.</p><a href="../screens/honeycomb/plan/inv/v4/field-strip.jpg"><img src="../screens/honeycomb/plan/inv/v4/field-strip.jpg" alt="Plan field strip at f83f1a1"></a><p>Default orange buttons focused at 390: “Go to Busk Map home” night, day; “Try again” night, day:</p><a href="../screens/honeycomb/plan/inv/v4/focus-default-btn.jpg"><img src="../screens/honeycomb/plan/inv/v4/focus-default-btn.jpg" alt="Default buttons focused, night and day"></a></section><section class="box" id="map-calls"><h2>Map against F02 / F03 / F05 / F16</h2><table><tr><th>Call</th><th>Result</th><th>Evidence</th></tr><tr><td>F02 Full details per pitch row</td><td>Met</td><td>“Full details →” on all three rows, 1440 and 390 (B12, B17).</td></tr><tr><td>F02 keep zoom</td><td>Met</td><td>+ / − 44 px top-right (B20).</td></tr><tr><td>F02 never “test data” in the legend</td><td>Met</td><td>Visible text and all four tooltips clean (B-145 fixed).</td></tr><tr><td>F03 one-line legend along the bottom, tooltips</td><td>Met at 768/1440, not at 390</td><td>Inside the frame, 42 px, tooltips on hover and focus; 390 wraps to two lines (B-137).</td></tr><tr><td>F05 orange cells only, zoomed out</td><td>Met by day; night for the user's eye</td><td>Two orange steps only, 354 cells, maxZoom 14.2 frame with padding 90. Night step 3 is dark burnt orange (B-183).</td></tr><tr><td>F16 hatched no-busking cells</td><td>Met</td><td>Pink-hatched honeycomb cells from the plan's zone cells; offline only two, at Docklands, one zoom step out (B15).</td></tr></table><p>Legend tooltip at 1440:</p><a href="../screens/honeycomb/plan/inv/v4/legend-tip-1440.jpg"><img src="../screens/honeycomb/plan/inv/v4/legend-tip-1440.jpg" alt="Legend tooltip at 1440"></a><p>Night map at 1440:</p><a href="../screens/honeycomb/plan/inv/v4/map-night-1440.jpg"><img src="../screens/honeycomb/plan/inv/v4/map-night-1440.jpg" alt="Night plan map"></a><p>Attribution corner (day 1440, 390, night 1440):</p><a href="../screens/honeycomb/plan/inv/v4/attrib.jpg"><img src="../screens/honeycomb/plan/inv/v4/attrib.jpg" alt="Map attribution icon tiled"></a></section><section class="box" id="f20"><h2>F20: city names on the plan page</h2><table><tr><th>Where</th><th>Result</th></tr><tr><td>Eyebrow (ready, shared, no pitch, no match, limit, slot passed)</td><td>No city (B03, Y01, N01, M01, L01, S01)</td></tr><tr><td>Compare verdict “…3 of Melbourne's usual busking pitches…”</td><td>Allowed: that city's data (B25)</td></tr><tr><td>Data used: “Pedestrian counts: City of Melbourne Open Data”, “Busking locations and zones: City of Melbourne”</td><td>Allowed: source names (B49)</td></tr><tr><td>Example pitch names</td><td>Offline names are synthetic (“Footpath near Synthetic sensor: Queen Vic Market”, Centre Place): real places, no framing copy</td></tr><tr><td>Any other “Melbourne” in visible text</td><td>None (text walk at 390 and 1440; the map's base tiles label the city)</td></tr></table></section><section class="box" id="critique"><h2>Impeccable critique</h2><p class="prov"><b>How this was produced.</b> The impeccable skill v4.4.0 (<code>impeccable:impeccable</code>), verb <code>critique</code>, run on design/honeycomb <code>f83f1a1</code> from QA's clean export, offline, at 390, 768, 1440 px. Method: dual-agent (A: <code>a43a5148cd3711304</code> · B: <code>a91c8203d7351f824</code>), each an isolated sub-agent that did not read the QA report or the other assessment. A and B are reproduced as the skill wrote them (<code>qa/impeccable/plan-A.md</code>, <code>plan-B.md</code>). The block marked “QA synthesis” is QA's, not the skill's.</p><div class="synth"><h3>QA synthesis</h3>
+<p><b>Scores.</b> Critique (A): Nielsen 23/40 (58%, Acceptable). Audit (B): 16/20, Good; Implementation Integrity <b>Pass</b>. CLI detector: 0 findings; overlay 23 (1440) / 19 (390) hits, mostly brand choices or false positives.</p>
+<p><b>Verified by QA and filed.</b></p><ul>
+<li><b>B-219 · High</b> (A P1; site A P1): blank scroll after the footer. QA measured /p/DuYxRvaHZ at 390: document 8,153 px, footer ends at 6,305 px, so 1,848 px of empty paper (site A: 1,168 px at 768). Cause per site A: absolutely positioned spans inside the closed “Every check” fold escape <code>min-h-0 overflow-hidden</code> because that div isn't their containing block (honeycomb/fold.tsx).</li>
+<li><b>B-227 · Medium</b> (B P2): on a phone the map takes one-finger vertical drags (synthesised touch at 390: scroll 244 → 244); the canvas has <code>touch-action: none</code> and no cooperative gestures. Not checked on a real device.</li>
+<li><b>B-231 · Low</b> (shared): legend keys 32 px tall (map-legend.tsx:16).</li></ul>
+<p><b>Held, not filed.</b> B's heading skip (h2 → h4, tool-results.tsx:152/167) is inside the research feed cards B24–B48, held by DEV (B-048 note). A P2 “Qloo-down page: two retry buttons, spinner under STOPPED” is the held feed beside Q03.</p>
+<p><b>Dismissed.</b> <code>clipped-overflow-container</code> (the map clip is deliberate), <code>side-tab</code>, hatch stripes (no-busking zones), <code>cream-palette</code>, <code>text-occlusion</code>, <code>dark-glow</code>.</p>
+<p><b>Product questions: asked of MANAGER.</b> A P1 “put the reasons on the pitch rows” and A P2 “research before the answer” (funnel and Agent vs Engine above Your busk at 1440) are layout calls against the board. A P2 “engineering vocabulary” (AGENT VS ENGINE, taste cells) overlaps B-049. Offline fixture names in pitch names (B P3) are mock data only.</p></div><details open><summary>Assessment A · design review (as written)</summary><h3>Assessment A · Plan page (/p/&lt;id&gt;, Operate)</h3>
+<p>Seen: folk-duo → /p/qiYncwWE3 at 390/768/1440, day and night; the Full details sheet; Qloo down (acoustic&amp;faults=qloo, lands on <code>?run=0</code>). Shots: imp/plan-A/.</p>
+<h4>Design specificity: authored</h4>
+<p>Only Busk Map has these: hex rank badges, score dials, the hex taste map, the hex funnel and the "Your slot 12–15" weather band. The risk is overuse: with hexes on everything, they stop signalling. At 1440 the map is a solid sheet of saturated orange, and the black top pins get lost in it, more so at night.</p>
+<h4>Nielsen heuristics</h4>
+<table><thead><tr><th>#</th><th>Heuristic</th><th>Score</th><th>Key issue</th></tr></thead><tbody><tr><td>1</td><td>Status</td><td>3</td><td>Clear replay badge and status line. On Qloo down the funnel spins "choosing pitches" beside "STOPPED".</td></tr><tr><td>2</td><td>Real world</td><td>2</td><td>"AGENT VS ENGINE" eyebrow (banned by the code's own B-049 rule), "taste cells". The sheet says "Taste match 0.84"; the comparison says "84 out of 100".</td></tr><tr><td>3</td><td>Control</td><td>2</td><td>Esc closes the sheet and clears <code>?pitch</code>. Slot, permit and act can't be changed from the plan.</td></tr><tr><td>4</td><td>Consistency</td><td>2</td><td>Two "Try again" on Qloo down. The sheet repeats the pitch name twice. Three styles of test-data notice.</td></tr><tr><td>5</td><td>Error prevention</td><td>3</td><td>Legality line, "NOT A LEGAL PITCH", 250 m spacing note.</td></tr><tr><td>6</td><td>Recognition</td><td>2</td><td>Rows show name, time and score only. The why sits in the sheet or the "vs a plain AI" panel.</td></tr><tr><td>7</td><td>Flexibility</td><td>2</td><td>Deep link and Copy link. 18 (390) or 20 (1440) tabs to the first "Full details".</td></tr><tr><td>8</td><td>Minimalism</td><td>2</td><td>Pitch 1 sits at y≈850 (1440) and y≈1156 (390). Blank scroll below the footer: ~1,850 px (390), ~1,165 px (1440).</td></tr><tr><td>9</td><td>Error recovery</td><td>3</td><td>Plain Qloo-down copy, and the act, day and permit are kept.</td></tr><tr><td>10</td><td>Help</td><td>2</td><td>"Data used" and "est." are there. Nothing says what "60" means.</td></tr><tr><td><b>Total</b></td><td></td><td><b>23/40</b></td><td><b>Acceptable</b></td></tr></tbody></table>
+<h4>Cognitive load: high (4 failures)</h4>
+<ul><li>Single focus: the funnel, the agent card, the map and the list compete above the answer.</li><li>Chunking: 8 funnel chips.</li><li>Minimal choices: 28 map pins plus Browse (25), zoom and the legend.</li><li>Working memory: comparing pitches means opening one sheet after another.</li></ul>
+<p>Decision points over 4: the map; the 1440 header (Copy link plus 4 badges); the list (3 rows × select, Full details, badges, plus "Plan my week").</p>
+<h4>Emotional journey</h4>
+<p>The peak is "YOUR BUSK", a ranked list on a map that feels made for you. The valley is at 390: the first screen is header, tags and the test banner, so the answer feels delayed. The end is weak: the page closes on a source list, then an empty scroll on phone with only the tab bar, not "go play here". Qloo down reassures ("your act, day and permit are kept"), but the spinning hex undercuts it.</p>
+<h4>Strengths</h4>
+<ol><li>The pitch rows: big hex rank, condensed name and score dial scan instantly at every width; rank 1's orange offset shadow marks the pick.</li><li>The weather strip's boxed slot band ties the data to the busker's own hours.</li><li>Honesty: the legality line, "est.", the replay label, and plain-AI picks flagged "NOT A LEGAL PITCH".</li></ol>
+<h4>Priority issues</h4>
+<ul><li><b>[P1] Blank scroll void below the footer.</b> On phone (both themes, and at 1440) the page "ends" on an empty screen, which looks broken. Fix: the closed "Every check, from earlier" fold (honeycomb/fold.tsx) still adds to scrollHeight. Most likely its positioned descendants escape the <code>min-h-0 overflow-hidden</code> wrapper: make that wrapper <code>relative</code>, or don't render the list while it is closed. /impeccable harden</li><li><b>[P1] The reasons are not on the pitch rows.</b> "Why here?" is answered in the comparison panel and the sheet, not the list. Fix: give each PitchRow a 2-fact line (e.g. "~930/h · taste 84"). /impeccable clarify</li><li><b>[P2] Research before the answer.</b> At 1440 the 8-chip funnel and the Agent vs Engine card sit above "Your busk"; at 390 header, tags and banners fill screen one. Fix: move both below the busk at every width, and compress the tags to one line. /impeccable layout</li><li><b>[P2] Engineering vocabulary.</b> "AGENT VS ENGINE", "the agent finishes" (PendingPlan), "taste cells", "test model". Fix: say "Claude" and "Busk Map's scores" (B-049), and use one 0–100 scale. /impeccable clarify</li><li><b>[P2] The Qloo-down page contradicts itself.</b> Two retry buttons, and a spinner under "STOPPED". Fix: keep one retry in the panel; show the funnel as stopped. /impeccable polish</li></ul>
+<h4>Persona red flags</h4>
+<ul><li><b>Casey (390):</b> the first pitch is 1.3 screens down; the fixed tab bar covers the map; the page ends in a void; in the sheet the name repeated twice fills half the screen.</li><li><b>Alex:</b> 18–20 tabs to "Full details"; no row shortcuts; can't tweak the slot here; one sheet per pitch to compare.</li><li><b>Sam:</b> 28 pins and "Browse" come before the list in tab order; at night the black top pins sit on bright orange over a light basemap.</li></ul>
+<h4>Minor observations</h4>
+<ul><li>"3 of Busk Map's 3 picks are one the plain AI didn't name" is ungrammatical, and "ONLY BUSK MAP" has no space above it.</li><li>The inline score hex breaks the sheet's line height.</li><li>Rank 3's empty badge strip leaves a dead band.</li><li>The basemap stays light in night mode.</li></ul>
+<h4>Questions to consider</h4>
+<ul><li>What if the row <i>was</i> the details, and the sheet held only the charts?</li><li>Is the funnel proof that belongs after the answer?</li><li>Would the map read better with taste cells muted and only the 3 picks loud?</li></ul></details></section><section class="box" id="audit"><h2>Impeccable audit</h2><p class="prov"><b>How this was produced.</b> The impeccable skill v4.4.0 (<code>impeccable:impeccable</code>), verb <code>audit</code>, run on design/honeycomb <code>f83f1a1</code> from QA's clean export, offline, at 390, 768, 1440 px. Method: dual-agent (A: <code>a43a5148cd3711304</code> · B: <code>a91c8203d7351f824</code>), each an isolated sub-agent that did not read the QA report or the other assessment. A and B are reproduced as the skill wrote them (<code>qa/impeccable/plan-A.md</code>, <code>plan-B.md</code>). The block marked “QA synthesis” is QA's, not the skill's.</p><details open><summary>Assessment B · detector, browser evidence and audit /20 (as written)</summary><h3>Plan page: Assessment B (detector + browser evidence) and audit</h3>
+<p>Target: plan page, <code>http://localhost:3213/plan?example=folk-duo</code> (client redirect to <code>/p/&lt;id&gt;</code>, waited on region "Pitches", exact name). Build: design/honeycomb f83f1a1, offline, port 3213 (not started or stopped by me). Source: export at <code>scratchpad/hc9/src</code>. All commands ran from the export dir. Evidence files: <code>scratchpad/imp/plan-B/</code> (<code>detect-cli.json</code>, <code>results.json</code>, <code>probe2.json</code>, screenshots <code><i>-light.png</code>, <code></i>-dark.png</code>, <code><i>-overlay.png</code>, <code>pitches-390-</i>.png</code>, <code>sheet-390.png</code>, <code>focus-390.png</code>, <code>popover-390.png</code>; scripts <code>run.mjs</code>, <code>probe2..5.mjs</code>).</p>
+<p>Isolation: no QA report, <code>qa/tools/*-parts.py</code> or Assessment A output was read.</p>
+<p>---</p>
+<h4>1. CLI scan</h4>
+<p>Command: <code>impeccable detect --json "src/app/p/[id]" src/app/plan src/components/plan src/components/map src/components/pitch-card</code></p>
+<ul><li><b>Exit code 0. 0 findings</b> (<code>[]</code>). The same result came back with <code>--no-config</code> and in text mode. There is no DESIGN.md, no <code>.impeccable</code> config (only <code>.impeccable/live</code>) and no <code>impeccable-disable</code> comments in scope, so nothing was suppressed.</li><li>Note: the static scan cannot see classes that render through shared <code>src/components/honeycomb/*</code> components (PitchRow, EvidenceLine, PageHeader). The browser findings below come from those.</li></ul>
+<h4>2. Browser overlay</h4>
+<p>New Playwright Chromium page per run, at 1440x900 and 390x844 in light mode. I navigated, waited for "Pitches", set <code>document.title</code> (preflight OK: title became <code>Plan · Busk Map [impeccable-preflight]</code>), then ran <code>page.addScriptTag({ path: imp/detect.js })</code> (injected OK) and waited 3 s. <code>window.__impeccableCoreError</code> was empty, and there were no warn or error lines. The overlay rendered visibly (<code>1440-light-overlay.png</code>).</p>
+<p>Console: <code>[impeccable] 19 anti-patterns found</code> (1440) / <code>16 anti-patterns found</code> (390). <code>window.impeccableDetectAsync()</code>: 1440 = 20 elements / 23 findings; 390 = 16 elements / 19 findings.</p>
+<table><thead><tr><th>Rule</th><th>1440</th><th>390</th><th>Where</th><th>Verdict</th></tr></thead><tbody><tr><td>all-caps-body</td><td>8</td><td>8</td><td>Pitch names in PitchRow <code>b.font-display uppercase</code> (honeycomb/pitch-row.tsx:38), map marker tooltip labels, SVG text, header meta <code>span.font-mono uppercase</code> (37 chars)</td><td><b>True, low impact.</b> 46–48-char pitch names in condensed uppercase wrap to 3 lines at 390. It is a brand choice, but the long names hurt it.</td></tr><tr><td>skipped-heading</td><td>1</td><td>1</td><td>h2 "How we found your pitches" → h4 "Artists this crowd likes" (plan/tool-results.tsx:152,167)</td><td><b>True.</b> axe agrees (<code>heading-order</code>, 1440).</td></tr><tr><td>undersized-ui-text</td><td>3</td><td>0</td><td>10px "EVIDENCE" chip (honeycomb/evidence-line.tsx:8)</td><td><b>True.</b> Below the 11px floor. Contrast is fine at 6.1:1.</td></tr><tr><td>line-length</td><td>1</td><td>0</td><td><code>#research &gt; p.text-sm</code>, about 182 chars per line (plan-view.tsx:577 section)</td><td><b>True at desktop.</b></td></tr><tr><td>kicker-above-heading</td><td>2</td><td>2</td><td>"Agent vs engine" above h2; "Weather" above h2 (weather-strip.tsx)</td><td>Pattern hit. It is house style: mono kickers run across the system. This is a judgment call, not a defect.</td></tr><tr><td>nested-cards</td><td>1</td><td>2</td><td>Agent stream card's inner bordered blocks (<code>section.flex.min-w-0 &gt; div.border-2</code>)</td><td>Partly true. A bordered box inside a bordered box in the research feed.</td></tr><tr><td>clipped-overflow-container</td><td>2</td><td>2</td><td>Map wrapper <code>overflow-hidden</code> (plan-map.tsx:324) and <code>.maplibregl-map</code></td><td><b>False positive.</b> The clip is deliberate for a map. The summary popover sits inside and is sized <code>min(19rem, 100%-4rem)</code>, so it never needs to escape.</td></tr><tr><td>side-tab</td><td>1</td><td>1</td><td><code>header.h-16</code> border-bottom 4px</td><td><b>False positive.</b> A full-width header rule, not a one-sided card accent.</td></tr><tr><td>repeating-stripes-gradient</td><td>1</td><td>1</td><td>Hatch fills</td><td><b>False positive.</b> The hatch carries meaning (no-busking zones / legend key), not decoration.</td></tr><tr><td>cream-palette</td><td>1</td><td>1</td><td>page bg rgb(242,238,230)</td><td>Brand ground (honeycomb), intentional. Not a defect.</td></tr><tr><td>dark-glow</td><td>1</td><td>1</td><td>"Zero-offset glow #ffba00"</td><td><b>Could not reproduce.</b> No element carried a zero-offset blurred shadow or rgb(255,186,0) at rest. It is most likely the 2px focus/ring shadow <code>--focus-ring: 0 0 0 2px</code> (no blur), so a false positive.</td></tr><tr><td>text-occlusion</td><td>1</td><td>0</td><td><code>span "undersized functional te…"</code></td><td><b>False positive.</b> The detector's own overlay label covering text.</td></tr></tbody></table>
+<p>Failed or skipped steps: none in the final run. The first run failed because <code>getByRole('region', { name: 'Pitches' })</code> matched 3 regions (map, Pitches, "How we found your pitches"); I fixed it with <code>exact: true</code>. I did not start live-server, as the brief said; the injection used the saved <code>detect.js</code>.</p>
+<h4>3. Audit evidence (verified)</h4>
+<ul><li><b>axe</b> (@axe-core/playwright from the export, wcag2a/aa, 21a/aa, 22aa, best-practice):<ul><li>390 light: 0 violations. 390 dark: 0.</li><li>1440 light: 1 (<code>heading-order</code>, moderate, <code>.space-y-2:nth-child(1) &gt; h4</code>). 1440 dark: the same 1.</li><li><code>color-contrast</code> incomplete: 33 at 390 and 72 at 1440, for shortTextContent, imgNode (hex SVG backgrounds), nonBmp and bgOverlap.</li></ul><li><b>Contrast</b> (own probe, composited backgrounds, worst pairs):<ul><li>Light: signal-text "pitches" 5.22:1, muted badge "Usual pitch" 5.27, muted mono time 5.32, "Your slot" on orange 5.53, header meta 5.54, "Not a legal pitch" 5.92, "Evidence" 6.09.</li><li>Dark: muted text 6.4–8.4, pink badge 6.06, orange 7.4.</li><li>All pass AA. The probe flagged "60" in dark at 1.21, but that is a false positive: the text sits on an SVG orange hex, not the card. The screenshot <code>dark-score-60.png</code> shows dark-on-orange, about 6.5:1.</li></ul><li><b>Keyboard:</b><ul><li>Tab order at 390: home → Copy link → "See the research ↓" → map canvas (aria-label "Map") → pitch markers 1–3 (named "Pitch 1: … score 60") → zoom +/− → attribution → Browse other pitches (25) → 4 legend keys → pitch rows with "Full details for …" → Plan my week → raw switch → Every check (8) → source links. The order is logical.</li><li>Every stop has a visible 2px ring (box-shadow <code>--focus-ring</code>). Primary buttons use an outline with 2px offset. There is a <code>forced-colors</code> outline fallback (globals.css:357).</li><li>The "Full details" sheet opens as <code>role=dialog</code> with focus inside. Escape closes it and returns focus to the trigger.</li><li>The map summary popover moves focus to "Next pitch", and Escape / close returns focus to Browse (plan-map.tsx:305–315).</li></ul><li><b>Headings:</b><ul><li>1440: H1 Folk duo → H2 Agent vs engine → H2 Your busk → H3 (sr-only) Top pitches → H2 Weather → H2 vs plain AI → H3 ×2 → H2 How we found → <b>H4 ×2 (skip)</b> → H3 Data used.</li><li>At 390 the research heading moves under H2 "The research" correctly. The h4 skip remains.</li></ul><li><b>Landmarks:</b> header/nav/main/footer, plus named sections. The map has two regions (a wrapper div <code>role=region</code> and MapLibre's canvas <code>role=region "Map"</code>), which is redundant.</li><li><b>Touch targets at 390</b> (under 44px; hidden skip link excluded):<ul><li>Map legend keys 100/73/79/79 × <b>32px</b> (map-legend.tsx:16 <code>min-h-8</code>).</li><li>Map summary popover Prev/Next/Close <b>40×40</b> (<code>icon-sm</code> = <code>size-10</code>, ui/button.tsx:41).</li><li>"≈144 people an hour est." tooltip trigger 187×24 (estimate-label.tsx:41, inline).</li><li>Data-source links 20–40px tall (data-sources.tsx:63, inline text links).</li><li>Raw switch 46×26 visually, but its <code>after:-inset-3</code> pseudo-element extends the hit area past 44, and it has a <code>&lt;label&gt;</code>, so this is not a finding.</li><li>Pitch row buttons and "Full details" are 48px (<code>min-h-tap</code>). The MapLibre controls are forced to 44px (globals.css:396).</li></ul><li><b>Horizontal scroll:</b> none at 390, 768 or 1440 (scrollWidth equals clientWidth, light and dark, no offenders).</li><li><b>Touch gesture</b> (CDP synthesized touch, Chromium, 390, <code>isMobile</code>):<ul><li>A one-finger horizontal drag pans the map (marker moved 120px).</li><li>A one-finger vertical drag on the map does <b>not</b> scroll the page (scrollY 244 → 244). The canvas has <code>touch-action: none</code> and no <code>cooperativeGestures</code> (plan-map.tsx:137).</li><li>The map is 326×320 inside an 844px viewport, so a swipe that starts on it gets stuck.</li><li>Not tested on a physical device.</li></ul><li><b>Reduced motion:</b><ul><li>With no preference, these run during load: the <code>bm-shimmer</code> skeleton (2.4s infinite), <code>hc-fold</code> 400ms, and the <code>motion-safe:animate-in</code> agent cards.</li><li>With <code>reduce</code>, no animations run at all. Each is gated per class (globals.css:342,384), plus a global <code>transition-duration: 0ms !important</code> (globals.css:368). State changes stay instant and visible, so feedback is not lost.</li><li>Not gated in app code: MapLibre <code>easeTo</code> 400/600ms (plan-map.tsx:292,304). The library may honour the preference itself; this is unverified.</li></ul><li><b>Tokens:</b> no hard-coded colours in scope, apart from hex <b>fallbacks</b> in <code>themeColor("--token", "#…")</code>, needed because MapLibre can't parse oklch (plan-map.tsx:26–68,208,230–231). There are no raw Tailwind palette classes.</li><li><b>Dark mode:</b> it renders fully. Tokens swap, contrast passes (above), and focus rings swap to the light ring.</li><li><b>Performance:</b><ul><li>MapLibre is loaded through <code>next/dynamic</code> with <code>ssr:false</code>, behind an IntersectionObserver plus a skeleton (lazy-plan-map.tsx:13,37).</li><li>There are no raster images in scope.</li><li>"Plan my week" has <code>prefetch={false}</code>, with a reason given (plan-view.tsx:488).</li><li>Console: no page errors or React errors.</li><li>Not measured: bundle size, LCP, INP.</li></ul></li></ul>
+<h4>Audit Health Score</h4>
+<table><thead><tr><th>#</th><th>Dimension</th><th>Score</th><th>Key Finding</th></tr></thead><tbody><tr><td>1</td><td>Accessibility</td><td>3</td><td>h2 → h4 skip in the research feed (axe heading-order + detector); everything else passes axe, contrast ≥ 5.2:1, focus is managed in both dialogs</td></tr><tr><td>2</td><td>Performance</td><td>3</td><td>Map lazy-loaded and SSR-off; nothing heavy found, but no metrics measured</td></tr><tr><td>3</td><td>Responsive Design</td><td>3</td><td>No overflow at 390/768/1440; the map captures one-finger vertical swipes at 390; legend keys 32px, popover buttons 40px</td></tr><tr><td>4</td><td>Theming</td><td>4</td><td>Full token use, hex only as MapLibre fallbacks; dark mode verified</td></tr><tr><td>5</td><td>Implementation Integrity</td><td>3</td><td>CLI clean (0); overlay hits are mostly brand choices or false positives; real ones: skipped heading, 10px chip, long all-caps names</td></tr><tr><td><b>Total</b></td><td></td><td><b>16/20</b></td><td><b>Good</b></td></tr></tbody></table>
+<h4>Implementation Integrity Verdict</h4>
+<p><b>Pass.</b> The page expresses a coherent, product-specific system:</p>
+<ul><li>Honeycomb hex cells carry the scores and ranks.</li><li>Hatch means "no busking".</li><li>One focus-ring rule with a forced-colors fallback.</li><li>Tokens resolved even for MapLibre.</li><li>Copy and structure belong to this product: pitch, slot, permit, crowd taste.</li></ul>
+<p>The deterministic CLI scan is clean. Of the 12 browser rule types, 5 are false positives or intentional brand (side-tab, clipped-overflow, stripes, cream, text-occlusion; dark-glow could not be reproduced). Four are real but small: skipped-heading, undersized 10px "Evidence", all-caps long pitch names, 182-char line at 1440. Kicker-above-heading and nested-cards are house style worth questioning, not defects. The integrity issue the detector can't see: offline fixture names such as "Footpath near Synthetic sensor: Queen Vic Market" reach user-visible pitch names (fixtures in src/server/adapters/footfall/fixtures/synthetic.ts). That is acceptable in an offline build, but it should never ship.</p>
+<h4>Executive Summary</h4>
+<ul><li>Audit Health Score: <b>16/20 (Good)</b></li><li>Issues: P0 0 · P1 0 · P2 3 · P3 6</li><li>Top issues:<ol><li>The map swallows one-finger vertical page scroll at phone width.</li><li>Heading level skip (h2 → h4) in "How we found your pitches".</li><li>Map legend keys are 32px tall at 390.</li><li>10px "Evidence" chip.</li><li>3-line all-caps pitch names.</li></ol><li>Next: <code>/impeccable adapt</code> (map gestures, targets), <code>/impeccable harden</code> (heading outline), <code>/impeccable typeset</code> (chip size, caps, measure), then <code>/impeccable polish</code>.</li></ul>
+<h4>Findings by Severity</h4>
+<p><b>[P2] Map traps vertical scroll on phones</b></p>
+<ul><li>Location: src/components/map/plan-map.tsx:137 (MapLibreMap options); canvas <code>touch-action: none</code>.</li><li>Category: Responsive.</li><li>Impact: at 390 the map is 320px tall, and a thumb swipe that starts on it pans the map instead of scrolling the page. The user can feel stuck between the pitch list and the map.</li><li>Standard: touch gesture heuristics.</li><li>Recommendation: enable <code>cooperativeGestures</code> (two-finger pan) below <code>md</code>, or disable one-finger <code>dragPan</code> on touch with a hint.</li><li>Evidence: synthesized CDP touch in Chromium; not tested on a device.</li><li>Suggested command: /impeccable adapt</li></ul>
+<p><b>[P2] Heading level skipped in the research feed</b></p>
+<ul><li>Location: src/components/plan/tool-results.tsx:152, :167 (h4 under h2 from agent-steps.tsx:276).</li><li>Category: Accessibility.</li><li>Impact: screen-reader heading navigation shows a broken outline. axe <code>heading-order</code> reports it at 1440, and the detector at both widths.</li><li>Standard: WCAG 1.3.1 (best practice).</li><li>Recommendation: render these as h3, or pass the heading level down from the context.</li><li>Suggested command: /impeccable harden</li></ul>
+<p><b>[P2] Map legend keys below the 44px target</b></p>
+<ul><li>Location: src/components/map/map-legend.tsx:16 (<code>min-h-8</code>).</li><li>Category: Responsive.</li><li>Impact: four tooltip keys are 32px tall on a touch screen, and they sit right next to each other.</li><li>Standard: passes WCAG 2.5.8 (24px); fails the 44px project/impeccable floor (2.5.5 AAA).</li><li>Recommendation: <code>min-h-tap</code>, or a hit-area pseudo-element like the switch uses.</li><li>Suggested command: /impeccable adapt</li></ul>
+<p><b>[P3] Map summary popover buttons are 40×40</b></p>
+<ul><li>Location: src/components/map/plan-map.tsx:363–371 (<code>size="icon-sm"</code>, ui/button.tsx:41).</li><li>Category: Responsive.</li><li>Recommendation: <code>size="icon"</code>, or a 44px hit area.</li><li>Suggested command: /impeccable adapt</li></ul>
+<p><b>[P3] 10px "Evidence" chip</b></p>
+<ul><li>Location: src/components/honeycomb/evidence-line.tsx:8.</li><li>Category: Implementation Integrity / typography.</li><li>Impact: functional label below the 11px floor; it is hard to read at arm's length outdoors.</li><li>Recommendation: 11px minimum.</li><li>Suggested command: /impeccable typeset</li></ul>
+<p><b>[P3] Long pitch names set in all caps</b></p>
+<ul><li>Location: src/components/honeycomb/pitch-row.tsx:38 (<code>uppercase</code>, 22px display).</li><li>Category: Implementation Integrity.</li><li>Impact: 46–48-character names run to 3 uppercase lines at 390 (<code>pitches-390-light.png</code>), which slows scanning.</li><li>Recommendation: keep caps for short names; switch to sentence case above about 24 characters, or clamp the line count.</li><li>Suggested command: /impeccable typeset</li></ul>
+<p><b>[P3] 182-character line in the research section at 1440</b></p>
+<ul><li>Location: <code>#research &gt; p.text-sm</code> (plan-view.tsx:577 section).</li><li>Category: Implementation Integrity.</li><li>Recommendation: <code>max-w-[70ch]</code>.</li><li>Suggested command: /impeccable typeset</li></ul>
+<p><b>[P3] Redundant double map region</b></p>
+<ul><li>Location: plan-map.tsx:325 (<code>role="region"</code> wrapper) plus MapLibre's canvas <code>role=region aria-label="Map"</code>.</li><li>Category: Accessibility.</li><li>Impact: two landmarks for one map; noisy landmark navigation.</li><li>Recommendation: drop the wrapper role, or relabel the canvas.</li><li>Suggested command: /impeccable harden</li></ul>
+<p><b>[P3] Fixture names visible in pitch names</b></p>
+<ul><li>Location: footfall fixtures (src/server/adapters/footfall/fixtures/synthetic.ts) surfacing through PitchRow.</li><li>Category: Implementation Integrity.</li><li>Impact: "Synthetic sensor" reads as broken data in demos.</li><li>Recommendation: give the offline fixtures realistic place names.</li><li>Suggested command: /impeccable clarify</li></ul>
+<p>Unverified, not scored: whether MapLibre <code>easeTo</code> (plan-map.tsx:292,304) honours reduced motion.</p>
+<h4>Patterns &amp; Systemic Issues</h4>
+<ul><li>Small touch targets come from secondary controls (<code>min-h-8</code> legend keys, <code>icon-sm</code> buttons), not from primary ones, which consistently use <code>min-h-tap</code>. The fix is to apply the tap token to secondary controls as well.</li><li>Heading levels are hard-coded per component (<code>h4</code> in pitch-card.tsx:20, tool-results.tsx, foot-traffic-chart.tsx:42, pitch-details.tsx:28/73). Wherever these components nest under a different parent, the outline can skip a level.</li><li>Uppercase is applied by class to content of any length (pitch names, the header meta line), not only to short labels.</li></ul>
+<h4>Positive Findings</h4>
+<ul><li>Zero axe violations at 390 in day and night. Every measured text pair is at least 5.2:1 by day and 6:1 by night.</li><li>Focus is handled thoroughly: one ring token, an offset outline on orange fills, a forced-colors fallback, and focus moved into and back out of both the details sheet and the map summary. Escape works in both.</li><li>Map pins are focusable named buttons ("Pitch 1: …, score 60"). Scores have <code>role=img</code> "Score 60 out of 100".</li><li>Reduced motion is respected class by class, and nothing animates under <code>reduce</code>.</li><li>No horizontal overflow at any width. MapLibre controls are raised to 44px.</li><li>Colours are tokens throughout, resolved at runtime even for MapLibre.</li><li>The map is lazy-loaded with SSR off and a skeleton placeholder. Prefetch of /week is disabled on purpose, with a comment explaining the cost.</li></ul>
+<h4>Recommended Actions</h4>
+<ol><li><b>[P2] <code>/impeccable adapt</code></b>: cooperative gestures on the map below md; legend keys and popover buttons to the 44px tap token.</li><li><b>[P2] <code>/impeccable harden</code></b>: fix the h2 → h4 skip in tool-results; remove the duplicate map region.</li><li><b>[P3] <code>/impeccable typeset</code></b>: Evidence chip to at least 11px, sentence case for long pitch names, cap the research paragraph measure.</li><li><b>[P3] <code>/impeccable clarify</code></b>: realistic names in the offline footfall fixtures.</li><li><code>/impeccable polish</code></li></ol>
+<p>&gt; You can ask me to run these one at a time, all at once, or in any order you prefer. &gt; &gt; Re-run <code>/impeccable audit</code> after fixes to see your score improve.</p></details></section><section class="box" id="brand-issues"><h2>BRAND&#x27;s build issues (rechecked at f83f1a1)</h2><table><tr><th>Issue</th><th>Result</th><th>Evidence</th></tr><tr><td>The phone view never shows the bottom nav</td><td>Not reproduced</td><td>At 390 the bottom nav is fixed, visible, Busks active (B67, R10).</td></tr><tr><td>NoMatch still draws a taste field and a “Taste match” legend</td><td>Not reproduced (fixed)</td><td>0 taste cells; legend “Top pitch · No busking · Other pitch” (M04).</td></tr><tr><td>Fallback says “Found by Claude” when Claude ran out of time</td><td>Not reproduced (source)</td><td>Fallback rows read “From the data”; “Found by” only when the model added the spot (E02).</td></tr><tr><td>Phone weather strip and pitch names cut off</td><td>Not reproduced</td><td>At 390 the hours stack as rows; names wrap; no sideways scroll (B21, B12).</td></tr><tr><td>The sheet's lean bars render as bare ticks</td><td>Not reproduced (fixed)</td><td>Bars scaled to the biggest lean (B62).</td></tr><tr><td>The nav says Setlist</td><td>Not reproduced</td><td>Nav is Busks · Week · Brain (B01; Repertoire held, B-130).</td></tr></table></section><section class="box" id="v1-map"><h2>v1 → v2 ids</h2><p>P01→B02-B05 · P02→B07 · P03→B08/B09 · P04→B10-B12, B16-B18 · P05→B13-B15, B19, B20 · P06→B21-B23 · P07→B24-B30 · P08→B31-B32 · P09→B33-B48 · P10→B49 · P11→B54-B62 · P12→B63 · P13→B50 · P14→R01-R10 · P15→E01-E03 · P16→Y01-Y04 · P17→Q01-Q03 · P18→M01-M04 · P19→N01-N03 · P20→D01-D03 · P21→S01-S02 · P22→L01-L02 · P23→X01 · P24→B67 · P25→B69 · P26→B70.</p></section>
+<section class="box"><h2>Versions</h2><ul><li><b>v4</b> · design/honeycomb ＠ <code>f83f1a1</code> · 17 Oct 2026: Fixed since v3: Qloo down is the “No plan without taste data” panel with Qloo&#x27;s linked logo, Unavailable and Try again beside the stopped feed (B-043, Q01-Q03); no legal pitch is a panel with Pick another day (B-044, N02); no match has one alert and Pick your artists from Spotify, no taste legend (B-045, B-112, M01-M04); source down is the board&#x27;s warnings (B-046, D01); weather 10:00-16:00 with one Your slot frame (B-047, B21/B22); headings h1 &gt; h2 &gt; h3 (B-048); brand words in the fallback (B-049); Your busk at 635 px (1440) and 500 px (390), was 987/871 (B-050); funnel and compact Agent vs engine (B-051); eyebrow “Sun 18 Oct · 12–3 pm · General permit”, Shared busk prefix, act line, busk title line (B-098..B-100); white selected card, numbered pins with caption (B-101, B-102); crowd-gathers mini map (B-103); the sheet is the board&#x27;s: 720 px, phone bottom sheet with handle, chips, foot-traffic sparkline, setlist Copy, crowd with Qloo logo, scaled lean bars (B-104..B-106, partly B-105); researching line and Data used so far (B-108, B-109); X01 centred, no box (B-111); night focus on orange buttons is a 2 px outline outside the button (B-134); map draws orange cells only and zooms out (B-146), hatched no-busking cells (B-148), Qloo logo where Qloo is a source (B-147), no “test data” in the legend tooltip (B-145); Tips gone from the page. Still open: B-107 (sheet animates under reduced motion, B71), B-136 (attribution “i” tiled), B-137 (legend 2 lines at 390), B-105 partly (no council-rules link row, B58). New: B-183 night taste cells half dark burnt orange (B69), B-184 no-pitch page says “these spots come straight from Busk Map&#x27;s scores” (N01), B-185 Data used so far says Live for test data (R09). Held by DEV: feed and compare cards B24-B48, events B64/B-113, the 13-check no-pitch feed N03/B-110, Repertoire nav B-130. DS parity and glyph rule applied (user, 17 Oct): every component compared with its DS specimen; 22 rows moved to Different (B02, B05, B07, B12, B14, B18, B21, B49, B54, B55, B57, B59, B61, B62, B63, B66, R01, R02, Y03, Q03, S01, S02) with B-186..B-195; the research funnel&#x27;s “▸” connectors and “See the research ↓” cite B-162; held cards B24-B48 name the DS component each should become.</li><li><b>v3</b> · design/honeycomb ＠ <code>8207373</code> · 17 Oct 2026: B01 Present (F12 lockup); B70 one ring but default orange button at night had no visible focus (B-134); B19 one-line legend at 768/1440 but Taste tooltip said “(test data)” (B-145) and two lines at 390 (B-137); B10/B13/B69 broke F05 (B-146); B15 no hatched cells (B-148); B49/B61 no Qloo logo (B-147); attribution “i” tiled (B-136); X01 centred but boxed (B-111); Qloo down still an alert (B-043); B-043..B-051, B-098..B-113 re-verified open.</li><li><b>v2</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: Re-keyed to BRAND&#x27;s 106-part plan inventory (was 26 provisional parts); every part judged at 1440 and 390 (768 checked) against its crop or spec and the user&#x27;s calls (F02, F03, F05 on every map; F09/F18, F12 as corrected, F13-F15, F16, F20; Qloo down = “No plan without taste data” + Try again, not counted). Known B-043..B-051 cited on their rows; B-098..B-113 ; BRAND&#x27;s six build issues checked.</li><li><b>v1</b> · design/honeycomb ＠ <code>7b1521e</code> · 17 Oct 2026: First version: 26 provisional parts from the deck&#x27;s 11 Plan boards (ready, running, engine, replay, Qloo down, no match, no pitch, source down, slot passed, limit, not found), field strip, impeccable critique and audit; B-043..B-051.</li></ul></section>
+</div>
+<script>
+const f=document.getElementById('flt');f.addEventListener('click',()=>{const on=!document.body.classList.contains('action');document.body.classList.toggle('action',on);f.setAttribute('aria-pressed',String(on));});
+</script></body></html>

@@ -1,0 +1,106 @@
+import { describe, expect, it } from "vitest";
+import { DEFAULT_WEIGHTS, isUnavailable, MAX_SESSIONS_PER_PITCH, scoreWeek, selectSessions, WEEK_SLOTS } from "@/server/scoring";
+import type { Candidate, PlaceInput, WeekCell, WeekDay } from "@/server/scoring";
+
+const here = { lat: -37.815, lon: 144.965 };
+const candidate: Candidate = { id: "c1", name: "Pitch", ...here, kind: "public-space", origin: "taste", cell: null, usualSpot: null, amplification: "allowed", permit: "general", rules: "", rulesUrl: null, cautions: [] };
+/** A Qloo place open on Saturday evenings only. */
+const eveningBar: PlaceInput = { id: "bar", name: "Bar", ...here, popularity: 0.9, hours: { saturday: [{ opens: "T18:00:00", closes: "T23:00:00", closed: false }] } };
+
+const day = (date: string, weekday: string): WeekDay => ({
+  date,
+  weekday,
+  slots: WEEK_SLOTS.map((s, i) => ({ ...s, startMs: i * 1000, endMs: i * 1000 + 999 })),
+});
+
+describe("scoreWeek", () => {
+  it("scores every day and slot, using per-slot activity (venues open) and forecast", () => {
+    const grid = scoreWeek(
+      [candidate],
+      {
+        days: [day("2026-10-17", "saturday"), day("2026-10-18", "sunday")],
+        cells: [{ ...here, affinity: 1 }],
+        places: [eveningBar],
+        events: [],
+        weather: { "2026-10-17": [{ hour: 19, precipitationProbability: 100, windKmh: 0, temperatureC: 20 }] },
+      },
+      DEFAULT_WEIGHTS,
+    );
+    expect(grid).toHaveLength(8);
+    const satEvening = grid.find((c) => c.date === "2026-10-17" && c.startHour === 19)!;
+    const satMorning = grid.find((c) => c.date === "2026-10-17" && c.startHour === 10)!;
+    expect(satEvening.best?.factors.weatherPenalty).toBeCloseTo(0.7);
+    expect(satMorning.best?.factors.weatherPenalty).toBeNull(); // no forecast hours in that slot
+    // The bar is open Saturday 7-10 pm only: the evening is more active than the morning.
+    expect(satMorning.best?.factors.activity).toBe(0);
+    expect(satEvening.best?.factors.activity).toBeGreaterThan(0.3);
+    expect(satEvening.best!.contributions.activity!).toBeGreaterThan(satMorning.best!.contributions.activity!);
+    // No candidates: no best pitch.
+    expect(scoreWeek([], { days: [day("2026-10-17", "saturday")], cells: [], places: [], events: [], weather: {} }, DEFAULT_WEIGHTS)[0].best).toBeNull();
+  });
+});
+
+describe("selectSessions", () => {
+  const cell = (date: string, startHour: number, score: number | null): WeekCell => ({
+    date,
+    weekday: "x",
+    startHour,
+    endHour: startHour + 3,
+    best: score === null ? null : ({ id: `p-${date}-${startHour}`, score } as WeekCell["best"]),
+  });
+  const grid = [
+    cell("2026-10-17", 19, 90),
+    cell("2026-10-17", 16, 85),
+    cell("2026-10-18", 19, 85),
+    cell("2026-10-19", 10, 70),
+    cell("2026-10-20", 10, 0),
+    cell("2026-10-21", 10, null),
+  ];
+
+  it("takes the best slots within max sessions and max per day", () => {
+    expect(selectSessions(grid, { maxSessions: 5, maxPerDay: 1, unavailable: [] }).map((c) => `${c.date}@${c.startHour}`)).toEqual([
+      "2026-10-17@19",
+      "2026-10-18@19",
+      "2026-10-19@10",
+    ]);
+    // Ties go to the earlier date.
+    expect(selectSessions(grid, { maxSessions: 2, maxPerDay: 2, unavailable: [] }).map((c) => `${c.date}@${c.startHour}`)).toEqual([
+      "2026-10-17@19",
+      "2026-10-17@16",
+    ]);
+  });
+
+  it("caps a week at 2 sessions per pitch: a slot whose best pitch is capped takes its next best", () => {
+    const pitch = (id: string, score: number) => ({ id, score }) as NonNullable<WeekCell["best"]>;
+    const slot = (date: string, options: NonNullable<WeekCell["best"]>[]): WeekCell => ({ date, weekday: "x", startHour: 19, endHour: 22, best: options[0], options });
+    // Federation Wharf is every night's best; Degraves St the runner-up.
+    const week = ["2026-10-17", "2026-10-18", "2026-10-19", "2026-10-20"].map((date, i) => slot(date, [pitch("wharf", 90 - i), pitch("degraves", 80 - i)]));
+    const chosen = selectSessions(week, { maxSessions: 4, maxPerDay: 1, unavailable: [] });
+    expect(MAX_SESSIONS_PER_PITCH).toBe(2);
+    expect(chosen.map((c) => `${c.date}:${c.best.id}`)).toEqual(["2026-10-17:wharf", "2026-10-18:wharf", "2026-10-19:degraves", "2026-10-20:degraves"]);
+    const perPitch = chosen.reduce<Record<string, number>>((n, c) => ({ ...n, [c.best.id]: (n[c.best.id] ?? 0) + 1 }), {});
+    expect(perPitch).toEqual({ wharf: 2, degraves: 2 });
+    // A different cap can be passed.
+    expect(selectSessions(week, { maxSessions: 4, maxPerDay: 1, maxPerPitch: 1, unavailable: [] }).map((c) => c.best.id)).toEqual(["wharf", "degraves"]);
+  });
+
+  it("scoreWeek keeps each slot's best pitches as stand-ins", () => {
+    const grid = scoreWeek(
+      [
+        { id: "a", name: "A", lat: -37.81, lon: 144.96, kind: "public-space", origin: "hotspot", cell: null, permit: "general", rules: "", rulesUrl: null, amplification: "allowed", cautions: [], usualSpot: "A" },
+        { id: "b", name: "B", lat: -37.815, lon: 144.965, kind: "public-space", origin: "taste", cell: null, permit: "general", rules: "", rulesUrl: null, amplification: "allowed", cautions: [], usualSpot: null },
+      ],
+      { days: [{ date: "2026-10-17", weekday: "saturday", slots: [{ startHour: 10, endHour: 13, startMs: 0, endMs: 1 }] }], cells: [], places: [], events: [], weather: {} },
+      DEFAULT_WEIGHTS,
+    );
+    expect(grid[0].options!.map((p) => p.id).sort()).toEqual(["a", "b"]);
+    expect(grid[0].best).toBe(grid[0].options![0]);
+  });
+
+  it("skips unavailable times", () => {
+    const unavailable = [{ date: "2026-10-17", startHour: 20, endHour: 21 }];
+    expect(isUnavailable(grid[0], unavailable)).toBe(true);
+    expect(isUnavailable(grid[1], unavailable)).toBe(false);
+    expect(selectSessions(grid, { maxSessions: 1, maxPerDay: 1, unavailable })[0].startHour).toBe(16);
+  });
+});

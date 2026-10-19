@@ -293,7 +293,7 @@ export function learnThese(
     const why: string[] = [];
     if (artist.audienceGrowth) why.push(`Audience ${artist.audienceGrowth > 0 ? "growing" : "shrinking"} with this crowd (Qloo audience growth ${artist.audienceGrowth > 0 ? "+" : ""}${artist.audienceGrowth.toFixed(2)})`);
     if (artist.percentDelta !== null) why.push(`${artist.percentDelta > 0 ? "Rising" : "Steady"} with this crowd (${artist.percentDelta > 0 ? "+" : ""}${artist.percentDelta.toFixed(1)} pts)`);
-    if (artist.affinity !== null) why.push(`affinity ${Math.round(artist.affinity * 100)}/100`);
+    if (artist.affinity !== null) why.push(`${artist.affinity >= 0.8 ? "a very strong" : artist.affinity >= 0.6 ? "a strong" : artist.affinity >= 0.4 ? "a fair" : "a weak"} taste match`);
     if (artist.listeners) why.push(`${formatListeners(artist.listeners)} Last.fm listeners`);
     return {
       artist: artist.name,

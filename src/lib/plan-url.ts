@@ -4,7 +4,7 @@
  *   /plan?name=…&artists=A|B~<spotify id>&songs=Title~Artist|Own Song~Me~own|Song~Artist~215s&date=2026-10-17&from=18&to=21&permit=general
  * Optional: own=<qlooId>~<name>[~<spotify id>] (the act's own artist on Qloo)
  * (artist ids and song lengths are optional; see lib/performer-url.ts)
- * Optional: w=taste,footfall,places,events,weather[,discovery]  pitch=<id>  run=0 (show the engine's plan only;
+ * Optional: wa=taste,activity,events,weather[,discovery]  (older links: w=taste,footfall,places,events,weather[,discovery])  pitch=<id>  run=0 (show the engine's plan only;
  * by default the agent starts on load, and the server replays a recent run of the same request)
  */
 import { findExample } from "./examples";
@@ -53,7 +53,7 @@ export function parsePlanParams(params: Params, now: LocalNow): ParsedPlanUrl {
     slot: anyTime ? { date, any: true } : { date, startHour, endHour },
     permit: first(params.permit) ?? "general",
     performer,
-    weights: parseWeightsParam(first(params.w)),
+    weights: parseWeightsParam(first(params.wa), first(params.w)),
   });
   if (!parsed.success) {
     const fields = [...new Set(parsed.error.issues.map((i) => i.path.join(".")))];
@@ -89,7 +89,7 @@ export function planSearchParams(request: PlanRequest, extra: Record<string, str
     params.set("songs", songsParam(boundSongs(request.performer.songs, PLAN_SONGS_CONSIDERED)));
   }
   const w = weightsParam(request.weights);
-  if (w) params.set("w", w);
+  if (w) params.set(w[0], w[1]);
   for (const [key, value] of Object.entries(extra)) params.set(key, value);
   return params;
 }

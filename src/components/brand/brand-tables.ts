@@ -13,7 +13,7 @@ export const SCREENS: ScreenRow[] = [
   { name: "Plan: from the data alone", route: "/plan", shows: "The agent didn't finish: Busk Map's own plan" },
   { name: "Plan: limit reached", route: "/plan", shows: "\"Plan limit reached\": no new plan started" },
   { name: "Plan: Qloo unavailable", route: "/plan", shows: "\"Qloo is unavailable\"" },
-  { name: "Plan: a source down", route: "/plan", shows: "The city's sensors didn't answer; the rest works" },
+  { name: "Plan: a source down", route: "/plan", shows: "A source didn't answer (Ticketmaster); the rest works" },
   { name: "Plan: no artist matched", route: "/plan", shows: "\"Qloo couldn't match …\"" },
   { name: "Plan: no legal pitch", route: "/plan", shows: "\"No pitch to recommend\"" },
   { name: "Plan: slot passed", route: "/p/<id>", shows: "\"This slot has passed\", above the stored busk or alone" },

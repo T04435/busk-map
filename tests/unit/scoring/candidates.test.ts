@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildCandidates, buildCandidatesWithFunnel, nearLines, siteAllowsPerformer, topCells, usualSpotAt } from "@/server/scoring";
-import type { HeatCellInput, HotspotInput, SensorInput, SiteInput, SpotInput, ZoneInput } from "@/server/scoring";
+import type { HeatCellInput, HotspotInput, SiteInput, SpotInput, ZoneInput } from "@/server/scoring";
 import { USUAL_HOTSPOTS } from "@/server/data/spots";
 
 const site = (over: Partial<SiteInput>): SiteInput => ({
@@ -15,7 +15,6 @@ const site = (over: Partial<SiteInput>): SiteInput => ({
   ...over,
 });
 
-const sensor = (id: number, lat: number, lon: number): SensorInput => ({ id, name: `Sensor ${id}`, lat, lon, avgHourly: 100 });
 
 describe("siteAllowsPerformer", () => {
   it("applies permit categories", () => {
@@ -45,7 +44,7 @@ describe("buildCandidates", () => {
     { id: "nb", kind: "no-busking", lines: [[{ lat: -37.8, lon: 144.95 }, { lat: -37.8, lon: 144.951 }]] },
     { id: "ua", kind: "unamplified", lines: [[{ lat: -37.82, lon: 144.97 }, { lat: -37.82, lon: 144.971 }]] },
   ];
-  const base = { zones, sensors: [] as SensorInput[], spots: [] as SpotInput[], cells: [] as HeatCellInput[], hotspots: [] as HotspotInput[] };
+  const base = { zones, spots: [] as SpotInput[], cells: [] as HeatCellInput[], hotspots: [] as HotspotInput[] };
 
   it("keeps only council sites open to the performer, with cautions", () => {
     const sites = [
@@ -70,7 +69,7 @@ describe("buildCandidates", () => {
     expect(buildCandidates({ ...base, sites, permit: "circle-act" }).find((c) => c.id === "site:circle")!.cautions).toEqual([]);
   });
 
-  it("snaps the performer's top taste cells to nearby public spots and sensors, then applies the rules", () => {
+  it("snaps the performer's top taste cells to nearby public spots, then applies the rules", () => {
     const sites = [site({ id: "station", permit: "no-busking", lat: -37.81, lon: 144.96 })];
     const cells: HeatCellInput[] = [
       { lat: -37.81, lon: 144.96, affinity: 1 },
@@ -86,16 +85,14 @@ describe("buildCandidates", () => {
       { id: "riverside", name: "Riverside", kind: "promenade", lat: -37.8201, lon: 144.9705 },
       { id: "far", name: "Far away", kind: "square", lat: -37.85, lon: 144.9 },
     ];
-    const sensors = [sensor(3, -37.8135, 144.9605), sensor(9, -37.79, 144.99)];
     const hotspots: HotspotInput[] = [{ name: "The famous corner", lat: -37.8201, lon: 144.9704 }];
-    const { candidates, funnel } = buildCandidatesWithFunnel({ sites, zones, sensors, spots, cells, hotspots, permit: "general" });
-    expect(candidates.map((c) => c.id)).toEqual(["spot:plaza", "footpath:3", "spot:riverside", "footpath:9"]);
+    const { candidates, funnel } = buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots, permit: "general" });
+    expect(candidates.map((c) => c.id)).toEqual(["spot:plaza", "spot:riverside"]);
     expect(candidates[0]).toMatchObject({ kind: "public-space", origin: "taste", cell: { rank: 1, affinity: 1 }, usualSpot: null, permit: "general" });
     expect(candidates[0].cautions[0]).toMatch(/clearances/);
-    expect(candidates[1]).toMatchObject({ kind: "footpath", name: "Sensor 3 footpath" });
-    expect(candidates[2]).toMatchObject({ amplification: "unamplified-zone", usualSpot: "The famous corner", cell: { rank: 2 } });
-    // Four top cells (the minimum), so the weak cell near sensor 9 counts too. The plaza twin is too close to the plaza.
-    expect(funnel).toEqual({ cells: 5, topCells: 4, considered: 6, excluded: 1, candidates: 4 });
+    expect(candidates[1]).toMatchObject({ amplification: "unamplified-zone", usualSpot: "The famous corner", cell: { rank: 2 } });
+    // Four top cells (the minimum). The plaza twin is too close to the plaza.
+    expect(funnel).toEqual({ cells: 5, topCells: 4, considered: 4, excluded: 1, candidates: 2 });
     expect(candidates.map((c) => c.id)).not.toContain("spot:far");
   });
 
@@ -114,7 +111,7 @@ describe("buildCandidates", () => {
       // Ruled out by a restricted site: dropped like any other candidate.
       { name: "Banned plaza", lat: -37.8301, lon: 144.9501 },
     ];
-    const { candidates, funnel } = buildCandidatesWithFunnel({ sites, zones, sensors: [], spots, cells, hotspots, permit: "general" });
+    const { candidates, funnel } = buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots, permit: "general" });
     expect(candidates.map((c) => [c.id, c.origin, c.usualSpot])).toEqual([
       ["spot:far-taste", "taste", null],
       ["spot:mall", "hotspot", "The Mall"],
@@ -122,7 +119,7 @@ describe("buildCandidates", () => {
     ]);
     expect(funnel).toMatchObject({ excluded: 1, candidates: 3 });
     // With no taste data too.
-    const fallback = buildCandidates({ sites, zones, sensors: [], spots: [], cells: [], hotspots, permit: "general" });
+    const fallback = buildCandidates({ sites, zones, spots: [], cells: [], hotspots, permit: "general" });
     expect(fallback.map((c) => c.id)).toEqual(["hotspot:the-mall", "hotspot:wharf-corner"]);
   });
 
@@ -133,10 +130,10 @@ describe("buildCandidates", () => {
     for (const h of USUAL_HOTSPOTS) expect(usualSpotAt(h, USUAL_HOTSPOTS)).toBe(h.name);
   });
 
-  it("falls back to every spot and sensor when there is no taste data", () => {
+  it("falls back to every spot when there is no taste data", () => {
     const spots: SpotInput[] = [{ id: "a", name: "A", kind: "square", lat: -37.81, lon: 144.96 }];
-    const { candidates, funnel } = buildCandidatesWithFunnel({ ...base, sites: [], spots, sensors: [sensor(1, -37.83, 144.96)], permit: "general" });
-    expect(candidates.map((c) => [c.id, c.origin])).toEqual([["spot:a", "fallback"], ["footpath:1", "fallback"]]);
+    const { candidates, funnel } = buildCandidatesWithFunnel({ ...base, sites: [], spots, permit: "general" });
+    expect(candidates.map((c) => [c.id, c.origin])).toEqual([["spot:a", "fallback"]]);
     expect(funnel.topCells).toBe(0);
   });
 });
@@ -149,7 +146,7 @@ describe("fine-grained heatmaps", () => {
     ];
     const cells = (geohash: string) => [0.9, 0.1, 0.2, 0.3].map((affinity, i) => ({ lat: -37.81 - i * 0.05, lon: 144.96, affinity, geohash }));
     const ids = (geohash: string) =>
-      buildCandidatesWithFunnel({ zones: [], hotspots: [], sites: [], sensors: [], spots, cells: cells(geohash), permit: "general" }).candidates.map((c) => c.id);
+      buildCandidatesWithFunnel({ zones: [], hotspots: [], sites: [], spots, cells: cells(geohash), permit: "general" }).candidates.map((c) => c.id);
     // "Mid" is about 390 m from the best cell: inside the geohash-6 snap radius, outside the geohash-7 one.
     expect(ids("r1r0fs")).toEqual(["spot:near", "spot:mid"]);
     expect(ids("r1r0fs1")).toEqual(["spot:near"]);

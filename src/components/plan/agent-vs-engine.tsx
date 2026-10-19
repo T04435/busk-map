@@ -11,7 +11,7 @@ import { modelName, type ExplanationsModel } from "@/lib/sources";
 const list = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
 
 /** What the model looked at, when the caller doesn't say (the checks every busk runs). */
-const DEFAULT_CHECKED = ["the crowd", "foot traffic", "events nearby", "the rules"];
+const DEFAULT_CHECKED = ["the crowd", "estimated activity", "events nearby", "the rules"];
 
 /**
  * Above the research: did the model keep Busk Map's own top 3, or change it, and why. Keeping it is the common case, so it shows
@@ -28,7 +28,7 @@ export function AgentVsEngine({
   model: ExplanationsModel | null;
   /** The heading level: 2 when it stands under the page title, 3 inside "The research" (B-048). */
   level?: 2 | 3;
-  /** Plain phrases for what the model checked ("the crowd at 3 pitches", "foot traffic at 1 pm"): "Kept after checking …". */
+  /** Plain phrases for what the model checked ("the crowd at 3 pitches", "activity at 1 pm"): "Kept after checking …". */
   checked?: string[];
 }) {
   const Heading = level === 2 ? "h2" : "h3";

@@ -5,14 +5,12 @@ import {
   discoveryFactor,
   discoveryOf,
   eventsFactor,
-  footfallFactor,
   normalizeWeights,
   openDuring,
   pickTopPitches,
   MIN_PITCH_SPACING_M,
   skippedForSpacing,
   tooCloseTo,
-  placesFactor,
   rankPitches,
   scorePitch,
   tasteFactor,
@@ -20,7 +18,7 @@ import {
   weatherPenalty,
   WEIGHT_LABELS,
 } from "@/server/scoring";
-import type { Candidate, EventInput, PlaceInput, ScoreInputs } from "@/server/scoring";
+import type { Candidate, EventInput, ScoreInputs } from "@/server/scoring";
 
 const here = { lat: -37.815, lon: 144.965 };
 const offsetM = (m: number) => ({ lat: here.lat + m / 111_195, lon: here.lon });
@@ -28,13 +26,26 @@ const offsetM = (m: number) => ({ lat: here.lat + m / 111_195, lon: here.lon });
 describe("weights", () => {
   it("clamps and fills from defaults", () => {
     expect(normalizeWeights(undefined)).toEqual(DEFAULT_WEIGHTS);
-    expect(normalizeWeights({ taste: 2, footfall: -1, places: Number.NaN, events: 0.5 })).toEqual({
+    expect(normalizeWeights({ taste: 2, activity: -1, events: 0.5, weather: Number.NaN })).toEqual({
       ...DEFAULT_WEIGHTS,
       taste: 1,
-      footfall: 0,
+      activity: 0,
       events: 0.5,
     });
     expect(Object.keys(WEIGHT_LABELS).sort()).toEqual(Object.keys(DEFAULT_WEIGHTS).sort());
+  });
+
+  it("sums to the weights it replaced: activity is foot traffic 0.25 plus busy places 0.20", () => {
+    expect(DEFAULT_WEIGHTS.taste + DEFAULT_WEIGHTS.activity + DEFAULT_WEIGHTS.events).toBeCloseTo(1);
+    expect(DEFAULT_WEIGHTS.activity).toBeCloseTo(0.25 + 0.2);
+  });
+
+  it("reads a request saved before the activity estimate: footfall and places together are the activity weight", () => {
+    expect(normalizeWeights({ taste: 0.5, footfall: 0.2 }).activity).toBeCloseTo(0.2 + 0.2);
+    expect(normalizeWeights({ footfall: 0.3, places: 0.1 }).activity).toBeCloseTo(0.4);
+    expect(normalizeWeights({ footfall: 1, places: 1 }).activity).toBe(1);
+    // An explicit activity weight wins.
+    expect(normalizeWeights({ activity: 0.1, footfall: 0.9 }).activity).toBe(0.1);
   });
 });
 
@@ -115,32 +126,6 @@ describe("factors", () => {
     expect(isFineHeatmap([{ geohash: null }, {}])).toBe(false);
   });
 
-  it("footfall: the nearest sensor, else nearby sensors, else Qloo popularity", () => {
-    expect(footfallFactor(here, [])).toEqual({ value: null, sensor: null, source: null, estimatedHourly: null });
-    expect(footfallFactor(here, [{ id: 1, name: "a", ...here, avgHourly: null }]).value).toBeNull();
-    expect(footfallFactor(here, [{ id: 1, name: "very far", ...offsetM(900), avgHourly: 100 }]).value).toBeNull();
-    expect(footfallFactor(here, [{ id: 1, name: "zero", ...here, avgHourly: 0 }]).value).toBe(0);
-    const result = footfallFactor(here, [
-      { id: 1, name: "near", ...offsetM(50), avgHourly: 99 },
-      { id: 2, name: "nearer", ...offsetM(10), avgHourly: 999 },
-      { id: 3, name: "busiest, far", ...offsetM(5000), avgHourly: 9999 },
-    ]);
-    expect(result).toMatchObject({ source: "sensor", sensor: { id: 2 }, estimatedHourly: null });
-    expect(result.value).toBeCloseTo(Math.sqrt(999 / 9999));
-
-    const estimate = footfallFactor(here, [
-      { id: 1, name: "A", ...offsetM(300), avgHourly: 1000 },
-      { id: 2, name: "B", ...offsetM(-500), avgHourly: 200 },
-    ]);
-    expect(estimate).toMatchObject({ source: "nearby-sensors", sensor: { id: 1 } });
-    expect(estimate.estimatedHourly).toBe(Math.round((1000 / 300 + 200 / 500) / (1 / 300 + 1 / 500)));
-    expect(estimate.value).toBeCloseTo(0.9 * Math.sqrt(estimate.estimatedHourly! / 1000), 2);
-
-    const proxy = footfallFactor(here, [], undefined, [{ ...offsetM(100), affinity: 1, popularity: 0.5 }, { ...offsetM(400), affinity: 1, popularity: 0.9 }, { ...offsetM(50), affinity: 1 }]);
-    expect(proxy).toEqual({ value: 0.4, sensor: null, source: "qloo-popularity", estimatedHourly: null });
-    expect(footfallFactor(here, [], undefined, [{ ...offsetM(5000), affinity: 1, popularity: 0.5 }]).value).toBeNull();
-  });
-
   it("discovery: hidden gems off the usual circuit, with a bonus for a strong fit", () => {
     expect(discoveryOf({ usualSpot: "Bourke St Mall" }, 1)).toBe("usual");
     expect(discoveryOf({ usualSpot: null }, 0.7)).toBe("hidden-gem");
@@ -150,21 +135,6 @@ describe("factors", () => {
     expect(discoveryFactor("hidden-gem", 0.7)).toBe(0);
     expect(discoveryFactor("hidden-gem", null)).toBe(0);
     expect(discoveryFactor("usual", 1)).toBe(0);
-  });
-
-  it("places: open popular places nearby, saturating", () => {
-    const places: PlaceInput[] = [
-      { id: "a", name: "Open bar", ...offsetM(10), popularity: 0.9, hours: { saturday: ["16:00-23:00"] } },
-      { id: "b", name: "Closed cafe", ...offsetM(20), popularity: 1, hours: { saturday: ["07:00-15:00"] } },
-      { id: "c", name: "Unknown hours", ...offsetM(100), popularity: null, hours: null },
-      { id: "d", name: "Too far", ...offsetM(400), popularity: 1, hours: null },
-    ];
-    const result = placesFactor(here, places, "saturday", 18, 21);
-    expect(result.nearby.map((p) => p.id)).toEqual(["a", "c"]);
-    expect(result.nearby[1]).toMatchObject({ open: "unknown", distanceM: 100 });
-    expect(result.value).toBeGreaterThan(0.4);
-    expect(result.value).toBeLessThan(1);
-    expect(placesFactor(here, [], "saturday", 18, 21).value).toBe(0);
   });
 
   it("events: crowds arriving or leaving during the slot", () => {
@@ -213,23 +183,24 @@ describe("factors", () => {
 
 describe("combine", () => {
   it("drops missing factors and zero weights from the mean, then subtracts the weather penalty", () => {
-    const all = { taste: 1, footfall: 0.5, places: 0, events: 0, weatherPenalty: null, discovery: 0 };
+    const all = { taste: 1, activity: 0.5, events: 0, weatherPenalty: null, discovery: 0 };
     const { score, contributions } = combine(all, DEFAULT_WEIGHTS);
-    expect(score).toBeCloseTo((0.4 + 0.125) / 1);
+    expect(score).toBeCloseTo((0.4 + 0.225) / 1);
     expect(contributions.taste).toBeCloseTo(0.4);
+    expect(contributions.activity).toBeCloseTo(0.225);
     expect(contributions.discovery).toBeNull();
 
-    const missing = combine({ taste: 1, footfall: null, places: null, events: null, weatherPenalty: 0.5, discovery: 0 }, DEFAULT_WEIGHTS);
+    const missing = combine({ taste: 1, activity: null, events: null, weatherPenalty: 0.5, discovery: 0 }, DEFAULT_WEIGHTS);
     expect(missing.score).toBeCloseTo(1 - 0.15);
-    expect(missing.contributions.footfall).toBeNull();
+    expect(missing.contributions.activity).toBeNull();
 
-    expect(combine({ taste: null, footfall: null, places: null, events: null, weatherPenalty: 1, discovery: 0 }, DEFAULT_WEIGHTS).score).toBe(0);
-    expect(combine({ taste: 1, footfall: 1, places: 1, events: 1, weatherPenalty: null, discovery: 0 }, { ...DEFAULT_WEIGHTS, taste: 0 }).contributions.taste).toBeNull();
+    expect(combine({ taste: null, activity: null, events: null, weatherPenalty: 1, discovery: 0 }, DEFAULT_WEIGHTS).score).toBe(0);
+    expect(combine({ taste: 1, activity: 1, events: 1, weatherPenalty: null, discovery: 0 }, { ...DEFAULT_WEIGHTS, taste: 0 }).contributions.taste).toBeNull();
   });
 
   it("adds a modest discovery bonus for strong hidden gems", () => {
-    const gem = combine({ taste: 0.9, footfall: 0.5, places: null, events: null, weatherPenalty: null, discovery: 0.9 }, DEFAULT_WEIGHTS);
-    const plain = combine({ taste: 0.9, footfall: 0.5, places: null, events: null, weatherPenalty: null, discovery: 0 }, DEFAULT_WEIGHTS);
+    const gem = combine({ taste: 0.9, activity: 0.5, events: null, weatherPenalty: null, discovery: 0.9 }, DEFAULT_WEIGHTS);
+    const plain = combine({ taste: 0.9, activity: 0.5, events: null, weatherPenalty: null, discovery: 0 }, DEFAULT_WEIGHTS);
     expect(gem.score - plain.score).toBeCloseTo(0.08 * 0.9);
     expect(gem.contributions.discovery).toBeCloseTo(0.072);
   });
@@ -240,7 +211,7 @@ describe("ranking", () => {
     id,
     name: id,
     ...at,
-    kind: "footpath",
+    kind: "public-space",
     origin: "taste",
     cell: null,
     usualSpot,
@@ -252,7 +223,6 @@ describe("ranking", () => {
   });
   const inputs: ScoreInputs = {
     cells: [{ ...here, affinity: 1 }, { ...offsetM(1000), affinity: 0.2 }],
-    sensors: [{ id: 1, name: "S", ...here, avgHourly: 1000 }],
     places: [{ id: "p", name: "P", ...here, popularity: 1, hours: null }],
     events: [],
     weather: [{ precipitationProbability: 0, windKmh: 5, temperatureC: 20 }],
@@ -266,25 +236,33 @@ describe("ranking", () => {
   it("scores with evidence", () => {
     const pitch = scorePitch(candidate("a", here), inputs, DEFAULT_WEIGHTS);
     expect(pitch.score).toBeGreaterThan(60);
-    expect(pitch.evidence.sensor).toEqual({ id: 1, name: "S", avgHourly: 1000 });
+    // One popular place open at the pitch: the venue part alone (the heatmap has no popularity here).
+    expect(pitch.activityBasis).toBe("places");
+    expect(pitch.evidence.activity.area).toBeNull();
+    expect(pitch.evidence.activity.venues).toBeCloseTo(1 - Math.exp(-1 / 1.5));
+    expect(pitch.factors.activity).toBeCloseTo(1 - Math.exp(-1 / 1.5));
     expect(pitch.evidence.places[0].id).toBe("p");
     expect(pitch.factors.weatherPenalty).toBe(0);
 
-    expect(pitch).toMatchObject({ discovery: "hidden-gem", footfallSource: "sensor" });
+    expect(pitch).toMatchObject({ discovery: "hidden-gem" });
     expect(pitch.factors.discovery).toBe(1);
     const usual = scorePitch(candidate("u", here, "Famous corner"), inputs, DEFAULT_WEIGHTS);
     expect(usual).toMatchObject({ discovery: "usual", factors: { discovery: 0 } });
     // The crowd at a usual spot is shared with other buskers.
-    expect(usual.factors.footfall).toBeCloseTo(pitch.factors.footfall! * 0.85);
+    expect(usual.factors.activity).toBeCloseTo(pitch.factors.activity! * 0.85);
 
+    // Nothing from Qloo to estimate from (no places, no cell popularity): the factor is unknown, not zero, and says so.
     const noPlaces = scorePitch(candidate("b", offsetM(1000)), { ...inputs, places: [], weather: null }, DEFAULT_WEIGHTS);
-    expect(noPlaces.factors.places).toBeNull();
-    expect(noPlaces.evidence.sensor).toBeNull();
+    expect(noPlaces.factors.activity).toBeNull();
+    expect(noPlaces.activityBasis).toBe("none");
+    expect(noPlaces.contributions.activity).toBeNull();
     expect(noPlaces.discovery).toBeNull();
 
-    const estimated = scorePitch(candidate("c", offsetM(400)), { ...inputs, places: [] }, DEFAULT_WEIGHTS);
-    expect(estimated.footfallSource).toBe("nearby-sensors");
-    expect(estimated.evidence.sensor).toEqual({ id: 1, name: "S", avgHourly: 1000 });
+    // Heatmap popularity alone: where activity concentrates, with no hours to vary it.
+    const popular = { ...inputs, places: [], cells: [{ ...here, affinity: 1, popularity: 0.6 }, { ...offsetM(1000), affinity: 0.2 }] };
+    const heat = scorePitch(candidate("c", offsetM(100)), popular, DEFAULT_WEIGHTS);
+    expect(heat.activityBasis).toBe("heatmap");
+    expect(heat.factors.activity).toBeCloseTo(0.6);
   });
 
   it("ranks best first with stable ties, and picks spread-out pitches", () => {

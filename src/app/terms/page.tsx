@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "What Busk Map does and does not promise, and where its data comes from.",
 };
 
-const CREDITS: SourceId[] = ["qloo", "melbourne-pedestrian", "melbourne-busking", "osm", "ticketmaster", "lastfm", "open-meteo", "spotify", "openfreemap", "ai"];
+const CREDITS: SourceId[] = ["qloo", "melbourne-busking", "osm", "ticketmaster", "lastfm", "open-meteo", "spotify", "openfreemap", "ai"];
 
 export default function TermsPage() {
   return (
@@ -19,7 +19,7 @@ export default function TermsPage() {
         </h2>
         <p className="m-0 text-lg leading-7 font-bold">Busk Map never confirms a pitch is legal: check your permit conditions.</p>
         <p className="m-0 text-base leading-6 text-muted-foreground">
-          A pitch is ranked from taste, foot traffic, events and the rules we can read. The council&apos;s published zones and your own permit
+          A pitch is ranked from taste, estimated activity, events and the rules we can read. The council&apos;s published zones and your own permit
           decide whether you may play there on the day. The plan is a suggestion, not permission.
         </p>
       </section>

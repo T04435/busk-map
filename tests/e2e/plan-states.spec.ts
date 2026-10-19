@@ -24,7 +24,7 @@ test.describe("pitch details sheet", () => {
     // The pitch card's ScoreBreakdown also heads itself "How this score adds up"; open the weights disclosure by its summary.
     await sheet.getByTestId("score-details").locator("summary").filter({ hasText: "How this score adds up" }).click();
     await expect(sheet.getByRole("region", { name: "How pitches are scored" })).toBeVisible();
-    await expect(sheet.getByRole("region", { name: "Foot traffic by hour" })).toBeVisible();
+    await expect(sheet.getByRole("region", { name: "Estimated activity by hour" })).toBeVisible();
     // Focus is inside the sheet and stays there while tabbing.
     for (let i = 0; i < 6; i++) {
       await page.keyboard.press("Tab");
@@ -195,10 +195,10 @@ const STATES: { name: string; open: (page: Page) => Promise<void> }[] = [
   { name: "replay", open: async (p) => { await p.goto("/plan?example=folk-duo"); await waitForPlan(p); await p.reload(); await waitForPlan(p); } },
   { name: "qloo down", open: async (p) => { await p.goto("/plan?example=acoustic&faults=qloo"); await expect(p.getByRole("heading", { name: "No plan without taste data" })).toBeVisible(); } },
   { name: "no artist matched", open: async (p) => { await p.goto(`/plan?name=Nobody%20Knows&artists=Zzyzx%20Nobody|Qqq%20Unknown&date=${SATURDAY}&from=18&to=21`); await waitForPlan(p); } },
-  { name: "no legal pitch", open: async (p) => { await p.goto("/plan?example=sax&faults=pitches,footfall"); await expect(p.getByRole("heading", { name: /^No pitch open for/i })).toBeVisible(); } },
+  { name: "no legal pitch", open: async (p) => { await p.goto("/plan?example=sax&faults=pitches"); await expect(p.getByRole("heading", { name: /^No pitch open for/i })).toBeVisible(); } },
   { name: "researching", open: async (p) => { await p.emulateMedia({ reducedMotion: "reduce" }); await holdAgentRunning(p); await p.goto("/plan?example=sax"); await expect(p.getByTestId("plan-pending")).toBeVisible(); } },
   { name: "claude ran out of time (fallback)", open: async (p) => { await p.route("**/api/plan", (r) => r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: { message: "The planner is unavailable right now." } }) })); await p.goto("/plan?example=acoustic"); await waitForPlan(p); await expect(p.getByTestId("agent-fallback")).toBeVisible(); } },
-  { name: "source down", open: async (p) => { await p.goto("/plan?example=acoustic&faults=footfall,events,weather"); await waitForPlan(p); } },
+  { name: "source down", open: async (p) => { await p.goto("/plan?example=acoustic&faults=events,weather"); await waitForPlan(p); } },
   { name: "slot passed", open: async (p) => { await p.goto("/plan?name=Past%20Slot%20Duo&artists=Paul%20Kelly&date=2026-10-03&from=12&to=15&permit=premium"); await expect(p.getByTestId("slot-passed")).toBeVisible(); } },
   { name: "run limit", open: async (p) => { await p.goto("/plan?example=sax&faults=fresh-limit"); await expect(p.getByTestId("fresh-limit")).toBeVisible(); } },
   { name: "not found", open: async (p) => { await p.goto("/p/ZZZZZZZZZ"); await expect(p.getByTestId("plan-not-found")).toBeVisible(); } },

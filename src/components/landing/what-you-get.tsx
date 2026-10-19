@@ -6,7 +6,7 @@ import { SetlistPanel } from "@/components/setlist/setlist-panel";
  * Everything below is made-up EXAMPLE data, shown through the real components, to show the shape of a busk. It is not a
  * city's data and the section says so. The numbers are the deck's example busk.
  */
-const TOTALS = { taste: 412, crowds: 1, places: 4, events: 1, sensors: 2, rules: 37, scored: 36, songs: 3 };
+const TOTALS = { taste: 412, crowds: 1, places: 4, events: 1, activity: 2, rules: 37, scored: 36, songs: 3 };
 const SETLIST = [
   { songId: "ex1", title: "Fast Car", artist: "Tracy Chapman", year: 1988, durationMs: 296_000, score: 92, own: false, reason: "Opens the set: the best known of the top three, and a good era fit for a crowd leaning 25–34." },
   { songId: "ex2", title: "Laneway Light", artist: "The Larkspur Two", year: null, durationMs: null, score: 88, own: true, reason: "Your song." },

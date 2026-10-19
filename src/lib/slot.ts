@@ -87,18 +87,6 @@ export function slotHours(slot: Slot): number[] {
   return Array.from({ length: slot.endHour - slot.startHour }, (_, i) => slot.startHour + i);
 }
 
-/**
- * The `count` most recent dates on the slot's weekday that are strictly before
- * `today`: the history used for an hour-of-week footfall baseline.
- */
-export function baselineDates(slotDate: string, today: string, count: number): string[] {
-  const slotDay = new Date(dateToUtcMs(slotDate)).getUTCDay();
-  const todayDay = new Date(dateToUtcMs(today)).getUTCDay();
-  const diff = (todayDay - slotDay + 7) % 7;
-  const first = addDays(today, -(diff === 0 ? 7 : diff));
-  return Array.from({ length: count }, (_, i) => addDays(first, -7 * i));
-}
-
 /** Offset of `timeZone` from UTC, in minutes, at the given instant. */
 export function timeZoneOffsetMinutes(timeZone: string, atMs: number): number {
   const parts = new Intl.DateTimeFormat("en-US", {

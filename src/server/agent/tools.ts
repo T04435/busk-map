@@ -3,10 +3,10 @@ import { tool } from "ai";
 import { z } from "zod";
 import { distanceM, type LatLon } from "@/lib/geo";
 import { ANY_TIME_DAY, formatHour } from "@/lib/slot";
+import { activitySentence, activityWord } from "@/lib/activity";
 import { nameKey } from "@/lib/text";
 import * as qloo from "@/server/adapters/qloo";
-import { getTypicalFootfall } from "@/server/adapters/footfall";
-import { candidateAt, openDuring, pickTopPitches, scoreWindows, typicalForSlot, type Candidate, type KnownPlace, type ScoredPitch } from "@/server/scoring";
+import { activityEstimate, relativeActivity, candidateAt, openDuring, pickTopPitches, scoreWindows, type Candidate, type KnownPlace, type ScoredPitch } from "@/server/scoring";
 import { USUAL_HOTSPOTS } from "@/server/data/spots";
 import type { PlanContext } from "./context";
 import { NumberBag } from "./number-bag";
@@ -45,7 +45,7 @@ export const TOOL_LABELS: Record<string, string> = {
   crowd_at: "Who the crowd is around a point",
   busy_places: "Busy places open near a point",
   events_near: "Events near a point",
-  footfall_at: "Foot traffic at a point",
+  activity_at: "Estimated activity at a point",
   check_pitch: "Checking a spot against the busking rules",
   score_pitches: "Scoring the pitch pool",
   best_hours: "Finding the best hours",
@@ -61,10 +61,10 @@ export const TOOL_SOURCES: Record<string, string> = {
   crowd_at: "Qloo /v2/insights · urn:entity:artist with signal.location and explainability, urn:tag, urn:demographics",
   busy_places: "Qloo /v2/insights · urn:entity:place with filter.location and filter.hours",
   events_near: "Ticketmaster, with Qloo affinity of each headliner",
-  footfall_at: "City of Melbourne pedestrian sensors (typical by weekday and hour)",
+  activity_at: "Qloo heatmap popularity and popular Qloo places open by hour (data already loaded for this plan; an estimate)",
   check_pitch: "City of Melbourne busking layers",
   score_pitches: "Busk Map scoring engine (no model)",
-  best_hours: "Busk Map scoring engine, City of Melbourne sensors, Ticketmaster, Open-Meteo",
+  best_hours: "Busk Map scoring engine, Qloo places open by hour, Ticketmaster, Open-Meteo",
   compare_crowds: "Qloo /v2/insights · urn:tag and per-point artist affinity, plus engine factors",
   build_setlist: "Qloo /v2/insights per pitch, Last.fm, Spotify release years",
   learn_these: "Qloo insights and trending, Last.fm",
@@ -146,18 +146,16 @@ function compactPitch(p: ScoredPitch, engineTop: Set<string>, added: Set<string>
     // Any time only: the pitch's best 3-hour window (additive; fixed-slot rows are unchanged).
     ...(p.window ? { window: `${formatHour(p.window.startHour)}–${formatHour(p.window.endHour)}`, windowStartHour: p.window.startHour, windowEndHour: p.window.endHour } : {}),
     taste: r2(p.factors.taste),
-    footfall: r2(p.factors.footfall),
-    places: r2(p.factors.places),
+    activity: r2(p.factors.activity),
     events: r2(p.factors.events),
     weatherPenalty: r2(p.factors.weatherPenalty),
-    footfallSource: p.footfallSource,
-    peoplePerHour: p.evidence.sensor?.avgHourly ?? null,
+    activityBasis: p.activityBasis,
     cautions: p.cautions.length,
   };
 }
 
 /** Investigation looks that count towards opening score_pitches. */
-export const GATE_TOOLS = ["taste_map", "crowd_at", "events_near", "footfall_at", "busy_places", "check_pitch"] as const;
+export const GATE_TOOLS = ["taste_map", "crowd_at", "events_near", "activity_at", "busy_places", "check_pitch"] as const;
 /** At least one look must be about the crowd itself: its taste, who it is, or an event crowd. */
 export const CROWD_TOOLS = ["taste_map", "crowd_at", "events_near"] as const;
 /** Looks before score_pitches opens. */
@@ -176,7 +174,7 @@ export function gateMessage(state: Pick<AgentState, "looks">): string {
   const need = Math.max(0, MIN_LOOKS - state.looks.length);
   const crowd = state.looks.some((t) => (CROWD_TOOLS as readonly string[]).includes(t));
   const missing = [
-    need > 0 ? `${need} more look${need === 1 ? "" : "s"} (taste_map, crowd_at, events_near, footfall_at, busy_places or check_pitch)` : null,
+    need > 0 ? `${need} more look${need === 1 ? "" : "s"} (taste_map, crowd_at, events_near, activity_at, busy_places or check_pitch)` : null,
     crowd ? null : "at least one of taste_map, crowd_at or events_near",
   ].filter(Boolean);
   return `score_pitches isn't open yet: investigate first and form your own shortlist. Still needed: ${missing.join(" and ")}. Looks so far: ${state.looks.join(", ") || "none"}.`;
@@ -201,8 +199,7 @@ export function createTools(ctx: PlanContext, state: AgentState) {
 function buildTools(ctx: PlanContext, state: AgentState) {
   const area = ctx.city.bbox;
   let placesCache: Promise<KnownPlace[]> | null = null;
-  const places = () =>
-    (placesCache ??= Promise.all([ctx.pitchData(), ctx.footfall()]).then(([pitchData, footfall]) => knownPlaces(pitchData.sites, footfall.sensors)));
+  const places = () => (placesCache ??= ctx.pitchData().then((pitchData) => knownPlaces(pitchData.sites)));
   const knownPitches = async () => [...(await ctx.ranked()), ...state.pool.values()];
   const where = async (w: Where): Promise<Resolved> => resolveWhere(w, { area, pitches: await knownPitches(), places: await places() });
   const ids = () => ctx.entityIds();
@@ -406,61 +403,48 @@ function buildTools(ctx: PlanContext, state: AgentState) {
       },
     }),
 
-    footfall_at: tool({
-      description: "Typical pedestrians per hour at the sensors nearest a point, for the slot's weekday at the hour you give (average of recent weeks; an estimate).",
+    activity_at: tool({
+      description:
+        "Estimated activity level at a point from Qloo alone, never a head count: where the Qloo heatmap's popularity concentrates plus the popular Qloo places open nearby, hour by hour for the slot's weekday. Returns a relative 0-1 level, a word for it and the level for each hour of the day. Uses data already loaded for this plan (no extra Qloo call). It is an estimate: say so.",
       inputSchema: z.object({
         at: whereSchema,
-        hour: z.number().int().min(0).max(23).optional().describe("Default the slot's start (any time: the pitch's best window start, else the busiest hour of the day, 10 am to 10 pm)."),
+        hour: z.number().int().min(0).max(23).optional().describe("Default the slot (any time: the pitch's best window, else the busiest hour of the day, 10 am to 10 pm)."),
       }),
       execute: async ({ at: w, hour }) => {
         const point = await where(w);
         const best = await windowOfPitch(point.pitchId);
-        const [typical, slot] = await Promise.all([
-          ctx.trackFootfallTypical(() => getTypicalFootfall(ctx.request.city, 0, 24, ctx.adapters, ctx.today)),
-          ctx.footfall(),
-        ]);
-        const nearestSensor = typical.sensors.map((s) => ({ s, d: distanceM(point, s) })).filter((x) => x.d <= 600).sort((a, b) => a.d - b.d)[0]?.s;
-        // Any time with no window known: the nearest sensor's busiest hour of the day.
-        const peakHour = nearestSensor
-          ? Array.from({ length: ANY_TIME_DAY.endHour - ANY_TIME_DAY.startHour }, (_, i) => ANY_TIME_DAY.startHour + i).reduce(
-              (top, hh) => ((nearestSensor.byWeekdayHour[ctx.weekday]?.[hh] ?? -1) > (nearestSensor.byWeekdayHour[ctx.weekday]?.[top] ?? -1) ? hh : top),
-              ANY_TIME_DAY.startHour,
-            )
-          : ANY_TIME_DAY.startHour;
-        const h = hour ?? best?.startHour ?? (ctx.isAnyTime ? peakHour : ctx.slotFor({}).startHour);
-        const slotAvg = new Map(slot.sensors.map((s) => [s.id, s.avgHourly]));
-        const rows = typical.sensors
-          .map((s) => ({ s, d: distanceM(point, s) }))
-          .filter((x) => x.d <= 600)
-          .sort((a, b) => a.d - b.d)
-          .slice(0, 4)
-          .map(({ s, d }) => ({
-            sensor: s.name,
-            distanceM: Math.round(d),
-            peopleThisHour: s.byWeekdayHour[ctx.weekday]?.[h] !== undefined ? Math.round(s.byWeekdayHour[ctx.weekday][h]) : null,
-            slotAveragePerHour: best
-              ? (() => {
-                  const v = typicalForSlot(s, ctx.weekday, best.startHour, best.endHour);
-                  return v === null ? null : Math.round(v);
-                })()
-              : slotAvg.get(s.id) != null
-                ? Math.round(slotAvg.get(s.id)!)
-                : null,
-          }));
+        const [cells, found] = await Promise.all([ctx.tasteCells(), ctx.places()]);
+        const data = { cells, places: found, weekday: ctx.weekday };
+        const day = activityEstimate(point, data, 0, 24);
+        const dayHours = day.curve.filter((h) => h.hour >= ANY_TIME_DAY.startHour && h.hour < ANY_TIME_DAY.endHour);
+        // Any time with no window known: the busiest hour of the day (the earliest on a tie).
+        const peakHour = dayHours.reduce((top, h) => (h.level > top.level ? h : top), dayHours[0]).hour;
+        const slot = ctx.isAnyTime ? null : ctx.slotFor({});
+        const window = hour !== undefined ? { startHour: hour, endHour: hour + 1 } : (best ?? slot ?? { startHour: peakHour, endHour: peakHour + 1 });
+        const est = activityEstimate(point, data, window.startHour, window.endHour);
+        const when = `${formatHour(window.startHour)}–${formatHour(window.endHour)}`;
+        // The words read against the engine's scored pool, so they separate pitches; the 0-1 level stays as it is.
+        const relative = est.basis === "none" ? null : relativeActivity(est.level, await ctx.activityLevels());
+        const wordLevel = relative ?? est.level;
         return seen({
           summary:
-            typical.level === "unavailable"
-              ? "Sensor data unavailable"
-              : rows.length === 0
-                ? `No sensor within 600 m of ${point.label}`
-                : rows[0].peopleThisHour === null
-                  ? `No count at ${rows[0].sensor} for ${ctx.weekday}s at ${formatHour(h)}`
-                  : `About ${rows[0].peopleThisHour} people an hour at ${rows[0].sensor} on ${ctx.weekday}s at ${formatHour(h)} (estimate)`,
+            est.basis === "none"
+              ? `No activity estimate near ${point.label}: Qloo had no heatmap or places data there`
+              : `${activitySentence({ level: wordLevel, basis: est.basis, weekday: ctx.weekday, startHour: window.startHour })} at ${point.label}, ${when}`,
           at: at(point),
           weekday: ctx.weekday,
-          hour: h,
-          weeksOfHistory: slot.baselineDates.length,
-          sensors: rows,
+          window: when,
+          startHour: window.startHour,
+          endHour: window.endHour,
+          level: r2(est.level),
+          word: est.basis === "none" ? null : activityWord(wordLevel),
+          relativeLevel: r2(relative),
+          basis: est.basis,
+          areaPopularity: r2(est.area),
+          venuesOpen: r2(est.venues),
+          placesOpen: est.nearby.filter((p) => p.open === "open").slice(0, 3).map((p) => p.name),
+          hourly: dayHours.map((h) => ({ hour: h.hour, level: r2(h.level) })),
+          note: "A relative 0-1 estimate from Qloo (popular places open nearby and where activity concentrates), not a count of people. The word compares this spot with the pitches scored for this plan.",
         });
       },
     }),
@@ -544,7 +528,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
 
     best_hours: tool({
       description:
-        "Any time only: for up to 3 scored pitches, the engine's top 3 three-hour windows of the day (10 am to 10 pm) with scores, typical people an hour at the nearest sensor for each hour, the events arriving or leaving nearby, rain by hour and the places open then. Engine data only.",
+        "Any time only: for up to 3 scored pitches, the engine's top 3 three-hour windows of the day (10 am to 10 pm) with scores, the activity estimate for each hour, the events arriving or leaving nearby, rain by hour and the places open then. Engine data only.",
       inputSchema: z.object({ pitchIds: z.array(z.string().max(80)).min(1).max(3).describe("pitchIds from score_pitches.") }),
       execute: async ({ pitchIds }) => {
         if (!state.scored) throw new WhereError("Call score_pitches first: ask for the best hours of pitchIds it returned.");
@@ -552,18 +536,19 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         if (unknown.length) throw new WhereError(`Unknown pitchId ${unknown.join(", ")}: use ids from score_pitches.`);
         const windows = ctx.windows();
         if (windows.length === 0) throw new WhereError("No busking hours are left on that day.");
-        const [base, reference] = await Promise.all([ctx.anyTimeBase(), ctx.footfallReference()]);
+        const base = await ctx.anyTimeBase();
         const hours = Array.from({ length: ANY_TIME_DAY.endHour - ANY_TIME_DAY.startHour }, (_, i) => ANY_TIME_DAY.startHour + i);
         const label = (w: { startHour: number; endHour: number }) => `${formatHour(w.startHour)}–${formatHour(w.endHour)}`;
         const pitches = [...new Set(pitchIds)].map((id) => {
           const pitch = state.pool.get(id)!;
-          const top = scoreWindows(pitch, base, windows, ctx.weights, reference)
+          const top = scoreWindows(pitch, base, windows, ctx.weights)
             .sort((a, b) => b.score - a.score || a.window!.startHour - b.window!.startHour)
             .slice(0, 3);
-          const sensor = base.sensors.map((s) => ({ s, d: distanceM(pitch, s) })).filter((x) => x.d <= 600).sort((a, b) => a.d - b.d)[0]?.s ?? null;
-          const people = (h: number) => (sensor && sensor.byWeekdayHour[ctx.weekday]?.[h] !== undefined ? Math.round(sensor.byWeekdayHour[ctx.weekday][h]) : null);
+          const curve = activityEstimate(pitch, { cells: base.cells, places: base.places, weekday: base.weekday }, ANY_TIME_DAY.startHour, ANY_TIME_DAY.endHour);
+          const activity = (h: number) => r2(curve.curve.find((x) => x.hour === h)?.level ?? null);
           const rain = (h: number) => base.weather?.find((x) => x.hour === h)?.precipitationProbability ?? null;
-          const peak = hours.reduce<number | null>((best, h) => ((people(h) ?? -1) > (best === null ? -1 : (people(best) ?? -1)) ? h : best), null);
+          // The busiest hour of the day (the earliest on a tie); null when Qloo gave nothing to estimate from.
+          const peak = curve.basis === "none" ? null : curve.curve.reduce((top, h) => (h.level > top.level ? h : top), curve.curve[0]).hour;
           return {
             pitchId: id,
             name: pitch.name,
@@ -573,7 +558,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
               startHour: t.window!.startHour,
               endHour: t.window!.endHour,
               score: t.score,
-              peoplePerHour: t.evidence.sensor?.avgHourly ?? null,
+              activity: r2(t.factors.activity),
               events: t.evidence.events.slice(0, 2).map((e) => ({
                 name: e.name,
                 moment: e.moment,
@@ -586,19 +571,19 @@ function buildTools(ctx: PlanContext, state: AgentState) {
               })(),
               placesOpen: t.evidence.places.filter((p) => p.open === "open").slice(0, 3).map((p) => p.name),
             })),
-            sensor: sensor?.name ?? null,
+            activityBasis: curve.basis,
             peakHour: peak,
-            hourly: hours.map((h) => ({ hour: h, people: people(h), rainPercent: rain(h) })),
+            hourly: hours.map((h) => ({ hour: h, activity: activity(h), rainPercent: rain(h) })),
           };
         });
         const first = pitches[0];
         const firstEvent = first.windows[0].events[0];
         return seen({
-          summary: `Best ${first.windows[0].window} at ${first.name}${first.peakHour !== null ? `: foot traffic peaks at ${formatHour(first.peakHour)}` : ""}${firstEvent ? `${first.peakHour !== null ? " and" : ":"} the ${firstEvent.name} crowd ${firstEvent.moment === "leaving" ? "lets out" : "arrives"} at ${firstEvent.at}` : ""}`,
+          summary: `Best ${first.windows[0].window} at ${first.name}${first.peakHour !== null ? `: estimated activity peaks at ${formatHour(first.peakHour)}` : ""}${firstEvent ? `${first.peakHour !== null ? " and" : ":"} the ${firstEvent.name} crowd ${firstEvent.moment === "leaving" ? "lets out" : "arrives"} at ${firstEvent.at}` : ""}`,
           weekday: ctx.weekday,
           windowsScored: windows.length,
           pitches,
-          note: "Typical people an hour are estimates from recent weeks at the nearest sensor; event end times may be estimated.",
+          note: "Activity is a relative 0-1 estimate from Qloo (popular places open by hour), not a count of people; event end times may be estimated.",
         });
       },
     }),
@@ -627,7 +612,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         return seen({
           summary: `${pa.name} ${pa.score}/100 vs ${pb.name} ${pb.score}/100`,
           scores: { [pa.name]: pa.score, [pb.name]: pb.score },
-          factors: (["taste", "footfall", "places", "events"] as const).map((f) => ({ factor: f, a: r2(pa.factors[f]), b: r2(pb.factors[f]) })),
+          factors: (["taste", "activity", "events"] as const).map((f) => ({ factor: f, a: r2(pa.factors[f]), b: r2(pb.factors[f]) })),
           genres: genreNames.map((name) => ({ genre: name, a: g(sa.genres, name), b: g(sb.genres, name) })),
           yourArtists: artists
             .filter((r) => r.entity)

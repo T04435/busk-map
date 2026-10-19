@@ -13,7 +13,7 @@ export function UnmatchedAlert({ unmatched, matched, mock }: { unmatched: string
       <AlertTitle>{none ? "Qloo couldn't match any of your artists" : `Qloo couldn't match ${list(unmatched)}`}</AlertTitle>
       <AlertDescription>
         {none
-          ? "Taste is left out of this plan. The pitches still use foot traffic, events and weather."
+          ? "Taste and the Qloo activity estimate are left out of this plan. The pitches still use events and weather."
           : `This plan uses the artists Qloo did match: ${list(matched)}.`}
         {mock ? " (Qloo test data: the local mock knows about 130 artists.)" : ""}
       </AlertDescription>

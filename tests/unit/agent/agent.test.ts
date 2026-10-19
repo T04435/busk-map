@@ -35,7 +35,7 @@ describe("plan agent (offline, mock model)", () => {
     expect(() => planSchema.parse(plan)).not.toThrow();
     const tools = started.map((s) => s.tool);
     expect(tools[0]).toBe("taste_map");
-    expect(tools).toEqual(expect.arrayContaining(["score_pitches", "crowd_at", "footfall_at", "check_pitch", "compare_crowds", "build_setlist", "finish_plan"]));
+    expect(tools).toEqual(expect.arrayContaining(["score_pitches", "crowd_at", "activity_at", "check_pitch", "compare_crowds", "build_setlist", "finish_plan"]));
     // Inputs are Claude's choices, passed through to the step.
     expect(started.find((s) => s.tool === "crowd_at")!.input).toMatchObject({ at: { place: expect.any(String) }, radiusM: 400 });
     // The agent investigates first: score_pitches comes after three looks, one of them about the crowd.
@@ -60,8 +60,66 @@ describe("plan agent (offline, mock model)", () => {
     expect(plan.pitches.every((p) => p.setlist.length === request.performer.songs.length)).toBe(true);
     expect(plan.learnThese.length).toBeGreaterThan(0);
     expect(plan.tasteCells.length).toBeGreaterThan(0);
-    expect(plan.dataStatus.map((s) => s.adapter).sort()).toEqual(["events", "footfall", "pitches", "qloo", "repertoire", "songs", "weather"]);
+    expect(plan.dataStatus.map((s) => s.adapter).sort()).toEqual(["events", "pitches", "qloo", "repertoire", "songs", "weather"]);
     expect(plan.dataStatus.every((s) => s.mode === "synthetic")).toBe(true);
+  });
+
+  it("a plan has an activity estimate per pitch, labelled an estimate from Qloo, with an hourly curve and no head count", async () => {
+    mockFetch([]);
+    const { PlanContext, assemblePlan } = await load();
+    const plan = await assemblePlan(new PlanContext(request, OFFLINE, "2026-10-15"), null);
+    expect(plan.weights).toEqual({ taste: 0.4, activity: 0.45, events: 0.15, weather: 0.3, discovery: 0.08 });
+    for (const pitch of plan.pitches) {
+      expect(pitch.activityBasis).not.toBe("none");
+      expect(pitch.evidence.activity!.hourly).toHaveLength(24);
+      expect(pitch.factors.activity).not.toBeNull();
+      expect(pitch.why).toMatch(/here on Saturday evenings \(estimate from Qloo/);
+    }
+    expect(JSON.stringify(plan)).not.toMatch(/sensor|footfall|pedestrian|people an hour/i);
+  });
+
+  it("the activity words separate the top pitches of the three examples (read against each plan's own pool), and the 0-1 level stays", async () => {
+    mockFetch([]);
+    const { PlanContext, assemblePlan } = await load();
+    const { activityWord } = await import("@/lib/activity");
+    const words = new Set<string>();
+    for (const example of EXAMPLES) {
+      const req = planRequestSchema.parse({ city: "melbourne", slot: { date: "2026-10-17", startHour: 18, endHour: 21 }, performer: example.performer });
+      const plan = await assemblePlan(new PlanContext(req, OFFLINE, "2026-10-15"), null);
+      for (const p of plan.pitches) {
+        const a = p.evidence.activity!;
+        expect(a.relative).not.toBeNull();
+        expect(a.level).toBeGreaterThan(0);
+        words.add(activityWord(a.relative!));
+        expect(p.why).toContain(`${activityWord(a.relative!)} here on Saturday evenings (estimate from Qloo`);
+      }
+    }
+    expect(words.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it("a plan stored before the activity estimate still reads: old foot traffic fields are dropped, new ones default", async () => {
+    mockFetch([]);
+    const { PlanContext, assemblePlan } = await load();
+    const plan = await assemblePlan(new PlanContext(request, OFFLINE, "2026-10-15"), null);
+    const old = JSON.parse(JSON.stringify(plan));
+    for (const pitch of old.pitches) {
+      delete pitch.activityBasis;
+      delete pitch.factors.activity;
+      delete pitch.evidence.activity;
+      Object.assign(pitch, { footfallSource: "sensor", kind: "footpath" });
+      Object.assign(pitch.factors, { footfall: 0.6, places: 0.3 });
+      Object.assign(pitch.evidence, { sensor: { name: "Bourke St", avgHourly: 1900, hourly: null } });
+    }
+    old.footfallLevel = "city-sensors";
+    old.weights = { taste: 0.4, footfall: 0.25, places: 0.2, events: 0.15, weather: 0.3, discovery: 0.08 };
+    delete old.researchTotals.activity;
+    old.researchTotals.sensors = 2;
+    const parsed = planSchema.safeParse(old);
+    expect(parsed.success).toBe(true);
+    const first = parsed.success ? parsed.data.pitches[0] : null;
+    expect(first).toMatchObject({ activityBasis: "none", kind: "footpath", factors: { activity: null }, evidence: { activity: null } });
+    expect(first).not.toHaveProperty("footfallSource");
+    expect(parsed.success && parsed.data.weights.activity).toBeCloseTo(0.45);
   });
 
   it("falls back to template explanations when the model returns pitch ids the engine never produced", async () => {
@@ -83,14 +141,14 @@ describe("plan agent (offline, mock model)", () => {
 
   it("still plans when other sources are down, and says what is missing", async () => {
     const { PlanContext, runPlanAgent } = await load();
-    const ctx = new PlanContext(request, { offline: true, faults: ["footfall", "events", "weather", "songs"] }, "2026-10-15");
+    const ctx = new PlanContext(request, { offline: true, faults: ["events", "weather", "songs"] }, "2026-10-15");
     const { plan } = await runPlanAgent(ctx);
-    expect(plan.footfallLevel).toBe("unavailable");
     expect(plan.weather).toBeNull();
     expect(plan.pitches.length).toBeGreaterThan(0);
-    // Without sensors, busyness falls back to Qloo's area popularity.
-    expect(plan.pitches.every((p) => p.footfallSource !== "sensor" && p.footfallSource !== "nearby-sensors")).toBe(true);
-    expect(plan.dataStatus.find((s) => s.adapter === "footfall")).toMatchObject({ mode: "fallback", reason: "fault_injected" });
+    // The activity estimate comes from Qloo alone, so it is still there; events and weather are marked down.
+    expect(plan.pitches.every((p) => p.activityBasis !== "none" && p.evidence.activity !== null)).toBe(true);
+    expect(plan.dataStatus.find((s) => s.adapter === "events")).toMatchObject({ mode: "fallback", reason: "fault_injected" });
+    expect(JSON.stringify(plan)).not.toMatch(/sensor|footfall|people an hour/i);
   });
 
   it("recommends nothing, and says so, when Qloo is down", async () => {
@@ -117,7 +175,7 @@ describe("plan agent (offline, mock model)", () => {
     const { PlanContext, runPlanAgent } = await load();
     // Live context, but every provider without a key: Qloo synthetic, others fall back.
     mockFetch([]);
-    const ctx = new PlanContext(request, { offline: false, faults: ["footfall", "pitches", "weather"] }, "2026-10-15");
+    const ctx = new PlanContext(request, { offline: false, faults: ["pitches", "weather"] }, "2026-10-15");
     const { plan, usage } = await runPlanAgent(ctx);
     expect(usage).toBeNull();
     expect(plan.explanations).toBe("template");
@@ -272,7 +330,9 @@ describe("where to play: Qloo venue detail and event crowds", () => {
     const { templateWhy } = await import("@/server/agent/assemble");
     const ranked = await ctx.ranked();
     const withVenue = ranked.find((p) => p.evidence.places.some((pl) => pl.liveMusic));
-    expect(withVenue && templateWhy(withVenue, "saturday", 18, 21)).toMatch(/\(live music/);
+    expect(withVenue && templateWhy(withVenue, "saturday", 18)).toMatch(/\(live music/);
+    // The why says how busy it is as an estimate from Qloo, with no head count.
+    expect(templateWhy(withVenue!, "saturday", 18)).toMatch(/here on Saturday evenings \(estimate from Qloo/);
   });
 
   it("an event headliner the performer lists is a perfect match, and an unmatched headliner is left out", async () => {

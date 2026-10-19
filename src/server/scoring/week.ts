@@ -1,4 +1,3 @@
-import type { LatLon } from "@/lib/geo";
 import { pickTopPitches, rankPitches, type ScoredPitch } from "./pitch-score";
 import type { Candidate, EventInput, HeatCellInput, PlaceInput, WeatherHourInput, Weights } from "./types";
 
@@ -23,17 +22,9 @@ export type WeekDay = {
   slots: { startHour: number; endHour: number; startMs: number; endMs: number }[];
 };
 
-export type TypicalSensor = LatLon & {
-  id: number;
-  name: string;
-  /** Typical pedestrians per hour by weekday ("monday") and local hour. */
-  byWeekdayHour: Record<string, Record<number, number>>;
-};
-
 export type WeekInputs = {
   days: WeekDay[];
   cells: HeatCellInput[];
-  sensors: TypicalSensor[];
   places: PlaceInput[];
   events: EventInput[];
   /** Forecast hours keyed by date; missing dates mean no forecast. */
@@ -56,23 +47,9 @@ export const MAX_SESSIONS_PER_PITCH = 2;
 /** Pitches kept per slot as stand-ins for a capped pitch. */
 export const WEEK_OPTIONS_PER_SLOT = 6;
 
-/** Average typical footfall over the slot's hours; null when the sensor has no data then. */
-export function typicalForSlot(sensor: TypicalSensor, weekday: string, startHour: number, endHour: number): number | null {
-  const byHour = sensor.byWeekdayHour[weekday] ?? {};
-  const values: number[] = [];
-  for (let h = startHour; h < endHour; h++) if (byHour[h] !== undefined) values.push(byHour[h]);
-  return values.length === 0 ? null : values.reduce((a, b) => a + b, 0) / values.length;
-}
-
 /** Score the whole week: one ranked list per (day, slot), keeping the best pitch. */
 export function scoreWeek(candidates: Candidate[], inputs: WeekInputs, weights: Weights): WeekCell[] {
   const cells: WeekCell[] = [];
-  // Scale footfall against the busiest typical slot of the week, so a quiet
-  // Monday morning doesn't score like a busy Saturday night.
-  const typicals = inputs.days.flatMap((day) =>
-    day.slots.flatMap((slot) => inputs.sensors.map((s) => typicalForSlot(s, day.weekday, slot.startHour, slot.endHour) ?? 0)),
-  );
-  const footfallReference = Math.max(0, ...typicals);
   for (const day of inputs.days) {
     const forecast = inputs.weather[day.date];
     for (const slot of day.slots) {
@@ -80,7 +57,6 @@ export function scoreWeek(candidates: Candidate[], inputs: WeekInputs, weights: 
         candidates,
         {
           cells: inputs.cells,
-          sensors: inputs.sensors.map((s) => ({ id: s.id, name: s.name, lat: s.lat, lon: s.lon, avgHourly: typicalForSlot(s, day.weekday, slot.startHour, slot.endHour) })),
           places: inputs.places,
           events: inputs.events,
           weather: forecast ? forecast.filter((h) => h.hour >= slot.startHour && h.hour < slot.endHour) : null,
@@ -89,7 +65,6 @@ export function scoreWeek(candidates: Candidate[], inputs: WeekInputs, weights: 
           endHour: slot.endHour,
           slotStartMs: slot.startMs,
           slotEndMs: slot.endMs,
-          footfallReference,
         },
         weights,
       );

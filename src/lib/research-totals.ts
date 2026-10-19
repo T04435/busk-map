@@ -16,8 +16,7 @@
  *            returned at least one artist.
  * - places:  distinct busy places found (by name) across busy_places calls.
  * - events:  distinct events found (name, venue, start) across events_near calls.
- * - sensors: distinct pedestrian sensors with a reading (peopleThisHour) across
- *            footfall_at calls.
+ * - activity: distinct places with a Qloo activity estimate (level), across activity_at calls.
  * - rules:   council rules checks: distinct spots check_pitch ran the council
  *            layers on (not when the rules were unavailable), plus every pitch
  *            in the final scored pool (each passed the engine's legality filter).
@@ -27,7 +26,7 @@
  * Engine-only plans use the same meaning with the engine's data: taste = the
  * heatmap's cells; crowds = the crowd reads with data (the performer's crowd,
  * the usual-hotspot crowd); places and events = distinct ones in the scored
- * pool's evidence; sensors = slot sensors with a reading; rules = scored = the
+ * pool's evidence; activity = pool pitches with an activity estimate; rules = scored = the
  * scored pool; songs = distinct songs across the plan's setlists.
  *
  * Qloo usage for the busk (agent runs; optional, so plans stored before them
@@ -51,7 +50,8 @@ export const researchTotalsSchema = z.object({
   crowds: count,
   places: count,
   events: count,
-  sensors: count,
+  /** Places with a Qloo activity estimate. Plans stored before it (as "sensors") count 0. */
+  activity: count.default(0),
   rules: count,
   scored: count,
   songs: count,
@@ -63,7 +63,7 @@ export const researchTotalsSchema = z.object({
 
 export type ResearchTotals = z.infer<typeof researchTotalsSchema>;
 
-export const ZERO_TOTALS: ResearchTotals = { taste: 0, crowds: 0, places: 0, events: 0, sensors: 0, rules: 0, scored: 0, songs: 0 };
+export const ZERO_TOTALS: ResearchTotals = { taste: 0, crowds: 0, places: 0, events: 0, activity: 0, rules: 0, scored: 0, songs: 0 };
 
 /** One finished tool call, as the step stream records it (tool-end). */
 export type ToolResult = { tool: string; ok: boolean; output?: unknown };
@@ -102,9 +102,10 @@ export function fromToolOutputs(results: ToolResult[]): ResearchTotals {
   const events = new Set<string>();
   for (const o of outputsOf(results, "events_near")) for (const e of rows(o.events)) if (key(e.name)) events.add(JSON.stringify([key(e.name), key(e.venue), str(e.starts)]));
 
-  const sensors = new Set<string>();
-  for (const o of outputsOf(results, "footfall_at")) {
-    for (const s of rows(o.sensors)) if (key(s.sensor) && typeof s.peopleThisHour === "number") sensors.add(key(s.sensor));
+  const activity = new Set<string>();
+  for (const o of outputsOf(results, "activity_at")) {
+    const at = isRow(o.at) ? o.at : {};
+    if (typeof o.level === "number" && o.basis !== "none") activity.add(JSON.stringify([str(at.lat), str(at.lon)]));
   }
 
   const checked = new Set<string>();
@@ -128,7 +129,7 @@ export function fromToolOutputs(results: ToolResult[]): ResearchTotals {
     crowds: crowds.size,
     places: places.size,
     events: events.size,
-    sensors: sensors.size,
+    activity: activity.size,
     rules: checked.size + scored,
     scored,
     songs: songs.size,
@@ -142,9 +143,7 @@ export type EngineResearch = {
   /** Crowd reads that returned artists (e.g. the performer's crowd, the usual-hotspot crowd). */
   crowdReads: number;
   /** The scored pool: each pitch's evidence (places, events). */
-  pool: { evidence: { places: { name: string }[]; events: { name: string; venue: string | { name: string }; start?: string; localTime?: string | null }[] } }[];
-  /** Slot sensors, with their reading (null: none). */
-  sensors: { id?: string | number; name: string; avgHourly: number | null }[];
+  pool: { activityBasis?: string; evidence: { places: { name: string }[]; events: { name: string; venue: string | { name: string }; start?: string; localTime?: string | null }[] } }[];
   /** The plan's setlists. */
   setlists: { title: string; artist: string }[][];
 };
@@ -160,7 +159,7 @@ export function fromEngine(data: EngineResearch): ResearchTotals {
       if (key(e.name)) events.add(JSON.stringify([key(e.name), key(venue), str(e.start ?? e.localTime)]));
     }
   }
-  const sensors = new Set(data.sensors.filter((s) => typeof s.avgHourly === "number").map((s) => str(s.id ?? s.name) || key(s.name)));
+  const activity = data.pool.filter((p) => p.activityBasis !== undefined && p.activityBasis !== "none").length;
   const songs = new Set(data.setlists.flat().map((s) => JSON.stringify([key(s.title), key(s.artist)])));
   const scored = data.pool.length;
   return {
@@ -168,7 +167,7 @@ export function fromEngine(data: EngineResearch): ResearchTotals {
     crowds: nonNegInt(data.crowdReads),
     places: places.size,
     events: events.size,
-    sensors: sensors.size,
+    activity,
     rules: scored,
     scored,
     songs: songs.size,

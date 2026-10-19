@@ -27,7 +27,7 @@ function usePhone(): boolean {
 }
 
 /**
- * "Full details" for one pitch, in a sheet: the pitch (head, why this crowd, foot traffic by hour, the facts), the setlist with
+ * "Full details" for one pitch, in a sheet: the pitch (head, why this crowd, estimated activity by hour, the facts), the setlist with
  * Copy, the crowd, and how the score adds up. Radix traps focus inside, closes on Escape and returns focus to what opened it.
  * The page keeps `?pitch=<id>` in the URL while it is open (the deep link) and clears it on close.
  */

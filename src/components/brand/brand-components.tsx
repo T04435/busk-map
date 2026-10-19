@@ -94,10 +94,10 @@ export function ComponentGroups() {
         <div className="flex flex-wrap gap-x-5 gap-y-2">
           <DataStatusBadge status="live" source="Qloo" />
           <DataStatusBadge status="cached" source="Weather" />
-          <DataStatusBadge status="estimated" source="Foot traffic" />
+          <DataStatusBadge status="estimated" source="Activity" />
           <DataStatusBadge status="unavailable" source="Events" reason="no answer" />
         </div>
-        <Alert variant="warning"><AlertTitle>The city&apos;s sensors didn&apos;t answer</AlertTitle><AlertDescription>Foot traffic is estimated and marked &quot;est.&quot;.</AlertDescription></Alert>
+        <Alert variant="warning"><AlertTitle>Ticketmaster didn&apos;t answer</AlertTitle><AlertDescription>Event crowds are left out of the scores.</AlertDescription></Alert>
         <Alert variant="info"><AlertTitle>Info</AlertTitle><AlertDescription>Planning again for The Larkspur Two.</AlertDescription></Alert>
         <Banner tone="test">Test data: nothing here is a real pitch.</Banner>
         <Banner tone="less">Less data for this city: some sources are missing.</Banner>
@@ -128,7 +128,7 @@ export function ComponentGroups() {
 
       <Group title="Research" names={COMPONENT_GROUPS.research}>
         <ResearchFunnel
-          totals={{ taste: 412, crowds: 1, places: 4, events: 1, sensors: 2, rules: 37, scored: 36, songs: 3 }}
+          totals={{ taste: 412, crowds: 1, places: 4, events: 1, activity: 2, rules: 37, scored: 36, songs: 3 }}
           live={false}
           picks={3}
         />

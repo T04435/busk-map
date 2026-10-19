@@ -157,7 +157,7 @@ test.describe("short plan links with the agent (mock model offline)", () => {
       .filter(Boolean)
       .map((line) => JSON.parse(line) as { type: string; plan?: { researchTotals?: Record<string, number> } });
     const totals = events.find((e) => e.type === "plan")?.plan?.researchTotals;
-    expect(Object.keys(totals ?? {}).sort()).toEqual(["crowds", "events", "places", "qlooCacheHits", "qlooCalls", "rules", "scored", "sensors", "songs", "taste"]);
+    expect(Object.keys(totals ?? {}).sort()).toEqual(["activity", "crowds", "events", "places", "qlooCacheHits", "qlooCalls", "rules", "scored", "songs", "taste"]);
     for (const value of Object.values(totals!)) expect(Number.isInteger(value) && value >= 0).toBe(true);
     expect(totals!.scored).toBeGreaterThan(0);
     // Qloo usage for this busk: requests sent plus lookups served from the data cache (other specs may have warmed it).

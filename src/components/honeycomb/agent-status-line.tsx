@@ -15,7 +15,7 @@ const text = (state: AgentState, model: ExplanationsModel | null | undefined): s
     case "none":
       return "No new plan was started.";
     case "researching":
-      return `${AGENT_NAME_START} is asking Qloo, the city's sensors and the council's rules. Your busk replaces this in about half a minute${offline}.`;
+      return `${AGENT_NAME_START} is asking Qloo and the council's rules. Your busk replaces this in about half a minute${offline}.`;
     case "engine":
       return `Planned from Busk Map's scores. ${AGENT_NAME_START} didn't run.`;
     case "rerun":

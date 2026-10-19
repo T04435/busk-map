@@ -19,6 +19,7 @@ import { SongActions } from "@/components/honeycomb/song-actions";
 import { SongRow } from "@/components/honeycomb/song-row";
 import { SongTag } from "@/components/honeycomb/song-tag";
 import type { AgentStep } from "@/lib/agent-steps";
+import { activitySourceNote, activityWord, type ActivityBasis } from "@/lib/activity";
 import type { ExplanationsModel } from "@/lib/sources";
 import { EstimateLabel } from "./estimate-label";
 
@@ -372,23 +373,23 @@ export const TOOL_UI: Record<string, ToolUi> = {
       );
     },
   },
-  footfall_at: {
-    doing: (s) => `Reading the foot-traffic sensors near ${placeOf(s)}`,
-    title: (s) => `Foot traffic at ${placeOf(s)}`,
+  activity_at: {
+    doing: (s) => `Estimating activity near ${placeOf(s)}`,
+    title: (s) => `Estimated activity at ${placeOf(s)}`,
     render: (o) => {
-      const s = arr(o.sensors)[0];
-      const people = s ? num(s.peopleThisHour) : null;
-      if (!s || people === null) return <Fact flush icon="footfall" tone="footfall" title="No sensor count near here" sub="Foot traffic is estimated from busy places and events." />;
-      const hour = num(o.hour);
+      const level = num(o.relativeLevel) ?? num(o.level);
+      const basis = str(o.basis) as ActivityBasis | null;
+      if (level === null || basis === null || basis === "none") {
+        return <Fact flush icon="footfall" tone="footfall" title="No activity estimate here" sub="Qloo had no heatmap or places data for this spot." />;
+      }
+      const open = Array.isArray(o.placesOpen) ? o.placesOpen.filter((x): x is string => typeof x === "string") : [];
       return (
         <Fact
           flush
           icon="footfall"
           tone="footfall"
-          title={
-            <EstimateLabel basis={`Average of the last ${num(o.weeksOfHistory) ?? "few"} ${str(o.weekday) ?? "same day"}s at this hour`}>≈{n0(people)} people an hour</EstimateLabel>
-          }
-          sub={`Nearest sensor: ${str(s.sensor)}, ${n0(num(s.distanceM))} m${hour !== null ? ` · ${hour % 12 || 12} ${hour < 12 ? "am" : "pm"}` : ""}`}
+          title={<EstimateLabel basis={activitySourceNote(basis)}>{activityWord(level)}</EstimateLabel>}
+          sub={`${str(o.window) ?? ""}${open.length ? ` · popular places open: ${open.join(", ")}` : ""}`.replace(/^ · /, "")}
         />
       );
     },
@@ -436,7 +437,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
               />
             ))}
           </ol>
-          {pool ? <EvidenceLine>Busk Map scored {pool} pitches allowed for your permit on taste, foot traffic, places, events and weather.</EvidenceLine> : null}
+          {pool ? <EvidenceLine>Busk Map scored {pool} pitches allowed for your permit on taste, estimated activity (Qloo places), events and weather.</EvidenceLine> : null}
         </>
       );
     },
@@ -527,10 +528,10 @@ export const TOOL_UI: Record<string, ToolUi> = {
             {pitches.map((p) => {
               const top = arr(p.windows)[0];
               const event = top ? arr(top.events)[0] : undefined;
-              const people = top ? num(top.peoplePerHour) : null;
+              const activity = top ? num(top.activity) : null;
               const rain = top ? num(top.rainPercent) : null;
               const parts = [
-                people !== null ? `about ${n0(people)} people an hour` : null,
+                activity !== null && str(p.activityBasis) !== "none" ? `${activityWord(activity).toLowerCase()} (estimate)` : null,
                 event ? `the ${str(event.name)} crowd ${event.moment === "leaving" ? "lets out" : "arrives"} at ${str(event.at)}` : null,
                 rain !== null ? (rain >= 50 ? `rain likely (${rain}%)` : rain >= 25 ? `some rain risk (${rain}%)` : "dry") : null,
               ].filter(Boolean);
@@ -541,7 +542,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
               );
             })}
           </ul>
-          <EvidenceLine>Engine data: each 3-hour window from 10 am to 10 pm, scored with typical foot traffic, events and rain. Estimates.</EvidenceLine>
+          <EvidenceLine>Engine data: each 3-hour window from 10 am to 10 pm, scored with estimated activity (popular Qloo places open by hour), events and rain. Estimates.</EvidenceLine>
         </>
       );
     },
@@ -564,6 +565,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
 export const TOOL_SOURCES: Record<string, MentionSource[]> = {
   taste_map: ["qloo"],
   crowd_at: ["qloo"],
+  activity_at: ["qloo"],
   compare_crowds: ["qloo"],
   build_setlist: ["qloo", "lastfm", "spotify"],
   learn_these: ["qloo", "lastfm"],
@@ -587,7 +589,7 @@ export const TOOL_ICON: Record<string, IconName> = {
   crowd_at: "users",
   busy_places: "store",
   events_near: "ticket",
-  footfall_at: "footfall",
+  activity_at: "footfall",
   check_pitch: "legal",
   score_pitches: "pin",
   compare_crowds: "users",

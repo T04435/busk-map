@@ -1,5 +1,5 @@
 import "server-only";
-import type { BBox } from "@/lib/geo";
+import type { BBox, LatLon } from "@/lib/geo";
 import type { TrendRow } from "@/server/adapters/qloo";
 import { ageLabel } from "@/lib/age";
 import { addDays, ANY_TIME_DAY, anyTimeWindowsLeft, DEFAULT_SLOT_HOURS, isAnyTime, slotUtcRange, weekdayOf, zonedHourToUtc, type Slot, type TimeWindow } from "@/lib/slot";
@@ -7,7 +7,6 @@ import { nameKey, trackKey } from "@/lib/text";
 import type { PlanRequest } from "@/lib/plan-schema";
 import type { AdapterContext, AdapterName, AdapterResult } from "@/server/adapters/core";
 import { getEvents, getEventsBetween, EVENTS_LOOKBACK_HOURS } from "@/server/adapters/events";
-import { getFootfall, getTypicalFootfall, type FootfallData } from "@/server/adapters/footfall";
 import { getPitches } from "@/server/adapters/pitches";
 import * as qloo from "@/server/adapters/qloo";
 import { findReleaseYears } from "@/server/adapters/repertoire";
@@ -17,6 +16,7 @@ import { getWeather } from "@/server/adapters/weather";
 import { CITIES } from "@/server/cities";
 import { PUBLIC_SPOTS, USUAL_HOTSPOTS } from "@/server/data/spots";
 import {
+  activityEstimate,
   buildCandidatesWithFunnel,
   buildSetlist,
   DEFAULT_MAX_SONGS,
@@ -33,9 +33,8 @@ import {
   SCENE_TAKE,
   scorePitch,
   scorePitchAnyTime,
-  typicalForSlot,
   USUAL_CROWD_TAKE,
-  footfallReferenceOf,
+  type ActivityHour,
   type AnyTimeBase,
   type Candidate,
   type LocalScene,
@@ -190,30 +189,19 @@ export class PlanContext {
     return this.track(key, load);
   }
 
-  /**
-   * The slot weekday's 24-hour foot traffic at each sensor, for the details sheet's sparkline (display only: never scored, and its
-   * failure never marks the sensors down). Empty when the typical counts are unavailable.
-   */
-  hourlyProfiles(): Promise<Map<number, (number | null)[]>> {
-    return this.once("footfallHourly", async () => {
-      try {
-        const typical = await getTypicalFootfall(this.request.city, 0, 24, this.adapters, this.today);
-        const out = new Map<number, (number | null)[]>();
-        if (typical.data.level !== "city-sensors") return out;
-        for (const sensor of typical.data.sensors) {
-          const day = sensor.byWeekdayHour[this.weekday];
-          if (day) out.set(sensor.id, Array.from({ length: 24 }, (_, h) => (day[h] === undefined ? null : Math.round(day[h]))));
-        }
-        return out;
-      } catch {
-        return new Map<number, (number | null)[]>();
-      }
-    });
+  /** The activity levels of the engine's scored pool, for the words that read a pitch's level against its peers. */
+  async activityLevels(): Promise<number[]> {
+    return (await this.ranked()).filter((p) => p.activityBasis !== "none").map((p) => p.evidence.activity.level);
   }
 
-  /** Typical foot traffic by weekday and hour (for the agent's footfall_at), loaded once. */
-  trackFootfallTypical<T>(load: () => Promise<AdapterResult<T>>): Promise<T> {
-    return this.track("footfallTypical", load);
+  /**
+   * The activity estimate hour by hour across the whole day at a point, for the details sheet's chart (display only: the same
+   * Qloo places and heatmap the score used, and it adds no call). Null when Qloo gave nothing to estimate from.
+   */
+  async activityDay(point: LatLon): Promise<ActivityHour[] | null> {
+    const [cells, places] = await Promise.all([this.tasteCells(), this.places()]);
+    const day = activityEstimate(point, { cells, places, weekday: this.weekday }, 0, 24);
+    return day.basis === "none" ? null : day.curve;
   }
 
   dataStatus(): Status[] {
@@ -396,27 +384,6 @@ export class PlanContext {
     return this.track("crowd", () => qloo.crowdProfile(ids, this.adapters));
   }
 
-  /** Typical foot traffic by weekday and hour, loaded once (the agent's footfall_at and any time's windows share it). */
-  typicalFootfall() {
-    return this.trackFootfallTypical(() => getTypicalFootfall(this.request.city, 0, 24, this.adapters, this.today));
-  }
-
-  footfall(): Promise<FootfallData> {
-    if (isAnyTime(this.request.slot)) {
-      // Any time: the sensors with their typical average over the 10 am to 10 pm day (one sensor request, shared with footfall_at).
-      return this.once("footfallDay", async () => {
-        const typical = await this.typicalFootfall();
-        return {
-          level: typical.level,
-          baselineDates: [],
-          liveAsOf: null,
-          sensors: typical.sensors.map((s) => ({ id: s.id, name: s.name, lat: s.lat, lon: s.lon, avgHourly: typicalForSlot(s, this.weekday, ANY_TIME_DAY.startHour, ANY_TIME_DAY.endHour), samples: 0, liveLastHour: null })),
-        };
-      });
-    }
-    return this.track("footfall", () => getFootfall(this.request.city, this.fixedSlot(), this.adapters, this.today));
-  }
-
   pitchData() {
     return this.track("pitches", () => getPitches(this.request.city, this.adapters));
   }
@@ -478,10 +445,10 @@ export class PlanContext {
 
   // ---- Scoring ------------------------------------------------------------
 
-  /** Candidates from the data: top taste cells snapped to public spots and sensors, plus council sites, legality-filtered. */
+  /** Candidates from the data: top taste cells snapped to public spots, plus council sites, legality-filtered. */
   candidates() {
     return this.once("candidates", async () => {
-      const [pitchData, footfall, cells] = await Promise.all([this.pitchData(), this.footfall(), this.tasteCells()]);
+      const [pitchData, cells] = await Promise.all([this.pitchData(), this.tasteCells()]);
       if (this.statuses.get("pitches")?.mode === "fallback") {
         // Without the council's layers nothing can be checked against the rules: recommend nothing.
         this.notes.push("The council's busking rules are unavailable right now, so Busk Map can't check which spots are allowed. Try again later.");
@@ -490,7 +457,6 @@ export class PlanContext {
       return buildCandidatesWithFunnel({
         sites: pitchData.sites,
         zones: pitchData.zones,
-        sensors: footfall.sensors,
         spots: PUBLIC_SPOTS,
         cells,
         hotspots: USUAL_HOTSPOTS,
@@ -570,9 +536,8 @@ export class PlanContext {
   /** The engine's inputs for the fixed slot. */
   async scoreInputs(): Promise<ScoreInputs> {
     const slot = this.fixedSlot();
-    const [cells, footfall, places, rawEvents, weather, eventTaste] = await Promise.all([
+    const [cells, places, rawEvents, weather, eventTaste] = await Promise.all([
       this.tasteCells(),
-      this.footfall(),
       this.places(),
       this.events(),
       this.weather(),
@@ -582,7 +547,6 @@ export class PlanContext {
     const { start, end } = slotUtcRange(slot, this.city.timeZone);
     return {
       cells,
-      sensors: footfall.sensors,
       places,
       events,
       weather: weather?.hours ?? null,
@@ -598,9 +562,8 @@ export class PlanContext {
   anyTimeBase(): Promise<AnyTimeBase> {
     return this.once("anyTimeBase", async () => {
       const date = this.request.slot.date;
-      const [cells, typical, places, rawEvents, weather, eventTaste] = await Promise.all([
+      const [cells, places, rawEvents, weather, eventTaste] = await Promise.all([
         this.tasteCells(),
-        this.typicalFootfall(),
         this.places(),
         this.events(),
         this.weather(),
@@ -609,7 +572,6 @@ export class PlanContext {
       const base: AnyTimeBase = {
         weekday: this.weekday,
         cells,
-        sensors: typical.sensors,
         places,
         events: rawEvents.map((e) => ({ ...e, tasteMatch: eventTaste.get(e.id) ?? null })),
         weather: weather?.hours ?? null,
@@ -617,11 +579,6 @@ export class PlanContext {
       };
       return base;
     });
-  }
-
-  /** The foot-traffic scale shared by every window of the day. */
-  async footfallReference(): Promise<number> {
-    return footfallReferenceOf(await this.anyTimeBase());
   }
 
   /** One candidate scored as the engine scores its pool: at the fixed slot, or at its best window for any time. */

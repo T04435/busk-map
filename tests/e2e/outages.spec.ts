@@ -24,19 +24,19 @@ test.describe("API-down states", () => {
     await expect(page.getByRole("button", { name: /Re-run/ })).toHaveCount(0);
   });
 
-  test("sensors, events and weather down: still plans, with less data, labelled", async ({ page }) => {
-    await page.goto("/plan?example=acoustic&faults=footfall,events,weather");
+  test("events and weather down: still plans, with less data, labelled; the activity estimate (Qloo) is still there", async ({ page }) => {
+    await page.goto("/plan?example=acoustic&faults=events,weather");
     await waitForPlan(page);
-    await expect(page.getByText("Foot traffic: unavailable")).toBeVisible();
+    await expect(page.getByText("Activity: estimate from Qloo")).toBeVisible();
     await expect(page.getByText("No forecast for this slot")).toBeVisible();
     await expect(page.getByText("Unavailable: simulated outage (test)").first()).toBeVisible();
     // The panels that need those sources say so, scoped: no page-level alert, and the busk still stands.
-    await expect(page.getByTestId("source-down")).toContainText("Foot traffic");
+    await expect(page.getByTestId("source-down")).toContainText("Ticketmaster");
     await expect(page.getByTestId("weather-unavailable")).toBeVisible();
   });
 
   test("busking rules down: no recommendation, with a link to the council's rules", async ({ page }) => {
-    await page.goto("/plan?example=sax&faults=pitches,footfall");
+    await page.goto("/plan?example=sax&faults=pitches");
     await expect(page.getByRole("heading", { name: /^No pitch open for/i })).toBeVisible();
     await expect(page.getByRole("link", { name: "Read the council's busking rules" })).toBeVisible();
   });

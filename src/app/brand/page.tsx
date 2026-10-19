@@ -102,7 +102,7 @@ const COLOURS = [
   ["Qloo", "--qloo", "Qloo, our partner"],
   ["Event blue", "--event", "events"],
   ["Zone pink", "--zone-pink", "no-busking zones"],
-  ["Footfall", "--footfall", "foot traffic"],
+  ["Footfall", "--footfall", "activity estimate"],
 ] as const;
 
 /** The brand page: a public, static showcase of the Honeycomb brand with the app's real components. */

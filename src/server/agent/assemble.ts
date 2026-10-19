@@ -1,10 +1,11 @@
 import "server-only";
 import { formatHour, describeSlot, DEFAULT_SLOT_HOURS } from "@/lib/slot";
+import { activityPhrase, activitySentence } from "@/lib/activity";
 import { noBuskingCells } from "./zone-cells";
 import { titleCase } from "@/lib/text";
 import { venueDetail } from "@/lib/venue";
 import { planSchema, type Plan, type PlanPitch } from "@/lib/plan-schema";
-import { leadingAgeBand, SCENE_ACTS_SHOWN, skippedForSpacing, type ScoredPitch } from "@/server/scoring";
+import { leadingAgeBand, relativeActivity, SCENE_ACTS_SHOWN, skippedForSpacing, type ScoredPitch } from "@/server/scoring";
 import * as qloo from "@/server/adapters/qloo";
 import { agentChanges } from "@/lib/agent-vs-engine";
 import { fromEngine, fromToolOutputs, type ToolResult } from "@/lib/research-totals";
@@ -20,22 +21,15 @@ export type AiText = {
 const TIME_FORMAT = new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Australia/Melbourne" });
 
 /** A plain, factual "why" built only from the evidence. Used when the model is unavailable. */
-export function templateWhy(pitch: ScoredPitch, weekday: string, startHour: number, endHour: number): string {
+export function templateWhy(pitch: ScoredPitch, weekday: string, startHour: number, relative: number | null = null): string {
   const parts: string[] = [];
-  const day = `${weekday[0].toUpperCase()}${weekday.slice(1)}s`;
   if (pitch.factors.taste !== null) {
     const area = pitch.cell ? (pitch.cell.rank === 1 ? "your strongest area on Qloo's taste map" : `your no. ${pitch.cell.rank} area on Qloo's taste map`) : "this part of the city";
     parts.push(`Taste match ${Math.round(pitch.factors.taste * 100)}/100: ${area}.`);
   }
   if (pitch.discovery === "hidden-gem") parts.push("Off the usual busking circuit, so less competition for this crowd.");
   if (pitch.discovery === "usual" && pitch.usualSpot) parts.push(`A well-known busking spot (${pitch.usualSpot}): expect other buskers.`);
-  if (pitch.evidence.sensor && pitch.footfallSource === "sensor") {
-    parts.push(`About ${pitch.evidence.sensor.avgHourly.toLocaleString("en-AU")} people an hour passed ${pitch.evidence.sensor.name} on recent ${day}, ${formatHour(startHour)}–${formatHour(endHour)} (estimate from city sensors).`);
-  } else if (pitch.evidence.sensor && pitch.footfallSource === "nearby-sensors") {
-    parts.push(`Roughly ${pitch.evidence.sensor.avgHourly.toLocaleString("en-AU")} people an hour on recent ${day}, estimated from nearby sensors such as ${pitch.evidence.sensor.name}.`);
-  } else if (pitch.footfallSource === "qloo-popularity") {
-    parts.push("No pedestrian sensor nearby, so busyness is estimated from Qloo's popularity for the area.");
-  }
+  if (pitch.activityBasis !== "none") parts.push(`${activitySentence({ level: relative ?? pitch.evidence.activity.level, basis: pitch.activityBasis, weekday, startHour })}.`);
   const nearby = pitch.evidence.places.slice(0, 2);
   if (nearby.length) {
     const open = nearby.every((p) => p.open === "open") ? ", open in your slot" : "";
@@ -55,15 +49,14 @@ export const windowLabel = (w: { startHour: number; endHour: number }) => `${for
 
 /**
  * Why this pitch's best window is the best one, from the window's evidence only (no model):
- * "Best 6 pm–9 pm: typically about 1,840 people an hour at Bourke St Mall (estimate), the Forum crowd leaving at 9:45 pm, dry".
+ * "Best 6 pm–9 pm: busy, with popular places open nearby (estimate), the Forum crowd leaving at 9:45 pm, dry".
  */
-export function windowWhy(pitch: ScoredPitch, weather: { hour: number; precipitationProbability: number | null }[] | null): string {
+export function windowWhy(pitch: ScoredPitch, weather: { hour: number; precipitationProbability: number | null }[] | null, relative: number | null = null): string {
   const w = pitch.window;
   if (!w) return "";
   const parts: string[] = [];
-  const sensor = pitch.evidence.sensor;
-  if (sensor && pitch.footfallSource === "sensor") parts.push(`typically about ${sensor.avgHourly.toLocaleString("en-AU")} people an hour at ${sensor.name} (estimate)`);
-  else if (sensor && pitch.footfallSource === "nearby-sensors") parts.push(`roughly ${sensor.avgHourly.toLocaleString("en-AU")} people an hour, estimated from nearby sensors such as ${sensor.name}`);
+  const activity = activityPhrase(relative ?? pitch.evidence.activity.level, pitch.activityBasis);
+  if (activity) parts.push(activity);
   const event = pitch.evidence.events[0];
   if (event) {
     const time = TIME_FORMAT.format(new Date(event.moment === "leaving" ? event.end : event.start));
@@ -77,13 +70,16 @@ export function windowWhy(pitch: ScoredPitch, weather: { hour: number; precipita
   return `Best ${windowLabel(w)}${parts.length ? `: ${parts.join(", ")}` : ""}`;
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 function toPlanPitch(
   pitch: ScoredPitch,
   why: string,
   whySource: PlanPitch["whySource"],
   setlist: PlanPitch["setlist"],
   weather: { hour: number; precipitationProbability: number | null }[] | null,
-  hourly: (number | null)[] | null = null,
+  hourly: number[] | null = null,
+  relative: number | null = null,
 ): PlanPitch {
   return {
     window: pitch.window
@@ -92,7 +88,7 @@ function toPlanPitch(
           endHour: pitch.window.endHour,
           label: windowLabel(pitch.window),
           score: pitch.score,
-          why: windowWhy(pitch, weather),
+          why: windowWhy(pitch, weather, relative),
           runnersUp: pitch.window.runnersUp,
         }
       : null,
@@ -105,7 +101,7 @@ function toPlanPitch(
     cellRank: pitch.cell?.rank ?? null,
     discovery: pitch.discovery,
     usualSpot: pitch.usualSpot,
-    footfallSource: pitch.footfallSource,
+    activityBasis: pitch.activityBasis,
     amplification: pitch.amplification,
     rules: pitch.rules,
     rulesUrl: pitch.rulesUrl,
@@ -115,7 +111,10 @@ function toPlanPitch(
     why,
     whySource,
     evidence: {
-      sensor: pitch.evidence.sensor ? { name: pitch.evidence.sensor.name, avgHourly: pitch.evidence.sensor.avgHourly, hourly } : null,
+      activity:
+        pitch.activityBasis === "none"
+          ? null
+          : { level: round2(pitch.evidence.activity.level), area: pitch.evidence.activity.area === null ? null : round2(pitch.evidence.activity.area), venues: pitch.evidence.activity.venues === null ? null : round2(pitch.evidence.activity.venues), relative: relative === null ? null : round2(relative), hourly },
       places: pitch.evidence.places.map((p) => ({
         name: p.name,
         distanceM: p.distanceM,
@@ -185,7 +184,7 @@ export type AssembleOptions = {
  */
 export async function assemblePlan(context: PlanContext, ai: AiText | null, options: AssembleOptions = {}): Promise<Plan> {
   const { request, city } = context;
-  const [engineTop, engineRanked, cells, locals, learn, weather, artists, footfall, trends, contrast, profile, impact, usual, localScene, ownFans] = await Promise.all([
+  const [engineTop, engineRanked, cells, locals, learn, weather, artists, trends, contrast, profile, impact, usual, localScene, ownFans] = await Promise.all([
     context.topPitches(),
     context.ranked(),
     context.tasteCells(),
@@ -193,7 +192,6 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     context.learn(),
     context.weather(),
     context.artists(),
-    context.footfall(),
     context.rising(),
     context.contrast(),
     context.crowdProfile(),
@@ -227,19 +225,21 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
   const genres = top[0] ? await context.crowdGenres(top[0]) : [];
 
   const aiWhy = new Map(valid ? aiPicks.filter((p) => traceable(p.why)).map((p) => [p.pitchId, clip(p.why.trim(), 500)]) : []);
-  const profiles = qlooDown ? new Map<number, (number | null)[]>() : await context.hourlyProfiles();
+  const poolLevels = ranked.filter((p) => p.activityBasis !== "none").map((p) => p.evidence.activity.level);
   const pitches = await Promise.all(
     (qlooDown ? [] : top).map(async (pitch) => {
       const fromAi = aiWhy.get(pitch.id);
       const slotOf = context.slotFor(pitch);
-      const why = fromAi || templateWhy(pitch, context.weekday, slotOf.startHour, slotOf.endHour);
+      const relative = pitch.activityBasis === "none" ? null : relativeActivity(pitch.evidence.activity.level, poolLevels);
+      const why = fromAi || templateWhy(pitch, context.weekday, slotOf.startHour, relative);
       return toPlanPitch(
         pitch,
         why,
         fromAi ? "ai" : "template",
         await context.setlistFor(pitch),
         weather?.hours ?? null,
-        pitch.evidence.sensor ? (profiles.get(pitch.evidence.sensor.id) ?? null) : null,
+        pitch.activityBasis === "none" ? null : ((await context.activityDay(pitch))?.map((h) => round2(h.level)) ?? null),
+        relative,
       );
     }),
   );
@@ -269,7 +269,6 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
         cells: cells.length,
         crowdReads: (locals.length > 0 ? 1 : 0) + (usual && usual.artists.length > 0 ? 1 : 0),
         pool: qlooDown ? [] : engineRanked,
-        sensors: footfall.sensors,
         setlists: pitches.map((p) => p.setlist),
       });
 
@@ -363,7 +362,6 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
       : null,
     resolvedArtists: artists.map((a) => ({ query: a.query, matched: a.entity?.name ?? null })),
     dataStatus: context.dataStatus(),
-    footfallLevel: footfall.level,
     rulesUrl: city.rulesUrl,
     qlooFailed: context.qlooFailed(),
     agent:

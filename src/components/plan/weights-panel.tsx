@@ -3,8 +3,7 @@ import type { Plan } from "@/lib/plan-schema";
 
 const LABELS: Record<keyof Plan["weights"], { label: string; color: string }> = {
   taste: { label: "Taste affinity (Qloo heatmap)", color: "var(--chart-1)" },
-  footfall: { label: "Foot traffic for the slot (city sensors)", color: "var(--chart-2)" },
-  places: { label: "Busy places open nearby (Qloo)", color: "var(--chart-3)" },
+  activity: { label: "Activity estimate for the slot (Qloo: popular places open nearby)", color: "var(--chart-2)" },
   events: { label: "Event crowds arriving or leaving (Ticketmaster)", color: "var(--chart-4)" },
   discovery: { label: "Discovery bonus: hidden gems with a strong taste fit", color: "var(--honey-deep)" },
   weather: { label: "Weather penalty (Open-Meteo)", color: "var(--chart-5)" },

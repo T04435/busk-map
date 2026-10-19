@@ -54,7 +54,7 @@ function finish(results: ToolResult[], scenario: MockScenario, rejections: numbe
   // "rerank": Claude puts the engine's #2 first, for a reason it found (the first sentence of its why).
   if (scenario === "rerank" && chosen.length >= 2) chosen = [chosen[1], chosen[0], ...chosen.slice(2)];
   const reason = (p: ScoreRow, i: number) =>
-    scenario === "rerank" && i === 0 ? `The crowd at ${p.name} fits this act better on the data gathered. Mock explanation: it scored ${p.score}/100.${hoursNote(p)}` : null;
+    scenario === "rerank" && i === 0 ? `The crowd at ${p.name} fits this act better on the data gathered. Mock explanation: it ranked high.${hoursNote(p)}` : null;
   const invented = scenario === "invented-numbers";
   const badFirst = scenario === "bad-finish" && rejections === 0;
   return {
@@ -65,12 +65,12 @@ function finish(results: ToolResult[], scenario: MockScenario, rejections: numbe
         input: {
           summary: "Mock planner summary (offline test mode).",
           pitches: badFirst
-            ? [{ pitchId: "made-up", why: "Trust me." }, ...chosen.slice(1).map((p) => ({ pitchId: p.pitchId, why: `Mock explanation: ${p.name} scored ${p.score}/100.${hoursNote(p)}` }))]
+            ? [{ pitchId: "made-up", why: "Trust me." }, ...chosen.slice(1).map((p) => ({ pitchId: p.pitchId, why: `Mock explanation: ${p.name} ranked well.${hoursNote(p)}` }))]
             : chosen.map((p, i) => ({
                 pitchId: p.pitchId,
                 why: invented
                   ? `Mock explanation: about 98765 people pass ${p.name}.`
-                  : (reason(p, i) ?? `Mock explanation: ${p.name} scored ${p.score}/100 on the data gathered.${hoursNote(p)}`),
+                  : (reason(p, i) ?? `Mock explanation: ${p.name} fits the data gathered.${hoursNote(p)}`),
               })),
           notes: ["Offline test mode: explanations come from a mock model."],
         },
@@ -107,7 +107,7 @@ export function nextMove(results: ToolResult[], tools: string[], scenario: MockS
     if (scored) return finish(results, scenario, rejections);
     if (offered("score_pitches")) return { text: "Scoring now.", calls: [{ toolName: "score_pitches", input: {} }] };
     const looks: Call[] = [
-      { toolName: "footfall_at", input: { at: { place: "Bourke Street Mall" } } },
+      { toolName: "activity_at", input: { at: { place: "Bourke Street Mall" } } },
       { toolName: "busy_places", input: { near: { place: "Bourke Street Mall" } } },
       { toolName: "check_pitch", input: { spot: { place: "Bourke Street Mall" } } },
       { toolName: "crowd_at", input: { at: { place: "Bourke Street Mall" } } },
@@ -119,10 +119,10 @@ export function nextMove(results: ToolResult[], tools: string[], scenario: MockS
   if (!done("crowd_at").length) {
     return {
       reasoning: `The taste map's strongest area is near ${strongest}; who is there, and how busy it is, decides whether it makes our shortlist.`,
-      text: `Checking who the crowd is near ${strongest}, and how busy it gets at the start of the slot.`,
+      text: `Checking who the crowd is near ${strongest}, and how busy it is estimated to be at the start of the slot.`,
       calls: [
         { toolName: "crowd_at", input: { at: { place: strongest }, radiusM: 400 } },
-        { toolName: "footfall_at", input: { at: { place: strongest } } },
+        { toolName: "activity_at", input: { at: { place: strongest } } },
       ],
     };
   }

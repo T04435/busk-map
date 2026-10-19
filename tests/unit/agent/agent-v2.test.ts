@@ -33,7 +33,7 @@ describe("Agent v2 tools", () => {
     const { ctx, createTools, AgentState } = await load();
     const tools = createTools(ctx, new AgentState());
     await expect(run(tools.crowd_at, { at: { lat: -33.86, lon: 151.21 } })).rejects.toThrow(/outside the planning area/);
-    await expect(run(tools.footfall_at, { at: { pitchId: "nowhere" } })).rejects.toThrow(/Unknown pitchId/);
+    await expect(run(tools.activity_at, { at: { pitchId: "nowhere" } })).rejects.toThrow(/Unknown pitchId/);
     await expect(run(tools.busy_places, { near: { place: "Sydney Opera House" } })).rejects.toThrow(/doesn't know a place/);
     await expect(run(tools.taste_map, { signals: ["Nobody Real"] })).rejects.toThrow(/not a matched artist|None of/);
   });
@@ -44,6 +44,31 @@ describe("Agent v2 tools", () => {
     const out = (await run(tools.crowd_at, { at: { place: "Federation Square" }, radiusM: 333 })) as { radiusM: number; at: { label: string } };
     expect(out.radiusM).toBe(400);
     expect(out.at.label).toBe("Federation Square");
+  });
+
+  it("activity_at gives a relative level, a word and an hourly curve from Qloo data already loaded, never a head count", async () => {
+    const { ctx, createTools, AgentState } = await load();
+    const tools = createTools(ctx, new AgentState());
+    const out = (await run(tools.activity_at, { at: { place: "Federation Square" } })) as {
+      summary: string;
+      level: number;
+      word: string | null;
+      basis: string;
+      window: string;
+      hourly: { hour: number; level: number | null }[];
+      note: string;
+    };
+    expect(out.level).toBeGreaterThanOrEqual(0);
+    expect(out.level).toBeLessThanOrEqual(1);
+    expect(["heatmap+places", "heatmap", "places"]).toContain(out.basis);
+    expect(out.word).toMatch(/^(Quiet|Fairly quiet|Moderately busy|Busy|Very busy)$/);
+    expect(out.window).toBe("6 pm–9 pm");
+    expect(out.hourly.map((h) => h.hour)).toEqual(Array.from({ length: 12 }, (_, i) => 10 + i));
+    expect(out.summary).toMatch(/here on Saturday evenings \(estimate from Qloo/);
+    expect(JSON.stringify(out)).not.toMatch(/sensor|footfall|people an hour|peopleThisHour/i);
+    // An explicit hour reads that hour.
+    const noon = (await run(tools.activity_at, { at: { place: "Federation Square" }, hour: 12 })) as { window: string };
+    expect(noon.window).toBe("12 pm–1 pm");
   });
 
   it("let the agent add a checked spot that the engine then scores; only scored pitches can be final", async () => {
@@ -59,11 +84,11 @@ describe("Agent v2 tools", () => {
     expect(checked.inPool).toBe(false);
     // score_pitches is closed until three looks are in, one of them about the crowd.
     await expect(run(tools.score_pitches, {})).rejects.toThrow(/isn't open yet.*2 more looks.*taste_map, crowd_at or events_near/);
-    await run(tools.footfall_at, { at: spot });
+    await run(tools.activity_at, { at: spot });
     await run(tools.busy_places, { near: spot });
     await expect(run(tools.score_pitches, {})).rejects.toThrow(/Still needed: at least one of taste_map, crowd_at or events_near/);
     await run(tools.taste_map, {});
-    expect(state.looks).toEqual(["check_pitch", "footfall_at", "busy_places", "taste_map"]);
+    expect(state.looks).toEqual(["check_pitch", "activity_at", "busy_places", "taste_map"]);
     await expect(run(tools.score_pitches, { add: ["agent:never-checked"] })).rejects.toThrow(/check_pitch first/);
     const scored = (await run(tools.score_pitches, { add: [checked.pitchId] })) as { pitches: { pitchId: string }[]; added: string[]; poolSize: number };
     expect(scored.added).toEqual([checked.pitchId]);
@@ -114,8 +139,8 @@ describe("Agent v2 tools", () => {
   it("the numbers check accepts numbers the tools returned (rounded, or 0–1 written out of 100) and flags invented ones", async () => {
     const { NumberBag } = await load();
     const bag = new NumberBag();
-    bag.add({ peoplePerHour: 1893, affinity: 0.71, starts: "19:30", score: 74 });
-    expect(bag.unknownIn("About 1,900 people an hour, a 71/100 match, the crowd leaves at 7:30 and it scored 74.")).toEqual([]);
+    bag.add({ capacity: 1893, affinity: 0.71, starts: "19:30", score: 74 });
+    expect(bag.unknownIn("About 1,900 seats, a 71/100 match, the crowd leaves at 7:30 and it scored 74.")).toEqual([]);
     expect(bag.unknownIn("About 54,321 people pass and 88% like it.")).toEqual(["54321", "88"]);
   });
 });
@@ -153,16 +178,16 @@ describe("Agent v2 runs (mock model)", () => {
     });
     const started: string[] = [];
     const { plan } = await runPlanAgent(ctx, { onToolStart: (e) => started.push(e.tool) }, undefined, { model: spy });
-    // The lazy mock scores as soon as it can: after footfall_at, busy_places, check_pitch (no crowd look yet) and crowd_at.
-    expect(started.slice(0, 5)).toEqual(["footfall_at", "busy_places", "check_pitch", "crowd_at", "score_pitches"]);
+    // The lazy mock scores as soon as it can: after activity_at, busy_places, check_pitch (no crowd look yet) and crowd_at.
+    expect(started.slice(0, 5)).toEqual(["activity_at", "busy_places", "check_pitch", "crowd_at", "score_pitches"]);
     for (const tools of offered.slice(0, 4)) {
       expect(tools).not.toContain("score_pitches");
       expect(tools).not.toContain("finish_plan");
     }
     expect(offered[4]).toContain("score_pitches");
     expect(plan.explanations).toBe("ai");
-    expect(scoringOpen({ looks: ["footfall_at", "busy_places", "check_pitch"], wrappingUp: false })).toBe(false);
-    expect(scoringOpen({ looks: ["events_near", "footfall_at", "footfall_at"], wrappingUp: false })).toBe(true);
+    expect(scoringOpen({ looks: ["activity_at", "busy_places", "check_pitch"], wrappingUp: false })).toBe(false);
+    expect(scoringOpen({ looks: ["events_near", "activity_at", "activity_at"], wrappingUp: false })).toBe(true);
     expect(scoringOpen({ looks: [], wrappingUp: true })).toBe(true);
     expect(gateMessage({ looks: ["taste_map"] })).toMatch(/2 more looks/);
   });
@@ -172,7 +197,7 @@ describe("Agent v2 runs (mock model)", () => {
     const started: string[] = [];
     // Two steps of looks, then the cap: score_pitches is opened for the wrap-up, then finish_plan.
     const { plan, usage } = await runPlanAgent(ctx, { onToolStart: (e) => started.push(e.tool) }, undefined, { model: createMockPlanner(), limits: { maxSteps: 4 } });
-    expect(started).toEqual(["taste_map", "crowd_at", "footfall_at", "score_pitches", "finish_plan"]);
+    expect(started).toEqual(["taste_map", "crowd_at", "activity_at", "score_pitches", "finish_plan"]);
     expect(usage!.stoppedBy).toBe("finished");
     expect(plan.explanations).toBe("ai");
   });
@@ -206,7 +231,7 @@ describe("Agent v2 runs (mock model)", () => {
     const started: string[] = [];
     // The mock spends 150 tokens a step: unscored, the run wraps up at 60% (after two steps), scores, then finishes.
     const { usage, plan } = await runPlanAgent(ctx, { onToolStart: (e) => started.push(e.tool) }, undefined, { model: createMockPlanner(), limits: { tokenBudget: 500 } });
-    expect(started).toEqual(["taste_map", "crowd_at", "footfall_at", "score_pitches", "finish_plan"]);
+    expect(started).toEqual(["taste_map", "crowd_at", "activity_at", "score_pitches", "finish_plan"]);
     expect(started.at(-1)).toBe("finish_plan");
     expect(started).not.toContain("compare_crowds");
     expect(usage!.stoppedBy).toBe("finished");
@@ -262,8 +287,8 @@ describe("Agent v2 runs (mock model)", () => {
     const failed = await load();
     const { plan: fallback } = await failed.runPlanAgent(failed.ctx, {}, undefined, { model: failed.createMockPlanner("fail") });
     expect(fallback.explanations).toBe("template");
-    const [ranked, cells, footfall] = await Promise.all([failed.ctx.ranked(), failed.ctx.tasteCells(), failed.ctx.footfall()]);
-    const engine = fromEngine({ cells: cells.length, crowdReads: 0, pool: ranked, sensors: footfall.sensors, setlists: fallback.pitches.map((p) => p.setlist) });
+    const [ranked, cells] = await Promise.all([failed.ctx.ranked(), failed.ctx.tasteCells()]);
+    const engine = fromEngine({ cells: cells.length, crowdReads: 0, pool: ranked, setlists: fallback.pitches.map((p) => p.setlist) });
     expect({ ...fallback.researchTotals, crowds: 0, qlooCalls: undefined, qlooCacheHits: undefined }).toEqual(engine);
     expect(fallback.researchTotals!.scored).toBe(ranked.length);
     expect(fallback.researchTotals!.taste).toBe(cells.length);

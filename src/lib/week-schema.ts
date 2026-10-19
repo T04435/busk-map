@@ -1,6 +1,6 @@
 /** Shared, client-safe schemas for the week planner. */
 import { z } from "zod";
-import { CITY_IDS, dataStatusSchema, PERMITS, planRequestSchema, weightsSchema } from "./plan-schema";
+import { CITY_IDS, dataStatusSchema, PERMITS, PITCH_KINDS, planRequestSchema, weightsSchema } from "./plan-schema";
 
 const isoDate = z.iso.date();
 
@@ -42,15 +42,15 @@ export const weekSessionSchema = z.object({
     name: z.string(),
     lat: z.number(),
     lon: z.number(),
-    kind: z.enum(["designated", "public-space", "footpath"]),
+    kind: z.enum(PITCH_KINDS),
     discovery: z.enum(["hidden-gem", "usual"]).nullable(),
     amplification: z.enum(["allowed", "unamplified-zone"]),
     cautions: z.array(z.string()),
   }),
-  factors: z.object({ taste: factor, footfall: factor, places: factor, events: factor, weatherPenalty: factor, discovery: z.number().min(0).max(1) }),
+  factors: z.object({ taste: factor, activity: factor.default(null), events: factor, weatherPenalty: factor, discovery: z.number().min(0).max(1) }),
   evidence: z.object({
-    typicalPerHour: z.number().nullable(),
-    sensorName: z.string().nullable(),
+    /** The Qloo activity estimate for the session (0-1, relative), when Qloo had data. */
+    activity: z.number().min(0).max(1).nullable().default(null),
     places: z.array(z.string()),
     events: z.array(z.object({ name: z.string(), moment: z.enum(["arriving", "leaving"]), endEstimated: z.boolean() })),
   }),
@@ -72,9 +72,9 @@ export const weekPlanSchema = z.object({
       weekday: z.string(),
       label: z.string(),
       hasForecast: z.boolean(),
-      /** What makes this day different: foot traffic, events and weather, in plain words. */
+      /** What makes this day different: estimated activity, events and weather, in plain words. */
       drivers: z.array(z.string()).default([]),
-      /** Typical foot traffic over the day relative to the week's busiest day (0–1), when sensors are available. */
+      /** Estimated activity over the day (popular Qloo places open) relative to the week's busiest day (0–1), when Qloo sent places. */
       busyness: z.number().min(0).max(1).nullable().default(null),
     }),
   ),
@@ -90,7 +90,7 @@ export const weekPlanSchema = z.object({
       chosen: z.boolean(),
       /** The slot has already started. */
       past: z.boolean(),
-      /** Why this slot stands out: an event crowd nearby, rain risk, or peak foot traffic. */
+      /** Why this slot stands out: an event crowd nearby, rain risk, or an estimated busy slot. */
       flags: z.array(z.enum(["event", "rain", "busy"])).default([]),
     }),
   ),
@@ -103,7 +103,6 @@ export const weekPlanSchema = z.object({
   notes: z.array(z.string()),
   qlooMode: z.enum(["live", "synthetic"]),
   qlooFailed: z.boolean(),
-  footfallLevel: z.enum(["city-sensors", "unavailable"]),
   dataStatus: z.array(dataStatusSchema),
 });
 

@@ -28,7 +28,7 @@ describe("week planner (offline)", () => {
     expect(plan.grid.every((c) => !c.past)).toBe(true);
   });
 
-  it("shows what makes each day different: foot traffic, events and weather", async () => {
+  it("shows what makes each day different: estimated activity, events and weather", async () => {
     const { buildWeekPlan, dayDrivers } = await load();
     const plan = await buildWeekPlan(request, OFFLINE, "2026-10-15", false, now);
     const shares = plan.days.map((d) => d.busyness);
@@ -53,13 +53,13 @@ describe("week planner (offline)", () => {
         { date: "2026-10-17", weekday: "saturday" },
         { busyness: 0.96, busiestHour: null, events: ["2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18"].map(run), forecast: [], timeZone: "Australia/Melbourne" },
       ),
-    ).toEqual(["About as busy as the busiest day (96%, typical, estimate)"]);
+    ).toEqual(["About as busy as the busiest day (96%, estimate from Qloo: popular places open)"]);
     expect(
       dayDrivers(
         { date: "2026-10-17", weekday: "saturday" },
         { busyness: 0.5, busiestHour: 13, events: [], forecast: [{ hour: 12, precipitationProbability: 30, temperatureC: 21.4 }], timeZone: "Australia/Melbourne" },
       ),
-    ).toEqual(["Foot traffic about 50% of the week's busiest day (typical, estimate)", "Some rain risk (up to 30%), up to 21°C"]);
+    ).toEqual(["Activity about 50% of the week's busiest day (estimate from Qloo: popular places open)", "Some rain risk (up to 30%), up to 21°C"]);
   });
 
   it("explains only the chosen sessions with the model", async () => {
@@ -108,18 +108,17 @@ describe("week planner (offline)", () => {
       ),
       route((u) => u.host.startsWith("services1"), () => json({ type: "FeatureCollection", features: [] })),
     ]);
-    const plan = await buildWeekPlan(request, { offline: false, faults: ["footfall", "events", "weather"] }, "2026-10-15", true, now);
-    expect(plan.footfallLevel).toBe("unavailable");
+    const plan = await buildWeekPlan(request, { offline: false, faults: ["events", "weather"] }, "2026-10-15", true, now);
     expect(plan.days.every((d) => !d.hasForecast)).toBe(true);
     expect(plan.explanations).toBe("template");
     expect(plan.notes.join(" ")).toMatch(/not configured/);
-    // Without sensors, Qloo's area popularity stands in for foot traffic, so sessions are still found.
+    // The activity estimate needs no source but Qloo, so sessions are still found.
     expect(plan.sessions.length).toBeGreaterThan(0);
   });
 
   it("returns no sessions when the rules are unavailable", async () => {
     const { buildWeekPlan } = await load();
-    const plan = await buildWeekPlan(request, { offline: true, faults: ["pitches", "footfall"] }, "2026-10-15", false, now);
+    const plan = await buildWeekPlan(request, { offline: true, faults: ["pitches"] }, "2026-10-15", false, now);
     expect(plan.sessions).toEqual([]);
     expect(plan.summary).toMatch(/No session/);
     expect(plan.notes.join(" ")).toMatch(/busking rules are unavailable/);
@@ -127,25 +126,6 @@ describe("week planner (offline)", () => {
 });
 
 describe("week adapters (live, mocked fetch)", () => {
-  it("reads typical footfall by weekday and hour", async () => {
-    vi.resetModules();
-    const { getTypicalFootfall } = await import("@/server/adapters/footfall");
-    const { SYNTHETIC_RAW, SYNTHETIC_RAW_TYPICAL } = await import("@/server/adapters/footfall/fixtures/synthetic");
-    const { json, route } = await import("../../helpers");
-    const { calls } = mockFetch([
-      route((u) => u.pathname.includes("sensor-locations"), (u) => json(u.searchParams.get("offset") === "0" ? SYNTHETIC_RAW.sensors : { results: [] })),
-      route((u) => u.pathname.endsWith("/exports/json"), () => json(SYNTHETIC_RAW_TYPICAL)),
-    ]);
-    const result = await getTypicalFootfall("melbourne", 10, 22, LIVE, "2026-10-15");
-    expect(result.mode).toBe("live");
-    expect(result.data.historyFrom).toBe("2026-08-20");
-    expect(result.data.sensors[0].byWeekdayHour).toEqual({ saturday: { 18: 1500, 19: 1300.5 } });
-    expect(result.data.sensors[1].byWeekdayHour).toEqual({ monday: { 10: 400 } });
-    const call = calls.find((c) => c.url.pathname.endsWith("/exports/json"))!;
-    expect(call.url.searchParams.get("group_by")).toBe("location_id, hourday, date_format(sensing_date, 'E')");
-    expect(call.url.searchParams.get("where")).toContain("hourday >= 10 and hourday < 22");
-  });
-
   it("reads a week of weather keyed by date, clipped to the forecast range", async () => {
     vi.resetModules();
     const { getWeatherWeek } = await import("@/server/adapters/weather");

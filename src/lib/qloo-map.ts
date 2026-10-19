@@ -453,9 +453,9 @@ export const dataPoints: readonly DataPoint[] = [
     fields: ["location.latitude", "location.longitude", "location.geohash", "query.affinity", "query.popularity"],
     features: [
       { id: "f_map", how: "the coloured taste cells" },
-      { id: "f_rank", how: "picks the candidate pitches and sets the taste score" },
+      { id: "f_rank", how: "picks the candidate pitches, sets the taste score and, with its popularity, where activity concentrates in the activity estimate" },
       { id: "f_plain", how: "scores the plain AI’s spots the same way" },
-      { id: "f_agent", how: "the taste_map tool, which can zoom in" },
+      { id: "f_agent", how: "the taste_map and activity_at tools" },
     ],
   },
   {
@@ -464,9 +464,9 @@ export const dataPoints: readonly DataPoint[] = [
     sub: "popularity, hours, taste match",
     fields: ["entity_id", "name", "location.lat", "location.lon", "popularity", "query.affinity", "properties.hours"],
     features: [
-      { id: "f_rank", how: "busy places open in your slot" },
+      { id: "f_rank", how: "popular places open in your slot, hour by hour: the activity estimate, and the best window for Any time" },
       { id: "f_plain", how: "scores the plain AI’s spots the same way" },
-      { id: "f_agent", how: "the busy_places tool, at any point" },
+      { id: "f_agent", how: "the busy_places and activity_at tools, at any point" },
     ],
   },
   {
@@ -696,7 +696,7 @@ export const features: readonly Feature[] = [
     sub: "your three pitches, scored",
     location: "Plan page: the top 3 pitches and their scores",
     how: "combined",
-    with: ["City of Melbourne sensors", "the council’s busking rules", "OSM spots", "Ticketmaster", "Open-Meteo"],
+    with: ["the council’s busking rules", "OSM spots", "Ticketmaster", "Open-Meteo"],
   },
   { id: "f_map", label: "Taste map", sub: "where your taste lives", location: "Plan page: the map’s taste cells", how: "direct" },
   {

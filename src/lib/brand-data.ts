@@ -239,7 +239,7 @@ export const TOKENS: TokenRow[] = [
     "dark": "#f0b73d",
     "lightSw": "#7a4d00",
     "darkSw": "#f0b73d",
-    "use": "Score factor 2, foot traffic (shadcn --chart-2). Same hue as footfall."
+    "use": "Score factor 2, the activity estimate (shadcn --chart-2). Same hue as footfall."
   },
   {
     "name": "chart-3",
@@ -392,7 +392,7 @@ export const TOKENS: TokenRow[] = [
     "dark": "#f0b73d",
     "lightSw": "#7a4d00",
     "darkSw": "#f0b73d",
-    "use": "Foot-traffic sparkline, the slot's footfall figure and the sensor icon. As text, on background and card."
+    "use": "Activity-by-hour sparkline, the slot's activity word and its icon. As text, on background and card."
   },
   {
     "name": "pitch-legal",

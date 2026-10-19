@@ -7,7 +7,6 @@ import { AGENT_NAME, AGENT_NAME_INLINE, AGENT_NAME_START } from "./agent-persona
 
 export type SourceId =
   | "qloo"
-  | "melbourne-pedestrian"
   | "melbourne-busking"
   | "ticketmaster"
   | "lastfm"
@@ -64,13 +63,6 @@ export const SOURCES: Record<SourceId, SourceInfo> = {
     credit: "Taste data by Qloo",
     url: "https://www.qloo.com",
     licence: "Qloo hackathon API terms",
-  },
-  "melbourne-pedestrian": {
-    id: "melbourne-pedestrian",
-    name: "City of Melbourne Pedestrian Counting System",
-    credit: "Pedestrian counts: City of Melbourne Open Data",
-    url: "https://data.melbourne.vic.gov.au/explore/dataset/pedestrian-counting-system-monthly-counts-per-hour/",
-    licence: "CC BY",
   },
   "melbourne-busking": {
     id: "melbourne-busking",

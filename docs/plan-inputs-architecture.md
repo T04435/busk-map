@@ -83,7 +83,7 @@ About 29 call sites in 14 files read `request.slot.startHour/endHour` or `descri
 
 | Signal | Varies by hour? | Source today | Any-time use | Extra calls |
 |---|---|---|---|---|
-| Foot traffic | **Yes, the main signal** | `getFootfall(city, slot)` averages the slot's hours over 8 weeks | `getTypicalFootfall(city, 0, 24)`: typical by weekday and hour, already loaded by the agent's `footfall_at` (`tools.ts`, memo key `footfallTypical`). Averaged per window as `scoring/week.ts:typicalForSlot` does | 0 (one sensor request instead of two) |
+| Activity estimate (was foot traffic) | **Yes, the main signal** | `activityEstimate(point, {cells, places, weekday}, startHour, endHour)` (`scoring/activity.ts`): the Qloo places open in the slot's hours plus the heatmap's popularity | The same call per window: the places' opening hours (`properties.hours`) are what differ between windows, so no new data | 0 (it reads the heatmap #3 and places #4 already loaded) |
 | Events arriving or leaving | **Yes** | `getEvents(city, slot)`: the slot, with 4 h of lookback | `getEventsBetween` over the whole day. `pitch-score.ts:eventsFactor` already takes the window's start and end in ms | 0 Ticketmaster. Qloo: see §2.6 |
 | Weather | **Yes** | `getWeather(city, slot)`: the slot's hours | The day's hours from 10 am to 10 pm. `fetchHourlyForecast` already fetches the whole day, then filters | 0 |
 | Qloo places, open in the window | **Yes** (opening hours) | `busyPlaces(…, weekday)` once; `scoring/hours.ts:openDuring` per slot | The same call. `placesFactor(…, weekday, start, end)` runs per window | **0 Qloo** |
@@ -92,14 +92,14 @@ About 29 call sites in 14 files read `request.slot.startHour/endHour` or `descri
 ### 2.2 The algorithm (proposed `scoring/windows.ts`, pure, beside `scoring/week.ts`)
 
 1. **Windows.** `ANY_TIME_WINDOWS`: starts at 10, 11, … 19, each 3 hours long. If the date is the city's today, keep only the windows that start after the current hour (`serverLocalNow`).
-2. **One reference.** Footfall is scaled against the busiest typical window of that day, across all sensors: the `footfallReference` that `scoreWeek` already passes. Without it every window would score against its own busiest sensor, and a quiet 10 am would look as good as a busy 6 pm.
-3. **Score each candidate × window** with the existing `pitch-score.ts:scorePitch`, same weights, with that window's inputs: sensors at their typical average for the window, events, weather hours, open places, and `slotStartMs/EndMs`.
+2. **No reference needed.** The activity estimate is an absolute 0–1 level (saturated place popularity, not a count), so windows compare directly. The old sensor scale (`footfallReference`) is gone.
+3. **Score each candidate × window** with the existing `pitch-score.ts:scorePitch`, same weights, with that window's inputs: the Qloo places open in the window (the activity estimate's hour-of-day variation), events, weather hours, and `slotStartMs/EndMs`.
 4. **Best window per pitch.** Keep the highest score; break ties by the earlier window. The `ScoredPitch` gains `window: {startHour, endHour}` and its two runners-up.
 5. **Rank** the pitches by their best-window score. Then `pickTopPitches` (250 m spacing), `skippedForSpacing` and the agent's pool work unchanged.
 
 `PlanContext` (`agent/context.ts`) gets one branch: `scoreInputs(window)` instead of `scoreInputs()`. `ranked()` calls `rankPitchesAnyTime` when `isAnyTime(request.slot)`. `slotFor(pitch)` returns the pitch's window, or the fixed slot. The fixed-slot path stays byte-for-byte what it is today.
 
-**Engine work:** about 40–80 legal candidates × 10 windows = 400–800 `scorePitch` calls, each over a few hundred sensors, places and events. That is the same pure code the week planner runs 28 times per candidate (7 days × 4 slots). It is still milliseconds, with no I/O.
+**Engine work:** about 40–80 legal candidates × 10 windows = 400–800 `scorePitch` calls, each over a few dozen places, heatmap cells and events. That is the same pure code the week planner runs 28 times per candidate (7 days × 4 slots). It is still milliseconds, with no I/O.
 
 ### 2.3 The date
 
@@ -116,20 +116,20 @@ About 29 call sites in 14 files read `request.slot.startHour/endHour` or `descri
 |---|---|---|
 | `plan.anyTime` | `boolean`, default `false` | The header: "any time · Busk Map picked the hours" |
 | `plan.slot` / `slotLabel` | Unchanged shape. For any time: the **top pitch's** window | Existing readers: .ics, the week link, `slotPassed` |
-| `pitch.window` | `{startHour, endHour, label, score, why, runnersUp: [{startHour, endHour, score}]} \| null` | The pitch card: "Best 6 pm–9 pm: typically 1,840 people an hour at Bourke St Mall (estimate), the Forum crowd leaving at 9:45 pm, dry". `why` is a template built from the window's evidence, like `assemble.ts:templateWhy` |
+| `pitch.window` | `{startHour, endHour, label, score, why, runnersUp: [{startHour, endHour, score}]} \| null` | The pitch card: "Best 6 pm–9 pm: busy, with popular places open nearby (estimate), the Forum crowd leaving at 9:45 pm, dry". `why` is a template built from the window's evidence, like `assemble.ts:templateWhy` |
 | `plan.weather.hours` | Unchanged shape, now 10 am–10 pm | The weather strip, with the top window marked |
 | `researchTotals.windows` | `number`, optional | ResearchFunnel: "10 time windows scored" |
 
 **A new agent tool, `best_hours`** (`agent/tools.ts`):
 - Offered only for an any-time request, and only after `score_pitches`.
-- Input: up to 3 `pitchIds`. Output per pitch: its top 3 windows with scores, typical people per hour at the nearest sensor for each hour, the events arriving or leaving nearby, rain by hour, and the places open then.
-- Engine only: no Qloo, no model. Source label: "Busk Map scoring engine, City of Melbourne sensors, Ticketmaster, Open-Meteo".
+- Input: up to 3 `pitchIds`. Output per pitch: its top 3 windows with scores, the activity estimate for each hour, the events arriving or leaving nearby, rain by hour, and the places open then.
+- Engine only: no Qloo call of its own, no model. Source label: "Busk Map scoring engine, Qloo places open by hour, Ticketmaster, Open-Meteo".
 - Its numbers go into `NumberBag`, so Claude can quote them, and `finish_plan`'s numbers check is unchanged.
-- `TOOL_LABELS`: "Finding the best hours". The plain-words card (`lib/agent-steps.ts`): "Best 6–9 pm at Bourke St Mall: foot traffic peaks at 7 pm and the Forum crowd lets out at 9:45 pm".
+- `TOOL_LABELS`: "Finding the best hours". The plain-words card (`lib/agent-steps.ts`): "Best 6–9 pm at Bourke St Mall: estimated activity peaks at 7 pm and the Forum crowd lets out at 9:45 pm".
 
 **The other changes to the agent:**
 - `score_pitches` rows gain `window` in any-time mode.
-- The defaults of `busy_places.openAt`, `events_near` and `footfall_at.hour` become the pitch's best window when one is known, and otherwise the day's 10 am to 10 pm.
+- The defaults of `busy_places.openAt`, `events_near` and `activity_at.hour` become the pitch's best window when one is known, and otherwise the day's 10 am to 10 pm.
 - `buildPrompt` says: "No fixed time: the engine scores each pitch at its best 3-hour window that day, 10 am to 10 pm. Call best_hours and say each pitch's hours in its why."
 - `mock-model.ts` calls `best_hours` in any-time mode, so the e2e stream shows it.
 
@@ -156,7 +156,7 @@ Baseline: a cold busk makes 24–33 Qloo calls (`docs/qloo-data-map.md` §4, mea
 | `best_hours` | **+0** | Engine only |
 | **Any time, total** | **+0 typical, ≤ +6 worst** | A cold busk stays at 24–33 (≤ 39 worst), so the quota stays at roughly 300–400 cold busks a month |
 | Model | +1 tool call, about 1.5–2k more input tokens | A small share of a Sonnet busk run. To be measured in S3 |
-| Sensors | −1 request | The typical table replaces the slot averages |
+| Pedestrian sensors | −1 request | Dropped entirely: the activity estimate reads Qloo data already loaded (no sensor request) |
 
 ## 3. Suggested fill
 

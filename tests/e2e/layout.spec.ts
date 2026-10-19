@@ -184,7 +184,7 @@ const PAGES: PageCase[] = [
     name: "plan-no-pitch",
     local: true,
     open: async (page) => {
-      await page.goto("/plan?example=sax&faults=pitches,footfall");
+      await page.goto("/plan?example=sax&faults=pitches");
       await expect(page.getByRole("heading", { name: /^No pitch open for/i })).toBeVisible();
     },
     controls: async (page) => {
@@ -195,7 +195,7 @@ const PAGES: PageCase[] = [
     name: "plan-source-down",
     local: true,
     open: async (page) => {
-      await page.goto("/plan?example=acoustic&faults=footfall,events,weather");
+      await page.goto("/plan?example=acoustic&faults=events,weather");
       await waitForPlan(page);
       await expect(page.getByTestId("source-down")).toBeVisible();
     },

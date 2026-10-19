@@ -331,7 +331,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
 
   const sourcesDown = plan ? plan.dataStatus.filter((s) => s.mode === "fallback" && s.source !== "qloo") : [];
   const DOWN: Record<string, { title: string; effect: string }> = {
-    "melbourne-pedestrian": { title: "The city's pedestrian sensors didn't answer", effect: "Foot traffic at each pitch is estimated from busy places and events, and marked \"est.\"." },
     ticketmaster: { title: "Ticketmaster didn't answer", effect: "Event crowds are left out of the scores." },
     "open-meteo": { title: "The weather forecast didn't answer", effect: "The weather is left out of the scores." },
     lastfm: { title: "Last.fm didn't answer", effect: "Song play counts are left out; the suggested set still orders your songs." },
@@ -341,8 +340,8 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     plan?.funnel && plan.funnel.topCells > 0 && !live ? (
       <p className="m-0 text-sm text-muted-foreground" data-testid="funnel-sentence">
         How this plan was found: Qloo mapped your taste over {plan.funnel.cells} areas of the city. Your top {plan.funnel.topCells} areas gave {plan.funnel.considered} public
-        spaces, footpaths and council sites; the council&apos;s busking rules ruled out {plan.funnel.excluded}, and {plan.funnel.candidates} were scored on foot traffic,
-        nearby places, events and weather for your slot.
+        spaces and council sites; the council&apos;s busking rules ruled out {plan.funnel.excluded}, and {plan.funnel.candidates} were scored on estimated activity
+        (Qloo: popular places open nearby), events and weather for your slot.
       </p>
     ) : null;
   const funnel =
@@ -391,7 +390,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1" data-testid="plan-tags">
       <DataStatusBadge status={heading.qlooMode === "live" ? "live" : "test"} label={heading.qlooMode === "live" ? "Live Qloo data" : QLOO_TEST_LABEL} />
       {plan && !qlooDown ? (
-        <DataStatusBadge status={plan.footfallLevel === "city-sensors" ? "live" : "unavailable"} label={plan.footfallLevel === "city-sensors" ? "Foot traffic: city sensors" : "Foot traffic: unavailable"} />
+        <DataStatusBadge status="estimated" label={plan.pitches.some((p) => p.activityBasis !== "none") ? "Activity: estimate from Qloo" : "Activity: no estimate"} />
       ) : null}
       {!pending && plan && !qlooDown ? <DataStatusBadge status={plan.explanations === "ai" ? "live" : "estimated"} label={explanationsLabel(plan)} /> : null}
       {replayed ? (

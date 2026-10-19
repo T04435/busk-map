@@ -18,7 +18,7 @@ const STAGES: Stage[] = [
   { key: "crowds", one: "crowd read", many: "crowds read", src: "Qloo", tool: "crowd_at" },
   { key: "places", one: "busy place", many: "busy places", src: "Qloo", tool: "busy_places" },
   { key: "events", one: "event", many: "events", src: "Ticketmaster", tool: "events_near" },
-  { key: "sensors", one: "sensor count", many: "sensor counts", src: "City of Melbourne", tool: "footfall_at" },
+  { key: "activity", one: "activity estimate", many: "activity estimates", src: "Qloo", tool: "activity_at" },
   { key: "rules", one: "rules check", many: "rules checks", src: "City of Melbourne", tool: "check_pitch" },
   { key: "scored", one: "pitch scored", many: "pitches scored", src: "Busk Map", tool: "score_pitches" },
   { key: "songs", one: "song ordered", many: "songs ordered", src: "Qloo · Last.fm", tool: "build_setlist" },

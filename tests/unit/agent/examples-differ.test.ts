@@ -23,7 +23,7 @@ describe("example performers get data-led, different plans (offline)", () => {
     mockFetch([]);
     const plans = Object.fromEntries(await Promise.all(EXAMPLES.map(async (e) => [e.id, await planFor(e.id)] as const)));
     for (const [id, plan] of Object.entries(plans)) {
-      console.log(id, plan.pitches.map((p) => `${p.name} ${p.score} ${p.discovery ?? "-"} cell${p.cellRank ?? "-"} ${p.footfallSource}`).join(" | "), JSON.stringify(plan.funnel));
+      console.log(id, plan.pitches.map((p) => `${p.name} ${p.score} ${p.discovery ?? "-"} cell${p.cellRank ?? "-"} ${p.activityBasis}`).join(" | "), JSON.stringify(plan.funnel));
     }
     const tops = EXAMPLES.map((e) => plans[e.id].pitches.map((p) => p.id));
     for (const top of tops) expect(top).toHaveLength(3);

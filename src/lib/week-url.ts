@@ -47,7 +47,7 @@ export function parseWeekParams(params: Params, today: string): ParsedWeekUrl {
       maxPerDay: first(params.perDay) ? Number(first(params.perDay)) : undefined,
       unavailable,
     },
-    weights: parseWeightsParam(first(params.w)),
+    weights: parseWeightsParam(first(params.wa), first(params.w)),
   });
   if (!parsed.success) {
     const fields = [...new Set(parsed.error.issues.map((i) => i.path.join(".")))];
@@ -74,6 +74,6 @@ export function weekSearchParams(request: WeekRequest, exampleId: string | null)
   params.set("perDay", String(request.limits.maxPerDay));
   if (request.limits.unavailable.length) params.set("off", request.limits.unavailable.map((u) => `${u.date}@${u.startHour}`).join("|"));
   const w = weightsParam(request.weights);
-  if (w) params.set("w", w);
+  if (w) params.set(w[0], w[1]);
   return params;
 }

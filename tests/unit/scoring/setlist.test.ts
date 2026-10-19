@@ -113,9 +113,9 @@ describe("learnThese", () => {
       4,
     );
     expect(result.map((r) => r.artist)).toEqual(["Riser", "Steady", "Also unknown", "Unknown trend"]);
-    expect(result[0]).toMatchObject({ title: "Hit", playcount: 1000, reason: "Rising with this crowd (+5.3 pts), affinity 80/100" });
+    expect(result[0]).toMatchObject({ title: "Hit", playcount: 1000, reason: "Rising with this crowd (+5.3 pts), a very strong taste match" });
     expect(result[1]).toMatchObject({ title: null, reason: "Steady with this crowd (-1.0 pts)" });
-    expect(result[2].reason).toBe("affinity 50/100");
+    expect(result[2].reason).toBe("a fair taste match");
   });
 
   it("breaks trend ties by affinity, treating unknown affinity as zero", () => {
@@ -145,11 +145,11 @@ describe("learnThese", () => {
     );
     expect(result.map((r) => r.artist)).toEqual(["Closest", "Big", "Mid", "Small", "Unknown"]);
     expect(result.map((r) => r.reason)).toEqual([
-      "affinity 90/100",
-      "affinity 70/100, 1.3M Last.fm listeners",
-      "affinity 70/100, 48k Last.fm listeners",
-      "affinity 70/100, 950 Last.fm listeners",
-      "affinity 70/100",
+      "a very strong taste match",
+      "a strong taste match, 1.3M Last.fm listeners",
+      "a strong taste match, 48k Last.fm listeners",
+      "a strong taste match, 950 Last.fm listeners",
+      "a strong taste match",
     ]);
   });
 
@@ -232,8 +232,8 @@ describe("learnThese and Qloo audience growth", () => {
       [],
     );
     expect(result.map((r) => r.artist)).toEqual(["Growing", "Flat", "Shrinking"]);
-    expect(result[0]).toMatchObject({ audienceGrowth: 0.12, reason: "Audience growing with this crowd (Qloo audience growth +0.12), affinity 50/100" });
-    expect(result[1].reason).toBe("Rising with this crowd (+4.0 pts), affinity 99/100");
-    expect(result[2].reason).toBe("Audience shrinking with this crowd (Qloo audience growth -0.05), affinity 90/100");
+    expect(result[0]).toMatchObject({ audienceGrowth: 0.12, reason: "Audience growing with this crowd (Qloo audience growth +0.12), a fair taste match" });
+    expect(result[1].reason).toBe("Rising with this crowd (+4.0 pts), a very strong taste match");
+    expect(result[2].reason).toBe("Audience shrinking with this crowd (Qloo audience growth -0.05), a very strong taste match");
   });
 });

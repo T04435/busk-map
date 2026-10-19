@@ -44,7 +44,7 @@ pnpm test:e2e          # builds and starts an offline server, then runs the judg
 ## Data
 - [Qloo](https://qloo.com) taste API (16 kinds of call, see the /brain page; a local mock without a key)
 - OpenStreetMap public spaces and venue names (© OpenStreetMap contributors, ODbL)
-- City of Melbourne pedestrian counting system and busking locations (CC BY)
+- City of Melbourne busking locations (CC BY)
 - Ticketmaster Discovery API, Last.fm, Open-Meteo
 
 Plans keep their full step data: a stored plan or run holds every step the agent took, with the data each tool returned. That Qloo-derived data is stored privately server-side (Postgres) and is never committed to this repository.

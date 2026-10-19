@@ -11,7 +11,6 @@ import { log, redactUrl } from "@/server/log";
 
 export type AdapterName =
   | "qloo"
-  | "footfall"
   | "pitches"
   | "events"
   | "songs"
@@ -20,7 +19,6 @@ export type AdapterName =
 
 export const ADAPTER_NAMES: readonly AdapterName[] = [
   "qloo",
-  "footfall",
   "pitches",
   "events",
   "songs",

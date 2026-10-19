@@ -15,7 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
 import { explainedByLabel, type ExplanationsModel } from "@/lib/sources";
 import { venueDetail } from "@/lib/venue";
-import { FootTrafficChart } from "./foot-traffic-chart";
+import { weekdayOf } from "@/lib/slot";
+import { ActivityChart } from "./activity-chart";
 import { Cautions, Fact, NeverConfirms, QlooDetail } from "./tool-results";
 
 const KIND_LABEL: Record<PlanPitch["kind"], string> = {
@@ -25,7 +26,7 @@ const KIND_LABEL: Record<PlanPitch["kind"], string> = {
 };
 
 /**
- * The sheet's pitch body (boards B55 to B58): the head (rank, badges, name, kind, big score), why this crowd, foot traffic by
+ * The sheet's pitch body (boards B55 to B58): the head (rank, badges, name, kind, big score), why this crowd, estimated activity by
  * hour, then the facts as plain rows: busy places, the event, the weather and the legality, last, with the never-confirms line.
  * Keeps `pitch-card`.
  */
@@ -86,13 +87,7 @@ export function PitchDetails({ plan, pitch, rank, model }: { plan: Plan; pitch: 
         {pitch.discovery === "usual" && pitch.usualSpot && <p className="m-0 mt-2 text-[13px] leading-[18px] text-muted-foreground">Usual pitch: at {pitch.usualSpot}, where buskers already go. Expect other buskers.</p>}
       </section>
 
-      <FootTrafficChart
-        hourly={pitch.evidence.sensor?.hourly ?? null}
-        avgHourly={pitch.evidence.sensor?.avgHourly ?? null}
-        sensorName={pitch.evidence.sensor?.name ?? null}
-        slot={plan.slot}
-        unavailable={plan.footfallLevel === "unavailable"}
-      />
+      <ActivityChart activity={pitch.evidence.activity} basis={pitch.activityBasis} weekday={weekdayOf(plan.slot.date)} slot={pitch.window ?? plan.slot} />
 
       <div className="grid border-t-2 border-rule">
         {pitch.evidence.places.length > 0 && (

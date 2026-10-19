@@ -13,7 +13,7 @@ export type QuickSlotId = NamedSlot["id"];
 export type TimeSlotId = "any" | "custom" | QuickSlotId;
 
 export const ANY_TIME_HINT =
-  "Busk Map finds the best hours that day: when your crowd is out, foot traffic peaks and events let out. Each pitch gets its own time.";
+  "Busk Map finds the best hours that day: when your crowd is out, estimated activity peaks and events let out. Each pitch gets its own time.";
 
 /** "9 am–12 pm", "12–3 pm" as the DS prints a slot's range (the first suffix goes when both ends share it). */
 export const slotRange = (from: number, to: number) => {

@@ -70,7 +70,7 @@ function nameCell(c: HeatCell, known: ReturnType<typeof knownPlaces>): Named | n
  * list. The first (strongest) cell of a place names it.
  */
 export function topPlaces(sorted: HeatCell[]): { areas: string[]; planCity: string | null } {
-  const known = knownPlaces([], []);
+  const known = knownPlaces([]);
   const areas: string[] = [];
   const seen = new Set<string>();
   let planCity: string | null = null;
@@ -117,7 +117,7 @@ export function cityClusters(sorted: HeatCell[], all: readonly HeatCell[] = sort
   // `members` is strongest first, so the first member met of a cluster is its strongest cell.
   const firstOf = new Map<number, HeatCell>();
   for (let i = 0; i < members.length; i++) if (!firstOf.has(find(i))) firstOf.set(find(i), members[i]);
-  const known = knownPlaces([], []);
+  const known = knownPlaces([]);
   const seen = new Set<string>();
   const cities: (FansMapCity & { cityId: CityId | null })[] = [];
   for (const c of [...firstOf.values()].sort((a, b) => b.affinity - a.affinity)) {

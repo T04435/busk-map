@@ -28,13 +28,11 @@ export type SiteInput = LatLon & {
 
 export type ZoneInput = { id: string; kind: "unamplified" | "no-busking"; lines: LatLon[][] };
 
-export type SensorInput = LatLon & { id: number; name: string; avgHourly: number | null };
-
 export type HeatCellInput = LatLon & {
   affinity: number;
   /** The cell's geohash: its length gives the heatmap's resolution. */
   geohash?: string | null;
-  /** Qloo's popularity for the cell (0–1): the last-resort footfall proxy. */
+  /** Qloo's popularity for the cell (0–1): where activity concentrates (the area part of the activity estimate). */
   popularity?: number | null;
 };
 
@@ -81,11 +79,8 @@ export type WeatherHourInput = {
 export type Candidate = LatLon & {
   id: string;
   name: string;
-  /**
-   * A council-designated site, a public space (square, laneway, promenade…)
-   * or a footpath at a pedestrian sensor, both under the general permit.
-   */
-  kind: "designated" | "public-space" | "footpath";
+  /** A council-designated site, or a public space (square, laneway, promenade…) under the general permit. */
+  kind: "designated" | "public-space";
   /** Why it is a candidate: a top Qloo taste cell, a council site, the no-taste fallback, or a spot the agent checked and added. */
   origin: "taste" | "council" | "fallback" | "agent" | "hotspot";
   /** The taste cell it was snapped from (origin "taste"). */
@@ -100,7 +95,7 @@ export type Candidate = LatLon & {
   cautions: string[];
 };
 
-export type FactorName = "taste" | "footfall" | "places" | "events";
+export type FactorName = "taste" | "activity" | "events";
 
 export type Weights = Record<FactorName | "weather" | "discovery", number>;
 
@@ -109,7 +104,5 @@ export type Factors = Record<FactorName, number | null> & {
   /** Hidden-gem bonus, 0–1: the taste fit of a strong pitch off the usual circuit, else 0. */
   discovery: number;
 };
-
-export type FootfallSource = "sensor" | "nearby-sensors" | "qloo-popularity";
 
 export type Discovery = "hidden-gem" | "usual" | null;

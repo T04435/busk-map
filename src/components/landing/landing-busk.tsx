@@ -12,7 +12,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { EXAMPLE_CENTER, EXAMPLE_OTHERS, EXAMPLE_PITCHES, EXAMPLE_TASTE_CELLS } from "@/lib/landing-example-busk";
 
 const SUMMARY =
-  "Southbank Promenade has the closest crowd to your folk sound on Qloo, about 1,900 people an hour in your slot, and a matinee letting out at 2:45 pm. Hardware Lane is the quieter hidden gem; Degraves Street is busier but shared.";
+  "Southbank Promenade has the closest crowd to your folk sound on Qloo, busy in your slot (an estimate from Qloo), and a matinee letting out at 2:45 pm. Hardware Lane is the quieter hidden gem; Degraves Street is busier but shared.";
 
 const PLAN = { tasteCells: EXAMPLE_TASTE_CELLS, pitches: EXAMPLE_PITCHES, others: EXAMPLE_OTHERS };
 
@@ -23,7 +23,7 @@ const PLAN = { tasteCells: EXAMPLE_TASTE_CELLS, pitches: EXAMPLE_PITCHES, others
 const DETAILS: Record<string, { facts: string[]; why: string }> = {
   "ex-southbank": {
     why: "The strongest folk taste area on Qloo, with a steady walking crowd along the river and a matinee letting out at 2:45 pm.",
-    facts: ["About 1,900 people an hour in your slot", "General permit pitch, clear of the no-busking zones", "Open with Fast Car: this crowd knows it best"],
+    facts: ["Busy in your slot (estimate from Qloo: popular places open nearby)", "General permit pitch, clear of the no-busking zones", "Open with Fast Car: this crowd knows it best"],
   },
   "ex-hardware": {
     why: "A quieter laneway where cafe diners linger. Fewer people pass, but they stop, and few buskers work it.",

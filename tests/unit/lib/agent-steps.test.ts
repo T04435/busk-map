@@ -6,20 +6,20 @@ describe("agent steps", () => {
   it("attach Claude's notes to the next call, and the data each call returned", () => {
     const events: PlanStreamEvent[] = [
       { type: "note", kind: "reasoning", text: "Taste is strongest near Degraves." },
-      { type: "note", kind: "text", text: "Checking foot traffic there." },
-      { type: "tool-start", id: "1", tool: "footfall_at", label: "Foot traffic", input: { at: { place: "Degraves Street" }, hour: 19 } },
+      { type: "note", kind: "text", text: "Checking how busy it is there." },
+      { type: "tool-start", id: "1", tool: "activity_at", label: "Estimated activity", input: { at: { place: "Degraves Street" }, hour: 19 } },
       { type: "tool-start", id: "2", tool: "busy_places", label: "Places", input: { near: { place: "Degraves Street" } } },
-      { type: "tool-end", id: "1", tool: "footfall_at", ok: true, summary: "About 900 an hour", output: { sensors: [{ sensor: "A", people: 900 }] } },
+      { type: "tool-end", id: "1", tool: "activity_at", ok: true, summary: "Busy here on Fridays", output: { level: 0.7, basis: "places" } },
       { type: "tool-end", id: "2", tool: "busy_places", ok: false, summary: "outside the area", output: { error: "outside" } },
       { type: "note", kind: "text", text: "Done." },
     ];
     const steps = events.reduce<AgentStep[]>(applyStreamEvent, []);
     expect(steps.map((s) => [s.tool, s.status, s.notes.length])).toEqual([
-      ["footfall_at", "done", 2],
+      ["activity_at", "done", 2],
       ["busy_places", "failed", 0],
       [null, "notes", 1],
     ]);
-    expect(steps[0].output).toEqual({ sensors: [{ sensor: "A", people: 900 }] });
+    expect(steps[0].output).toEqual({ level: 0.7, basis: "places" });
     expect(steps[0].input).toEqual({ at: { place: "Degraves Street" }, hour: 19 });
   });
 

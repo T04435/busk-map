@@ -25,6 +25,8 @@ export const repertoireSongSchema = z.object({
 export const weightsSchema = z
   .object({
     taste: z.number().min(0).max(1),
+    /** The Qloo activity estimate's weight. Requests saved before it carry `footfall` and `places` instead (their sum is the activity weight). */
+    activity: z.number().min(0).max(1),
     footfall: z.number().min(0).max(1),
     places: z.number().min(0).max(1),
     events: z.number().min(0).max(1),
@@ -80,6 +82,7 @@ export const dataStatusSchema = z.object({
 
 const factorValue = z.number().min(0).max(1).nullable();
 
+/** "footpath" is only in plans stored before the pedestrian sensors were dropped: nothing makes one now. */
 export const PITCH_KINDS = ["designated", "public-space", "footpath"] as const;
 export const discoverySchema = z.enum(["hidden-gem", "usual"]).nullable();
 
@@ -96,7 +99,8 @@ export const planPitchSchema = z.object({
   discovery: discoverySchema,
   /** The well-known busking hotspot it sits at, if any. */
   usualSpot: z.string().nullable(),
-  footfallSource: z.enum(["sensor", "nearby-sensors", "qloo-popularity"]).nullable(),
+  /** What the activity estimate was made from (Qloo's heatmap popularity, popular places open in the slot, both, or neither). */
+  activityBasis: z.enum(["heatmap+places", "heatmap", "places", "none"]).default("none"),
   amplification: z.enum(["allowed", "unamplified-zone"]),
   rules: z.string(),
   rulesUrl: z.string().nullable(),
@@ -104,8 +108,8 @@ export const planPitchSchema = z.object({
   score: z.number().int().min(0).max(100),
   factors: z.object({
     taste: factorValue,
-    footfall: factorValue,
-    places: factorValue,
+    /** The activity estimate, 0-1 relative. Plans stored before it have none. */
+    activity: factorValue.default(null),
     events: factorValue,
     weatherPenalty: factorValue,
     discovery: z.number().min(0).max(1),
@@ -129,8 +133,22 @@ export const planPitchSchema = z.object({
     .nullable()
     .default(null),
   evidence: z.object({
-    /** With footfallSource "nearby-sensors", avgHourly is the estimate and name the nearest sensor. */
-    sensor: z.object({ name: z.string(), avgHourly: z.number(), /** The slot weekday's 24-hour counts at that sensor (typical, an estimate), for the sheet's sparkline. Null when not available. */ hourly: z.array(z.number().nullable()).length(24).nullable().default(null) }).nullable(),
+    /**
+     * The Qloo activity estimate at the pitch for its slot: a relative level (0-1), not a head count. `area` is the heatmap's
+     * popularity there, `venues` the popular places open in the slot, `hourly` the level for each hour of the slot's day (the
+     * sheet's chart). Null when Qloo had nothing to estimate from.
+     */
+    activity: z
+      .object({
+        level: z.number().min(0).max(1),
+        area: z.number().min(0).max(1).nullable(),
+        venues: z.number().min(0).max(1).nullable(),
+        /** The level relative to the pitches scored in this plan (0 least active, 1 most): what the words are read from. Null when there is no spread to compare. */
+        relative: z.number().min(0).max(1).nullable().default(null),
+        hourly: z.array(z.number().min(0).max(1)).length(24).nullable().default(null),
+      })
+      .nullable()
+      .default(null),
     places: z.array(
       z.object({
         name: z.string(),
@@ -225,7 +243,15 @@ export const planSchema = z.object({
   explanationsModel: z.enum(["claude", "mock"]).nullable().default(null),
   summary: z.string(),
   notes: z.array(z.string()),
-  weights: z.object({ taste: z.number(), footfall: z.number(), places: z.number(), events: z.number(), weather: z.number(), discovery: z.number() }),
+  // Plans stored before the activity estimate carry `footfall` and `places`: together they are its weight.
+  weights: z.preprocess(
+    (value) => {
+      const w = value as Record<string, unknown> | null;
+      if (w && typeof w === "object" && typeof w.activity !== "number" && typeof w.footfall === "number" && typeof w.places === "number") return { ...w, activity: w.footfall + w.places };
+      return value;
+    },
+    z.object({ taste: z.number(), activity: z.number(), events: z.number(), weather: z.number(), discovery: z.number() }),
+  ),
   pitches: z.array(planPitchSchema).max(3),
   others: z.array(
     z.object({
@@ -313,7 +339,6 @@ export const planSchema = z.object({
     .nullable(),
   resolvedArtists: z.array(z.object({ query: z.string(), matched: z.string().nullable() })),
   dataStatus: z.array(dataStatusSchema),
-  footfallLevel: z.enum(["city-sensors", "unavailable"]),
   rulesUrl: z.string(),
   /** Whether Qloo (required) failed: the plan is then unusable and the UI shows an error. */
   qlooFailed: z.boolean(),

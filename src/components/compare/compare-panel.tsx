@@ -9,6 +9,7 @@ import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { baselineViewSchema, type BaselineView, type PlanPitch, type PlanRequest } from "@/lib/plan-schema";
+import { activitySourceNote, activityWord } from "@/lib/activity";
 import { modelName, type ExplanationsModel } from "@/lib/sources";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
@@ -60,15 +61,13 @@ const STATUS_LABEL: Record<BaselineView["plain"][number]["status"], string> = {
 };
 const STATUS_VARIANT = { ours: "neutral", scored: "neutral", "not-legal": "restricted", "no-data": "estimate" } as const;
 
-type Pitch = Pick<PlanPitch, "id" | "name" | "score" | "discovery" | "factors" | "footfallSource" | "cellRank" | "evidence" | "amplification">;
+type Pitch = Pick<PlanPitch, "id" | "name" | "score" | "discovery" | "factors" | "activityBasis" | "cellRank" | "evidence" | "amplification">;
 
 /** What Busk Map knows about a pitch that a plain AI can't. */
 function evidenceLines(pitch: Pitch): string[] {
   const lines: string[] = [];
   if (pitch.factors.taste !== null) lines.push(`Qloo taste match ${pct(pitch.factors.taste)} out of 100${pitch.cellRank ? ` (your no. ${pitch.cellRank} area on Qloo's heatmap)` : ""}`);
-  if (pitch.evidence.sensor) {
-    lines.push(`${pitch.footfallSource === "sensor" ? "About" : "Roughly"} ${pitch.evidence.sensor.avgHourly.toLocaleString("en-AU")} people an hour (city sensors, estimate)`);
-  } else if (pitch.footfallSource === "qloo-popularity") lines.push("Busyness from Qloo's area popularity (estimate)");
+  if (pitch.evidence.activity) lines.push(`${activityWord(pitch.evidence.activity.relative ?? pitch.evidence.activity.level)} here in your slot (${activitySourceNote(pitch.activityBasis)})`);
   for (const event of pitch.evidence.events.slice(0, 1)) lines.push(`${event.name}: crowd ${event.moment === "leaving" ? "leaves" : "arrives"} around ${event.localTime}`);
   lines.push(`The council's busking layers don't rule it out${pitch.amplification === "unamplified-zone" ? " (unamplified only)" : ""}`);
   return lines;
@@ -97,7 +96,7 @@ export function ComparePanel({ state, pitches, model = null }: { state: Baseline
       <header className="space-y-1">
         <h2 className="m-0 font-display text-[32px] leading-none font-extrabold uppercase">Busk Map vs a plain AI</h2>
         <p className="m-0 text-sm text-muted-foreground">
-          The same question (your act, songs, city, day and slot) sent to {mock ? `${modelName("mock")} (offline)` : "a plain AI model"} with no tools and no data: no Qloo, no sensors, no rules.
+          The same question (your act, songs, city, day and slot) sent to {mock ? `${modelName("mock")} (offline)` : "a plain AI model"} with no tools and no data: no Qloo, no activity estimate, no rules.
           It runs alongside every plan as a control and never changes a score.
         </p>
       </header>

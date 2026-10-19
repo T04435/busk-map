@@ -1,11 +1,11 @@
 import "server-only";
 import { generateText, Output } from "ai";
 import { z } from "zod";
+import { activitySentence } from "@/lib/activity";
 import { addDays, formatHour, weekdayOf, zonedHourToUtc } from "@/lib/slot";
 import { weekPlanSchema, type WeekPlan, type WeekRequest, type WeekSession } from "@/lib/week-schema";
 import type { AdapterContext, AdapterName, AdapterResult } from "@/server/adapters/core";
 import { getEventsBetween } from "@/server/adapters/events";
-import { getTypicalFootfall } from "@/server/adapters/footfall";
 import { getPitches } from "@/server/adapters/pitches";
 import * as qloo from "@/server/adapters/qloo";
 import { getWeatherWeek } from "@/server/adapters/weather";
@@ -16,6 +16,7 @@ import { log } from "@/server/log";
 import {
   buildCandidates,
   normalizeWeights,
+  placesOpenByHour,
   scoreWeek,
   selectSessions,
   WEEK_SLOTS,
@@ -44,9 +45,9 @@ export function dayDrivers(
 ): string[] {
   const out: string[] = [];
   if (input.busyness !== null) {
-    if (input.busyness >= 0.999) out.push(`Busiest day for foot traffic${input.busiestHour !== null ? `, peaking around ${formatHour(input.busiestHour)}` : ""} (typical, estimate)`);
-    else if (input.busyness >= 0.95) out.push(`About as busy as the busiest day (${Math.round(input.busyness * 100)}%, typical, estimate)`);
-    else out.push(`Foot traffic about ${Math.round(input.busyness * 100)}% of the week's busiest day (typical, estimate)`);
+    if (input.busyness >= 0.999) out.push(`Busiest day for activity${input.busiestHour !== null ? `, peaking around ${formatHour(input.busiestHour)}` : ""} (estimate from Qloo: popular places open)`);
+    else if (input.busyness >= 0.95) out.push(`About as busy as the busiest day (${Math.round(input.busyness * 100)}%, estimate from Qloo: popular places open)`);
+    else out.push(`Activity about ${Math.round(input.busyness * 100)}% of the week's busiest day (estimate from Qloo: popular places open)`);
   }
   // Long runs (exhibitions, residencies) on most days of the week don't make a day different.
   const daysByName = new Map<string, Set<string>>();
@@ -83,7 +84,7 @@ export function templateSessionWhy(cell: WeekCell & { best: ScoredPitch }): stri
   const p = cell.best;
   const parts: string[] = [];
   if (p.factors.taste !== null) parts.push(`Taste match ${Math.round(p.factors.taste * 100)}/100 here (Qloo).`);
-  if (p.evidence.sensor) parts.push(`Typically about ${p.evidence.sensor.avgHourly.toLocaleString("en-AU")} people an hour at ${p.evidence.sensor.name} on ${capitalise(cell.weekday)}s at this time (estimate).`);
+  if (p.activityBasis !== "none") parts.push(`${activitySentence({ level: p.evidence.activity.level, basis: p.activityBasis, weekday: cell.weekday, startHour: cell.startHour })}.`);
   if (p.evidence.events[0]) parts.push(`${p.evidence.events[0].name} crowd ${p.evidence.events[0].moment === "leaving" ? "leaving" : "arriving"} nearby.`);
   if (p.factors.weatherPenalty !== null && p.factors.weatherPenalty > 0.3) parts.push("Some weather risk in the forecast.");
   return parts.join(" ") || "Scored on the data available for this slot.";
@@ -125,10 +126,9 @@ export async function buildWeekPlan(
 
   const minHour = Math.min(...WEEK_SLOTS.map((s) => s.startHour));
   const maxHour = Math.max(...WEEK_SLOTS.map((s) => s.endHour));
-  const [cells, places, typical, pitchData, events, weather] = await Promise.all([
+  const [cells, places, pitchData, events, weather] = await Promise.all([
     ids.length ? qloo.tasteMap(ids, city.bbox, adapters).then(track) : Promise.resolve([]),
     ids.length ? qloo.busyPlaces(ids, city.center, PLACES_RADIUS_M, null, adapters).then(track) : Promise.resolve([]),
-    getTypicalFootfall(request.city, minHour, maxHour, adapters, today).then(track),
     getPitches(request.city, adapters).then(track),
     getEventsBetween(request.city, weekStart.toISOString(), weekEnd.toISOString(), adapters).then(track),
     getWeatherWeek(request.city, request.startDate, WEEK_DAYS, adapters, today).then(track),
@@ -146,20 +146,17 @@ export async function buildWeekPlan(
     })),
   }));
   const weights = normalizeWeights(request.weights);
-  // Candidate footpaths sit at sensors; their counts are applied per slot in scoreWeek.
-  const sensorSpots = typical.sensors.map((s) => ({ id: s.id, name: s.name, lat: s.lat, lon: s.lon, avgHourly: null }));
   const rulesDown = statuses.get("pitches")?.mode === "fallback";
   if (rulesDown) notes.push("The council's busking rules are unavailable right now, so Busk Map can't check which spots are allowed. Try again later.");
   const candidates = rulesDown ? [] : buildCandidates({
     sites: pitchData.sites,
     zones: pitchData.zones,
-    sensors: sensorSpots,
     spots: PUBLIC_SPOTS,
     cells,
     hotspots: USUAL_HOTSPOTS,
     permit: request.permit,
   });
-  const grid = scoreWeek(candidates, { days, cells, sensors: typical.sensors, places, events, weather }, weights);
+  const grid = scoreWeek(candidates, { days, cells, places, events, weather }, weights);
   // Slots that have already started can't be chosen.
   const startMs = (date: string, hour: number) => zonedHourToUtc(date, hour, city.timeZone).getTime();
   const isPast = (c: WeekCell) => startMs(c.date, c.startHour) <= now.getTime();
@@ -168,22 +165,21 @@ export async function buildWeekPlan(
   // A chosen slot shows the pitch chosen for it (the next best when its best pitch reached the per-pitch cap).
   const chosenPitch = new Map(chosen.map((c) => [sessionKey(c.date, c.startHour), c.best]));
 
-  // Typical foot traffic per weekday (all sensors, 10 am to 10 pm), relative to the busiest day.
+  // Estimated activity per weekday (the popular Qloo places open, 10 am to 10 pm), relative to the busiest day.
   const busyness = new Map<string, { share: number; peakHour: number | null }>();
-  if (typical.sensors.length > 0) {
+  if (places.length > 0) {
     const totals = days.map((d) => {
-      const byHour = new Map<number, number>();
-      for (const sensor of typical.sensors) for (const [h, v] of Object.entries(sensor.byWeekdayHour[d.weekday] ?? {})) byHour.set(Number(h), (byHour.get(Number(h)) ?? 0) + v);
-      const total = [...byHour.values()].reduce((a, b) => a + b, 0);
-      const peak = [...byHour.entries()].sort((a, b) => b[1] - a[1])[0];
-      return { weekday: d.weekday, total, peakHour: peak ? peak[0] : null };
+      const hours = placesOpenByHour(places, d.weekday, minHour, maxHour);
+      const total = hours.reduce((a, h) => a + h.level, 0);
+      const peak = hours.reduce<{ hour: number; level: number } | null>((top, h) => (top === null || h.level > top.level ? h : top), null);
+      return { weekday: d.weekday, total, peakHour: peak && peak.level > 0 ? peak.hour : null };
     });
     const max = Math.max(...totals.map((t) => t.total));
     for (const t of totals) if (max > 0) busyness.set(t.weekday, { share: Math.round((t.total / max) * 100) / 100, peakHour: t.peakHour });
   }
-  // A slot is "busy" when its best pitch's foot traffic is in the top quarter of the week.
-  const footfalls = grid.flatMap((c) => (c.best?.factors.footfall == null ? [] : [c.best.factors.footfall])).sort((a, b) => a - b);
-  const busyCutoff = footfalls.length ? footfalls[Math.floor(footfalls.length * 0.75)] : Number.POSITIVE_INFINITY;
+  // A slot is "busy" when its best pitch's estimated activity is in the top quarter of the week.
+  const activities = grid.flatMap((c) => (c.best?.factors.activity == null ? [] : [c.best.factors.activity])).sort((a, b) => a - b);
+  const busyCutoff = activities.length ? activities[Math.floor(activities.length * 0.75)] : Number.POSITIVE_INFINITY;
 
   let ai: z.infer<typeof explanationSchema> | null = null;
   if (explain && chosen.length > 0) {
@@ -197,7 +193,7 @@ export async function buildWeekPlan(
           maxOutputTokens: 900,
           abortSignal: AbortSignal.timeout(45_000),
           system:
-            "You explain a street performer's best busking sessions for the week. Use only the evidence given. Never invent numbers, places or events. Say 'estimate' for typical foot traffic and estimated event times. One or two sentences per session. Australian English.",
+            "You explain a street performer's best busking sessions for the week. Use only the evidence given. Never invent numbers, places or events. Activity is a relative estimate from Qloo (popular places open nearby), never a count of people: say 'estimate'. Say 'estimate' for estimated event times too. One or two sentences per session. Australian English.",
           prompt: JSON.stringify({
             performer: request.performer.name,
             soundsLike: request.performer.artists,
@@ -207,7 +203,7 @@ export async function buildWeekPlan(
               pitch: c.best.name,
               score: c.best.score,
               factors: c.best.factors,
-              typicalPeoplePerHour: c.best.evidence.sensor?.avgHourly ?? null,
+              activityEstimate: c.best.activityBasis === "none" ? null : Math.round(c.best.evidence.activity.level * 100) / 100,
               nearbyPlaces: c.best.evidence.places.slice(0, 3).map((p) => p.name),
               events: c.best.evidence.events.map((e) => ({ name: e.name, moment: e.moment, endEstimated: e.endEstimated })),
               cautions: c.best.cautions,
@@ -237,8 +233,7 @@ export async function buildWeekPlan(
       pitch: { id: c.best.id, name: c.best.name, lat: c.best.lat, lon: c.best.lon, kind: c.best.kind, discovery: c.best.discovery, amplification: c.best.amplification, cautions: c.best.cautions },
       factors: c.best.factors,
       evidence: {
-        typicalPerHour: c.best.evidence.sensor?.avgHourly ?? null,
-        sensorName: c.best.evidence.sensor?.name ?? null,
+        activity: c.best.activityBasis === "none" ? null : Math.round(c.best.evidence.activity.level * 100) / 100,
         places: c.best.evidence.places.slice(0, 3).map((p) => p.name),
         events: c.best.evidence.events.map((e) => ({ name: e.name, moment: e.moment, endEstimated: e.endEstimated })),
       },
@@ -281,7 +276,7 @@ export async function buildWeekPlan(
       flags: [
         ...(c.best && c.best.evidence.events.length > 0 ? (["event"] as const) : []),
         ...(c.best && (c.best.factors.weatherPenalty ?? 0) >= 0.3 ? (["rain"] as const) : []),
-        ...(c.best && (c.best.factors.footfall ?? 0) >= busyCutoff ? (["busy"] as const) : []),
+        ...(c.best && (c.best.factors.activity ?? 0) >= busyCutoff ? (["busy"] as const) : []),
       ],
     })),
     sessions,
@@ -294,7 +289,6 @@ export async function buildWeekPlan(
     notes,
     qlooMode: qloo.qlooMode(adapters),
     qlooFailed: false,
-    footfallLevel: typical.level,
     dataStatus: [...statuses.values()],
   });
 }

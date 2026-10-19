@@ -23,11 +23,11 @@ const H2 = "m-0 font-display text-[clamp(44px,5vw,72px)] leading-[0.92] font-ext
 const LATTICE =
   "M24.2 0 L48.5 14 L48.5 42 L24.2 56 L0 42 L0 14Z M0 42 L24.2 56 L24.2 84 L0 98 L-24.2 84 L-24.2 56Z M48.5 42 L72.7 56 L72.7 84 L48.5 98 L24.2 84 L24.2 56Z M24.2 84 L48.5 98 L48.5 126 L24.2 140 L0 126 L0 98Z M0 -42 L24.2 -28 L24.2 0 L0 14 L-24.2 0 L-24.2 -28Z M48.5 -42 L72.7 -28 L72.7 0 L48.5 14 L24.2 0 L24.2 -28Z";
 
-const TICKER = ["Qloo taste map", "Qloo crowd at each pitch", "Qloo venue and event crowds", "Qloo audience age", "foot traffic for your hour", "3 pitches for you"];
+const TICKER = ["Qloo taste map", "Qloo crowd at each pitch", "Qloo venue and event crowds", "Qloo audience age", "activity estimate for your hour", "3 pitches for you"];
 
 const PROBLEMS = [
   { icon: "pin" as const, title: "Where?", guess: "Bourke Street Mall, like every other busker.", fix: "Southbank Promenade: the strongest folk taste area on Qloo." },
-  { icon: "clock" as const, title: "When?", guess: "Turn up at noon and hope.", fix: "About 1,900 people an hour, and a matinee lets out at 2:45 pm." },
+  { icon: "clock" as const, title: "When?", guess: "Turn up at noon and hope.", fix: "Busy on Friday evenings (an estimate from Qloo), and a matinee lets out at 2:45 pm." },
   { icon: "legal" as const, title: "Allowed?", guess: "The station steps, until a ranger moves you on.", fix: "A general-permit pitch, clear of the no-busking zones." },
   { icon: "music" as const, title: "What to play?", guess: "Wonderwall, again.", fix: "Open with Fast Car: the song this crowd knows best." },
 ];
@@ -175,7 +175,7 @@ export default function Home() {
             <h2 id="next-h" className="m-0 font-display text-[clamp(40px,4.4vw,60px)] leading-[0.92] font-extrabold uppercase">
               Beyond buskers
             </h2>
-            <p className="m-0">Busk Map already reads taste, street pitches, permits, foot traffic and the hour. Three things it could place next, with little change.</p>
+            <p className="m-0">Busk Map already reads taste, street pitches, permits, estimated activity and the hour. Three things it could place next, with little change.</p>
           </div>
           <ul className="m-0 grid min-w-0 flex-[2_1_520px] list-none grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))] gap-3 p-0">
             {BEYOND.map((item) => (

@@ -31,7 +31,7 @@ describe("locate (plain-AI spot → a place Busk Map knows)", () => {
     expect(locate({ name: "Degraves St", why: "" }, places, area)).toMatchObject({ via: "name", place: "Degraves Street" });
     expect(locate({ name: "Bourke St, near Myer", why: "" }, places, area)).toMatchObject({ via: "name", place: "Bourke Street Mall" });
     // The exact name beats a longer name that contains it.
-    expect(locate({ name: "Bourke Street Mall", why: "" }, [...places, { name: "Sensor: Bourke St Mall (North)", ...north(1200) }], area)).toMatchObject({ place: "Bourke Street Mall" });
+    expect(locate({ name: "Bourke Street Mall", why: "" }, [...places, { name: "Pitch: Bourke St Mall (North)", ...north(1200) }], area)).toMatchObject({ place: "Bourke Street Mall" });
     expect(locate({ name: "Degraves", why: "" }, places, area)).toMatchObject({ place: "Degraves Street" });
     // Short names never match by containment.
     expect(locate({ name: "A mall", why: "" }, places, area)).toBeNull();
@@ -63,7 +63,6 @@ const candidate = (id: string, at: { lat: number; lon: number }, extra: Partial<
 const scoreInputs: ScoreInputs = {
   // Taste is strongest at "here" and fades north.
   cells: [0, 400, 800, 1200, 1600, 2000, 2400].map((m, i) => ({ ...north(m), affinity: 1 - i * 0.15 })),
-  sensors: [{ id: 1, name: "Sensor", ...north(1000), avgHourly: 3000 }],
   places: [],
   events: [],
   weather: null,

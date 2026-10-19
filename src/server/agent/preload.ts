@@ -94,7 +94,7 @@ export function exampleRequests(now: { today: string; hour: number }): PlanReque
 }
 
 /**
- * Fetch the examples' data in the background (Qloo, sensors, rules, events, weather), so the agent's first run on a
+ * Fetch the examples' data in the background (Qloo, rules, events, weather), so the agent's first run on a
  * preset doesn't wait on cold sources. No model calls, and no plan is served from it: a preset click always starts
  * a fresh agent run. The data-level caches it fills are what keep Qloo quota and latency sane.
  */
@@ -102,7 +102,7 @@ export async function warmExamples(adapters: AdapterContext): Promise<{ plans: n
   const started = Date.now();
   const now = serverLocalNow(CITIES.melbourne.timeZone);
   const today = now.today;
-  // One at a time: the first warms the shared sources (sensors, rules), the rest reuse them.
+  // One at a time: the first warms the shared sources (rules), the rest reuse them.
   let plans = 0;
   for (const request of exampleRequests(now)) {
     try {

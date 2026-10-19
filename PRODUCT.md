@@ -16,7 +16,7 @@ Busk Map is an agent. Claude, using Qloo taste data and the city's open data, re
 
 ## Positioning
 
-Taste-matched pitches: who is actually out there at that hour, and what they like (Qloo), not foot traffic alone. Busk Map stays aware of where busking is allowed and shows its research live as the agent works.
+Taste-matched pitches: who is actually out there at that hour, and what they like (Qloo), not busyness alone. Busk Map stays aware of where busking is allowed and shows its research live as the agent works.
 
 ## Operating Context
 
@@ -41,7 +41,7 @@ Built for the Qloo Agentic Hackathon 2026; submission is due 30 Oct. The live ju
 
 ## Evidence on Hand
 
-Real data sources: Qloo (taste), City of Melbourne pedestrian sensors and busking layers, Ticketmaster (events), Open-Meteo (weather), Spotify and Last.fm (songs). There are no testimonials, users or usage figures to cite; don't invent any.
+Real data sources: Qloo (taste), City of Melbourne busking layers, Ticketmaster (events), Open-Meteo (weather), Spotify and Last.fm (songs). There are no testimonials, users or usage figures to cite; don't invent any.
 
 ## Product Principles
 

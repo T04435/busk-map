@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   addDays,
-  baselineDates,
   describeSlot,
   formatHour,
   localToday,
@@ -29,14 +28,6 @@ describe("slot", () => {
     expect(weekdayOf("2026-10-17")).toBe("saturday");
     expect(slotHours({ date: "2026-10-17", startHour: 18, endHour: 21 })).toEqual([18, 19, 20]);
     expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
-  });
-
-  it("picks recent same-weekday dates strictly before today", () => {
-    expect(baselineDates("2026-10-17", "2026-10-15", 3)).toEqual(["2026-10-10", "2026-10-03", "2026-09-26"]);
-    // Slot on the same weekday as today: today itself is excluded.
-    expect(baselineDates("2026-10-22", "2026-10-15", 1)).toEqual(["2026-10-08"]);
-    // A past slot works too.
-    expect(baselineDates("2026-10-12", "2026-10-15", 1)).toEqual(["2026-10-12"]);
   });
 
   it("converts local hours to UTC across daylight saving", () => {

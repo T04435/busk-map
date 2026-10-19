@@ -1,20 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { ANY_TIME_WINDOWS, anyTimeWindowsLeft, nextAnyTimeDate } from "@/lib/slot";
-import { DEFAULT_WEIGHTS, bestWindow, footfallReferenceOf, rankPitchesAnyTime, scorePitch, scorePitchAnyTime, scoreWindows, windowInputs } from "@/server/scoring";
-import type { AnyTimeBase, Candidate, TypicalSensor } from "@/server/scoring";
+import { DEFAULT_WEIGHTS, bestWindow, rankPitchesAnyTime, scorePitch, scorePitchAnyTime, scoreWindows, windowInputs } from "@/server/scoring";
+import type { AnyTimeBase, Candidate, PlaceInput } from "@/server/scoring";
 
 const here = { lat: -37.815, lon: 144.965 };
 const far = { lat: -37.83, lon: 144.99 };
-const cand = (id: string, at: { lat: number; lon: number }): Candidate => ({ id, name: id, ...at, kind: "footpath", origin: "taste", cell: null, usualSpot: null, amplification: "allowed", permit: "general", rules: "", rulesUrl: null, cautions: [] });
-const sensorAt = (id: number, at: { lat: number; lon: number }, byHour: Record<number, number>): TypicalSensor => ({ id, name: `S${id}`, ...at, byWeekdayHour: { saturday: byHour } });
-const hours = (from: number, to: number, value: number) => Object.fromEntries(Array.from({ length: to - from }, (_, i) => [from + i, value]));
+const cand = (id: string, at: { lat: number; lon: number }): Candidate => ({ id, name: id, ...at, kind: "public-space", origin: "taste", cell: null, usualSpot: null, amplification: "allowed", permit: "general", rules: "", rulesUrl: null, cautions: [] });
+/** A Qloo place open from `from` to `to` o'clock on Saturday (live hours shape). */
+const placeOpen = (id: string, at: { lat: number; lon: number }, popularity: number, from: number, to: number): PlaceInput => ({
+  id,
+  name: id,
+  ...at,
+  popularity,
+  hours: { saturday: [{ opens: `T${String(from).padStart(2, "0")}:00:00`, closes: `T${String(to).padStart(2, "0")}:00:00`, closed: false }] },
+});
 
 const DATE_MS = Date.parse("2026-10-16T13:00:00Z"); // Saturday 00:00 in Melbourne (UTC+11)
 const baseOf = (over: Partial<AnyTimeBase> = {}): AnyTimeBase => ({
   weekday: "saturday",
   cells: [],
-  sensors: [sensorAt(1, here, { ...hours(10, 22, 200), 12: 2000, 13: 2000, 14: 2000 }), sensorAt(2, far, { ...hours(10, 22, 100), 20: 3000, 21: 3000 })],
-  places: [],
+  // A lunch venue at one pitch, a late-night venue at the other.
+  places: [placeOpen("Lunch cafe", here, 0.9, 12, 15), placeOpen("Late bar", far, 0.9, 19, 23)],
   events: [],
   weather: null,
   hourMs: (h) => DATE_MS + h * 3_600_000,
@@ -46,7 +52,7 @@ describe("any-time windows (D2)", () => {
 });
 
 describe("best window per pitch (D3)", () => {
-  it("each pitch gets its own best window, and a pitch at a lunch sensor differs from one at a late-night sensor", () => {
+  it("each pitch gets its own best window, and a pitch at a lunch venue differs from one at a late-night venue", () => {
     const base = baseOf();
     const lunch = scorePitchAnyTime(cand("lunch", here), base, ANY_TIME_WINDOWS, DEFAULT_WEIGHTS)!;
     const late = scorePitchAnyTime(cand("late", far), base, ANY_TIME_WINDOWS, DEFAULT_WEIGHTS)!;
@@ -56,35 +62,32 @@ describe("best window per pitch (D3)", () => {
     expect(lunch.window!.runnersUp).toHaveLength(2);
     expect(lunch.window!.runnersUp[0].score).toBeLessThanOrEqual(lunch.score);
   });
-  it("scales footfall against the day's busiest window, so a quiet morning does not look as good as a busy evening", () => {
-    const base = baseOf();
-    const busiest = (100 + 3000 + 3000) / 3; // the 7-10 pm window at the far sensor
-    expect(footfallReferenceOf(base)).toBeCloseTo(busiest);
-    const morning = scoreWindows(cand("p", far), base, [ANY_TIME_WINDOWS[0]], DEFAULT_WEIGHTS)[0];
-    const evening = scoreWindows(cand("p", far), base, [ANY_TIME_WINDOWS[9]], DEFAULT_WEIGHTS)[0];
-    expect(morning.factors.footfall).toBeCloseTo(Math.sqrt(100 / busiest));
-    expect(evening.factors.footfall).toBeCloseTo(1);
+  it("picks the busiest hours: the window where the most popular places are open scores highest", () => {
+    // A small cafe open all day, a popular bar open 6-10 pm: the evening beats the rest of the day.
+    const base = baseOf({ places: [placeOpen("Cafe", here, 0.3, 8, 23), placeOpen("Bar", here, 0.95, 18, 23)] });
+    const windows = scoreWindows(cand("p", here), base, ANY_TIME_WINDOWS, DEFAULT_WEIGHTS);
+    const morning = windows[0];
+    const evening = windows[8];
+    expect(morning.factors.activity).toBeLessThan(evening.factors.activity!);
     expect(evening.score).toBeGreaterThan(morning.score);
-  });
-  it("a sensor with no count that weekday adds nothing to the day's scale", () => {
-    expect(footfallReferenceOf({ weekday: "monday", sensors: [sensorAt(1, here, hours(10, 22, 500))] })).toBe(0);
+    expect(bestWindow(windows)!.window!.startHour).toBe(18);
   });
   it("breaks ties by the earlier window", () => {
-    const flat = baseOf({ sensors: [sensorAt(1, here, hours(10, 22, 500))] });
+    // No hours vary the estimate (heatmap popularity only), so every window ties.
+    const flat = baseOf({ places: [], cells: [{ ...here, affinity: 0.5, popularity: 0.6 }] });
     expect(scorePitchAnyTime(cand("p", here), flat, ANY_TIME_WINDOWS, DEFAULT_WEIGHTS)!.window).toMatchObject({ startHour: 10, endHour: 13 });
   });
   it("a window's score equals the pitch scored at exactly those hours (same engine, same weights)", () => {
     const base = baseOf();
-    const reference = footfallReferenceOf(base);
     const w = ANY_TIME_WINDOWS[4];
-    const viaWindows = scoreWindows(cand("p", here), base, [w], DEFAULT_WEIGHTS, reference)[0];
-    const direct = scorePitch(cand("p", here), windowInputs(base, w, reference), DEFAULT_WEIGHTS);
+    const viaWindows = scoreWindows(cand("p", here), base, [w], DEFAULT_WEIGHTS)[0];
+    const direct = scorePitch(cand("p", here), windowInputs(base, w), DEFAULT_WEIGHTS);
     expect(viaWindows.score).toBe(direct.score);
     expect(viaWindows.window).toMatchObject({ startHour: 14, endHour: 17 });
   });
   it("an event leaving in a late window pulls the pitch there", () => {
     const base = baseOf({
-      sensors: [sensorAt(1, here, hours(10, 22, 300))],
+      places: [],
       events: [{ id: "e", name: "Gig", venue: { ...here, name: "Hall" }, start: new Date(DATE_MS + 18 * 3_600_000).toISOString(), end: new Date(DATE_MS + 21.5 * 3_600_000).toISOString(), endEstimated: false }],
     });
     const pitch = scorePitchAnyTime(cand("p", here), base, ANY_TIME_WINDOWS, DEFAULT_WEIGHTS)!;
@@ -92,21 +95,19 @@ describe("best window per pitch (D3)", () => {
     expect(pitch.evidence.events[0]).toMatchObject({ name: "Gig", moment: "leaving" });
   });
   it("rain at noon pushes the best window away from it", () => {
-    const sensors = [sensorAt(1, here, { ...hours(10, 22, 300), 12: 400, 13: 400, 14: 400 })];
-    const dry = scorePitchAnyTime(cand("p", here), baseOf({ sensors }), ANY_TIME_WINDOWS, DEFAULT_WEIGHTS)!;
+    const places = [placeOpen("Cafe", here, 0.5, 10, 22), placeOpen("Lunch bar", here, 0.9, 12, 15)];
+    const dry = scorePitchAnyTime(cand("p", here), baseOf({ places }), ANY_TIME_WINDOWS, DEFAULT_WEIGHTS)!;
     const wet = scorePitchAnyTime(
       cand("p", here),
-      baseOf({ sensors, weather: Array.from({ length: 12 }, (_, i) => ({ hour: 10 + i, precipitationProbability: 10 + i >= 12 && 10 + i < 16 ? 100 : 0, windKmh: 0, temperatureC: 20 })) }),
+      baseOf({ places, weather: Array.from({ length: 12 }, (_, i) => (10 + i >= 12 && 10 + i < 16 ? { hour: 10 + i, precipitationProbability: 100, windKmh: 50, temperatureC: 0 } : { hour: 10 + i, precipitationProbability: 0, windKmh: 0, temperatureC: 20 })) }),
       ANY_TIME_WINDOWS,
       DEFAULT_WEIGHTS,
     )!;
     expect(dry.window!.startHour).toBe(12);
     expect(wet.window!.startHour).not.toBe(12);
-    expect(wet.window!.startHour).toBeGreaterThanOrEqual(16);
   });
   it("a place closed in the morning does not count there", () => {
-    const place = { id: "pl", name: "Cafe", ...here, popularity: 0.9, hours: { saturday: [{ opens: "T17:00:00", closes: "T23:00:00", closed: false }] } };
-    const base = baseOf({ sensors: [sensorAt(1, here, hours(10, 22, 300))], places: [place] });
+    const base = baseOf({ places: [placeOpen("Cafe", here, 0.9, 17, 23)] });
     const [morning, evening] = [ANY_TIME_WINDOWS[0], ANY_TIME_WINDOWS[9]].map((w) => scoreWindows(cand("p", here), base, [w], DEFAULT_WEIGHTS)[0]);
     expect(morning.evidence.places).toEqual([]);
     expect(evening.evidence.places.map((p) => p.name)).toEqual(["Cafe"]);

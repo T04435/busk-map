@@ -1,14 +1,13 @@
 import { distanceM, distanceToLineM, type LatLon } from "@/lib/geo";
-import { isFineHeatmap } from "./pitch-score";
-import type { Candidate, HeatCellInput, HotspotInput, PerformerPermit, SensorInput, SiteInput, SpotInput, ZoneInput } from "./types";
+import { isFineHeatmap } from "./heatmap";
+import type { Candidate, HeatCellInput, HotspotInput, PerformerPermit, SiteInput, SpotInput, ZoneInput } from "./types";
 
 /**
  * Candidate pitches come from the data, led by Qloo:
  *
  * 1. Take the performer's top taste cells from Qloo's heatmap.
  * 2. Snap each to the walkable public spots near its centre (squares,
- *    laneways, promenades; OpenStreetMap-derived) and to the nearest
- *    pedestrian sensor (a footpath with measured foot traffic).
+ *    laneways, promenades; OpenStreetMap-derived).
  * 3. Add the council's designated sites open to the performer's permit: one
  *    input among others, not the driver.
  * 4. Add the well-known busking hotspots (USUAL_HOTSPOTS) to every list, so
@@ -18,7 +17,7 @@ import type { Candidate, HeatCellInput, HotspotInput, PerformerPermit, SensorInp
  *
  * Busk Map never claims a pitch is legal: these are places the City of
  * Melbourne's published layers do not rule out, with the conditions to check.
- * Foot traffic and the other factors are applied when scoring.
+ * The activity estimate and the other factors are applied when scoring.
  */
 export const NO_BUSKING_LINE_BUFFER_M = 30;
 export const RESTRICTED_SITE_BUFFER_M = 60;
@@ -95,7 +94,6 @@ export function topCells(cells: HeatCellInput[], share = TOP_CELL_SHARE): (HeatC
 export type CandidateInputs = {
   sites: SiteInput[];
   zones: ZoneInput[];
-  sensors: SensorInput[];
   spots: SpotInput[];
   cells: HeatCellInput[];
   hotspots: HotspotInput[];
@@ -107,7 +105,7 @@ export type CandidateFunnel = {
   /** Qloo heatmap cells over the city, and how many were the performer's top cells. */
   cells: number;
   topCells: number;
-  /** Public spots and sensor footpaths near the top cells, plus council sites open to the permit. */
+  /** Public spots near the top cells, plus council sites open to the permit. */
   considered: number;
   /** Ruled out by no-busking lines or restricted sites. */
   excluded: number;
@@ -154,7 +152,7 @@ export function candidateAt(
   };
 }
 
-export function buildCandidatesWithFunnel({ sites, zones, sensors, spots, cells, hotspots, permit }: CandidateInputs): { candidates: Candidate[]; funnel: CandidateFunnel } {
+export function buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots, permit }: CandidateInputs): { candidates: Candidate[]; funnel: CandidateFunnel } {
   let considered = 0;
   let excluded = 0;
   const blocked = (point: LatLon) => ruledOut(point, sites, zones, permit);
@@ -185,8 +183,6 @@ export function buildCandidatesWithFunnel({ sites, zones, sensors, spots, cells,
 
   const fromSpot = (spot: SpotInput, origin: Candidate["origin"], cell: Candidate["cell"]) =>
     add({ id: `spot:${spot.id}`, name: spot.name, lat: spot.lat, lon: spot.lon, kind: "public-space", origin, cell, ...general }, null);
-  const fromSensor = (sensor: SensorInput, origin: Candidate["origin"], cell: Candidate["cell"]) =>
-    add({ id: `footpath:${sensor.id}`, name: `${sensor.name} footpath`, lat: sensor.lat, lon: sensor.lon, kind: "footpath", origin, cell, ...general }, null);
 
   const funnel = (top: number) => ({ candidates, funnel: { cells: cells.length, topCells: top, considered, excluded, candidates: candidates.length } });
   /**
@@ -203,9 +199,8 @@ export function buildCandidatesWithFunnel({ sites, zones, sensors, spots, cells,
   };
 
   if (cells.length === 0) {
-    // No taste data: every public spot and sensor footpath competes on the other factors.
+    // No taste data: every public spot competes on the other factors.
     for (const spot of spots) fromSpot(spot, "fallback", null);
-    for (const sensor of sensors) fromSensor(sensor, "fallback", null);
     addHotspots();
     return funnel(0);
   }
@@ -221,8 +216,6 @@ export function buildCandidatesWithFunnel({ sites, zones, sensors, spots, cells,
         .sort((a, b) => a.d - b.d)
         .map((x) => x.item);
     for (const spot of near(spots).slice(0, MAX_SPOTS_PER_CELL)) fromSpot(spot, "taste", ref);
-    const [sensor] = near(sensors);
-    if (sensor) fromSensor(sensor, "taste", ref);
   }
   addHotspots();
   return funnel(top.length);

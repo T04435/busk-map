@@ -1,15 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_WEIGHTS, isUnavailable, MAX_SESSIONS_PER_PITCH, scoreWeek, selectSessions, typicalForSlot, WEEK_SLOTS } from "@/server/scoring";
-import type { Candidate, TypicalSensor, WeekCell, WeekDay } from "@/server/scoring";
+import { DEFAULT_WEIGHTS, isUnavailable, MAX_SESSIONS_PER_PITCH, scoreWeek, selectSessions, WEEK_SLOTS } from "@/server/scoring";
+import type { Candidate, PlaceInput, WeekCell, WeekDay } from "@/server/scoring";
 
 const here = { lat: -37.815, lon: 144.965 };
-const candidate: Candidate = { id: "c1", name: "Pitch", ...here, kind: "footpath", origin: "taste", cell: null, usualSpot: null, amplification: "allowed", permit: "general", rules: "", rulesUrl: null, cautions: [] };
-const sensor: TypicalSensor = {
-  id: 1,
-  name: "S",
-  ...here,
-  byWeekdayHour: { saturday: { 10: 100, 11: 200, 19: 3000, 20: 3200 }, sunday: { 10: 50 } },
-};
+const candidate: Candidate = { id: "c1", name: "Pitch", ...here, kind: "public-space", origin: "taste", cell: null, usualSpot: null, amplification: "allowed", permit: "general", rules: "", rulesUrl: null, cautions: [] };
+/** A Qloo place open on Saturday evenings only. */
+const eveningBar: PlaceInput = { id: "bar", name: "Bar", ...here, popularity: 0.9, hours: { saturday: [{ opens: "T18:00:00", closes: "T23:00:00", closed: false }] } };
 
 const day = (date: string, weekday: string): WeekDay => ({
   date,
@@ -17,23 +13,14 @@ const day = (date: string, weekday: string): WeekDay => ({
   slots: WEEK_SLOTS.map((s, i) => ({ ...s, startMs: i * 1000, endMs: i * 1000 + 999 })),
 });
 
-describe("typicalForSlot", () => {
-  it("averages the hours that have data, or returns null", () => {
-    expect(typicalForSlot(sensor, "saturday", 10, 13)).toBe(150);
-    expect(typicalForSlot(sensor, "saturday", 13, 16)).toBeNull();
-    expect(typicalForSlot(sensor, "monday", 10, 13)).toBeNull();
-  });
-});
-
 describe("scoreWeek", () => {
-  it("scores every day and slot, using per-slot footfall and forecast", () => {
+  it("scores every day and slot, using per-slot activity (venues open) and forecast", () => {
     const grid = scoreWeek(
       [candidate],
       {
         days: [day("2026-10-17", "saturday"), day("2026-10-18", "sunday")],
         cells: [{ ...here, affinity: 1 }],
-        sensors: [sensor],
-        places: [],
+        places: [eveningBar],
         events: [],
         weather: { "2026-10-17": [{ hour: 19, precipitationProbability: 100, windKmh: 0, temperatureC: 20 }] },
       },
@@ -44,12 +31,12 @@ describe("scoreWeek", () => {
     const satMorning = grid.find((c) => c.date === "2026-10-17" && c.startHour === 10)!;
     expect(satEvening.best?.factors.weatherPenalty).toBeCloseTo(0.7);
     expect(satMorning.best?.factors.weatherPenalty).toBeNull(); // no forecast hours in that slot
-    // Scaled against the week's busiest slot (Saturday 7–10 pm), not this slot's.
-    expect(satMorning.best?.factors.footfall).toBeCloseTo(Math.sqrt(150 / 3100));
-    expect(satEvening.best?.factors.footfall).toBeCloseTo(1);
-    expect(grid.find((c) => c.date === "2026-10-18" && c.startHour === 13)!.best?.factors.footfall).toBeNull();
+    // The bar is open Saturday 7-10 pm only: the evening is more active than the morning.
+    expect(satMorning.best?.factors.activity).toBe(0);
+    expect(satEvening.best?.factors.activity).toBeGreaterThan(0.3);
+    expect(satEvening.best!.contributions.activity!).toBeGreaterThan(satMorning.best!.contributions.activity!);
     // No candidates: no best pitch.
-    expect(scoreWeek([], { days: [day("2026-10-17", "saturday")], cells: [], sensors: [], places: [], events: [], weather: {} }, DEFAULT_WEIGHTS)[0].best).toBeNull();
+    expect(scoreWeek([], { days: [day("2026-10-17", "saturday")], cells: [], places: [], events: [], weather: {} }, DEFAULT_WEIGHTS)[0].best).toBeNull();
   });
 });
 
@@ -103,7 +90,7 @@ describe("selectSessions", () => {
         { id: "a", name: "A", lat: -37.81, lon: 144.96, kind: "public-space", origin: "hotspot", cell: null, permit: "general", rules: "", rulesUrl: null, amplification: "allowed", cautions: [], usualSpot: "A" },
         { id: "b", name: "B", lat: -37.815, lon: 144.965, kind: "public-space", origin: "taste", cell: null, permit: "general", rules: "", rulesUrl: null, amplification: "allowed", cautions: [], usualSpot: null },
       ],
-      { days: [{ date: "2026-10-17", weekday: "saturday", slots: [{ startHour: 10, endHour: 13, startMs: 0, endMs: 1 }] }], cells: [], sensors: [], places: [], events: [], weather: {} },
+      { days: [{ date: "2026-10-17", weekday: "saturday", slots: [{ startHour: 10, endHour: 13, startMs: 0, endMs: 1 }] }], cells: [], places: [], events: [], weather: {} },
       DEFAULT_WEIGHTS,
     );
     expect(grid[0].options!.map((p) => p.id).sort()).toEqual(["a", "b"]);

@@ -11,7 +11,7 @@ import type { Candidate, Weights } from "./types";
  *
  * Matching a named place:
  * 1. by name, against the places Busk Map knows (public spots, council sites,
- *    sensor footpaths, the usual hotspots and their common names);
+ *    the usual hotspots and their common names);
  * 2. else by the model's own coordinates, when they fall in the planning area.
  * A located place then matches a scored pitch within MATCH_RADIUS_M.
  */

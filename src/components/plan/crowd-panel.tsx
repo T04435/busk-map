@@ -90,7 +90,7 @@ export function CrowdPanel({
           </HexCell>
           <h4 className="m-0 font-display text-xl leading-[26px] font-extrabold tracking-[0.01em] uppercase">No crowd data for this plan</h4>
           <p className="m-0 max-w-[36ch] text-[15px] leading-[22px] text-muted-foreground">
-            {resolved.length > 0 && unmatched.length === resolved.length ? "Qloo matched none of your artists. " : ""}The pitches still use foot traffic, events and weather.
+            {resolved.length > 0 && unmatched.length === resolved.length ? "Qloo matched none of your artists. " : ""}The activity estimate needs a match too, so the pitches are ranked on events and weather only.
           </p>
         </div>
       )}

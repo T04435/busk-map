@@ -4,23 +4,24 @@ import type { Plan, PlanPitch } from "@/lib/plan-schema";
 
 const FACTORS: { key: keyof PlanPitch["factors"]; weight: keyof Plan["weights"]; label: string; icon: IconName }[] = [
   { key: "taste", weight: "taste", label: "Taste affinity (Qloo)", icon: "music" },
-  { key: "footfall", weight: "footfall", label: "Foot traffic for the slot", icon: "footfall" },
-  { key: "places", weight: "places", label: "Busy places open nearby", icon: "store" },
+  { key: "activity", weight: "activity", label: "Activity estimate for the slot (Qloo)", icon: "footfall" },
   { key: "events", weight: "events", label: "Event crowds", icon: "ticket" },
   { key: "discovery", weight: "discovery", label: "Discovery bonus (hidden gem)", icon: "gem" },
   { key: "weatherPenalty", weight: "weather", label: "Weather penalty", icon: "rain" },
 ];
 
-const FOOTFALL_NOTE: Record<NonNullable<PlanPitch["footfallSource"]>, string> = {
-  sensor: "",
-  "nearby-sensors": "Estimated from nearby sensors",
-  "qloo-popularity": "Estimated from Qloo area popularity",
+/** What the activity estimate was made from, in the factor's note. */
+const ACTIVITY_NOTE: Record<PlanPitch["activityBasis"], string> = {
+  "heatmap+places": "Estimate: popular places open nearby, and where activity concentrates",
+  places: "Estimate: popular places open nearby",
+  heatmap: "Estimate: where activity concentrates; opening hours unknown",
+  none: "No estimate: Qloo had no activity data here",
 };
 
 /**
  * How one pitch's score adds up (the DS ScoreBreakdown): the score in a big cell with "How this score adds up", then each factor as a
  * cell with its icon, label, note and weight ("× 0.35"). The details sheet keeps it at the foot, folded: the board's sheet body is
- * the head, why, foot traffic, facts and setlist (PitchDetails).
+ * the head, why, activity, facts and setlist (PitchDetails).
  */
 export function ScoreBreakdown({ pitch, weights }: { pitch: PlanPitch; weights?: Plan["weights"] }) {
   return (
@@ -37,8 +38,8 @@ export function ScoreBreakdown({ pitch, weights }: { pitch: PlanPitch; weights?:
           const v = pitch.factors[key];
           const none = key === "discovery" && v === 0;
           const note = [
-            key === "footfall" && pitch.footfallSource ? FOOTFALL_NOTE[pitch.footfallSource] : "",
-            key === "footfall" && pitch.discovery === "usual" ? "Shared with other buskers" : "",
+            key === "activity" ? ACTIVITY_NOTE[pitch.activityBasis] : "",
+            key === "activity" && pitch.discovery === "usual" ? "Shared with other buskers" : "",
             none ? "None for this pitch" : "",
           ]
             .filter(Boolean)

@@ -300,7 +300,7 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
 
       <fieldset className="m-0 flex min-w-0 flex-col gap-5 border-0 p-0">
         <legend className="mb-1 p-0 font-display text-[26px] leading-none font-extrabold uppercase">When and where</legend>
-        <CityPicker cities={[{ id: "melbourne", name: "Melbourne", level: "live", note: "Taste, foot traffic, busking rules, events and weather" }]} value="melbourne" onValueChange={() => {}} />
+        <CityPicker cities={[{ id: "melbourne", name: "Melbourne", level: "live", note: "Taste, estimated activity, busking rules, events and weather" }]} value="melbourne" onValueChange={() => {}} />
         <div className="flex max-w-80 flex-col gap-1.5" data-field="slot">
           <DatePicker id="date" label="Date" value={date} onChange={setDate} min={today} invalid={hasError("slot")} aria-describedby={errorId("slot")} />
           {hasError("slot") && (

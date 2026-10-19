@@ -89,7 +89,7 @@ export function HiveSpecimen() {
       <Block title="Step card tag">
         <p className="m-0 max-w-xl text-sm leading-5 text-muted-foreground">
           <AgentTag />
-          Recent Fridays averaged about 1,900 people an hour. That&apos;s an estimate from a city sensor 80 m away.
+          Busy here on Friday evenings. That&apos;s an estimate from Qloo: popular places open nearby.
         </p>
       </Block>
       <Block title="Brain card">

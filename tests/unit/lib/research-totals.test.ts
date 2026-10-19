@@ -18,8 +18,11 @@ const run: ToolResult[] = [
   ok("busy_places", { places: [{ name: "young & jackson", open: "open" }, { name: "Arts Centre", open: "open" }] }),
   ok("events_near", { events: [{ name: "Gig", venue: "Forum", starts: "7:00 pm", ends: "10:00 pm" }, { name: "Gig", venue: "Forum", starts: "9:00 pm" }] }),
   ok("events_near", { events: [{ name: "Gig", venue: "Forum", starts: "7:00 pm" }] }),
-  ok("footfall_at", { sensors: [{ sensor: "Flinders St", peopleThisHour: 1200 }, { sensor: "Swanston St", peopleThisHour: null }] }),
-  ok("footfall_at", { sensors: [{ sensor: "Flinders St", peopleThisHour: 900 }, { sensor: "Elizabeth St", peopleThisHour: 300 }] }),
+  ok("activity_at", { at: { label: "Flinders St", lat: -37.818, lon: 144.967 }, level: 0.7, basis: "places", hourly: [] }),
+  // The same place again, and one with no estimate (Qloo had nothing there): counted once, and not at all.
+  ok("activity_at", { at: { label: "Flinders St", lat: -37.818, lon: 144.967 }, level: 0.4, basis: "places", hourly: [] }),
+  ok("activity_at", { at: { label: "Swanston St", lat: -37.812, lon: 144.966 }, level: 0.5, basis: "none", hourly: [] }),
+  ok("activity_at", { at: { label: "Elizabeth St", lat: -37.814, lon: 144.962 }, level: 0.2, basis: "heatmap", hourly: [] }),
   ok("check_pitch", { pitchId: "spot:city-square", name: "City Square", legal: "not ruled out", inPool: true }),
   ok("check_pitch", { pitchId: "spot:city-square", name: "City Square", legal: "not ruled out", inPool: true }),
   ok("check_pitch", { pitchId: null, name: "Bourke St", legal: "ruled out", inPool: false }),
@@ -38,7 +41,7 @@ describe("research totals from the agent's tool outputs", () => {
       crowds: 2, // Fed Sq at 400 m (twice) and at 800 m; the empty read doesn't count
       places: 3,
       events: 2, // the same gig at 7 pm (twice) and at 9 pm
-      sensors: 2, // Swanston St had no reading
+      activity: 2, // Flinders St (twice) and Elizabeth St; Swanston St had no estimate
       rules: 2 + 22, // City Square, Bourke St (ruled out is still a check); "unknown" isn't; plus the final pool
       scored: 22, // the last score_pitches
       songs: 3,
@@ -52,7 +55,7 @@ describe("research totals from the agent's tool outputs", () => {
       { tool: "crowd_at", ok: false, output: { error: "outside the planning area" } },
       { tool: "busy_places", ok: true, output: { error: "timeout" } },
       { tool: "events_near", ok: true },
-      { tool: "footfall_at", ok: true, output: "not an object" },
+      { tool: "activity_at", ok: true, output: "not an object" },
       { tool: "check_pitch", ok: false, output: { pitchId: "x", legal: "not ruled out" } },
       { tool: "score_pitches", ok: false, output: { poolSize: 30 } },
       { tool: "build_setlist", ok: true, output: { songs: "none" } },
@@ -77,25 +80,20 @@ describe("research totals: time windows (any time)", () => {
 });
 
 describe("research totals from the engine's data", () => {
-  it("counts the engine's cells, crowd reads, pool evidence, sensors and setlists, de-duplicated", () => {
-    const pitch = (places: string[], events: { name: string; venue: { name: string }; start: string }[]) => ({ evidence: { places: places.map((name) => ({ name })), events } });
+  it("counts the engine's cells, crowd reads, pool evidence, activity estimates and setlists, de-duplicated", () => {
+    const pitch = (places: string[], events: { name: string; venue: { name: string }; start: string }[], activityBasis = "places") => ({ activityBasis, evidence: { places: places.map((name) => ({ name })), events } });
     const gig = { name: "Gig", venue: { name: "Forum" }, start: "2026-10-17T09:00:00Z" };
     const totals = fromEngine({
       cells: 40,
       crowdReads: 2,
-      pool: [pitch(["ACMI", "Young & Jackson"], [gig]), pitch(["acmi"], [gig, { ...gig, start: "2026-10-17T11:00:00Z" }]), pitch([], [])],
-      sensors: [
-        { id: 1, name: "Flinders St", avgHourly: 1000 },
-        { id: 2, name: "Swanston St", avgHourly: null },
-        { id: 3, name: "Elizabeth St", avgHourly: 0 },
-      ],
+      pool: [pitch(["ACMI", "Young & Jackson"], [gig]), pitch(["acmi"], [gig, { ...gig, start: "2026-10-17T11:00:00Z" }], "heatmap+places"), pitch([], [], "none")],
       setlists: [
         [{ title: "Riptide", artist: "Vance Joy" }, { title: "Perfect", artist: "Ed Sheeran" }],
         [{ title: "Riptide", artist: "Vance Joy" }],
       ],
     });
-    expect(totals).toEqual({ taste: 40, crowds: 2, places: 2, events: 2, sensors: 2, rules: 3, scored: 3, songs: 2 });
-    expect(fromEngine({ cells: 0, crowdReads: 0, pool: [], sensors: [], setlists: [] })).toEqual(ZERO_TOTALS);
+    expect(totals).toEqual({ taste: 40, crowds: 2, places: 2, events: 2, activity: 2, rules: 3, scored: 3, songs: 2 });
+    expect(fromEngine({ cells: 0, crowdReads: 0, pool: [], setlists: [] })).toEqual(ZERO_TOTALS);
   });
 });
 
@@ -106,5 +104,12 @@ describe("plan schema", () => {
     expect(shape.safeParse({ ...ZERO_TOTALS, taste: 3 }).success).toBe(true);
     expect(shape.safeParse({ ...ZERO_TOTALS, taste: -1 }).success).toBe(false);
     expect(shape.safeParse({ ...ZERO_TOTALS, songs: 1.5 }).success).toBe(false);
+  });
+});
+
+describe("research totals schema", () => {
+  it("reads totals stored before the activity estimate: the old sensor count is dropped and activity is 0", () => {
+    const old = { taste: 51, crowds: 2, places: 3, events: 2, sensors: 2, rules: 24, scored: 22, songs: 3 };
+    expect(researchTotalsSchema.parse(old)).toEqual({ taste: 51, crowds: 2, places: 3, events: 2, activity: 0, rules: 24, scored: 22, songs: 3 });
   });
 });

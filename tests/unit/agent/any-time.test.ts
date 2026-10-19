@@ -61,7 +61,7 @@ describe("any-time plan (mock model)", () => {
     expect(plan.weather!.hours.map((h) => h.hour)).toEqual(Array.from({ length: 12 }, (_, i) => 10 + i));
   });
 
-  it("best_hours returns the top 3 windows, hourly foot traffic, events, rain and open places; score_pitches rows gain `window` additively", async () => {
+  it("best_hours returns the top 3 windows, the activity estimate by hour, events, rain and open places; score_pitches rows gain `window` additively", async () => {
     const { ended } = await runAgent(anyRequest);
     const scored = ended.find((e) => e.tool === "score_pitches")!.output as { windows: number; pitches: { pitchId: string; window: string; windowStartHour: number }[]; poolSize: number };
     expect(scored.windows).toBe(10);
@@ -69,7 +69,7 @@ describe("any-time plan (mock model)", () => {
     const out = ended.find((e) => e.tool === "best_hours")!.output as {
       summary: string;
       windowsScored: number;
-      pitches: { pitchId: string; name: string; best: string; windows: { window: string; score: number; peoplePerHour: number | null; rainPercent: number | null; events: unknown[]; placesOpen: string[] }[]; hourly: { hour: number; people: number | null; rainPercent: number | null }[]; sensor: string | null; peakHour: number | null }[];
+      pitches: { pitchId: string; name: string; best: string; windows: { window: string; score: number; activity: number | null; rainPercent: number | null; events: unknown[]; placesOpen: string[] }[]; hourly: { hour: number; activity: number | null; rainPercent: number | null }[]; activityBasis: string; peakHour: number | null }[];
     };
     expect(out.windowsScored).toBe(10);
     expect(out.summary).toMatch(/^Best \d+ [ap]m–\d+ [ap]m at /);
@@ -81,9 +81,10 @@ describe("any-time plan (mock model)", () => {
       expect(p.windows[1].score).toBeGreaterThanOrEqual(p.windows[2].score);
       expect(p.hourly.map((h) => h.hour)).toEqual(Array.from({ length: 12 }, (_, i) => 10 + i));
       expect(p.windows[0].rainPercent).not.toBeNull();
-      expect(p.windows[0].peoplePerHour).not.toBeNull();
+      expect(p.windows[0].activity).not.toBeNull();
+      expect(p.hourly.every((h) => h.activity === null || (h.activity >= 0 && h.activity <= 1))).toBe(true);
     }
-    // Different pitches peak at different hours somewhere in the pool (the synthetic sensors have different profiles).
+    // Different pitches peak at different hours somewhere in the pool (the offline Qloo places have different hours).
     expect(new Set(out.pitches.map((p) => p.best)).size).toBeGreaterThanOrEqual(1);
   });
 
@@ -121,25 +122,26 @@ describe("any-time plan (mock model)", () => {
     const tools = createTools(ctx, state);
     await expect(run(tools.best_hours, { pitchIds: ["x"] })).rejects.toThrow(/score_pitches first/);
     await run(tools.taste_map, {});
-    await run(tools.footfall_at, { at: { place: "Federation Square" } });
+    await run(tools.activity_at, { at: { place: "Federation Square" } });
     await run(tools.busy_places, { near: { place: "Federation Square" } });
     const scored = (await run(tools.score_pitches, {})) as { pitches: { pitchId: string; windowStartHour: number; windowEndHour: number }[] };
     await expect(run(tools.best_hours, { pitchIds: ["made-up"] })).rejects.toThrow(/Unknown pitchId/);
     const top = scored.pitches[0];
-    // footfall_at with no hour: the pitch's best window start. busy_places: open at that hour. events_near: the window.
-    const foot = (await run(tools.footfall_at, { at: { pitchId: top.pitchId } })) as { hour: number };
-    expect(foot.hour).toBe(top.windowStartHour);
+    // activity_at with no hour: the pitch's best window start. busy_places: open at that hour. events_near: the window.
+    const foot = (await run(tools.activity_at, { at: { pitchId: top.pitchId } })) as { startHour: number; endHour: number };
+    expect(foot.startHour).toBe(top.windowStartHour);
+    expect(foot.endHour).toBe(top.windowEndHour);
     const places = (await run(tools.busy_places, { near: { pitchId: top.pitchId } })) as { hour: number };
     expect(places.hour).toBe(top.windowStartHour);
     const events = (await run(tools.events_near, { near: { pitchId: top.pitchId } })) as { window: string };
     expect(events.window).toMatch(new RegExp(`^.*–.*$`));
-    // With no pitch known: the day. footfall_at falls back to the nearest sensor's busiest hour; events_near spans 9 am to 10 pm.
+    // With no pitch known: the day. activity_at falls back to the busiest hour of the day; events_near spans 9 am to 10 pm.
     const spot = { lat: -37.8075, lon: 144.9405 };
     const day = (await run(tools.events_near, { near: spot })) as { window: string };
     expect(day.window).toBe("9 am–10 pm");
-    const peak = (await run(tools.footfall_at, { at: spot })) as { hour: number };
-    expect(peak.hour).toBeGreaterThanOrEqual(10);
-    expect(peak.hour).toBeLessThan(22);
+    const peak = (await run(tools.activity_at, { at: spot })) as { startHour: number };
+    expect(peak.startHour).toBeGreaterThanOrEqual(10);
+    expect(peak.startHour).toBeLessThan(22);
   });
 
   it("the plain-AI comparison asks for the best time of day, and spots are scored at their best window", async () => {
@@ -154,15 +156,15 @@ describe("any-time plan (mock model)", () => {
     const { windowWhy } = await import("@/server/agent/assemble");
     const pitch = {
       window: { startHour: 18, endHour: 21, runnersUp: [] },
-      footfallSource: "sensor",
+      activityBasis: "places",
       evidence: {
-        sensor: { id: 1, name: "Bourke St Mall", avgHourly: 1840 },
+        activity: { level: 0.72, area: null, venues: 0.72 },
         places: [],
         events: [{ name: "Forum Gig", moment: "leaving", end: "2026-10-17T10:45:00Z", start: "2026-10-17T08:00:00Z", endEstimated: false }],
       },
     } as unknown as Parameters<typeof windowWhy>[0];
     const dry = [{ hour: 18, precipitationProbability: 5 }, { hour: 19, precipitationProbability: 10 }, { hour: 22, precipitationProbability: 90 }];
-    expect(windowWhy(pitch, dry)).toBe("Best 6 pm–9 pm: typically about 1,840 people an hour at Bourke St Mall (estimate), the Forum Gig crowd leaving at 9:45 pm, dry");
+    expect(windowWhy(pitch, dry)).toBe("Best 6 pm–9 pm: busy, with popular places open nearby (estimate), the Forum Gig crowd leaving at 9:45 pm, dry");
     expect(windowWhy(pitch, [{ hour: 20, precipitationProbability: 60 }])).toContain("rain likely (up to 60%)");
     expect(windowWhy(pitch, null)).not.toMatch(/dry|rain/);
     expect(windowWhy({ ...pitch, window: undefined } as never, null)).toBe("");

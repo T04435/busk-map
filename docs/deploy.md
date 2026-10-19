@@ -68,7 +68,7 @@ Matching rule for fresh agent runs (Pro, or instead of the rule above on Hobby):
 
 ## 4. Warm-up
 
-- The landing page calls `POST /api/warm` 300 ms after it loads. That fetches the three example presets' data (Qloo, sensors, rules, events, weather; no model calls) into the data-level caches (`"use cache: remote"` in the adapters), so the agent's first run on a preset doesn't wait on cold sources.
+- The landing page calls `POST /api/warm` 300 ms after it loads. That fetches the three example presets' data (Qloo, rules, events, weather; no model calls) into the data-level caches (`"use cache: remote"` in the adapters), so the agent's first run on a preset doesn't wait on cold sources.
 - No example plan is pre-built or cached: the presets are inputs only, and every click on one starts a fresh agent run on a new short link. Only the data each tool fetches is cached, per call.
 - After a deploy, open the landing page once (or `curl -X POST https://<domain>/api/warm`, which is not BotID-protected and costs nothing) to warm the new deployment.
 - No cron is configured. If cold starts are a problem, a Vercel cron calling `/api/warm` every 10 minutes would fix it, but Hobby crons run at most once a day, so it needs Pro. Ask before adding one.

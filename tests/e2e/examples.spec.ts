@@ -51,7 +51,7 @@ for (const example of EXAMPLES) {
         await expect(page.locator("main:visible").getByText(/Claude/)).toHaveCount(0);
       }
       // Every data source is credited.
-      for (const credit of ["Taste data by Qloo", "Pedestrian counts: City of Melbourne Open Data", "Weather data by Open-Meteo.com"]) {
+      for (const credit of ["Taste data by Qloo", "Busking locations and zones: City of Melbourne", "Weather data by Open-Meteo.com"]) {
         await expect(page.getByRole("link", { name: credit })).toBeVisible();
       }
       // Offline runs use the Qloo mock and say so; a deploy with the key says Live, never "test data".
@@ -108,7 +108,10 @@ test.describe("data-led plans", () => {
           seen.set(((await popover.getAttribute("aria-label")) ?? "").replace(/, summary$/, ""), text);
           await page.getByRole("button", { name: "Next pitch" }).click();
         }
-        for (const hotspot of ["Federation Wharf", "Degraves Street", "Federation Square", "Flinders St / Elizabeth St corner"]) expect(seen.get(hotspot), hotspot).toContain("USUAL PITCH");
+        // A hotspot that is one of the plan's top 3 is a pick (its card says usual pitch), not a dot in the popovers.
+        const hotspots = ["Federation Wharf", "Degraves Street", "Federation Square", "Flinders St / Elizabeth St corner"].filter((h) => !names.includes(h));
+        expect(hotspots.length).toBeGreaterThanOrEqual(3);
+        for (const hotspot of hotspots) expect(seen.get(hotspot), hotspot).toContain("USUAL PITCH");
         await page.keyboard.press("Escape");
       }
       await expect(page.getByRole("region", { name: "Pitches", exact: true }).getByText("Hidden gem").first()).toBeVisible();

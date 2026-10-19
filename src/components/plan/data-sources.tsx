@@ -28,7 +28,7 @@ export function sourcesTouched(tools: (string | null)[]): SourceId[] {
     crowd_at: ["qloo"],
     busy_places: ["qloo", "osm"],
     events_near: ["ticketmaster"],
-    footfall_at: ["melbourne-pedestrian"],
+    activity_at: ["qloo"],
     check_pitch: ["melbourne-busking"],
     build_setlist: ["spotify", "lastfm", "qloo"],
     score_pitches: ["open-meteo"],
@@ -42,8 +42,7 @@ export function statusText(s: DataStatus): string {
 
 /** What each source is used for, in the DS SourceAttribution wording. */
 const USE: Record<SourceId, string> = {
-  qloo: "Taste, crowds, venues and event crowds",
-  "melbourne-pedestrian": "Foot traffic",
+  qloo: "Taste, crowds, venues, estimated activity and event crowds",
   "melbourne-busking": "Where you may play",
   osm: "Public spaces and venue names",
   ticketmaster: "Events near each pitch",
@@ -57,7 +56,7 @@ const USE: Record<SourceId, string> = {
 /** Every data source, its credit, licence link and how this plan used it (the DS SourceAttribution). */
 export function DataSources({ status, showAi, soFar }: { status: DataStatus[]; showAi: boolean; /** While the run is live: only the sources it has touched so far. */ soFar?: SourceId[] }) {
   const used = new Map(status.map((s) => [s.source, s]));
-  const ids: SourceId[] = ["qloo", "melbourne-pedestrian", "melbourne-busking", "osm", "ticketmaster", "lastfm", "open-meteo", "spotify", "openfreemap"];
+  const ids: SourceId[] = ["qloo", "melbourne-busking", "osm", "ticketmaster", "lastfm", "open-meteo", "spotify", "openfreemap"];
   if (showAi) ids.push("ai");
   const shown = soFar ? ids.filter((id) => soFar.includes(id)) : ids;
   return (

@@ -14,7 +14,8 @@ describe("agent persona", () => {
     expect(explanationsLabel({ explanations: "ai", explanationsModel: "claude" })).toBe("Written by Hive");
   });
   it("keeps the never-do list in the prompt", () => {
-    expect(PERSONA_PROMPT).toMatch(/run on Claude/);
+    expect(PERSONA_PROMPT).not.toMatch(/claude|anthropic/i);
+    expect(PERSONA_PROMPT).toMatch(/AI research agent/);
     expect(PERSONA_PROMPT).toMatch(/never invent/i);
     expect(PERSONA_PROMPT).toMatch(/never say a pitch is legal/i);
     expect(PERSONA_PROMPT).toMatch(/never hype/i);

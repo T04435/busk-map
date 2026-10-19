@@ -59,9 +59,7 @@ export function PlanAlert({
         <Alert variant="estimate" data-testid={testId ?? "test-data"}>
           <AlertTitle>{QLOO_TEST_LABEL}</AlertTitle>
           <AlertDescription>
-            The taste map, crowd and trends on this page come from Busk Map&apos;s local mock of the Qloo API, which runs when no Qloo key is
-            configured (and in tests). It is test data, not Qloo data. Venue and street names are real (OpenStreetMap); busking
-            rules, events and weather are real wherever the sources say Live.
+            The taste map, crowd and trends here come from a local mock of the Qloo API, not from Qloo.
           </AlertDescription>
         </Alert>
       );

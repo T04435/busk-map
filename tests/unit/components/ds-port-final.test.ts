@@ -81,8 +81,9 @@ describe("SlotPassed and AgentStatusLine", () => {
 describe("SetlistPanel", () => {
   const song = { songId: "s1", title: "Song", artist: "Artist", own: true, score: 80, reason: "r", durationMs: 200000, year: 1990 };
   const out = html(createElement(SetlistPanel, { pitch: { name: "Southbank", setlist: [song] }, learnThese: [], when: "Sat 12–3 pm" }));
-  it("reads 'pitch · day time · best fit first'", () => {
-    expect(out).toContain("Southbank · Sat 12–3 pm · best fit first");
+  it("says the day and time under the heading, with no restated pitch name or 'best fit first'", () => {
+    expect(out).toContain(">Sat 12–3 pm</p>");
+    expect(out).not.toContain("best fit first");
   });
   it("sets LEARN THESE in the display face and keeps no aria-label on a plain span", () => {
     expect(out).toMatch(/<h4[^>]*font-display[^>]*>/);

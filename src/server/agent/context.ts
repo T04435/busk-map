@@ -2,7 +2,7 @@ import "server-only";
 import type { BBox, LatLon } from "@/lib/geo";
 import type { TrendRow } from "@/server/adapters/qloo";
 import { ageLabel } from "@/lib/age";
-import { addDays, ANY_TIME_DAY, anyTimeWindowsLeft, DEFAULT_SLOT_HOURS, isAnyTime, slotUtcRange, weekdayOf, zonedHourToUtc, type Slot, type TimeWindow } from "@/lib/slot";
+import { ANY_TIME_DAY, anyTimeWindowsLeft, DEFAULT_SLOT_HOURS, isAnyTime, slotUtcRange, weekdayOf, zonedHourToUtc, type Slot, type TimeWindow } from "@/lib/slot";
 import { nameKey, trackKey } from "@/lib/text";
 import type { PlanRequest } from "@/lib/plan-schema";
 import type { AdapterContext, AdapterName, AdapterResult } from "@/server/adapters/core";
@@ -53,8 +53,6 @@ export const PLACES_RADIUS_M = 2000;
 /** Radius of "the crowd at this pitch" for per-pitch artist affinity. */
 export const PITCH_CROWD_RADIUS_M = 400;
 export const LOCAL_ARTISTS_TAKE = 20;
-/** A trending window that ends longer ago than this is called out in the plan. */
-export const TRENDING_STALE_DAYS = 14;
 export const WIDEN_FACTOR = 2;
 /** Radius of "the crowd" at a pitch for genre analysis, and around the busiest hotspot for the contrast. */
 export const CROWD_RADIUS_M = 400;
@@ -358,24 +356,12 @@ export class PlanContext {
     return this.once("risingWithWindow", async () => {
       const locals = (await this.localArtists()).slice(0, 5);
       if (locals.length === 0) return [];
-      // "Songs to learn" ranks by Qloo's audience growth first; trends and the fallback only matter without it.
-      const growing = locals.some((a) => (a.audienceGrowth ?? 0) !== 0);
-      const fallback = (why: string) => {
-        if (!growing && !this.qlooFailed()) this.notes.push(`Qloo shows no audience growth for these artists and ${why}, so the songs to learn are ranked by Qloo affinity and Last.fm listeners instead.`);
-      };
+      // "Songs to learn" ranks by Qloo's audience growth first; trends only matter without it.
       const window = await this.track("trendWindow", () => qloo.trendingWindow(locals[0].id, this.today, this.adapters));
-      if (!window) {
-        fallback("has no trending data for the last year");
-        return [];
-      }
+      if (!window) return [];
       const rows = await this.track("rising", () => qloo.rising(locals.map((a) => a.id), window.start, window.end, this.adapters));
       const moving = rows.some((r) => (r.percentDelta ?? 0) !== 0 || (r.windowChange ?? 0) !== 0);
-      if (!moving) {
-        fallback(`its latest trending data (to ${window.end}) shows no movement`);
-        return [];
-      }
-      if (window.end < addDays(this.today, -TRENDING_STALE_DAYS)) this.notes.push(`Trends are from Qloo's latest trending data, which ends ${window.end}.`);
-      return rows;
+      return moving ? rows : [];
     });
   }
 

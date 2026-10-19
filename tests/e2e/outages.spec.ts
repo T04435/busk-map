@@ -27,7 +27,7 @@ test.describe("API-down states", () => {
   test("events and weather down: still plans, with less data, labelled; the activity estimate (Qloo) is still there", async ({ page }) => {
     await page.goto("/plan?example=acoustic&faults=events,weather");
     await waitForPlan(page);
-    await expect(page.getByText("Activity: estimate from Qloo")).toBeVisible();
+    await expect(page.getByText("Activity: est.")).toBeVisible();
     await expect(page.getByText("No forecast for this slot")).toBeVisible();
     await expect(page.getByText("Unavailable: simulated outage (test)").first()).toBeVisible();
     // The panels that need those sources say so, scoped: no page-level alert, and the busk still stands.

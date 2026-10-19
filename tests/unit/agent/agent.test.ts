@@ -64,7 +64,7 @@ describe("plan agent (offline, mock model)", () => {
     expect(plan.dataStatus.every((s) => s.mode === "synthetic")).toBe(true);
   });
 
-  it("a plan has an activity estimate per pitch, labelled an estimate from Qloo, with an hourly curve and no head count", async () => {
+  it("a plan has an activity estimate per pitch, labelled an estimate, with an hourly curve and no head count", async () => {
     mockFetch([]);
     const { PlanContext, assemblePlan } = await load();
     const plan = await assemblePlan(new PlanContext(request, OFFLINE, "2026-10-15"), null);
@@ -73,7 +73,7 @@ describe("plan agent (offline, mock model)", () => {
       expect(pitch.activityBasis).not.toBe("none");
       expect(pitch.evidence.activity!.hourly).toHaveLength(24);
       expect(pitch.factors.activity).not.toBeNull();
-      expect(pitch.why).toMatch(/here on Saturday evenings \(estimate from Qloo/);
+      expect(pitch.why).toMatch(/here on Saturday evenings \(est\.\)/);
     }
     expect(JSON.stringify(plan)).not.toMatch(/sensor|footfall|pedestrian|people an hour/i);
   });
@@ -91,7 +91,7 @@ describe("plan agent (offline, mock model)", () => {
         expect(a.relative).not.toBeNull();
         expect(a.level).toBeGreaterThan(0);
         words.add(activityWord(a.relative!));
-        expect(p.why).toContain(`${activityWord(a.relative!)} here on Saturday evenings (estimate from Qloo`);
+        expect(p.why).toContain(`${activityWord(a.relative!)} here on Saturday evenings (est.)`);
       }
     }
     expect(words.size).toBeGreaterThanOrEqual(3);
@@ -128,8 +128,8 @@ describe("plan agent (offline, mock model)", () => {
     const plan = await assemblePlan(ctx, { summary: "Invented", pitches: [{ pitchId: "made-up", why: "Trust me" }], notes: ["x"] });
     expect(plan.explanations).toBe("template");
     expect(plan.summary).toMatch(/^Top pitch:/);
-    // The model's notes are dropped; the engine's own note remains (the mock, like live Qloo, has no recent trending weeks).
-    expect(plan.notes).toEqual(["Trends are from Qloo's latest trending data, which ends 2026-04-15."]);
+    // The model's notes are dropped; the engine adds no note about how old Qloo's trending weeks are.
+    expect(plan.notes).toEqual([]);
     expect(plan.pitches.every((p) => p.whySource === "template" && p.why.length > 0)).toBe(true);
   });
 
@@ -243,13 +243,13 @@ describe("crowd drivers and Qloo extras", () => {
     expect(optionalQlooFeature("taste:wide")).toBeNull();
   });
 
-  it("says when Qloo has no trending data in the last year", async () => {
+  it("has no rising artists, and no note about it, when Qloo has no trending data in the last year", async () => {
     const { PlanContext } = await load();
     mockFetch([]);
     // A year after the mock's (and live Qloo's) latest trending week.
     const ctx = new PlanContext(request, OFFLINE, "2027-09-01");
     expect(await ctx.rising()).toEqual([]);
-    expect(ctx.notes).toContain('Qloo shows no audience growth for these artists and has no trending data for the last year, so the songs to learn are ranked by Qloo affinity and Last.fm listeners instead.');
+    expect(ctx.notes.some((n) => /trending|audience growth/.test(n))).toBe(false);
   });
 });
 
@@ -331,8 +331,8 @@ describe("where to play: Qloo venue detail and event crowds", () => {
     const ranked = await ctx.ranked();
     const withVenue = ranked.find((p) => p.evidence.places.some((pl) => pl.liveMusic));
     expect(withVenue && templateWhy(withVenue, "saturday", 18)).toMatch(/\(live music/);
-    // The why says how busy it is as an estimate from Qloo, with no head count.
-    expect(templateWhy(withVenue!, "saturday", 18)).toMatch(/here on Saturday evenings \(estimate from Qloo/);
+    // The why says how busy it is as an estimate, with no head count.
+    expect(templateWhy(withVenue!, "saturday", 18)).toMatch(/here on Saturday evenings \(est\.\)/);
   });
 
   it("an event headliner the performer lists is a perfect match, and an unmatched headliner is left out", async () => {

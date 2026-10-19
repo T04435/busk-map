@@ -164,7 +164,7 @@ describe("any-time plan (mock model)", () => {
       },
     } as unknown as Parameters<typeof windowWhy>[0];
     const dry = [{ hour: 18, precipitationProbability: 5 }, { hour: 19, precipitationProbability: 10 }, { hour: 22, precipitationProbability: 90 }];
-    expect(windowWhy(pitch, dry)).toBe("Best 6 pm–9 pm: busy, with popular places open nearby (estimate), the Forum Gig crowd leaving at 9:45 pm, dry");
+    expect(windowWhy(pitch, dry)).toBe("Best 6 pm–9 pm: busy (est.), the Forum Gig crowd leaving at 9:45 pm, dry");
     expect(windowWhy(pitch, [{ hour: 20, precipitationProbability: 60 }])).toContain("rain likely (up to 60%)");
     expect(windowWhy(pitch, null)).not.toMatch(/dry|rain/);
     expect(windowWhy({ ...pitch, window: undefined } as never, null)).toBe("");

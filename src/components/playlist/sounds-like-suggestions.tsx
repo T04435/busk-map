@@ -61,7 +61,6 @@ export function SoundsLikeSuggestionsList({ enabled, refreshKey, picked, onAdd }
           {COPY.soundsLike.addAll}
         </Button>
       </div>
-      <p className="m-0 text-sm text-muted-foreground">{COPY.soundsLike.intro}</p>
       <ArtistChipList>
         {open.map((artist) => (
           <li key={artist.qlooId}>

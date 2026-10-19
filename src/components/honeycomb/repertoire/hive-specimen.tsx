@@ -193,7 +193,7 @@ export function HiveSpecimen() {
       <Block title="Research header lockup">
         <div className="grid gap-6 md:grid-cols-2">
           <AgentLockup live status="is researching your busk" />
-          <AgentLockup status="researched your act" />
+          <AgentLockup />
         </div>
       </Block>
       <Block title="Status line · every state">

@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
-import { expect, LOCAL, MODEL_PLAN, SATURDAY, test, waitForPlan } from "./fixtures";
+import { expect, LOCAL, SATURDAY, test, waitForPlan } from "./fixtures";
 import { expectNoOverflow, expectOnTop, holdAgentRunning } from "./layout-helpers";
 
 /**
@@ -117,7 +117,7 @@ const PAGES: PageCase[] = [
       await page.goto("/plan?example=acoustic");
       await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
       await waitForPlan(page);
-      await expect(page.getByTestId("agent-status")).toHaveText(MODEL_PLAN);
+      await expect(page.getByTestId("agent-status")).toHaveCount(0);
     },
     controls: async (page) => {
       await expectOnTop(page.getByTestId("copy-link"), "Copy link");

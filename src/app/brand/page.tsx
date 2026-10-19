@@ -330,13 +330,13 @@ export default function BrandPage() {
           id="components"
           n="05"
           title="Components"
-          intro={`${COMPONENT_COUNT} reusable components in the design system, grouped by where they live in the app. Each group shows its key pieces live, as the app renders them, then names every component in it. Switch your system to night to see the other theme.`}
+          intro={`${COMPONENT_COUNT} reusable components in the design system, grouped by where they live in the app.`}
         >
           <ComponentGroups />
           <PlanStates />
         </Section>
 
-        <Section id="screens" n="06" title="Screens" intro="Every screen of the app, with the route it lives at. Each is drawn at 390, 768 and 1440 in the design deck's Plan Screens canvas.">
+        <Section id="screens" n="06" title="Screens" intro="Every screen of the app, with the route it lives at.">
           <PhoneFold heading="The screens" count={SCREENS.length} headingClassName="sr-only">
             <TableFrame label="Screens" min={840}>
               <thead>

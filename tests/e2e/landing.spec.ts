@@ -72,7 +72,7 @@ test.describe("landing, as the deck draws it", () => {
     const slot = page.getByTestId("demo-video-slot");
     const video = slot.locator("video");
     await video.scrollIntoViewIfNeeded();
-    await expect(video).toHaveAttribute("controls", "");
+    await expect(video).not.toHaveAttribute("controls", /.*/); // native controls come with the press
     await expect(video).toHaveAttribute("preload", "none");
     await expect(video).toHaveAttribute("poster", "/video/busk-map-demo-poster.jpg");
     await expect(video).not.toHaveAttribute("autoplay", /.*/);
@@ -89,6 +89,27 @@ test.describe("landing, as the deck draws it", () => {
       const res = await page.request.get(path, { headers: { range: "bytes=0-1023" } });
       expect(res.ok(), path).toBe(true);
     }
+  });
+
+  test("the demo video's play button (L11) names itself, shows the DS play icon, and on press plays with native controls", async ({ page }) => {
+    await page.goto("/");
+    const slot = page.getByTestId("demo-video-slot");
+    const button = slot.getByRole("button", { name: "Play the Busk Map demo, 1 min 28 s" });
+    await button.scrollIntoViewIfNeeded();
+    await expect(slot).not.toContainText("folk duo");
+    // No visible label under the play hex: the button's accessible name carries it.
+    await expect(slot.getByText(/Demo video · 1 min 28 s/)).toHaveCount(0);
+    // The filled play triangle draws (the DS once had a missing M).
+    expect(await button.locator("svg.bm-icon path").evaluate((p: SVGGraphicsElement) => p.getBBox().width)).toBeGreaterThan(8);
+    await button.focus();
+    await expect(button).toBeFocused();
+    await page.keyboard.press("Enter");
+    const video = slot.locator("video");
+    await expect(button).toHaveCount(0);
+    await expect(video).toHaveAttribute("controls", "");
+    await expect(video).toBeFocused();
+    await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState > 0 || v.networkState === 2)).toBe(true);
+    await expect(video.locator("track[kind=captions]")).not.toHaveAttribute("default", /.*/);
   });
 
   test("the brand teaser shows the numbers and links to /brand (B-019, L23)", async ({ page }) => {

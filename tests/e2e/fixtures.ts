@@ -15,11 +15,8 @@ export function shortDay(iso: string): string {
   return new Intl.DateTimeFormat("en-AU", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`)).replace(/,/g, "");
 }
 
-/** The status line under the research, in brand words: "The Hive's plan." (the test model offline). */
-export const MODEL_PLAN = LOCAL ? "Researched by the Hive (offline test model)." : "Researched by the Hive.";
 /** The replay line on a stored busk: when it was researched, and that nothing new was asked. */
 export const REPLAY_LINE = /^Researched at .*\. Opening it again shows that research: nothing new was asked\.$/;
-export const EXPLAINED_BY = LOCAL ? "Explained by the test model (offline)" : "Explained by the Hive";
 
 export const test = base;
 export { expect };

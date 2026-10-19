@@ -154,9 +154,7 @@ describe("activity estimate: an empty Qloo answer", () => {
     const result = activityEstimate(here, data([]), 19, 22);
     expect(result).toMatchObject({ basis: "none", level: NEUTRAL_ACTIVITY, area: null, venues: null, nearby: [] });
     expect(result.curve.every((h) => h.level === NEUTRAL_ACTIVITY)).toBe(true);
-    expect(activitySentence({ level: result.level, basis: result.basis, weekday: "friday", startHour: 19 })).toBe(
-      "No activity estimate here (no estimate: Qloo had no activity data for this area)",
-    );
+    expect(activitySentence({ level: result.level, basis: result.basis, weekday: "friday", startHour: 19 })).toBe("No activity estimate here");
     expect(activityPhrase(result.level, "none")).toBe("");
   });
 
@@ -181,12 +179,10 @@ describe("activity wording", () => {
     expect([0, 0.25, 0.5, 0.7, 0.95].map(activityWord)).toEqual(["Quiet", "Fairly quiet", "Moderately busy", "Busy", "Very busy"]);
   });
 
-  it("says the day and the part of the day, and what the estimate is from, with no head count", () => {
-    expect(activitySentence({ level: 0.7, basis: "places", weekday: "friday", startHour: 18 })).toBe("Busy here on Friday evenings (estimate from Qloo: popular places open nearby)");
-    expect(activitySentence({ level: 0.3, basis: "heatmap", weekday: "sunday", startHour: 10 })).toBe(
-      "Fairly quiet here on Sunday mornings (estimate from Qloo: where activity concentrates; opening hours unknown)",
-    );
-    expect(activitySentence({ level: 0.9, basis: "heatmap+places", weekday: "saturday", startHour: 22 })).toMatch(/^Very busy here on Saturday nights \(estimate from Qloo/);
+  it("says the day and the part of the day, tagged as an estimate, with no head count", () => {
+    expect(activitySentence({ level: 0.7, basis: "places", weekday: "friday", startHour: 18 })).toBe("Busy here on Friday evenings (est.)");
+    expect(activitySentence({ level: 0.3, basis: "heatmap", weekday: "sunday", startHour: 10 })).toBe("Fairly quiet here on Sunday mornings (est.)");
+    expect(activitySentence({ level: 0.9, basis: "heatmap+places", weekday: "saturday", startHour: 22 })).toBe("Very busy here on Saturday nights (est.)");
     expect(activitySentence({ level: 0.7, basis: "places", weekday: "friday", startHour: 18 })).not.toMatch(/\d|people|sensor/i);
     expect([6, 13, 17, 21, 2].map(dayPartOf)).toEqual(["mornings", "afternoons", "evenings", "nights", "nights"]);
   });

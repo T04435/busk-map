@@ -16,7 +16,6 @@ export function ChoiceGroup({
   onValueChange,
   invalid,
   describedBy,
-  note,
   className,
   children,
 }: {
@@ -26,23 +25,15 @@ export function ChoiceGroup({
   invalid?: boolean;
   /** The id of an error or note that applies to the whole group. */
   describedBy?: string;
-  /** A hint under the cards. */
-  note?: ReactNode;
   className?: string;
   children: ReactNode;
 }) {
-  const noteId = useId();
   return (
     <fieldset className={cn("m-0 min-w-0 border-0 p-0", className)} data-slot="choice-group">
       <legend className="mb-2 p-0 text-[15px] leading-5 font-bold text-foreground">{legend}</legend>
-      <RadioGroup value={value} onValueChange={onValueChange} aria-invalid={invalid || undefined} aria-describedby={[describedBy, note ? noteId : null].filter(Boolean).join(" ") || undefined}>
+      <RadioGroup value={value} onValueChange={onValueChange} aria-invalid={invalid || undefined} aria-describedby={describedBy}>
         {children}
       </RadioGroup>
-      {note ? (
-        <p id={noteId} className="mt-3 mb-0 text-sm leading-5 text-muted-foreground">
-          {note}
-        </p>
-      ) : null}
     </fieldset>
   );
 }

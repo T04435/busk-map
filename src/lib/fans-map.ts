@@ -37,9 +37,3 @@ export function topCities(out: Pick<FansMapOutput, "cities" | "areas">): FansMap
   const inLine = cities.filter((c) => named.has(c.name));
   return (inLine.length > 0 ? inLine : cities).slice(0, FANS_MAP_TOP_CITIES);
 }
-
-/** "Medellin, Cali and Bogota". */
-export function cityList(cities: readonly { name: string }[]): string {
-  const names = cities.map((c) => c.name);
-  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-}

@@ -20,8 +20,7 @@ export function NoPitchPanel({ permit, when, againHref, rulesHref }: { permit: s
         </HexCell>
         <h2 className="m-0 font-display text-xl leading-[26px] font-extrabold tracking-[0.01em] uppercase">No pitch open for {WHO[permit] ?? permitName(permit)} {when}</h2>
         <p className="m-0 max-w-[36ch] text-[15px] leading-[22px] text-muted-foreground">
-          We checked every pitch against the council&apos;s rules, and none is left for this permit and slot.{" "}
-          {general ? "A different day or time may open some." : "A general permit opens more spots in most slots, or another day may."}{" "}
+          {general ? "The council's rules leave no pitch for this slot: try another day or time." : "The council's rules leave no pitch for this permit and slot: try a general permit or another day."}{" "}
           {rulesHref ? (
             <a href={rulesHref} target="_blank" rel="noreferrer" className="inline-flex min-h-tap items-center font-bold text-foreground underline underline-offset-3">
               Read the council&apos;s busking rules

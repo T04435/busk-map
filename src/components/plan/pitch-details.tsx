@@ -5,7 +5,6 @@ import { planMentions } from "@/lib/plan-mentions";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { FoundByBadge } from "@/components/honeycomb/found-by-badge";
 import { HexCell } from "@/components/honeycomb/hex-cell";
-import { HIVE_SIZES, HiveMark } from "@/components/honeycomb/hive-mark";
 import { Icon } from "@/components/honeycomb/icon";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
 import { InfoTag } from "@/components/honeycomb/info-tag";
@@ -15,11 +14,10 @@ import { RankTile } from "@/components/honeycomb/rank-tile";
 import { ScoreRing } from "@/components/honeycomb/score-ring";
 import { Badge } from "@/components/ui/badge";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
-import { explainedByLabel, type ExplanationsModel } from "@/lib/sources";
+import type { ExplanationsModel } from "@/lib/sources";
 import { venueDetail } from "@/lib/venue";
-import { weekdayOf } from "@/lib/slot";
 import { ActivityChart } from "./activity-chart";
-import { Cautions, Fact, NeverConfirms, QlooDetail } from "./tool-results";
+import { Cautions, Fact, QlooDetail } from "./tool-results";
 
 const KIND_LABEL: Record<PlanPitch["kind"], string> = {
   designated: "Council-designated site",
@@ -66,10 +64,7 @@ export function PitchDetails({ plan, pitch, rank, model }: { plan: Plan; pitch: 
       </header>
 
       <section aria-label="Why this crowd">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-          <h4 className={`m-0 ${meta} text-muted-foreground`}>Why this crowd</h4>
-          <span className={`${meta} text-muted-foreground`}>{pitch.whySource === "ai" ? explainedByLabel(model) : "Explanation from the data"}</span>
-        </div>
+        <h4 className={`m-0 mb-2 ${meta} text-muted-foreground`}>Why this crowd</h4>
         {chips.length > 0 && (
           <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
             {chips.map((c) => (
@@ -80,19 +75,9 @@ export function PitchDetails({ plan, pitch, rank, model }: { plan: Plan; pitch: 
           </ul>
         )}
         <Reason text={mentionsIn(pitch.why, planMentions(plan))} className="mt-2" />
-        {pitch.origin === "agent" && written ? (
-          <p className="m-0 mt-2 flex items-start gap-2 text-[13px] leading-[18px] text-muted-foreground">
-            <HiveMark size={HIVE_SIZES.badge} decorative className="-my-px" />
-            <span>The Hive suggested this spot. Busk Map scored it and checked it against the busking rules.</span>
-          </p>
-        ) : null}
-        {pitch.origin === "taste" && pitch.cellRank !== null && (
-          <p className="m-0 mt-2 text-[13px] leading-[18px] text-muted-foreground">Found from the data: Qloo taste cell no. {pitch.cellRank} for your artists, snapped to the nearest public space.</p>
-        )}
-        {pitch.discovery === "usual" && pitch.usualSpot && <p className="m-0 mt-2 text-[13px] leading-[18px] text-muted-foreground">Usual pitch: at {pitch.usualSpot}, where buskers already go. Expect other buskers.</p>}
       </section>
 
-      <ActivityChart activity={pitch.evidence.activity} basis={pitch.activityBasis} weekday={weekdayOf(plan.slot.date)} slot={pitch.window ?? plan.slot} />
+      <ActivityChart activity={pitch.evidence.activity} slot={pitch.window ?? plan.slot} />
 
       <div className="grid border-t-2 border-rule">
         {pitch.evidence.places.length > 0 && (
@@ -102,7 +87,7 @@ export function PitchDetails({ plan, pitch, rank, model }: { plan: Plan; pitch: 
                 <li key={place.name} className="flex justify-between gap-3">
                   <span>
                     {place.name}
-                    {venueDetail(place) ? <QlooDetail>Qloo: {venueDetail(place)}</QlooDetail> : null}
+                    {venueDetail(place) ? <QlooDetail>{venueDetail(place)}</QlooDetail> : null}
                   </span>
                   <span className="shrink-0 text-right font-mono text-muted-foreground tabular-nums">
                     {place.distanceM} m · {place.open === "open" ? "open" : "hours unknown"}
@@ -163,7 +148,6 @@ export function PitchDetails({ plan, pitch, rank, model }: { plan: Plan; pitch: 
                 </a>
               </div>
             )}
-            <NeverConfirms />
           </section>
         </Fact>
       </div>

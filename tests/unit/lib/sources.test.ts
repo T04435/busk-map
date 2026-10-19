@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { creditsClaude, explainedByLabel, explanationsLabel, modelName } from "@/lib/sources";
+import { creditsClaude, explanationsLabel, modelName } from "@/lib/sources";
 
 describe("explanations label and Claude credit (B-007)", () => {
   it("names the model that wrote the explanations", () => {
@@ -29,11 +29,5 @@ describe("model name in running text (B-010)", () => {
     // Template text and older plans count as Claude, like the chip.
     expect(modelName(null)).toBe("the Hive");
     expect(modelName(undefined, "start")).toBe("The Hive");
-  });
-
-  it("labels the pitch card badge", () => {
-    expect(explainedByLabel("claude")).toBe("Explained by the Hive");
-    expect(explainedByLabel(null)).toBe("Explained by the Hive");
-    expect(explainedByLabel("mock")).toBe("Explained by the test model (offline)");
   });
 });

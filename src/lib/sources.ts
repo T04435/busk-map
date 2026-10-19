@@ -38,11 +38,6 @@ export function modelName(model: ExplanationsModel | null | undefined, form: "in
   return form === "inline" ? "the test model" : form === "start" ? "The test model" : "Test model";
 }
 
-/** The pitch card badge for AI-written explanations. */
-export function explainedByLabel(model: ExplanationsModel | null | undefined): string {
-  return model === "mock" ? `Explained by ${modelName(model)} (offline)` : `Explained by ${modelName(model)}`;
-}
-
 /** Whether to credit Claude in Data sources: only when Claude wrote the explanations. */
 export function creditsClaude(plan: { explanations: "ai" | "template"; explanationsModel?: ExplanationsModel | null }): boolean {
   return plan.explanations === "ai" && plan.explanationsModel !== "mock";

@@ -10,7 +10,6 @@ import { BothAgreeBadge } from "@/components/honeycomb/both-agree-badge";
 import { Chip } from "@/components/honeycomb/chip";
 import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
-import { EvidenceLine } from "@/components/honeycomb/evidence-line";
 import { ExampleActCard } from "@/components/honeycomb/example-act-card";
 import { FormMessage } from "@/components/honeycomb/form-message";
 import { HexCell } from "@/components/honeycomb/hex-cell";
@@ -123,7 +122,6 @@ export function ComponentGroups() {
           <LeanBar label="Age 25–34" lean={0.41} />
           <LeanBar label="Age 55+" lean={-0.3} />
         </ul>
-        <EvidenceLine>Qloo insights: the strongest folk taste area in your slot.</EvidenceLine>
       </Group>
 
       <Group title="Research" names={COMPONENT_GROUPS.research}>

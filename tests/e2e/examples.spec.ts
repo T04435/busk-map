@@ -1,5 +1,5 @@
 import { EXAMPLES } from "../../src/lib/examples";
-import { AGENT_KEPT_TOP3, agentSteps, CLAUDE_CREDIT, EXPLAINED_BY, EXPLANATIONS_LABEL, expect, LOCAL, MODEL_NOTE_PREFIX, MODEL_PLAN, openDetails, REPLAY_LINE, SATURDAY, showRawData, test, waitForPlan } from "./fixtures";
+import { AGENT_KEPT_TOP3, agentSteps, CLAUDE_CREDIT, EXPLANATIONS_LABEL, expect, LOCAL, MODEL_NOTE_PREFIX, openDetails, REPLAY_LINE, SATURDAY, showRawData, test, waitForPlan } from "./fixtures";
 
 test.describe("landing", () => {
   test("shows the three example performers and a way to plan your own busk", async ({ page }) => {
@@ -31,7 +31,6 @@ for (const example of EXAMPLES) {
       await expect(sheet.getByTestId("pitch-card")).toBeVisible();
       // The Learn it menu lives on "Learn these" only, not on the setlist rows.
       await expect(sheet.getByRole("region", { name: "Suggested set" }).getByRole("button", { name: /^Learn it/ }).first()).toBeVisible();
-      if (LOCAL) await expect(sheet.getByText(EXPLAINED_BY)).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(sheet).toHaveCount(0);
       // The agent starts on load and the plan appears when it ends, with Claude's explanations (mock model offline).
@@ -43,7 +42,7 @@ for (const example of EXAMPLES) {
         await expect(page.getByRole("link", { name: CLAUDE_CREDIT })).toHaveCount(0);
         // Nor do the steps, Agent vs engine, the pitch card or the plain-AI panel (B-010).
         await expect(page.getByTestId("agent-vs-engine")).toContainText(AGENT_KEPT_TOP3);
-        await expect(page.getByText(/sent to the test model \(offline\) with no tools/)).toBeVisible();
+        await expect(page.getByTestId("compare-panel").getByText(/Mock plain-LLM answer/).first()).toBeVisible();
         await expect(steps.getByTestId("agent-note-text").first()).toContainText(MODEL_NOTE_PREFIX);
         // The site footer credits Claude as a builder ("with Claude"): that is not a model claim, so look in the page body.
         // The landing page we came from stays mounted but hidden (cache components keep the previous route), and its PartnersSection
@@ -115,18 +114,18 @@ test.describe("data-led plans", () => {
         await page.keyboard.press("Escape");
       }
       await expect(page.getByRole("region", { name: "Pitches", exact: true }).getByText("Hidden gem").first()).toBeVisible();
-      await expect(page.getByTestId("funnel-sentence")).toContainText("Qloo mapped your taste");
+      await expect(page.getByTestId("funnel-sentence")).toHaveCount(0);
       await expect(page.getByLabel("Map legend")).toContainText("Taste");
       // The crowd, the weights and the setlist sit in each pitch's details.
       const sheet = await openDetails(page);
       await expect(sheet.getByRole("heading", { name: "Who this crowd likes" })).toBeVisible();
       await expect(sheet.getByText(/^Because your fans like/).first()).toBeVisible();
-      // Why this crowd: every block names its Qloo evidence; fans vs the usual crowd; age lean.
+      // Why this crowd: fans vs the usual crowd, with no footnotes under the blocks; age lean.
       const crowd = sheet.getByRole("region", { name: "Compared with the usual crowd" });
       await expect(crowd.getByRole("heading", { name: "Your fans vs the usual crowd" })).toBeVisible();
-      await expect(crowd.getByText(/^Qloo insights for the hotspot/)).toBeVisible();
+      await expect(sheet.getByText(/^Evidence$/)).toHaveCount(0);
       // The local scene: the city's genres and the local acts your fans would like (Qloo compare + genre tag, re-scored).
-      await expect(sheet.getByTestId("local-scene")).toContainText(/^Local scene: .+: acts your fans would like:$/);
+      await expect(sheet.getByTestId("local-scene")).toContainText(/^.+: acts your fans would like$/);
       await expect(sheet.getByRole("heading", { name: "Who your fans are" })).toBeVisible();
       // What to play: songs carry their year and era fit.
       await expect(sheet.getByText(/from \d{4}: a (strong|good|fair|weak) era fit for a crowd leaning /).first()).toBeVisible();
@@ -245,8 +244,8 @@ test.describe("live agent (mock model offline)", () => {
     const onlyPlain = page.getByRole("region", { name: "Only plain AI" });
     await expect(onlyPlain.getByText(/Mock plain-LLM answer/).first()).toBeVisible();
     await expect(onlyPlain.getByText(/^(Scored by Busk Map|Not a legal pitch|No data for this spot)$/).first()).toBeVisible();
-    // The baseline is a control: the pitch scores are the same once it has arrived.
-    await expect(page.getByTestId("agent-status")).toHaveText(MODEL_PLAN);
+    // The baseline is a control: the pitch scores are the same once it has arrived. A finished run has no "Researched by" line.
+    await expect(page.getByTestId("agent-status")).toHaveCount(0);
     expect(await scoresOf()).toEqual(scores);
   });
 });

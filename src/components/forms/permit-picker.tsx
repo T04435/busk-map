@@ -24,7 +24,7 @@ export function PermitPicker({
   counts?: Record<string, number>;
 }) {
   return (
-    <ChoiceGroup legend={label} value={value} onValueChange={onValueChange} note="This changes which pitches are shown. Check the council's rules before you play.">
+    <ChoiceGroup legend={label} value={value} onValueChange={onValueChange}>
       {PERMIT_CHOICES.map((permit) => (
         <ChoiceCard key={permit.id} value={permit.id} title={permit.title} description={permit.desc}
           end={

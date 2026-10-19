@@ -203,7 +203,7 @@ test.describe("artists Qloo can't match", () => {
     const alert = page.getByTestId("unmatched-artists");
     // ONE alert (B-045): taste is left out, with the way to pick artists from Spotify.
     await expect(alert).toContainText("Qloo couldn't match any of your artists");
-    await expect(alert).toContainText("Taste and the Qloo activity estimate are left out of this plan");
+    await expect(alert).toContainText("The pitches use events and weather only.");
     await expect(page.getByRole("link", { name: "Pick your artists from Spotify" })).toBeVisible();
     // Claude had nothing to research: said once, and no research funnel or feed is drawn.
     await expect(page.getByTestId("agent-fallback")).toContainText("The Hive didn't run");

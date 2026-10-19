@@ -53,7 +53,6 @@ export function SaveAsRepertoire({ performer }: { performer: PlanRequest["perfor
           </p>
         ) : (
           <>
-            <p className="min-w-0 flex-1 text-muted-foreground">{COPY.saveTheseHint}</p>
             <Button type="button" variant="outline" onClick={() => void save()} disabled={state.kind === "saving"}>
               {state.kind === "saving" ? COPY.saving : COPY.saveThese}
             </Button>

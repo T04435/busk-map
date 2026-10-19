@@ -8,7 +8,6 @@ import { SongActions } from "@/components/honeycomb/song-actions";
 import { SongRow } from "@/components/honeycomb/song-row";
 import { SongTag } from "@/components/honeycomb/song-tag";
 import { formatDuration } from "@/lib/live-search";
-import { ageLabel } from "@/lib/age";
 import { SPOTIFY_TRACK_URL, spotifyHref } from "@/lib/mention";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
@@ -48,7 +47,6 @@ function setAsText(setlist: SetlistSong[]): string {
 export function SetlistPanel({
   pitch,
   learnThese,
-  ageLean = null,
   variant = "plan",
   canAddToRepertoire = false,
   repertoireTotal = null,
@@ -56,9 +54,8 @@ export function SetlistPanel({
 }: {
   pitch: { name: string; setlist: SetlistSong[]; window?: { label: string } | null };
   learnThese: LearnThese;
-  ageLean?: string | null;
   variant?: "plan" | "preview";
-  /** The day and time of the busk ("Sat 12–3 pm"), for the subtitle "pitch · day time · best fit first". Without it the pitch's own best window shows, or nothing. */
+  /** The day and time of the busk ("Sat 12–3 pm"), the line under the heading. Without it the pitch's own best window shows, or nothing. */
   when?: string;
   /** "Add to Repertoire" on each Songs to learn item. False on example runs: presets never write a Repertoire. */
   canAddToRepertoire?: boolean;
@@ -70,7 +67,6 @@ export function SetlistPanel({
     <SetlistPreview
       pitch={pitch}
       learnThese={learnThese}
-      ageLean={ageLean}
       real={variant === "plan"}
       canAddToRepertoire={canAddToRepertoire}
       repertoireTotal={variant === "plan" ? repertoireTotal : null}
@@ -82,7 +78,6 @@ export function SetlistPanel({
 function SetlistPreview({
   pitch,
   learnThese,
-  ageLean,
   real = false,
   canAddToRepertoire = false,
   repertoireTotal = null,
@@ -90,7 +85,6 @@ function SetlistPreview({
 }: {
   pitch: { name: string; setlist: SetlistSong[]; window?: { label: string } | null };
   learnThese: LearnThese;
-  ageLean: string | null;
   real?: boolean;
   canAddToRepertoire?: boolean;
   repertoireTotal?: number | null;
@@ -103,7 +97,7 @@ function SetlistPreview({
   const songs = (n: number) => `${n} song${n === 1 ? "" : "s"}`;
   const lengthLine =
     length.timed === 0
-      ? `${songs(pitch.setlist.length)} · Song lengths show for songs picked from Spotify search`
+      ? songs(pitch.setlist.length)
       : length.timed === pitch.setlist.length
         ? `Set length ${formatDuration(length.ms)} · ${songs(pitch.setlist.length)}`
         : `Set length at least ${formatDuration(length.ms)} · ${length.timed} of ${songs(pitch.setlist.length)} have a known length`;
@@ -112,14 +106,7 @@ function SetlistPreview({
       <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="min-w-0 flex-1 basis-72 space-y-2">
           <h3 className="m-0 font-display text-[28px] leading-none font-extrabold uppercase">{real ? PLAYLIST_COPY.suggestedSetFor(pitch.name) : `${PLAYLIST_COPY.suggestedSet} for this pitch`}</h3>
-          {real ? (
-            <p className="m-0 text-sm text-muted-foreground">{[pitch.name, when ?? pitch.window?.label, "best fit first"].filter(Boolean).join(" · ")}</p>
-          ) : (
-            <p className="m-0 text-sm text-muted-foreground">
-              Your songs, best fit first: the crowd&apos;s affinity for each artist here (Qloo), how well-known the song is (Last.fm) and how its year suits the
-              crowd&apos;s age (Spotify, Qloo).
-            </p>
-          )}
+          {real && (when ?? pitch.window?.label) ? <p className="m-0 text-sm text-muted-foreground">{when ?? pitch.window?.label}</p> : null}
           {repertoireTotal !== null && pitch.setlist.length > 0 && (
             <p data-testid="you-can-sing" className="m-0 text-sm text-muted-foreground">
               <b className="font-bold text-foreground">
@@ -131,17 +118,6 @@ function SetlistPreview({
               </Link>
             </p>
           )}
-          {ageLean ? <p className="m-0 text-sm text-muted-foreground">Qloo: your fans lean {ageLabel(ageLean)}, so songs from their era move up.</p> : null}
-          {real ? (
-            <details className="text-sm text-muted-foreground">
-              <summary className="min-h-tap cursor-pointer py-3 font-bold text-foreground">How the order is worked out</summary>
-              <p className="m-0">
-                The {PLAYLIST_COPY.suggestedSetNoun} is ordered by how much the crowd at this pitch likes each artist (Qloo), how well-known the song is (Last.fm) and how well its release year
-                (Spotify) suits the crowd&apos;s age. Qloo has no song-level data, so a song inherits its artist&apos;s affinity. The set opens with the best-known of the
-                top three and never plays the same artist twice in a row, so the order is not strictly by score.
-              </p>
-            </details>
-          ) : null}
         </div>
         <CopySetButton text={setAsText(pitch.setlist)} />
       </header>
@@ -187,9 +163,6 @@ function SetlistPreview({
           <Icon name="learn" size={18} />
           {PLAYLIST_COPY.toLearn}
         </h4>
-        <p className="m-0 text-sm text-muted-foreground">
-          Artists this crowd likes that you don&apos;t play yet, ranked by Qloo&apos;s audience growth, then trends, then affinity and Last.fm listeners.
-        </p>
         {learnThese.length === 0 ? (
           <p className="m-0 text-sm text-muted-foreground">No suggestions for this crowd yet.</p>
         ) : (

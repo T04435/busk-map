@@ -135,7 +135,7 @@ export function RepertoireResearch({
   const lockup = (
     <AgentLockup
       live={running}
-      status={running ? "is researching your act" : done ? "researched your act" : "couldn't finish researching your act"}
+      status={running ? "is researching your act" : done ? undefined : "couldn't finish researching your act"}
     />
   );
   const meta = (

@@ -10,8 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { baselineViewSchema, type BaselineView, type PlanPitch, type PlanRequest } from "@/lib/plan-schema";
 import { strengthPhrase } from "@/lib/plain-scores";
-import { activitySourceNote, activityWord, wordLevel } from "@/lib/activity";
-import { modelName, type ExplanationsModel } from "@/lib/sources";
+import { activityWord, wordLevel } from "@/lib/activity";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
 export type BaselineState = { status: "loading" } | { status: "done"; baseline: BaselineView } | { status: "unavailable"; message: string };
@@ -67,7 +66,7 @@ type Pitch = Pick<PlanPitch, "id" | "name" | "score" | "discovery" | "factors" |
 function evidenceLines(pitch: Pitch): string[] {
   const lines: string[] = [];
   if (pitch.factors.taste !== null) lines.push(`Qloo taste match: ${strengthPhrase(pitch.factors.taste)}${pitch.cellRank ? ` (your no. ${pitch.cellRank} area on Qloo's heatmap)` : ""}`);
-  if (pitch.evidence.activity) lines.push(`${activityWord(wordLevel(pitch.evidence.activity.level, pitch.evidence.activity.relative))} here in your slot (${activitySourceNote(pitch.activityBasis)})`);
+  if (pitch.evidence.activity) lines.push(`${activityWord(wordLevel(pitch.evidence.activity.level, pitch.evidence.activity.relative))} here in your slot (est.)`);
   for (const event of pitch.evidence.events.slice(0, 1)) lines.push(`${event.name}: crowd ${event.moment === "leaving" ? "leaves" : "arrives"} around ${event.localTime}`);
   lines.push(`The council's busking layers don't rule it out${pitch.amplification === "unamplified-zone" ? " (unamplified only)" : ""}`);
   return lines;
@@ -88,18 +87,10 @@ const Section = ({ label, title, count, children }: { label: string; title: stri
  * can't know), and only plain AI (with Busk Map's own score for the pitch where it can score it). Agreement is a badge only:
  * the baseline never changes a score.
  */
-/** `model`: the model this server runs; offline the plain AI is the test model, not a real model (B-010). */
-export function ComparePanel({ state, pitches, model = null }: { state: BaselineState; pitches: Pitch[]; model?: ExplanationsModel | null }) {
-  const mock = state.status === "done" ? state.baseline.model === "mock" : model === "mock";
+export function ComparePanel({ state, pitches }: { state: BaselineState; pitches: Pitch[] }) {
   return (
     <section aria-label="Busk Map vs a plain AI" data-testid="compare-panel" className="space-y-4 border-2 border-rule bg-card p-4 md:p-6">
-      <header className="space-y-1">
-        <h2 className="m-0 font-display text-[32px] leading-none font-extrabold uppercase">Busk Map vs a plain AI</h2>
-        <p className="m-0 text-sm text-muted-foreground">
-          The same question (your act, songs, city, day and slot) sent to {mock ? `${modelName("mock")} (offline)` : "a plain AI model"} with no tools and no data: no Qloo, no activity estimate, no rules.
-          It runs alongside every plan as a control and never changes a score.
-        </p>
-      </header>
+      <h2 className="m-0 font-display text-[32px] leading-none font-extrabold uppercase">Busk Map vs a plain AI</h2>
       <div className="space-y-5" aria-live="polite">
         {state.status === "loading" && (
           <div className="space-y-2">
@@ -204,19 +195,6 @@ function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch
                   {spot.tooCloseTo && <Badge variant="neutral">Too close to {spot.tooCloseTo}</Badge>}
                 </span>
                 <span className="block text-sm text-muted-foreground">{spot.why}</span>
-                <span className="block text-sm text-muted-foreground">
-                  {spot.status === "scored"
-                    ? `Busk Map's score here${spot.pitchName && spot.pitchName !== spot.name ? ` (as ${spot.pitchName})` : ""}${
-                        spot.tooCloseTo
-                          ? `. Scored higher, but within 250 m of ${spot.tooCloseTo}, so the plan picked a pitch further away`
-                          : spot.beatsOurs
-                            ? ", higher than one of Busk Map's picks"
-                            : ""
-                      }.`
-                    : spot.status === "not-legal"
-                      ? "The council's busking layers rule this spot out."
-                      : "Busk Map couldn't place this spot, so it has no data to check it."}
-                </span>
               </li>
             ))}
           </ul>

@@ -26,11 +26,12 @@ const done = (page: Page) => expect(page.getByTestId("research-end")).toBeVisibl
 test.describe("Repertoire research (offline)", () => {
   test.skip(!LOCAL, "Writes to the local offline server's memory store and uses the mock artist");
 
-  test("empty state: one field, one line on what happens, nothing else; browsing sets no cookie", async ({ page }) => {
+  test("empty state: one field and its example, nothing else; browsing sets no cookie", async ({ page }) => {
     await page.goto("/repertoire");
     await expect(page.getByRole("heading", { level: 1, name: "Your Repertoire" })).toBeVisible();
     await expect(field(page)).toBeVisible();
-    await expect(page.getByText(/We read your Spotify profile and your songs/)).toBeVisible();
+    await expect(page.getByText("It looks like open.spotify.com/artist/…")).toBeVisible();
+    await expect(page.getByText(/We read your Spotify profile and your songs/)).toHaveCount(0);
     await expect(page.getByTestId("research-results")).toHaveCount(0);
     await expect(page.getByRole("combobox", { name: "Search songs on Spotify" })).toHaveCount(0);
     expect((await page.context().cookies()).some((c) => c.name === "buskmap_playlist")).toBe(false);

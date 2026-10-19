@@ -95,7 +95,6 @@ export function PitchSheet({
                 pitch={pitch}
                 when={`${shortDay(plan.slot.date)} ${pitch.window ? shortHours(pitch.window.startHour, pitch.window.endHour) : shortHours(plan.slot.startHour, plan.slot.endHour)}`}
                 learnThese={plan.learnThese}
-                ageLean={plan.ageLean}
                 canAddToRepertoire={canAddToRepertoire}
                 repertoireTotal={repertoireTotal}
               />

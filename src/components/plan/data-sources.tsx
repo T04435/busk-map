@@ -40,20 +40,7 @@ export function statusText(s: DataStatus): string {
   return `${s.source === "qloo" && s.mode === "synthetic" ? QLOO_TEST_LABEL : MODE_LABEL[s.mode]}${s.reason ? `: ${REASON_LABEL[s.reason] ?? s.reason}` : ""}`;
 }
 
-/** What each source is used for, in the DS SourceAttribution wording. */
-const USE: Record<SourceId, string> = {
-  qloo: "Taste, crowds, venues, estimated activity and event crowds",
-  "melbourne-busking": "Where you may play",
-  osm: "Public spaces and venue names",
-  ticketmaster: "Events near each pitch",
-  lastfm: "Song popularity",
-  "open-meteo": "The forecast for your slot",
-  spotify: "Song years, lengths and popularity",
-  openfreemap: "Map tiles",
-  ai: "The reasons written for each pitch",
-};
-
-/** Every data source, its credit, licence link and how this plan used it (the DS SourceAttribution). */
+/** Every data source, its credit and licence (the DS SourceAttribution). */
 export function DataSources({ status, showAi, soFar }: { status: DataStatus[]; showAi: boolean; /** While the run is live: only the sources it has touched so far. */ soFar?: SourceId[] }) {
   const used = new Map(status.map((s) => [s.source, s]));
   const ids: SourceId[] = ["qloo", "melbourne-busking", "osm", "ticketmaster", "lastfm", "open-meteo", "spotify", "openfreemap"];
@@ -75,9 +62,7 @@ export function DataSources({ status, showAi, soFar }: { status: DataStatus[]; s
                     {source.credit}
                   </a>
                 </div>
-                <div className="text-[13px] text-muted-foreground">
-                  {USE[id]} · {source.licence}
-                </div>
+                <div className="text-[13px] text-muted-foreground">{source.licence}</div>
               </div>
               {(s || soFar) && <DataStatusBadge status={s ? s.mode : "live"} label={s ? statusText(s) : "Live"} />}
             </li>

@@ -375,14 +375,13 @@ export function ResearchView() {
       <div className="grid gap-3">
         {/* The research header lockup (Hive Identity board). */}
         <p className="m-0" data-testid="research-agent">
-          <AgentLockup live={live} status={live ? "is researching your act" : "researched your act"} />
+          <AgentLockup live={live} status={live ? "is researching your act" : undefined} />
         </p>
         <AgentStepStream
           steps={feed}
           model={runEvent?.type === "run" && runEvent.model === "claude" ? "claude" : "mock"}
           phase={live ? "working" : "done"}
           mode={!events && replay ? "replay" : "live"}
-          modeText={!events && replay ? "Showing the research from your last run. Nothing new was asked." : null}
           title={live ? R.heading : R.howBuilt}
           wording={R.waiting}
           showRaw={showRaw}
@@ -700,7 +699,7 @@ export function ResearchView() {
 
   return (
     <div className="space-y-8" data-testid="research-page" data-phase={running ? "running" : view.phase}>
-      <PageHeader title={COPY.pageTitle} subtitle={COPY.pageIntro} />
+      <PageHeader title={COPY.pageTitle} />
 
       <div role="status" aria-live="polite" className="text-sm empty:hidden" data-testid="research-info">
         {info}
@@ -720,7 +719,7 @@ export function ResearchView() {
         </div>
       ) : (
         <>
-          {/* Empty state: one field, one line on what happens. */}
+          {/* Empty state: one field and its example. */}
           {showForm && (
             // Named by its action, so the link field stays the only control called "Your Spotify artist link".
             <form onSubmit={submitLink} className="max-w-2xl space-y-2" aria-labelledby="research-start" data-testid="research-form">
@@ -732,7 +731,7 @@ export function ResearchView() {
                 </Button>
               </div>
               <p id="spotify-link-hint" className="text-sm text-muted-foreground">
-                {R.linkHint} {R.example}
+                {R.example}
               </p>
               {offline && (
                 <Button type="button" variant="link" size="sm" className="h-auto px-0" data-testid="research-test-artist" onClick={() => setLink(spotifyArtistUrl(OFFLINE_TEST_ARTIST.spotifyId))}>

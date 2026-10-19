@@ -9,14 +9,13 @@ const HEX = "[clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]";
 /** The DS LEGEND_TIPS, word for word. */
 const TIPS = {
   taste: "Orange cells are where Qloo says your crowd gathers: the brighter, the closer the match. No cell, no match.",
-  top: "Your top 3 pitches, numbered by rank. Pick one to see it in the list.",
-  other: "Other pitches Busk Map scored. Pick one for a summary.",
   zone: "Hatched cells: busking isn't allowed there.",
   event: "An event letting out near a pitch in your slot.",
 } as const;
 
-/** One legend entry (DS bm-legend-li): a focusable key with a dotted underline, its tooltip opening on hover and on keyboard focus. */
-function Key({ tip, children }: { tip: string; children: ReactNode }) {
+/** One legend entry (DS bm-legend-li): a focusable key with a dotted underline, its tooltip opening on hover and on keyboard focus. With no tip it is a plain label. */
+function Key({ tip, children }: { tip?: string; children: ReactNode }) {
+  if (!tip) return <span className="inline-flex min-h-8 items-center gap-1.5 font-mono text-xs leading-4 font-medium text-foreground">{children}</span>;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -61,7 +60,7 @@ export function MapLegend({ taste = true, top = true, others = true, zones = fal
           </Key>
         ) : null}
         {top ? (
-          <Key tip={TIPS.top}>
+          <Key>
             <Sw>
               <i className={cn("block h-[21px] w-[18px] [background:radial-gradient(circle_at_50%_50%,#fbf9f5_0_2.2px,var(--primary)_2.7px_5.6px,var(--bluestone)_6.1px)]", HEX)} />
             </Sw>
@@ -69,7 +68,7 @@ export function MapLegend({ taste = true, top = true, others = true, zones = fal
           </Key>
         ) : null}
         {others ? (
-          <Key tip={TIPS.other}>
+          <Key>
             <Sw>
               <i className={cn("block h-3.5 w-3 bg-usual-spot", HEX)} />
             </Sw>

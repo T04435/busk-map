@@ -15,17 +15,13 @@ export function WeightsPanel({ weights }: { weights: Plan["weights"] }) {
   const total = keys.reduce((s, k) => s + weights[k], 0) || 1;
   return (
     <section aria-label="How pitches are scored" className="border-2 border-rule bg-card p-4 md:p-6">
-      <header className="mb-4">
-        <h3 className="m-0 font-display text-2xl leading-[26px] font-extrabold tracking-[0.01em] uppercase">How pitches are scored</h3>
-        <p className="m-0 mt-0.5 text-sm leading-5 text-muted-foreground">The same weights for every pitch.</p>
-      </header>
+      <h3 className="m-0 mb-4 font-display text-2xl leading-[26px] font-extrabold tracking-[0.01em] uppercase">How pitches are scored</h3>
       <p className="m-0 mb-4 flex items-center gap-3 border-[1.5px] border-dashed border-rule px-3 py-2.5 text-sm leading-5" data-testid="spacing-rule">
         <HexCell size={40} fontSize={11} className="font-mono font-bold">
           250 m
         </HexCell>
         <span>
-          The top 3 are at least 250 m apart, so each is a different pitch. A higher-scored pitch within 250 m of a pick is left out: its dot on the map says
-          &ldquo;too close to&rdquo; that pick.
+          The top 3 are at least 250 m apart: a higher-scored pitch within 250 m of a pick is left out.
         </span>
       </p>
       <div role="img" aria-label={keys.map((k) => `${LABELS[k].label} ${Math.round((weights[k] / total) * 100)}%`).join(", ")} className="mb-4 flex h-4 gap-0.5">

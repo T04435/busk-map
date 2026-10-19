@@ -31,8 +31,6 @@ export const PLAYLIST_COPY = {
 
   // The Repertoire page (S1)
   pageTitle: "Your Repertoire",
-  pageIntro: "The songs you can sing, kept on this device. Plan a busk and your suggested set comes from them.",
-  deviceNote: "Saved on this device only. Clearing this browser's site data loses it.",
   searchLabel: "Add a song",
   typedLabel: "Or type one in",
   typedPlaceholder: "Title - Artist",
@@ -60,7 +58,6 @@ export const PLAYLIST_COPY = {
   mineWithCount: (n: number) => `${USE_MINE} (${n} ${n === 1 ? "song" : "songs"})`,
   fromRepertoire: "From your Repertoire",
   saveThese: "Save these songs as your Repertoire",
-  saveTheseHint: "Keep them on this device so the next busk starts with them. Nothing is saved unless you choose to.",
   saving: "Saving…",
   saved: "Saved to your Repertoire.",
   addedToLearn: "Added to Songs you should learn.",
@@ -81,7 +78,6 @@ export const PLAYLIST_COPY = {
   // The act (name, artists you sound like, Spotify profile) kept in the Repertoire
   act: {
     heading: "Your act",
-    intro: "Your act name and the artists you sound like. The busk form starts with them, so you aren't asked every time.",
     savePage: "Save act details",
     back: "Back to my Repertoire",
     savedPage: "Act details saved.",
@@ -99,7 +95,6 @@ export const PLAYLIST_COPY = {
   },
   soundsLike: {
     heading: "Suggested: artists you sound like",
-    intro: "From fans of your music on Qloo. Add the ones that fit; nothing changes until you add them.",
     add: "Add",
     addAll: "Add all",
     loading: "Looking for artists you sound like…",
@@ -111,7 +106,8 @@ export const PLAYLIST_COPY = {
   research: {
     linkLabel: "Your Spotify artist link",
     linkPlaceholder: "Paste your Spotify artist link",
-    linkHint: "We read your Spotify profile and your songs, then ask Qloo who your fans are and what they love. It takes about a minute.",
+    /** The page's meta description (not shown on the page). */
+    metaDescription: "We read your Spotify profile and your songs, then ask Qloo who your fans are and what they love.",
     example: "It looks like open.spotify.com/artist/…",
     /** Offline test mode only: a link the local mocks know end to end. */
     exampleTest: "Try the test artist",
@@ -119,14 +115,13 @@ export const PLAYLIST_COPY = {
     starting: "Starting your research…",
     runStarted: "Researching your act",
     running: "Researching your act…",
-    runningHint: "Each step appears as it happens. You can leave this page: the research carries on and the results will be here.",
     heading: "Researching your act",
     howBuilt: "How we built your Repertoire",
     findMore: "Find more songs to learn",
     /** Qloo may not know the act by this name: the Hive asks, then (if still unknown) goes on from the artists the performer sounds like. */
     candidates: {
       heading: "Is one of these you?",
-      hint: "Qloo doesn't list your name exactly, so we can't be sure which artist is you. Pick yours, or say none of these. We'll remember your answer for this link.",
+      hint: "Qloo doesn't list your name exactly. Pick yours, or say none of these.",
       pick: "This is me",
       pickLabel: (name: string) => `This is me: ${name}`,
       none: "None of these",
@@ -138,7 +133,6 @@ export const PLAYLIST_COPY = {
       label: "Qloo doesn't know you yet, so this is based on the artists you sound like",
       basedOn: "Based on the artists you sound like",
       pickHeading: "Pick 2 or 3 artists you sound like",
-      pickHint: "Qloo doesn't know you yet, so we need a few artists you sound like to find your fans. Add them below, then carry on.",
       pickLabel: "Artists you sound like",
       carryOn: "Carry on",
       pickSummary: "Qloo doesn't know you yet; pick the artists you sound like to go on",
@@ -152,7 +146,6 @@ export const PLAYLIST_COPY = {
     spotifyLimitedNone: "Spotify isn't answering right now and Last.fm had none of your songs",
     spotifyDownNone: "Spotify didn't answer and Last.fm had none of your songs",
     refresh: "Refresh my research",
-    refreshHint: "Reads your profile and asks Qloo again. Your songs and lists stay.",
     changeLink: "Use a different link",
     actName: "Act name",
     actNameHint: "From your Spotify name. Change it if you busk under another name.",
@@ -220,13 +213,10 @@ export const PLAYLIST_COPY = {
     stepsPruned: "This run's steps are no longer kept. Its songs are still on your list.",
 
     // The Songs to learn section of the Repertoire page (docs §7.4)
-    intro: "Find songs to learn from the artists your fans, and the crowds where you busk, like. Each run looks at your Repertoire, takes about 30 seconds, and never suggests a song twice.",
-    firstTime: "No runs yet. Press the button and the Hive will look for songs you could learn next.",
     runsLeft: (n: number) => `${n} ${n === 1 ? "run" : "runs"} left this hour`,
     lastRun: (when: string, n: number) => `Last run ${when}: ${n} new ${n === 1 ? "song" : "songs"}.`,
     running: "Looking for songs to learn…",
     starting: "Starting a run",
-    runningHint: "The steps appear below as they happen. You can leave this page: the run carries on and its songs will be on your list.",
     finding: "Finding songs…",
     needSongs: (min: number) => `Add at least ${min} songs you can sing, then find songs to learn.`,
     needRepertoire: "Save your Repertoire by adding a song above, then find songs to learn.",
@@ -263,7 +253,6 @@ export const PLAYLIST_COPY = {
     undo: "Undo",
     learnedBadge: "Learned",
     showRaw: "Show raw data",
-    howFound: "How we found these songs",
     dismissedGroup: (n: number) => `Not for me (${n})`,
     movedToSung: (title: string) => `${title} is now in ${CAN_SING}.`,
     dismissedDone: (title: string) => `${title} won't be suggested again. Undo it from Not for me.`,

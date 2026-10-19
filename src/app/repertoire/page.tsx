@@ -4,7 +4,7 @@ import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
 export const metadata: Metadata = {
   title: `${PLAYLIST_COPY.name} · Busk Map`,
-  description: PLAYLIST_COPY.research.linkHint,
+  description: PLAYLIST_COPY.research.metaDescription,
 };
 
 export default function RepertoirePage() {

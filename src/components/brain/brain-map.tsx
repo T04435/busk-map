@@ -287,7 +287,6 @@ function IdlePanel() {
   return (
     <div className={PANEL} data-testid="trace-panel">
       <p className="m-0 font-display text-[22px] leading-[1.1] font-extrabold text-qloo uppercase">Pick any piece</p>
-      <p className="m-0 font-mono text-[13px] leading-5 text-muted-foreground">Choose a Qloo call, a data point or a part of your busk, and its whole path lights up.</p>
       <ul className="m-0 flex list-none flex-col gap-1.5 p-0 text-sm leading-5">
         {[
           [nodeLabel("f_setlist"), "four Qloo calls, Spotify and Last.fm meet in your suggested set"],

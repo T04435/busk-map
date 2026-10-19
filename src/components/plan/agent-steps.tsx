@@ -379,7 +379,7 @@ export function AgentStepStream({
         ["Stopped by", usage.stoppedBy],
       ]
     : null;
-  const modeLine = mode !== "live" ? (mode === "replay" ? modeText || "Showing the research from earlier. Nothing new was asked." : modeText) : null;
+  const modeLine = mode === "joined" ? modeText : null;
   return (
     <section
       aria-label={heading}

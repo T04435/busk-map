@@ -56,7 +56,7 @@ function TypedFallback({ query, onAdd }: { query: string; onAdd: (song: { title:
         }
       }}
     >
-      <p className="m-0 text-sm text-muted-foreground">Not on Spotify? Type it in. It is saved as typed, without a length.</p>
+      <p className="m-0 text-sm text-muted-foreground">Not on Spotify? Type it in.</p>
       <div className="grid gap-2 sm:grid-cols-2">
         <div className="space-y-1">
           <Label htmlFor="typed-title">Song title</Label>
@@ -235,7 +235,6 @@ export function SongSearch({
                   Add “{parsedTyped.title}”{parsedTyped.artist ? ` by ${parsedTyped.artist}` : ""} as typed
                 </span>
               </CommandItem>
-              <p className="m-0 px-3 pb-2 text-xs text-muted-foreground">It&apos;s saved without a length, tagged Typed. Edit the title or artist any time.</p>
             </CommandGroup>
           )}
         </CommandList>

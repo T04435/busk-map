@@ -15,8 +15,8 @@ export function AgentLockup({
   className,
 }: {
   live?: boolean;
-  /** What the agent is doing, after its name: "is researching your busk". */
-  status: string;
+  /** What the agent is doing, after its name: "is researching your busk". None once it is done. */
+  status?: string;
   name?: string;
   size?: number;
   className?: string;
@@ -28,7 +28,7 @@ export function AgentLockup({
         <span className="border-2 border-signal-text px-2.5 py-1 font-mono text-sm leading-5 font-bold tracking-[0.12em] whitespace-nowrap text-signal-text uppercase">
           {name}
         </span>
-        <span className="text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]">{status}</span>
+        {status ? <span className="text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]">{status}</span> : null}
       </span>
     </span>
   );

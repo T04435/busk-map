@@ -5,7 +5,6 @@ import { RichText } from "@/components/honeycomb/mention";
 import { reasonSlots } from "@/components/setlist/reason-slots";
 import { cn } from "cn";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
-import { EvidenceLine } from "@/components/honeycomb/evidence-line";
 import { FoundByBadge } from "@/components/honeycomb/found-by-badge";
 import { Icon, type IconName } from "@/components/honeycomb/icon";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
@@ -19,7 +18,7 @@ import { SongActions } from "@/components/honeycomb/song-actions";
 import { SongRow } from "@/components/honeycomb/song-row";
 import { SongTag } from "@/components/honeycomb/song-tag";
 import type { AgentStep } from "@/lib/agent-steps";
-import { activitySourceNote, activityWord, type ActivityBasis } from "@/lib/activity";
+import { activityWord, type ActivityBasis } from "@/lib/activity";
 import type { ExplanationsModel } from "@/lib/sources";
 import { EstimateLabel } from "./estimate-label";
 
@@ -83,11 +82,6 @@ export function Cautions({ items }: { items: string[] }) {
     </ul>
   );
 }
-
-/** "Busk Map never confirms a pitch is legal." (bm-never) */
-export const NeverConfirms = ({ className }: { className?: string }) => (
-  <p className={cn("m-0 mt-2 text-[13px] leading-[18px] font-normal text-muted-foreground italic", className)}>Busk Map never confirms a pitch is legal. Check the rules before you play.</p>
-);
 
 const HEXP = (x: number, y: number, r: number) =>
   Array.from({ length: 6 }, (_, i) => {
@@ -247,20 +241,11 @@ export const TOOL_UI: Record<string, ToolUi> = {
     title: () => "Where your crowd gathers",
     render: (o, _s, ctx) => {
       const strongest = arr(o.strongest).filter((c) => num(c.lat) !== null);
-      const signals = Array.isArray(o.signals) ? (o.signals as string[]) : [];
       // Before the plan exists the strongest cells stand in as pins: the top 3 numbered, the rest small dots.
       const pins: MiniPin[] = ctx.pins?.length
         ? ctx.pins
         : strongest.map((c, i) => ({ id: `cell-${i}`, name: str(c.near) ?? "A block without a name", lat: num(c.lat) as number, lon: num(c.lon) as number, rank: i + 1 }));
-      return (
-        <>
-          <MiniTasteMap cells={strongest} pins={pins} />
-          <EvidenceLine>
-            Qloo heatmap: the strongest of {num(o.cells) ?? strongest.length} taste cells for{" "}
-            {signals.length ? <RichText text={listOf(signals.map((a) => mentionArtist(a)))} /> : "your artists"}.
-          </EvidenceLine>
-        </>
-      );
+      return <MiniTasteMap cells={strongest} pins={pins} />;
     },
   },
   crowd_at: {
@@ -295,7 +280,6 @@ export const TOOL_UI: Record<string, ToolUi> = {
               </ul>
             </Section>
           ) : null}
-          <EvidenceLine>Qloo insights within {num(o.radiusM) ?? 400} m, given your artists.</EvidenceLine>
         </>
       );
     },
@@ -315,7 +299,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
                 <li key={str(p.name) ?? ""} className="flex justify-between gap-3">
                   <span>
                     {str(p.name)}
-                    {detail ? <QlooDetail>Qloo: {detail}</QlooDetail> : null}
+                    {detail ? <QlooDetail>{detail}</QlooDetail> : null}
                   </span>
                   <span className="shrink-0 text-right font-mono text-muted-foreground tabular-nums">
                     {n0(num(p.distanceM))} m · {p.open === "open" ? "open" : p.open === "closed" ? "closed" : "hours unknown"}
@@ -380,7 +364,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
       const level = num(o.relativeLevel) ?? num(o.level);
       const basis = str(o.basis) as ActivityBasis | null;
       if (level === null || basis === null || basis === "none") {
-        return <Fact flush icon="footfall" tone="footfall" title="No activity estimate here" sub="Qloo had no heatmap or places data for this spot." />;
+        return <Fact flush icon="footfall" tone="footfall" title="No activity estimate here" />;
       }
       const open = Array.isArray(o.placesOpen) ? o.placesOpen.filter((x): x is string => typeof x === "string") : [];
       return (
@@ -388,7 +372,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
           flush
           icon="footfall"
           tone="footfall"
-          title={<EstimateLabel basis={activitySourceNote(basis)}>{activityWord(level)}</EstimateLabel>}
+          title={<EstimateLabel>{activityWord(level)}</EstimateLabel>}
           sub={`${str(o.window) ?? ""}${open.length ? ` · popular places open: ${open.join(", ")}` : ""}`.replace(/^ · /, "")}
         />
       );
@@ -404,7 +388,6 @@ export const TOOL_UI: Record<string, ToolUi> = {
       return (
         <Fact flush icon={out ? "restricted" : "legal"} tone="legal" title={out ? "Ruled out by the council's busking rules" : unknown ? "The rules are unavailable right now" : "Not ruled out for your permit"}>
           <Cautions items={cautions} />
-          <NeverConfirms />
         </Fact>
       );
     },
@@ -417,9 +400,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
     },
     render: (o, _s, ctx) => {
       const list = arr(o.pitches).slice(0, 3);
-      const pool = num(o.poolSize);
       return (
-        <>
           <ol className="m-0 grid list-none gap-2 p-0">
             {list.map((p, i) => (
               <PitchRow
@@ -437,8 +418,6 @@ export const TOOL_UI: Record<string, ToolUi> = {
               />
             ))}
           </ol>
-          {pool ? <EvidenceLine>Busk Map scored {pool} pitches allowed for your permit on taste, estimated activity (Qloo places), events and weather.</EvidenceLine> : null}
-        </>
       );
     },
   },
@@ -523,7 +502,6 @@ export const TOOL_UI: Record<string, ToolUi> = {
       const pitches = arr(o.pitches);
       if (!pitches.length) return <Foot>No busking hours are left on that day.</Foot>;
       return (
-        <>
           <ul className="m-0 grid list-none gap-2 p-0" data-testid="best-hours">
             {pitches.map((p) => {
               const top = arr(p.windows)[0];
@@ -531,7 +509,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
               const activity = top ? num(top.activity) : null;
               const rain = top ? num(top.rainPercent) : null;
               const parts = [
-                activity !== null && str(p.activityBasis) !== "none" ? `${activityWord(activity).toLowerCase()} (estimate)` : null,
+                activity !== null && str(p.activityBasis) !== "none" ? `${activityWord(activity).toLowerCase()} (est.)` : null,
                 event ? `the ${str(event.name)} crowd ${event.moment === "leaving" ? "lets out" : "arrives"} at ${str(event.at)}` : null,
                 rain !== null ? (rain >= 50 ? `rain likely (${rain}%)` : rain >= 25 ? `some rain risk (${rain}%)` : "dry") : null,
               ].filter(Boolean);
@@ -542,21 +520,14 @@ export const TOOL_UI: Record<string, ToolUi> = {
               );
             })}
           </ul>
-          <EvidenceLine>Engine data: each 3-hour window from 10 am to 10 pm, scored with estimated activity (popular Qloo places open by hour), events and rain. Estimates.</EvidenceLine>
-        </>
       );
     },
   },
   finish_plan: {
     doing: () => "Putting your busk together",
     title: (s) => (s.status === "failed" ? "Sent back to check more" : "Your busk is ready"),
-    render: (_o, s, ctx) => (
-      <Foot>
-        {s.status === "failed"
-          ? `Busk Map asked ${ctx.model === "mock" ? "the test model" : "the Hive"} to look closer before answering. We keep going.`
-          : "Three pitches, a suggested set for each and the reasons, above."}
-      </Foot>
-    ),
+    render: (_o, s, ctx) =>
+      s.status === "failed" ? <Foot>Busk Map asked {ctx.model === "mock" ? "the test model" : "the Hive"} to look closer before answering.</Foot> : null,
   },
 };
 

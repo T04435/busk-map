@@ -43,13 +43,9 @@ export function WhatYouGet() {
             <br />
             <span className="text-signal-text">to play there</span>
           </h3>
-          <p className="m-0 text-lg leading-7">
-            Each pitch gets its own order. Qloo says which artists that crowd likes and the age they lean, so your songs are ranked by how well they&apos;ll land
-            there. Your own songs stay in, and Qloo&apos;s rising artists show what&apos;s worth learning next.
-          </p>
         </div>
         <div className="min-w-0 flex-[999_1_520px]">
-          <SetlistPanel variant="preview" pitch={{ name: "Southbank Promenade", setlist: SETLIST }} learnThese={LEARN} ageLean="25–34" />
+          <SetlistPanel variant="preview" pitch={{ name: "Southbank Promenade", setlist: SETLIST }} learnThese={LEARN} />
         </div>
       </div>
     </section>

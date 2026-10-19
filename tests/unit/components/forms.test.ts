@@ -42,10 +42,11 @@ describe("DatePicker (DS)", () => {
 });
 
 describe("PermitPicker (DS choice cards)", () => {
-  it("draws the picked card with the orange offset rule and keeps the hint", () => {
+  it("draws the picked card with the orange offset rule, each card's own description and no note under the group", () => {
     const out = html(createElement(PermitPicker, { value: "general", onValueChange: () => {} }));
     expect(out).toContain("General permit");
     expect(out).toContain("has-[[data-state=checked]]:shadow-[4px_4px_0_var(--primary)]");
-    expect(out).toContain("This changes which pitches are shown.");
+    expect(out).toContain("Adds the premium-only pitches as well.");
+    expect(out).not.toContain("This changes which pitches are shown.");
   });
 });

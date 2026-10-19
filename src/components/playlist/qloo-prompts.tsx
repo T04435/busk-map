@@ -48,7 +48,6 @@ export function SoundsLikePrompt({ value, onChange, query, onQueryChange, count,
       <h2 id="qloo-pick-sounds-like" className={RESEARCH_H2}>
         {F.pickHeading}
       </h2>
-      <p className="m-0 max-w-prose text-sm text-muted-foreground">{F.pickHint}</p>
       <ArtistPicker hideLabel value={value} onChange={onChange} query={query} onQueryChange={onQueryChange} />
       <Button type="button" disabled={busy || count < 2} data-testid="research-carry-on" onClick={onCarryOn}>
         {F.carryOn}

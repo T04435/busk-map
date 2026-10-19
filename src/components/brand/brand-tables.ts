@@ -51,7 +51,7 @@ export const COMPONENT_GROUPS = {
   feedback: ["Badge", "Alert", "Banner", "Toast", "Tooltip", "Dialog", "Sheet", "DataStatusBadge", "EstimateLabel", "SourceAttribution", "UnmatchedAlert"],
   plan: ["CityPicker", "TimeSlotPicker", "PerformerPicker", "PermitPicker", "RepertoirePicker", "ArtistPicker", "SongSearch", "PickedSongs", "LearnItMenu"],
   map: ["TasteMap", "TasteMapLegend", "PitchPin", "MapPlaceholder", "PlanMap"],
-  busk: ["PitchRow", "PitchCard", "DiscoveryBadge", "BothAgreeBadge", "ScoreBreakdown", "WeightsPanel", "CrowdPanel", "MeterBar", "LeanBar", "EvidenceLine", "SetlistPanel", "WeatherStrip", "FootfallSparkline", "CopyLinkButton", "SlotPassed"],
+  busk: ["PitchRow", "PitchCard", "DiscoveryBadge", "BothAgreeBadge", "ScoreBreakdown", "WeightsPanel", "CrowdPanel", "MeterBar", "LeanBar", "SetlistPanel", "WeatherStrip", "FootfallSparkline", "CopyLinkButton", "SlotPassed"],
   research: ["ResearchFunnel", "AgentStepStream", "AgentVsEngine", "StepData", "ComparePanel"],
   shell: ["Logo", "Icon", "HexCell", "ScoreCell", "ScoreRing", "ScoreBlock", "RankTile", "Loader", "Skeleton", "Card", "EmptyState", "ErrorState", "PlanNotFound", "AppHeader", "MobileNav", "BrandHoneycomb"],
 } as const;

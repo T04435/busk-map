@@ -39,7 +39,6 @@ export default function BrainPage() {
           </h1>
           <p className="m-0 max-w-[640px] text-[19px] leading-[29px]">
             Qloo knows who likes what, and where. Busk Map asks it {callKinds} kinds of question, and every answer lands somewhere in your busk.
-            Pick any piece below to light up its path.
           </p>
         </header>
 

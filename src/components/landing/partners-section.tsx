@@ -85,7 +85,6 @@ export function PartnersSection({ partners = BUILT_WITH }: { partners?: Partner[
         <InView>
           <QlooWordmark width={300} className="w-[clamp(180px,40vw,300px)]" wordmarkClassName="hc-qloo-rise h-auto w-full text-foreground" />
         </InView>
-        <p className="m-0 max-w-md text-base leading-6 text-muted-foreground">The taste AI behind every busk: who&apos;s out at each pitch, and what they like.</p>
       </div>
 
       {/* Built with: a logo wall; each cell names the partner and its role for screen readers and on hover. */}

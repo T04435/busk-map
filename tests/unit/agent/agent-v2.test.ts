@@ -64,7 +64,7 @@ describe("Agent v2 tools", () => {
     expect(out.word).toMatch(/^(Quiet|Fairly quiet|Moderately busy|Busy|Very busy)$/);
     expect(out.window).toBe("6 pm–9 pm");
     expect(out.hourly.map((h) => h.hour)).toEqual(Array.from({ length: 12 }, (_, i) => 10 + i));
-    expect(out.summary).toMatch(/here on Saturday evenings \(estimate from Qloo/);
+    expect(out.summary).toMatch(/here on Saturday evenings \(est\.\)/);
     expect(JSON.stringify(out)).not.toMatch(/sensor|footfall|people an hour|peopleThisHour/i);
     // An explicit hour reads that hour.
     const noon = (await run(tools.activity_at, { at: { place: "Federation Square" }, hour: 12 })) as { window: string };

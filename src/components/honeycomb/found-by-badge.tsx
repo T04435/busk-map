@@ -12,14 +12,14 @@ import { modelName, type ExplanationsModel } from "@/lib/sources";
 export function FoundByBadge({ origin, written, model }: { origin: string; written: boolean; model: ExplanationsModel | null }) {
   if (!written)
     return (
-      <Badge variant="neutral" title="Ranked from Busk Map's scores, with standard reasons">
+      <Badge variant="neutral">
         <Icon name="database" size={14} />
         From the data
       </Badge>
     );
   if (origin !== "agent") return null;
   return (
-    <Badge variant="neutral" title={`${modelName(model, "start")} suggested this spot, and Busk Map scored it`}>
+    <Badge variant="neutral">
       <HiveMark size={HIVE_SIZES.badge} decorative className="-my-0.5" />
       Found by {modelName(model)}
     </Badge>

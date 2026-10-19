@@ -4,6 +4,7 @@ import { createContext, useContext, type ReactNode } from "react";
 import { cn } from "cn";
 import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
 import { Icon } from "@/components/honeycomb/icon";
+import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { LeanBar } from "@/components/honeycomb/lean-bar";
 import { mentionArtists } from "@/components/honeycomb/mention";
 import { Reason } from "@/components/honeycomb/reason";
@@ -16,17 +17,15 @@ import type { FanLean, LearnSong, ResearchArtist, ResearchSong } from "./types";
 
 const subLabel = "m-0 font-mono text-xs font-bold tracking-[0.08em] text-muted-foreground uppercase";
 
-/** A section: a 2px rule, a display-caps h2, an optional muted intro and the body. */
+/** A section: a 2px rule, a display-caps h2 and the body. */
 export function Section({
   title,
   aside,
-  intro,
   children,
   className,
 }: {
   title: string;
   aside?: ReactNode;
-  intro?: string;
   children: ReactNode;
   className?: string;
 }) {
@@ -36,7 +35,6 @@ export function Section({
         <h2 className="m-0 font-display text-[clamp(28px,3.4vw,36px)] leading-none font-extrabold uppercase">{title}</h2>
         {aside}
       </div>
-      {intro ? <p className="mt-2 mb-0 text-sm leading-5 text-muted-foreground">{intro}</p> : null}
       <div className="mt-5">{children}</div>
     </section>
   );
@@ -101,14 +99,11 @@ export function FansSection({
   className?: string;
 }) {
   return (
-    <Section title="Who your fans are" className={className}>
+    <Section title="Who your fans are" aside={fans ? <SourceLogo source="qloo" height={18} className="self-center" /> : undefined} className={className}>
       {fans ? (
         <div className="flex flex-col gap-6">
           {fans.age.length > 0 ? <LeanGroup label="Age" items={fans.age} /> : null}
           {fans.gender.length > 0 ? <LeanGroup label="Gender" items={fans.gender} /> : null}
-          <p className="m-0 font-mono text-xs text-muted-foreground">
-            Lean against the average <span className="text-qloo">Qloo</span> audience.
-          </p>
         </div>
       ) : loading ? (
         <SkeletonRows rows={4} label="Finding who your fans are" />
@@ -326,7 +321,7 @@ export function ToLearnSection({
   const learnedNow = songs?.filter((s) => s.status === "learned") ?? [];
   const rows = [...pending, ...learnedNow];
   return (
-    <Section title="Songs you should learn" className={className} intro="Picked for your crowd, with the reason for each.">
+    <Section title="Songs you should learn" className={className}>
       {songs ? (
         <>
           {rows.length > 0 || dismissed.length > 0 ? (

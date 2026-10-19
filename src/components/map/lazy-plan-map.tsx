@@ -71,10 +71,7 @@ export function LazyPlanMap(props: ComponentProps<typeof PlanMapType>) {
             <HexCell size={64} lift>
               <MapIcon aria-hidden="true" className="size-7" />
             </HexCell>
-            <div>
-              <p className="m-0 font-display text-[26px] leading-none font-extrabold uppercase">Taste map</p>
-              <p className="m-0 mt-1 text-sm text-muted-foreground">The map loads when you need it. The pitch list has everything on it.</p>
-            </div>
+            <p className="m-0 font-display text-[26px] leading-none font-extrabold uppercase">Taste map</p>
             <Button type="button" variant="outline" onClick={() => setShow(true)}>
               Show the map
             </Button>

@@ -4,6 +4,7 @@ import { QlooLink } from "@/components/honeycomb/logo";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { Button } from "@/components/ui/button";
 import { HexCell } from "@/components/honeycomb/hex-cell";
+import { DemoVideo } from "@/components/landing/demo-video";
 import { HeroGlow } from "@/components/landing/hero-glow";
 import { HeroTasteMap } from "@/components/landing/hero-taste-map";
 import { PartnersSection } from "@/components/landing/partners-section";
@@ -27,7 +28,7 @@ const TICKER = ["Qloo taste map", "Qloo crowd at each pitch", "Qloo venue and ev
 
 const PROBLEMS = [
   { icon: "pin" as const, title: "Where?", guess: "Bourke Street Mall, like every other busker.", fix: "Southbank Promenade: the strongest folk taste area on Qloo." },
-  { icon: "clock" as const, title: "When?", guess: "Turn up at noon and hope.", fix: "Busy on Friday evenings (an estimate from Qloo), and a matinee lets out at 2:45 pm." },
+  { icon: "clock" as const, title: "When?", guess: "Turn up at noon and hope.", fix: "Busy on Friday evenings (est.), and a matinee lets out at 2:45 pm." },
   { icon: "legal" as const, title: "Allowed?", guess: "The station steps, until a ranger moves you on.", fix: "A general-permit pitch, clear of the no-busking zones." },
   { icon: "music" as const, title: "What to play?", guess: "Wonderwall, again.", fix: "Open with Fast Car: the song this crowd knows best." },
 ];
@@ -109,29 +110,7 @@ export default function Home() {
       </div>
 
       <div className="mx-auto flex max-w-[1360px] flex-col gap-20 px-4 pt-16 pb-16 md:gap-28 md:px-6 md:pt-24">
-        <figure aria-label="Busk Map demo video" data-testid="demo-video-slot" className="bm-grain m-0 flex w-full flex-col border-[3px] border-rule bg-background text-foreground shadow-md" data-theme="dark">
-          {/* Nothing but the poster loads until play (preload none). The captions are also burned into the picture, so the VTT track is offered in the captions menu but not switched on (it would print every line twice). */}
-          <video
-            controls
-            playsInline
-            preload="none"
-            width={1280}
-            height={720}
-            poster="/video/busk-map-demo-poster.jpg"
-            title="Busk Map demo: a folk duo plans a Sunday busk"
-            aria-label="Busk Map demo video, about a minute and a half, with captions"
-            className="block aspect-video max-h-[720px] w-full bg-background object-contain"
-          >
-            <source src="/video/busk-map-demo.mp4" type="video/mp4" />
-            <track kind="captions" src="/video/busk-map-demo.en.vtt" srcLang="en" label="English" />
-            <p>
-              Your browser can&apos;t play the video. <a href="/video/busk-map-demo.mp4" className="underline">Download the demo (MP4)</a>.
-            </p>
-          </video>
-          <figcaption className="m-0 border-t-2 border-rule px-4 py-3 font-mono text-xs leading-4 text-muted-foreground">
-            A folk duo plans a Sunday busk: Qloo&apos;s taste map fills in, the research runs, the busk appears.
-          </figcaption>
-        </figure>
+        <DemoVideo />
 
         <section aria-labelledby="try-h" className="flex flex-col gap-7">
           <h2 id="try-h" className={H2}>
@@ -189,7 +168,6 @@ export default function Home() {
             <h2 id="next-h" className="m-0 font-display text-[clamp(40px,4.4vw,60px)] leading-[0.92] font-extrabold uppercase">
               Beyond buskers
             </h2>
-            <p className="m-0">Busk Map already reads taste, street pitches, permits, estimated activity and the hour. Three things it could place next, with little change.</p>
           </div>
           <ul className="m-0 grid min-w-0 flex-[2_1_520px] list-none grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))] gap-3 p-0">
             {BEYOND.map((item) => (
@@ -217,9 +195,6 @@ export default function Home() {
               The <span className="text-qloo">brain</span> of <br />
               Busk Map
             </h2>
-            <p className="m-0 max-w-xl text-lg leading-[27px]">
-              Every Qloo call Busk Map makes, the data it brings back, and the part of your busk it decides. Pick any piece to light up its path.
-            </p>
             <StatStrip
               tone="qloo"
               label="Qloo in numbers"
@@ -248,10 +223,6 @@ export default function Home() {
             <h2 id="brand-h" className="m-0 font-display text-[clamp(44px,6vw,80px)] leading-[0.9] font-extrabold text-signal-text uppercase">
               Honeycomb
             </h2>
-            <p className="m-0 max-w-xl text-lg leading-[27px]">
-              Busk Map dresses like a street poster: one honeycomb idea, signal orange on night and paper, and type you can read from across the street. Every
-              screen here is built from one published design system.
-            </p>
             <StatStrip
               label="The brand in numbers"
               items={[

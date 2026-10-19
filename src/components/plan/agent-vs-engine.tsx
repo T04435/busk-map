@@ -1,5 +1,4 @@
 import { cn } from "cn";
-import { EvidenceLine } from "@/components/honeycomb/evidence-line";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { HIVE_SIZES, HiveMark } from "@/components/honeycomb/hive-mark";
 import { Icon } from "@/components/honeycomb/icon";
@@ -8,11 +7,6 @@ import { RankTile } from "@/components/honeycomb/rank-tile";
 import { agentVsEngineTitle, becauseClause } from "@/lib/agent-vs-engine";
 import type { Plan } from "@/lib/plan-schema";
 import { modelName, type ExplanationsModel } from "@/lib/sources";
-
-const list = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
-
-/** What the model looked at, when the caller doesn't say (the checks every busk runs). */
-const DEFAULT_CHECKED = ["the crowd", "estimated activity", "events nearby", "the rules"];
 
 /**
  * Above the research: did the model keep Busk Map's own top 3, or change it, and why. Keeping it is the common case, so it shows
@@ -23,14 +17,11 @@ export function AgentVsEngine({
   agent,
   model,
   level = 2,
-  checked = DEFAULT_CHECKED,
 }: {
   agent: NonNullable<Plan["agent"]>;
   model: ExplanationsModel | null;
   /** The heading level: 2 when it stands under the page title, 3 inside "The research" (B-048). */
   level?: 2 | 3;
-  /** Plain phrases for what the model checked ("the crowd at 3 pitches", "activity at 1 pm"): "Kept after checking …". */
-  checked?: string[];
 }) {
   const Heading = level === 2 ? "h2" : "h3";
   const kept = agent.changes.length === 0;
@@ -53,11 +44,6 @@ export function AgentVsEngine({
           <Heading className="m-0 font-display text-[22px] leading-6 font-extrabold uppercase" data-testid="agent-vs-engine-title">
             {agentVsEngineTitle(agent.changes.length, model)}
           </Heading>
-          {checked.length ? (
-            <p className="m-0 mt-0.5 text-sm leading-5 text-muted-foreground">
-              {kept ? "Kept" : "Changed"} after checking {list(checked)}.
-            </p>
-          ) : null}
         </div>
       </div>
       {kept ? (
@@ -98,7 +84,6 @@ export function AgentVsEngine({
           ))}
         </ol>
       )}
-      {agent.added.length > 0 ? <EvidenceLine>Added by {modelName(model)} and scored by Busk Map: {list(agent.added)}.</EvidenceLine> : null}
     </section>
   );
 }

@@ -18,7 +18,7 @@ export function DiscoveryBadge({ discovery, className }: { discovery: Discovery;
   }
   if (discovery === "usual") {
     return (
-      <Badge variant="usual" title="A well-known busking hotspot" className={className}>
+      <Badge variant="usual" className={className}>
         <Icon name="usual" size={14} strokeWidth={2.5} />
         Usual pitch
       </Badge>

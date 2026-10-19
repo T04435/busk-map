@@ -1,5 +1,5 @@
 import { EstimateLabel } from "@/components/plan/estimate-label";
-import { activitySentence, activitySourceNote, activityWord, wordLevel, type ActivityBasis } from "@/lib/activity";
+import { activityWord, wordLevel } from "@/lib/activity";
 import { formatHour } from "@/lib/slot";
 
 const W = 300;
@@ -10,17 +10,13 @@ const PAD = 14;
  * "Estimated activity by hour" (board B57): the slot's weekday across 24 hours as a dashed line over a soft area, the slot shaded,
  * the axis at 00 06 12 18 23. The level is Qloo's relative estimate (popular places open in each hour, and where activity
  * concentrates), shown as a word and never as a head count; the chart is on a fixed 0 to 1 scale so a quiet pitch looks quiet.
- * With no estimate (Qloo had no heatmap or places there) there is no chart and the line says so.
+ * With no estimate (Qloo had no heatmap or places there) there is no chart and one plain line says so.
  */
 export function ActivityChart({
   activity,
-  basis,
-  weekday,
   slot,
 }: {
   activity: { level: number; relative: number | null; hourly: number[] | null } | null;
-  basis: ActivityBasis;
-  weekday: string;
   slot: { startHour: number; endHour: number };
 }) {
   const hourly = activity?.hourly ?? null;
@@ -37,7 +33,6 @@ export function ActivityChart({
   const flat = n > 0 && Math.max(...values) - Math.min(...values) < 0.01;
   const slotX0 = x(slot.startHour);
   const slotX1 = x(Math.min(23, slot.endHour));
-  const sentence = activity ? activitySentence({ level: wordLevel(activity.level, activity.relative), basis, weekday, startHour: slot.startHour }) : null;
   return (
     <section aria-label="Estimated activity by hour" className="grid gap-1.5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -45,7 +40,7 @@ export function ActivityChart({
         {activity ? (
           <p className="m-0 flex items-baseline gap-1 text-sm leading-5" data-testid="sheet-activity">
             <b className="font-display text-[22px] leading-none">{activityWord(wordLevel(activity.level, activity.relative))}</b>
-            <EstimateLabel tag="est." basis={`${activitySourceNote(basis)}${activity.relative !== null ? ". The word compares this pitch with the other pitches scored for this plan" : ""}`} />
+            <EstimateLabel />
             <span className="text-muted-foreground">in your slot</span>
           </p>
         ) : null}
@@ -67,14 +62,10 @@ export function ActivityChart({
               </text>
             ))}
           </svg>
-          <figcaption className="mt-1 text-[13px] leading-[18px] text-muted-foreground" data-testid="sheet-activity-note">
-            {sentence}
-            {flat ? ". The estimate is flat through the day: no nearby place opens or closes in a way that changes it" : ""}
-          </figcaption>
         </figure>
-      ) : (
+      ) : activity ? null : (
         <p className="m-0 text-[13px] leading-[18px] text-muted-foreground" data-testid="sheet-activity-note">
-          {sentence ?? "No activity estimate for this pitch: Qloo had no heatmap or places data there."}
+          No activity estimate for this pitch.
         </p>
       )}
     </section>

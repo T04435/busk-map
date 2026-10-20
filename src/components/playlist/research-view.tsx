@@ -40,12 +40,12 @@ import { ZERO_LEARN_TOTALS, type LearnListView, type LearnStreamEvent } from "@/
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import { playlistSongKey, type LearnSuggestionView, type PlaylistView } from "@/lib/playlist-schema";
 import { fansMapProps } from "@/lib/fans-map";
-import { OFFLINE_TEST_ARTIST, researchUsable, researchWaiting, type QlooOutput } from "@/lib/repertoire-research";
+import { OFFLINE_TEST_ARTIST, researchUsable, researchWaiting } from "@/lib/repertoire-research";
 import { toRepertoireView, type LearnSong, type RepertoireView } from "@/lib/repertoire-research-view";
 import { parseSpotifyArtistId, spotifyArtistUrl } from "@/lib/spotify-link";
 import { joinLearn, loadLearn, pageFaults, patchSuggestion, startResearch } from "./learn-api";
 import { ResearchFunnel } from "./learn-feed";
-import { FallbackNote, QlooCandidates, RESEARCH_H2 as H2, SoundsLikePrompt } from "./qloo-prompts";
+import { QlooCandidates, RESEARCH_H2 as H2 } from "./qloo-prompts";
 import { addSong, forgetPlaylist, loadPlaylist, moveSong, removeSong, savePlaylist } from "./playlist-api";
 
 /** Where focus goes when a row leaves its list (B-016): the next row's action, else the previous one's, else the page's main field. */
@@ -356,17 +356,9 @@ export function ResearchView() {
   };
 
   const soundsLikePatch = () => chosenArtists().map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.qlooId ? { qlooId: a.qlooId } : {}), ...(a.image && /^https:\/\//.test(a.image) ? { image: a.image } : {}) }));
-  // The run paused on a question (Qloo wasn't sure which artist is the act, or doesn't know it and no sound-alikes are set).
+  // The run paused on a question (Qloo wasn't sure which artist is the act).
   const waiting = !running && !live ? researchWaiting(research) : null;
   const askedFor = research?.steps.qloo?.output?.candidates ?? [];
-  // The qloo step's output: this run's, else the saved one. `fallback` says the later steps used "Artists you sound like".
-  const liveQloo = events?.findLast((e) => e.type === "tool-end" && e.tool === "research_qloo" && e.ok);
-  const qlooOut = (liveQloo?.type === "tool-end" ? (liveQloo.output as QlooOutput) : null) ?? research?.steps.qloo?.output ?? null;
-  async function carryOn() {
-    if (!playlist || !research) return;
-    const saved = await act(() => savePlaylist({ revision: playlist.revision, soundsLike: soundsLikePatch() }));
-    if (saved) void start({ link: research.spotifyArtistId, refresh: true });
-  }
 
   const runEvent = feedEvents?.find((e) => e.type === "run");
   const lastTotals = feedEvents?.findLast((e) => e.type === "totals");
@@ -750,13 +742,13 @@ export function ResearchView() {
               </AlertDescription>
             </Alert>
           )}
-          {view.end?.ok && !running && view.end.code !== "needs_choice" && view.end.code !== "needs_sounds_like" && (
+          {view.end?.ok && !running && view.end.code !== "needs_choice" && (
             <p role="status" className="text-sm" data-testid="research-end" data-code={view.end.code ?? ""}>
               {view.end.message}
             </p>
           )}
 
-          {/* The run paused: Qloo wasn't sure which artist is the act, or doesn't know it and no sound-alikes are set. */}
+          {/* The run paused: Qloo wasn't sure which artist is the act. */}
           {waiting === "choice" && research && (
             <QlooCandidates
               candidates={askedFor}
@@ -765,10 +757,6 @@ export function ResearchView() {
               onNone={() => void start({ link: research.spotifyArtistId, refresh: true, qlooChoice: { none: true } })}
             />
           )}
-          {waiting === "soundsLike" && (
-            <SoundsLikePrompt value={artists} onChange={setArtists} query={artistQuery} onQueryChange={setArtistQuery} count={chosenArtists().length} busy={busy} onCarryOn={() => void carryOn()} />
-          )}
-          {qlooOut?.fallback === "soundsLike" && !qlooOut.waiting && (live || research) && <FallbackNote />}
 
           {/* The results, with the research inside the layout (first while it runs, last when done). */}
           {showResults ? results : researchNode}

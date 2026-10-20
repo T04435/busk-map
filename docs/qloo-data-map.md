@@ -6,7 +6,7 @@ All Qloo traffic goes through one client, `src/server/adapters/qloo/client.ts`, 
 
 ## 1. Every distinct Qloo call
 
-The client makes 16 kinds of call, which come in 23 shapes (`localArtists` is called three ways: #5, #5b and #5c; `tasteArtists` three ways: #12, #12b and #12c; `affinityFor` two ways: #7 and #7b; `compareGenres` two ways: #11 and #11b; `demographics` two ways: #9 and #9b). "Row" means one request unless stated.
+The client makes 18 kinds of call, which come in 25 shapes (`localArtists` is called three ways: #5, #5b and #5c; `tasteArtists` three ways: #12, #12b and #12c; `affinityFor` two ways: #7 and #7b; `compareGenres` two ways: #11 and #11b; `demographics` two ways: #9 and #9b). "Row" means one request unless stated.
 
 | # | Call (endpoint, type, key params) · `file:function` | Fields we use | Where it lands | How it's used |
 |---|---|---|---|---|

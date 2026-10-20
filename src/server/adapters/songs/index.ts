@@ -2,11 +2,11 @@ import "server-only";
 import { providerStatus } from "@/server/env";
 import { log } from "@/server/log";
 import { runAdapter, settleWithLimit, type AdapterContext, type AdapterResult } from "../core";
-import { fetchArtistListeners, fetchTopTracks } from "./client";
-import { syntheticListeners, syntheticTopTracks } from "./fixtures/synthetic";
-import type { ListenersData, SongsData } from "./schema";
+import { fetchArtistListeners, fetchSimilarArtists, fetchTopTracks } from "./client";
+import { syntheticListeners, syntheticSimilar, syntheticTopTracks } from "./fixtures/synthetic";
+import type { ListenersData, SimilarArtist, SongsData } from "./schema";
 
-export type { ListenersData, SongsData, TopTrack } from "./schema";
+export type { ListenersData, SimilarArtist, SongsData, TopTrack } from "./schema";
 
 export const TOP_TRACKS_PER_ARTIST = 10;
 /** Bound the fan-out to keep within Last.fm's fair-use rate. */
@@ -61,5 +61,24 @@ export async function getListeners(artists: string[], context: AdapterContext): 
       if (names.length > 0 && failures.length === names.length) throw (failures[0] as PromiseRejectedResult).reason;
       return Object.fromEntries(settled.flatMap((s, i) => (s.status === "fulfilled" ? [[names[i], s.value]] : [])));
     },
+  });
+}
+
+export const SIMILAR_PER_ARTIST = 10;
+
+/**
+ * Last.fm artist.getSimilar for one act: one request per name (cached for weeks by the client), never more than the names given.
+ * An empty list means Last.fm doesn't know the name or has no similar artists; an outage falls back to [] with mode "fallback".
+ */
+export async function getSimilarArtists(artist: string, context: AdapterContext): Promise<AdapterResult<SimilarArtist[]>> {
+  const name = artist.trim();
+  return runAdapter({
+    adapter: "songs",
+    source: "lastfm",
+    context,
+    configured: providerStatus().lastfm,
+    fallback: [],
+    synthetic: () => syntheticSimilar(name),
+    live: () => fetchSimilarArtists(name, SIMILAR_PER_ARTIST),
   });
 }

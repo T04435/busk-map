@@ -1,7 +1,6 @@
 "use client";
 
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
-import { ArtistPicker, type PickedArtist } from "@/components/landing/artist-picker";
 import { Button } from "@/components/ui/button";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import type { QlooCandidateView } from "@/lib/qloo-match";
@@ -37,30 +36,5 @@ export function QlooCandidates({ candidates, busy, onPick, onNone }: { candidate
         {C.none}
       </Button>
     </section>
-  );
-}
-
-/** Qloo doesn't know the act and no sound-alikes are set: pick 2 or 3 (the Artists you sound like picker), then the run goes on. */
-export function SoundsLikePrompt({ value, onChange, query, onQueryChange, count, busy, onCarryOn }: { value: PickedArtist[]; onChange: (value: PickedArtist[]) => void; query: string; onQueryChange: (query: string) => void; /** Artists chosen, typed text included. */ count: number; busy: boolean; onCarryOn: () => void }) {
-  const F = R.fallback;
-  return (
-    <section aria-labelledby="qloo-pick-sounds-like" className={FRAME} data-testid="research-pick-sounds-like">
-      <h2 id="qloo-pick-sounds-like" className={RESEARCH_H2}>
-        {F.pickHeading}
-      </h2>
-      <ArtistPicker hideLabel value={value} onChange={onChange} query={query} onQueryChange={onQueryChange} />
-      <Button type="button" disabled={busy || count < 2} data-testid="research-carry-on" onClick={onCarryOn}>
-        {F.carryOn}
-      </Button>
-    </section>
-  );
-}
-
-/** The honest label when the research goes on from the artists the performer sounds like. */
-export function FallbackNote() {
-  return (
-    <p className="m-0 max-w-prose border-l-2 border-rule pl-3 text-sm" data-testid="research-fallback">
-      {R.fallback.label}
-    </p>
   );
 }

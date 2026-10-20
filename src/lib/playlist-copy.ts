@@ -5,6 +5,9 @@
 const USE_MINE = "Use my Repertoire";
 const CAN_SING = "Songs you can sing";
 
+/** "A", "A and B", "A, B and C". */
+export const andList = (names: readonly string[]): string => (names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`);
+
 export const PLAYLIST_COPY = {
   name: "Repertoire",
   canSing: CAN_SING,
@@ -128,14 +131,14 @@ export const PLAYLIST_COPY = {
       noGenres: "No genres listed",
       summary: "Qloo has a few artists that could be you",
     },
-    /** The label for a run that goes on from "Artists you sound like" because Qloo doesn't know the act. */
+    /** When Qloo doesn't know the act the run never stops: the Qloo step's line says what the rest is based on. */
     fallback: {
-      label: "Qloo doesn't know you yet, so this is based on the artists you sound like",
+      label: (names: readonly string[]) => `Qloo doesn't know you yet, so this is based on artists like you: ${andList(names)}.`,
+      genresLabel: (names: readonly string[]) => `Qloo doesn't know you yet, so this is based on your genres: ${andList(names)}.`,
+      noneLabel: "Qloo doesn't know you yet and has no taste data for you.",
       basedOn: "Based on the artists you sound like",
-      pickHeading: "Pick 2 or 3 artists you sound like",
-      pickLabel: "Artists you sound like",
-      carryOn: "Carry on",
-      pickSummary: "Qloo doesn't know you yet; pick the artists you sound like to go on",
+      noTaste: "No taste data yet",
+      noAlikes: "No artists like you found yet",
     },
     findingMore: "Finding more songs…",
     moreStarted: "Finding more songs to learn",

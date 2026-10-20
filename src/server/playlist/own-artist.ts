@@ -1,9 +1,10 @@
 import "server-only";
 import { nameKey } from "@/lib/text";
 import type { SoundsLikeSuggestions, SoundsLikeStatus, SpotifyProfile } from "@/lib/playlist-schema";
-import type { AdapterContext } from "@/server/adapters/core";
-import { decideMatch, MAX_EXTRA_SEARCHES, nameVariants, type MatchCandidate, type MatchDecision, type QlooCandidateView } from "@/lib/qloo-match";
-import { resolveSpotifyArtists, searchArtistHits, tasteArtists, type QlooEntity } from "@/server/adapters/qloo";
+import { settleWithLimit, type AdapterContext } from "@/server/adapters/core";
+import { decideMatch, genreOverlap, MAX_EXTRA_SEARCHES, nameVariants, type MatchCandidate, type MatchDecision, type QlooCandidateView } from "@/lib/qloo-match";
+import { resolveSpotifyArtists, searchArtistHits, searchGenreTags, tasteArtists, type QlooEntity } from "@/server/adapters/qloo";
+import { getSimilarArtists } from "@/server/adapters/songs";
 import { getArtistProfile } from "@/server/adapters/repertoire";
 import type { PlaylistRecord } from "./store";
 
@@ -118,4 +119,76 @@ export async function soundsLikeFor(playlist: PlaylistRecord, context: AdapterCo
       ...(a.tags.length > 0 ? { tags: a.tags.slice(0, 3).map((t) => t.name) } : {}),
     }));
   return { status: "ok", artists };
+}
+
+/** Last.fm names tried for the act (the Spotify name, then the act name and the other variants qloo-match makes). Each is one cached request. */
+export const SIMILAR_NAME_TRIES = 3;
+/** Similar artists looked up on Qloo (one cached /search each), best match first. */
+export const SIMILAR_LOOKUPS = 8;
+/** Sound-alikes the Hive keeps. */
+export const FOUND_ALIKES_KEPT = 5;
+/** Genre tags kept as the signal when no sound-alike resolves. */
+export const GENRE_TAGS_KEPT = 3;
+
+export type FoundAlike = { name: string; qlooId: string; spotifyId?: string; image?: string };
+export type FoundSoundAlikes =
+  | { source: "lastfm"; alikes: FoundAlike[]; tags: []; similar: string[] }
+  | { source: "genres"; alikes: []; tags: { id: string; name: string }[]; similar: string[] }
+  | { source: "none"; alikes: []; tags: []; similar: string[] }
+  | { source: "unavailable"; alikes: []; tags: []; similar: string[] };
+
+/**
+ * An act Qloo doesn't know and the performer has no "Artists you sound like": the Hive finds some itself.
+ * 1. Last.fm artist.getSimilar for the act, trying the name variants qloo-match makes until one gives artists.
+ * 2. Each similar artist is looked up on Qloo with the same confidence rule as the act itself (decideMatch: only a certain
+ *    match counts; a guess never does); the first FOUND_ALIKES_KEPT that resolve are the signal.
+ * 3. None resolve: the act's Spotify genres as Qloo genre tags (/v2/tags). Nothing there either: source "none".
+ * "unavailable" means Qloo stopped answering (the caller treats it as an outage). Last.fm being down only skips step 1.
+ */
+export async function findSoundAlikes(act: { name: string; actName?: string | null; genres: readonly string[] }, context: AdapterContext): Promise<FoundSoundAlikes> {
+  const own = new Set([nameKey(act.name), nameKey(act.actName ?? "")].filter(Boolean));
+  let similar: string[] = [];
+  for (const v of nameVariants([act.name, act.actName]).slice(0, SIMILAR_NAME_TRIES)) {
+    const res = await getSimilarArtists(v.text, context);
+    if (res.mode === "fallback") break;
+    similar = [...new Set(res.data.filter((a) => !own.has(nameKey(a.name))).map((a) => a.name))];
+    if (similar.length > 0) break;
+  }
+
+  let outages = 0;
+  const tried = similar.slice(0, SIMILAR_LOOKUPS);
+  const settled = await settleWithLimit(tried, 3, async (name): Promise<FoundAlike | null> => {
+    const res = await searchArtistHits(name, context);
+    if (res.mode === "fallback") {
+      outages++;
+      return null;
+    }
+    const decision = decideMatch(res.data.map(toMatchCandidate), nameVariants([name]), []);
+    if (decision.kind !== "match") return null;
+    const e = res.data.find((x) => x.id === decision.best.id);
+    if (!e || own.has(nameKey(e.name))) return null;
+    return { name: e.name, qlooId: e.id, ...(e.spotifyId && /^[A-Za-z0-9]{22}$/.test(e.spotifyId) ? { spotifyId: e.spotifyId } : {}), ...(e.image && /^https:\/\//.test(e.image) && e.image.length <= 500 ? { image: e.image } : {}) };
+  });
+  const seen = new Set<string>();
+  const alikes = settled
+    .flatMap((s) => (s.status === "fulfilled" && s.value ? [s.value] : []))
+    .filter((a) => !seen.has(a.qlooId) && seen.add(a.qlooId))
+    .slice(0, FOUND_ALIKES_KEPT);
+  if (alikes.length > 0) return { source: "lastfm", alikes, tags: [], similar };
+  if (tried.length > 0 && outages === tried.length) return { source: "unavailable", alikes: [], tags: [], similar };
+
+  const tags = new Map<string, string>();
+  let tagOutage = false;
+  for (const genre of act.genres.slice(0, 4)) {
+    if (tags.size >= GENRE_TAGS_KEPT) break;
+    const res = await searchGenreTags(genre, 5, context);
+    if (res.mode === "fallback") {
+      tagOutage = true;
+      break;
+    }
+    const hit = res.data.find((t) => t.id.startsWith("urn:tag:genre") && genreOverlap([t.name], [genre]));
+    if (hit && !tags.has(hit.id)) tags.set(hit.id, hit.name);
+  }
+  if (tags.size > 0) return { source: "genres", alikes: [], tags: [...tags].map(([id, name]) => ({ id, name })), similar };
+  return tagOutage && act.genres.length > 0 ? { source: "unavailable", alikes: [], tags: [], similar } : { source: "none", alikes: [], tags: [], similar };
 }

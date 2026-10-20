@@ -3,7 +3,7 @@ import type { LanguageModel } from "ai";
 import { ageLabel } from "@/lib/age";
 import { skippedOf, ZERO_LEARN_TOTALS, type LearnStreamEvent, type LearnTotals, type StoredLearnStep } from "@/lib/learn-schema";
 import type { MentionSource } from "@/lib/mention";
-import { PLAYLIST_COPY } from "@/lib/playlist-copy";
+import { andList, PLAYLIST_COPY } from "@/lib/playlist-copy";
 import type { QlooCandidateView } from "@/lib/qloo-match";
 import type { SoundsLike } from "@/lib/playlist-schema";
 import {
@@ -57,7 +57,7 @@ import {
 } from "@/server/playlist/config";
 import { fansMapFor } from "./fans-map";
 import { isMusicGenreTag } from "@/lib/genre-tags";
-import { findOwnOnQloo, soundsLikeFor } from "@/server/playlist/own-artist";
+import { findOwnOnQloo, findSoundAlikes, soundsLikeFor } from "@/server/playlist/own-artist";
 import type { PlaylistRecord, PlaylistStore } from "@/server/playlist/store";
 
 /** Live Qloo /entities (probe 17 Oct, Hopsin): genre tag types end ":genre" (older shapes: "urn:tag:genre:…"). */
@@ -240,6 +240,13 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
     return false;
   }
 
+  /** What stands in for the act when Qloo doesn't know it. alikes: artists like it (the performer's own, or found by the Hive); tags: its Spotify genres as Qloo tags; neither: no taste data. */
+  const signalAlikes: { current: (SoundsLike & { qlooId: string })[] | null } = { current: null };
+  const genreSignal: { tags: { id: string; name: string }[] } = { tags: [] };
+  /** The sound-alikes the Qloo steps use: this run's (found by the Hive when the performer's list is empty or unresolved), else the saved list. */
+  const alikesNow = (): (SoundsLike & { qlooId: string })[] => signalAlikes.current ?? (playlist.soundsLike.filter((a) => a.qlooId).slice(0, RESEARCH_SIGNAL_SOUND_ALIKES) as (SoundsLike & { qlooId: string })[]);
+  const noTaste = (extra: { basedOn?: "soundsLike" | "genres" | "none" } = {}) => ({ summary: PLAYLIST_COPY.research.fallback.noTaste, basedOn: "none" as const, ...extra });
+
   /** "Artists you sound like" as Qloo signals: the saved ones that have a Qloo id, and (a cached /search each) the ones that lack it, up to the signal cap. */
   async function alikesWithQlooIds(): Promise<(SoundsLike & { qlooId: string })[]> {
     playlist = (await playlists.get(playlist.id)) ?? playlist;
@@ -417,30 +424,45 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             };
           }
           if (candidates.length > 0) return { ...empty, summary: R.candidates.summary, candidates, waiting: "choice" };
-          // Qloo doesn't know the act: go on from the artists the performer sounds like (pick some first when there are none).
-          const alikes = await alikesWithQlooIds();
-          return alikes.length > 0
-            ? { ...empty, summary: R.fallback.label, fallback: "soundsLike", ...(declined ? { declined: true } : {}) }
-            : { ...empty, summary: R.fallback.pickSummary, fallback: "soundsLike", waiting: "soundsLike", ...(declined ? { declined: true } : {}) };
+          // Qloo doesn't know the act, and the run never stops for that. The signal, in order: the performer's own "Artists you sound
+          // like"; else the Hive finds some (Last.fm similar artists confirmed on Qloo); else the act's genres as Qloo tags; else none.
+          const mine = await alikesWithQlooIds();
+          const declinedMark = declined ? { declined: true } : {};
+          if (mine.length > 0) return { ...empty, summary: R.fallback.label(mine.slice(0, 3).map((a) => a.name)), fallback: "soundsLike", ...declinedMark };
+          const hive = await findSoundAlikes({ name: profile.name, actName: actLabel, genres: profile.genres }, adapters);
+          if (hive.source === "unavailable") throw new QlooDown("Qloo didn't answer, so artists like you couldn't be found.");
+          if (hive.source === "lastfm") {
+            const found = hive.alikes.map((a): SoundsLike & { qlooId: string } => ({ name: a.name, qlooId: a.qlooId, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.image ? { image: a.image } : {}), foundBy: "hive" }));
+            signalAlikes.current = found;
+            // Saved as "Artists you sound like" (marked as the Hive's) only when the performer has none of their own: theirs are never overwritten.
+            if (playlist.soundsLike.length === 0) await patch({ soundsLike: found.slice(0, RESEARCH_SOUNDS_LIKE_SAVED) });
+            return { ...empty, summary: R.fallback.label(found.slice(0, 3).map((a) => a.name)), fallback: "soundsLike", foundByHive: true, ...declinedMark };
+          }
+          if (hive.source === "genres") {
+            genreSignal.tags = hive.tags;
+            return { ...empty, summary: R.fallback.genresLabel(hive.tags.slice(0, 3).map((t) => t.name)), fallback: "genres", genreTags: hive.tags, ...declinedMark };
+          }
+          return { ...empty, summary: R.fallback.noneLabel, fallback: "none", ...declinedMark };
         });
         if (!found) {
           await finish({ status: "failed", endCode: "qloo_unavailable", saved: [], usage: null });
           return;
         }
-        // Paused on a question for the performer: the run ends cleanly (it doesn't count), the answer starts the next one.
+        // Paused only on "Is one of these you?": a likely match that needs the performer's yes. The run ends cleanly (it doesn't count), the answer starts the next one.
         if (found.waiting) {
-          await finish({ status: "done", endCode: found.waiting === "choice" ? "needs_choice" : "needs_sounds_like", saved: [], usage: null });
+          await finish({ status: "done", endCode: "needs_choice", saved: [], usage: null });
           return;
         }
         if (found.matched && found.qlooId) own = { id: found.qlooId, name: found.name ?? profile.name };
-        else push({ type: "status", message: PLAYLIST_COPY.research.fallback.label });
+        else push({ type: "status", message: found.summary });
 
         // 4. Who you sound like (editable: saved as "Artists you sound like" only when that list is empty).
         await step("soundsLike", {}, async (): Promise<SoundsLikeOutput> => {
           if (!own) {
-            // Qloo doesn't know the act: the performer's own list is the answer, nothing is asked or saved.
-            const mine = (await alikesWithQlooIds()).map((a) => ({ name: a.name, qlooId: a.qlooId, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.image ? { image: a.image } : {}), affinity: null }));
-            return { summary: basedOn(mine.slice(0, 3).map((a) => a.name).join(", ")), artists: mine, saved: false };
+            // Qloo doesn't know the act: the artists like it (the performer's, or the ones the Hive found and saved) are the answer.
+            if (found.fallback !== "soundsLike") return { summary: PLAYLIST_COPY.research.fallback.noAlikes, artists: [], saved: false };
+            const mine = alikesNow().map((a) => ({ name: a.name, qlooId: a.qlooId, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.image ? { image: a.image } : {}), affinity: null }));
+            return { summary: basedOn(andList(mine.slice(0, 3).map((a) => a.name))), artists: mine, saved: found.foundByHive === true && playlist.soundsLike.some((a) => a.foundBy === "hive") };
           }
           const res = await soundsLikeFor(playlist, adapters);
           if (res.status === "unavailable") throw new QlooDown("Qloo didn't answer for the artists you sound like.");
@@ -461,7 +483,8 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
 
         // 5. Who your fans are.
         await step("fans", {}, async (): Promise<FansOutput> => {
-          const profileRes = await qloo.crowdProfile(own ? [own.id] : (await alikesWithQlooIds()).map((a) => a.qlooId), adapters);
+          if (!own && found.fallback !== "soundsLike") return { ...noTaste(), age: [], gender: [], ageLean: null };
+          const profileRes = await qloo.crowdProfile(own ? [own.id] : alikesNow().map((a) => a.qlooId), adapters);
           const p = fromQloo(profileRes, "who your fans are");
           const age = Object.entries(p?.age ?? {})
             .map(([key, lean]) => ({ key, label: ageLabel(key), lean: r2(lean) ?? 0 }));
@@ -474,14 +497,18 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
       } else {
         const q = previous?.steps.qloo?.output;
         if (q?.matched && q.qlooId) own = { id: q.qlooId, name: q.name ?? playlist.actName ?? "you" };
-        else if (q?.fallback !== "soundsLike" || q.waiting) throw new Error("no research to build on");
+        else if (!q?.fallback || q.waiting === "choice") throw new Error("no research to build on");
+        else if (q.fallback === "genres") genreSignal.tags = q.genreTags ?? [];
       }
 
       // --- Step 6: where your fans are (the Qloo heatmap of you and your sound-alikes, worldwide). Full runs only: "more" keeps the saved map. ---
       if (mode === "full") {
         const fresh = (await playlists.get(playlist.id)) ?? playlist;
-        const mapAlikes = fresh.soundsLike.filter((a) => a.qlooId).slice(0, RESEARCH_SIGNAL_SOUND_ALIKES) as (SoundsLike & { qlooId: string })[];
+        playlist = fresh;
+        const noSignal = !own && steps.qloo?.output?.fallback !== "soundsLike";
+        const mapAlikes = noSignal ? [] : alikesNow();
         await step("fansMap", { scope: "world", signal: [...(own ? [own.name] : []), ...mapAlikes.map((a) => a.name)] }, async (): Promise<FansMapOutput> => {
+          if (noSignal) return { ...noTaste(), cells: [], areas: [], signalledBy: [] };
           // A heatmap Qloo can't give is a failed step, not a failed run: the other steps don't need it.
           return fansMapFor({ own, alikes: mapAlikes, adapters });
         });
@@ -490,7 +517,8 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
       // --- Step 7: what your fans also love (you + your sound-alikes as the signal, all of them left out). ---
       const current = (await playlists.get(playlist.id)) ?? playlist;
       playlist = current;
-      const alikes = playlist.soundsLike.filter((a) => a.qlooId).slice(0, RESEARCH_SIGNAL_SOUND_ALIKES) as (SoundsLike & { qlooId: string })[];
+      const fallbackKind = own ? null : (steps.qloo?.output?.fallback ?? previous?.steps.qloo?.output?.fallback ?? null);
+      const alikes = !own && fallbackKind !== "soundsLike" ? [] : alikesNow();
       const signal = [...(own ? [own.id] : []), ...alikes.map((a) => a.qlooId)];
       const nameOf = new Map<string, string>([...(own ? [[own.id, own.name] as [string, string]] : []), ...alikes.map((a) => [a.qlooId, a.name] as [string, string])]);
       const leaveOut = new Set([...signal, ...(steps.soundsLike?.output?.artists ?? []).map((a) => a.qlooId)]);
@@ -499,8 +527,14 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
       const history = await learn.history(playlist.id);
       const ctx = new LearnContext(adapters, playlist, history, today, usage);
       const state = new LearnState();
-      const fansLove = await step("fansLove", { signal: signalNames }, async (): Promise<FansLoveOutput> => {
-        const res = fromQloo(await qloo.tasteArtists(signal, RESEARCH_FANS_LOVE_TAKE, adapters), "what your fans also love");
+      const genreNames = genreSignal.tags.map((t) => t.name);
+      const fansLove = await step("fansLove", { signal: fallbackKind === "genres" ? genreNames : signalNames }, async (): Promise<FansLoveOutput> => {
+        if (fallbackKind === "none") return { ...noTaste(), artists: [], signalledBy: [], excluded: 0 };
+        // Genre tags stand in for the act: the artists people who like those genres also like.
+        const res =
+          fallbackKind === "genres"
+            ? { artists: fromQloo(await qloo.tagArtists(genreSignal.tags.map((t) => t.id), RESEARCH_FANS_LOVE_TAKE, adapters), "what your fans also love") }
+            : fromQloo(await qloo.tasteArtists(signal, RESEARCH_FANS_LOVE_TAKE, adapters), "what your fans also love");
         const kept = res.artists.filter((a) => !leaveOut.has(a.id) && !leaveOutNames.has(nameKey(a.name)));
         const artists = kept.slice(0, RESEARCH_FANS_LOVE_KEPT).map((e) => {
           const because = [...new Set(e.explanation.map((x) => x.name ?? nameOf.get(x.entityId) ?? null).filter((x): x is string => Boolean(x)))].slice(0, 2);
@@ -517,11 +551,11 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         });
         const line = artists.length ? `Your fans also love ${artists.slice(0, 3).map((a) => a.name).join(", ")}` : "Qloo found no other artists your fans love";
         return {
-          summary: own ? line : basedOn(line.charAt(0).toLowerCase() + line.slice(1)),
+          summary: own || fallbackKind === "genres" ? line : basedOn(line.charAt(0).toLowerCase() + line.slice(1)),
           artists,
-          signalledBy: signalNames,
+          signalledBy: fallbackKind === "genres" ? genreNames : signalNames,
           excluded: res.artists.length - kept.length,
-          ...(own ? {} : { basedOn: "soundsLike" as const }),
+          ...(own ? {} : { basedOn: fallbackKind === "genres" ? ("genres" as const) : ("soundsLike" as const) }),
         };
       });
 
@@ -545,6 +579,11 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
       // --- Step 9: your sound in genres (full runs only) ---
       if (mode === "full") {
         await step("genres", {}, async (): Promise<GenresOutput> => {
+          if (!own && fallbackKind === "none") return { ...noTaste(), tags: [] };
+          if (!own && fallbackKind === "genres") {
+            const out = genreSignal.tags.map((t) => ({ id: t.id, name: t.name.trim().replace(/\b\w/g, (c) => c.toUpperCase()), affinity: null }));
+            return { summary: `Your sound: ${out.slice(0, 3).map((t) => t.name).join(", ")}`, tags: out, basedOn: "genres" };
+          }
           const tags = fromQloo(await qloo.actGenres(signal, RESEARCH_GENRES_TAKE, adapters), "your genres");
           const seen = new Set<string>();
           const out = tags
@@ -562,13 +601,13 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
       const fans = steps.fans?.output;
       const facts: SummaryFacts = {
         act: (mode === "full" ? actLabel : playlist.actName) ?? p?.name ?? own?.name ?? "this act",
-        ...(own ? {} : { basedOnSoundsLike: true }),
+        ...(own || fallbackKind !== "soundsLike" ? {} : { basedOnSoundsLike: true }),
         spotifyGenres: p?.genres.slice(0, 4) ?? [],
         followers: p?.followers ?? null,
         description: q?.description ?? null,
         audience: q?.audience ?? [],
         genres: (steps.genres?.output?.tags ?? []).slice(0, 4).map((t) => t.name),
-        soundsLike: playlist.soundsLike.slice(0, 4).map((a) => a.name),
+        soundsLike: (fallbackKind === "soundsLike" ? alikesNow() : playlist.soundsLike).slice(0, 4).map((a) => a.name),
         fansLove: (fansLove?.artists ?? []).slice(0, 4).map((a) => a.name),
         ageLean: fans?.ageLean ?? null,
         genderLean: (() => {

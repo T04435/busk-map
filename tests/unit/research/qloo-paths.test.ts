@@ -150,7 +150,7 @@ describe("path 3: low confidence pauses and asks", () => {
     expect(end(none.events).ok).toBe(true);
     expect(String(end(none.events).code)).not.toMatch(/^needs_/);
     expect(stepsDone(none.events)).toBe(RESEARCH_STEPS.length);
-    expect(none.events.some((e) => e.type === "status" && e.message === PLAYLIST_COPY.research.fallback.label)).toBe(true);
+    expect(none.events.some((e) => e.type === "status" && e.message === PLAYLIST_COPY.research.fallback.label(ALIKES.map((x) => x.name)))).toBe(true);
     let v = await view(m, first.cookie);
     expect(qlooOut(v)).toMatchObject({ matched: false, fallback: "soundsLike", declined: true });
     expect(v.qlooArtistId).toBeNull();
@@ -162,72 +162,183 @@ describe("path 3: low confidence pauses and asks", () => {
   });
 });
 
-describe("path 4: Qloo doesn't know the act, so the sound-alikes are the signal", () => {
-  async function fallbackRun() {
+describe("path 4: Qloo doesn't know the act, so the Hive finds artists like it and the run never stops", () => {
+  const FOUND = ["Paul Kelly", "Courtney Barnett", "Missy Higgins"];
+  const labelOf = PLAYLIST_COPY.research.fallback.label;
+
+  it("similar artists (Last.fm) resolved on Qloo become the signal and are saved as found by the Hive", async () => {
+    const m = await load();
+    const r = await go(m, act("unknown"));
+    expect(end(r.events)).toMatchObject({ ok: true, code: expect.not.stringMatching(/^needs_/) });
+    expect(stepsDone(r.events)).toBe(RESEARCH_STEPS.length);
+    const line = labelOf(FOUND);
+    expect(line).toBe("Qloo doesn't know you yet, so this is based on artists like you: Paul Kelly, Courtney Barnett and Missy Higgins.");
+    expect(r.events.some((e) => e.type === "status" && e.message === line)).toBe(true);
+    const v = await view(m, r.cookie);
+    const s = v.research.steps as ResearchSnapshot["steps"];
+    expect(s.qloo!.output).toMatchObject({ matched: false, fallback: "soundsLike", foundByHive: true, summary: line });
+    expect(v.soundsLike.map((a: { name: string }) => a.name)).toEqual(FOUND);
+    expect(v.soundsLike.every((a: { foundBy?: string; qlooId?: string }) => a.foundBy === "hive" && a.qlooId)).toBe(true);
+    for (const k of ["fans", "fansMap", "fansLove", "genres"] as const) expect(s[k]!.output).toMatchObject({ basedOn: "soundsLike" });
+    expect(s.fans!.output!.summary).toMatch(/^Based on the artists you sound like: /);
+    expect(s.soundsLike!.output!.artists.map((a) => a.name)).toEqual(FOUND);
+    const love = s.fansLove!.output!;
+    expect(love.artists.length).toBeGreaterThan(0);
+    expect(love.artists.some((a) => FOUND.includes(a.name))).toBe(false);
+    expect(love.signalledBy).toEqual(FOUND);
+    expect(s.learn!.output!.songs.length).toBeGreaterThan(0);
+    expect(s.summary!.output).toMatchObject({ by: "mock", picks: expect.any(Number) });
+    expect(v.qlooArtistId).toBeNull();
+    expect(researchUsable(v.research)).toBe(true);
+    expect(researchWaiting(v.research)).toBeNull();
+  });
+
+  it("'Find more songs to learn' works from the Hive's sound-alikes", async () => {
+    const m = await load();
+    const first = await go(m, act("unknown"));
+    const more = await go(m, { mode: "more" }, first.cookie);
+    expect(end(more.events).ok).toBe(true);
+    expect(more.events.filter((e) => e.type === "tool-end" && e.ok).map((e) => e.type === "tool-end" && e.tool)).toEqual(["research_fans_love", "research_learn", "research_summary"]);
+  });
+
+  it("sound-alikes the performer set are the signal and are never overwritten", async () => {
     const m = await load();
     const first = await go(m, act("unknown"));
     const v0 = await view(m, first.cookie);
     await m.playlist.PATCH(req("PATCH", "", { revision: v0.revision, soundsLike: ALIKES }, first.cookie));
     const run = await go(m, { ...act("unknown"), refresh: true }, first.cookie);
-    return { m, cookie: first.cookie, run, first };
-  }
-
-  it("runs every step, labels each Qloo step honestly, and excludes the sound-alikes from what fans love", async () => {
-    const { m, cookie, run } = await fallbackRun();
     expect(end(run.events).ok).toBe(true);
     expect(stepsDone(run.events)).toBe(RESEARCH_STEPS.length);
-    const label = PLAYLIST_COPY.research.fallback.label;
-    expect(label).toBe("Qloo doesn't know you yet, so this is based on the artists you sound like");
-    const v = await view(m, cookie);
+    const v = await view(m, first.cookie);
+    expect(v.soundsLike.map((a: { name: string }) => a.name)).toEqual(ALIKES.map((a) => a.name));
+    expect(v.soundsLike.some((a: { foundBy?: string }) => a.foundBy)).toBe(false);
     const s = v.research.steps as ResearchSnapshot["steps"];
-    expect(s.qloo!.output).toMatchObject({ matched: false, fallback: "soundsLike", summary: label });
-    for (const k of ["fans", "fansMap", "fansLove", "genres"] as const) expect(s[k]!.output).toMatchObject({ basedOn: "soundsLike" });
-    expect(s.fans!.output!.summary).toMatch(/^Based on the artists you sound like: /);
-    expect(s.soundsLike!.output!.artists.map((a) => a.name)).toEqual(ALIKES.map((a) => a.name));
-    const love = s.fansLove!.output!;
-    expect(love.artists.length).toBeGreaterThan(0);
-    expect(love.artists.some((a) => ALIKES.some((x) => x.name === a.name))).toBe(false);
-    expect(love.signalledBy).toEqual(ALIKES.map((a) => a.name));
+    expect(s.qloo!.output).toMatchObject({ fallback: "soundsLike", summary: labelOf(ALIKES.map((a) => a.name)) });
+    expect(s.qloo!.output!.foundByHive).toBeUndefined();
+    expect(s.fansLove!.output!.signalledBy).toEqual(ALIKES.map((a) => a.name));
+  });
+
+  it("sound-alikes the performer set that Qloo cannot resolve are kept, and the Hive's are used for this run only", async () => {
+    const m = await load();
+    const first = await go(m, act("nothing"));
+    const v0 = await view(m, first.cookie);
+    await m.playlist.PATCH(req("PATCH", "", { revision: v0.revision, soundsLike: [{ name: "Qzv Nobody" }] }, first.cookie));
+    const next = await go(m, { ...act("unknown"), refresh: true }, first.cookie);
+    expect(end(next.events).ok).toBe(true);
+    expect(String(end(next.events).code)).not.toMatch(/^needs_/);
+    expect(stepsDone(next.events)).toBe(RESEARCH_STEPS.length);
+    const v = await view(m, first.cookie);
+    expect(v.soundsLike.map((a: { name: string }) => a.name)).toEqual(["Qzv Nobody"]);
+    expect(qlooOut(v)).toMatchObject({ fallback: "soundsLike", foundByHive: true });
+  });
+
+  it("similar artists Qloo does not know fall back to the act's genres as Qloo genre tags", async () => {
+    const m = await load();
+    const r = await go(m, act("unresolved"));
+    expect(end(r.events)).toMatchObject({ ok: true, code: expect.not.stringMatching(/^needs_/) });
+    expect(stepsDone(r.events)).toBe(RESEARCH_STEPS.length);
+    const v = await view(m, r.cookie);
+    const s = v.research.steps as ResearchSnapshot["steps"];
+    expect(s.qloo!.output).toMatchObject({ matched: false, fallback: "genres", genreTags: [{ id: expect.stringMatching(/^urn:tag:genre/), name: "Indie Folk" }], summary: PLAYLIST_COPY.research.fallback.genresLabel(["Indie Folk"]) });
+    expect(s.qloo!.output!.summary).toBe("Qloo doesn't know you yet, so this is based on your genres: Indie Folk.");
+    expect(v.soundsLike).toHaveLength(0);
+    expect(s.soundsLike!.output!.artists).toHaveLength(0);
+    expect(s.fansLove!.output).toMatchObject({ basedOn: "genres", signalledBy: ["Indie Folk"] });
+    expect(s.fansLove!.output!.artists.length).toBeGreaterThan(0);
+    expect(s.genres!.output).toMatchObject({ basedOn: "genres" });
+    expect(s.genres!.output!.tags.map((t) => t.name)).toEqual(["Indie Folk"]);
     expect(s.learn!.output!.songs.length).toBeGreaterThan(0);
-    expect(s.summary!.output).toMatchObject({ by: "mock", picks: expect.any(Number) });
-    expect(s.summary!.output).not.toHaveProperty("text");
-    expect(v.qlooArtistId).toBeNull();
+    expect(s.fans!.output!.summary).toBe(PLAYLIST_COPY.research.fallback.noTaste);
+    expect(researchUsable(v.research)).toBe(true);
+    const more = await go(m, { mode: "more" }, r.cookie);
+    expect(end(more.events).ok).toBe(true);
+    expect(stepsDone(more.events)).toBe(3);
+  });
+
+  it("with nothing to go on the run still completes: the profile and songs run and the Qloo steps say there is no taste data yet", async () => {
+    const m = await load();
+    const r = await go(m, act("nothing"));
+    expect(end(r.events)).toMatchObject({ ok: true });
+    expect(String(end(r.events).code)).not.toMatch(/^needs_/);
+    expect(end(r.events).code).toBe("nothing_new");
+    const v = await view(m, r.cookie);
+    const s = v.research.steps as ResearchSnapshot["steps"];
+    expect(s.profile!.status).toBe("done");
+    expect(s.songs!.status).toBe("done");
+    expect(v.songs.length).toBeGreaterThan(0);
+    expect(s.qloo!.output).toMatchObject({ matched: false, fallback: "none", summary: PLAYLIST_COPY.research.fallback.noneLabel });
+    for (const k of ["fans", "fansMap", "fansLove", "genres"] as const) {
+      expect(s[k]!.status).toBe("done");
+      expect(s[k]!.output!.summary).toBe(PLAYLIST_COPY.research.fallback.noTaste);
+    }
+    expect(s.summary!.status).toBe("done");
     expect(researchUsable(v.research)).toBe(true);
   });
 
-  it("'Find more songs to learn' works from the fallback", async () => {
-    const { m, cookie } = await fallbackRun();
-    const more = await go(m, { mode: "more" }, cookie);
-    expect(end(more.events).ok).toBe(true);
-    expect(more.events.filter((e) => e.type === "tool-end" && e.ok).map((e) => e.type === "tool-end" && e.tool)).toEqual(["research_fans_love", "research_learn", "research_summary"]);
+  it("'none of these' goes on to find artists like you instead of pausing", async () => {
+    const m = await load();
+    const first = await go(m, act("candidates"));
+    const none = await go(m, { ...act("candidates"), refresh: true, qlooChoice: { none: true } }, first.cookie);
+    expect(end(none.events).ok).toBe(true);
+    expect(String(end(none.events).code)).not.toMatch(/^needs_/);
+    // No taste data for this act, so "songs to learn" has nothing to build on: every other step ran.
+    expect(stepsDone(none.events)).toBe(RESEARCH_STEPS.length - 1);
+    const v = await view(m, first.cookie);
+    expect(qlooOut(v)).toMatchObject({ matched: false, declined: true, fallback: "none" });
   });
 
-  it("with no sound-alikes the run pauses and asks for 2 or 3, then carries on", async () => {
+  it("Yomil: 'not on Qloo' is not remembered, so every new run looks for the act on Qloo again, first", async () => {
     const m = await load();
+    expect(OFFLINE_TEST_ACTS.unknown).toMatchObject({ name: "Yomil", spotifyId: "0U0oUxOfhtjkfoJ3ZNWEfU" });
     const first = await go(m, act("unknown"));
-    expect(end(first.events)).toMatchObject({ ok: true, code: "needs_sounds_like", message: expect.stringContaining("Pick 2 or 3 artists you sound like") });
-    expect(stepsDone(first.events)).toBe(3);
-    const v = await view(m, first.cookie);
-    expect(qlooOut(v)).toMatchObject({ waiting: "soundsLike", fallback: "soundsLike" });
-    expect(researchWaiting(v.research)).toBe("soundsLike");
-    expect(v.soundsLike).toHaveLength(0);
-    // The performer picks (typed names are resolved on Qloo), and the same link carries on.
-    await m.playlist.PATCH(req("PATCH", "", { revision: v.revision, soundsLike: [{ name: "Missy Higgins" }, { name: "Gordi" }] }, first.cookie));
-    const next = await go(m, { ...act("unknown"), refresh: true }, first.cookie);
-    expect(String(end(next.events).code)).not.toMatch(/^needs_/);
-    expect(stepsDone(next.events)).toBe(RESEARCH_STEPS.length);
-    const v2 = await view(m, first.cookie);
-    expect(v2.soundsLike.every((a: { qlooId?: string }) => a.qlooId)).toBe(true);
-    expect(qlooOut(v2).waiting).toBeUndefined();
+    const before = searched.filter((n) => n === "Yomil").length;
+    expect(before).toBeGreaterThan(0);
+    expect((await view(m, first.cookie)).qlooArtistId).toBeNull();
+    await go(m, { ...act("unknown"), refresh: true }, first.cookie);
+    expect(searched.filter((n) => n === "Yomil").length).toBeGreaterThan(before);
   });
 
-  it("sound-alikes Qloo cannot resolve either pause the run again instead of guessing", async () => {
-    const m = await load();
-    const first = await go(m, act("unknown"));
-    const v = await view(m, first.cookie);
-    await m.playlist.PATCH(req("PATCH", "", { revision: v.revision, soundsLike: [{ name: "Qzv Nobody" }] }, first.cookie));
-    const next = await go(m, { ...act("unknown"), refresh: true }, first.cookie);
-    expect(end(next.events).code).toBe("needs_sounds_like");
+  it("no run on any test act ends needing sound-alikes", async () => {
+    for (const key of Object.keys(OFFLINE_TEST_ACTS) as (keyof typeof OFFLINE_TEST_ACTS)[]) {
+      const m = await load();
+      const r = await go(m, act(key));
+      expect(end(r.events).code, key).not.toBe("needs_sounds_like");
+      expect(end(r.events).ok, key).toBe(true);
+    }
+  });
+});
+
+describe("findSoundAlikes", () => {
+  const OFF = { offline: true, faults: [] } as const;
+  it("each path, on the offline mocks", async () => {
+    await load();
+    const { findSoundAlikes } = await import("@/server/playlist/own-artist");
+    const u = OFFLINE_TEST_ACTS.unknown;
+    const a = await findSoundAlikes({ name: u.name, genres: u.genres }, OFF);
+    expect(a.source).toBe("lastfm");
+    expect(a.alikes.map((x) => x.name)).toEqual(["Paul Kelly", "Courtney Barnett", "Missy Higgins"]);
+    expect(a.similar).toEqual([...u.similar]);
+    const r = OFFLINE_TEST_ACTS.unresolved;
+    const b = await findSoundAlikes({ name: r.name, genres: r.genres }, OFF);
+    expect(b).toMatchObject({ source: "genres", alikes: [], similar: [...r.similar] });
+    expect(b.tags.map((t) => t.name)).toEqual(["Indie Folk"]);
+    const n = OFFLINE_TEST_ACTS.nothing;
+    expect(await findSoundAlikes({ name: n.name, genres: n.genres }, OFF)).toMatchObject({ source: "none", alikes: [], tags: [], similar: [] });
+  });
+
+  it("tries the act name when the Spotify name has no similar artists, and never lists the act itself", async () => {
+    await load();
+    const { findSoundAlikes } = await import("@/server/playlist/own-artist");
+    const u = OFFLINE_TEST_ACTS.unknown;
+    const res = await findSoundAlikes({ name: "Someone Else", actName: u.name, genres: [] }, OFF);
+    expect(res.source).toBe("lastfm");
+  });
+
+  it("a Qloo outage is unavailable, not 'none'", async () => {
+    await load();
+    const { findSoundAlikes } = await import("@/server/playlist/own-artist");
+    const u = OFFLINE_TEST_ACTS.unknown;
+    expect((await findSoundAlikes({ name: u.name, genres: u.genres }, { offline: true, faults: ["qloo"] } as never)).source).toBe("unavailable");
   });
 });
 

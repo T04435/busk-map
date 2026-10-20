@@ -13,7 +13,7 @@
 
 import { PLAYLIST_COPY } from "./playlist-copy";
 
-export type CallId = "c1" | "c2" | "c3" | "c4" | "c5" | "c5b" | "c5c" | "c6" | "c7" | "c7b" | "c8" | "c9" | "c10" | "c11" | "c11b" | "c12" | "c12b" | "c12c" | "c13" | "c14" | "c15" | "c16" | "c_fans";
+export type CallId = "c1" | "c2" | "c3" | "c4" | "c5" | "c5b" | "c5c" | "c6" | "c7" | "c7b" | "c8" | "c9" | "c10" | "c11" | "c11b" | "c12" | "c12b" | "c12c" | "c13" | "c14" | "c15" | "c16" | "c17" | "c18" | "c_fans";
 export type SourceId = "spotify" | "ticketmaster" | "lastfm";
 export type DataPointId =
   | "d_id"
@@ -373,6 +373,27 @@ export const calls: readonly QlooCall[] = [
     dataPoints: [{ id: "d_act_genres", how: "the music genres your fans lean to, anywhere (research step 8)" }],
   },
   {
+    id: "c17",
+    num: "17",
+    label: "Your genres as Qloo tags",
+    endpoint: "/v2/tags",
+    keyParams: ["filter.query=<one of your Spotify genres>", "filter.tag.types=urn:tag:genre:music", "take=5"],
+    codeRef: "client.ts:searchGenreTags",
+    via: ["index.ts:searchGenreTags", "own-artist.ts:findSoundAlikes", "research/run.ts:executeResearchRun"],
+    dataPoints: [{ id: "d_act_genres", how: "when Qloo doesn’t know your act and no artist like you is found, your Spotify genres become Qloo genre tags" }],
+  },
+  {
+    id: "c18",
+    num: "18",
+    label: "Artists liked for your genres",
+    endpoint: "/v2/insights",
+    urnType: "urn:entity:artist",
+    keyParams: ["signal.interests.tags=<your genre tags>", "take=20", "no artist signal", "no location"],
+    codeRef: "client.ts:tagArtists",
+    via: ["index.ts:tagArtists", "research/run.ts:executeResearchRun"],
+    dataPoints: [{ id: "d_act_genres", how: "the artists people who like your genres also like, in place of your fans’ when Qloo doesn’t know your act" }],
+  },
+  {
     id: "c_fans",
     num: "9b",
     label: "Your own fans",
@@ -422,6 +443,12 @@ export const secondarySources: readonly SecondarySource[] = [
         codeRef: "songs/client.ts:fetchTopTracks",
         via: ["songs/index.ts:getSongs", "learn/tools.ts:top_tracks", "research/run.ts:executeResearchRun"],
         purpose: "an artist’s top tracks and their plays (and your own songs in research step 2 when Spotify has none)",
+      },
+      {
+        method: "artist.getsimilar",
+        codeRef: "songs/client.ts:fetchSimilarArtists",
+        via: ["songs/index.ts:getSimilarArtists", "own-artist.ts:findSoundAlikes"],
+        purpose: "artists like your act, when Qloo doesn’t know it and you haven’t set any (confirmed on Qloo before they are used)",
       },
       {
         method: "artist.getinfo",

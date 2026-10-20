@@ -52,8 +52,8 @@ export const RESEARCH_LABELS: Record<ResearchStepKey, string> = {
 export const RESEARCH_SOURCES: Record<ResearchStepKey, string> = {
   profile: "Spotify artist profile (name, photo, genres, followers)",
   songs: "Spotify: your releases and top tracks; Last.fm top tracks as backup",
-  qloo: "Qloo /entities by Spotify id (name search as backup), then /entities by id for tags and description",
-  soundsLike: "Qloo /v2/insights · urn:entity:artist signalled by your artist",
+  qloo: "Qloo /entities by Spotify id (name search as backup), then /entities by id for tags and description; when Qloo doesn't know the act: Last.fm artist.getSimilar confirmed on Qloo /search, else the Spotify genres as Qloo /v2/tags",
+  soundsLike: "Qloo /v2/insights · urn:entity:artist signalled by your artist (or the artists like you the Hive found on Last.fm)",
   fans: "Qloo /v2/insights · urn:demographics signalled by your artist",
   fansMap: "Qloo /v2/insights · urn:heatmap signalled by your artist and your sound-alikes, worldwide",
   fansLove: "Qloo /v2/insights · urn:entity:artist signalled by you and your sound-alikes, with explainability; they are left out",
@@ -84,18 +84,26 @@ export type QlooOutput = {
   image?: string | null;
   /** How the act was found: Qloo's Spotify-id lookup, a name search the confidence rule accepted, the user's pick, or the id saved on the Repertoire. */
   by?: "id" | "name" | "chosen" | "saved";
-  /** The run is paused on this step: "choice" (the candidates below wait for the user) or "soundsLike" (the user picks 2 or 3 artists they sound like). */
+  /** The run is paused on this step: "choice" (the candidates below wait for the user). "soundsLike" is retired (runs saved before the Hive found sound-alikes itself may carry it). */
   waiting?: "choice" | "soundsLike";
   /** Up to three plausible artists to confirm, when no name was certain. */
   candidates?: QlooCandidateView[];
   /** The user said none of the candidates is them; remembered for this link so they are not asked again. */
   declined?: boolean;
-  /** Qloo doesn't know the act, so the later steps use "Artists you sound like" as the signal. */
-  fallback?: "soundsLike";
+  /**
+   * Qloo doesn't know the act, so the later steps use something else as the signal: "soundsLike" (artists like the act: the
+   * performer's own, else the ones the Hive found on Last.fm), "genres" (the act's Spotify genres as Qloo genre tags), or "none"
+   * (nothing to go on: the Qloo steps say there is no taste data yet).
+   */
+  fallback?: "soundsLike" | "genres" | "none";
+  /** fallback "soundsLike": the artists were found by the Hive (Last.fm similar artists confirmed on Qloo), not set by the performer. */
+  foundByHive?: boolean;
+  /** fallback "genres": the Qloo genre tags used as the signal. */
+  genreTags?: { id: string; name: string }[];
 };
 
 /** The signal came from "Artists you sound like", not from the act (set on the steps that used it). */
-export type BasedOn = { basedOn?: "soundsLike" };
+export type BasedOn = { basedOn?: "soundsLike" | "genres" | "none" };
 export type ResearchArtistOut = { name: string; qlooId: string; spotifyId?: string; image?: string; tags?: string[]; affinity: number | null; because?: string[] };
 export type SoundsLikeOutput = { summary: string; artists: ResearchArtistOut[]; /** True when they were saved as your "Artists you sound like" (only when that list was empty). */ saved: boolean };
 export type LeanOut = { key: string; label: string; lean: number };
@@ -197,23 +205,29 @@ export const OFFLINE_TEST_ARTIST = { name: "Julia Jacklin", spotifyId: "IBaXCJ49
  * both read these; tests/unit/qloo-mock/scenarios.test.ts keeps them in step.
  * - variant: Qloo has "Zelia Marquez" (no id link), found by the name without accent and "feat." part.
  * - candidates: Qloo has "Mara Ellison" and "Maria Ellis", neither certain, so the user confirms.
- * - unknown: Qloo has nothing, so the run falls back to the artists the performer sounds like.
+ * - unknown (Yomil, the real act Qloo Support was asked about): Qloo has nothing; Last.fm has similar artists (Qloo knows three of them), which become the artists the performer sounds like.
+ * - unresolved: Qloo has nothing and knows none of Last.fm's similar artists, so the act's Spotify genres, as Qloo genre tags, are the signal.
+ * - nothing: no similar artists and no genre tag either; the run still finishes, with the Qloo steps marked as having no taste data yet.
  */
 export const OFFLINE_TEST_ACTS = {
   variant: { name: "Zélia Marquez (feat. Ro Dias)", spotifyId: "MockVariantAct0000001a", qlooName: "Zelia Marquez", genres: ["indie folk"] },
   candidates: { name: "Mara Ellis", spotifyId: "MockCandidates00000002", qlooNames: ["Mara Ellison", "Maria Ellis"], genres: ["synthetic ambient"] },
-  unknown: { name: "Qzx Nowhere", spotifyId: "MockUnknownAct00000003", genres: ["synthetic noise"] },
+  unknown: { name: "Yomil", spotifyId: "0U0oUxOfhtjkfoJ3ZNWEfU", genres: ["synthetic noise"], similar: ["Paul Kelly", "Courtney Barnett", "Missy Higgins", "Qzv Nobody"] },
+  /** Last.fm has similar artists, Qloo knows none of them: the act's Spotify genres are the signal. */
+  unresolved: { name: "Vyx Faraway", spotifyId: "MockUnresolvedAct00004", genres: ["indie folk", "synthetic noise"], similar: ["Qzv Nobody", "Xyl Ghost"] },
+  /** Nothing anywhere: no similar artists and no genre Qloo has a tag for. */
+  nothing: { name: "Wqk Nothing", spotifyId: "MockNothingAct00000005", genres: ["synthetic noise"], similar: [] },
 } as const;
 
 /** Whether the saved research is paused on a question for the user (null when it is not). */
-export function researchWaiting(snapshot: Pick<ResearchSnapshot, "steps"> | null | undefined): "choice" | "soundsLike" | null {
-  return snapshot?.steps.qloo?.output?.waiting ?? null;
+export function researchWaiting(snapshot: Pick<ResearchSnapshot, "steps"> | null | undefined): "choice" | null {
+  return snapshot?.steps.qloo?.output?.waiting === "choice" ? "choice" : null;
 }
 
 /** Whether the saved research can build on (the "Find more songs to learn" button): the act was found, or the run used the artists it sounds like. */
 export function researchUsable(snapshot: Pick<ResearchSnapshot, "steps"> | null | undefined): boolean {
   const q = snapshot?.steps.qloo?.output;
-  return Boolean(q && !q.waiting && (q.matched || q.fallback === "soundsLike"));
+  return Boolean(q && !q.waiting && (q.matched || q.fallback));
 }
 
 /**

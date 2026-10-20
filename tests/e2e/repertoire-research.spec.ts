@@ -169,7 +169,6 @@ test.describe("Repertoire research (offline)", () => {
     await page.getByRole("button", { name: "This is me: Mara Ellison" }).click();
     await done(page);
     await expect(page.getByTestId("research-candidates")).toHaveCount(0);
-    await expect(page.getByTestId("research-fallback")).toHaveCount(0);
     expect((await (await page.request.get("/api/playlist")).json()).playlist.qlooArtistId).toMatch(/^4D4F434B-/);
     // Refreshing asks nothing: the chosen artist is remembered.
     await page.getByRole("button", { name: "Refresh my research" }).click();
@@ -177,7 +176,7 @@ test.describe("Repertoire research (offline)", () => {
     await expect(page.getByTestId("research-candidates")).toHaveCount(0);
   });
 
-  test("'None of these' goes on from the artists you sound like, labelled honestly, and isn't asked again", async ({ page }) => {
+  test("'None of these' goes on from the artists like you, in one line, and isn't asked again", async ({ page }) => {
     test.setTimeout(90_000);
     await research(page, linkOf(OFFLINE_TEST_ACTS.candidates.spotifyId));
     await expect(page.getByTestId("research-candidates")).toBeVisible({ timeout: 20_000 });
@@ -188,9 +187,8 @@ test.describe("Repertoire research (offline)", () => {
     await page.reload();
     await page.getByRole("button", { name: "None of these" }).click();
     await done(page);
-    const label = "Qloo doesn't know you yet, so this is based on the artists you sound like";
-    await expect(page.getByTestId("research-fallback")).toHaveText(label);
-    // The Hive's step note, in the research feed: the Finding-you step says so, and the later steps are "based on".
+    const label = "Qloo doesn't know you yet, so this is based on artists like you: Paul Kelly and Courtney Barnett.";
+    // The Finding-you step says so in one line, and the later steps are "based on".
     const folded = page.getByTestId("research-steps");
     await expect(folded.getByTestId("agent-step")).toHaveCount(10);
     await expect(folded).toContainText(label);
@@ -207,41 +205,38 @@ test.describe("Repertoire research (offline)", () => {
     await page.getByRole("button", { name: "Refresh my research" }).click();
     await done(page);
     await expect(page.getByTestId("research-candidates")).toHaveCount(0);
-    await expect(page.getByTestId("research-fallback")).toHaveText(label);
+    await expect(page.getByTestId("research-steps")).toContainText(label);
     await page.getByTestId("research-more").click();
     await done(page);
   });
 
-  test("Qloo doesn't know you and no sound-alikes are set: it asks for 2 or 3, then carries on from them", async ({ page }) => {
+  test("Qloo doesn't know you and no sound-alikes are set: the Hive finds them and the run completes", async ({ page }) => {
     test.setTimeout(90_000);
     await research(page, linkOf(OFFLINE_TEST_ACTS.unknown.spotifyId));
-    const prompt = page.getByTestId("research-pick-sounds-like");
-    await expect(prompt).toBeVisible({ timeout: 20_000 });
-    await expect(prompt.getByRole("heading", { name: "Pick 2 or 3 artists you sound like" })).toBeVisible();
-    const carryOn = prompt.getByRole("button", { name: "Carry on" });
-    await expect(carryOn).toBeDisabled();
-    await prompt.getByRole("combobox").fill("Missy Higgins, Gordi, ");
-    await expect(carryOn).toBeEnabled();
+    await done(page);
+    await expect(page.getByTestId("research-end")).not.toHaveAttribute("data-code", /^needs_/);
+    await expect(page.getByTestId("research-pick-sounds-like")).toHaveCount(0);
+    await expect(page.getByTestId("research-candidates")).toHaveCount(0);
+    const folded = page.getByTestId("research-steps");
+    await expect(folded.getByTestId("agent-step")).toHaveCount(10);
+    await expect(folded).toContainText("Qloo doesn't know you yet, so this is based on artists like you: Paul Kelly, Courtney Barnett and Missy Higgins.");
+    await expect(page.getByTestId("research-sounds-like")).toContainText("Courtney Barnett");
+    await expect(page.getByTestId("research-fans-love")).toBeVisible();
+    await expect(page.getByRole("list", { name: "Songs you should learn" }).getByTestId("learn-card").first()).toBeVisible();
+    const body = (await (await page.request.get("/api/playlist")).json()).playlist;
+    expect(body.soundsLike.map((a: { name: string; foundBy?: string }) => `${a.name}:${a.foundBy}`)).toEqual(["Paul Kelly:hive", "Courtney Barnett:hive", "Missy Higgins:hive"]);
+    expect(body.qlooArtistId).toBeNull();
     for (const width of WIDTHS) {
       await page.setViewportSize({ width, height: 900 });
       const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
-      expect(violations.map((v) => `pick-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+      expect(violations.map((v) => `found-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
     }
-    await carryOn.click();
-    await done(page);
-    await expect(page.getByTestId("research-pick-sounds-like")).toHaveCount(0);
-    await expect(page.getByTestId("research-fallback")).toHaveText("Qloo doesn't know you yet, so this is based on the artists you sound like");
-    await expect(page.getByTestId("research-sounds-like")).toContainText("Missy Higgins");
-    const body = (await (await page.request.get("/api/playlist")).json()).playlist;
-    expect(body.soundsLike.map((a: { name: string }) => a.name)).toEqual(["Missy Higgins", "Gordi"]);
-    expect(body.qlooArtistId).toBeNull();
   });
 
   test("a name variant is found without asking (accents and 'feat.' stripped)", async ({ page }) => {
     await research(page, linkOf(OFFLINE_TEST_ACTS.variant.spotifyId));
     await done(page);
     await expect(page.getByTestId("research-candidates")).toHaveCount(0);
-    await expect(page.getByTestId("research-fallback")).toHaveCount(0);
     await expect(page.getByTestId("research-steps")).toContainText(/Found\s*\S*Zelia Marquez on/);
   });
 

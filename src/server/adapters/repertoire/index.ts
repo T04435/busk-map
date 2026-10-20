@@ -111,6 +111,7 @@ export async function getArtistCatalogue(
     ...common(context),
     fallback: [],
     synthetic: () => syntheticCatalogue(id ?? "syn-performer"),
+    call: { endpoint: "/artists/{id}/albums", params: { id: id ?? "", market } },
     live: async () => (id ? fetchArtistCatalogue(id, market) : []),
   });
 }
@@ -157,6 +158,7 @@ export async function getArtistProfile(artistId: string, context: AdapterContext
     ...common(context),
     fallback: null,
     synthetic: () => stamp(syntheticArtistProfile(artistId)),
+    call: { endpoint: "/artists/{id}", params: { id: artistId } },
     live: async () => stamp(await fetchArtistProfile(artistId)),
   });
 }

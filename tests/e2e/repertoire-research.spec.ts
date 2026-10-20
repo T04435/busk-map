@@ -233,18 +233,73 @@ test.describe("Repertoire research (offline)", () => {
     }
   });
 
-  test("nothing found anywhere: the run completes and an optional genre pick gives it a signal", async ({ page }) => {
-    test.setTimeout(90_000);
-    await research(page, linkOf(OFFLINE_TEST_ACTS.nothing.spotifyId));
+  test("no taste signal anywhere (the Victoria Queen case): the run waits at Who you sound like and asks in the step", async ({ page }) => {
+    test.setTimeout(120_000);
+    await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
+    const stream = page.getByTestId("agent-stream");
+    const ask = stream.getByTestId("research-ask");
+    await expect(ask).toBeVisible({ timeout: 20_000 });
+    await expect(ask.getByTestId("research-ask-line")).toHaveText("Qloo doesn't know you yet. Add 2 or 3 artists you sound like, or pick a genre.");
+    // Profile, songs and Qloo above; the waiting step; the rest not started (never shown as empty Qloo steps).
+    await expect(stream.getByTestId("agent-step")).toHaveCount(4);
+    await expect(stream.locator('[data-testid="agent-step"][data-status="waiting"]')).toHaveAttribute("data-tool", "research_sounds_like");
+    await expect(stream.getByTestId("agent-step-upcoming")).toHaveCount(6);
+    await expect(stream).not.toContainText("No taste data yet");
+    await expect(stream).not.toContainText("Qloo found no artists like you");
+    await expect(stream.getByTestId("agent-tag")).toHaveText("Waiting");
+    await expect(page.getByTestId("research-end")).toHaveCount(0);
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 900 });
+      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+      expect(violations.map((v) => `waiting-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `waiting-${width} scrolls sideways`).toBe(true);
+    }
+    // RAW: the calls each step made, and no description lines.
+    await stream.getByTestId("raw-switch").click();
+    await expect(stream.getByTestId("agent-step-calls").first()).toBeVisible();
+    await expect(stream.getByTestId("agent-step-calls").nth(2)).toContainText("artist.getsimilar");
+    await expect(stream).not.toContainText("Qloo /entities by Spotify id");
+    // A refresh (or a later visit) shows the waiting step with its input.
+    const runId = (await (await page.request.get("/api/playlist")).json()).playlist.research.runId;
+    await page.reload();
+    await expect(page.getByTestId("research-ask")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("agent-step-upcoming")).toHaveCount(6);
+    // The answer carries on the same run, from the waiting step.
+    await page.getByTestId("research-ask").getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Paul Kelly, Courtney Barnett");
+    await page.getByTestId("research-ask-carry-on").click();
     await done(page);
     await expect(page.getByTestId("research-end")).not.toHaveAttribute("data-code", /^needs_/);
-    await expect(page.getByTestId("research-steps")).toContainText("has no taste data for you");
-    const pick = page.getByTestId("research-genre-pick");
-    await expect(pick).toBeVisible();
-    await pick.getByRole("button", { name: "Folk" }).click();
-    await done(page);
-    await expect(page.getByTestId("research-steps")).toContainText("based on your genres: Folk");
-    await expect(page.getByTestId("research-genre-pick")).toHaveCount(0);
+    const folded = page.getByTestId("research-steps");
+    await expect(folded.getByTestId("agent-step")).toHaveCount(10);
+    await expect(folded.getByTestId("agent-step-upcoming")).toHaveCount(0);
+    const body = (await (await page.request.get("/api/playlist")).json()).playlist;
+    expect(body.research.runId).toBe(runId);
+    expect(body.research.waiting ?? null).toBeNull();
+    expect(body.soundsLike.map((a: { name: string; foundBy?: string }) => `${a.name}:${a.foundBy ?? "you"}`)).toEqual(["Paul Kelly:you", "Courtney Barnett:you"]);
+    await expect(page.getByTestId("research-fans-love")).toBeVisible();
+  });
+
+  test("still nothing Qloo knows: it asks again in the same step, then stops after three asks in one line", async ({ page }) => {
+    test.setTimeout(120_000);
+    await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
+    const line = page.getByTestId("research-ask-line");
+    await expect(line).toBeVisible({ timeout: 20_000 });
+    const runId = (await (await page.request.get("/api/playlist")).json()).playlist.research.runId;
+    await page.getByTestId("research-ask").getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Qzv Nobody");
+    await page.getByTestId("research-ask-carry-on").click();
+    await expect(line).toHaveText("Qloo doesn't know Qzv Nobody either. Try better-known artists, or pick a genre.", { timeout: 20_000 });
+    await page.getByTestId("research-genre-pick").getByRole("button", { name: "Latin" }).click();
+    await expect(line).toHaveText("Qloo has no tag for Latin. Pick another genre, or add artists you sound like.", { timeout: 20_000 });
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 900 });
+      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+      expect(violations.map((v) => `ask-again-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+    }
+    await page.getByTestId("research-genre-pick").getByRole("button", { name: "Latin" }).click();
+    await expect(page.getByTestId("research-end")).toHaveAttribute("data-code", "no_taste_data", { timeout: 20_000 });
+    await expect(page.getByTestId("research-end")).toHaveText("Qloo has no taste data for your act yet, so the research stopped at Who you sound like.");
+    await expect(page.getByTestId("research-ask")).toHaveCount(0);
+    expect((await (await page.request.get("/api/playlist")).json()).playlist.research.runId).toBe(runId);
   });
 
   test("a name variant is found without asking (accents and 'feat.' stripped)", async ({ page }) => {
@@ -292,5 +347,53 @@ test.describe("Repertoire research (offline)", () => {
     await check("running");
     await done(page);
     await check("done");
+  });
+  test("nothing scrolls below the footer (the phone nav's own padding aside): empty, after a run, waiting for input, and the other pages", async ({ page }) => {
+    test.setTimeout(120_000);
+    // Exactly one footer once the page has streamed in: React holds a streamed boundary in a hidden div (S:n) until it swaps it in.
+    const oneFooter = async () => {
+      await expect(page.locator("footer[data-slot=site-footer]")).toHaveCount(1);
+      await expect(page.locator("footer[data-slot=site-footer]")).toBeVisible();
+    };
+    // The footer's bottom against the scrollable height; under 721px the body keeps the fixed bottom nav's height (plus the safe area) as padding on purpose.
+    const below = () =>
+      page.evaluate(() => {
+        const footer = document.querySelector("footer[data-slot=site-footer]")!;
+        const pad = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
+        return document.scrollingElement!.scrollHeight - (footer.getBoundingClientRect().bottom + window.scrollY) - pad;
+      });
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.context().clearCookies();
+      await page.goto("/repertoire");
+      await expect(field(page)).toBeVisible();
+      await oneFooter();
+      expect(await below(), `/repertoire empty at ${width}`).toBeLessThanOrEqual(2);
+      await field(page).fill(LINK);
+      await page.getByRole("button", { name: "Research my act" }).click();
+      await done(page);
+      await oneFooter();
+      expect(await below(), `/repertoire after a run at ${width}`).toBeLessThanOrEqual(2);
+      // Paused for input (no taste signal), after a reload, and once the answer has carried the run on.
+      await page.context().clearCookies();
+      await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
+      await expect(page.getByTestId("research-ask")).toBeVisible({ timeout: 20_000 });
+      await oneFooter();
+      expect(await below(), `/repertoire waiting at ${width}`).toBeLessThanOrEqual(2);
+      await page.reload();
+      await expect(page.getByTestId("research-ask")).toBeVisible({ timeout: 20_000 });
+      await oneFooter();
+      expect(await below(), `/repertoire waiting, reloaded, at ${width}`).toBeLessThanOrEqual(2);
+      await page.getByTestId("research-ask").getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Paul Kelly, Courtney Barnett");
+      await page.getByTestId("research-ask-carry-on").click();
+      await done(page);
+      await oneFooter();
+      expect(await below(), `/repertoire after the answer at ${width}`).toBeLessThanOrEqual(2);
+      for (const path of ["/", "/busks", "/brain", "/brand", "/p/ZZZZZZZZZ"]) {
+        await page.goto(path);
+        await oneFooter();
+        expect(await below(), `${path} at ${width}`).toBeLessThanOrEqual(2);
+      }
+    }
   });
 });

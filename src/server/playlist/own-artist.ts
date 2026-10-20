@@ -180,21 +180,10 @@ export async function findSoundAlikes(act: { name: string; actName?: string | nu
   let attempts = 0;
   let outages = 0;
   const resolve = async (names: readonly string[]): Promise<FoundAlike[]> => {
-    const settled = await settleWithLimit(names, 3, async (name): Promise<FoundAlike | null> => {
-      attempts++;
-      const res = await searchArtistHits(name, context);
-      if (res.mode === "fallback") {
-        outages++;
-        return null;
-      }
-      const decision = decideMatch(res.data.map(toMatchCandidate), nameVariants([name]), []);
-      if (decision.kind !== "match") return null;
-      const e = res.data.find((x) => x.id === decision.best.id);
-      // No music-genre tag: nothing to read taste from. The act's own Spotify id: it is the act.
-      if (!e || own.has(nameKey(e.name)) || !hasMusicGenre(e) || (act.spotifyId && e.spotifyId === act.spotifyId)) return null;
-      return { name: e.name, qlooId: e.id, ...(e.spotifyId && /^[A-Za-z0-9]{22}$/.test(e.spotifyId) ? { spotifyId: e.spotifyId } : {}), ...(e.image && /^https:\/\//.test(e.image) && e.image.length <= 500 ? { image: e.image } : {}) };
-    });
-    return settled.flatMap((s) => (s.status === "fulfilled" && s.value ? [s.value] : []));
+    const res = await resolveGuarded(names.map((name) => ({ name })), own, act.spotifyId ?? null, context);
+    attempts += res.attempts;
+    outages += res.outages;
+    return res.found;
   };
   const keep = (list: FoundAlike[]) => {
     const seen = new Set<string>();
@@ -230,13 +219,12 @@ export async function findSoundAlikes(act: { name: string; actName?: string | nu
     for (const genre of texts) {
       if (tags.size >= GENRE_TAGS_KEPT || tagOutage || lookedUp >= GENRE_LOOKUPS) break;
       lookedUp++;
-      const res = await searchGenreTags(genre, 5, context);
-      if (res.mode === "fallback") {
+      const res = await resolveGenreTag(genre, context);
+      if (res === "unavailable") {
         tagOutage = true;
         break;
       }
-      const hit = res.data.find((t) => t.id.startsWith("urn:tag:genre") && genreOverlap([t.name], [genre]));
-      if (hit && !tags.has(hit.id)) tags.set(hit.id, hit.name);
+      if (res && !tags.has(res.id)) tags.set(res.id, res.name);
     }
   };
   const spotifyTexts = [...new Set(act.genres.map((g) => g.trim()).filter(Boolean))].slice(0, 4);
@@ -254,4 +242,69 @@ export async function findSoundAlikes(act: { name: string; actName?: string | nu
   }
   if (tags.size > 0) return { source: "genres", alikes: [], tags: [...tags].map(([id, name]) => ({ id, name })), similar };
   return tagOutage && lookedUp > 0 ? { source: "unavailable", alikes: [], tags: [], similar } : { source: "none", alikes: [], tags: [], similar };
+}
+
+const SPOTIFY_ID = /^[A-Za-z0-9]{22}$/;
+const foundOf = (e: QlooEntity): FoundAlike => ({
+  name: e.name,
+  qlooId: e.id,
+  ...(e.spotifyId && SPOTIFY_ID.test(e.spotifyId) ? { spotifyId: e.spotifyId } : {}),
+  ...(e.image && /^https:\/\//.test(e.image) && e.image.length <= 500 ? { image: e.image } : {}),
+});
+
+/**
+ * Artists looked up on Qloo with the act's own confidence rule: a Spotify id from the picker is Qloo's certain id lookup; a name is
+ * a /search the rule must accept (decideMatch: a guess never counts). A hit with no music-genre tag, with the act's name, or with
+ * the act's own Spotify id is dropped. `unknown` lists the names Qloo had nothing certain for; `outages` the lookups Qloo didn't answer.
+ */
+async function resolveGuarded(artists: readonly { name: string; spotifyId?: string | null }[], own: ReadonlySet<string>, actSpotifyId: string | null, context: AdapterContext) {
+  let attempts = 0;
+  let outages = 0;
+  const usable = (e: QlooEntity | undefined | null): e is QlooEntity => Boolean(e && !own.has(nameKey(e.name)) && hasMusicGenre(e) && !(actSpotifyId && e.spotifyId === actSpotifyId));
+  const settled = await settleWithLimit(artists, 3, async (artist): Promise<FoundAlike | null> => {
+    if (artist.spotifyId && SPOTIFY_ID.test(artist.spotifyId)) {
+      attempts++;
+      const byId = await resolveSpotifyArtists([artist.spotifyId], context);
+      if (byId.mode === "fallback") outages++;
+      else if (usable(byId.data[0])) return foundOf(byId.data[0]);
+    }
+    attempts++;
+    const res = await searchArtistHits(artist.name, context);
+    if (res.mode === "fallback") {
+      outages++;
+      return null;
+    }
+    const decision = decideMatch(res.data.map(toMatchCandidate), nameVariants([artist.name]), []);
+    if (decision.kind !== "match") return null;
+    const e = res.data.find((x) => x.id === decision.best.id);
+    return usable(e) ? foundOf(e) : null;
+  });
+  const matches = settled.map((s) => (s.status === "fulfilled" ? s.value : null));
+  const found = matches.filter((m): m is FoundAlike => m !== null);
+  const unknown = artists.filter((_, i) => !matches[i]).map((a) => a.name);
+  return { found, matches, unknown, attempts, outages };
+}
+
+/**
+ * The performer's answer to a paused run: the artists they sound like, resolved on Qloo with the guarded match above. `unavailable`
+ * when Qloo answered none of the lookups.
+ */
+export async function resolveSoundAlikes(
+  artists: readonly { name: string; spotifyId?: string | null }[],
+  act: { name: string; actName?: string | null; spotifyId?: string | null },
+  context: AdapterContext,
+): Promise<{ found: FoundAlike[]; matches: (FoundAlike | null)[]; unknown: string[]; unavailable: boolean }> {
+  const own = new Set([nameKey(act.name), nameKey(act.actName ?? "")].filter(Boolean));
+  const res = await resolveGuarded(artists, own, act.spotifyId ?? null, context);
+  const seen = new Set<string>();
+  const found = res.found.filter((a) => !seen.has(a.qlooId) && seen.add(a.qlooId));
+  return { found, matches: res.matches, unknown: res.unknown, unavailable: res.attempts > 0 && res.outages === res.attempts };
+}
+
+/** A genre text as one Qloo music-genre tag (/v2/tags), when Qloo has one that overlaps it; "unavailable" when Qloo didn't answer. */
+export async function resolveGenreTag(genre: string, context: AdapterContext): Promise<{ id: string; name: string } | null | "unavailable"> {
+  const res = await searchGenreTags(genre, 5, context);
+  if (res.mode === "fallback") return "unavailable";
+  const hit = res.data.find((t) => t.id.startsWith("urn:tag:genre") && genreOverlap([t.name], [genre]));
+  return hit ? { id: hit.id, name: hit.name } : null;
 }

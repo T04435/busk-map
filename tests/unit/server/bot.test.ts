@@ -50,6 +50,7 @@ describe("rejectBots", () => {
       { path: "/api/playlist/learn/suggestions", method: "POST" },
       { path: "/api/playlist/learn", method: "POST" },
       { path: "/api/playlist/research", method: "POST" },
+      { path: "/api/playlist/research/*/input", method: "POST" },
       { path: "/api/playlist/learn/suggestions/*", method: "PATCH" },
       { path: "/api/playlist/profile", method: "POST" },
     ]);

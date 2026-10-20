@@ -70,6 +70,22 @@ export async function startResearch(body: { link?: string; refresh?: boolean; mo
   }
 }
 
+/** Answer a research run that waits for input (POST /api/playlist/research/<runId>/input): the same run carries on, streamed. */
+export async function sendResearchInput(runId: string, body: { artists?: { name: string; spotifyId?: string }[]; genre?: string }, faults: string | null): Promise<Streaming | Refusal> {
+  try {
+    const res = await fetch(`/api/playlist/research/${encodeURIComponent(runId)}/input`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json", ...(faults ? { "x-buskmap-faults": faults } : {}) },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok || !res.body) return await refusalOf(res);
+    return { ok: true, events: parsed(res.body) };
+  } catch {
+    return network;
+  }
+}
+
 /** Join a run in flight, or replay a stored one. */
 export async function joinLearn(runId: string): Promise<Streaming | Refusal> {
   try {

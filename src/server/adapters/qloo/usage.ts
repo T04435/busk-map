@@ -1,5 +1,6 @@
 import "server-only";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { cacheBody, cachedCall, noteRequest, safeParams } from "../call-log";
 
 /**
  * Qloo usage per busk (research totals' qlooCalls and qlooCacheHits).
@@ -30,14 +31,7 @@ function processSingleton<T>(name: string, make: () => T): T {
   return (store[key] ??= make());
 }
 
-type Frame = { requests: number; parent: Frame | undefined };
 const busk = processSingleton("qloo-usage", () => new AsyncLocalStorage<QlooUsage>());
-const scope = processSingleton("qloo-lookup", () => new AsyncLocalStorage<Frame>());
-/** Misses published by cache bodies, by lookup key, until their wrapper takes them. */
-const misses = processSingleton("qloo-misses", () => new Map<string, { at: number; requests: number }[]>());
-const MISS_TTL_MS = 120_000;
-
-const keyOf = (name: string, args: readonly unknown[]) => `${name}:${JSON.stringify(args)}`;
 
 /** Run `fn` with a fresh Qloo usage counter for this busk. */
 export function withQlooUsage<T>(fn: (usage: QlooUsage) => Promise<T>): Promise<T> {
@@ -46,43 +40,24 @@ export function withQlooUsage<T>(fn: (usage: QlooUsage) => Promise<T>): Promise<
 }
 
 /** One HTTP request to Qloo is about to be sent (client.qlooGet): counted in every enclosing cache body. */
-export function noteQlooRequest() {
-  for (let frame = scope.getStore(); frame; frame = frame.parent) frame.requests++;
+export const noteQlooRequest = noteRequest;
+
+/** The 'use cache' body of a lookup: runs only on a miss, and publishes how many requests it sent (and the calls, call-log.ts). */
+export function lookupScope<T>(name: string, args: readonly unknown[], body: () => Promise<T>): Promise<T> {
+  return cacheBody(`qloo.${name}`, args, body);
 }
 
-/** The 'use cache' body of a lookup: runs only on a miss, and publishes how many requests it sent. */
-export async function lookupScope<T>(name: string, args: readonly unknown[], body: () => Promise<T>): Promise<T> {
-  const frame: Frame = { requests: 0, parent: scope.getStore() };
-  try {
-    return await scope.run(frame, body);
-  } finally {
-    const now = Date.now();
-    for (const [key, list] of misses) {
-      const fresh = list.filter((m) => now - m.at < MISS_TTL_MS);
-      if (fresh.length) misses.set(key, fresh);
-      else misses.delete(key);
-    }
-    const key = keyOf(name, args);
-    misses.set(key, [...(misses.get(key) ?? []), { at: now, requests: frame.requests }]);
-  }
-}
+/** The Qloo path a lookup stands for, for a cache hit this instance never saw sent. */
+const ENDPOINT: Record<string, string> = { searchArtist: "/search", entitiesBySpotifyIds: "/entities", entityDetail: "/entities", searchGenreTags: "/v2/tags" };
 
 /** The caller's side of a lookup: a published miss adds its requests to the busk, no miss is a cache hit. */
-export async function countLookup<T>(name: string, args: readonly unknown[], load: () => Promise<T>): Promise<T> {
+export function countLookup<T>(name: string, args: readonly unknown[], load: () => Promise<T>): Promise<T> {
   const usage = busk.getStore();
-  let ok = false;
-  try {
-    const result = await load();
-    ok = true;
-    return result;
-  } finally {
-    if (usage) {
-      const key = keyOf(name, args);
-      const list = misses.get(key);
-      const miss = list?.shift();
-      if (list && list.length === 0) misses.delete(key);
-      if (miss) usage.calls += miss.requests;
-      else if (ok) usage.cacheHits++;
-    }
-  }
+  // args[0] is the backend ("live" or "mock"): not a parameter Qloo sees.
+  const describe = { endpoint: ENDPOINT[name] ?? "/v2/insights", params: safeParams(args.slice(1).map((v, i): [string, unknown] => [`${name}.${i + 1}`, v])) };
+  return cachedCall("qloo", `qloo.${name}`, args, load, describe, (miss, ok) => {
+    if (!usage) return;
+    if (miss) usage.calls += miss.requests;
+    else if (ok) usage.cacheHits++;
+  });
 }

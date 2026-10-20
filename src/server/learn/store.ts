@@ -25,6 +25,11 @@ export interface LearnStore {
   /** Inserts the run (`running`) with the next number. Refused while another is running for this Repertoire. Prunes old steps. */
   startRun(playlistId: string, input: { model: LearnModel; inputs: LearnInputs }, now?: number): Promise<StartRunResult>;
   finishRun(runId: string, finish: FinishRun, now?: number): Promise<void>;
+  /**
+   * A research run that ended waiting for input (end code `endCode`) runs again: `running`, its end cleared and its clock restarted
+   * (so the stale sweep gives it the full time), its stored steps kept. Refused while another run is going for this Repertoire.
+   */
+  resumeRun(playlistId: string, runId: string, endCode: string, now?: number): Promise<{ ok: true; run: RunRecord } | { ok: false; reason: "not_waiting" | "already_running"; runId: string | null }>;
   getRun(playlistId: string, runId: string): Promise<RunRecord | null>;
   /** Runs started in the window that reached the model (runs that ended qloo_unavailable or no_match are not counted). */
   recentRuns(playlistId: string, sinceMs: number): Promise<{ count: number; oldestStartedAt: number | null }>;
@@ -155,6 +160,17 @@ export class MemoryLearnStore implements LearnStore {
   async getRun(playlistId: string, runId: string) {
     const run = this.runs(playlistId).find((r) => r.id === runId);
     return run ? structuredClone(run) : null;
+  }
+
+  async resumeRun(playlistId: string, runId: string, endCode: string, now = Date.now()) {
+    await this.sweepStale(playlistId, now);
+    const runs = this.runs(playlistId);
+    const run = runs.find((r) => r.id === runId);
+    if (!run || run.status !== "done" || run.endCode !== endCode) return { ok: false as const, reason: "not_waiting" as const, runId: null };
+    const running = runs.find((r) => r.status === "running");
+    if (running) return { ok: false as const, reason: "already_running" as const, runId: running.id };
+    Object.assign(run, { status: "running", endCode: null, finishedAt: null, startedAt: now });
+    return { ok: true as const, run: structuredClone(run) };
   }
 
   async recentRuns(playlistId: string, sinceMs: number) {
@@ -474,6 +490,25 @@ export class PostgresLearnStore implements LearnStore {
     if (owner[0]) {
       await this.pruneSteps(owner[0].playlist_id);
       await this.trim(owner[0].playlist_id);
+    }
+  }
+
+  async resumeRun(playlistId: string, runId: string, endCode: string, now = Date.now()) {
+    if (!isUuid(runId)) return { ok: false as const, reason: "not_waiting" as const, runId: null };
+    await this.sweepStale(playlistId, now);
+    try {
+      // One conditional statement: only a run that ended waiting goes back to running; the partial unique index admits one.
+      const rows = (await this.sql.query(
+        `UPDATE learn_runs SET status = 'running', end_code = NULL, finished_at = NULL, started_at = now()
+          WHERE playlist_id = $1::uuid AND id = $2::uuid AND status = 'done' AND end_code = $3
+          RETURNING ${RUN_COLUMNS}, steps`,
+        [playlistId, runId, endCode],
+      )) as RunRow[];
+      return rows[0] ? { ok: true as const, run: toRun(rows[0]) } : { ok: false as const, reason: "not_waiting" as const, runId: null };
+    } catch (error) {
+      if (!uniqueViolation(error)) throw error;
+      const running = (await this.sql.query("SELECT id FROM learn_runs WHERE playlist_id = $1 AND status = 'running'", [playlistId])) as { id: string }[];
+      return { ok: false as const, reason: "already_running" as const, runId: running[0]?.id ?? null };
     }
   }
 

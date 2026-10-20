@@ -43,7 +43,9 @@ import { fansMapProps } from "@/lib/fans-map";
 import { OFFLINE_TEST_ARTIST, researchUsable, researchWaiting } from "@/lib/repertoire-research";
 import { toRepertoireView, type LearnSong, type RepertoireView } from "@/lib/repertoire-research-view";
 import { parseSpotifyArtistId, spotifyArtistUrl } from "@/lib/spotify-link";
-import { joinLearn, loadLearn, pageFaults, patchSuggestion, startResearch } from "./learn-api";
+import { joinLearn, loadLearn, pageFaults, patchSuggestion, sendResearchInput, startResearch } from "./learn-api";
+import { ResearchAsk } from "./research-ask";
+import { REPERTOIRE_STEPS } from "@/components/honeycomb/repertoire/repertoire-research";
 import { ResearchFunnel } from "./learn-feed";
 import { QlooCandidates, RESEARCH_H2 as H2 } from "./qloo-prompts";
 import { addSong, forgetPlaylist, loadPlaylist, moveSong, removeSong, savePlaylist } from "./playlist-api";
@@ -289,6 +291,22 @@ export function ResearchView() {
     setNotice({ kind: result.code === "up_to_date" || result.code === "already_running" ? "info" : "error", text: result.message });
   }
 
+  /** The answer to a run that waits for input: the same run carries on in the same panel. */
+  async function answer(runId: string, body: { artists?: { name: string; spotifyId?: string }[]; genre?: string }) {
+    setNotice(null);
+    setInfo("");
+    setRunning(true);
+    const result = await sendResearchInput(runId, body, pageFaults());
+    if (!mounted.current) return;
+    if (result.ok) {
+      joined.current = "started";
+      await consume(result.events);
+      return;
+    }
+    setRunning(false);
+    setNotice({ kind: result.code === "already_running" ? "info" : "error", text: result.message });
+  }
+
   function submitLink(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const id = parseSpotifyArtistId(link.trim());
@@ -356,8 +374,12 @@ export function ResearchView() {
   };
 
   const soundsLikePatch = () => chosenArtists().map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.qlooId ? { qlooId: a.qlooId } : {}), ...(a.image && /^https:\/\//.test(a.image) ? { image: a.image } : {}) }));
-  // The run paused on a question (Qloo wasn't sure which artist is the act).
+  // The run paused on a question (Qloo wasn't sure which artist is the act), or for input (no taste signal: artists or a genre).
   const waiting = !running && !live ? researchWaiting(research) : null;
+  // The run waiting for input: the live one that just paused, else the saved one (a refresh or a later visit).
+  const askRun = running || live ? null : view.end ? (view.end.code === "needs_sounds_like" ? view.end.runId : null) : waiting === "input" && research ? research.runId : null;
+  const askStep = research?.waiting?.step ?? "soundsLike";
+  const upcoming = askRun ? REPERTOIRE_STEPS.slice(REPERTOIRE_STEPS.findIndex((s) => s.key === askStep) + 1).map((s) => ({ key: s.key, title: s.title, icon: s.icon })) : undefined;
   const askedFor = research?.steps.qloo?.output?.candidates ?? [];
 
   const runEvent = feedEvents?.find((e) => e.type === "run");
@@ -372,13 +394,26 @@ export function ResearchView() {
         <AgentStepStream
           steps={feed}
           model={runEvent?.type === "run" && runEvent.model === "claude" ? "claude" : "mock"}
-          phase={live ? "working" : "done"}
+          phase={live ? "working" : askRun ? "waiting" : "done"}
           mode={!events && replay ? "replay" : "live"}
           title={live ? R.heading : R.howBuilt}
           wording={R.waiting}
           showRaw={showRaw}
           onShowRawChange={setShowRaw}
           footer={<ResearchFunnel kind="learn" totals={lastTotals?.type === "totals" ? lastTotals.totals : ZERO_LEARN_TOTALS} running={live} />}
+          upcoming={upcoming}
+          renderWaiting={(step) =>
+            askRun ? (
+              <ResearchAsk
+                message={step.summary ?? R.ask.first}
+                busy={busy || running}
+                onArtists={(artists) => void answer(askRun, { artists })}
+                onGenre={(genre) => void answer(askRun, { genre })}
+              />
+            ) : step.summary ? (
+              <p className="m-0 text-[13px] leading-[18px] text-muted-foreground">{step.summary}</p>
+            ) : null
+          }
         />
       </div>
     ) : null;
@@ -503,16 +538,6 @@ export function ResearchView() {
           </ArtistChipList>
         ) : (
           <div className="space-y-2">
-            {research && research.steps.qloo?.output?.fallback === "none" && (
-              <div role="group" aria-label={R.genrePick.label} className="flex flex-wrap items-center gap-1.5" data-testid="research-genre-pick">
-                <span className="text-sm font-bold">{R.genrePick.label}</span>
-                {R.genrePick.options.map((genre) => (
-                  <Button key={genre} type="button" variant="outline" size="sm" disabled={busy} onClick={() => void start({ link: research.spotifyArtistId, refresh: true, genre })}>
-                    {genre}
-                  </Button>
-                ))}
-              </div>
-            )}
             <ArtistPicker hideLabel value={artists.map((a) => ({ ...a, image: a.image ?? photoOf.get(a.name.toLowerCase())?.image ?? null }))} onChange={setArtists} query={artistQuery} onQueryChange={setArtistQuery} />
             {playlist && (
               <Button
@@ -752,7 +777,7 @@ export function ResearchView() {
               </AlertDescription>
             </Alert>
           )}
-          {view.end?.ok && !running && view.end.code !== "needs_choice" && (
+          {view.end?.ok && !running && view.end.code !== "needs_choice" && view.end.code !== "needs_sounds_like" && (
             <p role="status" className="text-sm" data-testid="research-end" data-code={view.end.code ?? ""}>
               {view.end.message}
             </p>

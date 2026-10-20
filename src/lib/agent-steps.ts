@@ -2,6 +2,7 @@
  * Folding the agent's stream into steps (shared by the live view and the
  * replay). Pure, client-safe.
  */
+import type { CallRecord } from "./call-record";
 import type { LearnStreamEvent } from "./learn-schema";
 import type { MentionSource } from "./mention";
 import type { PlanStreamEvent } from "./plan-schema";
@@ -17,9 +18,12 @@ export type AgentStep = {
   /** The one source the running step turned out to use (a `tool-source` event), for its Hive mark. */
   via?: MentionSource;
   input?: unknown;
-  status: "running" | "done" | "failed" | "notes" | "cut";
+  /** "waiting": a research step paused for the performer's input (its output carries `waiting`). */
+  status: "running" | "done" | "failed" | "notes" | "cut" | "waiting";
   summary?: string;
   output?: unknown;
+  /** The external calls the step made (Repertoire research), for its RAW panel. */
+  calls?: CallRecord[];
   notes: StepNote[];
 };
 
@@ -42,10 +46,14 @@ export function applyStreamEvent(steps: AgentStep[], event: PlanStreamEvent | Le
     return steps.map((s) => (s.id === event.id ? { ...s, via: event.source } : s));
   }
   if (event.type === "tool-end") {
-    return steps.map((s) => (s.id === event.id ? { ...s, status: event.ok ? "done" : "failed", summary: event.summary, output: event.output } : s));
+    const waits = event.ok && isWaitingOutput(event.output);
+    return steps.map((s) => (s.id === event.id ? { ...s, status: waits ? "waiting" : event.ok ? "done" : "failed", summary: event.summary, output: event.output, ...(event.calls ? { calls: event.calls } : {}) } : s));
   }
   return steps;
 }
+
+/** A step output that says the run waits for input (Repertoire research). */
+export const isWaitingOutput = (output: unknown): boolean => output !== null && typeof output === "object" && Boolean((output as { waiting?: unknown }).waiting);
 
 export const scalar = (v: unknown): string => {
   if (v === null || v === undefined) return "none";

@@ -3,19 +3,23 @@ import type { LanguageModel } from "ai";
 import { ageLabel } from "@/lib/age";
 import { skippedOf, ZERO_LEARN_TOTALS, type LearnStreamEvent, type LearnTotals, type StoredLearnStep } from "@/lib/learn-schema";
 import type { MentionSource } from "@/lib/mention";
+import type { CallRecord } from "@/lib/call-record";
 import { andList, PLAYLIST_COPY } from "@/lib/playlist-copy";
 import type { QlooCandidateView } from "@/lib/qloo-match";
 import type { SoundsLike } from "@/lib/playlist-schema";
 import {
   MORE_STEPS,
   RESEARCH_LABELS,
-  RESEARCH_SOURCES,
+  RESEARCH_MAX_ASKS,
   RESEARCH_STEPS,
   RESEARCH_TOOLS,
   type FansLoveOutput,
   type FansMapOutput,
   type FansOutput,
   type GenresOutput,
+  type ResearchAsk,
+  type ResearchInput,
+  type ResearchWaiting,
   type LearnOutput,
   type ProfileOutput,
   type QlooOutput,
@@ -30,6 +34,7 @@ import {
   summaryLine,
 } from "@/lib/repertoire-research";
 import { nameKey } from "@/lib/text";
+import { recordCalls } from "@/server/adapters/call-log";
 import type { AdapterContext } from "@/server/adapters/core";
 import * as qloo from "@/server/adapters/qloo";
 import { withQlooUsage, type QlooUsage } from "@/server/adapters/qloo/usage";
@@ -57,7 +62,7 @@ import {
 } from "@/server/playlist/config";
 import { fansMapFor } from "./fans-map";
 import { isMusicGenreTag } from "@/lib/genre-tags";
-import { findOwnOnQloo, findSoundAlikes, soundsLikeFor } from "@/server/playlist/own-artist";
+import { findOwnOnQloo, findSoundAlikes, resolveGenreTag, resolveSoundAlikes, soundsLikeFor } from "@/server/playlist/own-artist";
 import type { PlaylistRecord, PlaylistStore } from "@/server/playlist/store";
 
 /** Live Qloo /entities (probe 17 Oct, Hopsin): genre tag types end ":genre" (older shapes: "urn:tag:genre:…"). */
@@ -93,7 +98,21 @@ export type ResearchRunArgs = {
   qlooChoice?: { id: string } | { none: true };
   /** A genre the performer picked ("Your genre"), used as the first Qloo genre tag when Qloo and Last.fm give the Hive nothing else. */
   genre?: string;
+  /**
+   * Carry on a run that waited for input (POST /api/playlist/research/<runId>/input): the same run (record), its snapshot (the
+   * done steps and what it waits for) and its stored steps. The steps before the waiting one are reused, never fetched again.
+   */
+  resume?: { input: ResearchInput; snapshot: ResearchSnapshot; stored: StoredLearnStep[] };
 };
+
+/** The SoundsLike entries the run saves as the performer's own: at most this many in the list (playlist-schema). */
+const SOUNDS_LIKE_MAX = 10;
+
+/** A resumed run's stored steps: everything before the step it waited on (that step runs again with the input). */
+export function keptSteps(stored: readonly StoredLearnStep[], stepId: string): StoredLearnStep[] {
+  const at = stored.findIndex((e) => e.type === "tool-start" && e.id === stepId);
+  return at >= 0 ? stored.slice(0, at) : [...stored];
+}
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const r2 = (n: number | null | undefined) => (n === null || n === undefined || !Number.isFinite(n) ? null : Math.round(n * 100) / 100);
@@ -151,7 +170,11 @@ export function researchTotals(steps: ResearchSnapshot["steps"], usage: Pick<Qlo
 
 export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
   const { learn, playlists, mode, adapters, record, run } = args;
-  const stored: StoredLearnStep[] = [];
+  const resume = args.resume ?? null;
+  const waitingBefore = resume?.snapshot.waiting ?? null;
+  // A resumed run sends its kept steps again first, so the panel is the one the performer left, then carries on.
+  const kept = resume && waitingBefore ? keptSteps(resume.stored, waitingBefore.stepId) : [];
+  const stored: StoredLearnStep[] = [...kept];
   const push = (event: LearnStreamEvent) => {
     run.push(event);
     if (event.type === "status" || event.type === "note" || event.type === "tool-start" || event.type === "tool-end" || event.type === "totals") stored.push(event);
@@ -166,22 +189,30 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
     replay: false,
     stepsKept: true,
   });
-  push({ type: "status", message: mode === "more" ? PLAYLIST_COPY.research.moreStarted : PLAYLIST_COPY.research.runStarted });
+  if (resume) for (const e of kept) run.push(e);
+  else push({ type: "status", message: mode === "more" ? PLAYLIST_COPY.research.moreStarted : PLAYLIST_COPY.research.runStarted });
 
   const previous = args.playlist.research ?? null;
-  // "more" starts from the saved snapshot; a full run starts empty and keeps nothing from the last one.
-  const steps: ResearchSnapshot["steps"] = mode === "more" && previous ? structuredClone(previous.steps) : {};
-  for (const k of mode === "more" ? MORE_STEPS : RESEARCH_STEPS) delete steps[k];
+  // "more" starts from the saved snapshot; a full run starts empty and keeps nothing from the last one; a resumed run keeps the
+  // steps before the one it waited on.
+  const steps: ResearchSnapshot["steps"] = resume ? structuredClone(resume.snapshot.steps) : mode === "more" && previous ? structuredClone(previous.steps) : {};
+  const rerun = resume ? RESEARCH_STEPS.slice(Math.max(0, RESEARCH_STEPS.indexOf(waitingBefore?.step ?? "soundsLike"))) : mode === "more" ? MORE_STEPS : RESEARCH_STEPS;
+  for (const k of rerun) delete steps[k];
   let playlist = args.playlist;
-  let n = 0;
+  let n = kept.filter((e) => e.type === "tool-start").length;
+  let lastStepId = "";
   /** The act's name for this run's summary: the saved one, or the new profile's when the name follows the profile. */
   let actLabel: string | null = args.playlist.actName;
   let usageNow: QlooUsage = { calls: 0, cacheHits: 0 };
+  // A resumed run's Qloo counts carry on from the part before the pause.
+  const base = resume?.snapshot.totals ?? null;
+  const usageTotal = (): QlooUsage => ({ calls: usageNow.calls + (base?.qlooCalls ?? 0), cacheHits: usageNow.cacheHits + (base?.qlooCacheHits ?? 0) });
 
-  const finish = async (end: { status: "done" | "failed" | "fallback"; endCode: RunRecord["endCode"]; saved: Awaited<ReturnType<LearnStore["insertSuggestions"]>>; usage: RunRecord["usage"] }) => {
-    // Steps never started this run are skipped (a full run that stopped early; "more" leaves the others as they were).
-    for (const k of mode === "more" ? MORE_STEPS : RESEARCH_STEPS) if (!steps[k]) (steps as Record<string, StoredStep>)[k] = { status: "skipped", output: null };
-    const totals = researchTotals(steps, usageNow, end.saved.length);
+  const finish = async (end: { status: "done" | "failed" | "fallback"; endCode: RunRecord["endCode"]; saved: Awaited<ReturnType<LearnStore["insertSuggestions"]>>; usage: RunRecord["usage"]; waiting?: ResearchWaiting }) => {
+    // Steps never started this run are skipped (a full run that stopped early; "more" leaves the others as they were). A paused
+    // run's are not started yet, so they stay out of the snapshot.
+    if (!end.waiting) for (const k of mode === "more" ? MORE_STEPS : RESEARCH_STEPS) if (!steps[k]) (steps as Record<string, StoredStep>)[k] = { status: "skipped", output: null };
+    const totals = researchTotals(steps, usageTotal(), end.saved.length);
     for (const s of end.saved) run.push(suggestionEvent(record.id, s));
     run.push({ type: "totals", totals });
     if (end.usage) run.push({ type: "usage", ...end.usage });
@@ -200,6 +231,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         at: new Date().toISOString(),
         steps,
         totals,
+        ...(end.waiting ? { waiting: end.waiting } : {}),
       };
       await playlists.saveResearch(playlist.id, snapshot).catch((error) => log.warn("research snapshot not saved", { error: error instanceof Error ? error.message : "unknown" }));
     }
@@ -208,24 +240,29 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
   /** One step: tool-start, the work, tool-end, then the running totals. A thrown error is a failed step (and the run goes on). */
   async function step<K extends ResearchStepKey>(key: K, input: unknown, work: (via: (source: MentionSource) => void) => Promise<StepOutputs[K]>): Promise<StepOutputs[K] | null> {
     const id = `rs-${++n}`;
+    lastStepId = id;
     const tool = RESEARCH_TOOLS[key];
-    push({ type: "tool-start", id, tool, label: RESEARCH_LABELS[key], source: RESEARCH_SOURCES[key], input });
+    push({ type: "tool-start", id, tool, label: RESEARCH_LABELS[key], input });
     // `via`: a step with a backup source says which one it is on now, so its running mark shows that source.
     const via = (source: MentionSource) => push({ type: "tool-source", id, source });
+    // Every external call the step makes (provider, endpoint, params, status, count, ms, cached), for its RAW panel.
+    const calls: CallRecord[] = [];
+    const withCalls = () => (calls.length ? { calls } : {});
     try {
       if (args.stepDelayMs) await new Promise((resolve) => setTimeout(resolve, args.stepDelayMs));
-      const output = await work(via);
-      (steps as Record<string, StoredStep>)[key] = { status: "done", output };
-      push({ type: "tool-end", id, tool, ok: true, summary: output.summary, output });
+      const output = await recordCalls(calls, () => work(via));
+      const waits = Boolean((output as { waiting?: unknown }).waiting);
+      (steps as Record<string, StoredStep>)[key] = { status: waits ? "waiting" : "done", output };
+      push({ type: "tool-end", id, tool, ok: true, summary: output.summary, output, ...withCalls() });
       return output;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       (steps as Record<string, StoredStep>)[key] = { status: "failed", output: null };
-      push({ type: "tool-end", id, tool, ok: false, summary: message.slice(0, 300), output: { error: message.slice(0, 600) } });
+      push({ type: "tool-end", id, tool, ok: false, summary: message.slice(0, 300), output: { error: message.slice(0, 600) }, ...withCalls() });
       if (error instanceof QlooDown) throw error;
       return null;
     } finally {
-      push({ type: "totals", totals: researchTotals(steps, usageNow) });
+      push({ type: "totals", totals: researchTotals(steps, usageTotal()) });
     }
   }
 
@@ -280,7 +317,12 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
       // `own` stays null when Qloo doesn't know the act: "Artists you sound like" are then the signal (the fallback).
       let own: { id: string; name: string } | null = null;
       const basedOn = (text: string) => `${PLAYLIST_COPY.research.fallback.basedOn}: ${text}`;
-      if (mode === "full") {
+      const basedOnGenre = (text: string) => `${PLAYLIST_COPY.research.fallback.basedOnGenre}: ${text}`;
+      /** The genre path's stand-ins: Qloo's artists for the genre tag (step 4), the signal for who and where the fans are. */
+      let genreAlikes: { qlooId: string; name: string }[] = [];
+
+      /** Steps 1–3 of a full run. Null when the run has ended (Spotify unreadable, Qloo down, or a choice to make). */
+      const firstSteps = async (): Promise<{ profile: ProfileOutput; found: QlooOutput } | null> => {
         // 1. The Spotify profile.
         const spotify: { code: "spotify_unavailable" | "spotify_not_found" } = { code: "spotify_unavailable" };
         const profile = await step("profile", { spotifyId: args.spotifyId }, async (): Promise<ProfileOutput> => {
@@ -307,7 +349,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         });
         if (!profile) {
           await finish({ status: "failed", endCode: spotify.code, saved: [], usage: null });
-          return;
+          return null;
         }
 
         // 2. Your songs, straight into Songs you can sing.
@@ -460,18 +502,109 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         });
         if (!found) {
           await finish({ status: "failed", endCode: "qloo_unavailable", saved: [], usage: null });
-          return;
+          return null;
         }
-        // Paused only on "Is one of these you?": a likely match that needs the performer's yes. The run ends cleanly (it doesn't count), the answer starts the next one.
+        // "Is one of these you?": a likely match that needs the performer's yes. The run ends cleanly (it doesn't count), the answer starts the next one.
         if (found.waiting) {
           await finish({ status: "done", endCode: "needs_choice", saved: [], usage: null });
+          return null;
+        }
+        if (!found.matched) push({ type: "status", message: found.summary });
+        return { profile, found };
+      };
+
+      if (mode === "full") {
+        // A resumed run reuses steps 1–3 as they are saved; nothing is fetched again.
+        const first = resume && steps.profile?.output && steps.qloo?.output ? { profile: steps.profile.output, found: structuredClone(steps.qloo.output) } : resume ? null : await firstSteps();
+        if (!first) {
+          if (resume) await finish({ status: "failed", endCode: null, saved: [], usage: null });
           return;
         }
+        const { profile, found } = first;
         if (found.matched && found.qlooId) own = { id: found.qlooId, name: found.name ?? profile.name };
-        else push({ type: "status", message: found.summary });
+        const R = PLAYLIST_COPY.research;
+        const ask: ResearchAsk = { asks: waitingBefore?.asks ?? 0, tried: structuredClone(waitingBefore?.tried ?? { artists: [], genres: [] }) };
 
-        // 4. Who you sound like (editable: saved as "Artists you sound like" only when that list is empty).
-        await step("soundsLike", {}, async (): Promise<SoundsLikeOutput> => {
+        /** The performer's answer: artists saved as theirs and resolved on Qloo, or a genre as a Qloo tag. Returns the next ask's line ("" when found). */
+        const applyInput = async (input: ResearchInput): Promise<string> => {
+          let line: string = R.ask.first;
+          const artists = (input.artists ?? []).filter((a, i, all) => all.findIndex((b) => nameKey(b.name) === nameKey(a.name)) === i).slice(0, 3);
+          if (artists.length) {
+            const res = await resolveSoundAlikes(artists, { name: profile.name, actName: actLabel, spotifyId: args.spotifyId }, adapters);
+            if (res.unavailable) throw new QlooDown("Qloo didn't answer for the artists you sound like.");
+            // Saved as the performer's own "Artists you sound like" (with the Qloo id when Qloo knows them), after the ones they had.
+            const fresh = (await playlists.get(playlist.id)) ?? playlist;
+            const hitOf = (name: string) => res.matches[artists.findIndex((a) => nameKey(a.name) === nameKey(name))] ?? null;
+            const had = fresh.soundsLike.map((a): SoundsLike => {
+              const hit = a.qlooId ? null : hitOf(a.name);
+              return hit ? { ...a, qlooId: hit.qlooId } : a;
+            });
+            const added = artists
+              .filter((a) => !fresh.soundsLike.some((b) => nameKey(b.name) === nameKey(a.name)))
+              .map((a): SoundsLike => {
+                const hit = hitOf(a.name);
+                const spotifyId = a.spotifyId ?? hit?.spotifyId;
+                return { name: a.name.slice(0, 80), ...(spotifyId ? { spotifyId } : {}), ...(hit ? { qlooId: hit.qlooId } : {}), ...(hit?.image ? { image: hit.image } : {}) };
+              });
+            await patch({ soundsLike: [...had, ...added].slice(0, SOUNDS_LIKE_MAX) });
+            if (res.found.length > 0) {
+              signalAlikes.current = res.found.slice(0, RESEARCH_SIGNAL_SOUND_ALIKES).map((a) => ({ name: a.name, qlooId: a.qlooId, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.image ? { image: a.image } : {}) }));
+              delete found.foundByHive;
+              Object.assign(found, { fallback: "soundsLike", summary: R.fallback.label(res.found.slice(0, 3).map((a) => a.name)) });
+              return "";
+            }
+            ask.tried.artists.push(...res.unknown.filter((name) => !ask.tried.artists.includes(name)));
+            line = R.ask.unknownArtists(res.unknown);
+          }
+          if (input.genre) {
+            const genre = input.genre.trim().slice(0, 40);
+            found.genrePick = genre;
+            const tag = await resolveGenreTag(genre, adapters);
+            if (tag === "unavailable") throw new QlooDown("Qloo didn't answer for your genre.");
+            if (tag) {
+              genreSignal.tags = [tag];
+              Object.assign(found, { fallback: "genres", genreTags: [tag], summary: R.fallback.genresLabel([tag.name.trim().replace(/\b\w/g, (c) => c.toUpperCase())]) });
+              return "";
+            }
+            if (!ask.tried.genres.includes(genre)) ask.tried.genres.push(genre);
+            line = R.ask.untaggedGenre(genre);
+          }
+          return line;
+        };
+
+        // 4. Who you sound like (editable: saved as "Artists you sound like" only when that list is empty). With no taste signal at
+        // all (Qloo doesn't know the act, nor any artist like it, nor a genre), the run waits here for the performer's input.
+        const input = resume?.input;
+        await step("soundsLike", input ? { artists: (input.artists ?? []).map((a) => a.name), genre: input.genre ?? null } : {}, async (): Promise<SoundsLikeOutput> => {
+          if (!own && found.fallback === "none") {
+            let line: string = R.ask.first;
+            if (input) line = await applyInput(input);
+            else {
+              // The performer's own sound-alikes Qloo doesn't know either: the first ask says so.
+              const unknown = playlist.soundsLike.filter((a) => !a.qlooId).map((a) => a.name).slice(0, 3);
+              if (unknown.length) {
+                ask.tried.artists.push(...unknown.filter((name) => !ask.tried.artists.includes(name)));
+                line = R.ask.unknownArtists(unknown);
+              }
+            }
+            if (found.fallback === "none") {
+              ask.asks++;
+              if (ask.asks > RESEARCH_MAX_ASKS) return { summary: R.ask.gaveUp, artists: [], saved: false, gaveUp: true };
+              return { summary: line, artists: [], saved: false, waiting: { asks: ask.asks, tried: ask.tried } };
+            }
+          }
+          if (!own && found.fallback === "genres") {
+            // A genre stands in for the act: Qloo's artists for that tag are who it sounds like (and the signal for the fans steps).
+            const tags = genreSignal.tags.length ? genreSignal.tags : (found.genreTags ?? []);
+            const res = fromQloo(await qloo.tagArtists(tags.map((t) => t.id), RESEARCH_SOUNDS_LIKE_SAVED + 4, adapters), "artists in your genre");
+            const actKey = nameKey(actLabel ?? profile.name);
+            const artists = res
+              .filter((e) => nameKey(e.name) !== actKey && nameKey(e.name) !== nameKey(profile.name))
+              .slice(0, RESEARCH_SOUNDS_LIKE_SAVED)
+              .map((e) => ({ name: e.name, qlooId: e.id, ...(e.spotifyId && SPOTIFY_ID.test(e.spotifyId) ? { spotifyId: e.spotifyId } : {}), ...(e.image && /^https:\/\//.test(e.image) ? { image: e.image } : {}), ...(e.tags.length ? { tags: e.tags.slice(0, 3).map((t) => t.name) } : {}), affinity: r2(e.affinity) }));
+            genreAlikes = artists.slice(0, RESEARCH_SIGNAL_SOUND_ALIKES).map((a) => ({ qlooId: a.qlooId, name: a.name }));
+            return { summary: artists.length ? basedOnGenre(andList(artists.slice(0, 3).map((a) => a.name))) : "Qloo found no artists in your genre", artists, saved: false, basedOn: "genres" };
+          }
           if (!own) {
             // Qloo doesn't know the act: the artists like it (the performer's, or the ones the Hive found and saved) are the answer.
             if (found.fallback !== "soundsLike") return { summary: PLAYLIST_COPY.research.fallback.noAlikes, artists: [], saved: false };
@@ -494,11 +627,23 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           }
           return { summary: artists.length ? `You sound like ${artists.slice(0, 3).map((a) => a.name).join(", ")}` : "Qloo found no artists like you", artists, saved };
         });
+        // The Qloo step's saved output follows the input (the signal the later steps and "Find more songs to learn" read).
+        if (steps.qloo) (steps.qloo as StoredStep<"qloo">).output = found;
+        const four = steps.soundsLike?.output;
+        if (four?.waiting) {
+          await finish({ status: "done", endCode: "needs_sounds_like", saved: [], usage: null, waiting: { step: "soundsLike", stepId: lastStepId, message: four.summary, asks: four.waiting.asks, tried: four.waiting.tried } });
+          return;
+        }
+        if (four?.gaveUp) {
+          await finish({ status: "done", endCode: "no_taste_data", saved: [], usage: null });
+          return;
+        }
 
         // 5. Who your fans are.
+        const fansSignal = own ? [own.id] : found.fallback === "soundsLike" ? alikesNow().map((a) => a.qlooId) : found.fallback === "genres" ? genreAlikes.map((a) => a.qlooId) : [];
         await step("fans", {}, async (): Promise<FansOutput> => {
-          if (!own && found.fallback !== "soundsLike") return { ...noTaste(), age: [], gender: [], ageLean: null };
-          const profileRes = await qloo.crowdProfile(own ? [own.id] : alikesNow().map((a) => a.qlooId), adapters);
+          if (fansSignal.length === 0) return { ...noTaste(), age: [], gender: [], ageLean: null };
+          const profileRes = await qloo.crowdProfile(fansSignal, adapters);
           const p = fromQloo(profileRes, "who your fans are");
           const age = Object.entries(p?.age ?? {})
             .map(([key, lean]) => ({ key, label: ageLabel(key), lean: r2(lean) ?? 0 }));
@@ -506,7 +651,9 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           const top = [...age].sort((a, b) => b.lean - a.lean)[0];
           const ageLean = top && top.lean > 0 ? top.label : null;
           const line = ageLean ? `Your fans lean ${ageLean}` : "No clear age lean in Qloo's data";
-          return { summary: own ? line : basedOn(line.charAt(0).toLowerCase() + line.slice(1)), age, gender, ageLean, ...(own ? {} : { basedOn: "soundsLike" as const }) };
+          const lower = line.charAt(0).toLowerCase() + line.slice(1);
+          const byGenre = !own && found.fallback === "genres";
+          return { summary: own ? line : byGenre ? basedOnGenre(lower) : basedOn(lower), age, gender, ageLean, ...(own ? {} : { basedOn: byGenre ? ("genres" as const) : ("soundsLike" as const) }) };
         });
       } else {
         const q = previous?.steps.qloo?.output;
@@ -519,8 +666,9 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
       if (mode === "full") {
         const fresh = (await playlists.get(playlist.id)) ?? playlist;
         playlist = fresh;
-        const noSignal = !own && steps.qloo?.output?.fallback !== "soundsLike";
-        const mapAlikes = noSignal ? [] : alikesNow();
+        const fb = steps.qloo?.output?.fallback;
+        const mapAlikes = !own && fb === "genres" ? genreAlikes : !own && fb !== "soundsLike" ? [] : alikesNow();
+        const noSignal = !own && mapAlikes.length === 0;
         await step("fansMap", { scope: "world", signal: [...(own ? [own.name] : []), ...mapAlikes.map((a) => a.name)] }, async (): Promise<FansMapOutput> => {
           if (noSignal) return { ...noTaste(), cells: [], areas: [], signalledBy: [] };
           // A heatmap Qloo can't give is a failed step, not a failed run: the other steps don't need it.

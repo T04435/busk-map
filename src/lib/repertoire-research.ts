@@ -48,20 +48,6 @@ export const RESEARCH_LABELS: Record<ResearchStepKey, string> = {
   summary: "Ranking songs to learn",
 };
 
-/** The data call behind each step, shown under Raw data. */
-export const RESEARCH_SOURCES: Record<ResearchStepKey, string> = {
-  profile: "Spotify artist profile (name, photo, genres, followers)",
-  songs: "Spotify: your releases and top tracks; Last.fm top tracks as backup",
-  qloo: "Qloo /entities by Spotify id (name search as backup), then /entities by id for tags and description; when Qloo doesn't know the act: Last.fm artist.getSimilar confirmed on Qloo /search, else the Spotify genres as Qloo /v2/tags",
-  soundsLike: "Qloo /v2/insights · urn:entity:artist signalled by your artist (or the artists like you the Hive found on Last.fm)",
-  fans: "Qloo /v2/insights · urn:demographics signalled by your artist",
-  fansMap: "Qloo /v2/insights · urn:heatmap signalled by your artist and your sound-alikes, worldwide",
-  fansLove: "Qloo /v2/insights · urn:entity:artist signalled by you and your sound-alikes, with explainability; they are left out",
-  learn: "Spotify top tracks of those artists (Last.fm as backup); songs you sing, were offered or dismissed are left out",
-  genres: "Qloo /v2/insights · urn:tag (music genres) signalled by your artist",
-  summary: "The Hive ranks the songs found and says why; it never adds a song",
-};
-
 export type ResearchMode = "full" | "more";
 
 // --- Step outputs (the tool-end `output`; every one has a one-line `summary`) ---
@@ -107,7 +93,18 @@ export type QlooOutput = {
 /** The signal came from "Artists you sound like", not from the act (set on the steps that used it). */
 export type BasedOn = { basedOn?: "soundsLike" | "genres" | "none" };
 export type ResearchArtistOut = { name: string; qlooId: string; spotifyId?: string; image?: string; tags?: string[]; affinity: number | null; because?: string[] };
-export type SoundsLikeOutput = { summary: string; artists: ResearchArtistOut[]; /** True when they were saved as your "Artists you sound like" (only when that list was empty). */ saved: boolean };
+/** What the run waits for on a paused step: how many times it has asked (at most RESEARCH_MAX_ASKS), and what Qloo didn't know. */
+export type ResearchAsk = { asks: number; tried: { artists: string[]; genres: string[] } };
+export type SoundsLikeOutput = BasedOn & {
+  summary: string;
+  artists: ResearchArtistOut[];
+  /** True when they were saved as your "Artists you sound like" (only when that list was empty). */
+  saved: boolean;
+  /** The run is paused here: Qloo has no taste signal for the act, so the step asks for artists you sound like, or a genre. */
+  waiting?: ResearchAsk;
+  /** Asked RESEARCH_MAX_ASKS times and still nothing Qloo knows: the run finished without taste data. */
+  gaveUp?: boolean;
+};
 export type LeanOut = { key: string; label: string; lean: number };
 export type FansOutput = BasedOn & { summary: string; age: LeanOut[]; gender: LeanOut[]; ageLean: string | null };
 /** One heat cell of "Where your fans are": `affinity` is relative to the strongest cell (0 to 1). BRAND's FansMap takes these as `cells`. */
@@ -148,7 +145,17 @@ export type StepOutputs = {
   summary: SummaryOutput;
 };
 
-export type StoredStep<K extends ResearchStepKey = ResearchStepKey> = { status: "done" | "failed" | "skipped"; output: StepOutputs[K] | null };
+/** "waiting": the run is paused on this step for the performer's input (ResearchSnapshot.waiting). */
+export type StoredStep<K extends ResearchStepKey = ResearchStepKey> = { status: "done" | "failed" | "skipped" | "waiting"; output: StepOutputs[K] | null };
+
+/** How many times a paused run asks for input before it finishes without taste data. */
+export const RESEARCH_MAX_ASKS = 3;
+
+/**
+ * A run paused for input (end code needs_sounds_like): the step it waits on, that step's stream id, the ask, and what was tried.
+ * POST /api/playlist/research/<runId>/input carries on from here, in the same run.
+ */
+export type ResearchWaiting = ResearchAsk & { step: ResearchStepKey; stepId: string; message: string };
 
 /**
  * The research snapshot saved on the Repertoire (playlists.research, migration 009). It keeps each step's last output, so
@@ -167,6 +174,8 @@ export type ResearchSnapshot = {
   steps: { [K in ResearchStepKey]?: StoredStep<K> };
   /** The last run's final totals (Qloo calls, songs checked, new songs). */
   totals?: import("./learn-schema").LearnTotals;
+  /** Set while the run waits for the performer's input; the steps before it are done and kept. */
+  waiting?: ResearchWaiting | null;
 };
 
 /** The busk local scene's optional input: the act's genre tags (step 8), at most this many. */
@@ -195,6 +204,22 @@ export const researchRequestSchema = z.object({
   genre: z.string().trim().min(2).max(40).optional(),
 });
 export type ResearchRequest = z.infer<typeof researchRequestSchema>;
+
+/**
+ * POST /api/playlist/research/<runId>/input: the answer to a paused run. Artists you sound like (1 to 3, from the picker, with
+ * their Spotify id when it has one) or a genre; at least one.
+ */
+export const researchInputSchema = z
+  .object({
+    artists: z
+      .array(z.object({ name: z.string().trim().min(1).max(80), spotifyId: z.string().regex(/^[A-Za-z0-9]{22}$/).optional() }))
+      .min(1)
+      .max(3)
+      .optional(),
+    genre: z.string().trim().min(2).max(40).optional(),
+  })
+  .refine((v) => Boolean(v.artists?.length || v.genre), { message: "artists or genre" });
+export type ResearchInput = z.infer<typeof researchInputSchema>;
 
 /**
  * Offline test mode only (the 3210 server, e2e): an artist the local mocks know end to end, so the full nine-step flow
@@ -229,7 +254,14 @@ export const OFFLINE_TEST_ACTS = {
   secondHop: { name: "Nxq Hopper", spotifyId: "MockSecondHopAct000009", genres: ["synthetic noise"], similar: ["Hop Ghost One", "Hop Ghost Two"] },
   /** Nothing anywhere: no similar artists and no genre Qloo has a tag for. */
   nothing: { name: "Wqk Nothing", spotifyId: "MockNothingAct00000005", genres: ["synthetic noise"], similar: [] },
+  /** Like Victoria Queen (live, 20 Oct): Qloo doesn't know her, Last.fm has no similar artists or tags, Spotify sends no genres. */
+  silent: { name: "Vqn Silent", spotifyId: "MockVictoriaQueen00010", genres: [], similar: [], tags: [] },
 } as const;
+
+/** Offline: an artist name Qloo's mock doesn't know (a performer's sound-alike that resolves to nothing). */
+export const OFFLINE_UNKNOWN_ARTIST = "Qzv Nobody";
+/** Offline: a genre from the genre buttons that Qloo's mock has no tag for. */
+export const OFFLINE_UNTAGGED_GENRE = "Latin";
 
 /** Offline Last.fm: the similar artists of the second-hop test act's similar artists (names the Qloo mock knows). */
 export const OFFLINE_SIMILAR_HOPS: Record<string, readonly string[]> = {
@@ -237,15 +269,16 @@ export const OFFLINE_SIMILAR_HOPS: Record<string, readonly string[]> = {
   "Hop Ghost Two": ["Missy Higgins", "Wea Kgenre"],
 };
 
-/** Whether the saved research is paused on a question for the user (null when it is not). */
-export function researchWaiting(snapshot: Pick<ResearchSnapshot, "steps"> | null | undefined): "choice" | null {
+/** Whether the saved research is paused on a question for the user: "choice" (is one of these you?), "input" (artists or a genre), or null. */
+export function researchWaiting(snapshot: Pick<ResearchSnapshot, "steps" | "waiting"> | null | undefined): "choice" | "input" | null {
+  if (snapshot?.waiting) return "input";
   return snapshot?.steps.qloo?.output?.waiting === "choice" ? "choice" : null;
 }
 
-/** Whether the saved research can build on (the "Find more songs to learn" button): the act was found, or the run used the artists it sounds like. */
-export function researchUsable(snapshot: Pick<ResearchSnapshot, "steps"> | null | undefined): boolean {
+/** Whether the saved research can build on (the "Find more songs to learn" button): the act was found, or a stand-in signal was used. */
+export function researchUsable(snapshot: Pick<ResearchSnapshot, "steps" | "waiting"> | null | undefined): boolean {
   const q = snapshot?.steps.qloo?.output;
-  return Boolean(q && !q.waiting && (q.matched || q.fallback));
+  return Boolean(q && !q.waiting && !snapshot?.waiting && (q.matched || q.fallback === "soundsLike" || q.fallback === "genres"));
 }
 
 /**

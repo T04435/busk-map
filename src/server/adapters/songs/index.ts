@@ -2,7 +2,7 @@ import "server-only";
 import { providerStatus } from "@/server/env";
 import { log } from "@/server/log";
 import { runAdapter, settleWithLimit, type AdapterContext, type AdapterResult } from "../core";
-import { fetchArtistListeners, fetchSimilarArtists, fetchTopTags, fetchTopTracks } from "./client";
+import { fetchArtistListenersRecorded, fetchSimilarArtistsRecorded, fetchTopTagsRecorded, fetchTopTracksRecorded } from "./client";
 import { syntheticListeners, syntheticSimilar, syntheticTopTags, syntheticTopTracks } from "./fixtures/synthetic";
 import type { ListenersData, SimilarArtist, SongsData, TopTag } from "./schema";
 
@@ -25,9 +25,10 @@ export async function getSongs(artists: string[], context: AdapterContext): Prom
     configured: providerStatus().lastfm,
     fallback: {},
     synthetic: () => Object.fromEntries(names.map((name) => [name, syntheticTopTracks(name)])),
+    call: { endpoint: "artist.gettoptracks", params: { artist: names.join(", "), limit: String(TOP_TRACKS_PER_ARTIST) } },
     live: async () => {
       // Last.fm asks for about 5 requests a second: stay polite.
-      const settled = await settleWithLimit(names, 4, (name) => fetchTopTracks(name, TOP_TRACKS_PER_ARTIST));
+      const settled = await settleWithLimit(names, 4, (name) => fetchTopTracksRecorded(name, TOP_TRACKS_PER_ARTIST));
       const failures = settled.filter((s) => s.status === "rejected");
       if (names.length > 0 && failures.length === names.length) throw (failures[0] as PromiseRejectedResult).reason;
       if (failures.length > 0) log.warn("last.fm lookups failed for some artists", { failed: failures.length, total: names.length });
@@ -56,7 +57,7 @@ export async function getListeners(artists: string[], context: AdapterContext): 
     fallback: {},
     synthetic: () => Object.fromEntries(names.map((name) => [name, syntheticListeners(name)])),
     live: async () => {
-      const settled = await settleWithLimit(names, 4, (name) => fetchArtistListeners(name));
+      const settled = await settleWithLimit(names, 4, (name) => fetchArtistListenersRecorded(name));
       const failures = settled.filter((s) => s.status === "rejected");
       if (names.length > 0 && failures.length === names.length) throw (failures[0] as PromiseRejectedResult).reason;
       return Object.fromEntries(settled.flatMap((s, i) => (s.status === "fulfilled" ? [[names[i], s.value]] : [])));
@@ -79,7 +80,8 @@ export async function getSimilarArtists(artist: string, context: AdapterContext)
     configured: providerStatus().lastfm,
     fallback: [],
     synthetic: () => syntheticSimilar(name),
-    live: () => fetchSimilarArtists(name, SIMILAR_PER_ARTIST),
+    call: { endpoint: "artist.getsimilar", params: { artist: name, limit: String(SIMILAR_PER_ARTIST) } },
+    live: () => fetchSimilarArtistsRecorded(name, SIMILAR_PER_ARTIST),
   });
 }
 
@@ -96,6 +98,7 @@ export async function getTopTags(artist: string, context: AdapterContext): Promi
     configured: providerStatus().lastfm,
     fallback: [],
     synthetic: () => syntheticTopTags(name),
-    live: () => fetchTopTags(name),
+    call: { endpoint: "artist.gettoptags", params: { artist: name } },
+    live: () => fetchTopTagsRecorded(name),
   });
 }

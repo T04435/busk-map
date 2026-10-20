@@ -241,50 +241,49 @@ describe("path 4: Qloo doesn't know the act, so the Hive finds artists like it a
     const s = v.research.steps as ResearchSnapshot["steps"];
     expect(s.qloo!.output).toMatchObject({ matched: false, fallback: "genres", genreTags: [{ id: expect.stringMatching(/^urn:tag:genre/), name: "Indie Folk" }], summary: PLAYLIST_COPY.research.fallback.genresLabel(["Indie Folk"]) });
     expect(s.qloo!.output!.summary).toBe("Qloo doesn't know you yet, so this is based on your genres: Indie Folk.");
+    // The genre's artists on Qloo stand in for who the act sounds like (never saved as the performer's), and every Qloo step asks Qloo.
     expect(v.soundsLike).toHaveLength(0);
-    expect(s.soundsLike!.output!.artists).toHaveLength(0);
+    expect(s.soundsLike!.output).toMatchObject({ basedOn: "genres" });
+    const genreAlikes = s.soundsLike!.output!.artists.map((a) => a.name);
+    expect(genreAlikes.length).toBeGreaterThan(0);
     expect(s.fansLove!.output).toMatchObject({ basedOn: "genres", signalledBy: ["Indie Folk"] });
+    expect(s.fansLove!.output!.artists.some((a) => genreAlikes.includes(a.name))).toBe(false);
     expect(s.fansLove!.output!.artists.length).toBeGreaterThan(0);
     expect(s.genres!.output).toMatchObject({ basedOn: "genres" });
     expect(s.genres!.output!.tags.map((t) => t.name)).toEqual(["Indie Folk"]);
     expect(s.learn!.output!.songs.length).toBeGreaterThan(0);
-    expect(s.fans!.output!.summary).toBe(PLAYLIST_COPY.research.fallback.noTaste);
+    expect(s.fans!.output).toMatchObject({ basedOn: "genres", summary: expect.stringMatching(/^Based on your genre: /) });
+    expect(s.fansMap!.output!.summary).not.toBe(PLAYLIST_COPY.research.fallback.noTaste);
     expect(researchUsable(v.research)).toBe(true);
     const more = await go(m, { mode: "more" }, r.cookie);
     expect(end(more.events).ok).toBe(true);
     expect(stepsDone(more.events)).toBe(3);
   });
 
-  it("with nothing to go on the run still completes: the profile and songs run and the Qloo steps say there is no taste data yet", async () => {
+  it("with nothing to go on the run waits at Who you sound like: profile and songs done, no empty Qloo steps (research-waiting.test.ts)", async () => {
     const m = await load();
     const r = await go(m, act("nothing"));
-    expect(end(r.events)).toMatchObject({ ok: true });
-    expect(String(end(r.events).code)).not.toMatch(/^needs_/);
-    expect(end(r.events).code).toBe("nothing_new");
+    expect(end(r.events)).toMatchObject({ ok: true, code: "needs_sounds_like" });
     const v = await view(m, r.cookie);
     const s = v.research.steps as ResearchSnapshot["steps"];
     expect(s.profile!.status).toBe("done");
     expect(s.songs!.status).toBe("done");
     expect(v.songs.length).toBeGreaterThan(0);
     expect(s.qloo!.output).toMatchObject({ matched: false, fallback: "none", summary: PLAYLIST_COPY.research.fallback.noneLabel });
-    for (const k of ["fans", "fansMap", "fansLove", "genres"] as const) {
-      expect(s[k]!.status).toBe("done");
-      expect(s[k]!.output!.summary).toBe(PLAYLIST_COPY.research.fallback.noTaste);
-    }
-    expect(s.summary!.status).toBe("done");
-    expect(researchUsable(v.research)).toBe(true);
+    expect(s.soundsLike!.status).toBe("waiting");
+    for (const k of ["fans", "fansMap", "fansLove", "learn", "genres", "summary"] as const) expect(s[k]).toBeUndefined();
+    expect(researchUsable(v.research)).toBe(false);
+    expect(researchWaiting(v.research)).toBe("input");
   });
 
-  it("'none of these' goes on to find artists like you instead of pausing", async () => {
+  it("'none of these' goes on to look for artists like you, and waits for input when there are none", async () => {
     const m = await load();
     const first = await go(m, act("candidates"));
     const none = await go(m, { ...act("candidates"), refresh: true, qlooChoice: { none: true } }, first.cookie);
-    expect(end(none.events).ok).toBe(true);
-    expect(String(end(none.events).code)).not.toMatch(/^needs_/);
-    // No taste data for this act, so "songs to learn" has nothing to build on: every other step ran.
-    expect(stepsDone(none.events)).toBe(RESEARCH_STEPS.length - 1);
+    expect(end(none.events)).toMatchObject({ ok: true, code: "needs_sounds_like" });
     const v = await view(m, first.cookie);
     expect(qlooOut(v)).toMatchObject({ matched: false, declined: true, fallback: "none" });
+    expect(v.research.waiting).toMatchObject({ step: "soundsLike", asks: 1 });
   });
 
   it("Yomil: 'not on Qloo' is not remembered, so every new run looks for the act on Qloo again, first", async () => {
@@ -298,11 +297,12 @@ describe("path 4: Qloo doesn't know the act, so the Hive finds artists like it a
     expect(searched.filter((n) => n === "Yomil").length).toBeGreaterThan(before);
   });
 
-  it("no run on any test act ends needing sound-alikes", async () => {
+  it("only the test acts with no taste signal anywhere wait for input", async () => {
+    const waits = new Set(["otherId", "nothing", "silent"]);
     for (const key of Object.keys(OFFLINE_TEST_ACTS) as (keyof typeof OFFLINE_TEST_ACTS)[]) {
       const m = await load();
       const r = await go(m, act(key));
-      expect(end(r.events).code, key).not.toBe("needs_sounds_like");
+      expect(end(r.events).code === "needs_sounds_like", key).toBe(waits.has(key));
       expect(end(r.events).ok, key).toBe(true);
     }
   });

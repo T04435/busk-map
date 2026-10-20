@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { requestSlotSchema, slotSchema } from "./slot";
 import { researchTotalsSchema } from "./research-totals";
+import { callRecordSchema } from "./call-record";
 
 export const PERMITS = ["general", "premium", "circle-act"] as const;
 export const CITY_IDS = ["melbourne"] as const;
@@ -398,8 +399,8 @@ export const streamToolStartSchema = z.object({ type: z.literal("tool-start"), i
  * Last.fm). The step's Hive mark shows it in its centre cell. Live only: replays read it from the step's output.
  */
 export const streamToolSourceSchema = z.object({ type: z.literal("tool-source"), id: z.string(), source: z.enum(["spotify", "lastfm", "qloo"]) });
-/** `output`: the data the tool returned, exactly as the model saw it. */
-export const streamToolEndSchema = z.object({ type: z.literal("tool-end"), id: z.string(), tool: z.string(), ok: z.boolean(), summary: z.string(), output: z.unknown().optional() });
+/** `output`: the data the tool returned, exactly as the model saw it. `calls`: the external calls the step made (Repertoire research). */
+export const streamToolEndSchema = z.object({ type: z.literal("tool-end"), id: z.string(), tool: z.string(), ok: z.boolean(), summary: z.string(), output: z.unknown().optional(), calls: z.array(callRecordSchema).optional() });
 /** Run totals, sent before the plan. */
 export const streamUsageSchema = z.object({
   type: z.literal("usage"),

@@ -313,13 +313,13 @@ function artistPayload(artist: CatalogArtist, query?: Record<string, unknown>, s
     properties: {
       short_description: "Musical artist (Qloo mock test entity)",
       akas: (artist.aka ?? []).map((value) => ({ value, languages: ["en"] })),
-      ...(style === "lookup" ? { external: { spotify: { id: artist.spotifyId }, lastfm: { id: encodeURIComponent(artist.name.toLowerCase()), listeners } } } : {}),
+      ...(style === "lookup" ? { external: { ...("noSpotify" in artist ? {} : { spotify: { id: artist.spotifyId } }), lastfm: { id: encodeURIComponent(artist.name.toLowerCase()), listeners } } } : {}),
     },
     popularity: artist.popularity,
     tags: genreTags(artist.genres, style),
     ...(query ? { query } : {}),
     disambiguation: artist.local ? "Australian artist (mock)" : "Artist (mock)",
-    ...(style === "insights" ? { external: { spotify: [{ id: artist.spotifyId }], lastfm: [{ id: encodeURIComponent(artist.name.toLowerCase()), listeners }] } } : {}),
+    ...(style === "insights" ? { external: { ...("noSpotify" in artist ? {} : { spotify: [{ id: artist.spotifyId }] }), lastfm: [{ id: encodeURIComponent(artist.name.toLowerCase()), listeners }] } } : {}),
   };
 }
 

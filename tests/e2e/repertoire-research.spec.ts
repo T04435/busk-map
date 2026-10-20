@@ -233,6 +233,20 @@ test.describe("Repertoire research (offline)", () => {
     }
   });
 
+  test("nothing found anywhere: the run completes and an optional genre pick gives it a signal", async ({ page }) => {
+    test.setTimeout(90_000);
+    await research(page, linkOf(OFFLINE_TEST_ACTS.nothing.spotifyId));
+    await done(page);
+    await expect(page.getByTestId("research-end")).not.toHaveAttribute("data-code", /^needs_/);
+    await expect(page.getByTestId("research-steps")).toContainText("has no taste data for you");
+    const pick = page.getByTestId("research-genre-pick");
+    await expect(pick).toBeVisible();
+    await pick.getByRole("button", { name: "Folk" }).click();
+    await done(page);
+    await expect(page.getByTestId("research-steps")).toContainText("based on your genres: Folk");
+    await expect(page.getByTestId("research-genre-pick")).toHaveCount(0);
+  });
+
   test("a name variant is found without asking (accents and 'feat.' stripped)", async ({ page }) => {
     await research(page, linkOf(OFFLINE_TEST_ACTS.variant.spotifyId));
     await done(page);

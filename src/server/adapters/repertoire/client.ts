@@ -227,7 +227,8 @@ export async function fetchArtistProfile(artistId: string): Promise<ArtistProfil
     name: body.name,
     images: (body.images ?? []).slice(0, 5).map(({ url, width, height }) => ({ url, width: width ?? null, height: height ?? null })),
     genres: body.genres ?? [],
-    ...(typeof body.followers?.total === "number" ? { followers: body.followers.total } : {}),
+    // Spotify no longer sends followers, genres or popularity to newer apps: absent (or zero) means unknown, never "0 followers".
+    ...(typeof body.followers?.total === "number" && body.followers.total > 0 ? { followers: body.followers.total } : {}),
   };
 }
 

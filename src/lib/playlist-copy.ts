@@ -156,6 +156,8 @@ export const PLAYLIST_COPY = {
     profileHeading: "Your profile",
     fansHeading: "Who your fans are",
     soundsLikeHeading: "Artists you sound like",
+    /** Offered only when the Hive found no artists and no genre: an optional pick, the run is already done. */
+    genrePick: { label: "Your genre", options: ["Folk", "Rock", "Pop", "Hip hop", "Jazz", "Electronic", "Latin", "Country", "Blues", "Soul", "Reggae", "Classical"] },
     fansMapHeading: "Where your fans are",
     fansLoveHeading: "What your fans also love",
     done: (n: number) => (n > 0 ? `Your research is done: ${n} ${n === 1 ? "song" : "songs"} to learn.` : "Your research is done."),

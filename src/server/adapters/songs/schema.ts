@@ -56,3 +56,18 @@ export const similarSchema = z.union([
 export const similarArtistSchema = z.object({ name: z.string().min(1), match: count.optional() });
 
 export type SimilarArtist = { name: string; match: number };
+
+/** Last.fm artist.getTopTags: the tags listeners gave this artist, most used first. Names are noisy ("seen live", places, years). */
+export const topTagsSchema = z.union([
+  z.object({
+    toptags: z.object({
+      // Last.fm returns a bare object instead of an array when there is one tag.
+      tag: z.union([z.array(z.unknown()), z.unknown().transform((t) => [t])]).default([]),
+    }),
+  }),
+  z.object({ error: z.number(), message: z.string() }),
+]);
+
+export const topTagSchema = z.object({ name: z.string().min(1), count: count.optional() });
+
+export type TopTag = { name: string; count: number };

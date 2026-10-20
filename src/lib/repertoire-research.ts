@@ -100,6 +100,8 @@ export type QlooOutput = {
   foundByHive?: boolean;
   /** fallback "genres": the Qloo genre tags used as the signal. */
   genreTags?: { id: string; name: string }[];
+  /** A genre the performer picked when nothing else was found; kept for this link so a refresh uses it again. */
+  genrePick?: string;
 };
 
 /** The signal came from "Artists you sound like", not from the act (set on the steps that used it). */
@@ -189,6 +191,8 @@ export const researchRequestSchema = z.object({
   refresh: z.boolean().default(false),
   /** The user's answer to "Is one of these you?": a candidate's Qloo id, or none of them. Only with a link, only for a candidate the last run offered. */
   qlooChoice: z.union([z.object({ id: z.string().min(1).max(80) }), z.object({ none: z.literal(true) })]).optional(),
+  /** A genre the performer picked ("Your genre") when the Hive found nothing: the first genre text looked up as a Qloo tag. Only with a link. */
+  genre: z.string().trim().min(2).max(40).optional(),
 });
 export type ResearchRequest = z.infer<typeof researchRequestSchema>;
 
@@ -207,6 +211,10 @@ export const OFFLINE_TEST_ARTIST = { name: "Julia Jacklin", spotifyId: "IBaXCJ49
  * - candidates: Qloo has "Mara Ellison" and "Maria Ellis", neither certain, so the user confirms.
  * - unknown (Yomil, the real act Qloo Support was asked about): Qloo has nothing; Last.fm has similar artists (Qloo knows three of them), which become the artists the performer sounds like.
  * - unresolved: Qloo has nothing and knows none of Last.fm's similar artists, so the act's Spotify genres, as Qloo genre tags, are the signal.
+ * - lastfmTags: Qloo has nothing, Last.fm has no similar artists but tags the act (Spotify sends no genres): the tags become Qloo genre tags.
+ * - otherId: a Qloo artist with the act's name but a different Spotify id: not the act, so it is rejected.
+ * - weak: Qloo has an artist of the act's name with no music-genre tag, so it isn't taken alone: the Hive's sound-alikes stand in.
+ * - secondHop: Last.fm's similar artists are unknown to Qloo, but theirs are known: the Hive goes one step further.
  * - nothing: no similar artists and no genre tag either; the run still finishes, with the Qloo steps marked as having no taste data yet.
  */
 export const OFFLINE_TEST_ACTS = {
@@ -215,9 +223,19 @@ export const OFFLINE_TEST_ACTS = {
   unknown: { name: "Yomil", spotifyId: "0U0oUxOfhtjkfoJ3ZNWEfU", genres: ["synthetic noise"], similar: ["Paul Kelly", "Courtney Barnett", "Missy Higgins", "Qzv Nobody"] },
   /** Last.fm has similar artists, Qloo knows none of them: the act's Spotify genres are the signal. */
   unresolved: { name: "Vyx Faraway", spotifyId: "MockUnresolvedAct00004", genres: ["indie folk", "synthetic noise"], similar: ["Qzv Nobody", "Xyl Ghost"] },
+  lastfmTags: { name: "Brk Tagonly", spotifyId: "MockLastfmTagsAct00006", genres: [], similar: [], tags: ["folk", "seen live", "australian"] },
+  otherId: { name: "Ishan Echo", spotifyId: "MockOtherIdAct00000007", genres: ["synthetic noise"], similar: [], tags: [], qlooSpotifyId: "ZzDifferentArtist00001" },
+  weak: { name: "Wea Kgenre", spotifyId: "MockWeakGenreAct000008", genres: ["synthetic noise"], similar: ["Paul Kelly", "Courtney Barnett", "Missy Higgins"] },
+  secondHop: { name: "Nxq Hopper", spotifyId: "MockSecondHopAct000009", genres: ["synthetic noise"], similar: ["Hop Ghost One", "Hop Ghost Two"] },
   /** Nothing anywhere: no similar artists and no genre Qloo has a tag for. */
   nothing: { name: "Wqk Nothing", spotifyId: "MockNothingAct00000005", genres: ["synthetic noise"], similar: [] },
 } as const;
+
+/** Offline Last.fm: the similar artists of the second-hop test act's similar artists (names the Qloo mock knows). */
+export const OFFLINE_SIMILAR_HOPS: Record<string, readonly string[]> = {
+  "Hop Ghost One": ["Paul Kelly", "Courtney Barnett"],
+  "Hop Ghost Two": ["Missy Higgins", "Wea Kgenre"],
+};
 
 /** Whether the saved research is paused on a question for the user (null when it is not). */
 export function researchWaiting(snapshot: Pick<ResearchSnapshot, "steps"> | null | undefined): "choice" | null {

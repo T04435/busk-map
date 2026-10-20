@@ -70,7 +70,7 @@ describe("the test acts are in step with the mock", () => {
       expect(CATALOG.some((c) => c.id === a.id)).toBe(false);
       expect(Object.values(OFFLINE_TEST_ACTS).some((t) => t.spotifyId === a.spotifyId)).toBe(false);
     }
-    expect(SCENARIO_ARTISTS.map((a) => a.name)).toEqual([OFFLINE_TEST_ACTS.variant.qlooName, ...OFFLINE_TEST_ACTS.candidates.qlooNames]);
+    expect(SCENARIO_ARTISTS.map((a) => a.name)).toEqual([OFFLINE_TEST_ACTS.variant.qlooName, ...OFFLINE_TEST_ACTS.candidates.qlooNames, OFFLINE_TEST_ACTS.otherId.name, OFFLINE_TEST_ACTS.weak.name]);
     for (const t of Object.values(OFFLINE_TEST_ACTS)) expect(t.spotifyId).toMatch(/^[A-Za-z0-9]{22}$/);
   });
 });
@@ -370,5 +370,100 @@ describe("the search budget", () => {
     const { findOwnOnQloo } = await import("@/server/playlist/own-artist");
     const res = await findOwnOnQloo("Zz00000000000000000000", "Aaa", { offline: true, faults: ["qloo"] } as never);
     expect(res.qloo).toBe("unavailable");
+  });
+});
+
+describe("gaps in the unknown-act fallback", () => {
+  const OFF = { offline: true, faults: [] } as const;
+  const T = OFFLINE_TEST_ACTS;
+
+  it("Last.fm tags alone: Spotify sends no genres, so the act's Last.fm tags become Qloo genre tags (noise dropped)", async () => {
+    await load();
+    const { findSoundAlikes } = await import("@/server/playlist/own-artist");
+    const a = await findSoundAlikes({ name: T.lastfmTags.name, genres: [], spotifyId: T.lastfmTags.spotifyId }, OFF);
+    expect(a).toMatchObject({ source: "genres", alikes: [], similar: [] });
+    expect(a.tags.map((t) => t.name)).toEqual(["Folk"]);
+    const m = await load();
+    const r = await go(m, act("lastfmTags"));
+    expect(end(r.events).ok).toBe(true);
+    expect(qlooOut(await view(m, r.cookie))).toMatchObject({ matched: false, fallback: "genres", genreTags: [{ name: "Folk" }] });
+  });
+
+  it("a name hit with another Spotify id is not the act", async () => {
+    await load();
+    const { findOwnOnQloo } = await import("@/server/playlist/own-artist");
+    const rejected = await findOwnOnQloo(T.otherId.spotifyId, T.otherId.name, OFF, { genres: T.otherId.genres });
+    expect(rejected).toMatchObject({ entity: null, qloo: "unknown", candidates: [], weak: false });
+    // The same name with Qloo's own Spotify id for it is the act.
+    const same = await findOwnOnQloo(T.otherId.qlooSpotifyId, T.otherId.name, OFF);
+    expect(same).toMatchObject({ qloo: "matched", by: "name" });
+    expect(same.entity?.name).toBe(T.otherId.name);
+    const m = await load();
+    const r = await go(m, act("otherId"));
+    const v = await view(m, r.cookie);
+    expect(v.qlooArtistId).toBeNull();
+    expect(qlooOut(v)).toMatchObject({ matched: false, fallback: "none" });
+  });
+
+  it("an entity with no music-genre tag is weak: the Hive's sound-alikes stand in, and it is used alone only when nothing else is found", async () => {
+    await load();
+    const { findOwnOnQloo, refreshOwnArtist } = await import("@/server/playlist/own-artist");
+    const hit = await findOwnOnQloo(T.weak.spotifyId, T.weak.name, OFF, { genres: T.weak.genres });
+    expect(hit).toMatchObject({ qloo: "matched", by: "name", weak: true });
+    expect((await refreshOwnArtist(T.weak.spotifyId, OFF)).qlooArtistId).toBeNull();
+    const m = await load();
+    const r = await go(m, act("weak"));
+    expect(end(r.events).ok).toBe(true);
+    const v = await view(m, r.cookie);
+    expect(v.qlooArtistId).toBeNull();
+    expect(qlooOut(v)).toMatchObject({ matched: false, fallback: "soundsLike", foundByHive: true });
+    expect(v.soundsLike.map((a: { name: string }) => a.name)).toEqual(["Paul Kelly", "Courtney Barnett", "Missy Higgins"]);
+  });
+
+  it("a weak match found as a sound-alike is dropped too", async () => {
+    await load();
+    const { findSoundAlikes } = await import("@/server/playlist/own-artist");
+    const a = await findSoundAlikes({ name: T.secondHop.name, genres: [] }, OFF);
+    expect(a.alikes.map((x) => x.name)).not.toContain(T.weak.name);
+  });
+
+  it("fewer than three similar artists resolve: the similar artists of the top two are tried, ranked after the first step's", async () => {
+    await load();
+    const { findSoundAlikes } = await import("@/server/playlist/own-artist");
+    const a = await findSoundAlikes({ name: T.secondHop.name, genres: T.secondHop.genres, spotifyId: T.secondHop.spotifyId }, OFF);
+    expect(a.source).toBe("lastfm");
+    expect(a.alikes.map((x) => x.name)).toEqual(["Paul Kelly", "Courtney Barnett", "Missy Higgins"]);
+    expect(a.similar).toEqual([...T.secondHop.similar]);
+    // Yomil resolves three at once: no second step, so no search for a second-step name.
+    searched.length = 0;
+    await findSoundAlikes({ name: T.unknown.name, genres: [] }, OFF);
+    expect(searched).toEqual(T.unknown.similar);
+    const m = await load();
+    const r = await go(m, act("secondHop"));
+    expect(qlooOut(await view(m, r.cookie))).toMatchObject({ fallback: "soundsLike", foundByHive: true });
+  });
+
+  it("the performer's own sound-alikes stay the signal, ahead of found ones", async () => {
+    const m = await load();
+    const first = await go(m, act("secondHop"));
+    const cookie = first.cookie;
+    const own = [{ name: "Paul Kelly" }, { name: "Courtney Barnett" }];
+    const saved = await m.playlist.PATCH(req("PATCH", "", { revision: (await view(m, cookie)).revision, soundsLike: own }, cookie));
+    expect(saved.status).toBe(200);
+    const again = await go(m, { ...act("secondHop"), refresh: true }, cookie);
+    expect(end(again.events).ok).toBe(true);
+    expect((await view(m, cookie)).soundsLike.map((a: { name: string; foundBy?: string }) => a.name)).toEqual(["Paul Kelly", "Courtney Barnett"]);
+  });
+
+  it("no tag anywhere: the run finishes with no taste data; a genre the performer picks becomes the signal, and a refresh keeps it", async () => {
+    const m = await load();
+    const first = await go(m, act("nothing"));
+    expect(qlooOut(await view(m, first.cookie))).toMatchObject({ fallback: "none" });
+    const picked = await go(m, { ...act("nothing"), refresh: true, genre: "Folk" }, first.cookie);
+    expect(end(picked.events).ok).toBe(true);
+    expect(qlooOut(await view(m, first.cookie))).toMatchObject({ fallback: "genres", genrePick: "Folk", genreTags: [{ name: "Folk" }] });
+    const again = await go(m, { ...act("nothing"), refresh: true }, first.cookie);
+    expect(end(again.events).ok).toBe(true);
+    expect(qlooOut(await view(m, first.cookie))).toMatchObject({ fallback: "genres", genrePick: "Folk" });
   });
 });

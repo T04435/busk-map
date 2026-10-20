@@ -2,13 +2,28 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { env } from "@/server/env";
 import { AdapterError, fetchJson } from "../core";
-import { artistInfoSchema, similarArtistSchema, similarSchema, topTracksSchema, trackSchema, type SimilarArtist, type TopTrack } from "./schema";
+import { artistInfoSchema, similarArtistSchema, similarSchema, topTagSchema, topTagsSchema, topTracksSchema, trackSchema, type SimilarArtist, type TopTag, type TopTrack } from "./schema";
 
 /** Last.fm artist.getTopTracks, artist.getInfo and artist.getSimilar (non-commercial, credited). Cache policy: 7 days. */
 const BASE = "https://ws.audioscrobbler.com/2.0/";
 const TIMEOUT_MS = 5_000;
 /** Last.fm error 6: artist not found. Not a failure, just no songs. */
 const ARTIST_NOT_FOUND = 6;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+/** Artist-name lookups for the unknown-act fallback (getSimilar, getTopTags) start at most once a second, in order. Only cache misses reach the network, so only they wait. */
+export const FALLBACK_REQUEST_GAP_MS = 1_000;
+let lastStart = 0;
+let paceQueue: Promise<void> = Promise.resolve();
+function pace(): Promise<void> {
+  const turn = paceQueue.then(async () => {
+    const wait = lastStart + FALLBACK_REQUEST_GAP_MS - Date.now();
+    if (wait > 0) await sleep(wait);
+    lastStart = Date.now();
+  });
+  paceQueue = turn;
+  return turn;
+}
 
 function apiKey(): string {
   const key = env().LASTFM_API_KEY;
@@ -73,6 +88,7 @@ export async function fetchSimilarArtists(artist: string, limit: number): Promis
   cacheLife("weeks");
   cacheTag("songs");
   const params = new URLSearchParams({ method: "artist.getsimilar", artist, autocorrect: "1", limit: String(limit), api_key: apiKey(), format: "json" });
+  await pace();
   const body = await fetchJson(`${BASE}?${params}`, { adapter: "songs", schema: similarSchema, timeoutMs: TIMEOUT_MS });
   if ("error" in body) {
     if (body.error === ARTIST_NOT_FOUND) return [];
@@ -81,5 +97,26 @@ export async function fetchSimilarArtists(artist: string, limit: number): Promis
   return body.similarartists.artist.flatMap((raw) => {
     const a = similarArtistSchema.safeParse(raw);
     return a.success ? [{ name: a.data.name, match: a.data.match ?? 0 }] : [];
+  });
+}
+
+/**
+ * Last.fm artist.getTopTags: the tags listeners gave this artist, most used first; [] when Last.fm doesn't know the name
+ * (error 6). Cached for weeks like getSimilar, per name. Used when Spotify sends no genres, to find Qloo genre tags.
+ */
+export async function fetchTopTags(artist: string): Promise<TopTag[]> {
+  "use cache: remote";
+  cacheLife("weeks");
+  cacheTag("songs");
+  const params = new URLSearchParams({ method: "artist.gettoptags", artist, autocorrect: "1", api_key: apiKey(), format: "json" });
+  await pace();
+  const body = await fetchJson(`${BASE}?${params}`, { adapter: "songs", schema: topTagsSchema, timeoutMs: TIMEOUT_MS });
+  if ("error" in body) {
+    if (body.error === ARTIST_NOT_FOUND) return [];
+    throw new AdapterError("songs", "http", `Last.fm error ${body.error}`);
+  }
+  return body.toptags.tag.flatMap((raw) => {
+    const t = topTagSchema.safeParse(raw);
+    return t.success ? [{ name: t.data.name, count: t.data.count ?? 0 }] : [];
   });
 }

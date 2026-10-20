@@ -55,7 +55,7 @@ export async function startLearn(faults: string | null): Promise<Streaming | Ref
 }
 
 /** Start a Repertoire research run (POST /api/playlist/research): a full run for a link, or "more". Same stream, same refusals. */
-export async function startResearch(body: { link?: string; refresh?: boolean; mode?: "full" | "more" }, faults: string | null): Promise<Streaming | Refusal> {
+export async function startResearch(body: { link?: string; refresh?: boolean; mode?: "full" | "more"; qlooChoice?: { id: string } | { none: true }; genre?: string }, faults: string | null): Promise<Streaming | Refusal> {
   try {
     const res = await fetch("/api/playlist/research", {
       method: "POST",

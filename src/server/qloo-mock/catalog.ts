@@ -257,19 +257,24 @@ export const CATALOG: CatalogArtist[] = ARTISTS.map((artist) => ({
  * resolves them. None carries the Spotify id of the matching test act, so the Spotify-id lookup never finds them: the matcher has
  * to work from names.
  */
-export type ScenarioArtist = CatalogArtist & { searchOn: string[] };
-const scenario = (name: string, popularity: number, genres: MockArtist["genres"], searchOn: string[]): ScenarioArtist => ({
+export type ScenarioArtist = CatalogArtist & { searchOn: string[]; /** Qloo holds no Spotify id for this artist (as for most small acts). */ noSpotify?: boolean };
+const scenario = (name: string, popularity: number, genres: MockArtist["genres"], searchOn: string[], options: { spotifyId?: string } = {}): ScenarioArtist => ({
   name,
   popularity,
   genres,
   id: mockId("artist", name),
-  spotifyId: mockSpotifyId(name),
+  spotifyId: options.spotifyId ?? mockSpotifyId(name),
   searchOn: searchOn.map(normalizeName),
+  ...(options.spotifyId ? {} : { noSpotify: true }),
 });
 export const SCENARIO_ARTISTS: ScenarioArtist[] = [
   scenario(OFFLINE_TEST_ACTS.variant.qlooName, 0.41, { indie_folk: 0.9, singer_songwriter: 0.5 }, [OFFLINE_TEST_ACTS.variant.qlooName]),
   scenario(OFFLINE_TEST_ACTS.candidates.qlooNames[0], 0.52, { rock: 0.7, pop: 0.4 }, [OFFLINE_TEST_ACTS.candidates.name, OFFLINE_TEST_ACTS.candidates.qlooNames[0]]),
   scenario(OFFLINE_TEST_ACTS.candidates.qlooNames[1], 0.34, { folk: 0.6, acoustic: 0.4 }, [OFFLINE_TEST_ACTS.candidates.name, OFFLINE_TEST_ACTS.candidates.qlooNames[1]]),
+  // The name matches exactly but Qloo's Spotify id is another artist's: rejected.
+  scenario(OFFLINE_TEST_ACTS.otherId.name, 0.6, { rock: 0.8, pop: 0.3 }, [OFFLINE_TEST_ACTS.otherId.name], { spotifyId: OFFLINE_TEST_ACTS.otherId.qlooSpotifyId }),
+  // The name matches exactly but the entity carries no music-genre tag: weak.
+  scenario(OFFLINE_TEST_ACTS.weak.name, 0.2, {}, [OFFLINE_TEST_ACTS.weak.name]),
 ];
 
 export const ARTIST_BY_ID = new Map([...CATALOG, ...SCENARIO_ARTISTS].map((artist) => [artist.id, artist]));

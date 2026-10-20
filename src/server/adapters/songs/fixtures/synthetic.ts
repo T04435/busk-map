@@ -1,6 +1,6 @@
 // SYNTHETIC FIXTURE: invented songs and play counts for tests and offline mode. Not Last.fm data.
-import { OFFLINE_TEST_ACTS } from "@/lib/repertoire-research";
-import type { SimilarArtist, TopTrack } from "../schema";
+import { OFFLINE_SIMILAR_HOPS, OFFLINE_TEST_ACTS } from "@/lib/repertoire-research";
+import type { SimilarArtist, TopTag, TopTrack } from "../schema";
 
 export function syntheticTopTracks(artist: string): TopTrack[] {
   return [1, 2, 3, 4, 5].map((n) => ({
@@ -26,8 +26,16 @@ export function syntheticListeners(artist: string): number {
 export function syntheticSimilar(artist: string): SimilarArtist[] {
   const key = artist.trim().toLowerCase();
   const act = Object.values(OFFLINE_TEST_ACTS).find((t) => t.name.toLowerCase() === key);
-  const names: readonly string[] = act && "similar" in act ? act.similar : [];
+  const names: readonly string[] = act && "similar" in act ? act.similar : (OFFLINE_SIMILAR_HOPS[artist.trim()] ?? []);
   return names.map((name, i) => ({ name, match: Math.round((1 - i * 0.1) * 100) / 100 }));
+}
+
+/** Invented Last.fm top tags, deterministic: the offline test acts that carry `tags` get them, any other name gets none. Not Last.fm data. */
+export function syntheticTopTags(artist: string): TopTag[] {
+  const key = artist.trim().toLowerCase();
+  const act = Object.values(OFFLINE_TEST_ACTS).find((t) => t.name.toLowerCase() === key);
+  const names: readonly string[] = act && "tags" in act ? act.tags : [];
+  return names.map((name, i) => ({ name, count: 100 - i * 10 }));
 }
 
 export const SYNTHETIC_RAW = {
@@ -50,6 +58,9 @@ export const SYNTHETIC_RAW = {
   similar: { similarartists: { artist: [{ name: "Alike One", match: "1" }, { name: "Alike Two", match: 0.5 }, { name: "", match: "0.1" }] } },
   similarSingle: { similarartists: { artist: { name: "Alike Solo", match: "0.4" } } },
   similarEmpty: { similarartists: { artist: [] } },
+  tags: { toptags: { tag: [{ name: "folk", count: "100" }, { name: "seen live", count: 50 }, { name: "", count: "1" }] } },
+  tagsSingle: { toptags: { tag: { name: "indie", count: "7" } } },
+  tagsEmpty: { toptags: { tag: [] } },
   notFound: { error: 6, message: "The artist you supplied could not be found" },
   badKey: { error: 10, message: "Invalid API key" },
 };

@@ -177,3 +177,27 @@ export function decideMatch(candidates: readonly MatchCandidate[], variants: rea
 
 /** What the page shows for one candidate. */
 export type QlooCandidateView = { qlooId: string; name: string; image?: string; genres: string[] };
+
+/** Whether a Qloo tag id is a music genre (`urn:tag:genre:music:folk`). */
+export const isMusicGenreTagId = (id: string) => id.startsWith("urn:tag:genre:music");
+/** An entity with no music-genre tag is a weak match: a name and an id, but nothing to read taste from. */
+export const hasMusicGenre = (entity: { tags: readonly { id: string }[] }) => entity.tags.some((t) => isMusicGenreTagId(t.id));
+/** A name hit whose Spotify id exists and is not the act's is another artist with the same name. No id on either side proves nothing. */
+export const isOtherSpotifyArtist = (entitySpotifyId: string | null | undefined, actSpotifyId: string | null | undefined) => Boolean(entitySpotifyId && actSpotifyId && entitySpotifyId !== actSpotifyId);
+
+const TAG_NOISE = new Set([
+  "seen live", "favorites", "favourites", "favorite", "favourite", "male vocalists", "female vocalists", "male vocalist", "female vocalist", "spotify", "all", "music", "other", "unknown",
+  "australian", "american", "british", "canadian", "irish", "scottish", "english", "melbourne", "sydney", "new york", "nyc", "brooklyn", "usa", "uk", "australia",
+]);
+/** Last.fm tag names fit to look up as Qloo genre tags: lowercased, trimmed, no "seen live", places, years or the act's own name; once each, in order. */
+export function usableTagNames(tags: readonly string[], actNames: readonly (string | null | undefined)[] = [], max = 5): string[] {
+  const acts = new Set(actNames.map((n) => normName(n ?? "")).filter(Boolean));
+  const out: string[] = [];
+  for (const raw of tags) {
+    const t = raw.normalize("NFC").toLowerCase().replace(/\s+/g, " ").trim();
+    if (t.length < 3 || t.length > 30 || /\d/.test(t) || TAG_NOISE.has(t) || /\b(?:under|listeners|favou?rite|albums? i own|my )\b/.test(t) || acts.has(normName(t))) continue;
+    if (!out.includes(t)) out.push(t);
+    if (out.length >= max) break;
+  }
+  return out;
+}

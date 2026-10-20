@@ -2,11 +2,11 @@ import "server-only";
 import { providerStatus } from "@/server/env";
 import { log } from "@/server/log";
 import { runAdapter, settleWithLimit, type AdapterContext, type AdapterResult } from "../core";
-import { fetchArtistListeners, fetchSimilarArtists, fetchTopTracks } from "./client";
-import { syntheticListeners, syntheticSimilar, syntheticTopTracks } from "./fixtures/synthetic";
-import type { ListenersData, SimilarArtist, SongsData } from "./schema";
+import { fetchArtistListeners, fetchSimilarArtists, fetchTopTags, fetchTopTracks } from "./client";
+import { syntheticListeners, syntheticSimilar, syntheticTopTags, syntheticTopTracks } from "./fixtures/synthetic";
+import type { ListenersData, SimilarArtist, SongsData, TopTag } from "./schema";
 
-export type { ListenersData, SimilarArtist, SongsData, TopTrack } from "./schema";
+export type { ListenersData, SimilarArtist, SongsData, TopTag, TopTrack } from "./schema";
 
 export const TOP_TRACKS_PER_ARTIST = 10;
 /** Bound the fan-out to keep within Last.fm's fair-use rate. */
@@ -80,5 +80,22 @@ export async function getSimilarArtists(artist: string, context: AdapterContext)
     fallback: [],
     synthetic: () => syntheticSimilar(name),
     live: () => fetchSimilarArtists(name, SIMILAR_PER_ARTIST),
+  });
+}
+
+/**
+ * Last.fm artist.getTopTags for one act: one request per name (cached for weeks by the client). An empty list means Last.fm
+ * doesn't know the name or has no tags; an outage falls back to [] with mode "fallback".
+ */
+export async function getTopTags(artist: string, context: AdapterContext): Promise<AdapterResult<TopTag[]>> {
+  const name = artist.trim();
+  return runAdapter({
+    adapter: "songs",
+    source: "lastfm",
+    context,
+    configured: providerStatus().lastfm,
+    fallback: [],
+    synthetic: () => syntheticTopTags(name),
+    live: () => fetchTopTags(name),
   });
 }

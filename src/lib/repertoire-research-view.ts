@@ -242,7 +242,7 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
           ...img(o.profile.image),
           genres: (o.qloo?.genres.length ? o.qloo.genres : o.profile.genres).slice(0, 6),
           audience: o.qloo?.audience ?? [],
-          ...(o.profile.followers !== null ? { followers: o.profile.followers } : {}),
+          ...((o.profile.followers ?? 0) > 0 ? { followers: o.profile.followers! } : {}),
           href: o.profile.href,
         }
       : null,

@@ -271,7 +271,7 @@ export function ResearchView() {
     focusTarget(target)?.focus();
   }, [playlist, busy]);
 
-  async function start(body: { link?: string; refresh?: boolean; mode?: "full" | "more"; qlooChoice?: { id: string } | { none: true } }) {
+  async function start(body: { link?: string; refresh?: boolean; mode?: "full" | "more"; qlooChoice?: { id: string } | { none: true }; genre?: string }) {
     setNotice(null);
     setInfo("");
     setRunning(true);
@@ -503,6 +503,16 @@ export function ResearchView() {
           </ArtistChipList>
         ) : (
           <div className="space-y-2">
+            {research && research.steps.qloo?.output?.fallback === "none" && (
+              <div role="group" aria-label={R.genrePick.label} className="flex flex-wrap items-center gap-1.5" data-testid="research-genre-pick">
+                <span className="text-sm font-bold">{R.genrePick.label}</span>
+                {R.genrePick.options.map((genre) => (
+                  <Button key={genre} type="button" variant="outline" size="sm" disabled={busy} onClick={() => void start({ link: research.spotifyArtistId, refresh: true, genre })}>
+                    {genre}
+                  </Button>
+                ))}
+              </div>
+            )}
             <ArtistPicker hideLabel value={artists.map((a) => ({ ...a, image: a.image ?? photoOf.get(a.name.toLowerCase())?.image ?? null }))} onChange={setArtists} query={artistQuery} onQueryChange={setArtistQuery} />
             {playlist && (
               <Button

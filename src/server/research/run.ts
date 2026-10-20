@@ -91,6 +91,8 @@ export type ResearchRunArgs = {
   stepDelayMs?: number;
   /** The performer's answer to "Is one of these you?": a candidate the last run offered, or none of them. */
   qlooChoice?: { id: string } | { none: true };
+  /** A genre the performer picked ("Your genre"), used as the first Qloo genre tag when Qloo and Last.fm give the Hive nothing else. */
+  genre?: string;
 };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -382,6 +384,8 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             return res.data;
           };
           let entity: { id: string; name: string; popularity: number | null; genres: string[] } | null = null;
+          // A name Qloo has but with no music-genre tag: not the taste signal alone, so the Hive's sound-alikes are tried first.
+          let weak: { id: string; name: string; popularity: number | null; genres: string[]; by: "id" | "name" } | null = null;
           let detail: qloo.EntityDetail | null = null;
           let by: QlooOutput["by"];
           let candidates: QlooCandidateView[] = [];
@@ -397,52 +401,62 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           if (!entity && !declined) {
             const hit = await findOwnOnQloo(args.spotifyId, profile.name, adapters, { actName: actLabel, genres: profile.genres });
             if (hit.qloo === "unavailable") throw new QlooDown("Qloo didn't answer, so your artist couldn't be found.");
-            if (hit.entity) {
+            if (hit.entity && hit.weak) weak = { id: hit.entity.id, name: hit.entity.name, popularity: hit.entity.popularity, genres: [], by: hit.by ?? "name" };
+            else if (hit.entity) {
               by = hit.by ?? "name";
               entity = { id: hit.entity.id, name: hit.entity.name, popularity: hit.entity.popularity, genres: hit.entity.tags.map((t) => t.name) };
             } else candidates = hit.candidates;
           }
-          await patch({ qlooArtistId: entity?.id ?? null });
-          if (entity) {
+          const matchedOut = async (e: NonNullable<typeof entity>): Promise<QlooOutput> => {
+            await patch({ qlooArtistId: e.id });
             if (!detail) {
-              const res = await qloo.artistDetail(entity.id, adapters);
+              const res = await qloo.artistDetail(e.id, adapters);
               detail = res.mode === "fallback" ? null : res.data;
             }
-            const genres = [...new Set((detail?.tags ?? entity.genres.map((name) => ({ name, type: "urn:tag:genre:music" }))).filter((t) => isGenreTag(t.type)).map((t) => t.name))].slice(0, 8);
+            const genres = [...new Set((detail?.tags ?? e.genres.map((name) => ({ name, type: "urn:tag:genre:music" }))).filter((t) => isGenreTag(t.type)).map((t) => t.name))].slice(0, 8);
             const audience = [...new Set((detail?.tags ?? []).filter((t) => isAudienceTag(t.type)).map((t) => t.name))].slice(0, 6);
             return {
-              summary: `Found ${entity.name} on Qloo${audience.length ? `: ${audience.slice(0, 3).join(", ")}` : ""}`,
+              summary: `Found ${e.name} on Qloo${audience.length ? `: ${audience.slice(0, 3).join(", ")}` : ""}`,
               matched: true,
-              qlooId: entity.id,
-              name: entity.name,
+              qlooId: e.id,
+              name: e.name,
               description: detail?.description ?? null,
               genres,
               audience,
-              popularity: r2(detail?.popularity ?? entity.popularity),
+              popularity: r2(detail?.popularity ?? e.popularity),
               ...(by ? { by } : {}),
               ...(profile.image ? { image: profile.image } : {}),
             };
-          }
+          };
+          if (entity) return matchedOut(entity);
+          await patch({ qlooArtistId: null });
           if (candidates.length > 0) return { ...empty, summary: R.candidates.summary, candidates, waiting: "choice" };
           // Qloo doesn't know the act, and the run never stops for that. The signal, in order: the performer's own "Artists you sound
           // like"; else the Hive finds some (Last.fm similar artists confirmed on Qloo); else the act's genres as Qloo tags; else none.
           const mine = await alikesWithQlooIds();
           const declinedMark = declined ? { declined: true } : {};
           if (mine.length > 0) return { ...empty, summary: R.fallback.label(mine.slice(0, 3).map((a) => a.name)), fallback: "soundsLike", ...declinedMark };
-          const hive = await findSoundAlikes({ name: profile.name, actName: actLabel, genres: profile.genres }, adapters);
+          const genrePick = (args.genre ?? (before?.genrePick && !before.matched ? before.genrePick : undefined))?.trim().slice(0, 40) || undefined;
+          const genreMark = genrePick ? { genrePick } : {};
+          const hive = await findSoundAlikes({ name: profile.name, actName: actLabel, genres: [...(genrePick ? [genrePick] : []), ...profile.genres], spotifyId: args.spotifyId }, adapters);
           if (hive.source === "unavailable") throw new QlooDown("Qloo didn't answer, so artists like you couldn't be found.");
           if (hive.source === "lastfm") {
             const found = hive.alikes.map((a): SoundsLike & { qlooId: string } => ({ name: a.name, qlooId: a.qlooId, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.image ? { image: a.image } : {}), foundBy: "hive" }));
             signalAlikes.current = found;
             // Saved as "Artists you sound like" (marked as the Hive's) only when the performer has none of their own: theirs are never overwritten.
             if (playlist.soundsLike.length === 0) await patch({ soundsLike: found.slice(0, RESEARCH_SOUNDS_LIKE_SAVED) });
-            return { ...empty, summary: R.fallback.label(found.slice(0, 3).map((a) => a.name)), fallback: "soundsLike", foundByHive: true, ...declinedMark };
+            return { ...empty, summary: R.fallback.label(found.slice(0, 3).map((a) => a.name)), fallback: "soundsLike", foundByHive: true, ...declinedMark, ...genreMark };
           }
           if (hive.source === "genres") {
             genreSignal.tags = hive.tags;
-            return { ...empty, summary: R.fallback.genresLabel(hive.tags.slice(0, 3).map((t) => t.name)), fallback: "genres", genreTags: hive.tags, ...declinedMark };
+            return { ...empty, summary: R.fallback.genresLabel(hive.tags.slice(0, 3).map((t) => t.name)), fallback: "genres", genreTags: hive.tags, ...declinedMark, ...genreMark };
           }
-          return { ...empty, summary: R.fallback.noneLabel, fallback: "none", ...declinedMark };
+          // Nothing else to go on: a weak match (a name Qloo has, with no genre) is better than no taste data at all.
+          if (weak) {
+            by = weak.by;
+            return matchedOut(weak);
+          }
+          return { ...empty, summary: R.fallback.noneLabel, fallback: "none", ...declinedMark, ...genreMark };
         });
         if (!found) {
           await finish({ status: "failed", endCode: "qloo_unavailable", saved: [], usage: null });

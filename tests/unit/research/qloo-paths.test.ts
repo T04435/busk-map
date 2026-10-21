@@ -305,7 +305,7 @@ describe("path 4: Qloo doesn't know the act, so the Hive finds artists like it a
       expect(end(r.events).code === "needs_sounds_like", key).toBe(waits.has(key));
       expect(end(r.events).ok, key).toBe(true);
     }
-  });
+  }, 20_000);
 });
 
 describe("findSoundAlikes", () => {

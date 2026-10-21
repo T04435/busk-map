@@ -124,9 +124,12 @@ describe("the input carries on the same run", () => {
     const a = await answer(m, r.cookie, runId, { artists: [{ name: "Paul Kelly" }, { name: "Courtney Barnett" }] });
     expect(a.status).toBe(200);
     expect(runIdOf(a.events)).toBe(runId);
-    // Steps 1–3 come back exactly as stored; Spotify's profile was not read again.
-    const kept = (e: LearnStreamEvent[]) => e.filter((x) => (x.type === "tool-end" || x.type === "tool-start") && ["rs-1", "rs-2", "rs-3"].includes(x.id));
+    // Steps 1–3 come back as stored; Spotify's profile was not read again. The Qloo step is sent once more with the input it now uses.
+    const kept = (e: LearnStreamEvent[]) => e.filter((x) => (x.type === "tool-end" || x.type === "tool-start") && ["rs-1", "rs-2"].includes(x.id));
     expect(kept(a.events)).toEqual(kept(r.events));
+    const qlooEnd = toolEnd(a.events, "research_qloo")!;
+    expect(qlooEnd.summary).toBe(R.fallback.using(["Paul Kelly", "Courtney Barnett"], null));
+    expect(qlooEnd.calls).toEqual(toolEnd(r.events, "research_qloo")!.calls);
     expect(profiles).toEqual([SILENT.spotifyId]);
     expect(starts(a.events).filter((t) => t === "research_profile")).toHaveLength(1);
     expect(end(a.events).ok).toBe(true);
@@ -135,7 +138,7 @@ describe("the input carries on the same run", () => {
     expect(v.research.waiting).toBeUndefined();
     expect(v.research.runId).toBe(runId);
     for (const k of ["soundsLike", "fans", "fansMap", "fansLove", "learn", "genres", "summary"] as const) expect(v.research.steps[k]!.status, k).toBe("done");
-    expect(v.research.steps.qloo!.output).toMatchObject({ fallback: "soundsLike", summary: R.fallback.label(["Paul Kelly", "Courtney Barnett"]) });
+    expect(v.research.steps.qloo!.output).toMatchObject({ fallback: "soundsLike", summary: R.fallback.using(["Paul Kelly", "Courtney Barnett"], null) });
     expect(v.research.steps.fansLove!.output!.signalledBy).toEqual(["Paul Kelly", "Courtney Barnett"]);
     expect(v.soundsLike.map((x) => x.name)).toEqual(["Paul Kelly", "Courtney Barnett"]);
     expect(v.soundsLike.every((x) => x.qlooId && !x.foundBy)).toBe(true);
@@ -162,13 +165,38 @@ describe("the input carries on the same run", () => {
     expect(end(a.events).ok).toBe(true);
     expect(String(end(a.events).code)).not.toMatch(/^needs_/);
     const v = await view(m, r.cookie);
-    expect(v.research.steps.qloo!.output).toMatchObject({ fallback: "genres", genrePick: "Folk", genreTags: [{ name: "Folk" }] });
+    expect(v.research.steps.qloo!.output).toMatchObject({ fallback: "genres", genrePick: "Folk", genreTags: [{ name: "Folk" }], summary: R.fallback.using([], "Folk") });
     expect(v.research.steps.soundsLike!.output).toMatchObject({ basedOn: "genres" });
     expect(v.research.steps.soundsLike!.output!.artists.length).toBeGreaterThan(0);
     expect(v.research.steps.fans!.output!.summary).not.toBe(R.fallback.noTaste);
     for (const tool of ["research_sounds_like", "research_fans", "research_fans_map", "research_fans_love"]) {
       expect(toolEnd(a.events, tool)!.calls?.some((c) => c.provider === "qloo"), tool).toBe(true);
     }
+  });
+});
+
+describe("artists and a genre together", () => {
+  it("the resolved artists lead the signal, the genre's artists follow, the step line names both, and it is saved for a refresh", async () => {
+    const m = await load();
+    const r = await start(m, "silent");
+    const a = await answer(m, r.cookie, runIdOf(r.events), { artists: [{ name: "Paul Kelly" }, { name: "Courtney Barnett" }], genre: "Folk" });
+    expect(end(a.events).ok).toBe(true);
+    expect(String(end(a.events).code)).not.toMatch(/^needs_/);
+    const line = R.fallback.using(["Paul Kelly", "Courtney Barnett"], "Folk");
+    expect(toolEnd(a.events, "research_qloo")!.summary).toBe(line);
+    const v = await view(m, r.cookie);
+    expect(v.research.steps.qloo!.output).toMatchObject({ fallback: "soundsLike", genrePick: "Folk", genreTags: [{ id: "urn:tag:genre:music:folk" }], summary: line });
+    const fans = v.research.steps.soundsLike!.output!.artists.map((x) => x.name);
+    expect(fans.slice(0, 2)).toEqual(["Paul Kelly", "Courtney Barnett"]);
+    expect(fans.length).toBeGreaterThan(2);
+  });
+
+  it("an unknown artist plus a genre: the genre alone carries on", async () => {
+    const m = await load();
+    const r = await start(m, "silent");
+    const a = await answer(m, r.cookie, runIdOf(r.events), { artists: [{ name: OFFLINE_UNKNOWN_ARTIST }], genre: "Pop" });
+    expect(String(end(a.events).code)).not.toMatch(/^needs_/);
+    expect((await view(m, r.cookie)).research.steps.qloo!.output).toMatchObject({ fallback: "genres", summary: R.fallback.using([], "Pop") });
   });
 });
 

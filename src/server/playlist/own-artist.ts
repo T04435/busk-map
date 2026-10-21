@@ -2,7 +2,7 @@ import "server-only";
 import { nameKey } from "@/lib/text";
 import type { SoundsLikeSuggestions, SoundsLikeStatus, SpotifyProfile } from "@/lib/playlist-schema";
 import { settleWithLimit, type AdapterContext } from "@/server/adapters/core";
-import { decideMatch, genreOverlap, hasMusicGenre, isOtherSpotifyArtist, MAX_EXTRA_SEARCHES, nameVariants, usableTagNames, type MatchCandidate, type MatchDecision, type QlooCandidateView } from "@/lib/qloo-match";
+import { buttonGenreTag, decideMatch, hasMusicGenre, isOtherSpotifyArtist, MAX_EXTRA_SEARCHES, nameVariants, pickGenreTag, usableTagNames, type MatchCandidate, type MatchDecision, type QlooCandidateView } from "@/lib/qloo-match";
 import { resolveSpotifyArtists, searchArtistHits, searchGenreTags, tasteArtists, type QlooEntity } from "@/server/adapters/qloo";
 import { getSimilarArtists, getTopTags } from "@/server/adapters/songs";
 import { getArtistProfile } from "@/server/adapters/repertoire";
@@ -301,10 +301,15 @@ export async function resolveSoundAlikes(
   return { found, matches: res.matches, unknown: res.unknown, unavailable: res.attempts > 0 && res.outages === res.attempts };
 }
 
-/** A genre text as one Qloo music-genre tag (/v2/tags), when Qloo has one that overlaps it; "unavailable" when Qloo didn't answer. */
+/**
+ * A genre text as one Qloo music-genre tag. The genre buttons map straight to their known tag ids (no search); any other text is
+ * a /v2/tags search matched by id slug or normalised name (pickGenreTag). "unavailable" when Qloo didn't answer.
+ */
 export async function resolveGenreTag(genre: string, context: AdapterContext): Promise<{ id: string; name: string } | null | "unavailable"> {
-  const res = await searchGenreTags(genre, 5, context);
+  const known = buttonGenreTag(genre);
+  if (known) return known;
+  const res = await searchGenreTags(genre, 8, context);
   if (res.mode === "fallback") return "unavailable";
-  const hit = res.data.find((t) => t.id.startsWith("urn:tag:genre") && genreOverlap([t.name], [genre]));
-  return hit ? { id: hit.id, name: hit.name } : null;
+  const hit = pickGenreTag(res.data, genre);
+  return hit ? { id: hit.id, name: hit.name.replace(/["\u201c\u201d]/g, "").replace(/\s+-\s+/g, " ").replace(/\s+/g, " ").trim() } : null;
 }

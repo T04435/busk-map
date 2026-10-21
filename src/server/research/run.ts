@@ -525,9 +525,23 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         const R = PLAYLIST_COPY.research;
         const ask: ResearchAsk = { asks: waitingBefore?.asks ?? 0, tried: structuredClone(waitingBefore?.tried ?? { artists: [], genres: [] }) };
 
+        /** The Qloo step's line follows the input: its kept event is sent again with the new summary (same step id), and the saved copy changes too. */
+        const restateQloo = (out: QlooOutput) => {
+          const started = kept.find((e) => e.type === "tool-start" && e.tool === RESEARCH_TOOLS.qloo);
+          const startId = started?.type === "tool-start" ? started.id : null;
+          const at = stored.findIndex((e) => e.type === "tool-end" && e.id === startId);
+          if (at < 0) return;
+          const prior = stored[at] as Extract<StoredLearnStep, { type: "tool-end" }>;
+          const next = { ...prior, summary: out.summary, output: structuredClone(out) } as typeof prior;
+          stored[at] = next;
+          run.push(next);
+        };
+
         /** The performer's answer: artists saved as theirs and resolved on Qloo, or a genre as a Qloo tag. Returns the next ask's line ("" when found). */
         const applyInput = async (input: ResearchInput): Promise<string> => {
           let line: string = R.ask.first;
+          let usedArtists: string[] = [];
+          let usedGenre: string | null = null;
           const artists = (input.artists ?? []).filter((a, i, all) => all.findIndex((b) => nameKey(b.name) === nameKey(a.name)) === i).slice(0, 3);
           if (artists.length) {
             const res = await resolveSoundAlikes(artists, { name: profile.name, actName: actLabel, spotifyId: args.spotifyId }, adapters);
@@ -550,11 +564,12 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             if (res.found.length > 0) {
               signalAlikes.current = res.found.slice(0, RESEARCH_SIGNAL_SOUND_ALIKES).map((a) => ({ name: a.name, qlooId: a.qlooId, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.image ? { image: a.image } : {}) }));
               delete found.foundByHive;
-              Object.assign(found, { fallback: "soundsLike", summary: R.fallback.label(res.found.slice(0, 3).map((a) => a.name)) });
-              return "";
+              Object.assign(found, { fallback: "soundsLike" });
+              usedArtists = res.found.slice(0, 3).map((a) => a.name);
+            } else {
+              ask.tried.artists.push(...res.unknown.filter((name) => !ask.tried.artists.includes(name)));
+              line = R.ask.unknownArtists(res.unknown);
             }
-            ask.tried.artists.push(...res.unknown.filter((name) => !ask.tried.artists.includes(name)));
-            line = R.ask.unknownArtists(res.unknown);
           }
           if (input.genre) {
             const genre = input.genre.trim().slice(0, 40);
@@ -562,12 +577,27 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             const tag = await resolveGenreTag(genre, adapters);
             if (tag === "unavailable") throw new QlooDown("Qloo didn't answer for your genre.");
             if (tag) {
+              const shown = tag.name.trim().replace(/\b\w/g, (c) => c.toUpperCase());
               genreSignal.tags = [tag];
-              Object.assign(found, { fallback: "genres", genreTags: [tag], summary: R.fallback.genresLabel([tag.name.trim().replace(/\b\w/g, (c) => c.toUpperCase())]) });
-              return "";
+              usedGenre = shown;
+              if (usedArtists.length > 0) {
+                // Both: the resolved artists lead, the genre's artists are added to the signal after them.
+                const more = fromQloo(await qloo.tagArtists([tag.id], RESEARCH_SIGNAL_SOUND_ALIKES + 2, adapters), "artists in your genre");
+                const have = signalAlikes.current ?? [];
+                const own = new Set([nameKey(actLabel ?? profile.name), nameKey(profile.name)]);
+                const extra = more.filter((e) => !own.has(nameKey(e.name)) && !have.some((a) => a.qlooId === e.id)).map((e) => ({ name: e.name, qlooId: e.id, ...(e.spotifyId && SPOTIFY_ID.test(e.spotifyId) ? { spotifyId: e.spotifyId } : {}), ...(e.image && /^https:\/\//.test(e.image) ? { image: e.image } : {}) }));
+                signalAlikes.current = [...have, ...extra].slice(0, RESEARCH_SIGNAL_SOUND_ALIKES);
+                Object.assign(found, { genreTags: [tag] });
+              } else Object.assign(found, { fallback: "genres", genreTags: [tag] });
+            } else if (usedArtists.length === 0) {
+              if (!ask.tried.genres.includes(genre)) ask.tried.genres.push(genre);
+              line = R.ask.untaggedGenre(genre);
             }
-            if (!ask.tried.genres.includes(genre)) ask.tried.genres.push(genre);
-            line = R.ask.untaggedGenre(genre);
+          }
+          if (usedArtists.length > 0 || usedGenre) {
+            found.summary = R.fallback.using(usedArtists, usedGenre);
+            restateQloo(found);
+            return "";
           }
           return line;
         };

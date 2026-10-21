@@ -201,3 +201,66 @@ export function usableTagNames(tags: readonly string[], actNames: readonly (stri
   }
   return out;
 }
+
+// --- Genre tags (/v2/tags) ---
+
+/**
+ * The genre buttons' Qloo tag ids. Verified against live Qloo (media/qloo-coverage raw responses: /v2/tags and entity tags);
+ * these never go through a search, so a noisy tag name can't make a button fail. Latin, Country and Classical are not
+ * confirmed yet, so they are searched (and matched by id slug or name) instead.
+ */
+export const GENRE_BUTTON_TAGS: Readonly<Record<string, string>> = {
+  folk: "urn:tag:genre:music:folk",
+  rock: "urn:tag:genre:music:rock",
+  pop: "urn:tag:genre:music:pop",
+  "hip hop": "urn:tag:genre:music:hip_hop",
+  jazz: "urn:tag:genre:music:jazz",
+  electronic: "urn:tag:genre:music:electronic",
+  blues: "urn:tag:genre:music:blues",
+  soul: "urn:tag:genre:music:soul",
+  reggae: "urn:tag:genre:music:reggae",
+};
+
+/** A genre text or a tag name compared the same way: no quotes, punctuation or case ("\"indie\"" and "Hip - Hop" read as "indie", "hip hop"). */
+export function normGenre(text: string): string {
+  return text
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/** The slug of a Qloo genre tag id: urn:tag:genre:music:indie_folk is "indie folk". */
+export const tagSlug = (id: string): string => normGenre(id.replace(/^urn:tag:genre(?::[a-z]+)?:/, "").replace(/_/g, " "));
+
+/** The button tag for a genre text, when it is one of the buttons' genres. */
+export function buttonGenreTag(genre: string): { id: string; name: string } | null {
+  const key = normGenre(genre);
+  const id = GENRE_BUTTON_TAGS[key];
+  return id ? { id, name: key.replace(/\b\w/g, (c) => c.toUpperCase()) } : null;
+}
+
+/**
+ * The tag a /v2/tags search result list gives for a genre text: an exact match on the id slug or the normalised name first, then
+ * the same with spaces removed ("singer-songwriter" and "Singersongwriter"), then a tag whose name has all the text's words (the
+ * shortest). Music-genre tags only. Null when nothing fits.
+ */
+export function pickGenreTag(tags: readonly { id: string; name: string }[], genre: string): { id: string; name: string } | null {
+  const want = normGenre(genre);
+  if (!want) return null;
+  const music = tags.filter((t) => t.id.startsWith("urn:tag:genre:music"));
+  const exact = music.find((t) => tagSlug(t.id) === want || normGenre(t.name) === want);
+  if (exact) return exact;
+  const squashed = want.replace(/ /g, "");
+  const flat = music.find((t) => tagSlug(t.id).replace(/ /g, "") === squashed || normGenre(t.name).replace(/ /g, "") === squashed);
+  if (flat) return flat;
+  const words = want.split(" ").filter((w) => w.length >= 2 && w !== "and");
+  if (words.length === 0) return null;
+  const partial = music.filter((t) => {
+    const have = new Set([...normGenre(t.name).split(" "), ...tagSlug(t.id).split(" ")]);
+    return words.every((w) => have.has(w));
+  });
+  return partial.sort((a, b) => normGenre(a.name).split(" ").length - normGenre(b.name).split(" ").length)[0] ?? null;
+}

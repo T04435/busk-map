@@ -137,6 +137,11 @@ export const PLAYLIST_COPY = {
       label: (names: readonly string[]) => `Qloo doesn't know you yet, so this is based on artists like you: ${andList(names)}.`,
       genresLabel: (names: readonly string[]) => `Qloo doesn't know you yet, so this is based on your genres: ${andList(names)}.`,
       noneLabel: "Qloo doesn't know you yet and has no taste data for you.",
+      /** The input the research now uses, after the performer answered a pause: your artists, your genre, or both. */
+      using: (artists: readonly string[], genre: string | null) => {
+        const parts = [artists.length ? `your artists: ${andList(artists)}` : "", genre ? `your genre: ${genre}` : ""].filter(Boolean);
+        return `Qloo doesn't know you yet. Using ${parts.join("; ")}.`;
+      },
       basedOn: "Based on the artists you sound like",
       basedOnGenre: "Based on your genre",
       noTaste: "No taste data yet",

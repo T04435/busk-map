@@ -279,6 +279,60 @@ test.describe("Repertoire research (offline)", () => {
     await expect(page.getByTestId("research-fans-love")).toBeVisible();
   });
 
+  test("the pause is a selection: artists and a genre combine, nothing is sent until Carry on, the step says what is used, and the page stays on the research", async ({ page }) => {
+    test.setTimeout(120_000);
+    const inputs: string[] = [];
+    page.on("request", (r) => {
+      if (r.method() === "POST" && /\/research\/[^/]+\/input$/.test(r.url())) inputs.push(r.postData() ?? "");
+    });
+    await page.setViewportSize({ width: 390, height: 700 });
+    await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
+    const ask = page.getByTestId("research-ask");
+    await expect(ask).toBeVisible({ timeout: 20_000 });
+    // Paused is not done: the research stays on top as researching, with the waiting step in view, and no completed layout.
+    await expect(page.getByTestId("research-page")).toHaveAttribute("data-phase", "running");
+    await expect(page.getByTestId("research-actions")).toHaveCount(0);
+    await expect(page.getByTestId("research-end")).toHaveCount(0);
+    await expect(ask).toBeInViewport({ timeout: 10_000 });
+    const atEnd = await page.evaluate(() => Math.ceil(window.scrollY + window.innerHeight) >= document.scrollingElement!.scrollHeight - 2);
+    expect(atEnd, "the page jumped to the very bottom").toBe(false);
+    const picker = ask.getByPlaceholder("Search Spotify, e.g. Paul Kelly");
+    const carryOn = page.getByTestId("research-ask-carry-on");
+    const genres = page.getByTestId("research-genre-pick");
+    await expect(carryOn).toBeDisabled();
+    // A genre alone enables Carry on, toggles, and sends nothing.
+    await genres.getByRole("button", { name: "Pop" }).click();
+    await expect(genres.getByRole("button", { name: "Pop" })).toHaveAttribute("aria-pressed", "true");
+    await expect(carryOn).toBeEnabled();
+    await genres.getByRole("button", { name: "Pop" }).click();
+    await expect(genres.getByRole("button", { name: "Pop" })).toHaveAttribute("aria-pressed", "false");
+    await expect(carryOn).toBeDisabled();
+    // One genre at most; the artists stay when a genre is picked.
+    await picker.fill("Paul Kelly, Courtney Barnett");
+    await genres.getByRole("button", { name: "Folk" }).click();
+    await genres.getByRole("button", { name: "Pop" }).click();
+    await expect(genres.getByRole("button", { name: "Folk" })).toHaveAttribute("aria-pressed", "false");
+    await expect(genres.getByRole("button", { name: "Pop" })).toHaveAttribute("aria-pressed", "true");
+    await expect(ask).toContainText("Paul Kelly");
+    await page.waitForTimeout(500);
+    expect(inputs, "nothing is sent before Carry on").toEqual([]);
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 900 });
+      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+      expect(violations.map((v) => `selection-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+    }
+    await carryOn.click();
+    await done(page);
+    expect(inputs).toHaveLength(1);
+    expect(JSON.parse(inputs[0])).toEqual({ artists: [{ name: "Paul Kelly" }, { name: "Courtney Barnett" }], genre: "Pop" });
+    const qloo = page.getByTestId("research-steps").locator('[data-testid="agent-step"][data-tool="research_qloo"]');
+    await expect(qloo).toContainText("Qloo doesn't know you yet. Using your artists: Paul Kelly and Courtney Barnett; your genre: Pop.");
+    await expect(qloo).not.toContainText("has no taste data for you");
+    // Saved: a refresh shows the same line.
+    await page.reload();
+    await expect(page.getByTestId("research-steps").locator('[data-testid="agent-step"][data-tool="research_qloo"]')).toContainText("Using your artists: Paul Kelly and Courtney Barnett; your genre: Pop.");
+  });
+
   test("still nothing Qloo knows: it asks again in the same step, then stops after three asks in one line", async ({ page }) => {
     test.setTimeout(120_000);
     await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
@@ -289,6 +343,7 @@ test.describe("Repertoire research (offline)", () => {
     await page.getByTestId("research-ask-carry-on").click();
     await expect(line).toHaveText("Qloo doesn't know Qzv Nobody either. Try better-known artists, or pick a genre.", { timeout: 20_000 });
     await page.getByTestId("research-genre-pick").getByRole("button", { name: "Latin" }).click();
+    await page.getByTestId("research-ask-carry-on").click();
     await expect(line).toHaveText("Qloo has no tag for Latin. Pick another genre, or add artists you sound like.", { timeout: 20_000 });
     for (const width of WIDTHS) {
       await page.setViewportSize({ width, height: 900 });
@@ -296,6 +351,7 @@ test.describe("Repertoire research (offline)", () => {
       expect(violations.map((v) => `ask-again-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
     }
     await page.getByTestId("research-genre-pick").getByRole("button", { name: "Latin" }).click();
+    await page.getByTestId("research-ask-carry-on").click();
     await expect(page.getByTestId("research-end")).toHaveAttribute("data-code", "no_taste_data", { timeout: 20_000 });
     await expect(page.getByTestId("research-end")).toHaveText("Qloo has no taste data for your act yet, so the research stopped at Who you sound like.");
     await expect(page.getByTestId("research-ask")).toHaveCount(0);

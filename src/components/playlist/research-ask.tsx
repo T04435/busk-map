@@ -8,46 +8,54 @@ import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 const R = PLAYLIST_COPY.research;
 const SPOTIFY_ID = /^[A-Za-z0-9]{22}$/;
 
+export type ResearchAnswer = { artists?: { name: string; spotifyId?: string }[]; genre?: string };
+
 /**
- * Inside the research step that waits (Who you sound like): the Hive's ask, the artist picker (2 or 3 artists you sound like) and,
- * instead, a genre. Either answer carries on the same run.
+ * Inside the research step that waits (Who you sound like): the Hive's ask, the artist picker (2 or 3 artists you sound like) and a
+ * genre. Artists and one genre are a selection that can be combined; nothing is sent until Carry on.
  */
-export function ResearchAsk({ message, busy, onArtists, onGenre }: { message: string; busy: boolean; onArtists: (artists: { name: string; spotifyId?: string }[]) => void; onGenre: (genre: string) => void }) {
+export function ResearchAsk({ message, busy, onSubmit }: { message: string; busy: boolean; onSubmit: (answer: ResearchAnswer) => void }) {
   const [artists, setArtists] = useState<PickedArtist[]>([]);
   const [query, setQuery] = useState("");
+  const [genre, setGenre] = useState<string | null>(null);
   const chosen = () => {
     const list = [...artists];
     for (const typed of typedArtists(query)) if (!list.some((a) => a.name.toLowerCase() === typed.toLowerCase())) list.push({ name: typed, spotifyId: null, image: null });
     return list.slice(0, 3).map((a) => ({ name: a.name, ...(a.spotifyId && SPOTIFY_ID.test(a.spotifyId) ? { spotifyId: a.spotifyId } : {}) }));
   };
-  const ready = artists.length > 0 || typedArtists(query).length > 0;
+  const ready = artists.length > 0 || typedArtists(query).length > 0 || genre !== null;
+  const submit = () => {
+    if (busy || !ready) return;
+    const list = chosen();
+    onSubmit({ ...(list.length > 0 ? { artists: list } : {}), ...(genre ? { genre } : {}) });
+  };
   return (
     <div className="grid min-w-0 gap-4" data-testid="research-ask">
       <p className="m-0 max-w-prose text-sm leading-5" data-testid="research-ask-line">
         {message}
       </p>
       <form
-        className="grid max-w-2xl gap-2"
+        className="grid max-w-2xl gap-4"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!busy && ready) onArtists(chosen());
+          submit();
         }}
       >
         <ArtistPicker value={artists} onChange={setArtists} query={query} onQueryChange={setQuery} />
+        <div role="group" aria-label={R.ask.genreLabel} className="flex flex-wrap items-center gap-1.5" data-testid="research-genre-pick">
+          <span className="text-sm font-bold">{R.ask.genreLabel}</span>
+          {R.genrePick.options.map((option) => (
+            <Button key={option} type="button" variant={genre === option ? "default" : "outline"} size="sm" aria-pressed={genre === option} disabled={busy} onClick={() => setGenre(genre === option ? null : option)}>
+              {option}
+            </Button>
+          ))}
+        </div>
         <div>
           <Button type="submit" size="sm" disabled={busy || !ready} data-testid="research-ask-carry-on">
             {R.ask.carryOn}
           </Button>
         </div>
       </form>
-      <div role="group" aria-label={R.ask.genreLabel} className="flex flex-wrap items-center gap-1.5" data-testid="research-genre-pick">
-        <span className="text-sm font-bold">{R.ask.genreLabel}</span>
-        {R.genrePick.options.map((genre) => (
-          <Button key={genre} type="button" variant="outline" size="sm" disabled={busy} onClick={() => onGenre(genre)}>
-            {genre}
-          </Button>
-        ))}
-      </div>
     </div>
   );
 }

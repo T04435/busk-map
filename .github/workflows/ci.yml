@@ -47,7 +47,15 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec commitlint --from "origin/${{ github.base_ref }}" --to HEAD --verbose
+      # The rule starts at the commit that enforces it; commits before it are not rewritten and are not linted.
+      - name: Lint commits made after the rule
+        env:
+          BASE: origin/${{ github.base_ref }}
+        run: |
+          FROM="$BASE"
+          RULE=$(git log --format=%H --grep='^chore(repo): enforce Conventional Commits' "$BASE..HEAD" | tail -1)
+          if [ -n "$RULE" ]; then FROM="$RULE"; fi
+          pnpm exec commitlint --from "$FROM" --to HEAD --verbose
 
   e2e:
     name: Playwright judge paths (offline fixtures)

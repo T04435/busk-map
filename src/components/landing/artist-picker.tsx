@@ -98,6 +98,8 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
 
   const typed = clean(query);
   const results = state.status === "done" ? state.results : [];
+  // The listbox exists only while it has options: Spotify results, or the "add as typed" row.
+  const listed = results.length > 0 || !has(typed);
   // Keyboard focus starts on the first result each time new results arrive.
   const [active, setActive] = useState<{ query: string; value: string } | null>(null);
   const activeValue = active && active.query === state.query && state.status === "done" ? active.value : results[0] ? `spotify:${results[0].id}` : "typed";
@@ -135,7 +137,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
       >
         <CommandInput
           ref={inputRef}
-          expanded={Boolean(typed)}
+          expanded={Boolean(typed) && listed}
           value={query}
           onValueChange={setQuery}
           placeholder={full ? `Up to ${MAX_PICKED_ARTISTS} artists` : "Search Spotify, e.g. Paul Kelly"}
@@ -153,7 +155,8 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
           {full ? "That’s the most. Remove one to add another." : `${value.length} of ${MAX_PICKED_ARTISTS}. Type a comma to add a name that isn’t on Spotify.`}
         </p>
         {typed && (
-          <CommandList label="Artist results" className="border-2 border-rule bg-popover p-1">
+          <div className="border-2 border-rule bg-popover p-1">
+            {/* Status lines sit beside the list, never inside it: a listbox holds only options (and groups of them). */}
             {state.status === "idle" && typed.length < MIN_QUERY_CHARS && (
               <p className={LINE}>Type {MIN_QUERY_CHARS} or more letters to search Spotify.</p>
             )}
@@ -174,51 +177,55 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
                 No artists on Spotify match “{state.query}”.
               </p>
             )}
-            {results.length > 0 && (
-              <CommandGroup heading="Spotify">
-                {results.map((artist) => {
-                  const count = listeners[artist.name];
-                  const released = releases[artist.id] ?? artist.releases;
-                  const meta = [
-                    typeof released === "number" ? `${released} release${released === 1 ? "" : "s"}` : null,
-                  ].filter(Boolean);
-                  return (
-                    <CommandItem
-                      key={artist.id}
-                      value={`spotify:${artist.id}`}
-                      data-checked={has(artist.name)}
-                      onSelect={() => pick({ name: clean(artist.name), spotifyId: artist.id, image: artist.image })}
-                    >
-                      <ArtistChip
-                        name={artist.name}
-                        image={artist.image}
-                        href={SPOTIFY_ARTIST_URL(artist.id)}
-                        tags={meta as string[]}
-                        state={has(artist.name) ? "added" : "static"}
-                        interactive={false}
-                        className="min-w-0 flex-1 border-0"
-                      />
-                      {typeof count === "number" && (
-                        <span className="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
-                          <SourceLogo source="lastfm" height={14} />
-                          {formatCount(count)} listeners
-                        </span>
-                      )}
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            )}
             {state.status === "done" && state.note && <p className="px-3 py-1 text-xs text-muted-foreground">{state.note}</p>}
-            {!has(typed) && (
-              <CommandGroup heading="Not on Spotify?">
-                <CommandItem value="typed" onSelect={() => pick({ name: typed, spotifyId: null, image: null })}>
-                  <Icon name="plus" size={18} />
-                  <span className="min-w-0 flex-1 break-words">Add “{typed}” as typed</span>
-                </CommandItem>
-              </CommandGroup>
+            {listed && (
+              <CommandList label="Artist results">
+                {results.length > 0 && (
+                  <CommandGroup heading="Spotify">
+                    {results.map((artist) => {
+                      const count = listeners[artist.name];
+                      const released = releases[artist.id] ?? artist.releases;
+                      const meta = [
+                        typeof released === "number" ? `${released} release${released === 1 ? "" : "s"}` : null,
+                      ].filter(Boolean);
+                      return (
+                        <CommandItem
+                          key={artist.id}
+                          value={`spotify:${artist.id}`}
+                          data-checked={has(artist.name)}
+                          onSelect={() => pick({ name: clean(artist.name), spotifyId: artist.id, image: artist.image })}
+                        >
+                          <ArtistChip
+                            name={artist.name}
+                            image={artist.image}
+                            href={SPOTIFY_ARTIST_URL(artist.id)}
+                            tags={meta as string[]}
+                            state={has(artist.name) ? "added" : "static"}
+                            interactive={false}
+                            className="min-w-0 flex-1 border-0"
+                          />
+                          {typeof count === "number" && (
+                            <span className="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+                              <SourceLogo source="lastfm" height={14} />
+                              {formatCount(count)} listeners
+                            </span>
+                          )}
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                )}
+                {!has(typed) && (
+                  <CommandGroup heading="Not on Spotify?">
+                    <CommandItem value="typed" onSelect={() => pick({ name: typed, spotifyId: null, image: null })}>
+                      <Icon name="plus" size={18} />
+                      <span className="min-w-0 flex-1 break-words">Add “{typed}” as typed</span>
+                    </CommandItem>
+                  </CommandGroup>
+                )}
+              </CommandList>
             )}
-          </CommandList>
+          </div>
         )}
       </Command>
     </div>

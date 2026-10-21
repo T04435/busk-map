@@ -465,12 +465,19 @@ test.describe("Repertoire research (offline)", () => {
         await expect(ask).toBeVisible({ timeout: 20_000 });
         const picker = ask.getByPlaceholder("Search Spotify, e.g. Paul Kelly");
         await picker.fill("Paul Kelly, Courtney Barnett");
-        // The artist search list belongs to typing; close it so axe reads the resting selection.
-        await picker.press("Escape");
-        await expect(page.getByRole("listbox", { name: "Artist results" })).toHaveCount(0);
-        await page.getByTestId("research-genre-pick").getByRole("button", { name: "Pop" }).click();
-        await expect(page.getByTestId("research-genre-pick").getByRole("button", { name: "Pop" })).toHaveAttribute("aria-pressed", "true");
-        // Axe reads the resting state: a hovered pressed button is a different colour, not what this test is about.
+        // Axe with the artist search list open (a listbox of options only).
+        const list = page.getByRole("listbox", { name: "Artist results" });
+        await expect(list).toBeVisible();
+        await expect(list.getByRole("option").first()).toBeVisible();
+        await axeClean(page, "search-open");
+        await picker.fill("");
+        await expect(list).toHaveCount(0);
+        const pop = page.getByTestId("research-genre-pick").getByRole("button", { name: "Pop" });
+        await pop.click();
+        await expect(pop).toHaveAttribute("aria-pressed", "true");
+        // Axe with the selected genre button hovered (pressed + hover).
+        await pop.hover();
+        await axeClean(page, "pressed-hover");
         await page.mouse.move(0, 0);
         await axeClean(page, "selection");
       });

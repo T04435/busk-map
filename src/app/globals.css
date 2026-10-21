@@ -30,6 +30,8 @@
   --popover-foreground: #141c21;
   --primary: #ff5a1f;
   --primary-foreground: #141c21;
+  /* The pressed/hovered fill lifts toward white in both themes, so the dark label on it only gains contrast (AA, 4.5:1). */
+  --primary-hover: color-mix(in oklab, var(--primary) 88%, #fff);
   --secondary: #e6e0d4;
   --secondary-foreground: #141c21;
   --muted: #e9e4da;
@@ -99,6 +101,7 @@
   --popover: #1d262c;
   --popover-foreground: #f2ede4;
   --primary: #ff6a2b;
+  --primary-hover: color-mix(in oklab, var(--primary) 88%, #fff);
   --primary-foreground: #0f1416;
   --secondary: #232d33;
   --secondary-foreground: #f2ede4;
@@ -156,6 +159,7 @@
     --popover: #1d262c;
     --popover-foreground: #f2ede4;
     --primary: #ff6a2b;
+    --primary-hover: color-mix(in oklab, var(--primary) 88%, #fff);
     --primary-foreground: #0f1416;
     --secondary: #232d33;
     --secondary-foreground: #f2ede4;
@@ -268,6 +272,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);

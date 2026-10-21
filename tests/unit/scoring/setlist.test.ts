@@ -220,6 +220,23 @@ describe("era matching", () => {
   });
 });
 
+describe("learnThese taste match wording", () => {
+  it("grades a taste match from strong down to weak", () => {
+    const result = learnThese(
+      [
+        { entityId: "a", name: "Strong", affinity: 0.7, percentDelta: null, audienceGrowth: 0 },
+        { entityId: "b", name: "Weak", affinity: 0.2, percentDelta: null, audienceGrowth: 0 },
+      ],
+      {},
+      [],
+    );
+    expect(result.map((r) => [r.artist, r.reason])).toEqual([
+      ["Strong", "a strong taste match"],
+      ["Weak", "a weak taste match"],
+    ]);
+  });
+});
+
 describe("learnThese and Qloo audience growth", () => {
   it("ranks by audience growth first and says so", () => {
     const result = learnThese(

@@ -61,6 +61,11 @@ describe("local scene: the list re-scored for the act's fans (step 2)", () => {
     ]);
   });
 
+  it("keeps an act's image when it has one", () => {
+    const acts = rankSceneActs([{ id: "a", name: "Alpha", image: "https://img/a.jpg" }, { id: "b", name: "Beta", image: null }], {}, new Set());
+    expect(acts).toEqual([{ id: "a", name: "Alpha", affinity: null, image: "https://img/a.jpg" }, { id: "b", name: "Beta", affinity: null }]);
+  });
+
   it("breaks equal scores by the scene's order, never offers back the act's own artists, and lists a name once", () => {
     const acts = rankSceneActs([...scene, { id: "e", name: "alpha" }, { id: "a", name: "Alpha" }], { a: 0.5, b: 0.5, e: 0.5, d: 0.5 }, new Set(["d"]));
     expect(acts.map((a) => a.id)).toEqual(["a", "b"].concat(["c"]));

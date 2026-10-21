@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { learnStreamEventSchema, type LearnStreamEvent } from "@/lib/learn-schema";
-import { OFFLINE_TEST_ACTS, RESEARCH_STEPS, researchUsable, researchWaiting, type ResearchSnapshot } from "@/lib/repertoire-research";
+import { OFFLINE_PICKED_ARTISTS, OFFLINE_TEST_ACTS, RESEARCH_STEPS, researchUsable, researchWaiting, type ResearchSnapshot } from "@/lib/repertoire-research";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import { CATALOG, SCENARIO_ARTISTS, mockId } from "@/server/qloo-mock/catalog";
 
@@ -70,8 +70,8 @@ describe("the test acts are in step with the mock", () => {
       expect(CATALOG.some((c) => c.id === a.id)).toBe(false);
       expect(Object.values(OFFLINE_TEST_ACTS).some((t) => t.spotifyId === a.spotifyId)).toBe(false);
     }
-    expect(SCENARIO_ARTISTS.map((a) => a.name)).toEqual([OFFLINE_TEST_ACTS.variant.qlooName, ...OFFLINE_TEST_ACTS.candidates.qlooNames, OFFLINE_TEST_ACTS.otherId.name, OFFLINE_TEST_ACTS.weak.name]);
-    for (const t of Object.values(OFFLINE_TEST_ACTS)) expect(t.spotifyId).toMatch(/^[A-Za-z0-9]{22}$/);
+    expect(SCENARIO_ARTISTS.map((a) => a.name)).toEqual([OFFLINE_TEST_ACTS.variant.qlooName, ...OFFLINE_TEST_ACTS.candidates.qlooNames, OFFLINE_TEST_ACTS.otherId.name, OFFLINE_TEST_ACTS.weak.name, ...Object.values(OFFLINE_PICKED_ARTISTS).map((a) => a.name)]);
+    for (const t of [...Object.values(OFFLINE_TEST_ACTS), ...Object.values(OFFLINE_PICKED_ARTISTS)]) expect(t.spotifyId).toMatch(/^[A-Za-z0-9]{22}$/);
   });
 });
 

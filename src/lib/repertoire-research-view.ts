@@ -104,7 +104,7 @@ function mediaOf(o: Outputs, playlist: ViewInput["playlist"], suggestions: reado
   if (o.profile) artist(o.profile.name, o.profile.image, o.profile.spotifyId);
   for (const a of o.soundsLike?.artists ?? []) artist(a.name, a.image, a.spotifyId);
   for (const a of o.fansLove?.artists ?? []) artist(a.name, a.image, a.spotifyId);
-  for (const a of playlist?.soundsLike ?? []) artist(a.name, null, a.spotifyId);
+  for (const a of playlist?.soundsLike ?? []) artist(a.name, a.image, a.spotifyId);
   for (const s of o.songs?.songs ?? []) if (s.image) m.trackImage.set(playlistSongKey(s.artist, s.title), s.image);
   for (const s of suggestions) if (s.image) m.trackImage.set(playlistSongKey(s.artist, s.title), s.image);
   return m;
@@ -225,7 +225,7 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
     ? playlist
       ? playlist.soundsLike.map((a) => {
           const q = tagsByName.get(a.name.toLowerCase());
-          return { name: a.name, source: a.spotifyId ? "spotify" : a.qlooId ? "qloo" : "typed", ...img(q?.image), ...(a.spotifyId ? { href: SPOTIFY_ARTIST_URL(a.spotifyId) } : {}), ...(q?.tags ? { tags: q.tags } : {}) };
+          return { name: a.name, source: a.spotifyId ? "spotify" : a.qlooId ? "qloo" : "typed", ...img(a.image ?? q?.image), ...(a.spotifyId ? { href: SPOTIFY_ARTIST_URL(a.spotifyId) } : {}), ...(q?.tags ? { tags: q.tags } : {}) };
         })
       : (o.soundsLike?.artists ?? []).map((a) => ({ name: a.name, source: "qloo" as const, ...img(a.image), ...(a.spotifyId ? { href: SPOTIFY_ARTIST_URL(a.spotifyId) } : {}), ...(a.tags ? { tags: a.tags } : {}) }))
     : null;

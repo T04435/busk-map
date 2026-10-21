@@ -257,16 +257,25 @@ const foundOf = (e: QlooEntity): FoundAlike => ({
  * a /search the rule must accept (decideMatch: a guess never counts). A hit with no music-genre tag, with the act's name, or with
  * the act's own Spotify id is dropped. `unknown` lists the names Qloo had nothing certain for; `outages` the lookups Qloo didn't answer.
  */
-async function resolveGuarded(artists: readonly { name: string; spotifyId?: string | null }[], own: ReadonlySet<string>, actSpotifyId: string | null, context: AdapterContext) {
+async function resolveGuarded(artists: readonly { name: string; spotifyId?: string | null; image?: string | null }[], own: ReadonlySet<string>, actSpotifyId: string | null, context: AdapterContext) {
   let attempts = 0;
   let outages = 0;
-  const usable = (e: QlooEntity | undefined | null): e is QlooEntity => Boolean(e && !own.has(nameKey(e.name)) && hasMusicGenre(e) && !(actSpotifyId && e.spotifyId === actSpotifyId));
+  // The act's own name and Spotify id never count. A certain Spotify-id match needs no genre tag (the id is the proof, and Qloo's
+  // /entities tags on an id lookup aren't always music-genre ids); a name match must have one, or it may be a namesake with no taste data.
+  const usable = (e: QlooEntity | undefined | null, certain: boolean): e is QlooEntity => Boolean(e && !own.has(nameKey(e.name)) && (certain || hasMusicGenre(e)) && !(actSpotifyId && e.spotifyId === actSpotifyId));
+  // The Spotify photo the performer picked leads; Qloo's is the fallback.
+  const photo = (found: FoundAlike, artist: { image?: string | null }): FoundAlike => (artist.image && /^https:\/\//.test(artist.image) && artist.image.length <= 500 ? { ...found, image: artist.image } : found);
   const settled = await settleWithLimit(artists, 3, async (artist): Promise<FoundAlike | null> => {
-    if (artist.spotifyId && SPOTIFY_ID.test(artist.spotifyId)) {
+    const pickedId = artist.spotifyId && SPOTIFY_ID.test(artist.spotifyId) ? artist.spotifyId : null;
+    if (pickedId) {
       attempts++;
-      const byId = await resolveSpotifyArtists([artist.spotifyId], context);
+      const byId = await resolveSpotifyArtists([pickedId], context);
       if (byId.mode === "fallback") outages++;
-      else if (usable(byId.data[0])) return foundOf(byId.data[0]);
+      else {
+        // The id lookup is exact; take the entity carrying that id when it returns several.
+        const hit = byId.data.find((x) => x.spotifyId === pickedId) ?? byId.data[0];
+        if (usable(hit, true)) return photo(foundOf(hit), artist);
+      }
     }
     attempts++;
     const res = await searchArtistHits(artist.name, context);
@@ -274,10 +283,12 @@ async function resolveGuarded(artists: readonly { name: string; spotifyId?: stri
       outages++;
       return null;
     }
-    const decision = decideMatch(res.data.map(toMatchCandidate), nameVariants([artist.name]), []);
+    // A name hit carrying another Spotify id than the picked one is a namesake.
+    const pool = res.data.filter((x) => !isOtherSpotifyArtist(x.spotifyId, pickedId));
+    const decision = decideMatch(pool.map(toMatchCandidate), nameVariants([artist.name]), []);
     if (decision.kind !== "match") return null;
-    const e = res.data.find((x) => x.id === decision.best.id);
-    return usable(e) ? foundOf(e) : null;
+    const e = pool.find((x) => x.id === decision.best.id);
+    return usable(e, pickedId !== null && e?.spotifyId === pickedId) ? photo(foundOf(e), artist) : null;
   });
   const matches = settled.map((s) => (s.status === "fulfilled" ? s.value : null));
   const found = matches.filter((m): m is FoundAlike => m !== null);
@@ -290,7 +301,7 @@ async function resolveGuarded(artists: readonly { name: string; spotifyId?: stri
  * when Qloo answered none of the lookups.
  */
 export async function resolveSoundAlikes(
-  artists: readonly { name: string; spotifyId?: string | null }[],
+  artists: readonly { name: string; spotifyId?: string | null; image?: string | null }[],
   act: { name: string; actName?: string | null; spotifyId?: string | null },
   context: AdapterContext,
 ): Promise<{ found: FoundAlike[]; matches: (FoundAlike | null)[]; unknown: string[]; unavailable: boolean }> {

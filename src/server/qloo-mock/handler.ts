@@ -48,6 +48,7 @@ import {
   normalizeName,
   unit,
   type CatalogArtist,
+  type ScenarioArtist,
   type Genre,
 } from "./catalog";
 import { DAYS, MOCK_PLACES, PLACE_BY_ID, categoryTag, placeFit, type MockPlace } from "./places";
@@ -296,6 +297,10 @@ function genreTags(genres: GenreVector, style: "insights" | "lookup") {
     );
 }
 
+/** A picked scenario artist's lookup tags: genre tags that are not "urn:tag:genre:music:…" ids, so only a certain Spotify-id match may use them. */
+const mediaTags = (artist: CatalogArtist) =>
+  (Object.keys(artist.genres) as Genre[]).map((g) => ({ name: GENRES[g], tag_id: `urn:tag:genre:media:${g}`, type: "urn:tag:genre:media", value: `urn:tag:genre:media:${g}` }));
+
 /** Invented Last.fm listener count, from the mock popularity. */
 const mockListeners = (artist: CatalogArtist) => Math.round(2_000 + artist.popularity ** 3 * 2_500_000 * (0.6 + 0.8 * unit(`listeners:${artist.id}`)));
 
@@ -306,17 +311,19 @@ const mockListeners = (artist: CatalogArtist) => Math.round(2_000 + artist.popul
  */
 function artistPayload(artist: CatalogArtist, query?: Record<string, unknown>, style: "insights" | "lookup" = "insights") {
   const listeners = mockListeners(artist);
+  const picked = style === "lookup" ? (artist as Partial<ScenarioArtist>).picked : undefined;
   return {
     name: artist.name,
     entity_id: artist.id,
     ...(style === "insights" ? { type: "urn:entity", subtype: "urn:entity:artist" } : { types: ["urn:entity:artist"] }),
     properties: {
+      ...(picked ? { image: { url: picked.image } } : {}),
       short_description: "Musical artist (Qloo mock test entity)",
       akas: (artist.aka ?? []).map((value) => ({ value, languages: ["en"] })),
       ...(style === "lookup" ? { external: { ...("noSpotify" in artist ? {} : { spotify: { id: artist.spotifyId } }), lastfm: { id: encodeURIComponent(artist.name.toLowerCase()), listeners } } } : {}),
     },
     popularity: artist.popularity,
-    tags: genreTags(artist.genres, style),
+    tags: picked ? mediaTags(artist) : genreTags(artist.genres, style),
     ...(query ? { query } : {}),
     disambiguation: artist.local ? "Australian artist (mock)" : "Artist (mock)",
     ...(style === "insights" ? { external: { ...("noSpotify" in artist ? {} : { spotify: [{ id: artist.spotifyId }] }), lastfm: [{ id: encodeURIComponent(artist.name.toLowerCase()), listeners }] } } : {}),
@@ -759,7 +766,7 @@ function entities(params: Params, key: string): Response {
       return artist ? [artistDetailPayload(artist)] : [];
     }),
     ...spotify.flatMap((sid): unknown[] => {
-      const artist = CATALOG.find((a) => a.spotifyId === sid);
+      const artist = CATALOG.find((a) => a.spotifyId === sid) ?? SCENARIO_ARTISTS.find((a) => a.picked && a.spotifyId === sid);
       return artist ? [artistPayload(artist, undefined, "lookup")] : [];
     }),
   ];

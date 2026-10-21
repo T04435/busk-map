@@ -209,16 +209,24 @@ export type ResearchRequest = z.infer<typeof researchRequestSchema>;
  * POST /api/playlist/research/<runId>/input: the answer to a paused run. Artists you sound like (1 to 3, from the picker, with
  * their Spotify id when it has one) or a genre; at least one.
  */
+/** Genres a performer can pick while the research waits. */
+export const MAX_RESEARCH_GENRES = 3;
 export const researchInputSchema = z
   .object({
     artists: z
-      .array(z.object({ name: z.string().trim().min(1).max(80), spotifyId: z.string().regex(/^[A-Za-z0-9]{22}$/).optional() }))
+      .array(z.object({ name: z.string().trim().min(1).max(80), spotifyId: z.string().regex(/^[A-Za-z0-9]{22}$/).optional(), image: z.string().max(500).regex(/^https:\/\//).optional() }))
       .min(1)
       .max(3)
       .optional(),
+    /** Up to three genres. The old single `genre` is still accepted and read as one more. */
+    genres: z.array(z.string().trim().min(2).max(40)).min(1).max(MAX_RESEARCH_GENRES).optional(),
     genre: z.string().trim().min(2).max(40).optional(),
   })
-  .refine((v) => Boolean(v.artists?.length || v.genre), { message: "artists or genre" });
+  .refine((v) => Boolean(v.artists?.length || v.genres?.length || v.genre), { message: "artists or genre" })
+  .transform(({ genre, genres, ...rest }) => {
+    const all = [...new Set([...(genres ?? []), ...(genre ? [genre] : [])])].slice(0, MAX_RESEARCH_GENRES);
+    return { ...rest, ...(all.length ? { genres: all } : {}) };
+  });
 export type ResearchInput = z.infer<typeof researchInputSchema>;
 
 /**
@@ -227,6 +235,17 @@ export type ResearchInput = z.infer<typeof researchInputSchema>;
  * mockSpotifyId); tests/unit/research/view.test.ts keeps them equal. Never shown on a live server.
  */
 export const OFFLINE_TEST_ARTIST = { name: "Julia Jacklin", spotifyId: "IBaXCJ49QlTYT2jOrEp66p" } as const;
+
+/**
+ * Offline test mode only: two well-known artists a performer picks from the Spotify search in the waiting step (the v1.0.1 live
+ * case: Mariah Carey and Celia Cruz). Qloo knows both, by Spotify id and by name, with a photo of its own.
+ */
+export const OFFLINE_PICKED_ARTISTS = {
+  /** Spotify's search result has a photo; Qloo's is the fallback. */
+  mariah: { name: "Mariah Carey", spotifyId: "MockPickedArtist000001", spotifyImage: "https://i.scdn.co/image/offline-mariah-carey", qlooImage: "https://images.qloo.test/mariah-carey.jpg" },
+  /** Spotify's search result has no photo: the Qloo one shows. */
+  celia: { name: "Celia Cruz", spotifyId: "MockPickedArtist000002", spotifyImage: null, qlooImage: "https://images.qloo.test/celia-cruz.jpg" },
+} as const;
 
 /**
  * Offline test mode only: deterministic test acts for each way Qloo can (not) know a performer. Julia Jacklin above is the exact

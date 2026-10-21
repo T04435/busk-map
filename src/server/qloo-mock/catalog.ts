@@ -4,7 +4,7 @@
 // invented for testing. Entity ids are deterministic UUIDs whose first block
 // is 4D4F434B ("MOCK" in hex), so they can never be mistaken for Qloo ids.
 
-import { OFFLINE_TEST_ACTS } from "@/lib/repertoire-research";
+import { OFFLINE_PICKED_ARTISTS, OFFLINE_TEST_ACTS } from "@/lib/repertoire-research";
 
 /** Music genre tags, in Qloo's tag-id style. */
 export const GENRES = {
@@ -257,15 +257,22 @@ export const CATALOG: CatalogArtist[] = ARTISTS.map((artist) => ({
  * resolves them. None carries the Spotify id of the matching test act, so the Spotify-id lookup never finds them: the matcher has
  * to work from names.
  */
-export type ScenarioArtist = CatalogArtist & { searchOn: string[]; /** Qloo holds no Spotify id for this artist (as for most small acts). */ noSpotify?: boolean };
-const scenario = (name: string, popularity: number, genres: MockArtist["genres"], searchOn: string[], options: { spotifyId?: string } = {}): ScenarioArtist => ({
+export type ScenarioArtist = CatalogArtist & {
+  searchOn: string[];
+  /** Qloo holds no Spotify id for this artist (as for most small acts). */
+  noSpotify?: boolean;
+  /** The Spotify-id lookup finds it, with a photo and tags that are not music-genre ids (the shape that dropped picked artists in v1.0.1). */
+  picked?: { image: string };
+};
+const scenario = (name: string, popularity: number, genres: MockArtist["genres"], searchOn: string[], options: { spotifyId?: string; picked?: { image: string } } = {}): ScenarioArtist => ({
   name,
   popularity,
   genres,
   id: mockId("artist", name),
   spotifyId: options.spotifyId ?? mockSpotifyId(name),
   searchOn: searchOn.map(normalizeName),
-  ...(options.spotifyId ? {} : { noSpotify: true }),
+  ...(options.spotifyId || options.picked ? {} : { noSpotify: true }),
+  ...(options.picked ? { picked: options.picked } : {}),
 });
 export const SCENARIO_ARTISTS: ScenarioArtist[] = [
   scenario(OFFLINE_TEST_ACTS.variant.qlooName, 0.41, { indie_folk: 0.9, singer_songwriter: 0.5 }, [OFFLINE_TEST_ACTS.variant.qlooName]),
@@ -275,6 +282,9 @@ export const SCENARIO_ARTISTS: ScenarioArtist[] = [
   scenario(OFFLINE_TEST_ACTS.otherId.name, 0.6, { rock: 0.8, pop: 0.3 }, [OFFLINE_TEST_ACTS.otherId.name], { spotifyId: OFFLINE_TEST_ACTS.otherId.qlooSpotifyId }),
   // The name matches exactly but the entity carries no music-genre tag: weak.
   scenario(OFFLINE_TEST_ACTS.weak.name, 0.2, {}, [OFFLINE_TEST_ACTS.weak.name]),
+  // Artists a performer picks from Spotify's search (research input): Qloo knows them by Spotify id and by name, with its own photo.
+  scenario(OFFLINE_PICKED_ARTISTS.mariah.name, 0.95, { pop: 0.9, rnb: 0.7 }, [OFFLINE_PICKED_ARTISTS.mariah.name], { spotifyId: OFFLINE_PICKED_ARTISTS.mariah.spotifyId, picked: { image: OFFLINE_PICKED_ARTISTS.mariah.qlooImage } }),
+  scenario(OFFLINE_PICKED_ARTISTS.celia.name, 0.9, { soul: 0.6, jazz: 0.3 }, [OFFLINE_PICKED_ARTISTS.celia.name], { spotifyId: OFFLINE_PICKED_ARTISTS.celia.spotifyId, picked: { image: OFFLINE_PICKED_ARTISTS.celia.qlooImage } }),
 ];
 
 export const ARTIST_BY_ID = new Map([...CATALOG, ...SCENARIO_ARTISTS].map((artist) => [artist.id, artist]));

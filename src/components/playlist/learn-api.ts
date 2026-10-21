@@ -70,8 +70,11 @@ export async function startResearch(body: { link?: string; refresh?: boolean; mo
   }
 }
 
+/** What the performer sends back to a paused run: artists (a Spotify pick keeps its id and photo) and up to three genres. */
+export type ResearchAnswer = { artists?: { name: string; spotifyId?: string; image?: string }[]; genres?: string[] };
+
 /** Answer a research run that waits for input (POST /api/playlist/research/<runId>/input): the same run carries on, streamed. */
-export async function sendResearchInput(runId: string, body: { artists?: { name: string; spotifyId?: string }[]; genre?: string }, faults: string | null): Promise<Streaming | Refusal> {
+export async function sendResearchInput(runId: string, body: ResearchAnswer, faults: string | null): Promise<Streaming | Refusal> {
   try {
     const res = await fetch(`/api/playlist/research/${encodeURIComponent(runId)}/input`, {
       method: "POST",

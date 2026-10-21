@@ -115,6 +115,20 @@ describe("toRepertoireView", () => {
     expect(v.results.summary).toBeNull();
   });
 
+  it("a saved sound-alike shows its saved photo (not initials), before the step's own, and the chip list of the view carries it", async () => {
+    const { playlist } = await fullRun();
+    const saved = [
+      { name: "Mariah Carey", spotifyId: "MockPickedArtist000001", qlooId: "q1", image: "https://i.scdn.co/image/saved-mariah" },
+      { name: "Celia Cruz", qlooId: "q2", image: "https://images.qloo.test/celia-cruz.jpg" },
+      { name: "Typed Only" },
+    ];
+    const v = toRepertoireView({ snapshot: playlist.research, playlist: { ...playlist, soundsLike: saved } });
+    const byName = Object.fromEntries((v.results.soundsLike ?? []).map((a) => [a.name, a]));
+    expect(byName["Mariah Carey"].image).toBe("https://i.scdn.co/image/saved-mariah");
+    expect(byName["Celia Cruz"].image).toBe("https://images.qloo.test/celia-cruz.jpg");
+    expect(byName["Typed Only"].image).toBeUndefined();
+  });
+
   it("U03 U06: a saved song borrows the act's photo and this run's covers; links are Spotify only", async () => {
     const { events, playlist, list } = await fullRun();
     // The offline profile has no photo, so give it one the way Spotify's snapshot would.

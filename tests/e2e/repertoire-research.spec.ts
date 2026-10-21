@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { OFFLINE_TEST_ACTS, OFFLINE_TEST_ARTIST } from "../../src/lib/repertoire-research";
+import { OFFLINE_PICKED_ARTISTS, OFFLINE_TEST_ACTS, OFFLINE_TEST_ARTIST } from "../../src/lib/repertoire-research";
 import { expect, LOCAL, test } from "./fixtures";
 
 /**
@@ -307,10 +307,15 @@ test.describe("Repertoire research (offline)", () => {
     await genres.getByRole("button", { name: "Pop" }).click();
     await expect(genres.getByRole("button", { name: "Pop" })).toHaveAttribute("aria-pressed", "false");
     await expect(carryOn).toBeDisabled();
-    // One genre at most; the artists stay when a genre is picked.
+    // Up to three genres; the artists stay when a genre is picked; a fourth is blocked until one is unpressed.
     await picker.fill("Paul Kelly, Courtney Barnett");
+    for (const name of ["Folk", "Pop", "Jazz"]) await genres.getByRole("button", { name }).click();
+    for (const name of ["Folk", "Pop", "Jazz"]) await expect(genres.getByRole("button", { name })).toHaveAttribute("aria-pressed", "true");
+    await expect(genres.getByRole("button", { name: "Rock" })).toBeDisabled();
+    await expect(genres.getByRole("button", { name: "Jazz" })).toBeEnabled();
+    await genres.getByRole("button", { name: "Jazz" }).click();
+    await expect(genres.getByRole("button", { name: "Rock" })).toBeEnabled();
     await genres.getByRole("button", { name: "Folk" }).click();
-    await genres.getByRole("button", { name: "Pop" }).click();
     await expect(genres.getByRole("button", { name: "Folk" })).toHaveAttribute("aria-pressed", "false");
     await expect(genres.getByRole("button", { name: "Pop" })).toHaveAttribute("aria-pressed", "true");
     await expect(ask).toContainText("Paul Kelly");
@@ -324,13 +329,61 @@ test.describe("Repertoire research (offline)", () => {
     await carryOn.click();
     await done(page);
     expect(inputs).toHaveLength(1);
-    expect(JSON.parse(inputs[0])).toEqual({ artists: [{ name: "Paul Kelly" }, { name: "Courtney Barnett" }], genre: "Pop" });
+    expect(JSON.parse(inputs[0])).toEqual({ artists: [{ name: "Paul Kelly" }, { name: "Courtney Barnett" }], genres: ["Pop"] });
     const qloo = page.getByTestId("research-steps").locator('[data-testid="agent-step"][data-tool="research_qloo"]');
     await expect(qloo).toContainText("Qloo doesn't know you yet. Using your artists: Paul Kelly and Courtney Barnett; your genre: Pop.");
     await expect(qloo).not.toContainText("has no taste data for you");
     // Saved: a refresh shows the same line.
     await page.reload();
     await expect(page.getByTestId("research-steps").locator('[data-testid="agent-step"][data-tool="research_qloo"]')).toContainText("Using your artists: Paul Kelly and Courtney Barnett; your genre: Pop.");
+  });
+
+  test("artists picked from Spotify and two genres: the step names both artists and both genres, and the sound-alikes show photos", async ({ page }) => {
+    test.setTimeout(120_000);
+    const inputs: string[] = [];
+    page.on("request", (r) => {
+      if (r.method() === "POST" && /\/research\/[^/]+\/input$/.test(r.url())) inputs.push(r.postData() ?? "");
+    });
+    // The offline photos are https URLs nothing serves: answer them with a small picture.
+    const picture = '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#888"/></svg>';
+    await page.route(/i\.scdn\.co|images\.qloo\.test/, (route) => route.fulfill({ contentType: "image/svg+xml", body: picture }));
+    await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
+    const ask = page.getByTestId("research-ask");
+    await expect(ask).toBeVisible({ timeout: 20_000 });
+    const picker = ask.getByPlaceholder("Search Spotify, e.g. Paul Kelly");
+    for (const artist of [OFFLINE_PICKED_ARTISTS.mariah, OFFLINE_PICKED_ARTISTS.celia]) {
+      await picker.fill(artist.name);
+      await page.getByRole("option", { name: new RegExp(artist.name) }).filter({ hasNotText: "as typed" }).first().click();
+    }
+    const picked = ask.getByRole("list", { name: "Artists you picked" });
+    await expect(picked.locator("li")).toHaveCount(2);
+    await expect(picked.locator("img")).toHaveCount(1);
+    const genres = page.getByTestId("research-genre-pick");
+    await genres.getByRole("button", { name: "Folk" }).click();
+    await genres.getByRole("button", { name: "Pop" }).click();
+    await page.getByTestId("research-ask-carry-on").click();
+    await done(page);
+    expect(inputs).toHaveLength(1);
+    expect(JSON.parse(inputs[0])).toEqual({
+      artists: [
+        { name: "Mariah Carey", spotifyId: OFFLINE_PICKED_ARTISTS.mariah.spotifyId, image: OFFLINE_PICKED_ARTISTS.mariah.spotifyImage },
+        { name: "Celia Cruz", spotifyId: OFFLINE_PICKED_ARTISTS.celia.spotifyId },
+      ],
+      genres: ["Folk", "Pop"],
+    });
+    const qloo = page.getByTestId("research-steps").locator('[data-testid="agent-step"][data-tool="research_qloo"]');
+    await expect(qloo).toContainText("Qloo doesn't know you yet. Using your artists: Mariah Carey and Celia Cruz; your genres: Folk and Pop.");
+    // Artists you sound like: both have photos (the Spotify one, and Qloo's where Spotify sent none), not initials.
+    const alikes = page.getByTestId("research-sounds-like");
+    await expect(alikes.getByRole("list", { name: "Artists you picked" }).locator("li")).toHaveCount(2);
+    await expect(alikes.getByRole("list", { name: "Artists you picked" }).locator("li img")).toHaveCount(2);
+    const saved = (await (await page.request.get("/api/playlist")).json()).playlist.soundsLike;
+    expect(saved).toMatchObject([{ name: "Mariah Carey", image: OFFLINE_PICKED_ARTISTS.mariah.spotifyImage }, { name: "Celia Cruz", image: OFFLINE_PICKED_ARTISTS.celia.qlooImage }]);
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 900 });
+      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+      expect(violations.map((v) => `picked-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+    }
   });
 
   test("still nothing Qloo knows: it asks again in the same step, then stops after three asks in one line", async ({ page }) => {

@@ -138,9 +138,9 @@ export const PLAYLIST_COPY = {
       genresLabel: (names: readonly string[]) => `Qloo doesn't know you yet, so this is based on your genres: ${andList(names)}.`,
       noneLabel: "Qloo doesn't know you yet and has no taste data for you.",
       /** The input the research now uses, after the performer answered a pause: your artists, your genre, or both. */
-      using: (artists: readonly string[], genre: string | null) => {
-        const parts = [artists.length ? `your artists: ${andList(artists)}` : "", genre ? `your genre: ${genre}` : ""].filter(Boolean);
-        return `Qloo doesn't know you yet. Using ${parts.join("; ")}.`;
+      using: (artists: readonly string[], genres: readonly string[], unmatched: readonly string[] = []) => {
+        const parts = [artists.length ? `your artists: ${andList(artists)}` : "", genres.length ? `your ${genres.length === 1 ? "genre" : "genres"}: ${andList(genres)}` : ""].filter(Boolean);
+        return `Qloo doesn't know you yet. Using ${parts.join("; ")}.${unmatched.length ? ` Qloo doesn't know ${andList(unmatched)}.` : ""}`;
       },
       basedOn: "Based on the artists you sound like",
       basedOnGenre: "Based on your genre",
@@ -154,7 +154,7 @@ export const PLAYLIST_COPY = {
       untaggedGenre: (genre: string) => `Qloo has no tag for ${genre}. Pick another genre, or add artists you sound like.`,
       gaveUp: "Qloo has no taste data for your act yet, so the research stopped here.",
       artistsLabel: "Artists you sound like",
-      genreLabel: "Or pick a genre",
+      genreLabel: "Or pick up to 3 genres",
       carryOn: "Carry on",
       notStarted: "Not started",
       waitingTag: "Your turn",

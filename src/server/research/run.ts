@@ -10,6 +10,7 @@ import type { SoundsLike } from "@/lib/playlist-schema";
 import {
   MORE_STEPS,
   RESEARCH_LABELS,
+  MAX_RESEARCH_GENRES,
   RESEARCH_MAX_ASKS,
   RESEARCH_STEPS,
   RESEARCH_TOOLS,
@@ -541,24 +542,29 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         const applyInput = async (input: ResearchInput): Promise<string> => {
           let line: string = R.ask.first;
           let usedArtists: string[] = [];
-          let usedGenre: string | null = null;
+          let usedGenres: string[] = [];
+          let unmatchedArtists: string[] = [];
+          const unmatched: string[] = [];
           const artists = (input.artists ?? []).filter((a, i, all) => all.findIndex((b) => nameKey(b.name) === nameKey(a.name)) === i).slice(0, 3);
           if (artists.length) {
             const res = await resolveSoundAlikes(artists, { name: profile.name, actName: actLabel, spotifyId: args.spotifyId }, adapters);
             if (res.unavailable) throw new QlooDown("Qloo didn't answer for the artists you sound like.");
             // Saved as the performer's own "Artists you sound like" (with the Qloo id when Qloo knows them), after the ones they had.
             const fresh = (await playlists.get(playlist.id)) ?? playlist;
+            const pickedImage = (name: string) => artists.find((a) => nameKey(a.name) === nameKey(name))?.image;
             const hitOf = (name: string) => res.matches[artists.findIndex((a) => nameKey(a.name) === nameKey(name))] ?? null;
             const had = fresh.soundsLike.map((a): SoundsLike => {
               const hit = a.qlooId ? null : hitOf(a.name);
-              return hit ? { ...a, qlooId: hit.qlooId } : a;
+              return hit || (!a.image && pickedImage(a.name)) ? { ...a, ...(hit ? { qlooId: hit.qlooId } : {}), ...(!a.image && (hit?.image ?? pickedImage(a.name)) ? { image: hit?.image ?? pickedImage(a.name) } : {}) } : a;
             });
             const added = artists
               .filter((a) => !fresh.soundsLike.some((b) => nameKey(b.name) === nameKey(a.name)))
               .map((a): SoundsLike => {
                 const hit = hitOf(a.name);
                 const spotifyId = a.spotifyId ?? hit?.spotifyId;
-                return { name: a.name.slice(0, 80), ...(spotifyId ? { spotifyId } : {}), ...(hit ? { qlooId: hit.qlooId } : {}), ...(hit?.image ? { image: hit.image } : {}) };
+                // The Spotify photo the performer picked (resolveSoundAlikes keeps it on the hit), else Qloo's, else the one sent.
+                const image = hit?.image ?? a.image;
+                return { name: a.name.slice(0, 80), ...(spotifyId ? { spotifyId } : {}), ...(hit ? { qlooId: hit.qlooId } : {}), ...(image ? { image } : {}) };
               });
             await patch({ soundsLike: [...had, ...added].slice(0, SOUNDS_LIKE_MAX) });
             if (res.found.length > 0) {
@@ -566,36 +572,42 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
               delete found.foundByHive;
               Object.assign(found, { fallback: "soundsLike" });
               usedArtists = res.found.slice(0, 3).map((a) => a.name);
+              unmatchedArtists = res.unknown;
             } else {
               ask.tried.artists.push(...res.unknown.filter((name) => !ask.tried.artists.includes(name)));
               line = R.ask.unknownArtists(res.unknown);
             }
           }
-          if (input.genre) {
-            const genre = input.genre.trim().slice(0, 40);
-            found.genrePick = genre;
-            const tag = await resolveGenreTag(genre, adapters);
-            if (tag === "unavailable") throw new QlooDown("Qloo didn't answer for your genre.");
-            if (tag) {
-              const shown = tag.name.trim().replace(/\b\w/g, (c) => c.toUpperCase());
-              genreSignal.tags = [tag];
-              usedGenre = shown;
+          const genreTexts = [...new Set((input.genres ?? []).map((g) => g.trim().slice(0, 40)).filter(Boolean))].slice(0, MAX_RESEARCH_GENRES);
+          if (genreTexts.length > 0) {
+            found.genrePick = genreTexts[0];
+            const tags: { id: string; name: string }[] = [];
+            for (const genre of genreTexts) {
+              const tag = await resolveGenreTag(genre, adapters);
+              if (tag === "unavailable") throw new QlooDown("Qloo didn't answer for your genre.");
+              if (!tag) unmatched.push(genre);
+              else if (!tags.some((t) => t.id === tag.id)) tags.push(tag);
+            }
+            if (tags.length > 0) {
+              genreSignal.tags = tags;
+              usedGenres = tags.map((t) => t.name.trim().replace(/\b\w/g, (c) => c.toUpperCase()));
               if (usedArtists.length > 0) {
-                // Both: the resolved artists lead, the genre's artists are added to the signal after them.
-                const more = fromQloo(await qloo.tagArtists([tag.id], RESEARCH_SIGNAL_SOUND_ALIKES + 2, adapters), "artists in your genre");
+                // Both: the resolved artists lead, the genres' artists are added to the signal after them.
+                const more = fromQloo(await qloo.tagArtists(tags.map((t) => t.id), RESEARCH_SIGNAL_SOUND_ALIKES + 2, adapters), "artists in your genre");
                 const have = signalAlikes.current ?? [];
                 const own = new Set([nameKey(actLabel ?? profile.name), nameKey(profile.name)]);
                 const extra = more.filter((e) => !own.has(nameKey(e.name)) && !have.some((a) => a.qlooId === e.id)).map((e) => ({ name: e.name, qlooId: e.id, ...(e.spotifyId && SPOTIFY_ID.test(e.spotifyId) ? { spotifyId: e.spotifyId } : {}), ...(e.image && /^https:\/\//.test(e.image) ? { image: e.image } : {}) }));
                 signalAlikes.current = [...have, ...extra].slice(0, RESEARCH_SIGNAL_SOUND_ALIKES);
-                Object.assign(found, { genreTags: [tag] });
-              } else Object.assign(found, { fallback: "genres", genreTags: [tag] });
-            } else if (usedArtists.length === 0) {
-              if (!ask.tried.genres.includes(genre)) ask.tried.genres.push(genre);
-              line = R.ask.untaggedGenre(genre);
+                Object.assign(found, { genreTags: tags });
+              } else Object.assign(found, { fallback: "genres", genreTags: tags });
+            }
+            if (usedArtists.length === 0 && tags.length === 0) {
+              for (const genre of unmatched) if (!ask.tried.genres.includes(genre)) ask.tried.genres.push(genre);
+              if (artists.length === 0) line = R.ask.untaggedGenre(andList(unmatched));
             }
           }
-          if (usedArtists.length > 0 || usedGenre) {
-            found.summary = R.fallback.using(usedArtists, usedGenre);
+          if (usedArtists.length > 0 || usedGenres.length > 0) {
+            found.summary = R.fallback.using(usedArtists, usedGenres, [...unmatchedArtists, ...unmatched]);
             restateQloo(found);
             return "";
           }
@@ -605,7 +617,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         // 4. Who you sound like (editable: saved as "Artists you sound like" only when that list is empty). With no taste signal at
         // all (Qloo doesn't know the act, nor any artist like it, nor a genre), the run waits here for the performer's input.
         const input = resume?.input;
-        await step("soundsLike", input ? { artists: (input.artists ?? []).map((a) => a.name), genre: input.genre ?? null } : {}, async (): Promise<SoundsLikeOutput> => {
+        await step("soundsLike", input ? { artists: (input.artists ?? []).map((a) => a.name), genres: input.genres ?? [] } : {}, async (): Promise<SoundsLikeOutput> => {
           if (!own && found.fallback === "none") {
             let line: string = R.ask.first;
             if (input) line = await applyInput(input);

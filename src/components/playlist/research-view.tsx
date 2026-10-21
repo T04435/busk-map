@@ -43,7 +43,7 @@ import { fansMapProps } from "@/lib/fans-map";
 import { OFFLINE_TEST_ARTIST, researchUsable, researchWaiting } from "@/lib/repertoire-research";
 import { toRepertoireView, type LearnSong, type RepertoireView } from "@/lib/repertoire-research-view";
 import { parseSpotifyArtistId, spotifyArtistUrl } from "@/lib/spotify-link";
-import { joinLearn, loadLearn, pageFaults, patchSuggestion, sendResearchInput, startResearch } from "./learn-api";
+import { joinLearn, loadLearn, pageFaults, patchSuggestion, sendResearchInput, startResearch, type ResearchAnswer } from "./learn-api";
 import { ResearchAsk } from "./research-ask";
 import { REPERTOIRE_STEPS } from "@/components/honeycomb/repertoire/repertoire-research";
 import { ResearchFunnel } from "./learn-feed";
@@ -292,7 +292,7 @@ export function ResearchView() {
   }
 
   /** The answer to a run that waits for input: the same run carries on in the same panel. */
-  async function answer(runId: string, body: { artists?: { name: string; spotifyId?: string }[]; genre?: string }) {
+  async function answer(runId: string, body: ResearchAnswer) {
     setNotice(null);
     setInfo("");
     setRunning(true);

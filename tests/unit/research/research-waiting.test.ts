@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { learnStreamEventSchema, type LearnStreamEvent } from "@/lib/learn-schema";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
-import { OFFLINE_TEST_ACTS, OFFLINE_UNKNOWN_ARTIST, OFFLINE_UNTAGGED_GENRE, RESEARCH_MAX_ASKS, researchUsable, researchWaiting, type ResearchSnapshot } from "@/lib/repertoire-research";
+import { OFFLINE_PICKED_ARTISTS, OFFLINE_TEST_ACTS, OFFLINE_UNKNOWN_ARTIST, OFFLINE_UNTAGGED_GENRE, RESEARCH_MAX_ASKS, researchUsable, researchWaiting, type ResearchSnapshot } from "@/lib/repertoire-research";
 
 const profiles = vi.hoisted(() => [] as string[]);
 vi.mock("@/server/adapters/repertoire", async (importOriginal) => {
@@ -128,7 +128,7 @@ describe("the input carries on the same run", () => {
     const kept = (e: LearnStreamEvent[]) => e.filter((x) => (x.type === "tool-end" || x.type === "tool-start") && ["rs-1", "rs-2"].includes(x.id));
     expect(kept(a.events)).toEqual(kept(r.events));
     const qlooEnd = toolEnd(a.events, "research_qloo")!;
-    expect(qlooEnd.summary).toBe(R.fallback.using(["Paul Kelly", "Courtney Barnett"], null));
+    expect(qlooEnd.summary).toBe(R.fallback.using(["Paul Kelly", "Courtney Barnett"], []));
     expect(qlooEnd.calls).toEqual(toolEnd(r.events, "research_qloo")!.calls);
     expect(profiles).toEqual([SILENT.spotifyId]);
     expect(starts(a.events).filter((t) => t === "research_profile")).toHaveLength(1);
@@ -138,7 +138,7 @@ describe("the input carries on the same run", () => {
     expect(v.research.waiting).toBeUndefined();
     expect(v.research.runId).toBe(runId);
     for (const k of ["soundsLike", "fans", "fansMap", "fansLove", "learn", "genres", "summary"] as const) expect(v.research.steps[k]!.status, k).toBe("done");
-    expect(v.research.steps.qloo!.output).toMatchObject({ fallback: "soundsLike", summary: R.fallback.using(["Paul Kelly", "Courtney Barnett"], null) });
+    expect(v.research.steps.qloo!.output).toMatchObject({ fallback: "soundsLike", summary: R.fallback.using(["Paul Kelly", "Courtney Barnett"], []) });
     expect(v.research.steps.fansLove!.output!.signalledBy).toEqual(["Paul Kelly", "Courtney Barnett"]);
     expect(v.soundsLike.map((x) => x.name)).toEqual(["Paul Kelly", "Courtney Barnett"]);
     expect(v.soundsLike.every((x) => x.qlooId && !x.foundBy)).toBe(true);
@@ -161,11 +161,11 @@ describe("the input carries on the same run", () => {
   it("a genre Qloo has a tag for carries on from that genre, every Qloo step asking Qloo", async () => {
     const m = await load();
     const r = await start(m, "silent");
-    const a = await answer(m, r.cookie, runIdOf(r.events), { genre: "Folk" });
+    const a = await answer(m, r.cookie, runIdOf(r.events), { genres: ["Folk"] });
     expect(end(a.events).ok).toBe(true);
     expect(String(end(a.events).code)).not.toMatch(/^needs_/);
     const v = await view(m, r.cookie);
-    expect(v.research.steps.qloo!.output).toMatchObject({ fallback: "genres", genrePick: "Folk", genreTags: [{ name: "Folk" }], summary: R.fallback.using([], "Folk") });
+    expect(v.research.steps.qloo!.output).toMatchObject({ fallback: "genres", genrePick: "Folk", genreTags: [{ name: "Folk" }], summary: R.fallback.using([], ["Folk"]) });
     expect(v.research.steps.soundsLike!.output).toMatchObject({ basedOn: "genres" });
     expect(v.research.steps.soundsLike!.output!.artists.length).toBeGreaterThan(0);
     expect(v.research.steps.fans!.output!.summary).not.toBe(R.fallback.noTaste);
@@ -179,10 +179,10 @@ describe("artists and a genre together", () => {
   it("the resolved artists lead the signal, the genre's artists follow, the step line names both, and it is saved for a refresh", async () => {
     const m = await load();
     const r = await start(m, "silent");
-    const a = await answer(m, r.cookie, runIdOf(r.events), { artists: [{ name: "Paul Kelly" }, { name: "Courtney Barnett" }], genre: "Folk" });
+    const a = await answer(m, r.cookie, runIdOf(r.events), { artists: [{ name: "Paul Kelly" }, { name: "Courtney Barnett" }], genres: ["Folk"] });
     expect(end(a.events).ok).toBe(true);
     expect(String(end(a.events).code)).not.toMatch(/^needs_/);
-    const line = R.fallback.using(["Paul Kelly", "Courtney Barnett"], "Folk");
+    const line = R.fallback.using(["Paul Kelly", "Courtney Barnett"], ["Folk"]);
     expect(toolEnd(a.events, "research_qloo")!.summary).toBe(line);
     const v = await view(m, r.cookie);
     expect(v.research.steps.qloo!.output).toMatchObject({ fallback: "soundsLike", genrePick: "Folk", genreTags: [{ id: "urn:tag:genre:music:folk" }], summary: line });
@@ -194,9 +194,76 @@ describe("artists and a genre together", () => {
   it("an unknown artist plus a genre: the genre alone carries on", async () => {
     const m = await load();
     const r = await start(m, "silent");
-    const a = await answer(m, r.cookie, runIdOf(r.events), { artists: [{ name: OFFLINE_UNKNOWN_ARTIST }], genre: "Pop" });
+    const a = await answer(m, r.cookie, runIdOf(r.events), { artists: [{ name: OFFLINE_UNKNOWN_ARTIST }], genres: ["Pop"] });
     expect(String(end(a.events).code)).not.toMatch(/^needs_/);
-    expect((await view(m, r.cookie)).research.steps.qloo!.output).toMatchObject({ fallback: "genres", summary: R.fallback.using([], "Pop") });
+    expect((await view(m, r.cookie)).research.steps.qloo!.output).toMatchObject({ fallback: "genres", summary: R.fallback.using([], ["Pop"]) });
+  });
+});
+
+describe("artists picked from Spotify (Mariah Carey and Celia Cruz) are resolved by Spotify id and named in the step", () => {
+  const { mariah, celia } = OFFLINE_PICKED_ARTISTS;
+  const picked = [
+    { name: mariah.name, spotifyId: mariah.spotifyId, image: mariah.spotifyImage },
+    { name: celia.name, spotifyId: celia.spotifyId },
+  ];
+  type Saved = { name: string; spotifyId?: string; qlooId?: string; image?: string };
+
+  it("both resolve although Qloo's id lookup tags them with no music-genre id; the step names both and the two genres", async () => {
+    const m = await load();
+    const r = await start(m, "silent");
+    const a = await answer(m, r.cookie, runIdOf(r.events), { artists: picked, genres: ["Folk", "Pop"] });
+    expect(a.status).toBe(200);
+    expect(String(end(a.events).code)).not.toMatch(/^needs_/);
+    const line = R.fallback.using([mariah.name, celia.name], ["Folk", "Pop"]);
+    expect(line).toBe("Qloo doesn't know you yet. Using your artists: Mariah Carey and Celia Cruz; your genres: Folk and Pop.");
+    expect(toolEnd(a.events, "research_qloo")!.summary).toBe(line);
+    const v = await view(m, r.cookie);
+    const saved = v.soundsLike as Saved[];
+    expect(saved.map((x) => x.name)).toEqual([mariah.name, celia.name]);
+    expect(saved.every((x) => x.qlooId)).toBe(true);
+    expect(v.research.steps.qloo!.output).toMatchObject({ fallback: "soundsLike", summary: line });
+  });
+
+  it("the Spotify photo is saved with the sound-alike; Qloo's photo stands in when Spotify's is missing", async () => {
+    const m = await load();
+    const r = await start(m, "silent");
+    await answer(m, r.cookie, runIdOf(r.events), { artists: picked });
+    const v = await view(m, r.cookie);
+    const saved = v.soundsLike as Saved[];
+    expect(saved.find((x) => x.name === mariah.name)).toMatchObject({ spotifyId: mariah.spotifyId, image: mariah.spotifyImage });
+    expect(saved.find((x) => x.name === celia.name)).toMatchObject({ spotifyId: celia.spotifyId, image: celia.qlooImage });
+    const listed = v.research.steps.soundsLike!.output!.artists;
+    expect(listed.find((x) => x.name === mariah.name)!.image).toBe(mariah.spotifyImage);
+    expect(listed.find((x) => x.name === celia.name)!.image).toBe(celia.qlooImage);
+  });
+
+  it("an artist Qloo can't match is named: 'Qloo doesn't know X'", async () => {
+    const m = await load();
+    const r = await start(m, "silent");
+    const a = await answer(m, r.cookie, runIdOf(r.events), { artists: [picked[0], { name: OFFLINE_UNKNOWN_ARTIST }] });
+    expect(toolEnd(a.events, "research_qloo")!.summary).toBe(`Qloo doesn't know you yet. Using your artists: ${mariah.name}. Qloo doesn't know ${OFFLINE_UNKNOWN_ARTIST}.`);
+  });
+
+  it("up to three genres resolve to Qloo tags and are all named; the old single genre is still accepted; a fourth is refused", async () => {
+    const m = await load();
+    const r = await start(m, "silent");
+    const runId = runIdOf(r.events);
+    expect((await answer(m, r.cookie, runId, { genres: ["Folk", "Pop", "Jazz", "Rock"] })).status).toBe(400);
+    const a = await answer(m, r.cookie, runId, { genres: ["Folk", "Pop", "Jazz"] });
+    expect(toolEnd(a.events, "research_qloo")!.summary).toBe("Qloo doesn't know you yet. Using your genres: Folk, Pop and Jazz.");
+    const v = await view(m, r.cookie);
+    expect(v.research.steps.qloo!.output).toMatchObject({ fallback: "genres", genreTags: [{ id: "urn:tag:genre:music:folk" }, { id: "urn:tag:genre:music:pop" }, { id: "urn:tag:genre:music:jazz" }] });
+    const old = await load();
+    const r2 = await start(old, "silent");
+    const b = await answer(old, r2.cookie, runIdOf(r2.events), { genre: "Folk", genres: ["Pop"] });
+    expect(toolEnd(b.events, "research_qloo")!.summary).toBe("Qloo doesn't know you yet. Using your genres: Pop and Folk.");
+  });
+
+  it("a genre with no tag is named; the others carry on", async () => {
+    const m = await load();
+    const r = await start(m, "silent");
+    const a = await answer(m, r.cookie, runIdOf(r.events), { genres: ["Pop", OFFLINE_UNTAGGED_GENRE] });
+    expect(toolEnd(a.events, "research_qloo")!.summary).toBe(`Qloo doesn't know you yet. Using your genre: Pop. Qloo doesn't know ${OFFLINE_UNTAGGED_GENRE}.`);
   });
 });
 
@@ -227,7 +294,7 @@ describe("asks again when Qloo still knows nothing, at most three times", () => 
     expect(v.research.waiting).toBeUndefined();
     for (const k of ["fans", "fansMap", "fansLove", "learn", "genres", "summary"] as const) expect(v.research.steps[k]!.status).toBe("skipped");
     // Not waiting any more: another answer is refused.
-    expect((await answer(m, r.cookie, runId, { genre: "Folk" })).status).toBe(409);
+    expect((await answer(m, r.cookie, runId, { genres: ["Folk"] })).status).toBe(409);
   });
 });
 
@@ -238,15 +305,15 @@ describe("POST /api/playlist/research/<runId>/input refusals", () => {
     const runId = runIdOf(r.events);
     expect((await answer(m, r.cookie, runId, {})).status).toBe(400);
     expect((await answer(m, r.cookie, runId, { artists: [] })).status).toBe(400);
-    expect((await answer(m, r.cookie, "00000000-0000-4000-8000-000000000000", { genre: "Folk" })).body).toMatchObject({ error: { code: "not_waiting" } });
+    expect((await answer(m, r.cookie, "00000000-0000-4000-8000-000000000000", { genres: ["Folk"] })).body).toMatchObject({ error: { code: "not_waiting" } });
     const julia = await start(m, "variant", r.cookie, {});
     expect(end(julia.events).ok).toBe(true);
-    expect((await answer(m, r.cookie, runId, { genre: "Folk" })).body).toMatchObject({ error: { code: "not_waiting" } });
+    expect((await answer(m, r.cookie, runId, { genres: ["Folk"] })).body).toMatchObject({ error: { code: "not_waiting" } });
   });
 
   it("without a Repertoire there is nothing to answer", async () => {
     const m = await load();
-    const res = await m.input.POST(req("POST", "/research/x/input", { genre: "Folk" }), { params: Promise.resolve({ runId: "x" }) });
+    const res = await m.input.POST(req("POST", "/research/x/input", { genres: ["Folk"] }), { params: Promise.resolve({ runId: "x" }) });
     expect(res.status).toBe(404);
   });
 });

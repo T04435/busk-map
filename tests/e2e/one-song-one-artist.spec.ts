@@ -73,11 +73,19 @@ test.describe("one Song, one Artist (unify rule)", () => {
   test("a busk (/p/[id]): the setlist, the crowd and the tool cards use the one Song and one Artist", async ({ page }) => {
     await page.goto("/");
     const example = EXAMPLES[0];
-    const plan = page.waitForResponse((r) => r.url().endsWith("/api/plan") && r.request().method() === "POST");
+    // Read the plan stream through a route: after the client navigates to /p/[id] the browser drops the
+    // response body, so response.text() can fail under load.
+    let body = "";
+    await page.route("**/api/plan", async (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      const response = await route.fetch();
+      body = await response.text();
+      await route.fulfill({ response, body });
+    });
     await page.getByRole("link", { name: new RegExp(`^${example.label} `) }).click();
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
-    const body = await (await plan).text();
     await waitForPlan(page);
+    await expect.poll(() => body.length).toBeGreaterThan(0);
     const found = collect(body.split("\n").filter(Boolean).map((line) => JSON.parse(line) as unknown));
     for (const s of example.performer.songs) found.songs.add(s.title);
     for (const a of example.performer.artists) found.artists.add(a);

@@ -25,7 +25,7 @@ describe("Qloo calls new for research (against the local mock)", () => {
     const types = new Set(res.data?.tags.map((t) => t.type));
     expect(types.has("urn:tag:genre:music")).toBe(true);
     expect(types.has("urn:tag:audience:qloo")).toBe(true);
-    expect((await qloo.artistDetail("4D4F434B-0000-0000-0000-000000000000", OFF)).data).toBeNull();
+    expect((await qloo.artistDetail("4D4F434B-unknown", OFF)).data).toBeNull();
   });
 
   it("actGenres: the music genres fans of an artist lean to, with no location (step 8)", async () => {

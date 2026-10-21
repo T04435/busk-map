@@ -142,9 +142,9 @@ export function ArtistProfile({
               >
                 {profile.name}
               </Heading>
-              {profile.followers != null || profile.href ? (
+              {(profile.followers ?? 0) > 0 || profile.href ? (
                 <p className="mt-2 mb-0 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-sm text-muted-foreground">
-                  {profile.followers != null ? <span>{formatFollowers(profile.followers)} followers</span> : null}
+                  {(profile.followers ?? 0) > 0 ? <span>{formatFollowers(profile.followers!)} followers</span> : null}
                   {profile.href ? (
                     <a
                       href={profile.href}

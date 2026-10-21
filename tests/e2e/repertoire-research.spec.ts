@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { OFFLINE_TEST_ACTS, OFFLINE_TEST_ARTIST } from "../../src/lib/repertoire-research";
+import { OFFLINE_PICKED_ARTISTS, OFFLINE_TEST_ACTS, OFFLINE_TEST_ARTIST } from "../../src/lib/repertoire-research";
 import { expect, LOCAL, test } from "./fixtures";
 
 /**
@@ -169,7 +169,6 @@ test.describe("Repertoire research (offline)", () => {
     await page.getByRole("button", { name: "This is me: Mara Ellison" }).click();
     await done(page);
     await expect(page.getByTestId("research-candidates")).toHaveCount(0);
-    await expect(page.getByTestId("research-fallback")).toHaveCount(0);
     expect((await (await page.request.get("/api/playlist")).json()).playlist.qlooArtistId).toMatch(/^4D4F434B-/);
     // Refreshing asks nothing: the chosen artist is remembered.
     await page.getByRole("button", { name: "Refresh my research" }).click();
@@ -177,7 +176,7 @@ test.describe("Repertoire research (offline)", () => {
     await expect(page.getByTestId("research-candidates")).toHaveCount(0);
   });
 
-  test("'None of these' goes on from the artists you sound like, labelled honestly, and isn't asked again", async ({ page }) => {
+  test("'None of these' goes on from the artists like you, in one line, and isn't asked again", async ({ page }) => {
     test.setTimeout(90_000);
     await research(page, linkOf(OFFLINE_TEST_ACTS.candidates.spotifyId));
     await expect(page.getByTestId("research-candidates")).toBeVisible({ timeout: 20_000 });
@@ -188,9 +187,8 @@ test.describe("Repertoire research (offline)", () => {
     await page.reload();
     await page.getByRole("button", { name: "None of these" }).click();
     await done(page);
-    const label = "Qloo doesn't know you yet, so this is based on the artists you sound like";
-    await expect(page.getByTestId("research-fallback")).toHaveText(label);
-    // The Hive's step note, in the research feed: the Finding-you step says so, and the later steps are "based on".
+    const label = "Qloo doesn't know you yet, so this is based on artists like you: Paul Kelly and Courtney Barnett.";
+    // The Finding-you step says so in one line, and the later steps are "based on".
     const folded = page.getByTestId("research-steps");
     await expect(folded.getByTestId("agent-step")).toHaveCount(10);
     await expect(folded).toContainText(label);
@@ -207,41 +205,216 @@ test.describe("Repertoire research (offline)", () => {
     await page.getByRole("button", { name: "Refresh my research" }).click();
     await done(page);
     await expect(page.getByTestId("research-candidates")).toHaveCount(0);
-    await expect(page.getByTestId("research-fallback")).toHaveText(label);
+    await expect(page.getByTestId("research-steps")).toContainText(label);
     await page.getByTestId("research-more").click();
     await done(page);
   });
 
-  test("Qloo doesn't know you and no sound-alikes are set: it asks for 2 or 3, then carries on from them", async ({ page }) => {
+  test("Qloo doesn't know you and no sound-alikes are set: the Hive finds them and the run completes", async ({ page }) => {
     test.setTimeout(90_000);
     await research(page, linkOf(OFFLINE_TEST_ACTS.unknown.spotifyId));
-    const prompt = page.getByTestId("research-pick-sounds-like");
-    await expect(prompt).toBeVisible({ timeout: 20_000 });
-    await expect(prompt.getByRole("heading", { name: "Pick 2 or 3 artists you sound like" })).toBeVisible();
-    const carryOn = prompt.getByRole("button", { name: "Carry on" });
-    await expect(carryOn).toBeDisabled();
-    await prompt.getByRole("combobox").fill("Missy Higgins, Gordi, ");
-    await expect(carryOn).toBeEnabled();
+    await done(page);
+    await expect(page.getByTestId("research-end")).not.toHaveAttribute("data-code", /^needs_/);
+    await expect(page.getByTestId("research-pick-sounds-like")).toHaveCount(0);
+    await expect(page.getByTestId("research-candidates")).toHaveCount(0);
+    const folded = page.getByTestId("research-steps");
+    await expect(folded.getByTestId("agent-step")).toHaveCount(10);
+    await expect(folded).toContainText("Qloo doesn't know you yet, so this is based on artists like you: Paul Kelly, Courtney Barnett and Missy Higgins.");
+    await expect(page.getByTestId("research-sounds-like")).toContainText("Courtney Barnett");
+    await expect(page.getByTestId("research-fans-love")).toBeVisible();
+    await expect(page.getByRole("list", { name: "Songs you should learn" }).getByTestId("learn-card").first()).toBeVisible();
+    const body = (await (await page.request.get("/api/playlist")).json()).playlist;
+    expect(body.soundsLike.map((a: { name: string; foundBy?: string }) => `${a.name}:${a.foundBy}`)).toEqual(["Paul Kelly:hive", "Courtney Barnett:hive", "Missy Higgins:hive"]);
+    expect(body.qlooArtistId).toBeNull();
     for (const width of WIDTHS) {
       await page.setViewportSize({ width, height: 900 });
       const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
-      expect(violations.map((v) => `pick-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+      expect(violations.map((v) => `found-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+    }
+  });
+
+  test("no taste signal anywhere (the Victoria Queen case): the run waits at Who you sound like and asks in the step", async ({ page }) => {
+    test.setTimeout(120_000);
+    await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
+    const stream = page.getByTestId("agent-stream");
+    const ask = stream.getByTestId("research-ask");
+    await expect(ask).toBeVisible({ timeout: 20_000 });
+    await expect(ask.getByTestId("research-ask-line")).toHaveText("Qloo doesn't know you yet. Add 2 or 3 artists you sound like, or pick a genre.");
+    // Profile, songs and Qloo above; the waiting step; the rest not started (never shown as empty Qloo steps).
+    await expect(stream.getByTestId("agent-step")).toHaveCount(4);
+    await expect(stream.locator('[data-testid="agent-step"][data-status="waiting"]')).toHaveAttribute("data-tool", "research_sounds_like");
+    await expect(stream.getByTestId("agent-step-upcoming")).toHaveCount(6);
+    await expect(stream).not.toContainText("No taste data yet");
+    await expect(stream).not.toContainText("Qloo found no artists like you");
+    await expect(stream.getByTestId("agent-tag")).toHaveText("Waiting");
+    await expect(page.getByTestId("research-end")).toHaveCount(0);
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 900 });
+      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+      expect(violations.map((v) => `waiting-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `waiting-${width} scrolls sideways`).toBe(true);
+    }
+    // RAW: the calls each step made, and no description lines.
+    await stream.getByTestId("raw-switch").click();
+    await expect(stream.getByTestId("agent-step-calls").first()).toBeVisible();
+    await expect(stream.getByTestId("agent-step-calls").nth(2)).toContainText("artist.getsimilar");
+    await expect(stream).not.toContainText("Qloo /entities by Spotify id");
+    // A refresh (or a later visit) shows the waiting step with its input.
+    const runId = (await (await page.request.get("/api/playlist")).json()).playlist.research.runId;
+    await page.reload();
+    await expect(page.getByTestId("research-ask")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("agent-step-upcoming")).toHaveCount(6);
+    // The answer carries on the same run, from the waiting step.
+    await page.getByTestId("research-ask").getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Paul Kelly, Courtney Barnett");
+    await page.getByTestId("research-ask-carry-on").click();
+    await done(page);
+    await expect(page.getByTestId("research-end")).not.toHaveAttribute("data-code", /^needs_/);
+    const folded = page.getByTestId("research-steps");
+    await expect(folded.getByTestId("agent-step")).toHaveCount(10);
+    await expect(folded.getByTestId("agent-step-upcoming")).toHaveCount(0);
+    const body = (await (await page.request.get("/api/playlist")).json()).playlist;
+    expect(body.research.runId).toBe(runId);
+    expect(body.research.waiting ?? null).toBeNull();
+    expect(body.soundsLike.map((a: { name: string; foundBy?: string }) => `${a.name}:${a.foundBy ?? "you"}`)).toEqual(["Paul Kelly:you", "Courtney Barnett:you"]);
+    await expect(page.getByTestId("research-fans-love")).toBeVisible();
+  });
+
+  test("the pause is a selection: artists and a genre combine, nothing is sent until Carry on, the step says what is used, and the page stays on the research", async ({ page }) => {
+    test.setTimeout(120_000);
+    const inputs: string[] = [];
+    page.on("request", (r) => {
+      if (r.method() === "POST" && /\/research\/[^/]+\/input$/.test(r.url())) inputs.push(r.postData() ?? "");
+    });
+    await page.setViewportSize({ width: 390, height: 700 });
+    await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
+    const ask = page.getByTestId("research-ask");
+    await expect(ask).toBeVisible({ timeout: 20_000 });
+    // Paused is not done: the research stays on top as researching, with the waiting step in view, and no completed layout.
+    await expect(page.getByTestId("research-page")).toHaveAttribute("data-phase", "running");
+    await expect(page.getByTestId("research-actions")).toHaveCount(0);
+    await expect(page.getByTestId("research-end")).toHaveCount(0);
+    await expect(ask).toBeInViewport({ timeout: 10_000 });
+    const atEnd = await page.evaluate(() => Math.ceil(window.scrollY + window.innerHeight) >= document.scrollingElement!.scrollHeight - 2);
+    expect(atEnd, "the page jumped to the very bottom").toBe(false);
+    const picker = ask.getByPlaceholder("Search Spotify, e.g. Paul Kelly");
+    const carryOn = page.getByTestId("research-ask-carry-on");
+    const genres = page.getByTestId("research-genre-pick");
+    await expect(carryOn).toBeDisabled();
+    // A genre alone enables Carry on, toggles, and sends nothing.
+    await genres.getByRole("button", { name: "Pop" }).click();
+    await expect(genres.getByRole("button", { name: "Pop" })).toHaveAttribute("aria-pressed", "true");
+    await expect(carryOn).toBeEnabled();
+    await genres.getByRole("button", { name: "Pop" }).click();
+    await expect(genres.getByRole("button", { name: "Pop" })).toHaveAttribute("aria-pressed", "false");
+    await expect(carryOn).toBeDisabled();
+    // Up to three genres; the artists stay when a genre is picked; a fourth is blocked until one is unpressed.
+    await picker.fill("Paul Kelly, Courtney Barnett");
+    for (const name of ["Folk", "Pop", "Jazz"]) await genres.getByRole("button", { name }).click();
+    for (const name of ["Folk", "Pop", "Jazz"]) await expect(genres.getByRole("button", { name })).toHaveAttribute("aria-pressed", "true");
+    await expect(genres.getByRole("button", { name: "Rock" })).toBeDisabled();
+    await expect(genres.getByRole("button", { name: "Jazz" })).toBeEnabled();
+    await genres.getByRole("button", { name: "Jazz" }).click();
+    await expect(genres.getByRole("button", { name: "Rock" })).toBeEnabled();
+    await genres.getByRole("button", { name: "Folk" }).click();
+    await expect(genres.getByRole("button", { name: "Folk" })).toHaveAttribute("aria-pressed", "false");
+    await expect(genres.getByRole("button", { name: "Pop" })).toHaveAttribute("aria-pressed", "true");
+    await expect(ask).toContainText("Paul Kelly");
+    await page.waitForTimeout(500);
+    expect(inputs, "nothing is sent before Carry on").toEqual([]);
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 900 });
+      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+      expect(violations.map((v) => `selection-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
     }
     await carryOn.click();
     await done(page);
-    await expect(page.getByTestId("research-pick-sounds-like")).toHaveCount(0);
-    await expect(page.getByTestId("research-fallback")).toHaveText("Qloo doesn't know you yet, so this is based on the artists you sound like");
-    await expect(page.getByTestId("research-sounds-like")).toContainText("Missy Higgins");
-    const body = (await (await page.request.get("/api/playlist")).json()).playlist;
-    expect(body.soundsLike.map((a: { name: string }) => a.name)).toEqual(["Missy Higgins", "Gordi"]);
-    expect(body.qlooArtistId).toBeNull();
+    expect(inputs).toHaveLength(1);
+    expect(JSON.parse(inputs[0])).toEqual({ artists: [{ name: "Paul Kelly" }, { name: "Courtney Barnett" }], genres: ["Pop"] });
+    const qloo = page.getByTestId("research-steps").locator('[data-testid="agent-step"][data-tool="research_qloo"]');
+    await expect(qloo).toContainText("Qloo doesn't know you yet. Using your artists: Paul Kelly and Courtney Barnett; your genre: Pop.");
+    await expect(qloo).not.toContainText("has no taste data for you");
+    // Saved: a refresh shows the same line.
+    await page.reload();
+    await expect(page.getByTestId("research-steps").locator('[data-testid="agent-step"][data-tool="research_qloo"]')).toContainText("Using your artists: Paul Kelly and Courtney Barnett; your genre: Pop.");
+  });
+
+  test("artists picked from Spotify and two genres: the step names both artists and both genres, and the sound-alikes show photos", async ({ page }) => {
+    test.setTimeout(120_000);
+    const inputs: string[] = [];
+    page.on("request", (r) => {
+      if (r.method() === "POST" && /\/research\/[^/]+\/input$/.test(r.url())) inputs.push(r.postData() ?? "");
+    });
+    // The offline photos are https URLs nothing serves: answer them with a small picture.
+    const picture = '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#888"/></svg>';
+    await page.route(/i\.scdn\.co|images\.qloo\.test/, (route) => route.fulfill({ contentType: "image/svg+xml", body: picture }));
+    await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
+    const ask = page.getByTestId("research-ask");
+    await expect(ask).toBeVisible({ timeout: 20_000 });
+    const picker = ask.getByPlaceholder("Search Spotify, e.g. Paul Kelly");
+    for (const artist of [OFFLINE_PICKED_ARTISTS.mariah, OFFLINE_PICKED_ARTISTS.celia]) {
+      await picker.fill(artist.name);
+      await page.getByRole("option", { name: new RegExp(artist.name) }).filter({ hasNotText: "as typed" }).first().click();
+    }
+    const picked = ask.getByRole("list", { name: "Artists you picked" });
+    await expect(picked.locator("li")).toHaveCount(2);
+    await expect(picked.locator("img")).toHaveCount(1);
+    const genres = page.getByTestId("research-genre-pick");
+    await genres.getByRole("button", { name: "Folk" }).click();
+    await genres.getByRole("button", { name: "Pop" }).click();
+    await page.getByTestId("research-ask-carry-on").click();
+    await done(page);
+    expect(inputs).toHaveLength(1);
+    expect(JSON.parse(inputs[0])).toEqual({
+      artists: [
+        { name: "Mariah Carey", spotifyId: OFFLINE_PICKED_ARTISTS.mariah.spotifyId, image: OFFLINE_PICKED_ARTISTS.mariah.spotifyImage },
+        { name: "Celia Cruz", spotifyId: OFFLINE_PICKED_ARTISTS.celia.spotifyId },
+      ],
+      genres: ["Folk", "Pop"],
+    });
+    const qloo = page.getByTestId("research-steps").locator('[data-testid="agent-step"][data-tool="research_qloo"]');
+    await expect(qloo).toContainText("Qloo doesn't know you yet. Using your artists: Mariah Carey and Celia Cruz; your genres: Folk and Pop.");
+    // Artists you sound like: both have photos (the Spotify one, and Qloo's where Spotify sent none), not initials.
+    const alikes = page.getByTestId("research-sounds-like");
+    await expect(alikes.getByRole("list", { name: "Artists you picked" }).locator("li")).toHaveCount(2);
+    await expect(alikes.getByRole("list", { name: "Artists you picked" }).locator("li img")).toHaveCount(2);
+    const saved = (await (await page.request.get("/api/playlist")).json()).playlist.soundsLike;
+    expect(saved).toMatchObject([{ name: "Mariah Carey", image: OFFLINE_PICKED_ARTISTS.mariah.spotifyImage }, { name: "Celia Cruz", image: OFFLINE_PICKED_ARTISTS.celia.qlooImage }]);
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 900 });
+      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+      expect(violations.map((v) => `picked-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+    }
+  });
+
+  test("still nothing Qloo knows: it asks again in the same step, then stops after three asks in one line", async ({ page }) => {
+    test.setTimeout(120_000);
+    await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
+    const line = page.getByTestId("research-ask-line");
+    await expect(line).toBeVisible({ timeout: 20_000 });
+    const runId = (await (await page.request.get("/api/playlist")).json()).playlist.research.runId;
+    await page.getByTestId("research-ask").getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Qzv Nobody");
+    await page.getByTestId("research-ask-carry-on").click();
+    await expect(line).toHaveText("Qloo doesn't know Qzv Nobody either. Try better-known artists, or pick a genre.", { timeout: 20_000 });
+    await page.getByTestId("research-genre-pick").getByRole("button", { name: "Latin" }).click();
+    await page.getByTestId("research-ask-carry-on").click();
+    await expect(line).toHaveText("Qloo has no tag for Latin. Pick another genre, or add artists you sound like.", { timeout: 20_000 });
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 900 });
+      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+      expect(violations.map((v) => `ask-again-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+    }
+    await page.getByTestId("research-genre-pick").getByRole("button", { name: "Latin" }).click();
+    await page.getByTestId("research-ask-carry-on").click();
+    await expect(page.getByTestId("research-end")).toHaveAttribute("data-code", "no_taste_data", { timeout: 20_000 });
+    await expect(page.getByTestId("research-end")).toHaveText("Qloo has no taste data for your act yet, so the research stopped at Who you sound like.");
+    await expect(page.getByTestId("research-ask")).toHaveCount(0);
+    expect((await (await page.request.get("/api/playlist")).json()).playlist.research.runId).toBe(runId);
   });
 
   test("a name variant is found without asking (accents and 'feat.' stripped)", async ({ page }) => {
     await research(page, linkOf(OFFLINE_TEST_ACTS.variant.spotifyId));
     await done(page);
     await expect(page.getByTestId("research-candidates")).toHaveCount(0);
-    await expect(page.getByTestId("research-fallback")).toHaveCount(0);
     await expect(page.getByTestId("research-steps")).toContainText(/Found\s*\S*Zelia Marquez on/);
   });
 
@@ -283,5 +456,53 @@ test.describe("Repertoire research (offline)", () => {
     await check("running");
     await done(page);
     await check("done");
+  });
+  test("nothing scrolls below the footer (the phone nav's own padding aside): empty, after a run, waiting for input, and the other pages", async ({ page }) => {
+    test.setTimeout(120_000);
+    // Exactly one footer once the page has streamed in: React holds a streamed boundary in a hidden div (S:n) until it swaps it in.
+    const oneFooter = async () => {
+      await expect(page.locator("footer[data-slot=site-footer]")).toHaveCount(1);
+      await expect(page.locator("footer[data-slot=site-footer]")).toBeVisible();
+    };
+    // The footer's bottom against the scrollable height; under 721px the body keeps the fixed bottom nav's height (plus the safe area) as padding on purpose.
+    const below = () =>
+      page.evaluate(() => {
+        const footer = document.querySelector("footer[data-slot=site-footer]")!;
+        const pad = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
+        return document.scrollingElement!.scrollHeight - (footer.getBoundingClientRect().bottom + window.scrollY) - pad;
+      });
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.context().clearCookies();
+      await page.goto("/repertoire");
+      await expect(field(page)).toBeVisible();
+      await oneFooter();
+      expect(await below(), `/repertoire empty at ${width}`).toBeLessThanOrEqual(2);
+      await field(page).fill(LINK);
+      await page.getByRole("button", { name: "Research my act" }).click();
+      await done(page);
+      await oneFooter();
+      expect(await below(), `/repertoire after a run at ${width}`).toBeLessThanOrEqual(2);
+      // Paused for input (no taste signal), after a reload, and once the answer has carried the run on.
+      await page.context().clearCookies();
+      await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
+      await expect(page.getByTestId("research-ask")).toBeVisible({ timeout: 20_000 });
+      await oneFooter();
+      expect(await below(), `/repertoire waiting at ${width}`).toBeLessThanOrEqual(2);
+      await page.reload();
+      await expect(page.getByTestId("research-ask")).toBeVisible({ timeout: 20_000 });
+      await oneFooter();
+      expect(await below(), `/repertoire waiting, reloaded, at ${width}`).toBeLessThanOrEqual(2);
+      await page.getByTestId("research-ask").getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Paul Kelly, Courtney Barnett");
+      await page.getByTestId("research-ask-carry-on").click();
+      await done(page);
+      await oneFooter();
+      expect(await below(), `/repertoire after the answer at ${width}`).toBeLessThanOrEqual(2);
+      for (const path of ["/", "/busks", "/brain", "/brand", "/p/ZZZZZZZZZ"]) {
+        await page.goto(path);
+        await oneFooter();
+        expect(await below(), `${path} at ${width}`).toBeLessThanOrEqual(2);
+      }
+    }
   });
 });

@@ -154,6 +154,7 @@ describe("activity estimate: an empty Qloo answer", () => {
     const result = activityEstimate(here, data([]), 19, 22);
     expect(result).toMatchObject({ basis: "none", level: NEUTRAL_ACTIVITY, area: null, venues: null, nearby: [] });
     expect(result.curve.every((h) => h.level === NEUTRAL_ACTIVITY)).toBe(true);
+    expect(activityCurve(here, data([]), 19, 22)).toEqual([19, 20, 21].map((hour) => ({ hour, level: NEUTRAL_ACTIVITY })));
     expect(activitySentence({ level: result.level, basis: result.basis, weekday: "friday", startHour: 19 })).toBe("No activity estimate here");
     expect(activityPhrase(result.level, "none")).toBe("");
   });
@@ -194,6 +195,10 @@ describe("placesOpenByHour (the week planner's day comparison)", () => {
     const hours = placesOpenByHour(places, "friday", 10, 17);
     expect(hours.map((h) => h.level)).toEqual([0.9, 0.9, 1.9, 1.9, 1.4, 1.4, 0.4]);
     expect(placesOpenByHour([], "friday", 10, 17)).toEqual([]);
+  });
+
+  it("counts a place with no popularity from Qloo as average (0.5)", () => {
+    expect(placesOpenByHour([place("a", here, null, 10, 12), place("b", here, 1, 10, 11)], "friday", 10, 12).map((h) => h.level)).toEqual([1.5, 0.5]);
   });
 });
 

@@ -158,6 +158,13 @@ describe("compareWithBaseline", () => {
     expect(none.picks[0]).toMatchObject({ beatsOurs: false, tooCloseTo: null });
   });
 
+  it("matches a spot to the nearest of the pitches within MATCH_RADIUS_M", () => {
+    const base = inputs();
+    // 880 m north: the corner (800 m) is 80 m away and the mall (1000 m) 120 m away, both inside the radius; the corner is the match.
+    const result = compareWithBaseline([{ name: "Between them", why: "", ...north(880) }], base);
+    expect(result.picks[0]).toMatchObject({ status: "scored", pitchId: "corner" });
+  });
+
   it("matches a place within MATCH_RADIUS_M only", () => {
     const base = inputs();
     const near = compareWithBaseline([{ name: "Just off it", why: "", ...north(MATCH_RADIUS_M - 20) }], base);

@@ -265,9 +265,9 @@ describe("qloo map: referential integrity", () => {
     expect(new Set(allIds).size).toBe(allIds.length);
   });
 
-  it("has the documented shape: 16 kinds (23 with 5b, 5c, 7b, 11b, 12b, 12c and 9b), 27 data points, 10 features, Spotify, Ticketmaster and Last.fm", () => {
-    expect(callKinds).toBe(16);
-    expect(calls).toHaveLength(23);
+  it("has the documented shape: 18 kinds (25 with 5b, 5c, 7b, 11b, 12b, 12c and 9b), 27 data points, 10 features, Spotify, Ticketmaster and Last.fm", () => {
+    expect(callKinds).toBe(18);
+    expect(calls).toHaveLength(25);
     expect(calls.filter((c) => c.variantOf).map((c) => c.id)).toEqual(["c5b", "c5c", "c7b", "c11b", "c12b", "c12c", "c_fans"]);
     expect(dataPoints).toHaveLength(27);
     expect(featureCount).toBe(10);
@@ -319,7 +319,7 @@ describe("qloo map: referential integrity", () => {
 
 describe("qloo map: facts and trace", () => {
   it("derives the counts and states the quota", () => {
-    expect(facts.map((f) => f.value)).toEqual(["16", "28–37", "0", "10", "≤ 25"]);
+    expect(facts.map((f) => f.value)).toEqual(["18", "28–37", "0", "10", "≤ 25"]);
     expect(CALLS_PER_LEARN_RUN).toBe("≤ 25");
     expect(quotaNote).toContain("10,000 requests a month per key, at 5 a second");
     expect(quotaNote).toContain("24 h");

@@ -5,6 +5,10 @@
 const USE_MINE = "Use my Repertoire";
 const CAN_SING = "Songs you can sing";
 
+/** "A", "A and B", "A, B and C". */
+export const andList = (names: readonly string[]): string => (names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`);
+export const orList = (names: readonly string[]): string => (names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`);
+
 export const PLAYLIST_COPY = {
   name: "Repertoire",
   canSing: CAN_SING,
@@ -128,14 +132,32 @@ export const PLAYLIST_COPY = {
       noGenres: "No genres listed",
       summary: "Qloo has a few artists that could be you",
     },
-    /** The label for a run that goes on from "Artists you sound like" because Qloo doesn't know the act. */
+    /** When Qloo doesn't know the act the run never stops: the Qloo step's line says what the rest is based on. */
     fallback: {
-      label: "Qloo doesn't know you yet, so this is based on the artists you sound like",
+      label: (names: readonly string[]) => `Qloo doesn't know you yet, so this is based on artists like you: ${andList(names)}.`,
+      genresLabel: (names: readonly string[]) => `Qloo doesn't know you yet, so this is based on your genres: ${andList(names)}.`,
+      noneLabel: "Qloo doesn't know you yet and has no taste data for you.",
+      /** The input the research now uses, after the performer answered a pause: your artists, your genre, or both. */
+      using: (artists: readonly string[], genres: readonly string[], unmatched: readonly string[] = []) => {
+        const parts = [artists.length ? `your artists: ${andList(artists)}` : "", genres.length ? `your ${genres.length === 1 ? "genre" : "genres"}: ${andList(genres)}` : ""].filter(Boolean);
+        return `Qloo doesn't know you yet. Using ${parts.join("; ")}.${unmatched.length ? ` Qloo doesn't know ${andList(unmatched)}.` : ""}`;
+      },
       basedOn: "Based on the artists you sound like",
-      pickHeading: "Pick 2 or 3 artists you sound like",
-      pickLabel: "Artists you sound like",
+      basedOnGenre: "Based on your genre",
+      noTaste: "No taste data yet",
+      noAlikes: "No artists like you found yet",
+    },
+    /** A run paused on "Who you sound like" because Qloo has no taste signal for the act: it asks, at most three times. */
+    ask: {
+      first: "Qloo doesn't know you yet. Add 2 or 3 artists you sound like, or pick a genre.",
+      unknownArtists: (names: readonly string[]) => `Qloo doesn't know ${orList(names)} either. Try better-known artists, or pick a genre.`,
+      untaggedGenre: (genre: string) => `Qloo has no tag for ${genre}. Pick another genre, or add artists you sound like.`,
+      gaveUp: "Qloo has no taste data for your act yet, so the research stopped here.",
+      artistsLabel: "Artists you sound like",
+      genreLabel: "Or pick up to 3 genres",
       carryOn: "Carry on",
-      pickSummary: "Qloo doesn't know you yet; pick the artists you sound like to go on",
+      notStarted: "Not started",
+      waitingTag: "Your turn",
     },
     findingMore: "Finding more songs…",
     moreStarted: "Finding more songs to learn",
@@ -153,6 +175,8 @@ export const PLAYLIST_COPY = {
     profileHeading: "Your profile",
     fansHeading: "Who your fans are",
     soundsLikeHeading: "Artists you sound like",
+    /** Offered only when the Hive found no artists and no genre: an optional pick, the run is already done. */
+    genrePick: { label: "Your genre", options: ["Folk", "Rock", "Pop", "Hip hop", "Jazz", "Electronic", "Latin", "Country", "Blues", "Soul", "Reggae", "Classical"] },
     fansMapHeading: "Where your fans are",
     fansLoveHeading: "What your fans also love",
     done: (n: number) => (n > 0 ? `Your research is done: ${n} ${n === 1 ? "song" : "songs"} to learn.` : "Your research is done."),
@@ -161,6 +185,8 @@ export const PLAYLIST_COPY = {
       upToDate: "Your research is up to date for this link. Use Refresh my research to run it again.",
       noResearch: "Research your act first, then find more songs to learn.",
       noMatch: "Qloo doesn't know this artist yet, so there are no taste results.",
+      badInput: "Add an artist you sound like, or pick a genre.",
+      notWaiting: "This research isn't waiting for an answer any more. Reload the page.",
     },
   },
 
@@ -195,6 +221,7 @@ export const PLAYLIST_COPY = {
       }
       if (e.code === "needs_choice") return "Qloo has a few artists that could be you. Pick yours to carry on.";
       if (e.code === "needs_sounds_like") return "Qloo doesn't know you yet. Pick 2 or 3 artists you sound like to carry on.";
+      if (e.code === "no_taste_data") return "Qloo has no taste data for your act yet, so the research stopped at Who you sound like.";
       if (e.code === "nothing_new" || e.newCount === 0) {
         // B-029: "everything was suggested before" only when songs were checked; with none checked, say that instead.
         if (e.songsChecked === 0) return `Couldn't find songs to check this time. ${PLAYLIST_COPY.learn.nothingNewHint}`;

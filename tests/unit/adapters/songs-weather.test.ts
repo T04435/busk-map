@@ -139,3 +139,27 @@ describe("getWeather (Open-Meteo)", () => {
     expect(result.data?.hours).toHaveLength(3);
   });
 });
+
+describe("getTopTags (Last.fm artist.getTopTags)", () => {
+  beforeEach(() => vi.stubEnv("LASTFM_API_KEY", "synthetic-test-key"));
+
+  it("reads the tags, skips blank ones and takes a lone tag", async () => {
+    const { getTopTags } = await freshSongs();
+    const { calls } = mockFetch([route(() => true, () => json(SONGS_RAW.tags))]);
+    const result = await getTopTags("Synthetic Artist", LIVE);
+    expect(result.mode).toBe("live");
+    expect(calls[0].url.searchParams.get("method")).toBe("artist.gettoptags");
+    expect(result.data).toEqual([{ name: "folk", count: 100 }, { name: "seen live", count: 50 }]);
+    const { topTagsSchema } = await import("@/server/adapters/songs/schema");
+    expect(topTagsSchema.parse(SONGS_RAW.tagsSingle)).toMatchObject({ toptags: { tag: [{ name: "indie" }] } });
+    expect(topTagsSchema.parse(SONGS_RAW.tagsEmpty)).toMatchObject({ toptags: { tag: [] } });
+  });
+
+  it("an unknown artist (error 6) is an empty list; offline gives the deterministic test tags", async () => {
+    const { getTopTags } = await freshSongs();
+    mockFetch([route(() => true, () => json(SONGS_RAW.notFound))]);
+    expect((await getTopTags("Nobody", LIVE)).data).toEqual([]);
+    const offline = await getTopTags("Brk Tagonly", OFFLINE);
+    expect(offline.data.map((t) => t.name)).toEqual(["folk", "seen live", "australian"]);
+  });
+});

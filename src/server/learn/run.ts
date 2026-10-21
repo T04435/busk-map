@@ -19,7 +19,9 @@ import { serverToday } from "@/server/clock";
 /** The stored steps of a run, trimmed to each tool's summary if they would pass the size cap (docs §1.2). */
 export function boundSteps(steps: StoredLearnStep[], maxBytes = LEARN_STEPS_MAX_BYTES): StoredLearnStep[] {
   if (JSON.stringify(steps).length <= maxBytes) return steps;
-  return steps.map((e) => (e.type === "tool-end" ? { ...e, output: { summary: e.summary } } : e.type === "tool-start" ? { ...e, input: undefined } : e));
+  // A research step that waits for input keeps what it waits for (the view draws the ask from it).
+  const waitingOf = (output: unknown) => (output !== null && typeof output === "object" && "waiting" in output ? { waiting: (output as { waiting: unknown }).waiting } : {});
+  return steps.map((e) => (e.type === "tool-end" ? { ...e, output: { summary: e.summary, ...waitingOf(e.output) } } : e.type === "tool-start" ? { ...e, input: undefined } : e));
 }
 
 /**

@@ -1,9 +1,10 @@
 import "server-only";
 import { nameKey } from "@/lib/text";
 import type { SoundsLikeSuggestions, SoundsLikeStatus, SpotifyProfile } from "@/lib/playlist-schema";
-import type { AdapterContext } from "@/server/adapters/core";
-import { decideMatch, MAX_EXTRA_SEARCHES, nameVariants, type MatchCandidate, type MatchDecision, type QlooCandidateView } from "@/lib/qloo-match";
-import { resolveSpotifyArtists, searchArtistHits, tasteArtists, type QlooEntity } from "@/server/adapters/qloo";
+import { settleWithLimit, type AdapterContext } from "@/server/adapters/core";
+import { buttonGenreTag, decideMatch, hasMusicGenre, isOtherSpotifyArtist, MAX_EXTRA_SEARCHES, nameVariants, pickGenreTag, usableTagNames, type MatchCandidate, type MatchDecision, type QlooCandidateView } from "@/lib/qloo-match";
+import { resolveSpotifyArtists, searchArtistHits, searchGenreTags, tasteArtists, type QlooEntity } from "@/server/adapters/qloo";
+import { getSimilarArtists, getTopTags } from "@/server/adapters/songs";
 import { getArtistProfile } from "@/server/adapters/repertoire";
 import type { PlaylistRecord } from "./store";
 
@@ -38,6 +39,8 @@ export async function refreshOwnArtist(spotifyId: string, context: AdapterContex
   if (!spotify.data) return { profile: null, qlooArtistId: null, qloo: "unavailable", spotify: spotify.reason === "not_found" ? "not_found" : "unavailable" };
   const profile = spotify.data;
   const found = await findOwnOnQloo(spotifyId, profile.name, context, { genres: profile.genres });
+  // A weak match (no music-genre tag) isn't saved as the performer's artist: research weighs it against the Hive's sound-alikes.
+  if (found.weak) return { profile, qlooArtistId: null, qloo: "unknown", spotify: "ok" };
   return { profile, qlooArtistId: found.entity?.id ?? null, qloo: found.qloo, spotify: "ok" };
 }
 
@@ -48,6 +51,8 @@ export type OwnOnQloo = {
   by: "id" | "name" | null;
   /** Qloo answered but nothing was certain: up to three plausible artists for the user to confirm (empty when nothing came close). */
   candidates: QlooCandidateView[];
+  /** The entity has no music-genre tag (urn:tag:genre:music…): a name without taste data, so it is not the taste signal alone. */
+  weak: boolean;
   /** The /search calls made (never more than 1 + MAX_EXTRA_SEARCHES). */
   searches: number;
 };
@@ -70,8 +75,8 @@ export const candidateView = (c: MatchCandidate): QlooCandidateView => ({
 export async function findOwnOnQloo(spotifyId: string, name: string, context: AdapterContext, options: { actName?: string | null; genres?: readonly string[] } = {}): Promise<OwnOnQloo> {
   const byId = await resolveSpotifyArtists([spotifyId], context);
   const viaId = byId.data[0] ?? null;
-  if (viaId) return { entity: viaId, qloo: "matched", by: "id", candidates: [], searches: 0 };
-  if (byId.mode === "fallback") return { entity: null, qloo: "unavailable", by: null, candidates: [], searches: 0 };
+  if (viaId) return { entity: viaId, qloo: "matched", by: "id", candidates: [], weak: !hasMusicGenre(viaId), searches: 0 };
+  if (byId.mode === "fallback") return { entity: null, qloo: "unavailable", by: null, candidates: [], weak: false, searches: 0 };
 
   const variants = nameVariants([name, options.actName]);
   const plan = variants.slice(0, 1 + MAX_EXTRA_SEARCHES);
@@ -84,15 +89,19 @@ export async function findOwnOnQloo(spotifyId: string, name: string, context: Ad
     searches++;
     if (res.mode === "fallback") {
       // Qloo stopped answering: weigh what the earlier searches found, or report an outage when there is none.
-      if (pool.size === 0) return { entity: null, qloo: "unavailable", by: null, candidates: [], searches };
+      if (pool.size === 0) return { entity: null, qloo: "unavailable", by: null, candidates: [], weak: false, searches };
       break;
     }
-    for (const e of res.data) if (!pool.has(e.id)) pool.set(e.id, e);
+    // A name hit carrying another Spotify id is another artist with the same name.
+    for (const e of res.data) if (!pool.has(e.id) && !isOtherSpotifyArtist(e.spotifyId, spotifyId)) pool.set(e.id, e);
     decision = decideMatch([...pool.values()].map(toMatchCandidate), variants, genres);
     if (decision.kind === "match") break;
   }
-  if (decision.kind === "match") return { entity: pool.get(decision.best.id) ?? null, qloo: "matched", by: "name", candidates: [], searches };
-  return { entity: null, qloo: "unknown", by: null, candidates: decision.kind === "ask" ? decision.candidates.map(candidateView) : [], searches };
+  if (decision.kind === "match") {
+    const entity = pool.get(decision.best.id) ?? null;
+    return { entity, qloo: "matched", by: "name", candidates: [], weak: entity ? !hasMusicGenre(entity) : false, searches };
+  }
+  return { entity: null, qloo: "unknown", by: null, candidates: decision.kind === "ask" ? decision.candidates.map(candidateView) : [], weak: false, searches };
 }
 
 /**
@@ -118,4 +127,200 @@ export async function soundsLikeFor(playlist: PlaylistRecord, context: AdapterCo
       ...(a.tags.length > 0 ? { tags: a.tags.slice(0, 3).map((t) => t.name) } : {}),
     }));
   return { status: "ok", artists };
+}
+
+/** Last.fm names tried for the act (the Spotify name, then the act name and the other variants qloo-match makes). Each is one cached request. */
+export const SIMILAR_NAME_TRIES = 3;
+/** Similar artists looked up on Qloo (one cached /search each), best match first. */
+export const SIMILAR_LOOKUPS = 8;
+/** Fewer resolved than this and the search widens to the similar artists of the top similar artists. */
+export const WIDEN_BELOW = 3;
+/** Similar artists whose own similar artists are taken, and the most second-step names looked up on Qloo. */
+export const WIDEN_FROM = 2;
+export const WIDEN_LOOKUPS = 8;
+/** Sound-alikes the Hive keeps. */
+export const FOUND_ALIKES_KEPT = 5;
+/** Genre tags kept as the signal when no sound-alike resolves. */
+export const GENRE_TAGS_KEPT = 3;
+/** Genre texts looked up as Qloo tags (Spotify genres, then Last.fm tags), at most. */
+export const GENRE_LOOKUPS = 8;
+/** Last.fm tags kept per act after cleaning. */
+export const LASTFM_TAGS_KEPT = 5;
+
+export type FoundAlike = { name: string; qlooId: string; spotifyId?: string; image?: string };
+export type FoundSoundAlikes =
+  | { source: "lastfm"; alikes: FoundAlike[]; tags: []; similar: string[] }
+  | { source: "genres"; alikes: []; tags: { id: string; name: string }[]; similar: string[] }
+  | { source: "none"; alikes: []; tags: []; similar: string[] }
+  | { source: "unavailable"; alikes: []; tags: []; similar: string[] };
+
+/**
+ * An act Qloo doesn't know (or only weakly) and the performer has no "Artists you sound like": the Hive finds some itself.
+ * 1. Last.fm artist.getSimilar for the act, trying the name variants qloo-match makes until one gives artists.
+ * 2. Each similar artist is looked up on Qloo with the same confidence rule as the act itself (decideMatch: only a certain
+ *    match counts; a guess never does). A hit with no music-genre tag, or with the act's own Spotify id, is dropped. The first
+ *    FOUND_ALIKES_KEPT that resolve are the signal.
+ * 3. Fewer than WIDEN_BELOW resolve: the similar artists of the top WIDEN_FROM similar artists are looked up too (one more
+ *    getSimilar each, better-known names), ranked after the first step's.
+ * 4. None resolve: genre tags as Qloo genre tags (/v2/tags): the act's Spotify genres (and a genre the performer picked, first),
+ *    then Last.fm artist.getTopTags cleaned of noise. Nothing there either: source "none".
+ * "unavailable" means Qloo stopped answering (the caller treats it as an outage). Last.fm being down only skips its steps.
+ */
+export async function findSoundAlikes(act: { name: string; actName?: string | null; genres: readonly string[]; spotifyId?: string | null }, context: AdapterContext): Promise<FoundSoundAlikes> {
+  const own = new Set([nameKey(act.name), nameKey(act.actName ?? "")].filter(Boolean));
+  const variants = nameVariants([act.name, act.actName]).slice(0, SIMILAR_NAME_TRIES);
+  let similar: string[] = [];
+  for (const v of variants) {
+    const res = await getSimilarArtists(v.text, context);
+    if (res.mode === "fallback") break;
+    similar = [...new Set(res.data.filter((a) => !own.has(nameKey(a.name))).map((a) => a.name))];
+    if (similar.length > 0) break;
+  }
+
+  let attempts = 0;
+  let outages = 0;
+  const resolve = async (names: readonly string[]): Promise<FoundAlike[]> => {
+    const res = await resolveGuarded(names.map((name) => ({ name })), own, act.spotifyId ?? null, context);
+    attempts += res.attempts;
+    outages += res.outages;
+    return res.found;
+  };
+  const keep = (list: FoundAlike[]) => {
+    const seen = new Set<string>();
+    return list.filter((a) => !seen.has(a.qlooId) && seen.add(a.qlooId)).slice(0, FOUND_ALIKES_KEPT);
+  };
+
+  const tried = similar.slice(0, SIMILAR_LOOKUPS);
+  let alikes = keep(await resolve(tried));
+  if (alikes.length < WIDEN_BELOW && similar.length > 0) {
+    const asked = new Set(tried.map(nameKey));
+    const second: string[] = [];
+    for (const name of similar.slice(0, WIDEN_FROM)) {
+      const res = await getSimilarArtists(name, context);
+      if (res.mode === "fallback") break;
+      for (const a of res.data) {
+        const k = nameKey(a.name);
+        if (!own.has(k) && !asked.has(k)) {
+          asked.add(k);
+          second.push(a.name);
+        }
+      }
+    }
+    alikes = keep([...alikes, ...(await resolve(second.slice(0, WIDEN_LOOKUPS)))]);
+  }
+  if (alikes.length > 0) return { source: "lastfm", alikes, tags: [], similar };
+  if (attempts > 0 && outages === attempts) return { source: "unavailable", alikes: [], tags: [], similar };
+
+  // Genre texts: the Spotify genres first (a genre the performer picked leads them); Last.fm's tags for the act when those give no tag.
+  const tags = new Map<string, string>();
+  let tagOutage = false;
+  let lookedUp = 0;
+  const lookUp = async (texts: readonly string[]) => {
+    for (const genre of texts) {
+      if (tags.size >= GENRE_TAGS_KEPT || tagOutage || lookedUp >= GENRE_LOOKUPS) break;
+      lookedUp++;
+      const res = await resolveGenreTag(genre, context);
+      if (res === "unavailable") {
+        tagOutage = true;
+        break;
+      }
+      if (res && !tags.has(res.id)) tags.set(res.id, res.name);
+    }
+  };
+  const spotifyTexts = [...new Set(act.genres.map((g) => g.trim()).filter(Boolean))].slice(0, 4);
+  await lookUp(spotifyTexts);
+  if (tags.size === 0 && !tagOutage) {
+    for (const v of variants) {
+      const res = await getTopTags(v.text, context);
+      if (res.mode === "fallback") break;
+      const names = usableTagNames(res.data.map((t) => t.name), [act.name, act.actName], LASTFM_TAGS_KEPT).filter((n) => !spotifyTexts.some((g) => g.toLowerCase() === n));
+      if (names.length > 0) {
+        await lookUp(names);
+        break;
+      }
+    }
+  }
+  if (tags.size > 0) return { source: "genres", alikes: [], tags: [...tags].map(([id, name]) => ({ id, name })), similar };
+  return tagOutage && lookedUp > 0 ? { source: "unavailable", alikes: [], tags: [], similar } : { source: "none", alikes: [], tags: [], similar };
+}
+
+const SPOTIFY_ID = /^[A-Za-z0-9]{22}$/;
+const foundOf = (e: QlooEntity): FoundAlike => ({
+  name: e.name,
+  qlooId: e.id,
+  ...(e.spotifyId && SPOTIFY_ID.test(e.spotifyId) ? { spotifyId: e.spotifyId } : {}),
+  ...(e.image && /^https:\/\//.test(e.image) && e.image.length <= 500 ? { image: e.image } : {}),
+});
+
+/**
+ * Artists looked up on Qloo with the act's own confidence rule: a Spotify id from the picker is Qloo's certain id lookup; a name is
+ * a /search the rule must accept (decideMatch: a guess never counts). A hit with no music-genre tag, with the act's name, or with
+ * the act's own Spotify id is dropped. `unknown` lists the names Qloo had nothing certain for; `outages` the lookups Qloo didn't answer.
+ */
+async function resolveGuarded(artists: readonly { name: string; spotifyId?: string | null; image?: string | null }[], own: ReadonlySet<string>, actSpotifyId: string | null, context: AdapterContext) {
+  let attempts = 0;
+  let outages = 0;
+  // The act's own name and Spotify id never count. A certain Spotify-id match needs no genre tag (the id is the proof, and Qloo's
+  // /entities tags on an id lookup aren't always music-genre ids); a name match must have one, or it may be a namesake with no taste data.
+  const usable = (e: QlooEntity | undefined | null, certain: boolean): e is QlooEntity => Boolean(e && !own.has(nameKey(e.name)) && (certain || hasMusicGenre(e)) && !(actSpotifyId && e.spotifyId === actSpotifyId));
+  // The Spotify photo the performer picked leads; Qloo's is the fallback.
+  const photo = (found: FoundAlike, artist: { image?: string | null }): FoundAlike => (artist.image && /^https:\/\//.test(artist.image) && artist.image.length <= 500 ? { ...found, image: artist.image } : found);
+  const settled = await settleWithLimit(artists, 3, async (artist): Promise<FoundAlike | null> => {
+    const pickedId = artist.spotifyId && SPOTIFY_ID.test(artist.spotifyId) ? artist.spotifyId : null;
+    if (pickedId) {
+      attempts++;
+      const byId = await resolveSpotifyArtists([pickedId], context);
+      if (byId.mode === "fallback") outages++;
+      else {
+        // The id lookup is exact; take the entity carrying that id when it returns several.
+        const hit = byId.data.find((x) => x.spotifyId === pickedId) ?? byId.data[0];
+        if (usable(hit, true)) return photo(foundOf(hit), artist);
+      }
+    }
+    attempts++;
+    const res = await searchArtistHits(artist.name, context);
+    if (res.mode === "fallback") {
+      outages++;
+      return null;
+    }
+    // A name hit carrying another Spotify id than the picked one is a namesake.
+    const pool = res.data.filter((x) => !isOtherSpotifyArtist(x.spotifyId, pickedId));
+    const decision = decideMatch(pool.map(toMatchCandidate), nameVariants([artist.name]), []);
+    if (decision.kind !== "match") return null;
+    const e = pool.find((x) => x.id === decision.best.id);
+    return usable(e, pickedId !== null && e?.spotifyId === pickedId) ? photo(foundOf(e), artist) : null;
+  });
+  const matches = settled.map((s) => (s.status === "fulfilled" ? s.value : null));
+  const found = matches.filter((m): m is FoundAlike => m !== null);
+  const unknown = artists.filter((_, i) => !matches[i]).map((a) => a.name);
+  return { found, matches, unknown, attempts, outages };
+}
+
+/**
+ * The performer's answer to a paused run: the artists they sound like, resolved on Qloo with the guarded match above. `unavailable`
+ * when Qloo answered none of the lookups.
+ */
+export async function resolveSoundAlikes(
+  artists: readonly { name: string; spotifyId?: string | null; image?: string | null }[],
+  act: { name: string; actName?: string | null; spotifyId?: string | null },
+  context: AdapterContext,
+): Promise<{ found: FoundAlike[]; matches: (FoundAlike | null)[]; unknown: string[]; unavailable: boolean }> {
+  const own = new Set([nameKey(act.name), nameKey(act.actName ?? "")].filter(Boolean));
+  const res = await resolveGuarded(artists, own, act.spotifyId ?? null, context);
+  const seen = new Set<string>();
+  const found = res.found.filter((a) => !seen.has(a.qlooId) && seen.add(a.qlooId));
+  return { found, matches: res.matches, unknown: res.unknown, unavailable: res.attempts > 0 && res.outages === res.attempts };
+}
+
+/**
+ * A genre text as one Qloo music-genre tag. The genre buttons map straight to their known tag ids (no search); any other text is
+ * a /v2/tags search matched by id slug or normalised name (pickGenreTag). "unavailable" when Qloo didn't answer.
+ */
+export async function resolveGenreTag(genre: string, context: AdapterContext): Promise<{ id: string; name: string } | null | "unavailable"> {
+  const known = buttonGenreTag(genre);
+  if (known) return known;
+  const res = await searchGenreTags(genre, 8, context);
+  if (res.mode === "fallback") return "unavailable";
+  const hit = pickGenreTag(res.data, genre);
+  return hit ? { id: hit.id, name: hit.name.replace(/["\u201c\u201d]/g, "").replace(/\s+-\s+/g, " ").replace(/\s+/g, " ").trim() } : null;
 }

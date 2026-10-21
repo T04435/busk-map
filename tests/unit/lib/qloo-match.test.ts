@@ -6,12 +6,15 @@ import {
   cleanName,
   decideMatch,
   genreOverlap,
+  hasMusicGenre,
+  isOtherSpotifyArtist,
   nameVariants,
   normName,
   scoreCandidate,
   searchPlan,
   shortForm,
   similarity,
+  usableTagNames,
   type MatchCandidate,
 } from "@/lib/qloo-match";
 
@@ -148,5 +151,26 @@ describe("the confidence rule", () => {
     expect(decideMatch([{ ...nederpop, genres: [] }], v3, ["latin alternative"]).kind).toBe("match");
     // A full stage name is not generic.
     expect(decideMatch([cand("x", "Julia Jacklin", { genres: ["Folk"] })], variantsOf("Julia Jacklin"), ["synthetic ambient"]).kind).toBe("match");
+  });
+});
+
+describe("guards against a wrong or empty Qloo match", () => {
+  it("a name hit with another Spotify id is another artist; no id on either side proves nothing", () => {
+    expect(isOtherSpotifyArtist("AAAAAAAAAAAAAAAAAAAAAA", "BBBBBBBBBBBBBBBBBBBBBB")).toBe(true);
+    expect(isOtherSpotifyArtist("AAAAAAAAAAAAAAAAAAAAAA", "AAAAAAAAAAAAAAAAAAAAAA")).toBe(false);
+    expect(isOtherSpotifyArtist(null, "BBBBBBBBBBBBBBBBBBBBBB")).toBe(false);
+    expect(isOtherSpotifyArtist("AAAAAAAAAAAAAAAAAAAAAA", undefined)).toBe(false);
+  });
+
+  it("only a urn:tag:genre:music tag counts as a music genre", () => {
+    expect(hasMusicGenre({ tags: [{ id: "urn:tag:genre:music:folk" }] })).toBe(true);
+    expect(hasMusicGenre({ tags: [{ id: "urn:tag:keyword:qloo:x" }, { id: "urn:tag:genre:media:drama" }] })).toBe(false);
+    expect(hasMusicGenre({ tags: [] })).toBe(false);
+  });
+
+  it("Last.fm tags are cleaned: no 'seen live', places, years, the act's own name; lowercased, once each, in order", () => {
+    const tags = ["Folk", "seen live", "Australian", "folk", "80s", "My Act", "indie rock", "under 2000 listeners", "x", "  Singer  Songwriter "];
+    expect(usableTagNames(tags, ["My Act"])).toEqual(["folk", "indie rock", "singer songwriter"]);
+    expect(usableTagNames(tags, ["My Act"], 2)).toEqual(["folk", "indie rock"]);
   });
 });

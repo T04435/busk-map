@@ -104,7 +104,7 @@ function mediaOf(o: Outputs, playlist: ViewInput["playlist"], suggestions: reado
   if (o.profile) artist(o.profile.name, o.profile.image, o.profile.spotifyId);
   for (const a of o.soundsLike?.artists ?? []) artist(a.name, a.image, a.spotifyId);
   for (const a of o.fansLove?.artists ?? []) artist(a.name, a.image, a.spotifyId);
-  for (const a of playlist?.soundsLike ?? []) artist(a.name, null, a.spotifyId);
+  for (const a of playlist?.soundsLike ?? []) artist(a.name, a.image, a.spotifyId);
   for (const s of o.songs?.songs ?? []) if (s.image) m.trackImage.set(playlistSongKey(s.artist, s.title), s.image);
   for (const s of suggestions) if (s.image) m.trackImage.set(playlistSongKey(s.artist, s.title), s.image);
   return m;
@@ -174,8 +174,9 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
   for (const k of RESEARCH_STEPS) {
     const s = snapshot?.steps[k];
     if (s && keep(k)) {
-      status.set(k, s.status);
-      (outputs as Record<string, unknown>)[k] = s.output;
+      // A step the run waits on hasn't run yet.
+      status.set(k, s.status === "waiting" ? "pending" : s.status);
+      (outputs as Record<string, unknown>)[k] = s.status === "waiting" ? null : s.output;
       if (s.output) found.set(k, s.output.summary);
     }
   }
@@ -195,17 +196,19 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
     } else if (e.type === "tool-end") {
       const k = ids.get(e.id) ?? RESEARCH_STEP_OF[e.tool];
       if (!k) continue;
-      status.set(k, e.ok ? "done" : "failed");
+      const waits = e.ok && e.output !== null && typeof e.output === "object" && "waiting" in e.output && Boolean((e.output as { waiting?: unknown }).waiting);
+      status.set(k, waits ? "pending" : e.ok ? "done" : "failed");
       found.set(k, e.summary);
-      (outputs as Record<string, unknown>)[k] = e.ok ? e.output : null;
+      (outputs as Record<string, unknown>)[k] = e.ok && !waits ? e.output : null;
     } else if (e.type === "totals") totals = e.totals;
     else if (e.type === "suggestion") live.push(e);
   }
   const ran = liveMode === "more" ? MORE_STEPS : RESEARCH_STEPS;
   const steps: RepertoireStep[] = RESEARCH_STEPS.map((key) => {
-    let st = status.get(key) ?? (snapshot && !run ? "skipped" : "pending");
-    // A live run that ended: a step it never started was skipped (or cut short, if it was still running).
-    if (end && ran.includes(key) && (st === "pending" || st === "running")) st = st === "running" ? "failed" : "skipped";
+    const paused = end?.code === "needs_sounds_like" || (!run && Boolean(snapshot?.waiting));
+    let st = status.get(key) ?? (snapshot && !run && !paused ? "skipped" : "pending");
+    // A live run that ended: a step it never started was skipped (or cut short, if it was still running). A paused run's are not started yet.
+    if (end && !paused && ran.includes(key) && (st === "pending" || st === "running")) st = st === "running" ? "failed" : "skipped";
     const f = found.get(key);
     const songsFrom = key === "songs" && st === "done" && outputs.songs && outputs.songs.source !== "none" ? outputs.songs.source : undefined;
     const source = via.get(key) ?? songsFrom;
@@ -222,7 +225,7 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
     ? playlist
       ? playlist.soundsLike.map((a) => {
           const q = tagsByName.get(a.name.toLowerCase());
-          return { name: a.name, source: a.spotifyId ? "spotify" : a.qlooId ? "qloo" : "typed", ...img(q?.image), ...(a.spotifyId ? { href: SPOTIFY_ARTIST_URL(a.spotifyId) } : {}), ...(q?.tags ? { tags: q.tags } : {}) };
+          return { name: a.name, source: a.spotifyId ? "spotify" : a.qlooId ? "qloo" : "typed", ...img(a.image ?? q?.image), ...(a.spotifyId ? { href: SPOTIFY_ARTIST_URL(a.spotifyId) } : {}), ...(q?.tags ? { tags: q.tags } : {}) };
         })
       : (o.soundsLike?.artists ?? []).map((a) => ({ name: a.name, source: "qloo" as const, ...img(a.image), ...(a.spotifyId ? { href: SPOTIFY_ARTIST_URL(a.spotifyId) } : {}), ...(a.tags ? { tags: a.tags } : {}) }))
     : null;
@@ -242,7 +245,7 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
           ...img(o.profile.image),
           genres: (o.qloo?.genres.length ? o.qloo.genres : o.profile.genres).slice(0, 6),
           audience: o.qloo?.audience ?? [],
-          ...(o.profile.followers !== null ? { followers: o.profile.followers } : {}),
+          ...((o.profile.followers ?? 0) > 0 ? { followers: o.profile.followers! } : {}),
           href: o.profile.href,
         }
       : null,

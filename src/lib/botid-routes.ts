@@ -21,6 +21,8 @@ export const BOTID_PROTECTED_ROUTES = [
   { path: "/api/playlist/learn", method: "POST" },
   // Repertoire research: a learn run with a Spotify link (one summary model call).
   { path: "/api/playlist/research", method: "POST" },
+  // The answer to a research run that waits for input: the same run carries on (Qloo calls and the summary model call).
+  { path: "/api/playlist/research/*/input", method: "POST" },
   { path: "/api/playlist/learn/suggestions/*", method: "PATCH" },
   // Refresh the Repertoire profile (Spotify/Last.fm reads): a write, guarded server-side (T01).
   { path: "/api/playlist/profile", method: "POST" },

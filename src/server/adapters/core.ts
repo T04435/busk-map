@@ -2,6 +2,7 @@ import "server-only";
 import type { z } from "zod";
 import type { SourceId } from "@/lib/sources";
 import { log, redactUrl } from "@/server/log";
+import { noteCall, noteFetch, providerOf, resultCount } from "./call-log";
 
 /**
  * Shared adapter plumbing (architecture.md, principle 2): every source has a
@@ -103,6 +104,7 @@ export async function fetchJson<S extends z.ZodType>(
     response = await fetcher(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
   } catch (error) {
     const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+    noteFetch(adapter, url, null, null, Date.now() - started);
     throw new AdapterError(
       adapter,
       timedOut ? "timeout" : "network",
@@ -111,6 +113,7 @@ export async function fetchJson<S extends z.ZodType>(
   }
 
   if (!response.ok) {
+    noteFetch(adapter, url, response.status, null, Date.now() - started);
     const kind: AdapterErrorKind =
       response.status === 429 ? "rate_limited" : response.status === 404 ? "not_found" : "http";
     if (response.status === 400 || response.status === 422) {
@@ -132,10 +135,12 @@ export async function fetchJson<S extends z.ZodType>(
   try {
     body = await response.json();
   } catch {
+    noteFetch(adapter, url, response.status, null, Date.now() - started);
     throw new AdapterError(adapter, "invalid_response", `${redactUrl(url)} did not return JSON`);
   }
 
   const parsed = schema.safeParse(body);
+  noteFetch(adapter, url, response.status, parsed.success ? parsed.data : null, Date.now() - started);
   if (!parsed.success) {
     // Paths only: never the payload.
     const paths = parsed.error.issues.slice(0, 5).map((issue) => issue.path.join(".") || "(root)");
@@ -163,6 +168,8 @@ type RunAdapterOptions<T> = {
   /** What to do when unconfigured: fall back (default), or serve synthetic data (Qloo before its key). */
   whenUnconfigured?: "fallback" | "synthetic";
   live: () => Promise<T>;
+  /** The endpoint and parameters this call stands for, recorded when offline fixtures answer it (no request is sent then). */
+  call?: { endpoint: string; params: Record<string, string> };
 };
 
 /** Run one adapter call and turn every failure into its defined fallback. */
@@ -175,13 +182,17 @@ export async function runAdapter<T>({
   configured = true,
   whenUnconfigured = "fallback",
   live,
+  call,
 }: RunAdapterOptions<T>): Promise<AdapterResult<T>> {
   if (context.faults.includes(adapter)) {
     log.warn("adapter fault injected", { adapter });
     return { adapter, source, mode: "fallback", data: fallback, reason: "fault_injected" };
   }
   if (context.offline || (!configured && whenUnconfigured === "synthetic")) {
-    return { adapter, source, mode: "synthetic", data: await synthetic() };
+    const started = Date.now();
+    const data = await synthetic();
+    if (call) noteCall({ provider: providerOf(adapter), endpoint: call.endpoint, params: call.params, status: null, count: resultCount(data), ms: Date.now() - started, cached: false });
+    return { adapter, source, mode: "synthetic", data };
   }
   if (!configured) {
     return { adapter, source, mode: "fallback", data: fallback, reason: "missing_key" };

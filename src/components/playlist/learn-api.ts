@@ -55,9 +55,28 @@ export async function startLearn(faults: string | null): Promise<Streaming | Ref
 }
 
 /** Start a Repertoire research run (POST /api/playlist/research): a full run for a link, or "more". Same stream, same refusals. */
-export async function startResearch(body: { link?: string; refresh?: boolean; mode?: "full" | "more" }, faults: string | null): Promise<Streaming | Refusal> {
+export async function startResearch(body: { link?: string; refresh?: boolean; mode?: "full" | "more"; qlooChoice?: { id: string } | { none: true }; genre?: string }, faults: string | null): Promise<Streaming | Refusal> {
   try {
     const res = await fetch("/api/playlist/research", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json", ...(faults ? { "x-buskmap-faults": faults } : {}) },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok || !res.body) return await refusalOf(res);
+    return { ok: true, events: parsed(res.body) };
+  } catch {
+    return network;
+  }
+}
+
+/** What the performer sends back to a paused run: artists (a Spotify pick keeps its id and photo) and up to three genres. */
+export type ResearchAnswer = { artists?: { name: string; spotifyId?: string; image?: string }[]; genres?: string[] };
+
+/** Answer a research run that waits for input (POST /api/playlist/research/<runId>/input): the same run carries on, streamed. */
+export async function sendResearchInput(runId: string, body: ResearchAnswer, faults: string | null): Promise<Streaming | Refusal> {
+  try {
+    const res = await fetch(`/api/playlist/research/${encodeURIComponent(runId)}/input`, {
       method: "POST",
       credentials: "same-origin",
       headers: { "content-type": "application/json", ...(faults ? { "x-buskmap-faults": faults } : {}) },

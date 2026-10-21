@@ -122,8 +122,8 @@ export function activityEstimate(point: LatLon, data: ActivityData, startHour: n
   const near = placesNear(point, data.places);
   const hasPlaces = data.places.length > 0;
   const hours = hoursOf(startHour, endHour);
-  const perHour = hours.map((hour) => (hasPlaces ? venuesIn(near, data.weekday, hour, hour + 1).value : null));
-  const venues = hasPlaces ? perHour.reduce<number>((total, v) => total + (v ?? 0), 0) / hours.length : null;
+  const perHour = hasPlaces ? hours.map((hour) => venuesIn(near, data.weekday, hour, hour + 1).value) : [];
+  const venues = hasPlaces ? perHour.reduce((total, v) => total + v, 0) / hours.length : null;
   const { level, basis } = combineParts(area, venues);
   const whole = hasPlaces ? venuesIn(near, data.weekday, startHour, Math.max(endHour, startHour + 1)).open : [];
   return {
@@ -132,7 +132,7 @@ export function activityEstimate(point: LatLon, data: ActivityData, startHour: n
     area,
     venues,
     nearby: [...whole].sort((a, b) => b.weight - a.weight).map((o) => ({ ...o.near.place, distanceM: Math.round(o.near.d), open: o.state })),
-    curve: hours.map((hour, i) => ({ hour, level: combineParts(area, perHour[i]).level })),
+    curve: hours.map((hour, i) => ({ hour, level: combineParts(area, hasPlaces ? perHour[i] : null).level })),
   };
 }
 

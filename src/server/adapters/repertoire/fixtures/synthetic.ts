@@ -1,5 +1,5 @@
 // SYNTHETIC FIXTURE: invented catalogue for tests and offline mode. Not Spotify data.
-import { OFFLINE_TEST_ACTS } from "@/lib/repertoire-research";
+import { OFFLINE_PICKED_ARTISTS, OFFLINE_TEST_ACTS } from "@/lib/repertoire-research";
 import { CATALOG, GENRES, normalizeName } from "@/server/qloo-mock/catalog";
 import type { ArtistProfileRaw, CatalogueArtist, CatalogueTrack } from "../schema";
 
@@ -82,8 +82,12 @@ export function syntheticArtistTracks(artist: string): CatalogueTrack[] {
 export function syntheticArtistSearch(query: string): CatalogueArtist[] {
   const q = normalizeName(query);
   const matches = q ? CATALOG.filter((a) => normalizeName(a.name).includes(q)).slice(0, 10) : [];
-  if (matches.length === 0) return [{ id: syntheticSpotifyId(`${q} (synthetic)`), name: `${query} (synthetic)`, image: null, releases: null, url: null }];
-  return matches.map((a) => ({ id: a.spotifyId, name: a.name, image: null, releases: null, url: null }));
+  const picked = q ? Object.values(OFFLINE_PICKED_ARTISTS).filter((a) => normalizeName(a.name).includes(q)) : [];
+  if (matches.length === 0 && picked.length === 0) return [{ id: syntheticSpotifyId(`${q} (synthetic)`), name: `${query} (synthetic)`, image: null, releases: null, url: null }];
+  return [
+    ...picked.map((a) => ({ id: a.spotifyId, name: a.name, image: a.spotifyImage, releases: null, url: null })),
+    ...matches.map((a) => ({ id: a.spotifyId, name: a.name, image: null, releases: null, url: null })),
+  ];
 }
 
 /** Invented release count, stable per id. */

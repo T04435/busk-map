@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { scalar, type AgentStep, type RunUsage } from "@/lib/agent-steps";
+import type { CallRecord } from "@/lib/call-record";
+import type { IconName } from "@/components/honeycomb/icon";
 import { modelName, type ExplanationsModel } from "@/lib/sources";
 import { stepSources, TOOL_ICON, TOOL_UI, type MiniPin } from "./tool-results";
 
@@ -24,7 +26,10 @@ import { stepSources, TOOL_ICON, TOOL_UI, type MiniPin } from "./tool-results";
  */
 export { applyStreamEvent, formatInput, type AgentStep, type RunUsage, type StepNote } from "@/lib/agent-steps";
 
-export type FeedPhase = "starting" | "working" | "thinking" | "done" | "fallback" | "error" | "stopped";
+/** "waiting": the run paused on a step for the performer's input (Repertoire research). */
+export type FeedPhase = "starting" | "working" | "thinking" | "done" | "fallback" | "error" | "stopped" | "waiting";
+/** A step the run hasn't started yet (shown while it waits): its title and icon. */
+export type UpcomingStep = { key: string; title: string; icon: IconName };
 export type FeedMode = "live" | "replay" | "joined";
 
 const isRowList = (v: unknown): v is Record<string, unknown>[] =>
@@ -127,7 +132,55 @@ const Say = ({ model, children, testId }: { model: ExplanationsModel | null; chi
   </p>
 );
 
-/** The raw block under a card: tool, summary, the notes, the inputs Claude chose and exactly what came back. */
+const fmtMs = (ms: number) => (ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${ms} ms`);
+
+/** The step's external calls, one row each: provider, endpoint, params (no keys or tokens), status, results, time, cached. */
+function CallsTable({ calls }: { calls: CallRecord[] }) {
+  const heads = ["Provider", "Endpoint", "Params", "Status", "Results", "Time", "Cached"];
+  return (
+    <div className="min-w-0" data-testid="agent-step-calls">
+      <Head note={`${calls.length} ${calls.length === 1 ? "call" : "calls"}`}>Calls</Head>
+      <div tabIndex={0} role="region" aria-label="Calls this step made, scrolls sideways" className="max-h-80 max-w-full overflow-auto border border-border">
+        <table className="w-full border-collapse font-mono text-xs leading-4 font-medium tabular-nums">
+          <thead>
+            <tr>
+              {heads.map((h) => (
+                <th key={h} scope="col" className="sticky top-0 bg-muted px-2 py-1.5 text-left text-[11px] font-bold tracking-[0.04em] whitespace-nowrap">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {calls.map((c, i) => {
+              const params = Object.entries(c.params).map(([k, v]) => `${k}=${v}`).join(" ");
+              const cells: [string, boolean][] = [
+                [c.provider, false],
+                [c.endpoint, false],
+                [params || "none", false],
+                [c.status === null ? (c.cached ? "cache" : "mock") : String(c.status), true],
+                [c.count === null ? "none" : String(c.count), true],
+                [fmtMs(c.ms), true],
+                [c.cached ? "yes" : "no", false],
+              ];
+              return (
+                <tr key={i} className="[&:nth-child(even)>td]:bg-[color-mix(in_oklab,var(--muted)_45%,transparent)]">
+                  {cells.map(([v, num], j) => (
+                    <td key={j} title={v} className={cn("max-w-[260px] truncate border-t border-border px-2 py-[5px] align-top whitespace-nowrap", num ? "text-right" : "min-w-[56px]")}>
+                      {v}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/** The raw block under a card: tool, summary, the notes, the inputs Claude chose, the calls made and exactly what came back. */
 function RawBlock({ step, model, view }: { step: AgentStep; model: ExplanationsModel | null; view: "table" | "json" }) {
   const inputs =
     step.input !== null && typeof step.input === "object"
@@ -145,7 +198,8 @@ function RawBlock({ step, model, view }: { step: AgentStep; model: ExplanationsM
         <code>{step.tool}</code>
         {step.summary ? <span className="font-mono text-xs leading-4 font-medium text-muted-foreground">{step.summary}</span> : null}
       </div>
-      {step.source ? <p className="m-0 font-mono text-xs leading-4 text-muted-foreground">{step.source}</p> : null}
+      {/* Repertoire research shows its call records instead of a description line (older stored runs still carry one). */}
+      {step.source && !step.tool?.startsWith("research_") ? <p className="m-0 font-mono text-xs leading-4 text-muted-foreground">{step.source}</p> : null}
       {step.notes.length ? (
         <div className="grid gap-1">
           {step.notes.map((n, i) => (
@@ -166,6 +220,7 @@ function RawBlock({ step, model, view }: { step: AgentStep; model: ExplanationsM
           ))}
         </ul>
       ) : null}
+      {step.calls?.length ? <CallsTable calls={step.calls} /> : null}
       {step.output !== undefined ? (
         <div className="min-w-0" data-testid="agent-step-data">
           <StepData value={step.output} view={view} />
@@ -179,7 +234,7 @@ function RawBlock({ step, model, view }: { step: AgentStep; model: ExplanationsM
 const STEP_COLS = { gridTemplateColumns: `${HIVE_SIZES.stepCell}px minmax(0,1fr)` } as const;
 const STEP_INDENT = { "--step-indent": `${HIVE_SIZES.stepCell + 12}px` } as CSSProperties;
 
-function ToolCard({ step, model, raw, rawView, when, pins, fresh }: { step: AgentStep; model: ExplanationsModel | null; raw: boolean; rawView: "table" | "json"; when?: string; pins?: MiniPin[]; fresh: boolean }) {
+function ToolCard({ step, model, raw, rawView, when, pins, fresh, renderWaiting }: { step: AgentStep; model: ExplanationsModel | null; raw: boolean; rawView: "table" | "json"; when?: string; pins?: MiniPin[]; fresh: boolean; renderWaiting?: (step: AgentStep) => ReactNode }) {
   const ui = step.tool ? TOOL_UI[step.tool] : undefined;
   const icon = (step.tool && TOOL_ICON[step.tool]) || "dots";
   const running = step.status === "running";
@@ -187,6 +242,7 @@ function ToolCard({ step, model, raw, rawView, when, pins, fresh }: { step: Agen
   const rejected = failed && step.tool === "finish_plan";
   const bad = failed && !rejected;
   const cut = step.status === "cut";
+  const waiting = step.status === "waiting";
   const sources = stepSources(step);
   const say = step.notes.filter((n) => n.kind === "text").map((n) => n.text);
   const title = running ? `${ui?.doing(step) ?? step.label}…` : (ui?.title(step) ?? step.label);
@@ -203,6 +259,7 @@ function ToolCard({ step, model, raw, rawView, when, pins, fresh }: { step: Agen
   else if (rejected) body = ui?.render(out, step, { when, pins, model });
   else if (bad) body = foot("This check didn't come back, so the plan goes on without it.");
   else if (cut) body = foot("Stopped before it finished.");
+  else if (waiting) body = renderWaiting ? renderWaiting(step) : step.summary ? foot(step.summary) : null;
   else if (step.output !== undefined && ui) body = ui.render(out, step, { when, pins, model });
   else if (step.summary) body = foot(step.summary);
   return (
@@ -216,13 +273,14 @@ function ToolCard({ step, model, raw, rawView, when, pins, fresh }: { step: Agen
       data-fresh={fresh && !running ? "true" : undefined}
     >
       <div className="grid items-start gap-3" style={STEP_COLS}>
-        <StepCell icon={icon} status={running ? "running" : bad || rejected ? "failed" : cut ? "skipped" : "done"} source={sources.length === 1 ? sources[0] : undefined} label={`${title}: ${running ? "working" : bad || rejected ? "didn't work" : cut ? "stopped" : "done"}`} />
+        <StepCell icon={icon} status={running ? "running" : bad || rejected ? "failed" : cut ? "skipped" : waiting ? "pending" : "done"} source={sources.length === 1 ? sources[0] : undefined} label={`${title}: ${running ? "working" : bad || rejected ? "didn't work" : cut ? "stopped" : waiting ? "waiting for you" : "done"}`} />
         <div className="grid min-w-0 gap-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <b className={cn(running ? "font-sans text-base leading-[22px] font-bold" : "font-display text-xl leading-6 font-extrabold uppercase")}>{title}</b>
             {sources.map((s) => (
               <SourceLogo key={s} source={s} height={14} />
             ))}
+            {waiting ? <span className={cn(TAG, "bg-primary text-primary-foreground")}>Your turn</span> : null}
           </div>
           {say.length ? (
             <Say model={model} testId="agent-note-text">
@@ -230,7 +288,7 @@ function ToolCard({ step, model, raw, rawView, when, pins, fresh }: { step: Agen
             </Say>
           ) : null}
         </div>
-        <span className="sr-only">{rejected ? "rejected" : step.status}</span>
+        <span className="sr-only">{rejected ? "rejected" : waiting ? "waiting for you" : step.status}</span>
       </div>
       {body ? (
         <div className="grid min-w-0 gap-3 sm:pl-(--step-indent)" style={STEP_INDENT}>
@@ -238,6 +296,23 @@ function ToolCard({ step, model, raw, rawView, when, pins, fresh }: { step: Agen
         </div>
       ) : null}
       {raw ? <RawBlock step={step} model={model} view={rawView} /> : null}
+    </li>
+  );
+}
+
+const TAG = "px-1.5 py-[3px] font-mono text-[11px] leading-[normal] font-bold tracking-[0.06em] uppercase";
+
+/** A step not started yet (the run waits above it): its icon in a dashed cell, its title quiet, and "Not started". */
+function UpcomingCard({ step }: { step: UpcomingStep }) {
+  return (
+    <li data-testid="agent-step-upcoming" data-key={step.key} className="grid min-w-0 gap-3 py-4 first:pt-0 last:pb-0">
+      <div className="grid items-start gap-3" style={STEP_COLS}>
+        <StepCell icon={step.icon} status="pending" label={`${step.title}: not started`} />
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <b className="font-display text-xl leading-6 font-extrabold text-muted-foreground uppercase">{step.title}</b>
+          <span className={cn(TAG, "text-muted-foreground shadow-[inset_0_0_0_1.5px_var(--border)]")}>Not started</span>
+        </div>
+      </div>
     </li>
   );
 }
@@ -268,6 +343,8 @@ export function AgentStepStream({
   subtitle,
   usage,
   wording,
+  upcoming,
+  renderWaiting,
 }: {
   steps: AgentStep[];
   model?: ExplanationsModel | null;
@@ -294,6 +371,10 @@ export function AgentStepStream({
   usage?: RunUsage | null;
   /** U35: a feed that isn't a busk plan (the Repertoire research) words its waiting lines itself; the busk plan's are the defaults. */
   wording?: { first: string; next: string; leave: string };
+  /** Phase "waiting": the steps not started yet, listed under the one that waits. */
+  upcoming?: UpcomingStep[];
+  /** What a waiting step shows in its body (the input it asks for). */
+  renderWaiting?: (step: AgentStep) => ReactNode;
 }) {
   const rawId = useId();
   const [rawView, setRawView] = useState<"table" | "json">("table");
@@ -307,13 +388,14 @@ export function AgentStepStream({
   const feed = calls;
   const thinking = live && (pending || phase === "thinking" || steps.length === 0);
   const count = `${calls.length} ${calls.length === 1 ? "check" : "checks"}${seconds != null ? ` · ${Math.round(seconds)} s` : ""}`;
-  const tag = mode === "replay" ? "Replay" : mode === "joined" ? "Joined" : phase === "done" || phase === "fallback" ? "Finished" : phase === "error" || phase === "stopped" ? "Stopped" : "Live";
+  const tag = phase === "waiting" ? "Waiting" : mode === "replay" ? "Replay" : mode === "joined" ? "Joined" : phase === "done" || phase === "fallback" ? "Finished" : phase === "error" || phase === "stopped" ? "Stopped" : "Live";
   const heading = title ?? (live ? "Finding your best pitches" : "How we found your pitches");
   const list = (
     <ol aria-live={mode === "replay" ? "off" : "polite"} aria-label="Research, in the order it ran" className="m-0 grid list-none divide-y divide-border p-0" data-testid="agent-feed">
       {feed.map((s, i) => (
-        <ToolCard key={s.id} step={s} model={model} raw={raw} rawView={rawView} when={when} pins={pins} fresh={live && i === feed.length - 1 && !thinking} />
+        <ToolCard key={s.id} step={s} model={model} raw={raw} rawView={rawView} when={when} pins={pins} fresh={live && i === feed.length - 1 && !thinking} renderWaiting={renderWaiting} />
       ))}
+      {phase === "waiting" ? (upcoming ?? []).map((u) => <UpcomingCard key={u.key} step={u} />) : null}
       {thinking ? (
         <li className="grid min-w-0 gap-3 py-4 first:pt-0 last:pb-0" data-testid="agent-thinking">
           <div className="grid items-start gap-3" style={STEP_COLS}>

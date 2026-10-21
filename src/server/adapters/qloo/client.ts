@@ -169,7 +169,10 @@ async function searchArtistCached(backend: QlooBackend, name: string): Promise<Q
     cacheTag("qloo", "qloo:search");
     const params = { query: name, types: "urn:entity:artist", take: 3 };
     const results = await orNotFound(async () => (await qlooGet(backend, "/search", params, searchResponseSchema)).results, []);
-    return listEntities("/search", params, results).map(toEntity);
+    const found = listEntities("/search", params, results).map(toEntity);
+    // Qloo's catalogue grows with its model updates: "not on Qloo" is remembered for hours, not days, so a new act is found soon.
+    if (found.length === 0) cacheLife("hours");
+    return found;
   });
 }
 
@@ -185,7 +188,9 @@ async function entitiesBySpotifyIdsCached(backend: QlooBackend, spotifyIds: stri
     cacheTag("qloo", "qloo:entities");
     const params = { "external.spotify.ids": ids(spotifyIds) };
     const results = await orNotFound(async () => (await qlooGet(backend, "/entities", params, entitiesResponseSchema)).results, []);
-    return listEntities("/entities", params, results).map(toEntity);
+    const found = listEntities("/entities", params, results).map(toEntity);
+    if (found.length === 0) cacheLife("hours");
+    return found;
   });
 }
 
@@ -620,6 +625,53 @@ async function artistGenresCached(backend: QlooBackend, entityIds: string[], tak
     const body = await qlooGet(backend, "/v2/insights", params, tagsResponseSchema);
     logIfEmpty("/v2/insights", params, body.results.tags.length);
     return body.results.tags.map((tag) => ({ id: tag.tag_id ?? tag.id ?? "", name: tag.name, affinity: tag.query?.affinity ?? null })).filter((t) => t.id);
+  });
+}
+
+/**
+ * `/v2/tags` search: music-genre tags whose name matches the text (an act's Spotify genre, "indie folk"), best first. Used when
+ * Qloo doesn't know the act, to turn its genres into `urn:tag:genre…` ids. 404 "No results" is an empty list.
+ */
+export async function searchGenreTags(backend: QlooBackend, text: string, take: number): Promise<TasteTag[]> {
+  return countLookup("searchGenreTags", [backend, text, take], () => searchGenreTagsCached(backend, text, take));
+}
+
+async function searchGenreTagsCached(backend: QlooBackend, text: string, take: number): Promise<TasteTag[]> {
+  "use cache: remote";
+  return lookupScope("searchGenreTags", [backend, text, take], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:tags");
+    const params = { "filter.query": text, "filter.tag.types": "urn:tag:genre:music", take: Math.min(take, MAX_TAKE) };
+    const body = await orNotFound(() => qlooGet(backend, "/v2/tags", params, tagsResponseSchema), { results: { tags: [] } });
+    logIfEmpty("/v2/tags", params, body.results.tags.length);
+    return body.results.tags.map((tag) => ({ id: tag.tag_id ?? tag.id ?? "", name: tag.name, affinity: null })).filter((t) => t.id);
+  });
+}
+
+/**
+ * `urn:entity:artist` liked by people who like these genre tags (`signal.interests.tags`, no artist signal, no location): the
+ * signal for an act Qloo doesn't know. Tag ids are checked like the local scene's (sceneTags).
+ */
+export async function tagArtists(backend: QlooBackend, tagIds: string[], take: number): Promise<QlooEntity[]> {
+  const tags = sceneTags(tagIds);
+  if (tags.length === 0) return [];
+  return countLookup("tagArtists", [backend, tags, take], () => tagArtistsCached(backend, tags, take));
+}
+
+async function tagArtistsCached(backend: QlooBackend, tagIds: string[], take: number): Promise<QlooEntity[]> {
+  "use cache: remote";
+  return lookupScope("tagArtists", [backend, tagIds, take], async () => {
+    cacheLife("days");
+    cacheTag("qloo", "qloo:artists");
+    const params = { "filter.type": "urn:entity:artist", "signal.interests.tags": ids(tagIds), take: Math.min(take, MAX_TAKE) };
+    try {
+      const body = await qlooGet(backend, "/v2/insights", params, insightsEntitiesResponseSchema);
+      return listEntities("/v2/insights", params, body.results.entities).map(toEntity);
+    } catch (error) {
+      // Qloo refuses a tag list with one tag it doesn't know: an honest "no artists", not an outage.
+      if (error instanceof AdapterError && error.status === 400) return [];
+      throw error;
+    }
   });
 }
 

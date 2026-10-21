@@ -40,12 +40,14 @@ import { ZERO_LEARN_TOTALS, type LearnListView, type LearnStreamEvent } from "@/
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import { playlistSongKey, type LearnSuggestionView, type PlaylistView } from "@/lib/playlist-schema";
 import { fansMapProps } from "@/lib/fans-map";
-import { OFFLINE_TEST_ARTIST, researchUsable, researchWaiting, type QlooOutput } from "@/lib/repertoire-research";
+import { OFFLINE_TEST_ARTIST, researchUsable, researchWaiting } from "@/lib/repertoire-research";
 import { toRepertoireView, type LearnSong, type RepertoireView } from "@/lib/repertoire-research-view";
 import { parseSpotifyArtistId, spotifyArtistUrl } from "@/lib/spotify-link";
-import { joinLearn, loadLearn, pageFaults, patchSuggestion, startResearch } from "./learn-api";
+import { joinLearn, loadLearn, pageFaults, patchSuggestion, sendResearchInput, startResearch, type ResearchAnswer } from "./learn-api";
+import { ResearchAsk } from "./research-ask";
+import { REPERTOIRE_STEPS } from "@/components/honeycomb/repertoire/repertoire-research";
 import { ResearchFunnel } from "./learn-feed";
-import { FallbackNote, QlooCandidates, RESEARCH_H2 as H2, SoundsLikePrompt } from "./qloo-prompts";
+import { QlooCandidates, RESEARCH_H2 as H2 } from "./qloo-prompts";
 import { addSong, forgetPlaylist, loadPlaylist, moveSong, removeSong, savePlaylist } from "./playlist-api";
 
 /** Where focus goes when a row leaves its list (B-016): the next row's action, else the previous one's, else the page's main field. */
@@ -271,7 +273,7 @@ export function ResearchView() {
     focusTarget(target)?.focus();
   }, [playlist, busy]);
 
-  async function start(body: { link?: string; refresh?: boolean; mode?: "full" | "more"; qlooChoice?: { id: string } | { none: true } }) {
+  async function start(body: { link?: string; refresh?: boolean; mode?: "full" | "more"; qlooChoice?: { id: string } | { none: true }; genre?: string }) {
     setNotice(null);
     setInfo("");
     setRunning(true);
@@ -287,6 +289,22 @@ export function ResearchView() {
     setRunning(false);
     setEvents(null);
     setNotice({ kind: result.code === "up_to_date" || result.code === "already_running" ? "info" : "error", text: result.message });
+  }
+
+  /** The answer to a run that waits for input: the same run carries on in the same panel. */
+  async function answer(runId: string, body: ResearchAnswer) {
+    setNotice(null);
+    setInfo("");
+    setRunning(true);
+    const result = await sendResearchInput(runId, body, pageFaults());
+    if (!mounted.current) return;
+    if (result.ok) {
+      joined.current = "started";
+      await consume(result.events);
+      return;
+    }
+    setRunning(false);
+    setNotice({ kind: result.code === "already_running" ? "info" : "error", text: result.message });
   }
 
   function submitLink(event: React.FormEvent<HTMLFormElement>) {
@@ -356,17 +374,33 @@ export function ResearchView() {
   };
 
   const soundsLikePatch = () => chosenArtists().map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.qlooId ? { qlooId: a.qlooId } : {}), ...(a.image && /^https:\/\//.test(a.image) ? { image: a.image } : {}) }));
-  // The run paused on a question (Qloo wasn't sure which artist is the act, or doesn't know it and no sound-alikes are set).
+  // The run paused on a question (Qloo wasn't sure which artist is the act), or for input (no taste signal: artists or a genre).
   const waiting = !running && !live ? researchWaiting(research) : null;
+  // The run waiting for input: the live one that just paused, else the saved one (a refresh or a later visit).
+  const askRun = running || live ? null : view.end ? (view.end.code === "needs_sounds_like" ? view.end.runId : null) : waiting === "input" && research ? research.runId : null;
+  // Paused is not done: while the run waits for an answer the page stays the researching layout.
+  const active = live || askRun !== null;
+  // The pause is brought into view once (smoothly, instantly with reduced motion), not left to the page jumping to its end.
+  const askKey = askRun ? `${askRun}:${research?.waiting?.asks ?? 0}` : null;
+  const scrolledTo = useRef<string | null>(null);
+  useEffect(() => {
+    if (!askKey) {
+      scrolledTo.current = null;
+      return;
+    }
+    if (scrolledTo.current === askKey) return;
+    const frame = requestAnimationFrame(() => {
+      const target = document.querySelector('[data-testid="research-ask"]');
+      if (!target) return;
+      scrolledTo.current = askKey;
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      target.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [askKey]);
+  const askStep = research?.waiting?.step ?? "soundsLike";
+  const upcoming = askRun ? REPERTOIRE_STEPS.slice(REPERTOIRE_STEPS.findIndex((s) => s.key === askStep) + 1).map((s) => ({ key: s.key, title: s.title, icon: s.icon })) : undefined;
   const askedFor = research?.steps.qloo?.output?.candidates ?? [];
-  // The qloo step's output: this run's, else the saved one. `fallback` says the later steps used "Artists you sound like".
-  const liveQloo = events?.findLast((e) => e.type === "tool-end" && e.tool === "research_qloo" && e.ok);
-  const qlooOut = (liveQloo?.type === "tool-end" ? (liveQloo.output as QlooOutput) : null) ?? research?.steps.qloo?.output ?? null;
-  async function carryOn() {
-    if (!playlist || !research) return;
-    const saved = await act(() => savePlaylist({ revision: playlist.revision, soundsLike: soundsLikePatch() }));
-    if (saved) void start({ link: research.spotifyArtistId, refresh: true });
-  }
 
   const runEvent = feedEvents?.find((e) => e.type === "run");
   const lastTotals = feedEvents?.findLast((e) => e.type === "totals");
@@ -375,32 +409,44 @@ export function ResearchView() {
       <div className="grid gap-3">
         {/* The research header lockup (Hive Identity board). */}
         <p className="m-0" data-testid="research-agent">
-          <AgentLockup live={live} status={live ? "is researching your act" : undefined} />
+          <AgentLockup live={active} status={active ? "is researching your act" : undefined} />
         </p>
         <AgentStepStream
           steps={feed}
           model={runEvent?.type === "run" && runEvent.model === "claude" ? "claude" : "mock"}
-          phase={live ? "working" : "done"}
+          phase={live ? "working" : askRun ? "waiting" : "done"}
           mode={!events && replay ? "replay" : "live"}
-          title={live ? R.heading : R.howBuilt}
+          title={active ? R.heading : R.howBuilt}
           wording={R.waiting}
           showRaw={showRaw}
           onShowRawChange={setShowRaw}
-          footer={<ResearchFunnel kind="learn" totals={lastTotals?.type === "totals" ? lastTotals.totals : ZERO_LEARN_TOTALS} running={live} />}
+          footer={<ResearchFunnel kind="learn" totals={lastTotals?.type === "totals" ? lastTotals.totals : ZERO_LEARN_TOTALS} running={active} />}
+          upcoming={upcoming}
+          renderWaiting={(step) =>
+            askRun ? (
+              <ResearchAsk
+                message={step.summary ?? R.ask.first}
+                busy={busy || running}
+                onSubmit={(body) => void answer(askRun, body)}
+              />
+            ) : step.summary ? (
+              <p className="m-0 text-[13px] leading-[18px] text-muted-foreground">{step.summary}</p>
+            ) : null
+          }
         />
       </div>
     ) : null;
 
   // U38: the profile header (photo, name, genre tags under the name) is the layout's `profile`; Your audience and the act name field have their own slots.
   const profileBlock =
-    r.profile || live ? (
+    r.profile || active ? (
       <section aria-label={R.profileHeading} className="w-full" data-testid="research-profile" data-ready={r.profile ? "true" : "false"}>
         <ArtistProfile size="md" profile={r.profile} loading={!r.profile} maxGenres={5} audience={false} summary={false} />
       </section>
     ) : null;
   const audienceBlock = r.profile ? <AudienceTags profile={r.profile} /> : null;
   const actNameBlock =
-    r.profile && playlist && !live ? (
+    r.profile && playlist && !active ? (
       <div className="flex max-w-md flex-wrap items-end gap-2" data-testid="research-act-name">
         <div className="min-w-0 flex-1 basis-56 space-y-1.5">
           <Label htmlFor="act-name">{R.actName}</Label>
@@ -430,7 +476,7 @@ export function ResearchView() {
   const canSingBlock = (
     <>
       {/* 2. Songs you can sing: your own songs straight in, removable. */}
-      <Section id="research-can-sing" title={COPY.canSing} ready={r.canSing !== null} live={live} testId="research-can-sing">
+      <Section id="research-can-sing" title={COPY.canSing} ready={r.canSing !== null} live={active} testId="research-can-sing">
         {playlist && <p className="text-sm text-muted-foreground tabular-nums">{COPY.count(songs.length)}</p>}
         {r.canSing && r.canSing.length > 0 ? (
           <>
@@ -457,9 +503,9 @@ export function ResearchView() {
                         actions={
                           <SongActions
                             title={song.title}
-                            disabled={busy || live}
+                            disabled={busy || active}
                             onRemove={() => {
-                              if (busy || live) return;
+                              if (busy || active) return;
                               focusAfter.current = nextFocus(r.canSing!, song.id, "remove");
                               void act(() => removeSong(song.id), removed(song.title));
                             }}
@@ -475,7 +521,7 @@ export function ResearchView() {
         ) : (
           <p className="text-sm text-muted-foreground">{COPY.empty}</p>
         )}
-        {!live && (
+        {!active && (
           <Collapsible>
             <CollapsibleTrigger asChild>
               <Button variant="link" size="sm" className="h-auto px-0" data-focus-id="add-song">
@@ -500,8 +546,8 @@ export function ResearchView() {
   const soundsLikeBlock = (
     <>
       {/* 3. Artists you sound like (editable). */}
-      <Section id="research-sounds-like" title={R.soundsLikeHeading} ready={r.soundsLike !== null} live={live} testId="research-sounds-like">
-        {live ? (
+      <Section id="research-sounds-like" title={R.soundsLikeHeading} ready={r.soundsLike !== null} live={active} testId="research-sounds-like">
+        {active ? (
           <ArtistChipList inline label={R.soundsLikeHeading}>
             {(r.soundsLike ?? []).map((a) => (
               <li key={a.name}>
@@ -533,7 +579,7 @@ export function ResearchView() {
   const fansBlock = (
     <>
       {/* 4. Who your fans are. */}
-      <Section id="research-fans" title={R.fansHeading} ready={r.fans !== null} live={live} testId="research-fans">
+      <Section id="research-fans" title={R.fansHeading} ready={r.fans !== null} live={active} testId="research-fans">
         {r.fans && (r.fans.age.length > 0 || r.fans.gender.length > 0) ? (
           <div className="space-y-3">
             {[r.fans.age, r.fans.gender].map((rows, i) =>
@@ -561,7 +607,7 @@ export function ResearchView() {
           <FansMap cells={mapProps.cells} cities={mapProps.cities} />
         </div>
       ) : (
-        <Section id="research-fans-map" title={R.fansMapHeading} ready={false} live={live} testId="research-fans-map">
+        <Section id="research-fans-map" title={R.fansMapHeading} ready={false} live={active} testId="research-fans-map">
           {null}
         </Section>
       )}
@@ -570,7 +616,7 @@ export function ResearchView() {
   const fansLoveBlock = (
     <>
       {/* 5. What your fans also love. */}
-      <Section id="research-fans-love" title={R.fansLoveHeading} ready={r.fansLove !== null} live={live} testId="research-fans-love">
+      <Section id="research-fans-love" title={R.fansLoveHeading} ready={r.fansLove !== null} live={active} testId="research-fans-love">
         <ArtistChipList inline label={R.fansLoveHeading}>
           {(r.fansLove ?? []).map((a) => (
             <li key={a.name}>
@@ -584,12 +630,12 @@ export function ResearchView() {
   const toLearnBlock = (
     <>
       {/* 6. Songs you should learn, with "Find more songs to learn". */}
-      <Section id="research-to-learn" title={COPY.toLearn} ready={r.toLearn !== null || (!live && (list?.suggestions.length ?? 0) > 0)} live={live} testId="research-to-learn">
+      <Section id="research-to-learn" title={COPY.toLearn} ready={r.toLearn !== null || (!active && (list?.suggestions.length ?? 0) > 0)} live={active} testId="research-to-learn">
         {pending.length > 0 ? (
           <ListScroll label={COPY.toLearn}>
             <ul aria-label={COPY.toLearn} className="m-0 list-none divide-y divide-border p-0">
               {pending.map((song) => (
-                <SuggestionRow key={song.id} song={song} media={learnMedia.get(song.id)} known={known} busy={busy || live} onStatus={(s, status) => void changeSuggestion(s, status)} />
+                <SuggestionRow key={song.id} song={song} media={learnMedia.get(song.id)} known={known} busy={busy || active} onStatus={(s, status) => void changeSuggestion(s, status)} />
               ))}
             </ul>
           </ListScroll>
@@ -614,7 +660,7 @@ export function ResearchView() {
             </CollapsibleContent>
           </Collapsible>
         )}
-        {researchUsable(research) && !live && (
+        {researchUsable(research) && !active && (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Button type="button" data-testid="research-more" disabled={busy || running || limit?.remaining === 0} onClick={() => void start({ mode: "more" })}>
               {R.findMore}
@@ -627,7 +673,7 @@ export function ResearchView() {
   );
   const learnedBlock = (
     <>
-      {r.learned && !live && (
+      {r.learned && !active && (
         <section aria-labelledby="research-learned" className="w-full space-y-3 border-t-2 border-rule pt-6" data-testid="research-learned">
           <h2 id="research-learned" className={H2}>
             {COPY.learned}
@@ -652,14 +698,14 @@ export function ResearchView() {
                   actions={
                     <SongActions
                       title={s.title}
-                      disabled={busy || live}
+                      disabled={busy || active}
                       onMoveToCanSing={() => {
-                        if (busy || live) return;
+                        if (busy || active) return;
                         focusAfter.current = nextFocus(r.learned!, s.id, "move");
                         void act(() => moveSong(s.id, "can_sing"), moved(s.title));
                       }}
                       onRemove={() => {
-                        if (busy || live) return;
+                        if (busy || active) return;
                         focusAfter.current = nextFocus(r.learned!, s.id, "remove");
                         void act(() => removeSong(s.id), removed(s.title));
                       }}
@@ -681,16 +727,16 @@ export function ResearchView() {
   const results = (
     <div data-testid="research-results">
       <RepertoireResultsLayout
-        phase={live ? "running" : "done"}
+        phase={active ? "running" : "done"}
         profile={profileBlock}
         actName={actNameBlock}
         audience={audienceBlock}
-        fans={r.fans !== null || live ? fansBlock : undefined}
-        soundsLike={r.soundsLike !== null || live ? soundsLikeBlock : undefined}
-        fansLove={r.fansLove !== null || live ? fansLoveBlock : undefined}
-        fansMap={mapProps || live ? fansMapBlock : undefined}
-        canSing={r.canSing !== null || live ? canSingBlock : undefined}
-        toLearn={!waiting && (r.toLearn !== null || (!live && (list?.suggestions.length ?? 0) > 0) || live) ? toLearnBlock : undefined}
+        fans={r.fans !== null || active ? fansBlock : undefined}
+        soundsLike={r.soundsLike !== null || active ? soundsLikeBlock : undefined}
+        fansLove={r.fansLove !== null || active ? fansLoveBlock : undefined}
+        fansMap={mapProps || active ? fansMapBlock : undefined}
+        canSing={r.canSing !== null || active ? canSingBlock : undefined}
+        toLearn={!waiting && (r.toLearn !== null || (!active && (list?.suggestions.length ?? 0) > 0) || active) ? toLearnBlock : undefined}
         learned={learnedBlock}
         research={showResults ? researchNode : undefined}
       />
@@ -698,7 +744,7 @@ export function ResearchView() {
   );
 
   return (
-    <div className="space-y-8" data-testid="research-page" data-phase={running ? "running" : view.phase}>
+    <div className="space-y-8" data-testid="research-page" data-phase={running || active ? "running" : view.phase}>
       <PageHeader title={COPY.pageTitle} />
 
       <div role="status" aria-live="polite" className="text-sm empty:hidden" data-testid="research-info">
@@ -756,7 +802,7 @@ export function ResearchView() {
             </p>
           )}
 
-          {/* The run paused: Qloo wasn't sure which artist is the act, or doesn't know it and no sound-alikes are set. */}
+          {/* The run paused: Qloo wasn't sure which artist is the act. */}
           {waiting === "choice" && research && (
             <QlooCandidates
               candidates={askedFor}
@@ -765,16 +811,12 @@ export function ResearchView() {
               onNone={() => void start({ link: research.spotifyArtistId, refresh: true, qlooChoice: { none: true } })}
             />
           )}
-          {waiting === "soundsLike" && (
-            <SoundsLikePrompt value={artists} onChange={setArtists} query={artistQuery} onQueryChange={setArtistQuery} count={chosenArtists().length} busy={busy} onCarryOn={() => void carryOn()} />
-          )}
-          {qlooOut?.fallback === "soundsLike" && !qlooOut.waiting && (live || research) && <FallbackNote />}
 
           {/* The results, with the research inside the layout (first while it runs, last when done). */}
           {showResults ? results : researchNode}
 
           {/* Done: the actions. */}
-          {!live && research && (
+          {!active && research && (
             <div className="flex max-w-2xl flex-wrap items-center gap-2" data-testid="research-actions">
               <Button type="button" variant="outline" size="sm" disabled={busy || running} onClick={() => void start({ link: research.spotifyArtistId, refresh: true })}>
                 {R.refresh}
@@ -784,7 +826,7 @@ export function ResearchView() {
               </Button>
             </div>
           )}
-          {playlist && !live && (
+          {playlist && !active && (
             <section className="max-w-2xl">
               <AlertDialog>
                 <AlertDialogTrigger asChild>

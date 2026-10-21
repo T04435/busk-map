@@ -17,7 +17,10 @@
     "e2e:late": "BUSKMAP_FAKE_NOW=2026-10-16T21:30:00+11:00 playwright test late-clock.spec.ts",
     "check:fixtures": "node scripts/check-fixtures.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm check:fixtures && pnpm build",
-    "db:migrate:dev": "node --env-file=.env.development.local scripts/migrate.mjs"
+    "db:migrate:dev": "node --env-file=.env.development.local scripts/migrate.mjs",
+    "prepare": "simple-git-hooks || true",
+    "commitlint": "commitlint",
+    "release-notes": "git-cliff --unreleased --tag \"${NEXT_TAG:?set NEXT_TAG, e.g. NEXT_TAG=v1.0.2}\""
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.141",
@@ -42,6 +45,8 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
     "@playwright/test": "^1.64.0",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^24.19.2",
@@ -50,6 +55,8 @@
     "@vitest/coverage-v8": "^5.0.4",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
+    "git-cliff": "2.14.2",
+    "simple-git-hooks": "2.14.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^5.0.4"
@@ -57,5 +64,8 @@
   "packageManager": "pnpm@11.0.9",
   "engines": {
     "node": "24.x"
+  },
+  "simple-git-hooks": {
+    "commit-msg": "pnpm exec commitlint --edit \"$1\""
   }
 }

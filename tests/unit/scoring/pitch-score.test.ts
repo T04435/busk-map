@@ -44,6 +44,8 @@ describe("weights", () => {
     expect(normalizeWeights({ taste: 0.5, footfall: 0.2 }).activity).toBeCloseTo(0.2 + 0.2);
     expect(normalizeWeights({ footfall: 0.3, places: 0.1 }).activity).toBeCloseTo(0.4);
     expect(normalizeWeights({ footfall: 1, places: 1 }).activity).toBe(1);
+    // Only places saved: footfall falls back to its legacy default.
+    expect(normalizeWeights({ places: 0.3 }).activity).toBeCloseTo(0.25 + 0.3);
     // An explicit activity weight wins.
     expect(normalizeWeights({ activity: 0.1, footfall: 0.9 }).activity).toBe(0.1);
   });

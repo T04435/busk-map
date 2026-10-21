@@ -17,11 +17,11 @@ async function open(page: Page) {
 }
 
 test.describe("QA /brain", () => {
-  test("facts strip matches docs/qloo-data-map.md and qloo-map.ts (16 kinds, 28–37 per new busk, 0 on a rerun, 10 parts, ≤ 25 per learn run)", async ({ page }) => {
+  test("facts strip matches docs/qloo-data-map.md and qloo-map.ts (18 kinds, 28–37 per new busk, 0 on a rerun, 10 parts, ≤ 25 per learn run)", async ({ page }) => {
     await open(page);
     const facts = page.getByRole("region", { name: "Qloo calls per busk" }).getByRole("listitem");
-    // 16 kinds (the local scene, then the profile and fans calls), 10 parts (the Repertoire research joined), the learn-run cap (R4).
-    await expect(facts).toHaveText([/^16\s*kinds of Qloo call$/, /^28–37\s*Qloo calls for a new busk$/, /^0\s*on a rerun: answers cached for 24 h$/, /^10\s*parts of your busk it decides$/, /^≤ 25\s*Qloo calls per learn run$/]);
+    // 18 kinds (the local scene, then the profile and fans calls), 10 parts (the Repertoire research joined), the learn-run cap (R4).
+    await expect(facts).toHaveText([/^18\s*kinds of Qloo call$/, /^28–37\s*Qloo calls for a new busk$/, /^0\s*on a rerun: answers cached for 24 h$/, /^10\s*parts of your busk it decides$/, /^≤ 25\s*Qloo calls per learn run$/]);
     await expect(page.getByTestId("quota-note")).toContainText("One key's 10,000 calls a month cover roughly 270–360 new busks");
   });
 
@@ -49,7 +49,7 @@ test.describe("QA /brain", () => {
   test("every piece traces by keyboard: Enter selects, announces, opens its panel; Escape clears and keeps focus", async ({ page }) => {
     await open(page);
     const ids = await page.locator("[data-node-id]").evaluateAll((els) => els.map((e) => e.getAttribute("data-node-id")!));
-    expect(ids.length, "23 call shapes (16 kinds) + 3 sources (Spotify, Ticketmaster, Last.fm) + 27 data points + 10 parts = 63, per qloo-map.ts").toBe(63);
+    expect(ids.length, "23 call shapes (18 kinds) + 3 sources (Spotify, Ticketmaster, Last.fm) + 27 data points + 10 parts = 65, per qloo-map.ts").toBe(65);
     for (const id of ids) {
       const piece = page.locator(`[data-node-id="${id}"]`);
       await piece.focus();

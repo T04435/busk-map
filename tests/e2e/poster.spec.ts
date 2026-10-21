@@ -9,6 +9,13 @@ test.describe("poster buttons", () => {
       const hero = page.locator('[data-variant="poster"][data-size="poster-lg"]').first();
       const closing = page.locator('[data-variant="poster"][data-size="poster"]').last();
       await expect(hero).toBeVisible();
+      // A streamed page swaps its Suspense fallbacks for the real nodes after the load event, and React then hydrates them.
+      // Focus given before that lands on a node that is replaced or not yet interactive, so :focus-visible has not matched
+      // and the outline offset reads 0px (the flake under load). Wait for the stream and the buttons to be hydrated.
+      await page.waitForFunction(() => !document.querySelector("template[id^='B:'], [id^='S:'][hidden]"));
+      for (const b of [hero, closing]) {
+        await expect.poll(() => b.evaluate((n) => Object.keys(n).some((k) => k.startsWith("__reactFiber"))), { message: "button hydrated" }).toBe(true);
+      }
       await closing.scrollIntoViewIfNeeded();
       expect(Math.round((await hero.boundingBox())!.height)).toBe(76);
       expect(Math.round((await closing.boundingBox())!.height)).toBe(64);
@@ -16,6 +23,8 @@ test.describe("poster buttons", () => {
         await button.focus();
         await page.keyboard.press("Shift+Tab");
         await page.keyboard.press("Tab");
+        await expect(button).toBeFocused();
+        await expect(button).toHaveCSS("outline-offset", "10px"); // settles; asserted unchanged below
         const style = await button.evaluate((el) => {
           const s = getComputedStyle(el);
           return { width: s.outlineWidth, offset: s.outlineOffset, style: s.outlineStyle, shadow: s.boxShadow };

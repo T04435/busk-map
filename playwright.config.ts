@@ -23,8 +23,6 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  // CI runners have 4 vCPUs; the default (half the cores) leaves two idle.
-  workers: process.env.CI ? "100%" : undefined,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: externalBaseUrl ?? `http://localhost:${port}`,

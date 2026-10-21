@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { SERVER_TODAY } from "./clock";
 import { expect, LOCAL, openDetails, SATURDAY, shortDay, test, waitForPlan } from "./fixtures";
+import { WIDTHS } from "./layout-helpers";
 
 /**
  * Plan inputs S5/S6 (docs/plan-inputs-architecture.md): the busk form's one time control, the read-only Repertoire block, and an any-time plan with a window per pitch.
@@ -207,8 +208,9 @@ test.describe("an any-time plan shows each pitch's hours (offline)", () => {
 test.describe("layout and axe on the busk form and an any-time plan", () => {
   test.skip(!LOCAL, "Local offline server only");
 
-  for (const width of [390, 768, 1440]) {
-    test(`the form and an any-time plan at ${width}px: no horizontal overflow, axe clean`, async ({ page }) => {
+  for (const width of WIDTHS) {
+    test(`layout and axe: the form and an any-time plan at ${width}px`, async ({ page }, info) => {
+      test.skip(info.project.name !== "desktop", "width tests run once, in the desktop project");
       await page.setViewportSize({ width, height: 900 });
       await seed(page);
       await page.goto("/busks");

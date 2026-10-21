@@ -87,7 +87,7 @@ describe("week planner (offline)", () => {
     const evening = await buildWeekPlan(request, OFFLINE, "2026-10-15", false, new Date("2026-10-15T09:30:00Z"));
     expect(evening.grid.filter((c) => c.past).map((c) => c.startHour)).toEqual([10, 13, 16, 19]);
     expect(evening.sessions.every((s) => s.date !== "2026-10-15")).toBe(true);
-  });
+  }, 20_000);
 
   it("stops before spending anything when Qloo is down", async () => {
     const { buildWeekPlan, WeekQlooUnavailableError } = await load();

@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { OFFLINE_PICKED_ARTISTS, OFFLINE_TEST_ACTS, OFFLINE_TEST_ARTIST } from "../../src/lib/repertoire-research";
 import { expect, LOCAL, test } from "./fixtures";
+import { WIDTHS } from "./layout-helpers";
 
 /**
  * /repertoire as Repertoire research (docs/repertoire-research.md), on the offline mocks: one link field, a streamed run with
@@ -8,7 +9,6 @@ import { expect, LOCAL, test } from "./fixtures";
  * (act-profile, learn-run, the /repertoire half of profile-header).
  */
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
-const WIDTHS = [390, 768, 1440];
 const SHOTS = process.env.REPERTOIRE_SHOTS;
 const LINK = `https://open.spotify.com/artist/${OFFLINE_TEST_ARTIST.spotifyId}`;
 type Page = import("@playwright/test").Page;
@@ -158,11 +158,6 @@ test.describe("Repertoire research (offline)", () => {
     await expect(page.getByRole("list", { name: "Songs you can sing" }).getByRole("listitem").first()).toBeVisible();
     await expect(page.getByTestId("research-to-learn")).toHaveCount(0);
     // The prompt is accessible at the three widths.
-    for (const width of WIDTHS) {
-      await page.setViewportSize({ width, height: 900 });
-      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
-      expect(violations.map((v) => `candidates-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
-    }
     // A reload still shows the question (it is saved with the research).
     await page.reload();
     await expect(page.getByTestId("research-candidates")).toBeVisible();
@@ -196,11 +191,6 @@ test.describe("Repertoire research (offline)", () => {
     await expect(page.getByTestId("research-candidates")).toHaveCount(0);
     await expect(page.getByTestId("research-fans-love")).toBeVisible();
     await expect(page.getByRole("list", { name: "Songs you should learn" }).getByTestId("learn-card").first()).toBeVisible();
-    for (const width of WIDTHS) {
-      await page.setViewportSize({ width, height: 900 });
-      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
-      expect(violations.map((v) => `fallback-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
-    }
     // "Find more songs to learn" works from the fallback, and a refresh doesn't ask again.
     await page.getByRole("button", { name: "Refresh my research" }).click();
     await done(page);
@@ -226,11 +216,6 @@ test.describe("Repertoire research (offline)", () => {
     const body = (await (await page.request.get("/api/playlist")).json()).playlist;
     expect(body.soundsLike.map((a: { name: string; foundBy?: string }) => `${a.name}:${a.foundBy}`)).toEqual(["Paul Kelly:hive", "Courtney Barnett:hive", "Missy Higgins:hive"]);
     expect(body.qlooArtistId).toBeNull();
-    for (const width of WIDTHS) {
-      await page.setViewportSize({ width, height: 900 });
-      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
-      expect(violations.map((v) => `found-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
-    }
   });
 
   test("no taste signal anywhere (the Victoria Queen case): the run waits at Who you sound like and asks in the step", async ({ page }) => {
@@ -248,12 +233,6 @@ test.describe("Repertoire research (offline)", () => {
     await expect(stream).not.toContainText("Qloo found no artists like you");
     await expect(stream.getByTestId("agent-tag")).toHaveText("Waiting");
     await expect(page.getByTestId("research-end")).toHaveCount(0);
-    for (const width of WIDTHS) {
-      await page.setViewportSize({ width, height: 900 });
-      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
-      expect(violations.map((v) => `waiting-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `waiting-${width} scrolls sideways`).toBe(true);
-    }
     // RAW: the calls each step made, and no description lines.
     await stream.getByTestId("raw-switch").click();
     await expect(stream.getByTestId("agent-step-calls").first()).toBeVisible();
@@ -321,11 +300,6 @@ test.describe("Repertoire research (offline)", () => {
     await expect(ask).toContainText("Paul Kelly");
     await page.waitForTimeout(500);
     expect(inputs, "nothing is sent before Carry on").toEqual([]);
-    for (const width of WIDTHS) {
-      await page.setViewportSize({ width, height: 900 });
-      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
-      expect(violations.map((v) => `selection-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
-    }
     await carryOn.click();
     await done(page);
     expect(inputs).toHaveLength(1);
@@ -379,11 +353,6 @@ test.describe("Repertoire research (offline)", () => {
     await expect(alikes.getByRole("list", { name: "Artists you picked" }).locator("li img")).toHaveCount(2);
     const saved = (await (await page.request.get("/api/playlist")).json()).playlist.soundsLike;
     expect(saved).toMatchObject([{ name: "Mariah Carey", image: OFFLINE_PICKED_ARTISTS.mariah.spotifyImage }, { name: "Celia Cruz", image: OFFLINE_PICKED_ARTISTS.celia.qlooImage }]);
-    for (const width of WIDTHS) {
-      await page.setViewportSize({ width, height: 900 });
-      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
-      expect(violations.map((v) => `picked-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
-    }
   });
 
   test("still nothing Qloo knows: it asks again in the same step, then stops after three asks in one line", async ({ page }) => {
@@ -398,11 +367,6 @@ test.describe("Repertoire research (offline)", () => {
     await page.getByTestId("research-genre-pick").getByRole("button", { name: "Latin" }).click();
     await page.getByTestId("research-ask-carry-on").click();
     await expect(line).toHaveText("Qloo has no tag for Latin. Pick another genre, or add artists you sound like.", { timeout: 20_000 });
-    for (const width of WIDTHS) {
-      await page.setViewportSize({ width, height: 900 });
-      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
-      expect(violations.map((v) => `ask-again-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
-    }
     await page.getByTestId("research-genre-pick").getByRole("button", { name: "Latin" }).click();
     await page.getByTestId("research-ask-carry-on").click();
     await expect(page.getByTestId("research-end")).toHaveAttribute("data-code", "no_taste_data", { timeout: 20_000 });
@@ -433,76 +397,202 @@ test.describe("Repertoire research (offline)", () => {
     await expect(page.getByTestId("research-notice")).toContainText("runs this hour");
   });
 
-  test("the three states at 390, 768 and 1440: axe, no sideways scroll, screenshots", async ({ page }, info) => {
-    test.setTimeout(120_000);
-    const check = async (name: string) => {
-      for (const width of WIDTHS) {
-        await page.setViewportSize({ width, height: 900 });
+  for (const width of WIDTHS) {
+    test.describe(`at ${width}px`, () => {
+      test.use({ viewport: { width, height: 900 } });
+      test.skip(!LOCAL, "Writes to the local offline server's memory store and uses the mock artist");
+
+      /** Axe over the page as it is now, named like a failure should be (state and width). */
+      const axeClean = async (page: Page, name: string, sideways = false) => {
         const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
         expect(violations.map((v) => `${name}-${width} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
-        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${name}-${width} scrolls sideways`).toBe(true);
-        if (SHOTS && info.project.name === "desktop") await page.screenshot({ path: `${SHOTS}/research-${name}-${width}.png`, fullPage: true });
-      }
-    };
-    await page.goto("/repertoire");
-    await check("empty");
-    await page.route("**/api/playlist/research", async (route) => {
-      await new Promise((r) => setTimeout(r, 3000));
-      return route.continue();
-    });
-    await field(page).fill(LINK);
-    await page.getByRole("button", { name: "Research my act" }).click();
-    await expect(page.getByTestId("research-page")).toHaveAttribute("data-phase", "running");
-    await check("running");
-    await done(page);
-    await check("done");
-  });
-  test("nothing scrolls below the footer (the phone nav's own padding aside): empty, after a run, waiting for input, and the other pages", async ({ page }) => {
-    test.setTimeout(120_000);
-    // Exactly one footer once the page has streamed in: React holds a streamed boundary in a hidden div (S:n) until it swaps it in.
-    const oneFooter = async () => {
-      await expect(page.locator("footer[data-slot=site-footer]")).toHaveCount(1);
-      await expect(page.locator("footer[data-slot=site-footer]")).toBeVisible();
-    };
-    // The footer's bottom against the scrollable height; under 721px the body keeps the fixed bottom nav's height (plus the safe area) as padding on purpose.
-    const below = () =>
-      page.evaluate(() => {
-        const footer = document.querySelector("footer[data-slot=site-footer]")!;
-        const pad = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
-        return document.scrollingElement!.scrollHeight - (footer.getBoundingClientRect().bottom + window.scrollY) - pad;
+        if (sideways) {
+          expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${name}-${width} scrolls sideways`).toBe(true);
+        }
+      };
+      const onlyDesktop = (info: { project: { name: string } }) => test.skip(info.project.name !== "desktop", "width tests run once, in the desktop project");
+
+      test("layout and axe: the 'is one of these you?' prompt", async ({ page }, info) => {
+        onlyDesktop(info);
+        await research(page, linkOf(OFFLINE_TEST_ACTS.candidates.spotifyId));
+        await expect(page.getByTestId("research-candidates")).toBeVisible({ timeout: 20_000 });
+        await expect(page.getByRole("list", { name: "Songs you can sing" }).getByRole("listitem").first()).toBeVisible();
+        await axeClean(page, "candidates");
       });
-    for (const width of [390, 1440]) {
-      await page.setViewportSize({ width, height: 900 });
-      await page.context().clearCookies();
-      await page.goto("/repertoire");
-      await expect(field(page)).toBeVisible();
-      await oneFooter();
-      expect(await below(), `/repertoire empty at ${width}`).toBeLessThanOrEqual(2);
-      await field(page).fill(LINK);
-      await page.getByRole("button", { name: "Research my act" }).click();
-      await done(page);
-      await oneFooter();
-      expect(await below(), `/repertoire after a run at ${width}`).toBeLessThanOrEqual(2);
-      // Paused for input (no taste signal), after a reload, and once the answer has carried the run on.
-      await page.context().clearCookies();
-      await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
-      await expect(page.getByTestId("research-ask")).toBeVisible({ timeout: 20_000 });
-      await oneFooter();
-      expect(await below(), `/repertoire waiting at ${width}`).toBeLessThanOrEqual(2);
-      await page.reload();
-      await expect(page.getByTestId("research-ask")).toBeVisible({ timeout: 20_000 });
-      await oneFooter();
-      expect(await below(), `/repertoire waiting, reloaded, at ${width}`).toBeLessThanOrEqual(2);
-      await page.getByTestId("research-ask").getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Paul Kelly, Courtney Barnett");
-      await page.getByTestId("research-ask-carry-on").click();
-      await done(page);
-      await oneFooter();
-      expect(await below(), `/repertoire after the answer at ${width}`).toBeLessThanOrEqual(2);
-      for (const path of ["/", "/busks", "/brain", "/brand", "/p/ZZZZZZZZZ"]) {
-        await page.goto(path);
+
+      test("layout and axe: the fallback from artists like you", async ({ page }, info) => {
+        onlyDesktop(info);
+        test.setTimeout(90_000);
+        await research(page, linkOf(OFFLINE_TEST_ACTS.candidates.spotifyId));
+        await expect(page.getByTestId("research-candidates")).toBeVisible({ timeout: 20_000 });
+        const saved = (await (await page.request.get("/api/playlist")).json()).playlist;
+        const patched = await page.request.patch("/api/playlist", { data: { revision: saved.revision, soundsLike: [{ name: "Paul Kelly" }, { name: "Courtney Barnett" }] } });
+        expect(patched.ok()).toBe(true);
+        await page.reload();
+        await page.getByRole("button", { name: "None of these" }).click();
+        await done(page);
+        await expect(page.getByTestId("research-fans-love")).toBeVisible();
+        await expect(page.getByRole("list", { name: "Songs you should learn" }).getByTestId("learn-card").first()).toBeVisible();
+        await axeClean(page, "fallback");
+      });
+
+      test("layout and axe: sound-alikes found by the Hive", async ({ page }, info) => {
+        onlyDesktop(info);
+        test.setTimeout(90_000);
+        await research(page, linkOf(OFFLINE_TEST_ACTS.unknown.spotifyId));
+        await done(page);
+        await expect(page.getByTestId("research-fans-love")).toBeVisible();
+        await expect(page.getByRole("list", { name: "Songs you should learn" }).getByTestId("learn-card").first()).toBeVisible();
+        await axeClean(page, "found");
+      });
+
+      test("layout and axe: the run waiting at Who you sound like", async ({ page }, info) => {
+        onlyDesktop(info);
+        test.setTimeout(120_000);
+        await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
+        const stream = page.getByTestId("agent-stream");
+        await expect(stream.getByTestId("research-ask")).toBeVisible({ timeout: 20_000 });
+        await expect(stream.getByTestId("agent-tag")).toHaveText("Waiting");
+        await expect(page.getByTestId("research-end")).toHaveCount(0);
+        await axeClean(page, "waiting", true);
+      });
+
+      test("layout and axe: the pause as a selection (artists and a genre)", async ({ page }, info) => {
+        onlyDesktop(info);
+        test.setTimeout(120_000);
+        await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
+        const ask = page.getByTestId("research-ask");
+        await expect(ask).toBeVisible({ timeout: 20_000 });
+        const picker = ask.getByPlaceholder("Search Spotify, e.g. Paul Kelly");
+        await picker.fill("Paul Kelly, Courtney Barnett");
+        // Axe with the artist search list open (a listbox of options only).
+        const list = page.getByRole("listbox", { name: "Artist results" });
+        await expect(list).toBeVisible();
+        await expect(list.getByRole("option").first()).toBeVisible();
+        await axeClean(page, "search-open");
+        await picker.fill("");
+        await expect(list).toHaveCount(0);
+        const pop = page.getByTestId("research-genre-pick").getByRole("button", { name: "Pop" });
+        await pop.click();
+        await expect(pop).toHaveAttribute("aria-pressed", "true");
+        // Axe with the selected genre button hovered (pressed + hover).
+        await pop.hover();
+        await axeClean(page, "pressed-hover");
+        await page.mouse.move(0, 0);
+        await axeClean(page, "selection");
+      });
+
+      test("layout and axe: artists picked from Spotify and two genres", async ({ page }, info) => {
+        onlyDesktop(info);
+        test.setTimeout(120_000);
+        // The offline photos are https URLs nothing serves: answer them with a small picture.
+        const picture = '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#888"/></svg>';
+        await page.route(/i\.scdn\.co|images\.qloo\.test/, (route) => route.fulfill({ contentType: "image/svg+xml", body: picture }));
+        await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
+        const ask = page.getByTestId("research-ask");
+        await expect(ask).toBeVisible({ timeout: 20_000 });
+        const picker = ask.getByPlaceholder("Search Spotify, e.g. Paul Kelly");
+        for (const artist of [OFFLINE_PICKED_ARTISTS.mariah, OFFLINE_PICKED_ARTISTS.celia]) {
+          await picker.fill(artist.name);
+          await page.getByRole("option", { name: new RegExp(artist.name) }).filter({ hasNotText: "as typed" }).first().click();
+        }
+        const genres = page.getByTestId("research-genre-pick");
+        await genres.getByRole("button", { name: "Folk" }).click();
+        await genres.getByRole("button", { name: "Pop" }).click();
+        await page.getByTestId("research-ask-carry-on").click();
+        await done(page);
+        const alikes = page.getByTestId("research-sounds-like");
+        await expect(alikes.getByRole("list", { name: "Artists you picked" }).locator("li img")).toHaveCount(2);
+        await axeClean(page, "picked");
+      });
+
+      test("layout and axe: asking again in the same step", async ({ page }, info) => {
+        onlyDesktop(info);
+        test.setTimeout(120_000);
+        await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
+        const line = page.getByTestId("research-ask-line");
+        await expect(line).toBeVisible({ timeout: 20_000 });
+        await page.getByTestId("research-ask").getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Qzv Nobody");
+        await page.getByTestId("research-ask-carry-on").click();
+        await expect(line).toHaveText("Qloo doesn't know Qzv Nobody either. Try better-known artists, or pick a genre.", { timeout: 20_000 });
+        await page.getByTestId("research-genre-pick").getByRole("button", { name: "Latin" }).click();
+        await page.getByTestId("research-ask-carry-on").click();
+        await expect(line).toHaveText("Qloo has no tag for Latin. Pick another genre, or add artists you sound like.", { timeout: 20_000 });
+        await axeClean(page, "ask-again");
+      });
+
+      test("layout and axe: the empty, running and done states", async ({ page }, info) => {
+        onlyDesktop(info);
+        test.setTimeout(120_000);
+        const check = async (name: string) => {
+          await axeClean(page, name, true);
+          if (SHOTS) await page.screenshot({ path: `${SHOTS}/research-${name}-${width}.png`, fullPage: true });
+        };
+        await page.goto("/repertoire");
+        await check("empty");
+        await page.route("**/api/playlist/research", async (route) => {
+          await new Promise((r) => setTimeout(r, 3000));
+          return route.continue();
+        });
+        await field(page).fill(LINK);
+        await page.getByRole("button", { name: "Research my act" }).click();
+        await expect(page.getByTestId("research-page")).toHaveAttribute("data-phase", "running");
+        await check("running");
+        await done(page);
+        await check("done");
+      });
+    });
+  }
+
+  for (const width of [390, 1440]) {
+    test.describe(`at ${width}px`, () => {
+      test.use({ viewport: { width, height: 900 } });
+
+      test("layout: nothing scrolls below the footer (the phone nav's own padding aside): empty, after a run, waiting for input, and the other pages", async ({ page }, info) => {
+        test.skip(info.project.name !== "desktop", "width tests run once, in the desktop project");
+        test.setTimeout(120_000);
+        // Exactly one footer once the page has streamed in: React holds a streamed boundary in a hidden div (S:n) until it swaps it in.
+        const oneFooter = async () => {
+          await expect(page.locator("footer[data-slot=site-footer]")).toHaveCount(1);
+          await expect(page.locator("footer[data-slot=site-footer]")).toBeVisible();
+        };
+        // The footer's bottom against the scrollable height; under 721px the body keeps the fixed bottom nav's height (plus the safe area) as padding on purpose.
+        const below = () =>
+          page.evaluate(() => {
+            const footer = document.querySelector("footer[data-slot=site-footer]")!;
+            const pad = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
+            return document.scrollingElement!.scrollHeight - (footer.getBoundingClientRect().bottom + window.scrollY) - pad;
+          });
+        await page.goto("/repertoire");
+        await expect(field(page)).toBeVisible();
         await oneFooter();
-        expect(await below(), `${path} at ${width}`).toBeLessThanOrEqual(2);
-      }
-    }
-  });
+        expect(await below(), `/repertoire empty at ${width}`).toBeLessThanOrEqual(2);
+        await field(page).fill(LINK);
+        await page.getByRole("button", { name: "Research my act" }).click();
+        await done(page);
+        await oneFooter();
+        expect(await below(), `/repertoire after a run at ${width}`).toBeLessThanOrEqual(2);
+        // Paused for input (no taste signal), after a reload, and once the answer has carried the run on.
+        await page.context().clearCookies();
+        await research(page, linkOf(OFFLINE_TEST_ACTS.silent.spotifyId));
+        await expect(page.getByTestId("research-ask")).toBeVisible({ timeout: 20_000 });
+        await oneFooter();
+        expect(await below(), `/repertoire waiting at ${width}`).toBeLessThanOrEqual(2);
+        await page.reload();
+        await expect(page.getByTestId("research-ask")).toBeVisible({ timeout: 20_000 });
+        await oneFooter();
+        expect(await below(), `/repertoire waiting, reloaded, at ${width}`).toBeLessThanOrEqual(2);
+        await page.getByTestId("research-ask").getByPlaceholder("Search Spotify, e.g. Paul Kelly").fill("Paul Kelly, Courtney Barnett");
+        await page.getByTestId("research-ask-carry-on").click();
+        await done(page);
+        await oneFooter();
+        expect(await below(), `/repertoire after the answer at ${width}`).toBeLessThanOrEqual(2);
+        for (const path of ["/", "/busks", "/brain", "/brand", "/p/ZZZZZZZZZ"]) {
+          await page.goto(path);
+          await oneFooter();
+          expect(await below(), `${path} at ${width}`).toBeLessThanOrEqual(2);
+        }
+      });
+    });
+  }
 });

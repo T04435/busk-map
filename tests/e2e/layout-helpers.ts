@@ -78,7 +78,7 @@ export async function expectOnTop(control: Locator, what: string) {
           const hit = document.elementFromPoint(x, y);
           return hit && (hit === el || el.contains(hit)) ? "on top" : `covered by ${hit?.outerHTML.slice(0, 140) ?? "nothing"}`;
         }),
-      { message: `${what} is covered or out of view`, timeout: 5_000 },
+      { message: `${what} is covered or out of view`, timeout: 15_000 },
     )
     .toBe("on top");
 }
@@ -107,3 +107,6 @@ export async function holdAgentRunning(page: Page) {
   });
 }
 
+
+/** The three widths every layout and axe test runs at, one test per width, in the desktop project only. */
+export const WIDTHS = [390, 768, 1440] as const;

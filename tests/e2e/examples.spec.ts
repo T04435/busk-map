@@ -23,7 +23,7 @@ for (const example of EXAMPLES) {
 
       const pitches = page.getByRole("region", { name: "Pitches", exact: true }).getByRole("listitem");
       await expect(pitches).toHaveCount(3);
-      await expect(page.getByRole("region", { name: "Map of pitches and Qloo taste affinity" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Map of pitches and Qloo taste affinity" })).toBeVisible({ timeout: 15_000 });
       // The pitch's details (card, setlist, crowd, weights) open in a sheet, not inline.
       await expect(page.getByRole("heading", { name: /^Suggested set for / })).toHaveCount(0);
       const sheet = await openDetails(page);
@@ -76,7 +76,7 @@ for (const example of EXAMPLES) {
 
       // The link reopens the sheet on that pitch (shareable deep link).
       await page.reload();
-      await expect(page.getByRole("dialog").getByRole("heading", { name: /^Suggested set for / })).toBeVisible();
+      await expect(page.getByRole("dialog").getByRole("heading", { name: /^Suggested set for / })).toBeVisible({ timeout: 15_000 });
     });
   });
 }

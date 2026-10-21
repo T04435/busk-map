@@ -1,5 +1,5 @@
 /** @type {import("@commitlint/types").UserConfig} */
-export default {
+const config = {
   extends: ["@commitlint/config-conventional"],
   // Rule starts at the Conventional Commits adoption commit; older history stays as it is.
   rules: {
@@ -25,3 +25,5 @@ export default {
     ],
   },
 };
+
+export default config;

@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, LOCAL, test } from "./fixtures";
+import { WIDTHS } from "./layout-helpers";
 
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
 const SHOTS = process.env.REPERTOIRE_SHOTS;
@@ -189,30 +190,36 @@ test.describe("Repertoire storage (offline, memory store)", () => {
     await expect(page).toHaveURL(/\/repertoire$/);
   });
 
-  test("passes axe at 390, 768 and 1440 (empty and with songs)", async ({ page }, info) => {
-    await page.goto("/repertoire");
-    await emptyPage(page);
-    const check = async () => {
-      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
-      expect(violations.map((v) => `${v.impact} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
-    };
-    const widths = [390, 768, 1440];
-    for (const width of widths) {
-      await page.setViewportSize({ width, height: 900 });
-      await check();
-      if (SHOTS && info.project.name === "desktop") await page.screenshot({ path: `${SHOTS}/r1-repertoire-empty-${width}.png`, fullPage: true });
-    }
-    for (const text of ["Axe Song - Axe Artist", "Second Song - Another Artist (own)"]) await add(page, text);
-    await expect(page.getByRole("list", { name: "Songs you can sing" })).toContainText("Axe Song");
-    await page.request.patch(`/api/playlist/songs/${(await (await page.request.get("/api/playlist")).json()).playlist.songs[1].id}`, { data: { state: "learned" } });
-    await page.reload();
-    await expect(page.getByRole("list", { name: "Learned", exact: true })).toBeVisible();
-    for (const width of widths) {
-      await page.setViewportSize({ width, height: 900 });
-      await check();
-      // No horizontal page scroll.
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-      if (SHOTS && info.project.name === "desktop") await page.screenshot({ path: `${SHOTS}/r1-repertoire-songs-${width}.png`, fullPage: true });
-    }
-  });
+  for (const width of WIDTHS) {
+    test.describe(`at ${width}px`, () => {
+      test.use({ viewport: { width, height: 900 } });
+      const axeClean = async (page: Page) => {
+        const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+        expect(violations.map((v) => `${v.impact} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+      };
+
+      test("layout and axe: the empty Repertoire", async ({ page }, info) => {
+        test.skip(info.project.name !== "desktop", "width tests run once, in the desktop project");
+        await page.goto("/repertoire");
+        await emptyPage(page);
+        await axeClean(page);
+        if (SHOTS) await page.screenshot({ path: `${SHOTS}/r1-repertoire-empty-${width}.png`, fullPage: true });
+      });
+
+      test("layout and axe: the Repertoire with songs", async ({ page }, info) => {
+        test.skip(info.project.name !== "desktop", "width tests run once, in the desktop project");
+        await page.goto("/repertoire");
+        await emptyPage(page);
+        for (const text of ["Axe Song - Axe Artist", "Second Song - Another Artist (own)"]) await add(page, text);
+        await expect(page.getByRole("list", { name: "Songs you can sing" })).toContainText("Axe Song");
+        await page.request.patch(`/api/playlist/songs/${(await (await page.request.get("/api/playlist")).json()).playlist.songs[1].id}`, { data: { state: "learned" } });
+        await page.reload();
+        await expect(page.getByRole("list", { name: "Learned", exact: true })).toBeVisible();
+        await axeClean(page);
+        // No horizontal page scroll.
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        if (SHOTS) await page.screenshot({ path: `${SHOTS}/r1-repertoire-songs-${width}.png`, fullPage: true });
+      });
+    });
+  }
 });

@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, LOCAL, openDetails, test, waitForPlan } from "./fixtures";
+import { WIDTHS } from "./layout-helpers";
 
 /** Stage R2: the planners read the Repertoire (docs/playlist-architecture.md §3). Offline, memory store, one cookie per context. */
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
@@ -132,68 +133,69 @@ test.describe("planners read the Repertoire (offline)", () => {
     expect(await state(page)).toEqual(before);
   });
 
-  test("layout and axe at 390, 768 and 1440: the form with the Repertoire, the plan", async ({ page }, info) => {
-    await seed(page);
-    const check = async (label: string) => {
-      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
-      expect(violations.map((v) => `${label} ${v.impact} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    };
-    const shot = async (name: string, width: number) => {
-      if (SHOTS && info.project.name === "desktop") await page.screenshot({ path: `${SHOTS}/r2-${name}-${width}.png`, fullPage: true });
-    };
-    const widths = [390, 768, 1440];
-    await page.goto("/busks");
-    for (const width of widths) {
-      await page.setViewportSize({ width, height: 900 });
-      await check(`form-${width}`);
-      await form(page).scrollIntoViewIfNeeded();
-      await shot("busk-form", width);
-    }
-    await page.goto("/busks");
-    await form(page).getByRole("button", { name: "Plan my busk" }).click();
-    await waitForPlan(page);
-    const learnHere = (await openDetails(page)).getByRole("region", { name: "Songs you should learn" });
-    await learnHere.getByRole("button", { name: /^Add / }).first().click();
-    await expect(learnHere.getByRole("status").filter({ hasText: "Added to Songs you should learn." })).toBeVisible();
-    for (const width of widths) {
-      await page.setViewportSize({ width, height: 900 });
-      await check(`plan-${width}`);
-      await shot("plan", width);
-    }
-    // No Repertoire: the plan shows the save nudge.
-    const other = await page.context().browser()!.newContext({ baseURL: info.project.use.baseURL });
-    const p2 = await other.newPage();
-    await p2.goto("/plan?name=Nudge%20Duo&artists=Paul%20Kelly&songs=Gravy~Paul%20Kelly&date=2099-01-03&from=18&to=21");
-    await waitForPlan(p2);
-    await expect(p2.getByTestId("save-as-repertoire")).toBeVisible();
-    for (const width of widths) {
-      await p2.setViewportSize({ width, height: 900 });
-      const { violations } = await new AxeBuilder({ page: p2 }).withTags(WCAG).analyze();
-      expect(violations.map((v) => `nudge-${width} ${v.id}`)).toEqual([]);
-      if (SHOTS && info.project.name === "desktop") await p2.screenshot({ path: `${SHOTS}/r2-plan-save-nudge-${width}.png`, fullPage: true });
-    }
-    await other.close();
-  });
+  for (const width of WIDTHS) {
+    test.describe(`at ${width}px`, () => {
+      test.use({ viewport: { width, height: 900 } });
 
-  test("R4 words: the plan says Suggested set and Songs you should learn, never Setlist or Learn these (3 widths, axe, screenshots)", async ({ page }, info) => {
+      const axeClean = async (page: Page, label: string) => {
+        const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+        expect(violations.map((v) => `${label} ${v.impact} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      };
+
+      test("layout and axe: the busk form with the Repertoire", async ({ page }, info) => {
+        test.skip(info.project.name !== "desktop", "width tests run once, in the desktop project");
+        await seed(page);
+        await page.goto("/busks");
+        await axeClean(page, `form-${width}`);
+        await form(page).scrollIntoViewIfNeeded();
+        if (SHOTS) await page.screenshot({ path: `${SHOTS}/r2-busk-form-${width}.png`, fullPage: true });
+      });
+
+      test("layout and axe: the plan, with a song added to Songs you should learn", async ({ page }, info) => {
+        test.skip(info.project.name !== "desktop", "width tests run once, in the desktop project");
+        await seed(page);
+        await page.goto("/busks");
+        await form(page).getByRole("button", { name: "Plan my busk" }).click();
+        await waitForPlan(page);
+        const learnHere = (await openDetails(page)).getByRole("region", { name: "Songs you should learn" });
+        await learnHere.getByRole("button", { name: /^Add / }).first().click();
+        await expect(learnHere.getByRole("status").filter({ hasText: "Added to Songs you should learn." })).toBeVisible();
+        await axeClean(page, `plan-${width}`);
+        if (SHOTS) await page.screenshot({ path: `${SHOTS}/r2-plan-${width}.png`, fullPage: true });
+      });
+
+      test("layout and axe: the plan with no Repertoire shows the save nudge", async ({ page }, info) => {
+        test.skip(info.project.name !== "desktop", "width tests run once, in the desktop project");
+        await page.goto("/plan?name=Nudge%20Duo&artists=Paul%20Kelly&songs=Gravy~Paul%20Kelly&date=2099-01-03&from=18&to=21");
+        await waitForPlan(page);
+        await expect(page.getByTestId("save-as-repertoire")).toBeVisible();
+        const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+        expect(violations.map((v) => `nudge-${width} ${v.id}`)).toEqual([]);
+        if (SHOTS) await page.screenshot({ path: `${SHOTS}/r2-plan-save-nudge-${width}.png`, fullPage: true });
+      });
+
+      test("layout and axe: R4 words, Suggested set and Songs you should learn", async ({ page }, info) => {
+        test.skip(info.project.name !== "desktop", "width tests run once, in the desktop project");
+        await page.goto("/plan?name=Words%20Duo&artists=Paul%20Kelly&songs=Gravy~Paul%20Kelly&date=2099-01-03&from=18&to=21");
+        await waitForPlan(page);
+        const card = (await openDetails(page)).getByRole("region", { name: "Suggested set" });
+        await card.scrollIntoViewIfNeeded();
+        await axeClean(page, `words-${width}`);
+        if (SHOTS) await card.screenshot({ path: `${SHOTS}/r4-suggested-set-${width}.png` });
+      });
+    });
+  }
+
+  test("R4 words: the plan says Suggested set and Songs you should learn, never Setlist or Learn these", async ({ page }) => {
     await page.goto("/plan?name=Words%20Duo&artists=Paul%20Kelly&songs=Gravy~Paul%20Kelly&date=2099-01-03&from=18&to=21");
     await waitForPlan(page);
     const sheet = await openDetails(page);
     const heading = sheet.getByRole("heading", { name: /^Suggested set for / });
     await expect(heading).toBeVisible();
-    const card = sheet.getByRole("region", { name: "Suggested set" });
     const learn = sheet.getByRole("region", { name: "Songs you should learn" });
     await expect(learn.getByRole("heading", { name: "Songs you should learn" })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Setlist|Learn these/ })).toHaveCount(0);
     await expect(page.getByText(/\bsetlist\b|learn these|playlist/i)).toHaveCount(0);
-    for (const width of [390, 768, 1440]) {
-      await page.setViewportSize({ width, height: 900 });
-      await card.scrollIntoViewIfNeeded();
-      const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
-      expect(violations.map((v) => `${width} ${v.impact} ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-      if (SHOTS && info.project.name === "desktop") await card.screenshot({ path: `${SHOTS}/r4-suggested-set-${width}.png` });
-    }
   });
 });

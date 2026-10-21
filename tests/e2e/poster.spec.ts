@@ -3,7 +3,8 @@ import { expect, test } from "./fixtures";
 // Poster size regression (QA Landing v5): the poster variant owns its heights, 76px in the hero and 64px in the closing call to action.
 test.describe("poster buttons", () => {
   for (const width of [390, 1440]) {
-    test(`hero 76px and closing 64px, outline focus ring 3px at 10px offset (${width}px)`, async ({ page }) => {
+    test(`hero 76px and closing 64px, outline focus ring 3px at 10px offset (${width}px)`, async ({ page }, info) => {
+      test.skip(info.project.name !== "desktop", "width tests run once, in the desktop project");
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/");
       const hero = page.locator('[data-variant="poster"][data-size="poster-lg"]').first();

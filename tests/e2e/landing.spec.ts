@@ -1,11 +1,13 @@
 import { ASSET_COUNT, COMPONENT_COUNT } from "../../src/components/brand/brand-tables";
 import { callKinds } from "../../src/lib/qloo-map";
 import { expect, test } from "./fixtures";
+import { WIDTHS } from "./layout-helpers";
 
 // The landing against the design deck's Main board (QA's audit, B-018..B-026).
 test.describe("landing, as the deck draws it", () => {
-  for (const width of [390, 768, 1440]) {
-    test(`the headline keeps "What to play." on one line at ${width}px (B-025)`, async ({ page }) => {
+  for (const width of WIDTHS) {
+    test(`the headline keeps "What to play." on one line at ${width}px (B-025)`, async ({ page }, info) => {
+      test.skip(info.project.name !== "desktop", "width tests run once, in the desktop project");
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/");
       const h1 = page.getByRole("heading", { level: 1 });

@@ -4,7 +4,10 @@ import { expect, test } from "./fixtures";
 /** On phones the long blocks fold under closed disclosures after hydration: open them all. */
 async function openAll(page: Page) {
   await page.waitForLoadState("networkidle");
-  for (const fold of await page.locator("[data-slot='disclosure'] > button[aria-expanded='false']").all()) await fold.click();
+  // Opening a fold can show folds nested in it: open the first closed visible one until none is left.
+  const closed = page.locator("[data-slot='disclosure'] > button[aria-expanded='false']").filter({ visible: true });
+  for (let i = 0; i < 100 && (await closed.count()) > 0; i++) await closed.first().click();
+  await expect(closed).toHaveCount(0);
 }
 
 // /brand against the deck (B-070..B-079, B-152, B-154).

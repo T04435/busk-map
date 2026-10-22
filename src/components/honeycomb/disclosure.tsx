@@ -26,7 +26,8 @@ export function Disclosure({
         </span>
         <Icon name="chevron-down" size={20} className="transition-transform group-data-[state=open]/disclosure:rotate-180" />
       </CollapsibleTrigger>
-      <CollapsibleContent className="border-t border-border p-4">{children}</CollapsibleContent>
+      {/* forceMount: closed content stays in the page (hidden), as a <details> keeps it, so find-in-page and links into it still work. */}
+      <CollapsibleContent forceMount className="border-t border-border p-4">{children}</CollapsibleContent>
     </Collapsible>
   );
 }

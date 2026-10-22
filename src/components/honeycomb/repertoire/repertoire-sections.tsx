@@ -340,7 +340,7 @@ export function ToLearnSection({
                 <span>Not for me ({dismissed.length})</span>
                 <Icon name="chevron-down" size={18} className="transition-transform group-data-[state=open]/nfm:rotate-180" />
               </CollapsibleTrigger>
-              <CollapsibleContent>
+              <CollapsibleContent forceMount>
                 <ul className="m-0 list-none divide-y divide-border p-0">
                   {dismissed.map((s) => (
                     <LearnRow key={s.id} song={s} onLearned={onLearned} onDismiss={onDismiss} onUndo={onUndo} />

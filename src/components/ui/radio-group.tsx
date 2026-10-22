@@ -13,7 +13,9 @@ function RadioGroup({
   return (
     <RadioGroupPrimitive.Root
       data-slot="radio-group"
-      className={cn("grid w-full gap-2", className)}
+      // Inside a form, Radix adds a hidden native radio beside each item, shifted left by its own width. Card items (asChild,
+      // the time slots) sit straight in the grid, so that input would hang past the page edge: keep it out of the layout.
+      className={cn("grid w-full gap-2 [&>input[aria-hidden]]:hidden", className)}
       {...props}
     />
   )

@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/honeycomb/icon";
-import { Loader } from "@/components/honeycomb/loader";
+import { Spinner } from "@/components/ui/spinner";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CityPicker } from "@/components/forms/city-picker";
@@ -337,7 +337,7 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
       <div className="flex flex-wrap gap-3 border-t-2 border-rule pt-5 max-sm:[&>button]:w-full">
         <Button type="submit" value="plan" size="lg" disabled={submitting} aria-disabled={submitting || undefined}>
           {submitting ? "Planning…" : "Plan my busk"}
-          {submitting ? <span aria-hidden="true"><Loader size={16} /></span> : <Icon name="arrow-right" size={18} />}
+          {submitting ? <span aria-hidden="true"><Spinner size={16} /></span> : <Icon name="arrow-right" size={18} />}
         </Button>
       </div>
     </form>

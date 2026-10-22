@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
 import { Chip } from "@/components/honeycomb/chip";
@@ -76,15 +77,19 @@ export function CrowdPanel({
         </span>
       </header>
       {empty && (
-        <div role="status" data-testid="crowd-empty" className="grid justify-items-center gap-3 px-4 py-8 text-center">
-          <HexCell size={64} lift>
-            <Icon name="users" size={28} />
-          </HexCell>
-          <h4 className="m-0 font-display text-xl leading-[26px] font-extrabold tracking-[0.01em] uppercase">No crowd data for this plan</h4>
-          <p className="m-0 max-w-[36ch] text-[15px] leading-[22px] text-muted-foreground">
+        <Empty role="status" data-testid="crowd-empty">
+          <EmptyMedia>
+            <HexCell size={64} lift>
+              <Icon name="users" size={28} />
+            </HexCell>
+          </EmptyMedia>
+          <EmptyTitle>
+            <h4 className="m-0 font-display text-xl leading-[26px] font-extrabold tracking-[0.01em] uppercase">No crowd data for this plan</h4>
+          </EmptyTitle>
+          <EmptyDescription>
             {resolved.length > 0 && unmatched.length === resolved.length ? "Qloo matched none of your artists, so the pitches are ranked on events and weather." : "The pitches are ranked on events and weather only."}
-          </p>
-        </div>
+          </EmptyDescription>
+        </Empty>
       )}
 
       {crowd.drivers.length > 0 && (

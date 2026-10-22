@@ -1,6 +1,7 @@
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
 import { Badge } from "@/components/ui/badge";
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { formatHour } from "@/lib/slot";
 import type { Plan } from "@/lib/plan-schema";
 
@@ -21,15 +22,19 @@ export function WeatherStrip({
 }) {
   if (!weather)
     return (
-      <div role="status" data-testid="weather-unavailable" className="flex items-center gap-3 border-[1.5px] border-dashed border-input px-4 py-3">
-        <HexCell size={36} tone="dashed">
-          <Icon name="cloud" size={18} />
-        </HexCell>
-        <div>
-          <div className="font-mono text-xs leading-4 font-bold tracking-[0.06em] uppercase">No forecast for this slot</div>
-          <div className="text-sm leading-5 text-muted-foreground">Weather is left out of the score.</div>
-        </div>
-      </div>
+      <Item role="status" data-testid="weather-unavailable" variant="outline" className="flex-nowrap px-4 py-3">
+        <ItemMedia>
+          <HexCell size={36} tone="dashed">
+            <Icon name="cloud" size={18} />
+          </HexCell>
+        </ItemMedia>
+        <ItemContent className="flex-initial">
+          <ItemTitle className="font-mono text-xs leading-4 tracking-[0.06em] uppercase">No forecast for this slot</ItemTitle>
+          <ItemDescription asChild>
+            <div>Weather is left out of the score.</div>
+          </ItemDescription>
+        </ItemContent>
+      </Item>
     );
   const inSlot = (hour: number) => hour >= slot.startHour && hour < slot.endHour;
   const wet = weather.hours.filter((h) => inSlot(h.hour) && (h.precipitationProbability ?? 0) >= 50).length;

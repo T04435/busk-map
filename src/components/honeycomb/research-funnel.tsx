@@ -1,6 +1,6 @@
 import { cn } from "cn";
 import { HexCell } from "@/components/honeycomb/hex-cell";
-import { Loader } from "@/components/honeycomb/loader";
+import { Spinner } from "@/components/ui/spinner";
 import type { ResearchTotals } from "@/lib/research-totals";
 
 /** The DS formatCount: 1.2K, 12K, 3.4M. Counts under 1000 stay as they are. */
@@ -69,7 +69,7 @@ export function ResearchFunnel({
     items.push(
       <li key={s.key} className={STEP}>
         <HexCell size={30} tone={busy ? "dashed" : "default"} fontSize={text.length > 3 ? 10 : 12} className={CELL} label={busy ? `${s.many}: checking` : `${n} ${name} (${s.src})`}>
-          {busy ? <Loader size={14} label="Checking" className="text-primary" /> : text}
+          {busy ? <Spinner size={14} label="Checking" aria-hidden="true" className="text-primary" /> : text}
         </HexCell>
         <span>{name}</span>
       </li>,
@@ -87,7 +87,7 @@ export function ResearchFunnel({
     link("total"),
     <li key="picks" className={cn(STEP, "text-sm font-bold text-foreground")}>
       <HexCell size={34} tone={done ? "primary" : "dashed"} fontSize={done && String(picks).length > 3 ? 10 : 12} className={CELL} label={done ? `${picks} pitches for your busk` : "Choosing your pitches"}>
-        {done ? picks : <Loader size={14} label="Checking" className="bm-loader-think text-primary" />}
+        {done ? picks : <Spinner size={14} label="Checking" aria-hidden="true" className="bm-loader-think text-primary" />}
       </HexCell>
       <span className={live ? "font-normal text-muted-foreground" : "text-signal-text"}>{done ? "pitches" : "choosing pitches"}</span>
     </li>,

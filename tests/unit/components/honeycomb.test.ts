@@ -6,7 +6,7 @@ import { HexCell, cellHeight, initialsOf } from "@/components/honeycomb/hex-cell
 import { leanText } from "@/components/honeycomb/lean-bar";
 import { MobileNavView } from "@/components/honeycomb/mobile-nav";
 import { activeNavId, NAV_ITEMS } from "@/components/honeycomb/nav-items";
-import { Loader } from "@/components/honeycomb/loader";
+import { Spinner } from "@/components/ui/spinner";
 import { MeterBar, ScoreCell, scoreLabel } from "@/components/honeycomb/score-cell";
 import { RankTile } from "@/components/honeycomb/rank-tile";
 
@@ -66,10 +66,10 @@ describe("MeterBar", () => {
   });
 });
 
-describe("Loader", () => {
+describe("Spinner (the DS loader)", () => {
   it("is the DS ring plus a still hex core, a status named 'Loading' by default", () => {
-    const out = html(createElement(Loader, {}));
-    expect(out).toContain('<span class="bm-loader" role="status" aria-label="Loading">');
+    const out = html(createElement(Spinner, {}));
+    expect(out).toContain('<span data-slot="spinner" class="bm-loader" role="status" aria-label="Loading">');
     expect(out).toContain('width="24" height="24" viewBox="0 0 48 48"');
     expect(out).toContain('<g class="bm-ringspin"><path d="M38.554 20.371A15 15 0 1 1 27.629 9.446"');
     expect(out).toContain('stroke-width="6.5"');
@@ -77,7 +77,7 @@ describe("Loader", () => {
   });
 
   it("keeps size, label and className", () => {
-    const out = html(createElement(Loader, { size: 14, label: "Working", className: "bm-loader-think" }));
+    const out = html(createElement(Spinner, { size: 14, label: "Working", className: "bm-loader-think" }));
     expect(out).toContain('class="bm-loader bm-loader-think"');
     expect(out).toContain('aria-label="Working"');
     expect(out).toContain('width="14" height="14"');

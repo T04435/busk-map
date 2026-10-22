@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { summaryLine } from "@/lib/repertoire-research";
 import { artist as mentionArtist, listOf, song as mentionSong, source as mentionSource, SPOTIFY_ARTIST_URL, type MentionSource, type RichText as RichTextData } from "@/lib/mention";
 import { RichText } from "@/components/honeycomb/mention";
@@ -47,19 +48,25 @@ export type FactTone = "places" | "event" | "footfall" | "weather" | "legal";
 const TONE: Record<FactTone, string> = { places: "text-chart-3", event: "text-event", footfall: "text-footfall", weather: "text-weather", legal: "text-pitch-legal" };
 
 /**
- * One fact: an icon in a 24px column, a bold title, an optional muted line and any extras (the DS Fact). Inside a research card it is
+ * One fact (shadcn Item): an icon in a 24px column, a bold title, an optional muted line and any extras (the DS Fact). Inside a research card it is
  * `flush` (no rule, no padding); in the pitch card's facts list it keeps its rule underneath.
  */
 export function Fact({ icon, tone, title, sub, flush = false, children }: { icon: IconName; tone?: FactTone; title: ReactNode; sub?: ReactNode; flush?: boolean; children?: ReactNode }) {
   return (
-    <div className={cn("grid grid-cols-[24px_1fr] gap-3 text-[15px] leading-[22px]", flush ? "" : "border-b border-border py-3")}>
-      <Icon name={icon} size={20} className={cn("mt-px", tone && TONE[tone])} />
-      <div className="min-w-0">
-        <div className="font-bold">{title}</div>
-        {sub ? <div className="text-sm leading-5 text-muted-foreground">{sub}</div> : null}
+    <Item className={cn("grid grid-cols-[24px_1fr] items-stretch gap-3 text-[15px] leading-[22px]", flush ? "" : "border-b border-border py-3")}>
+      <ItemMedia variant="icon" className="items-start justify-start">
+        <Icon name={icon} size={20} className={cn("mt-px", tone && TONE[tone])} />
+      </ItemMedia>
+      <ItemContent className="block">
+        <ItemTitle>{title}</ItemTitle>
+        {sub ? (
+          <ItemDescription asChild>
+            <div>{sub}</div>
+          </ItemDescription>
+        ) : null}
         {children}
-      </div>
-    </div>
+      </ItemContent>
+    </Item>
   );
 }
 
@@ -74,10 +81,14 @@ export function Cautions({ items }: { items: string[] }) {
   return (
     <ul className="m-0 mt-2 grid list-none gap-1.5 p-0 text-sm leading-5 font-normal" aria-label="Rules to check">
       {items.map((c) => (
-        <li key={c} className="grid grid-cols-[18px_1fr] gap-2">
-          <Icon name="warning" size={18} className="mt-px text-pitch-restricted" />
-          <span>{c}</span>
-        </li>
+        <Item key={c} asChild size="xs" className="grid grid-cols-[18px_1fr] items-stretch">
+          <li>
+            <ItemMedia variant="icon" className="items-start justify-start">
+              <Icon name="warning" size={18} className="mt-px text-pitch-restricted" />
+            </ItemMedia>
+            <span>{c}</span>
+          </li>
+        </Item>
       ))}
     </ul>
   );

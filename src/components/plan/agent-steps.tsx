@@ -8,7 +8,7 @@ import { type CSSProperties, type ReactNode } from "react";
 import { cn } from "cn";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
-import { Loader } from "@/components/honeycomb/loader";
+import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -189,7 +189,7 @@ export function AgentStepStream({
         <li className="grid min-w-0 gap-3 py-4 first:pt-0 last:pb-0" data-testid="agent-thinking">
           <div className="grid items-start gap-3" style={STEP_COLS}>
             <HexCell size={HIVE_SIZES.stepCell} tone="dashed">
-              <Loader size={HIVE_SIZES.stepLoader} label="Thinking" className="bm-loader-think text-primary" />
+              <Spinner size={HIVE_SIZES.stepLoader} label="Thinking" className="bm-loader-think text-primary" />
             </HexCell>
             <div className="grid min-w-0 gap-1">
               <b className="font-sans text-base leading-[22px] font-bold">

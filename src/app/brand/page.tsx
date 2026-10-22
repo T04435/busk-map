@@ -8,7 +8,7 @@ import { ASSET_GROUPS, COMPONENT_COUNT, KIT, SCREENS } from "@/components/brand/
 import { PhoneFold } from "@/components/brand/phone-fold";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
-import { Loader } from "@/components/honeycomb/loader";
+import { Spinner } from "@/components/ui/spinner";
 import { Logo, QlooWordmark } from "@/components/honeycomb/logo";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { RankTile } from "@/components/honeycomb/rank-tile";
@@ -256,7 +256,7 @@ export default function BrandPage() {
               <ScoreCell value={91} size="lg" label="Score" />
               <ScoreCell value={64} size="lg" label="Taste match" />
               <ScoreCell value={null} size="lg" label="Score" />
-              <span className="inline-flex items-center gap-2 text-sm"><HexCell size={56} tone="dashed"><Loader size={22} label="Working" /></HexCell>Working</span>
+              <span className="inline-flex items-center gap-2 text-sm"><HexCell size={56} tone="dashed"><Spinner size={22} label="Working" /></HexCell>Working</span>
               <RankTile n={2} />
             </div>
           </PhoneFold>

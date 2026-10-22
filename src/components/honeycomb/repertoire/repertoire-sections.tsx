@@ -11,6 +11,7 @@ import { Reason } from "@/components/honeycomb/reason";
 import { SongActions } from "@/components/honeycomb/song-actions";
 import { SongRow } from "@/components/honeycomb/song-row";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { FanLean, LearnSong, ResearchArtist, ResearchSong } from "./types";
@@ -334,17 +335,19 @@ export function ToLearnSection({
                 </ul>
               ) : null}
           {dismissed.length > 0 ? (
-            <details data-slot="not-for-me" className="group/nfm mt-6 border-t-2 border-rule">
-              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 font-mono text-xs font-bold tracking-[0.08em] uppercase select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none [&::-webkit-details-marker]:hidden">
+            <Collapsible data-slot="not-for-me" className="group/nfm mt-6 border-t-2 border-rule">
+              <CollapsibleTrigger className="flex min-h-12 w-full cursor-pointer items-center justify-between gap-3 text-left font-mono text-xs font-bold tracking-[0.08em] uppercase select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none">
                 <span>Not for me ({dismissed.length})</span>
-                <Icon name="chevron-down" size={18} className="transition-transform group-open/nfm:rotate-180" />
-              </summary>
-              <ul className="m-0 list-none divide-y divide-border p-0">
-                {dismissed.map((s) => (
-                  <LearnRow key={s.id} song={s} onLearned={onLearned} onDismiss={onDismiss} onUndo={onUndo} />
-                ))}
-              </ul>
-            </details>
+                <Icon name="chevron-down" size={18} className="transition-transform group-data-[state=open]/nfm:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <ul className="m-0 list-none divide-y divide-border p-0">
+                  {dismissed.map((s) => (
+                    <LearnRow key={s.id} song={s} onLearned={onLearned} onDismiss={onDismiss} onUndo={onUndo} />
+                  ))}
+                </ul>
+              </CollapsibleContent>
+            </Collapsible>
           ) : null}
             </SongScroll>
           ) : null}

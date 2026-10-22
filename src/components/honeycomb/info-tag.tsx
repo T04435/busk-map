@@ -3,6 +3,7 @@ import { cn } from "cn";
 import { Icon, type IconName } from "@/components/honeycomb/icon";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
 import type { MentionSource } from "@/lib/mention";
+import { Badge } from "@/components/ui/badge";
 
 const tones = {
   neutral: "border-input text-foreground",
@@ -31,17 +32,9 @@ export function InfoTag({
 }) {
   if (source) return <SourceLogo source={source} height={14} className={cn("py-0.5", className)} />;
   return (
-    <span
-      data-slot="info-tag"
-      data-tone={tone}
-      className={cn(
-        "inline-flex max-w-full items-start gap-1.5 border bg-transparent px-1.5 py-0.5 font-mono text-[11px] leading-4 font-medium [overflow-wrap:anywhere]",
-        tones[tone],
-        className,
-      )}
-    >
+    <Badge variant="data" data-slot="info-tag" data-tone={tone} className={cn(tones[tone], className)}>
       {icon ? <Icon name={icon} size={12} className="mt-0.5 flex-none" /> : null}
       <span>{children}</span>
-    </span>
+    </Badge>
   );
 }

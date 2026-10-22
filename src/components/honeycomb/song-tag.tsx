@@ -1,5 +1,5 @@
-import { cn } from "cn";
 import { Icon } from "@/components/honeycomb/icon";
+import { Badge } from "@/components/ui/badge";
 
 export type SongTagKind = "typed" | "suggested" | "learned" | "by-your-artist" | "added";
 
@@ -26,17 +26,9 @@ export function SongTag({
 }) {
   const k = KINDS[kind];
   return (
-    <span
-      data-slot="song-tag"
-      data-kind={kind}
-      className={cn(
-        "inline-flex items-center gap-1.5 border-2 bg-card px-1.5 py-0.5 font-mono text-[11px] leading-4 font-bold tracking-[0.06em] uppercase",
-        "border-rule text-foreground",
-        className,
-      )}
-    >
+    <Badge variant="song" data-slot="song-tag" data-kind={kind} className={className}>
       {k.icon ? <Icon name={k.icon} size={12} /> : null}
       <span>{label ?? k.label}</span>
-    </span>
+    </Badge>
   );
 }

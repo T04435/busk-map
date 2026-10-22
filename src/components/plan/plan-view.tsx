@@ -595,9 +595,9 @@ function PendingPlan() {
     <div className="min-w-0 space-y-4" role="region" aria-busy="true" aria-label="Plan pending" data-testid="plan-pending">
       {[1, 2, 3].map((n) => (
         <div key={n} className="flex items-center gap-3 border-2 border-border bg-card p-3">
-          <Skeleton className="h-[46px] w-10 [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]" />
+          <Skeleton shape="cell" className="h-[46px] w-10" />
           <Skeleton className="h-5 flex-1" />
-          <Skeleton className="h-11 w-[38px] [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]" />
+          <Skeleton shape="cell" className="h-11 w-[38px]" />
         </div>
       ))}
       <Skeleton className="h-64 w-full" />

@@ -10,6 +10,7 @@ import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
 import { Loader } from "@/components/honeycomb/loader";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AgentStep } from "@/lib/agent-steps";
@@ -87,7 +88,7 @@ function ToolCard({ step, model, when, pins, fresh, renderWaiting }: { step: Age
             {sources.map((s) => (
               <SourceLogo key={s} source={s} height={14} />
             ))}
-            {waiting ? <span className={cn(TAG, "bg-primary text-primary-foreground")}>Your turn</span> : null}
+            {waiting ? <Badge variant="tag-live">Your turn</Badge> : null}
           </div>
           {say.length ? (
             <Say model={model} testId="agent-note-text">
@@ -106,8 +107,6 @@ function ToolCard({ step, model, when, pins, fresh, renderWaiting }: { step: Age
   );
 }
 
-const TAG = "px-1.5 py-[3px] font-mono text-[11px] leading-[normal] font-bold tracking-[0.06em] uppercase";
-
 /** A step not started yet (the run waits above it): its icon in a dashed cell, its title quiet, and "Not started". */
 function UpcomingCard({ step }: { step: UpcomingStep }) {
   return (
@@ -116,7 +115,7 @@ function UpcomingCard({ step }: { step: UpcomingStep }) {
         <StepCell icon={step.icon} status="pending" label={`${step.title}: not started`} />
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <b className="font-display text-xl leading-6 font-extrabold text-muted-foreground uppercase">{step.title}</b>
-          <span className={cn(TAG, "text-muted-foreground shadow-[inset_0_0_0_1.5px_var(--border)]")}>Not started</span>
+          <Badge variant="tag-quiet">Not started</Badge>
         </div>
       </div>
     </li>
@@ -256,12 +255,9 @@ export function AgentStepStream({
         </div>
         <span className="inline-flex flex-wrap items-center gap-2">
           <span className="font-mono text-[13px] whitespace-nowrap text-muted-foreground tabular-nums">{count}</span>
-          <span
-            data-testid="agent-tag"
-            className={cn("px-1.5 py-[3px] font-mono text-[11px] leading-[normal] font-bold tracking-[0.06em] uppercase shadow-[inset_0_0_0_1.5px_var(--rule)]", tag === "Live" && "bg-primary text-primary-foreground")}
-          >
+          <Badge data-testid="agent-tag" variant={tag === "Live" ? "tag-on" : "tag"}>
             {tag}
-          </span>
+          </Badge>
         </span>
       </header>
       {modeLine ? (

@@ -1,8 +1,9 @@
 "use client";
 
-import { useId, useRef, type KeyboardEvent } from "react";
+import { useId } from "react";
 import { cn } from "cn";
 import { formatHour } from "@/lib/slot";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { NAMED_SLOTS, type NamedSlot, type TimeChoice } from "@/lib/time-slots";
 
 /** The four slots, as the DS draws them (from lib/time-slots.ts): Morning 9 am–12 pm, Lunch 12–3 pm, Afternoon 3–6 pm, Evening 6–9 pm. */
@@ -38,7 +39,7 @@ const SLOT =
   "min-h-14 cursor-pointer rounded-none border-2 border-border bg-card px-3 py-2 text-left text-foreground transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid focus-visible:outline-ring focus-visible:shadow-none aria-checked:border-rule aria-checked:bg-primary aria-checked:text-primary-foreground motion-reduce:transition-none";
 
 /**
- * DS TimeSlotPicker: one choice at a time, with radio semantics (a radiogroup, arrow keys move and pick, one tab stop).
+ * DS TimeSlotPicker: one choice at a time, on shadcn RadioGroup (a radiogroup, arrow keys move and pick, one tab stop).
  * With `anyTime`: the label "Time (optional)", Any time first (dashed, "Busk Map picks") and its hint when it is checked.
  * Without it: the label "Time" and the four slots only. `custom` is the hours of an old link that match no named slot:
  * shown as a "From your link" choice so they are not lost. An empty value checks nothing.
@@ -63,51 +64,39 @@ export function TimeSlotPicker({
   describedBy?: string;
 }) {
   const labelId = useId();
-  const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const quick = QUICK_SLOTS.map((s) => ({ id: s.id as TimeSlotId, label: s.label, range: slotRange(s.from, s.to) }));
   const options = [
     ...(anyTime ? [{ id: "any" as TimeSlotId, label: "Any time", range: "Busk Map picks" }] : []),
     ...quick,
     ...(custom ? [{ id: "custom" as TimeSlotId, label: slotRange(custom.startHour, custom.endHour), range: "From your link" }] : []),
   ];
-  const checkedIndex = options.findIndex((o) => o.id === value);
-  const tabIndexOf = (i: number) => (i === (checkedIndex >= 0 ? checkedIndex : 0) ? 0 : -1);
-
-  function onKeyDown(e: KeyboardEvent<HTMLButtonElement>, i: number) {
-    const step = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
-    if (!step) return;
-    e.preventDefault();
-    const next = (i + step + options.length) % options.length;
-    refs.current[next]?.focus();
-    onChange(options[next].id);
-  }
 
   return (
     <div className="flex min-w-0 flex-col gap-1.5" data-slot="time-slot-picker" data-testid="time-slot-picker">
       <span id={labelId} className="text-[15px] leading-5 font-bold text-foreground">
         {label}
       </span>
-      <div role="radiogroup" aria-labelledby={labelId} aria-describedby={describedBy} className="grid grid-cols-[repeat(auto-fit,minmax(96px,1fr))] gap-1.5">
-        {options.map((o, i) => (
-          <button
-            key={o.id}
-            ref={(el) => {
-              refs.current[i] = el;
-            }}
-            type="button"
-            role="radio"
-            aria-checked={value === o.id}
-            tabIndex={tabIndexOf(i)}
-            data-testid={o.id === "any" ? "time-any" : o.id === "custom" ? "time-custom" : undefined}
-            onClick={() => onChange(o.id)}
-            onKeyDown={(e) => onKeyDown(e, i)}
-            className={cn(SLOT, (o.id === "any" || o.id === "custom") && "border-dashed")}
-          >
-            <b className="block font-display text-lg leading-5 font-extrabold tracking-[0.02em] uppercase">{o.label}</b>
-            <span className={cn("block font-mono text-[13px] leading-[18px]", value === o.id ? "text-primary-foreground" : "text-muted-foreground")}>{o.range}</span>
-          </button>
+      <RadioGroup
+        value={value}
+        onValueChange={(v) => onChange(v as TimeSlotId)}
+        loop
+        aria-labelledby={labelId}
+        aria-describedby={describedBy}
+        className="grid grid-cols-[repeat(auto-fit,minmax(96px,1fr))] gap-1.5"
+      >
+        {options.map((o) => (
+          <RadioGroupItem key={o.id} value={o.id} asChild>
+            <button
+              type="button"
+              data-testid={o.id === "any" ? "time-any" : o.id === "custom" ? "time-custom" : undefined}
+              className={cn(SLOT, (o.id === "any" || o.id === "custom") && "border-dashed")}
+            >
+              <b className="block font-display text-lg leading-5 font-extrabold tracking-[0.02em] uppercase">{o.label}</b>
+              <span className={cn("block font-mono text-[13px] leading-[18px]", value === o.id ? "text-primary-foreground" : "text-muted-foreground")}>{o.range}</span>
+            </button>
+          </RadioGroupItem>
         ))}
-      </div>
+      </RadioGroup>
       {anyTime && value === "any" ? (
         <p className="m-0 text-sm leading-5 text-muted-foreground" data-testid="any-time-note">
           {anyHint}

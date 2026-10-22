@@ -2,12 +2,13 @@
 
 import { SourceLogo } from "@/components/honeycomb/source-logo";
 import type { MentionSource } from "@/lib/mention";
-import { useId } from "react";
 import { cn } from "cn";
 import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
 import { AgentLockup } from "@/components/honeycomb/agent-lockup";
 import { Icon, type IconName } from "@/components/honeycomb/icon";
 import { StepCell } from "@/components/honeycomb/step-cell";
+import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RepertoireFunnel } from "./repertoire-funnel";
 import type { RepertoireStep, RepertoireStepKey, RepertoireTotals, StepStatus } from "./types";
 
@@ -28,7 +29,6 @@ export const REPERTOIRE_STEPS: RepertoireStepInfo[] = [
   { key: "summary", title: "Summing up your act", sources: [], icon: "pencil" },
 ];
 
-const TAG = "px-1.5 py-[3px] font-mono text-[11px] leading-[normal] font-bold tracking-[0.06em] uppercase";
 const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none";
 
 const STATUS_TAG: Partial<Record<StepStatus, string>> = { running: "Working", failed: "Didn't work", skipped: "Skipped" };
@@ -58,16 +58,7 @@ function StepCard({ info, step, n }: { info: RepertoireStepInfo; step: Repertoir
               ))}
             </span>
           ) : null}
-          {tag ? (
-            <span
-              className={cn(
-                TAG,
-                running ? "bg-primary text-primary-foreground" : status === "failed" ? "text-destructive shadow-[inset_0_0_0_1.5px_var(--destructive)]" : "text-muted-foreground shadow-[inset_0_0_0_1.5px_var(--border)]",
-              )}
-            >
-              {tag}
-            </span>
-          ) : null}
+          {tag ? <Badge variant={running ? "tag-live" : status === "failed" ? "tag-failed" : "tag-quiet"}>{tag}</Badge> : null}
         </div>
         {status === "done" && step?.found ? <p className="m-0 mt-1.5 text-sm leading-5 text-foreground [overflow-wrap:anywhere]">{step.found}</p> : null}
         {(status === "failed" || status === "skipped") && step?.note ? <p className="m-0 mt-1.5 text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]">{step.note}</p> : null}
@@ -110,7 +101,6 @@ export function RepertoireResearch({
   onToggleFold?: () => void;
   className?: string;
 }) {
-  const bodyId = useId();
   const running = phase === "running";
   const done = phase === "done";
   const byKey = new Map(steps.map((s) => [s.key, s]));
@@ -122,7 +112,7 @@ export function RepertoireResearch({
   const isFolded = canFold && !!folded;
   const tag = running ? "Live" : done ? "Finished" : "Stopped";
 
-  const tagEl = <span className={cn(TAG, running ? "bg-primary text-primary-foreground" : "shadow-[inset_0_0_0_1.5px_var(--rule)]")}>{tag}</span>;
+  const tagEl = <Badge variant={running ? "tag-live" : "tag"}>{tag}</Badge>;
   // While it runs, the lockup is the heading ("The Hive is researching your act"), so the Live tag rides on the meta line.
   const title = running ? null : (
     <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
@@ -153,31 +143,33 @@ export function RepertoireResearch({
   );
 
   return (
-    <section aria-label="Repertoire research" className={cn("border-2 border-rule bg-card", className)}>
-      {canFold ? (
-        <button
-          type="button"
-          onClick={onToggleFold}
-          aria-expanded={!isFolded}
-          aria-controls={bodyId}
-          className={cn("flex w-full items-center gap-3 bg-transparent p-3 text-left text-foreground", FOCUS)}
-        >
-          <span className="flex min-w-0 flex-1 flex-col items-start gap-3">{header}</span>
-          <Icon name={isFolded ? "chevron-down" : "chevron-up"} size={20} className="flex-none" />
-        </button>
-      ) : (
-        <div className="flex flex-col items-start gap-3 p-3">{header}</div>
-      )}
-      <div id={bodyId} hidden={isFolded}>
-        <div className="border-t border-border p-3">
-          <RepertoireFunnel totals={totals} live={running} />
-        </div>
-        <ol aria-live={running ? "polite" : "off"} className="m-0 grid list-none border-t border-border p-3 lg:grid-cols-2 lg:gap-x-6">
-          {REPERTOIRE_STEPS.map((info, i) => (
-            <StepCard key={info.key} info={info} step={byKey.get(info.key)} n={i + 1} />
-          ))}
-        </ol>
-      </div>
-    </section>
+    <Collapsible
+      asChild
+      open={!isFolded}
+      onOpenChange={(open) => {
+        if (canFold && open === isFolded) onToggleFold?.();
+      }}
+    >
+      <section aria-label="Repertoire research" className={cn("border-2 border-rule bg-card", className)}>
+        {canFold ? (
+          <CollapsibleTrigger className={cn("flex w-full items-center gap-3 bg-transparent p-3 text-left text-foreground", FOCUS)}>
+            <span className="flex min-w-0 flex-1 flex-col items-start gap-3">{header}</span>
+            <Icon name={isFolded ? "chevron-down" : "chevron-up"} size={20} className="flex-none" />
+          </CollapsibleTrigger>
+        ) : (
+          <div className="flex flex-col items-start gap-3 p-3">{header}</div>
+        )}
+        <CollapsibleContent>
+          <div className="border-t border-border p-3">
+            <RepertoireFunnel totals={totals} live={running} />
+          </div>
+          <ol aria-live={running ? "polite" : "off"} className="m-0 grid list-none border-t border-border p-3 lg:grid-cols-2 lg:gap-x-6">
+            {REPERTOIRE_STEPS.map((info, i) => (
+              <StepCard key={info.key} info={info} step={byKey.get(info.key)} n={i + 1} />
+            ))}
+          </ol>
+        </CollapsibleContent>
+      </section>
+    </Collapsible>
   );
 }

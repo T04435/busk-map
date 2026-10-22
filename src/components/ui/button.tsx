@@ -25,6 +25,13 @@ const buttonVariants = cva(
         poster:
           "border-2 border-foreground bg-primary font-display font-extrabold tracking-[0.01em] text-primary-foreground shadow-[6px_6px_0_var(--foreground)] hover:-translate-x-px hover:-translate-y-px hover:bg-primary-hover hover:shadow-[7px_7px_0_var(--foreground)] focus-visible:outline-3 focus-visible:outline-offset-10 focus-visible:outline-ring focus-visible:outline-solid",
         // A link in a button's clothes: signal-text (never orange text), underlined, sentence case.
+        // The square icon-only actions (IconAction): no press nudge, the hover is the muted ground, a ghost turns muted when pressed.
+        "icon-ghost":
+          "cursor-pointer border-0 bg-transparent text-foreground hover:bg-muted aria-pressed:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none active:not-aria-[haspopup]:translate-y-0 transition-none",
+        "icon-outline":
+          "cursor-pointer border-2 border-rule bg-card text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none active:not-aria-[haspopup]:translate-y-0 transition-none",
+        "icon-primary":
+          "cursor-pointer border-2 border-rule bg-primary text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none active:not-aria-[haspopup]:translate-y-0 transition-none",
         link: "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 focus-visible:ring-0 h-auto min-h-0 border-0 px-0 font-bold tracking-normal text-signal-text normal-case underline underline-offset-4 hover:decoration-2",
       },
       size: {
@@ -40,6 +47,8 @@ const buttonVariants = cva(
         "icon-xs": "size-10 [&_svg:not([class*='size-'])]:size-4",
         "icon-sm": "size-10",
         "icon-lg": "size-12",
+        // 36px, the dense rows' icon actions (--size-control-sm).
+        "icon-dense": "size-control-sm",
       },
     },
     defaultVariants: {

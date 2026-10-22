@@ -4,7 +4,7 @@ import { expect, test } from "./fixtures";
 /** On phones the long blocks fold under closed disclosures after hydration: open them all. */
 async function openAll(page: Page) {
   await page.waitForLoadState("networkidle");
-  await page.evaluate(() => document.querySelectorAll("details").forEach((d) => (d.open = true)));
+  for (const fold of await page.locator("[data-slot='disclosure'] > button[aria-expanded='false']").all()) await fold.click();
 }
 
 // /brand against the deck (B-070..B-079, B-152, B-154).

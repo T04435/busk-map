@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "cn";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Logo, QlooWordmark } from "@/components/honeycomb/logo";
+import { VersionBadge } from "@/components/honeycomb/version-badge";
 
 const REPO = "https://github.com/T04435/busk-map";
 const AUTHOR = "https://github.com/T04435";
@@ -29,7 +30,7 @@ const LINK = "inline-flex min-h-tap items-center font-bold text-foreground under
 
 /**
  * The footer on every page, in three parts: on the left the wordmark and the Qloo credit, in the centre Privacy, Brain and Brand,
- * on the right GitHub (an icon in a cell) and "Built by T04435" with the pixel critter. At 390px the parts stack. The legal line
+ * on the right GitHub (an icon in a cell) and "Built by T04435" with the pixel critter, and on a line of its own at the bottom, centred, the running version (VersionBadge). At 390px the parts stack. The legal line
  * lives on /terms, which the footer links to. On the landing (`dark`) it continues the closing call to action's dark band, as in
  * the deck; on every other page it sits on paper.
  */
@@ -72,6 +73,9 @@ export function SiteFooterView({ repo = REPO, dark = false, night = false }: { r
               T04435
             </a>
           </span>
+        </div>
+        <div className="flex justify-center md:col-span-3">
+          <VersionBadge />
         </div>
       </div>
     </footer>

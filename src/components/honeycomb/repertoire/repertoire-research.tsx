@@ -8,6 +8,7 @@ import { AgentLockup } from "@/components/honeycomb/agent-lockup";
 import { Icon, type IconName } from "@/components/honeycomb/icon";
 import { StepCell } from "@/components/honeycomb/step-cell";
 import { Badge } from "@/components/ui/badge";
+import { Trace, TraceIcon, TraceLine, TraceTitle } from "@/components/ui/trace";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RepertoireFunnel } from "./repertoire-funnel";
 import type { RepertoireStep, RepertoireStepKey, RepertoireTotals, StepStatus } from "./types";
@@ -42,15 +43,20 @@ function StepCard({ info, step, n }: { info: RepertoireStepInfo; step: Repertoir
   // The source it ran on, once known, else every source it can read; one source goes in the running mark's centre cell.
   const sources = step?.source && info.sources.includes(step.source) ? [step.source] : info.sources;
   return (
-    <li
-      aria-current={running ? "step" : undefined}
-      data-status={status}
-      className={cn("flex gap-3 p-3", running ? "my-1 mr-1 border-2 border-rule bg-popover shadow-[4px_4px_0_var(--primary)]" : "border-t border-border first:border-t-0")}
+    <TraceLine
+      asChild
+      status={running ? "running" : status === "failed" ? "error" : quiet ? "pending" : undefined}
+      className={cn("min-w-auto items-stretch gap-3 p-3", running ? "my-1 mr-1 border-2 border-rule bg-popover shadow-[4px_4px_0_var(--primary)]" : "border-t border-border first:border-t-0")}
     >
-      <StepCell status={status} icon={info.icon} n={n} source={sources.length === 1 ? sources[0] : undefined} />
+    <li aria-current={running ? "step" : undefined} data-status={status}>
+      <TraceIcon aria-hidden={undefined} className="self-start">
+        <StepCell status={status} icon={info.icon} n={n} source={sources.length === 1 ? sources[0] : undefined} />
+      </TraceIcon>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <h3 className={cn("m-0 text-base leading-5 font-bold [overflow-wrap:anywhere]", quiet && "font-medium text-muted-foreground")}>{info.title}</h3>
+          <TraceTitle asChild className={cn("min-w-auto m-0 text-base leading-5 font-bold [overflow-wrap:anywhere]", quiet && "font-medium text-muted-foreground")}>
+            <h3>{info.title}</h3>
+          </TraceTitle>
           {sources.length > 0 ? (
             <span className={cn("inline-flex items-center gap-1.5 self-center", quiet && "opacity-60")}>
               {sources.map((src) => (
@@ -76,6 +82,7 @@ function StepCard({ info, step, n }: { info: RepertoireStepInfo; step: Repertoir
         ) : null}
       </div>
     </li>
+    </TraceLine>
   );
 }
 
@@ -163,11 +170,13 @@ export function RepertoireResearch({
           <div className="border-t border-border p-3">
             <RepertoireFunnel totals={totals} live={running} />
           </div>
-          <ol aria-live={running ? "polite" : "off"} className="m-0 grid list-none border-t border-border p-3 lg:grid-cols-2 lg:gap-x-6">
-            {REPERTOIRE_STEPS.map((info, i) => (
-              <StepCard key={info.key} info={info} step={byKey.get(info.key)} n={i + 1} />
-            ))}
-          </ol>
+          <Trace asChild className="m-0 grid list-none border-t border-border p-3 lg:grid-cols-2 lg:gap-x-6">
+            <ol aria-live={running ? "polite" : "off"}>
+              {REPERTOIRE_STEPS.map((info, i) => (
+                <StepCard key={info.key} info={info} step={byKey.get(info.key)} n={i + 1} />
+              ))}
+            </ol>
+          </Trace>
         </CollapsibleContent>
       </section>
     </Collapsible>

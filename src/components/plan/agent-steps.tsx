@@ -11,6 +11,7 @@ import { Icon } from "@/components/honeycomb/icon";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Trace, TraceIcon, TraceLine, TraceTitle } from "@/components/ui/trace";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AgentStep } from "@/lib/agent-steps";
@@ -20,7 +21,7 @@ import { stepSources, TOOL_ICON, TOOL_UI, type MiniPin } from "./tool-results";
 
 /**
  * The research feed: the agent's steps as the busker sees them, in the order they ran (U23), no step numbers, each tool drawn as a plain-words
- * result card from its output fields. Ported from the DS AgentStepStream.
+ * result card from its output fields. Ported from the DS AgentStepStream, on shadcn Trace (plain lines, never folded: U22).
  */
 export { applyStreamEvent, formatInput, type AgentStep, type RunUsage, type StepNote } from "@/lib/agent-steps";
 
@@ -40,6 +41,8 @@ const Say = ({ model, children, testId }: { model: ExplanationsModel | null; chi
 
 /** Each card: its step cell (HIVE_SIZES.stepCell, the running Hive mark inside) and the title column; the body lines up under the title from sm up. */
 const STEP_COLS = { gridTemplateColumns: `${HIVE_SIZES.stepCell}px minmax(0,1fr)` } as const;
+/** Each step's header row (a Trace line): the cell column and the title column, top-aligned. */
+const HEAD = "grid min-w-auto items-start gap-3";
 const STEP_INDENT = { "--step-indent": `${HIVE_SIZES.stepCell + 12}px` } as CSSProperties;
 
 function ToolCard({ step, model, when, pins, fresh, renderWaiting }: { step: AgentStep; model: ExplanationsModel | null; when?: string; pins?: MiniPin[]; fresh: boolean; renderWaiting?: (step: AgentStep) => ReactNode }) {
@@ -80,11 +83,16 @@ function ToolCard({ step, model, when, pins, fresh, renderWaiting }: { step: Age
       className={cn("grid min-w-0 gap-3 py-4 first:pt-0 last:pb-0", failed && "border-l-2 border-destructive pl-3")}
       data-fresh={fresh && !running ? "true" : undefined}
     >
-      <div className="grid items-start gap-3" style={STEP_COLS}>
-        <StepCell icon={icon} status={running ? "running" : bad || rejected ? "failed" : cut ? "skipped" : waiting ? "pending" : "done"} source={sources.length === 1 ? sources[0] : undefined} label={`${title}: ${running ? "working" : bad || rejected ? "didn't work" : cut ? "stopped" : waiting ? "waiting for you" : "done"}`} />
+      <TraceLine asChild status={running ? "running" : bad || rejected ? "error" : waiting ? "pending" : undefined} className={HEAD}>
+        <div style={STEP_COLS}>
+        <TraceIcon aria-hidden={undefined} className="self-start">
+          <StepCell icon={icon} status={running ? "running" : bad || rejected ? "failed" : cut ? "skipped" : waiting ? "pending" : "done"} source={sources.length === 1 ? sources[0] : undefined} label={`${title}: ${running ? "working" : bad || rejected ? "didn't work" : cut ? "stopped" : waiting ? "waiting for you" : "done"}`} />
+        </TraceIcon>
         <div className="grid min-w-0 gap-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <b className={cn(running ? "font-sans text-base leading-[22px] font-bold" : "font-display text-xl leading-6 font-extrabold uppercase")}>{title}</b>
+            <TraceTitle asChild className={cn("min-w-auto", running ? "font-sans text-base leading-[22px] font-bold" : "font-display text-xl leading-6 font-extrabold uppercase")}>
+              <b>{title}</b>
+            </TraceTitle>
             {sources.map((s) => (
               <SourceLogo key={s} source={s} height={14} />
             ))}
@@ -97,7 +105,8 @@ function ToolCard({ step, model, when, pins, fresh, renderWaiting }: { step: Age
           ) : null}
         </div>
         <span className="sr-only">{rejected ? "rejected" : waiting ? "waiting for you" : step.status}</span>
-      </div>
+        </div>
+      </TraceLine>
       {body ? (
         <div className="grid min-w-0 gap-3 sm:pl-(--step-indent)" style={STEP_INDENT}>
           {body}
@@ -111,13 +120,19 @@ function ToolCard({ step, model, when, pins, fresh, renderWaiting }: { step: Age
 function UpcomingCard({ step }: { step: UpcomingStep }) {
   return (
     <li data-testid="agent-step-upcoming" data-key={step.key} className="grid min-w-0 gap-3 py-4 first:pt-0 last:pb-0">
-      <div className="grid items-start gap-3" style={STEP_COLS}>
-        <StepCell icon={step.icon} status="pending" label={`${step.title}: not started`} />
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-          <b className="font-display text-xl leading-6 font-extrabold text-muted-foreground uppercase">{step.title}</b>
-          <Badge variant="tag-quiet">Not started</Badge>
+      <TraceLine asChild status="pending" className={HEAD}>
+        <div style={STEP_COLS}>
+          <TraceIcon aria-hidden={undefined} className="self-start">
+            <StepCell icon={step.icon} status="pending" label={`${step.title}: not started`} />
+          </TraceIcon>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <TraceTitle asChild className="min-w-auto font-display text-xl leading-6 font-extrabold text-muted-foreground uppercase">
+              <b>{step.title}</b>
+            </TraceTitle>
+            <Badge variant="tag-quiet">Not started</Badge>
+          </div>
         </div>
-      </div>
+      </TraceLine>
     </li>
   );
 }
@@ -174,25 +189,32 @@ export function AgentStepStream({
   const calls = steps.filter((s) => s.tool).map((s) => (!live && s.status === "running" ? { ...s, status: "cut" as const } : s));
   const pending = steps.length > 0 && steps[steps.length - 1].tool === null ? steps[steps.length - 1] : null;
   // U23: run order, step 1 at the top; only finished steps and the one running now (no rows for steps not yet started).
-  const feed = calls;
+  // Stream events can repeat a step: one row per id (its latest state, in first-seen order).
+  const latest = new Map(calls.map((s) => [s.id, s]));
+  const feed = [...latest.values()];
   const thinking = live && (pending || phase === "thinking" || steps.length === 0);
-  const count = `${calls.length} ${calls.length === 1 ? "check" : "checks"}${seconds != null ? ` · ${Math.round(seconds)} s` : ""}`;
+  const count = `${feed.length} ${feed.length === 1 ? "check" : "checks"}${seconds != null ? ` · ${Math.round(seconds)} s` : ""}`;
   const tag = phase === "waiting" ? "Waiting" : mode === "replay" ? "Replay" : mode === "joined" ? "Joined" : phase === "done" || phase === "fallback" ? "Finished" : phase === "error" || phase === "stopped" ? "Stopped" : "Live";
   const heading = title ?? (live ? "Finding your best pitches" : "How we found your pitches");
   const list = (
-    <ol aria-live={mode === "replay" ? "off" : "polite"} aria-label="Research, in the order it ran" className="m-0 grid list-none divide-y divide-border p-0" data-testid="agent-feed">
+    <Trace asChild className="m-0 grid list-none divide-y divide-border p-0">
+    <ol aria-live={mode === "replay" ? "off" : "polite"} aria-label="Research, in the order it ran" data-testid="agent-feed">
       {feed.map((s, i) => (
         <ToolCard key={s.id} step={s} model={model} when={when} pins={pins} fresh={live && i === feed.length - 1 && !thinking} renderWaiting={renderWaiting} />
       ))}
       {phase === "waiting" ? (upcoming ?? []).map((u) => <UpcomingCard key={u.key} step={u} />) : null}
       {thinking ? (
         <li className="grid min-w-0 gap-3 py-4 first:pt-0 last:pb-0" data-testid="agent-thinking">
-          <div className="grid items-start gap-3" style={STEP_COLS}>
-            <HexCell size={HIVE_SIZES.stepCell} tone="dashed">
-              <Spinner size={HIVE_SIZES.stepLoader} label="Thinking" className="bm-loader-think text-primary" />
-            </HexCell>
+          <TraceLine asChild status="running" className={HEAD}>
+            <div style={STEP_COLS}>
+            <TraceIcon className="self-start">
+              <HexCell size={HIVE_SIZES.stepCell} tone="dashed">
+                <Spinner size={HIVE_SIZES.stepLoader} label="Thinking" className="bm-loader-think text-primary" />
+              </HexCell>
+            </TraceIcon>
             <div className="grid min-w-0 gap-1">
-              <b className="font-sans text-base leading-[22px] font-bold">
+              <TraceTitle asChild className="min-w-auto font-sans text-base leading-[22px] font-bold">
+              <b>
                 {steps.length === 0 ? (wording?.first ?? "Reading your act, day and permit") : (wording?.next ?? "Thinking about what to check next")}
                 <span aria-hidden="true" className="bm-dots ml-0.5">
                   {[0, 1, 2].map((i) => (
@@ -200,12 +222,15 @@ export function AgentStepStream({
                   ))}
                 </span>
               </b>
+              </TraceTitle>
               {pending ? <Say model={model}>{pending.notes.map((n) => n.text).join(" ")}</Say> : null}
             </div>
-          </div>
+            </div>
+          </TraceLine>
         </li>
       ) : null}
     </ol>
+    </Trace>
   );
   const retry = onRetry ? (
     <div className="mt-2 flex flex-wrap gap-2">

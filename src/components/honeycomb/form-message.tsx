@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
 import { Icon } from "@/components/honeycomb/icon";
 import { cn } from "cn";
+import { FieldDescription, FieldError } from "@/components/ui/field";
 
 export type FormMessageTone = "note" | "error" | "success";
 
 /**
  * The line under a field or form: a note while something loads, an error that names the field it is about, or a
  * success. An error carries a warning icon and bold text (never colour alone). Errors are `role="alert"` unless
- * `alert={false}`: use that when a separate Alert already announces the same error, so it is read once.
+ * `alert={false}`: use that when a separate Alert already announces the same error, so it is read once. Built on shadcn Field
+ * (FieldError for errors, FieldDescription for notes and successes).
  */
 export function FormMessage({
   tone = "note",
@@ -23,22 +25,24 @@ export function FormMessage({
   children: ReactNode;
   className?: string;
 }) {
-  const role = tone === "error" ? ((alert ?? true) ? "alert" : undefined) : tone === "success" ? "status" : alert ? "status" : undefined;
+  const icon = tone === "error" ? <Icon name="warning" size={16} className="mt-0.5" /> : tone === "success" ? <Icon name="check" size={16} className="mt-0.5" /> : null;
+  if (tone === "error")
+    return (
+      <FieldError id={id} role={(alert ?? true) ? "alert" : undefined} data-slot="form-message" data-tone={tone} className={className}>
+        {icon}
+        <span>{children}</span>
+      </FieldError>
+    );
   return (
-    <p
+    <FieldDescription
       id={id}
-      role={role}
+      role={tone === "success" || alert ? "status" : undefined}
       data-slot="form-message"
       data-tone={tone}
-      className={cn(
-        "m-0 flex items-start gap-1.5 text-sm leading-5",
-        tone === "error" ? "font-bold text-destructive" : tone === "success" ? "text-foreground" : "text-muted-foreground",
-        className
-      )}
+      className={cn(tone === "success" && "text-foreground", className)}
     >
-      {tone === "error" ? <Icon name="warning" size={16} className="mt-0.5" /> : null}
-      {tone === "success" ? <Icon name="check" size={16} className="mt-0.5" /> : null}
+      {icon}
       <span>{children}</span>
-    </p>
+    </FieldDescription>
   );
 }

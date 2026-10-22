@@ -6,6 +6,7 @@ import { AppHeader, AppHeaderView } from "@/components/honeycomb/app-header";
 import { HAS_BOTTOM_NAV } from "@/components/honeycomb/nav-items";
 import { MobileNav, MobileNavView } from "@/components/honeycomb/mobile-nav";
 import { SiteFooter, SiteFooterView } from "@/components/honeycomb/site-footer";
+import { versionText } from "@/lib/version";
 
 // Honeycomb's three families (design-handoff/fonts.md). Google renamed "Big Shoulders Display" to "Big Shoulders" (the same
 // family, now with an optical-size axis), so next/font imports it under the new name; the CSS stack still names both. globals.css pins opsz to 72, the Display cut. globals.css reads the -src variables and adds the fallback stacks.
@@ -28,6 +29,7 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   openGraph: { type: "website", siteName: TITLE, title: TITLE, description: DESCRIPTION, locale: "en_AU", images: [OG_IMAGE] },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: [{ url: OG_IMAGE.url, alt: OG_IMAGE.alt }] },
+  other: { "app-version": versionText() },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -64,7 +64,8 @@ export type MemorySuggestion = LearnSuggestionView & {
 /** Everything the run needs to know about earlier runs (docs §2.8). */
 export type HistoryData = {
   /** Songs you can sing and learned songs. */
-  songs: { title: string; artist: string; key: string; state: "can_sing" | "learned" }[];
+  /** `own` and `source` (optional: older callers and test fixtures leave them out) mark the act's own songs read from Spotify. */
+  songs: { title: string; artist: string; key: string; state: "can_sing" | "learned"; own?: boolean; source?: "spotify" | "lastfm" | "typed" | "suggested" }[];
   /** Every suggestion, any status, newest first. */
   suggestions: { title: string; artist: string; key: string; status: "pending" | "learned" | "dismissed"; runNumber: number | null; at: number }[];
   /** Keys of dismissed suggestions removed by the size cap: they still count as dismissed. */

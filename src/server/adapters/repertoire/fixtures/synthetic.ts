@@ -56,15 +56,16 @@ export function syntheticScopedTrackSearch(query: string, artist: string): Catal
 }
 
 /**
- * An artist's songs: six made-up tracks with Spotify-shaped ids (stable per artist), so offline learn runs have
- * songs to filter against the history and a second run still finds new ones. Titles say they are synthetic.
+ * An artist's songs: six made-up tracks with Spotify-shaped ids (stable per artist). Since the songs a model ranks come
+ * from Last.fm (songs/catalogue.ts), these only supply display data, so their titles are the Last.fm fixture's
+ * ("<artist> synthetic song N") and the offline display join finds a cover, length, year and link for each.
  */
 export function syntheticArtistTracks(artist: string): CatalogueTrack[] {
   const known = CATALOG.find((a) => normalizeName(a.name) === normalizeName(artist));
   const artistId = known?.spotifyId ?? syntheticSpotifyId(normalizeName(artist));
   return [1, 2, 3, 4, 5, 6].map((n) => ({
     id: syntheticSpotifyId(`${normalizeName(artist)}|track|${n}`),
-    title: `Synthetic track ${n}`,
+    title: `${artist} synthetic song ${n}`,
     artists: [{ id: artistId, name: known?.name ?? artist }],
     album: "Synthetic Album",
     image: null,

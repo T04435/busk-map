@@ -4,7 +4,7 @@ import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { StepCell } from "@/components/honeycomb/step-cell";
 import { HIVE_SIZES } from "@/components/honeycomb/hive-mark";
 import { AgentTag } from "@/components/honeycomb/agent-tag";
-import { Fragment, useId, useState, type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import { cn } from "cn";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
@@ -12,17 +12,14 @@ import { Loader } from "@/components/honeycomb/loader";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
-import { scalar, type AgentStep, type RunUsage } from "@/lib/agent-steps";
-import type { CallRecord } from "@/lib/call-record";
+import type { AgentStep } from "@/lib/agent-steps";
 import type { IconName } from "@/components/honeycomb/icon";
 import { modelName, type ExplanationsModel } from "@/lib/sources";
 import { stepSources, TOOL_ICON, TOOL_UI, type MiniPin } from "./tool-results";
 
 /**
  * The research feed: the agent's steps as the busker sees them, in the order they ran (U23), no step numbers, each tool drawn as a plain-words
- * result card from its output fields. Tool names, inputs and the returned data appear only behind the card's own "Raw data"
- * switch (`showRaw`). Ported from the DS AgentStepStream.
+ * result card from its output fields. Ported from the DS AgentStepStream.
  */
 export { applyStreamEvent, formatInput, type AgentStep, type RunUsage, type StepNote } from "@/lib/agent-steps";
 
@@ -32,98 +29,6 @@ export type FeedPhase = "starting" | "working" | "thinking" | "done" | "fallback
 export type UpcomingStep = { key: string; title: string; icon: IconName };
 export type FeedMode = "live" | "replay" | "joined";
 
-const isRowList = (v: unknown): v is Record<string, unknown>[] =>
-  Array.isArray(v) && v.length > 0 && v.every((x) => x !== null && typeof x === "object" && !Array.isArray(x));
-
-/** The DS .bm-json: the raw value, pretty-printed, in a scrolling mono block. */
-const Json = ({ value }: { value: unknown }) => (
-  <pre tabIndex={0} aria-label="Returned data as JSON" className="m-0 max-h-70 overflow-auto bg-muted px-2.5 py-2 font-mono text-xs leading-4 font-medium break-words whitespace-pre-wrap">
-    {JSON.stringify(value, null, 2)}
-  </pre>
-);
-
-/** A list of rows as a table: sticky mono headers, striped rows, numbers on the right, long values cut with the full value on hover. */
-function RowsTable({ rows }: { rows: Record<string, unknown>[] }) {
-  const columns = [...new Set(rows.flatMap((r) => Object.keys(r)))];
-  // The frame scrolls on its own, so it takes focus: a keyboard user can scroll it.
-  return (
-    <div tabIndex={0} role="region" aria-label="Returned data, scrolls sideways" className="max-h-80 max-w-full overflow-auto border border-border">
-      <table className="w-full border-collapse font-mono text-xs leading-4 font-medium tabular-nums">
-        <thead>
-          <tr>
-            {columns.map((c) => (
-              <th key={c} scope="col" className="sticky top-0 bg-muted px-2 py-1.5 text-left text-[11px] font-bold tracking-[0.04em] whitespace-nowrap">
-                {c}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={i} className="[&:nth-child(even)>td]:bg-[color-mix(in_oklab,var(--muted)_45%,transparent)]">
-              {columns.map((c) => (
-                <td
-                  key={c}
-                  title={scalar(row[c])}
-                  className={cn("max-w-[260px] truncate border-t border-border px-2 py-[5px] align-top whitespace-nowrap", typeof row[c] === "number" ? "min-w-0 text-right" : "min-w-[72px]")}
-                >
-                  {scalar(row[c])}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-const Head = ({ children, note }: { children: ReactNode; note?: string }) => (
-  <div className="mb-1 flex items-baseline gap-2 font-mono text-[11px] leading-4 font-bold tracking-[0.06em] uppercase">
-    {children}
-    {note ? <span className="font-medium text-muted-foreground">{note}</span> : null}
-  </div>
-);
-
-/** The data a tool returned, as it is: scalars in a key/value table, lists of rows as tables, anything else as JSON. */
-export function StepData({ value, view = "table" }: { value: unknown; view?: "table" | "json" }) {
-  if (view === "json") return <Json value={value} />;
-  if (isRowList(value)) return <RowsTable rows={value} />;
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return <Json value={value} />;
-  const obj = value as Record<string, unknown>;
-  const keys = Object.keys(obj).filter((k) => k !== "summary");
-  const isFlat = (v: unknown) => v === null || typeof v !== "object" || (Array.isArray(v) && v.every((x) => x === null || typeof x !== "object"));
-  const flat = keys.filter((k) => isFlat(obj[k]));
-  const rows = keys.filter((k) => isRowList(obj[k]));
-  const nested = keys.filter((k) => !flat.includes(k) && !rows.includes(k));
-  return (
-    <div className="grid min-w-0 gap-3">
-      {flat.length > 0 && (
-        <dl className="m-0 grid grid-cols-[max-content_minmax(0,1fr)] border border-border font-mono text-xs leading-4 font-medium">
-          {flat.map((k) => (
-            <Fragment key={k}>
-              <dt className="border-t border-card bg-muted px-2 py-[5px] font-bold first:border-t-0">{k}</dt>
-              <dd className="m-0 border-t border-border px-2 py-[5px] break-words first:border-t-0 [&:nth-child(2)]:border-t-0">{scalar(obj[k])}</dd>
-            </Fragment>
-          ))}
-        </dl>
-      )}
-      {rows.map((k) => (
-        <div key={k} className="min-w-0">
-          <Head note={`${(obj[k] as unknown[]).length} rows`}>{k}</Head>
-          <RowsTable rows={obj[k] as Record<string, unknown>[]} />
-        </div>
-      ))}
-      {nested.map((k) => (
-        <div key={k} className="min-w-0">
-          <Head>{k}</Head>
-          <Json value={obj[k]} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /** The agent's tag before its words: the Hive's mark and "Hive" (or "Test model" offline, never the Hive's name for the mock). */
 const Say = ({ model, children, testId }: { model: ExplanationsModel | null; children: ReactNode; testId?: string }) => (
   <p className="m-0 text-sm leading-5 text-muted-foreground" data-testid={testId}>
@@ -132,109 +37,11 @@ const Say = ({ model, children, testId }: { model: ExplanationsModel | null; chi
   </p>
 );
 
-const fmtMs = (ms: number) => (ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${ms} ms`);
-
-/** The step's external calls, one row each: provider, endpoint, params (no keys or tokens), status, results, time, cached. */
-function CallsTable({ calls }: { calls: CallRecord[] }) {
-  const heads = ["Provider", "Endpoint", "Params", "Status", "Results", "Time", "Cached"];
-  return (
-    <div className="min-w-0" data-testid="agent-step-calls">
-      <Head note={`${calls.length} ${calls.length === 1 ? "call" : "calls"}`}>Calls</Head>
-      <div tabIndex={0} role="region" aria-label="Calls this step made, scrolls sideways" className="max-h-80 max-w-full overflow-auto border border-border">
-        <table className="w-full border-collapse font-mono text-xs leading-4 font-medium tabular-nums">
-          <thead>
-            <tr>
-              {heads.map((h) => (
-                <th key={h} scope="col" className="sticky top-0 bg-muted px-2 py-1.5 text-left text-[11px] font-bold tracking-[0.04em] whitespace-nowrap">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {calls.map((c, i) => {
-              const params = Object.entries(c.params).map(([k, v]) => `${k}=${v}`).join(" ");
-              const cells: [string, boolean][] = [
-                [c.provider, false],
-                [c.endpoint, false],
-                [params || "none", false],
-                [c.status === null ? (c.cached ? "cache" : "mock") : String(c.status), true],
-                [c.count === null ? "none" : String(c.count), true],
-                [fmtMs(c.ms), true],
-                [c.cached ? "yes" : "no", false],
-              ];
-              return (
-                <tr key={i} className="[&:nth-child(even)>td]:bg-[color-mix(in_oklab,var(--muted)_45%,transparent)]">
-                  {cells.map(([v, num], j) => (
-                    <td key={j} title={v} className={cn("max-w-[260px] truncate border-t border-border px-2 py-[5px] align-top whitespace-nowrap", num ? "text-right" : "min-w-[56px]")}>
-                      {v}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-/** The raw block under a card: tool, summary, the notes, the inputs Claude chose, the calls made and exactly what came back. */
-function RawBlock({ step, model, view }: { step: AgentStep; model: ExplanationsModel | null; view: "table" | "json" }) {
-  const inputs =
-    step.input !== null && typeof step.input === "object"
-      ? Object.entries(step.input as Record<string, unknown>).map(([k, v]): [string, string] => [
-          k,
-          v !== null && typeof v === "object" && !Array.isArray(v) ? Object.entries(v as Record<string, unknown>).map(([kk, vv]) => `${kk} ${scalar(vv)}`).join(", ") : scalar(v),
-        ])
-      : step.input !== undefined && step.input !== null
-        ? [["", scalar(step.input)] as [string, string]]
-        : [];
-  return (
-    <div className="grid min-w-0 gap-2 border-t border-dashed border-input bg-muted p-3 [overflow-wrap:anywhere]" data-testid="agent-step-raw">
-      <div className="flex flex-wrap items-baseline gap-2 [&_code]:font-mono [&_code]:text-xs [&_code]:font-bold">
-        <span className="bg-foreground px-[5px] font-mono text-[10px] leading-4 font-bold tracking-[0.08em] text-background uppercase">Raw</span>
-        <code>{step.tool}</code>
-        {step.summary ? <span className="font-mono text-xs leading-4 font-medium text-muted-foreground">{step.summary}</span> : null}
-      </div>
-      {/* Repertoire research shows its call records instead of a description line (older stored runs still carry one). */}
-      {step.source && !step.tool?.startsWith("research_") ? <p className="m-0 font-mono text-xs leading-4 text-muted-foreground">{step.source}</p> : null}
-      {step.notes.length ? (
-        <div className="grid gap-1">
-          {step.notes.map((n, i) => (
-            <p key={i} className="m-0 font-mono text-xs leading-[18px] font-medium whitespace-pre-line" data-testid={`agent-note-${n.kind}`}>
-              <b>{n.kind === "reasoning" ? "Thinking (summary): " : `${modelName(model, "label")}: `}</b>
-              {n.text}
-            </p>
-          ))}
-        </div>
-      ) : null}
-      {inputs.length ? (
-        <ul className="m-0 flex list-none flex-wrap gap-1 p-0">
-          {inputs.map(([k, v]) => (
-            <li key={k} className="inline-flex max-w-full gap-1.5 border border-border bg-card px-1.5 py-0.5 font-mono text-xs leading-[18px] font-medium [overflow-wrap:anywhere]">
-              {k ? <span className="text-muted-foreground">{k}</span> : null}
-              {v}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {step.calls?.length ? <CallsTable calls={step.calls} /> : null}
-      {step.output !== undefined ? (
-        <div className="min-w-0" data-testid="agent-step-data">
-          <StepData value={step.output} view={view} />
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 /** Each card: its step cell (HIVE_SIZES.stepCell, the running Hive mark inside) and the title column; the body lines up under the title from sm up. */
 const STEP_COLS = { gridTemplateColumns: `${HIVE_SIZES.stepCell}px minmax(0,1fr)` } as const;
 const STEP_INDENT = { "--step-indent": `${HIVE_SIZES.stepCell + 12}px` } as CSSProperties;
 
-function ToolCard({ step, model, raw, rawView, when, pins, fresh, renderWaiting }: { step: AgentStep; model: ExplanationsModel | null; raw: boolean; rawView: "table" | "json"; when?: string; pins?: MiniPin[]; fresh: boolean; renderWaiting?: (step: AgentStep) => ReactNode }) {
+function ToolCard({ step, model, when, pins, fresh, renderWaiting }: { step: AgentStep; model: ExplanationsModel | null; when?: string; pins?: MiniPin[]; fresh: boolean; renderWaiting?: (step: AgentStep) => ReactNode }) {
   const ui = step.tool ? TOOL_UI[step.tool] : undefined;
   const icon = (step.tool && TOOL_ICON[step.tool]) || "dots";
   const running = step.status === "running";
@@ -295,7 +102,6 @@ function ToolCard({ step, model, raw, rawView, when, pins, fresh, renderWaiting 
           {body}
         </div>
       ) : null}
-      {raw ? <RawBlock step={step} model={model} view={rawView} /> : null}
     </li>
   );
 }
@@ -317,11 +123,6 @@ function UpcomingCard({ step }: { step: UpcomingStep }) {
   );
 }
 
-const fmtTime = (sec: number) => {
-  const s = Math.max(0, Math.round(sec || 0));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-};
-
 /** `model` names who wrote each note: Claude, or the test model offline (B-010). */
 export function AgentStepStream({
   steps,
@@ -335,13 +136,10 @@ export function AgentStepStream({
   onRetry,
   when,
   pins,
-  showRaw,
-  onShowRawChange,
   footer,
   title,
   hideHeading = false,
   subtitle,
-  usage,
   wording,
   upcoming,
   renderWaiting,
@@ -359,16 +157,12 @@ export function AgentStepStream({
   when?: string;
   /** The busk's ranked pitches, for the mini map on "Where your crowd gathers". */
   pins?: MiniPin[];
-  showRaw: boolean;
-  onShowRawChange: (on: boolean) => void;
   /** "Data used", at the foot. */
   footer?: ReactNode;
   title?: string;
   /** The fold around it already shows the title (/repertoire, U28): the heading stays for screen readers only. */
   hideHeading?: boolean;
   subtitle?: string;
-  /** The run's totals, shown under "Raw data" (B50). */
-  usage?: RunUsage | null;
   /** U35: a feed that isn't a busk plan (the Repertoire research) words its waiting lines itself; the busk plan's are the defaults. */
   wording?: { first: string; next: string; leave: string };
   /** Phase "waiting": the steps not started yet, listed under the one that waits. */
@@ -376,11 +170,7 @@ export function AgentStepStream({
   /** What a waiting step shows in its body (the input it asks for). */
   renderWaiting?: (step: AgentStep) => ReactNode;
 }) {
-  const rawId = useId();
-  const [rawView, setRawView] = useState<"table" | "json">("table");
-  const onRawChange = onShowRawChange;
   const live = phase === "starting" || phase === "working" || phase === "thinking";
-  const raw = showRaw && !live;
   // Once the run is over, a step still marked running was cut short.
   const calls = steps.filter((s) => s.tool).map((s) => (!live && s.status === "running" ? { ...s, status: "cut" as const } : s));
   const pending = steps.length > 0 && steps[steps.length - 1].tool === null ? steps[steps.length - 1] : null;
@@ -393,7 +183,7 @@ export function AgentStepStream({
   const list = (
     <ol aria-live={mode === "replay" ? "off" : "polite"} aria-label="Research, in the order it ran" className="m-0 grid list-none divide-y divide-border p-0" data-testid="agent-feed">
       {feed.map((s, i) => (
-        <ToolCard key={s.id} step={s} model={model} raw={raw} rawView={rawView} when={when} pins={pins} fresh={live && i === feed.length - 1 && !thinking} renderWaiting={renderWaiting} />
+        <ToolCard key={s.id} step={s} model={model} when={when} pins={pins} fresh={live && i === feed.length - 1 && !thinking} renderWaiting={renderWaiting} />
       ))}
       {phase === "waiting" ? (upcoming ?? []).map((u) => <UpcomingCard key={u.key} step={u} />) : null}
       {thinking ? (
@@ -451,16 +241,6 @@ export function AgentStepStream({
       </Alert>
     );
   else if (live) foot = <p className="m-0 mt-3 text-[13px] text-muted-foreground">{wording?.leave ?? "You can leave this page: the research keeps going and your busk will be here when you're back."}</p>;
-  const totals: [string, string | number][] | null = raw && usage
-    ? [
-        ["Steps", usage.steps],
-        ["Time", fmtTime(usage.ms / 1000)],
-        ["Tokens in", usage.inputTokens.toLocaleString("en-AU")],
-        ["Out", usage.outputTokens.toLocaleString("en-AU")],
-        ["Thinking", usage.reasoningTokens.toLocaleString("en-AU")],
-        ["Stopped by", usage.stoppedBy],
-      ]
-    : null;
   const modeLine = mode === "joined" ? modeText : null;
   return (
     <section
@@ -482,27 +262,6 @@ export function AgentStepStream({
           >
             {tag}
           </span>
-          {live ? null : (
-            <span className="inline-flex items-center gap-1.5 border-l border-border pl-2 font-mono text-[11px] leading-4 font-bold tracking-[0.06em] text-muted-foreground uppercase">
-              <span id={rawId}>Raw data</span>
-              <Switch aria-labelledby={rawId} checked={showRaw} onCheckedChange={onRawChange} data-testid="raw-switch" className="scale-[.85]" />
-            </span>
-          )}
-          {raw ? (
-            <span role="group" aria-label="Show raw data as" className="inline-flex border-[1.5px] border-rule">
-              {(["table", "json"] as const).map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  aria-pressed={rawView === k}
-                  onClick={() => setRawView(k)}
-                  className="cursor-pointer border-0 bg-transparent px-2 py-[3px] font-mono text-[10px] leading-4 font-bold tracking-[0.06em] text-foreground uppercase aria-pressed:bg-foreground aria-pressed:text-background"
-                >
-                  {k === "table" ? "Table" : "JSON"}
-                </button>
-              ))}
-            </span>
-          ) : null}
         </span>
       </header>
       {modeLine ? (
@@ -510,16 +269,6 @@ export function AgentStepStream({
           <Icon name={mode === "replay" ? "refresh" : "users"} size={16} />
           {modeLine}
         </div>
-      ) : null}
-      {totals ? (
-        <dl aria-label="Run totals" className="m-0 mb-3 grid grid-cols-3 gap-px border border-border bg-border">
-          {totals.map(([k, v]) => (
-            <div key={k} className="bg-card px-2.5 py-2">
-              <dt className="font-mono text-[10px] leading-[14px] font-bold tracking-[0.08em] text-muted-foreground uppercase">{k}</dt>
-              <dd className="m-0 mt-0.5 font-mono text-[15px] leading-5 font-bold tabular-nums [overflow-wrap:break-word]">{v}</dd>
-            </div>
-          ))}
-        </dl>
       ) : null}
       {/* U22: the steps are always shown, never behind an inner fold (busk plan and Repertoire alike). */}
       {list}

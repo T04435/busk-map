@@ -57,7 +57,7 @@ describe("step 9: the summary only ranks and explains", () => {
     for (const [i, title] of ["One", "Two", "Three"].entries()) {
       state.found.set(`s-${i + 1}`, { songId: `s-${i + 1}`, songKey: `gordi|${title.toLowerCase()}`, title, artist: "Gordi", artistId: "a1", spotifyTrackId: null, year: 2019, durationMs: 200_000, image: null, sourceUrl: null, source: "spotify", popularity: null });
     }
-    const facts = { act: "Test Act", spotifyGenres: [], followers: 1200, description: null, audience: [], genres: ["Indie Folk"], soundsLike: ["Julia Jacklin"], fansLove: ["Gordi"], ageLean: "25–29", genderLean: null };
+    const facts = { act: "Test Act", description: null, audience: [], genres: ["Indie Folk"], soundsLike: ["Julia Jacklin"], fansLove: ["Gordi"], ageLean: "25–29", genderLean: null };
     return { tools, summary, ctx, state, facts };
   }
 

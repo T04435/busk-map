@@ -4,7 +4,7 @@ import { expect, LOCAL, SATURDAY, test } from "./fixtures";
  * The fresh-run limit page (B-013). Offline mode is exempt from the limit, so the test fault `faults=fresh-limit`
  * (honoured only with BUSKMAP_ALLOW_FAULTS=1, never in production) makes the gate refuse.
  */
-const MESSAGE = /^You've started 5 plans this hour\. Try again in about \d+ minutes?\.$/;
+const MESSAGE = /^You've started 30 plans this hour\. Try again in about \d+ minutes?\.$/;
 
 test.describe("fresh-run limit (fault switch, local only)", () => {
   test.skip(!LOCAL, "Fault injection exists only on the local test server");

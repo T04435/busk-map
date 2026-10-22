@@ -1,3 +1,4 @@
+import { QLOO_BUDGET_MESSAGE } from "@/lib/qloo-budget-copy";
 /**
  * Every user-facing word about the Repertoire (docs/playlist-architecture.md §4.1). Client-safe.
  * Code names stay `playlist`; a later rename ("Songbook") is an edit to this one file.
@@ -212,6 +213,7 @@ export const PLAYLIST_COPY = {
     end: (e: { ok: boolean; mode: "agent" | "fallback" | "mock" | "none"; code: string | null; newCount: number; skippedCount: number; songsChecked?: number }): string => {
       const songs = (n: number) => `${n} ${n === 1 ? "song" : "songs"}`;
       if (!e.ok) {
+        if (e.code === "qloo_budget_spent") return QLOO_BUDGET_MESSAGE;
         if (e.code === "qloo_unavailable") return "We can't suggest songs without taste data, and Qloo, where it comes from, isn't answering. Try again in a little while.";
         if (e.code === "no_match") return "Qloo couldn't match your artists, so there is nothing to learn from yet. Add songs by better-known artists and try again.";
         if (e.code === "spotify_not_found") return "Spotify has no artist at that link. Check it and try again. This run didn't count.";
@@ -279,7 +281,6 @@ export const PLAYLIST_COPY = {
     notForMe: "Not for me",
     undo: "Undo",
     learnedBadge: "Learned",
-    showRaw: "Show raw data",
     dismissedGroup: (n: number) => `Not for me (${n})`,
     movedToSung: (title: string) => `${title} is now in ${CAN_SING}.`,
     dismissedDone: (title: string) => `${title} won't be suggested again. Undo it from Not for me.`,

@@ -103,17 +103,18 @@ describe("top_tracks filters the whole history on the server", () => {
   it("leaves out suggested, dismissed and sung songs, counts each, and never lets the prompt's truncation matter", async () => {
     const m = await investigated();
     const artist = m.related.artists.find((a) => !a.alreadyInPlaylist)!;
-    // The history holds Synthetic track 1 (pending), 2 (dismissed) and 3 (sung) for that artist. These sets are what the
-    // server filters on; the prompt's block is only a (truncated) view of them.
-    const key = (n: number) => playlistSongKey(artist.name, `Synthetic track ${n}`);
+    // The history holds the artist's synthetic song 1 (pending), 2 (dismissed) and 3 (sung). These sets are what the
+    // server filters on; the prompt's block is only a (truncated) view of them. The songs are Last.fm's (five per artist).
+    const title = (n: number) => `${artist.name} synthetic song ${n}`;
+    const key = (n: number) => playlistSongKey(artist.name, title(n));
     m.ctx.keys.suggested.add(key(1));
     m.ctx.keys.dismissed.add(key(2));
     m.ctx.keys.known.add(key(3));
     const out = (await exec(m.t.top_tracks, { artistIds: [artist.artistId], perArtist: 3 })) as { songs: { title: string }[]; skipped: Record<string, number>; checked: number; summary: string };
-    expect(out.songs.map((s) => s.title)).toEqual(["Synthetic track 4", "Synthetic track 5", "Synthetic track 6"]);
+    expect(out.songs.map((s) => s.title)).toEqual([title(4), title(5)]);
     expect(out.skipped).toEqual({ alreadySuggested: 1, dismissed: 1, canSing: 1 });
-    expect(out.checked).toBe(6);
-    expect(out.summary).toBe("Picked top tracks on Spotify for 1 artist. Left out 1 song suggested before and 1 song you dismissed and 1 song you already sing");
+    expect(out.checked).toBe(5);
+    expect(out.summary).toBe("Picked top tracks on Last.fm for 1 artist. Left out 1 song suggested before and 1 song you dismissed and 1 song you already sing");
   });
 
   it("an artist with 3 or more songs in the Repertoire is left out before any catalogue lookup", async () => {
@@ -126,18 +127,44 @@ describe("top_tracks filters the whole history on the server", () => {
     expect(m.state.coveredSeen).toBe(1);
   });
 
-  it("Spotify down: Last.fm songs, with no year, duration or art", async () => {
-    const m = await load();
-    const ctx = Object.assign(m.ctx, { adapters: { offline: true, faults: ["repertoire"] as const } });
-    await m.withQlooUsage(async (u) => {
-      Object.assign(ctx, { usage: u });
-      await ctx.matchPlaylist();
-      const rel = (await exec(m.t.related_artists, { take: 8 })) as { artists: { artistId: string }[] };
-      await exec(m.t.crowd_at, { pitch: "city", take: 5 });
-      const out = (await exec(m.t.top_tracks, { artistIds: [rel.artists[0].artistId], perArtist: 2 })) as { songs: { source: string; year: number | null; durationMs: number | null }[]; summary: string };
-      expect(out.songs.every((s) => s.source === "lastfm" && s.year === null && s.durationMs === null)).toBe(true);
-      expect(out.summary).toMatch(/^Picked top tracks on Spotify \(Last\.fm for 1\)/);
-    });
+  it("the songs the model reads come from Last.fm only: no Spotify id, link, cover, year or length, with Spotify up or down", async () => {
+    for (const faults of [[], ["repertoire"]] as const) {
+      const m = await load();
+      const ctx = Object.assign(m.ctx, { adapters: { offline: true, faults } });
+      await m.withQlooUsage(async (u) => {
+        Object.assign(ctx, { usage: u });
+        await ctx.matchPlaylist();
+        const rel = (await exec(m.t.related_artists, { take: 8 })) as { artists: { artistId: string }[] };
+        await exec(m.t.crowd_at, { pitch: "city", take: 5 });
+        const out = (await exec(m.t.top_tracks, { artistIds: [rel.artists[0].artistId], perArtist: 2 })) as { songs: { source: string; year: number | null; durationMs: number | null }[]; summary: string };
+        expect(out.songs.length).toBeGreaterThan(0);
+        expect(out.songs.every((s) => s.source === "lastfm" && s.year === null && s.durationMs === null)).toBe(true);
+        expect(out.summary).toMatch(/^Picked top tracks on Last\.fm for 1 artist/);
+        expect(JSON.stringify(out)).not.toMatch(/spotify|scdn\.co|"image"|"url"|spotifyTrackId/i);
+        for (const f of m.state.found.values()) expect(f).toMatchObject({ source: "lastfm", spotifyTrackId: null, image: null, year: null, durationMs: null });
+      });
+    }
+  });
+
+  it("joinSpotifyDisplay adds Spotify's id, link, year and length to the picked songs only, after the model call", async () => {
+    const m = await investigated();
+    const ids = m.related.artists.filter((a) => !a.alreadyInPlaylist).slice(0, 2).map((a) => a.artistId);
+    const out = (await exec(m.t.top_tracks, { artistIds: ids, perArtist: 2 })) as { songs: { songId: string }[] };
+    const [picked, other] = out.songs;
+    await m.joinSpotifyDisplay(m.state, [picked.songId], m.ctx);
+    expect(m.state.found.get(picked.songId)).toMatchObject({ source: "spotify", spotifyTrackId: expect.stringMatching(/^[A-Za-z0-9]{22}$/), sourceUrl: expect.stringMatching(/^https:\/\/open\.spotify\.com\/track\//), year: expect.any(Number), durationMs: expect.any(Number) });
+    expect(m.state.found.get(other.songId)).toMatchObject({ source: "lastfm", spotifyTrackId: null, year: null });
+    const [row] = m.buildSuggestions({ picks: [{ songId: picked.songId, reason: "Fans of X love this.", buildsOn: null, templated: false }], summary: "", notes: [] }, m.state, m.ctx, "mock");
+    expect(row).toMatchObject({ songSource: "spotify", spotifyTrackId: m.state.found.get(picked.songId)!.spotifyTrackId, year: expect.any(Number) });
+  });
+
+  it("joinSpotifyDisplay with Spotify down leaves the Last.fm record as it was", async () => {
+    const m = await investigated();
+    const ids = m.related.artists.filter((a) => !a.alreadyInPlaylist).slice(0, 1).map((a) => a.artistId);
+    const out = (await exec(m.t.top_tracks, { artistIds: ids, perArtist: 1 })) as { songs: { songId: string }[] };
+    const before = { ...m.state.found.get(out.songs[0].songId)! };
+    await m.joinSpotifyDisplay(m.state, [out.songs[0].songId], { market: m.ctx.market, adapters: { offline: true, faults: ["repertoire"] } });
+    expect(m.state.found.get(out.songs[0].songId)).toEqual(before);
   });
 });
 

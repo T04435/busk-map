@@ -2,51 +2,51 @@ import { describe, expect, it } from "vitest";
 import { buttonGenreTag, GENRE_BUTTON_TAGS, normGenre, pickGenreTag, tagSlug } from "@/lib/qloo-match";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
-/** Rows as the live /v2/tags returned them (media/qloo-coverage/raw/qloo), noisy names included. */
-const INDIE_FOLK = [
-  { id: "urn:tag:genre:music:indie_folk", name: "Indie - Folk" },
-  { id: "urn:tag:genre:music:indie_folk_rock", name: "Indie Folk Rock" },
-  { id: "urn:tag:genre:music:indie", name: '"indie"' },
-  { id: "urn:tag:genre:music:folk", name: "Folk" },
-  { id: "urn:tag:genre:music:indie_rock", name: "Indie - Rock" },
+/** Synthetic /v2/tags rows (made-up ids and names, in the shape Qloo returns), noisy names included. */
+const ZORB = [
+  { id: "urn:tag:genre:music:zorb_plink", name: "Zorb - Plink" },
+  { id: "urn:tag:genre:music:zorb_plink_rock", name: "Zorb Plink Rock" },
+  { id: "urn:tag:genre:music:zorb", name: '"zorb"' },
+  { id: "urn:tag:genre:music:plink", name: "Plink" },
+  { id: "urn:tag:genre:music:zorb_rock", name: "Zorb - Rock" },
 ];
-const SINGER = [
-  { id: "urn:tag:genre:music:singersongwriter", name: "Singersongwriter" },
-  { id: "urn:tag:genre:music:singer_songwriters", name: "Singer Songwriters" },
-  { id: "urn:tag:genre:music:singer_songwritergdchill", name: "Singer-songwritergdchill" },
-  { id: "urn:tag:genre:music:singer_songwriter", name: "Singer & Songwriter" },
+const QUILL = [
+  { id: "urn:tag:genre:music:quillsmith", name: "Quillsmith" },
+  { id: "urn:tag:genre:music:quill_smiths", name: "Quill Smiths" },
+  { id: "urn:tag:genre:music:quill_smithgdchill", name: "Quill-smithgdchill" },
+  { id: "urn:tag:genre:music:quill_smith", name: "Quill & Smith" },
 ];
-const LATIN_POP = [
-  { id: "urn:tag:genre:music:latin_pop", name: "Latin Pop" },
-  { id: "urn:tag:genre:music:pop_latino", name: "Pop Latino" },
-  { id: "urn:tag:genre:music:pop", name: "Pop" },
-  { id: "urn:tag:genre:media:latin_american", name: "Latin american" },
+const GLIM = [
+  { id: "urn:tag:genre:music:glim_pop", name: "Glim Pop" },
+  { id: "urn:tag:genre:music:pop_glim", name: "Pop Glim" },
+  { id: "urn:tag:genre:music:example_pop", name: "Example Pop" },
+  { id: "urn:tag:genre:media:glim_american", name: "Glim american" },
 ];
 
 describe("genre text normalising", () => {
   it("strips quotes, punctuation and case", () => {
-    expect(normGenre('"indie"')).toBe("indie");
+    expect(normGenre('"zorb"')).toBe("zorb");
     expect(normGenre("Hip - Hop")).toBe("hip hop");
-    expect(normGenre("Singer & Songwriter")).toBe("singer and songwriter");
-    expect(tagSlug("urn:tag:genre:music:indie_folk")).toBe("indie folk");
+    expect(normGenre("Quill & Smith")).toBe("quill and smith");
+    expect(tagSlug("urn:tag:genre:music:zorb_plink")).toBe("zorb plink");
   });
 });
 
 describe("pickGenreTag", () => {
   it("prefers an exact id slug or name over a partial match", () => {
-    expect(pickGenreTag(INDIE_FOLK, "indie folk")?.id).toBe("urn:tag:genre:music:indie_folk");
-    expect(pickGenreTag(INDIE_FOLK, "Folk")?.id).toBe("urn:tag:genre:music:folk");
-    expect(pickGenreTag(INDIE_FOLK, "indie")?.id).toBe("urn:tag:genre:music:indie");
-    expect(pickGenreTag(SINGER, "singer-songwriter")?.id).toBe("urn:tag:genre:music:singer_songwriter");
+    expect(pickGenreTag(ZORB, "zorb plink")?.id).toBe("urn:tag:genre:music:zorb_plink");
+    expect(pickGenreTag(ZORB, "Plink")?.id).toBe("urn:tag:genre:music:plink");
+    expect(pickGenreTag(ZORB, "zorb")?.id).toBe("urn:tag:genre:music:zorb");
+    expect(pickGenreTag(QUILL, "quill-smith")?.id).toBe("urn:tag:genre:music:quill_smith");
   });
   it("accepts Pop (the old overlap rule rejected it) and never a non-music tag", () => {
-    expect(pickGenreTag(LATIN_POP, "Pop")?.id).toBe("urn:tag:genre:music:pop");
-    expect(pickGenreTag(LATIN_POP, "latin")?.id).toBe("urn:tag:genre:music:latin_pop");
-    expect(pickGenreTag([{ id: "urn:tag:genre:media:latin_american", name: "Latin american" }], "latin american")).toBeNull();
+    expect(pickGenreTag(GLIM, "example pop")?.id).toBe("urn:tag:genre:music:example_pop");
+    expect(pickGenreTag(GLIM, "glim")?.id).toBe("urn:tag:genre:music:glim_pop");
+    expect(pickGenreTag([{ id: "urn:tag:genre:media:glim_american", name: "Glim american" }], "glim american")).toBeNull();
   });
   it("finds nothing for a text no tag has", () => {
-    expect(pickGenreTag(INDIE_FOLK, "zydeco")).toBeNull();
-    expect(pickGenreTag(INDIE_FOLK, "  ")).toBeNull();
+    expect(pickGenreTag(ZORB, "zydeco")).toBeNull();
+    expect(pickGenreTag(ZORB, "  ")).toBeNull();
   });
 });
 

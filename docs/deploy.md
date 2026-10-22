@@ -61,10 +61,10 @@ Then **Save Rule** → **Review Changes** → **Publish**.
 
 - 20 a minute is far above a real performer's use (one agent run and one comparison) and well below a script.
 - Start with the **Log** action for a day if you want to see real traffic first, then switch to 429.
-- The app already explains its own 429 for fresh runs ("You've started 5 plans this hour. Try again in about N minutes, or open one of your earlier plans."), with `Retry-After` and `error.retryAt` / `error.retryAfterS` in the body. A WAF 429 shows the generic planner error. Outside production, `?faults=fresh-limit` (with `BUSKMAP_ALLOW_FAULTS=1`) forces the app's 429 to test the limit page.
+- The app already explains its own 429 for fresh runs ("You've started 30 plans this hour. Try again in about N minutes, or open one of your earlier plans."), with `Retry-After` and `error.retryAt` / `error.retryAfterS` in the body. A WAF 429 shows the generic planner error. Outside production, `?faults=fresh-limit` (with `BUSKMAP_ALLOW_FAULTS=1`) forces the app's 429 to test the limit page.
 - Counters are per region, so the real ceiling is a little higher than 20 for traffic spread across regions.
 
-Matching rule for fresh agent runs (Pro, or instead of the rule above on Hobby): path `^/api/plan$`, Fixed Window **3600s**, limit **15**, key IP. The WAF can't tell a fresh run from a replay or a reopened short link (all are `POST /api/plan`), so it sits above the app's 5 fresh runs an hour; the app's limiter is the precise one, per instance, and the AI Gateway budget cap stays the hard ceiling. On Pro you can also add and a third for search: path `^/api/repertoire$`, Fixed Window **60s**, limit **120**, key IP.
+Matching rule for fresh agent runs (Pro, or instead of the rule above on Hobby): path `^/api/plan$`, Fixed Window **3600s**, limit **60**, key IP. The WAF can't tell a fresh run from a replay or a reopened short link (all are `POST /api/plan`), so it sits above the app's 30 fresh runs an hour; the app's limiter is the precise one, per instance, and the AI Gateway budget cap stays the hard ceiling. On Pro you can also add and a third for search: path `^/api/repertoire$`, Fixed Window **60s**, limit **120**, key IP.
 
 ## 4. Warm-up
 

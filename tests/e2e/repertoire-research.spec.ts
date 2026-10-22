@@ -233,10 +233,8 @@ test.describe("Repertoire research (offline)", () => {
     await expect(stream).not.toContainText("Qloo found no artists like you");
     await expect(stream.getByTestId("agent-tag")).toHaveText("Waiting");
     await expect(page.getByTestId("research-end")).toHaveCount(0);
-    // RAW: the calls each step made, and no description lines.
-    await stream.getByTestId("raw-switch").click();
-    await expect(stream.getByTestId("agent-step-calls").first()).toBeVisible();
-    await expect(stream.getByTestId("agent-step-calls").nth(2)).toContainText("artist.getsimilar");
+    // No raw view: no call tables, no description lines.
+    await expect(stream.getByTestId("agent-step-calls")).toHaveCount(0);
     await expect(stream).not.toContainText("Qloo /entities by Spotify id");
     // A refresh (or a later visit) shows the waiting step with its input.
     const runId = (await (await page.request.get("/api/playlist")).json()).playlist.research.runId;
@@ -388,6 +386,17 @@ test.describe("Repertoire research (offline)", () => {
     await page.getByRole("button", { name: "Research my act" }).click();
     await expect(page.getByTestId("research-end")).toHaveAttribute("data-code", "spotify_unavailable", { timeout: 20_000 });
     await expect(page.getByTestId("research-end")).toContainText("Spotify isn't answering");
+  });
+
+  test("the daily Qloo budget spent: the shared paused message and the example plans, not the Qloo-down alert (faults=qloo-budget)", async ({ page }) => {
+    await page.goto("/repertoire?faults=qloo-budget");
+    await field(page).fill(LINK);
+    await page.getByRole("button", { name: "Research my act" }).click();
+    const end = page.getByTestId("research-end");
+    await expect(end.getByText("Taste data paused for today")).toBeVisible();
+    await expect(end.getByText(/used today's allowance of taste data from Qloo/)).toBeVisible();
+    await expect(end.getByTestId("budget-examples").getByRole("link").first()).toHaveAttribute("href", /^\/plan\?example=/);
+    await expect(page.getByText("Qloo isn't answering")).toHaveCount(0);
   });
 
   test("the limit: a refused run says so and starts nothing (faults=learn-limit)", async ({ page }) => {

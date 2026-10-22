@@ -39,6 +39,14 @@ export function freshLimitFaultRequested(faults: string | null | undefined): boo
   return faults.split(",").some((s) => s.trim() === FRESH_LIMIT_FAULT);
 }
 
+/** Test fault: the plan run ends as if today's Qloo budget were spent, so the budget page can be tested offline. Same gate as the others. */
+export const QLOO_BUDGET_FAULT = "qloo-budget";
+
+export function qlooBudgetFaultRequested(faults: string | null | undefined): boolean {
+  if (!testSwitches().allowFaults || !faults) return false;
+  return faults.split(",").some((s) => s.trim() === QLOO_BUDGET_FAULT);
+}
+
 /**
  * Test faults: the learn-run gate refuses (429), as the Repertoire's own limit (`learn-limit`) or the network's
  * (`learn-limit-ip`), so both limit pages can be tested offline. Same gate as the others.
@@ -72,5 +80,5 @@ export function researchStepDelayMs(faults: string | null | undefined): number {
 export function pageFaultsFor(faults: string | null | undefined): string[] {
   if (!testSwitches().allowFaults) return [];
   const learn = learnLimitFaultRequested(faults);
-  return [...parseFaults(faults), ...(freshLimitFaultRequested(faults) ? [FRESH_LIMIT_FAULT] : []), ...(learn ? [learn === "ip" ? LEARN_LIMIT_IP_FAULT : LEARN_LIMIT_FAULT] : [])];
+  return [...parseFaults(faults), ...(freshLimitFaultRequested(faults) ? [FRESH_LIMIT_FAULT] : []), ...(qlooBudgetFaultRequested(faults) ? [QLOO_BUDGET_FAULT] : []), ...(learn ? [learn === "ip" ? LEARN_LIMIT_IP_FAULT : LEARN_LIMIT_FAULT] : [])];
 }

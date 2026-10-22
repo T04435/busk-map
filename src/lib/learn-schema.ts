@@ -17,7 +17,7 @@ export const LEARN_RUN_STATUSES = ["running", "done", "failed", "fallback"] as c
 export type LearnRunStatus = (typeof LEARN_RUN_STATUSES)[number];
 
 /** spotify_*: a Repertoire research run (lib/repertoire-research.ts) that couldn't read the Spotify profile. */
-export const LEARN_END_CODES = ["timeout", "stopped", "model_unavailable", "qloo_unavailable", "no_match", "nothing_new", "spotify_unavailable", "spotify_not_found", "needs_choice", "needs_sounds_like", "no_taste_data"] as const;
+export const LEARN_END_CODES = ["timeout", "stopped", "model_unavailable", "qloo_unavailable", "qloo_budget_spent", "no_match", "nothing_new", "spotify_unavailable", "spotify_not_found", "needs_choice", "needs_sounds_like", "no_taste_data"] as const;
 export type LearnEndCode = (typeof LEARN_END_CODES)[number];
 
 export const BASED_ON_KINDS = ["learned", "repertoire", "crowd", "soundsLike"] as const;

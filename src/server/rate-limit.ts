@@ -40,8 +40,8 @@ export const planLimiter = createRateLimiter(6, 10 * 60_000);
 
 export type RateLimiter = ReturnType<typeof createRateLimiter>;
 
-/** Fresh agent runs (a new model run; joining or replaying a run doesn't count): 5 per hour per IP. */
-export const FRESH_RUNS_PER_HOUR = 5;
+/** Fresh agent runs (a new model run; joining or replaying a run doesn't count): 30 per hour per IP. A shared judging network sits behind one IP, so the limit is generous; the cost caps are the daily Qloo budget and the AI Gateway budget. */
+export const FRESH_RUNS_PER_HOUR = 30;
 export const freshRunLimiter = createRateLimiter(FRESH_RUNS_PER_HOUR, 60 * 60_000);
 
 export type FreshRunGate = { ok: true } | { ok: false; retryAfterS: number; retryAt: string; message: string };

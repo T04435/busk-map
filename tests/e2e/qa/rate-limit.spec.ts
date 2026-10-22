@@ -19,7 +19,7 @@ test.describe("QA fresh-run limit (fault switch)", () => {
     const { error } = await response.json();
     expect(error.code).toBe("rate_limited");
     expect(error.retryAfterS).toBe(retryAfter);
-    expect(error.message).toMatch(/^You've started 5 plans this hour\. Try again in about \d+ minutes?\.$/);
+    expect(error.message).toMatch(/^You've started 30 plans this hour\. Try again in about \d+ minutes?\.$/);
     expect(error.message).not.toMatch(/\d:\d\d|\bam\b|\bpm\b/i);
     const at = Date.parse(error.retryAt);
     expect(at - before).toBeGreaterThan((retryAfter - 5) * 1000);

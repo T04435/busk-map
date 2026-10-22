@@ -13,7 +13,7 @@ import type { PlanContext } from "./context";
 import { boundSongs, PLAN_PROMPT_SONGS } from "@/lib/plan-songs-bound";
 import { createMockPlanner } from "./mock-model";
 import { LIMITS, MODELS, PLANNER_PROVIDER_OPTIONS } from "./models";
-import { AFTER_SCORING, AgentState, createTools, finishSchema, scoringOpen, TOOL_LABELS, TOOL_SOURCES } from "./tools";
+import { AFTER_SCORING, AgentState, createTools, finishSchema, outputForPage, scoringOpen, TOOL_LABELS, TOOL_SOURCES } from "./tools";
 
 export { finishSchema as aiTextSchema };
 
@@ -241,8 +241,10 @@ async function runAgent(ctx: PlanContext, events: AgentEvents, abortSignal: Abor
         case "tool-result": {
           const output = part.output as { summary?: unknown; accepted?: boolean } | undefined;
           const ok = part.toolName !== "finish_plan" || output?.accepted === true;
-          toolResults.push({ tool: part.toolName, ok, output: part.output });
-          events.onToolEnd?.({ id: part.toolCallId, tool: part.toolName, ok, summary: typeof output?.summary === "string" ? output.summary : "Done", output: part.output });
+          // The page's copy may carry display-only fields (a song's Spotify year) the model never read.
+          const shown = await outputForPage(part.toolName, part.input, part.output, ctx, state);
+          toolResults.push({ tool: part.toolName, ok, output: shown });
+          events.onToolEnd?.({ id: part.toolCallId, tool: part.toolName, ok, summary: typeof output?.summary === "string" ? output.summary : "Done", output: shown });
           events.onTotals?.(fromToolOutputs(toolResults));
           break;
         }

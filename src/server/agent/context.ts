@@ -46,7 +46,7 @@ import {
 import { serverLocalNow, serverToday } from "@/server/clock";
 import { LEARN_MAX_PER_ARTIST, SUGGEST_ARTISTS_PER_PITCH, SUGGEST_CATALOGUE_LOOKUPS, SUGGEST_RELATED_TAKE } from "@/server/playlist/config";
 import { fillAsRepertoire, mergeFillArtists, pickFillSongs, rankFillArtists, type FillArtist } from "@/server/scoring/fill";
-import { catalogueOf } from "@/server/songs/catalogue";
+import { catalogueOf, displayKey, spotifyDisplay, type SpotifyDisplay } from "@/server/songs/catalogue";
 
 /** Search radius for busy places, from the city centre. Covers the planning area. */
 export const PLACES_RADIUS_M = 2000;
@@ -668,7 +668,7 @@ export class PlanContext {
     });
   }
 
-  /** An artist's songs, looked up once per busk and within SUGGEST_CATALOGUE_LOOKUPS lookups (Spotify, Last.fm as backup; not Qloo quota). */
+  /** An artist's songs, looked up once per busk and within SUGGEST_CATALOGUE_LOOKUPS lookups (Last.fm only: build_setlist shows them to the model; not Qloo quota). */
   private catalogueLookups = 0;
   private catalogue(artist: string) {
     const key = `catalogue:${nameKey(artist)}`;
@@ -722,6 +722,13 @@ export class PlanContext {
         const found = await this.catalogue(a.name);
         return found && found.tracks.length > 0 ? found : null;
       });
+      // Spotify's id, link, cover, length and year join the picked songs here, for display and era fit only: build_setlist
+      // shows the model the title, artist and Last.fm-based words, never these fields (tools.ts:setlistForModel).
+      const display = picks.length ? await this.once(`display:${picks.map((p) => displayKey(p.track.artist, p.track.title)).join("~")}`, () => spotifyDisplay(picks.map((p) => p.track), this.city.countryCode, this.adapters).catch(() => new Map<string, SpotifyDisplay>())) : new Map<string, SpotifyDisplay>();
+      for (const p of picks) {
+        const d = display.get(displayKey(p.track.artist, p.track.title));
+        if (d) Object.assign(p, { source: "spotify" as const, track: { ...p.track, spotifyTrackId: d.spotifyTrackId, url: d.url, image: d.image, year: d.year, durationMs: d.durationMs } });
+      }
       const suggested = fillAsRepertoire(picks, affinity);
       const eraYears = { ...years };
       for (const p of picks) if (p.track.year !== null) eraYears[trackKey(p.track.artist, p.track.title)] = p.track.year;

@@ -39,7 +39,7 @@ export const WORDS: Word[] = [
   },
   {
     "t": "The research",
-    "b": "What the Hive checked to build the busk. Plain results, never tool names; raw data waits behind its toggle."
+    "b": "What the Hive checked to build the busk. Plain results, never tool names."
   },
   {
     "t": "The engine",

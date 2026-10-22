@@ -23,7 +23,7 @@ export const LEARN_TOOL_SOURCES: Record<string, string> = {
   related_artists: "Qloo /v2/insights · urn:entity:artist with signal.interests.entities and explainability",
   rising: "Qloo /v2/trending · urn:entity:artist, with audience growth",
   crowd_profile: "Qloo /v2/insights · urn:demographics",
-  top_tracks: "Spotify track search by artist, Last.fm top tracks as backup; earlier suggestions left out by the server",
+  top_tracks: "Last.fm top tracks by artist; earlier suggestions left out by the server",
   finish_suggestions: "Checked against this run's songs and your history",
 };
 

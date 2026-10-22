@@ -41,6 +41,10 @@ pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm check:fixtures && pnpm
 pnpm test:e2e          # builds and starts an offline server, then runs the judge paths
 ```
 
+## Spotify purge
+
+`pnpm purge:spotify` deletes or nulls the Spotify data stored in Postgres (cover images, Spotify years and durations, artist profile snapshots, research snapshots, learn-run steps, cached runs, Spotify pacer rows). It keeps the Spotify IDs and our own data, and it is safe to run twice. Run it once on 10 Nov 2026 against production (Spotify Developer Terms IV.3). Before that date it refuses unless you pass `--force`. It uses the same main-database guard as the other scripts.
+
 ## Data
 - [Qloo](https://qloo.com) taste API (16 kinds of call, see the /brain page; a local mock without a key)
 - OpenStreetMap public spaces and venue names (© OpenStreetMap contributors, ODbL)

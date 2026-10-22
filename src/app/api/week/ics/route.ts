@@ -1,3 +1,4 @@
+import { QLOO_BUDGET_MESSAGE, qlooBudgetSpent } from "@/server/adapters/qloo/budget";
 import { buildIcs } from "@/lib/ics";
 import { planSearchParams } from "@/lib/plan-url";
 import { zonedHourToUtc } from "@/lib/slot";
@@ -52,6 +53,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     if (error instanceof WeekQlooUnavailableError) {
+      if (qlooBudgetSpent()) return Response.json({ error: { code: "qloo_budget_spent", message: QLOO_BUDGET_MESSAGE } }, { status: 503 });
       return Response.json({ error: { code: "qloo_unavailable", message: "Qloo is not responding. Please try again shortly." } }, { status: 503 });
     }
     throw error;

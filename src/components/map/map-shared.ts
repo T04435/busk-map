@@ -2,6 +2,8 @@ import { getVersion, setWorkerUrl, Map as MapLibreMap, type StyleSpecification }
 import { TASTE_STEP_FROM } from "@/components/map/taste-cells";
 
 /** The map pieces PlanMap and the Repertoire's FansMap share: the OSM style, the theme colour reader, the orange ramp, the plain-land fallback and the hexagon cell. */
+/** The map credit that stays when only the plain base loads (the tiles' style carries its own). */
+export const OSM_ATTRIBUTION = '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a>';
 export const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
 // Copied into public/ by scripts/copy-maplibre-worker.mjs (predev, prebuild).

@@ -122,7 +122,7 @@ describe("the guardrails", () => {
     expect(finishes.map((f) => f.ok)).toEqual([false, true]);
     expect(finishes[0].summary).toMatch(/^Rejected: Not from this run's top_tracks: s-999/);
     expect(result.status).toBe("done");
-    expect(result.picks.every((p) => p.title.startsWith("Synthetic track"))).toBe(true);
+    expect(result.picks.every((p) => /synthetic song \d$/.test(p.title))).toBe(true);
   });
 
   it("numbers that no tool returned are rejected twice, then the reasons become template reasons and the run is still accepted", async () => {
@@ -192,11 +192,11 @@ describe("when the data sources fail", () => {
   });
 
   it("when every song found is already in the history, nothing is saved: nothing_new", async () => {
-    // Everything Spotify's synthetic catalogue holds for every artist Qloo may return is already spoken for (dismissed).
+    // Everything Last.fm's synthetic top tracks hold for every artist Qloo may return is already spoken for (dismissed).
     const keys: ReturnType<typeof history>["suggestions"] = [];
-    const { syntheticArtistTracks } = await import("@/server/adapters/repertoire/fixtures/synthetic");
+    const { syntheticTopTracks } = await import("@/server/adapters/songs/fixtures/synthetic");
     const { CATALOG } = await import("@/server/qloo-mock/catalog");
-    for (const a of CATALOG) for (const t of syntheticArtistTracks(a.name)) keys.push({ title: t.title, artist: a.name, key: playlistSongKey(a.name, t.title), status: "dismissed", runNumber: 1, at: 1 });
+    for (const a of CATALOG) for (const t of syntheticTopTracks(a.name)) keys.push({ title: t.title, artist: a.name, key: playlistSongKey(a.name, t.title), status: "dismissed", runNumber: 1, at: 1 });
     const out = await run({ history: history({ suggestions: keys }) });
     expect(out.result.picks).toEqual([]);
     expect(out.result.endCode).toBe("nothing_new");
@@ -206,8 +206,8 @@ describe("when the data sources fail", () => {
 
 describe("history is the base of no-repeat", () => {
   it("the Learned list reaches the prompt, and songs you already sing are never picked", async () => {
-    const withSung = history({ songs: [...SONGS, sung("Synthetic track 1", "Julia Jacklin")] });
+    const withSung = history({ songs: [...SONGS, sung("Julia Jacklin synthetic song 1", "Julia Jacklin")] });
     const out = await run({ history: withSung });
-    expect(out.result.picks.some((p) => p.artist === "Julia Jacklin" && p.title === "Synthetic track 1")).toBe(false);
+    expect(out.result.picks.some((p) => p.artist === "Julia Jacklin" && p.title === "Julia Jacklin synthetic song 1")).toBe(false);
   });
 });

@@ -4,6 +4,7 @@ import { useRef, useSyncExternalStore } from "react";
 import { Disclosure } from "@/components/honeycomb/disclosure";
 import { ScoreBreakdown } from "@/components/pitch-card/pitch-card";
 import { SetlistPanel } from "@/components/setlist/setlist-panel";
+import { OsmCredit } from "@/components/honeycomb/osm-credit";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
 import { shortDay, shortHours } from "@/lib/slot";
@@ -105,6 +106,7 @@ export function PitchSheet({
                   <WeightsPanel weights={plan.weights} />
                 </div>
               </Disclosure>
+              {pitch.kind !== "designated" && <OsmCredit className="self-start" />}
             </div>
           </>
         ) : null}

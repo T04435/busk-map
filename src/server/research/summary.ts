@@ -19,10 +19,13 @@ import { checkPicks, salvageAnswer, type AcceptedAnswer, type LearnState } from 
  * no repeats, 2 per artist, every number from the data). If the model is unavailable, fails, or its words can't be
  * salvaged, the songs and the paragraph come from the data alone (templates), labelled "template".
  */
+/**
+ * What the ranking call is told. Spotify's Developer Terms (v10, §IV.2) bar Spotify Content in an AI model, so nothing here
+ * comes from Spotify: Qloo's taste data, Last.fm's songs (runTopTracks) and the performer's own words only. Spotify's
+ * covers and links join the picks after this call (learn/tools.ts:joinSpotifyDisplay).
+ */
 export type SummaryFacts = {
   act: string;
-  spotifyGenres: string[];
-  followers: number | null;
   description: string | null;
   audience: string[];
   genres: string[];
@@ -68,7 +71,8 @@ function describe(error: unknown): string {
 const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
 
 export function summaryPrompt(f: SummaryFacts, state: Pick<LearnState, "found" | "artists">): string {
-  const songs = [...state.found.values()].map((s) => ({ songId: s.songId, title: s.title, artist: s.artist, year: s.year, fansOf: state.artists.get(s.artistId)?.because ?? [] }));
+  // Title and artist from Last.fm's top tracks, the fans from Qloo: never the Spotify id, link, cover, length or year.
+  const songs = [...state.found.values()].map((s) => ({ songId: s.songId, title: s.title, artist: s.artist, fansOf: state.artists.get(s.artistId)?.because ?? [] }));
   return [`FACTS_JSON: ${JSON.stringify(f)}`, `SONGS_JSON: ${JSON.stringify(songs)}`, "", "Rank the songs and give one reason each."].join("\n");
 }
 

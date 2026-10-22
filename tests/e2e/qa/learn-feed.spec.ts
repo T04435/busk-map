@@ -19,7 +19,7 @@ const research = async (page: Page, path = "/repertoire") => {
 };
 
 test.describe("QA learn feed (B-027..B-029)", () => {
-  test("B-027: a finished run speaks plain words; the steps are always shown, in run order; raw data only behind the switch", async ({ page }) => {
+  test("B-027: a finished run speaks plain words; the steps are always shown, in run order; no raw data view", async ({ page }) => {
     await research(page);
     const steps = page.getByTestId("research-steps");
     await expect(steps).toBeVisible();
@@ -32,23 +32,7 @@ test.describe("QA learn feed (B-027..B-029)", () => {
     // The funnel and the end line agree.
     const found = (await end(page).innerText()).match(/found (\d+) songs?/)?.[1];
     await expect(steps).toContainText(new RegExp(`${found}\\s*new songs?`, "i"));
-    const raw = page.getByRole("switch", { name: "Raw data" });
-    await expect(raw).toHaveAttribute("aria-checked", "false");
-    await raw.focus();
-    await page.keyboard.press("Space");
-    await expect(raw).toHaveAttribute("aria-checked", "true");
-    await expect(steps).toContainText("research_fans_love");
-  });
-
-  test("B-027: no raw switch while a run is going", async ({ page }) => {
-    // `research-slow` holds each step 600 ms (offline test mode), so the running state can be looked at.
-    await page.goto("/repertoire?faults=research-slow");
-    await page.getByLabel("Your Spotify artist link").fill(LINK);
-    await page.getByRole("button", { name: "Research my act" }).click();
-    await expect(page.getByTestId("research-page")).toHaveAttribute("data-phase", "running");
     await expect(page.getByRole("switch", { name: "Raw data" })).toHaveCount(0);
-    await expect(end(page)).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByRole("switch", { name: "Raw data" })).toHaveCount(1);
   });
 
   test("B-028: Qloo down says the songs are safe and the run didn't count; the allowance is untouched", async ({ page }) => {

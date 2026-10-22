@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "cn";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Logo, QlooWordmark } from "@/components/honeycomb/logo";
+import { OsmCredit } from "@/components/honeycomb/osm-credit";
 import { VersionBadge } from "@/components/honeycomb/version-badge";
 
 const REPO = "https://github.com/T04435/busk-map";
@@ -50,6 +51,7 @@ export function SiteFooterView({ repo = REPO, dark = false, night = false }: { r
           <span className="inline-flex items-center gap-2">
             with <QlooWordmark width={44} />
           </span>
+          <OsmCredit />
         </div>
         <nav aria-label="Site" className="flex flex-wrap items-center gap-x-2 md:justify-center">
           {SITE_LINKS.map((l, i) => (

@@ -52,7 +52,7 @@ export const COMPONENT_GROUPS = {
   plan: ["CityPicker", "TimeSlotPicker", "PerformerPicker", "PermitPicker", "RepertoirePicker", "ArtistPicker", "SongSearch", "PickedSongs", "LearnItMenu"],
   map: ["TasteMap", "TasteMapLegend", "PitchPin", "MapPlaceholder", "PlanMap"],
   busk: ["PitchRow", "PitchCard", "DiscoveryBadge", "BothAgreeBadge", "ScoreBreakdown", "WeightsPanel", "CrowdPanel", "MeterBar", "LeanBar", "SetlistPanel", "WeatherStrip", "FootfallSparkline", "CopyLinkButton", "SlotPassed"],
-  research: ["ResearchFunnel", "AgentStepStream", "AgentVsEngine", "StepData", "ComparePanel"],
+  research: ["ResearchFunnel", "AgentStepStream", "AgentVsEngine", "ComparePanel"],
   shell: ["Logo", "Icon", "HexCell", "ScoreCell", "ScoreRing", "ScoreBlock", "RankTile", "Loader", "Skeleton", "Card", "EmptyState", "ErrorState", "PlanNotFound", "AppHeader", "MobileNav", "BrandHoneycomb"],
 } as const;
 

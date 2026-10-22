@@ -10,7 +10,7 @@ import type { AdapterResult } from "@/server/adapters/core";
 import * as qloo from "@/server/adapters/qloo";
 import { NumberBag } from "@/server/agent/number-bag";
 import { boxAround } from "@/server/agent/where";
-import { catalogueOf } from "@/server/songs/catalogue";
+import { catalogueOf, displayKey, spotifyDisplay } from "@/server/songs/catalogue";
 import { LEARN_LIMITS, LEARN_MAX_PER_ARTIST, LEARN_MAX_PICKS, LEARN_MIN_PICKS, LEARN_OVER_REPRESENTED_AT, LEARN_TOOL_CAPS } from "@/server/playlist/config";
 import type { LearnContext } from "./context";
 import { leftOutReason } from "./history";
@@ -250,6 +250,22 @@ export function salvageAnswer(answer: FinishAnswer, state: LearnState, ctx: Pick
   };
 }
 
+/**
+ * The display join, AFTER the model has chosen: Spotify's id, link, cover, length and year for the picked songs, matched
+ * by artist and title (songs/catalogue.ts:spotifyDisplay). The model only ever saw the Last.fm record; a song Spotify
+ * doesn't have keeps its Last.fm link. Never throws: without Spotify the picks simply show no cover.
+ */
+export async function joinSpotifyDisplay(state: LearnState, songIds: readonly string[], ctx: Pick<LearnContext, "market" | "adapters">): Promise<void> {
+  const songs = songIds.flatMap((id) => (state.found.has(id) ? [state.found.get(id)!] : []));
+  if (songs.length === 0) return;
+  const display = await spotifyDisplay(songs, ctx.market, ctx.adapters).catch(() => new Map<string, never>());
+  for (const song of songs) {
+    const d = display.get(displayKey(song.artist, song.title));
+    if (!d) continue;
+    Object.assign(song, { spotifyTrackId: d.spotifyTrackId, sourceUrl: d.url, image: d.image, year: d.year, durationMs: d.durationMs, source: "spotify" as const });
+  }
+}
+
 /** The saved rows for an accepted answer. Every catalogue field comes from the top_tracks record, never from the model. */
 export function buildSuggestions(accepted: AcceptedAnswer, state: LearnState, ctx: Pick<LearnContext, "learned" | "sungArtists" | "soundsLikeArtists">, ranker: Evidence["ranker"]): NewSuggestion[] {
   return accepted.picks.flatMap((pick, i) => {
@@ -332,7 +348,6 @@ export async function runTopTracks(ctx: LearnContext, state: LearnState, artistI
   const again = artistIds.filter((id) => state.looked.has(id));
   if (again.length) throw new LearnToolError(`You already looked up songs by ${again.map((id) => state.artists.get(id)!.name).join(", ")}. Choose other artists, or finish.`);
   const out: TopTracksOutput = { summary: "", songs: [], checked: 0, skipped: { alreadySuggested: 0, dismissed: 0, canSing: 0 }, overRepresented: [], noSongs: [], lookedUp: [] };
-  let lastfm = 0;
   for (const id of [...new Set(artistIds)]) {
     const info = state.artists.get(id)!;
     state.looked.add(id);
@@ -347,7 +362,6 @@ export async function runTopTracks(ctx: LearnContext, state: LearnState, artistI
       out.noSongs.push(info.name);
       continue;
     }
-    if (catalogue.source === "lastfm") lastfm++;
     const taken: FoundSong[] = [];
     const considered = new Set<string>();
     for (const t of catalogue.tracks) {
@@ -384,8 +398,7 @@ export async function runTopTracks(ctx: LearnContext, state: LearnState, artistI
     out.skipped.dismissed ? `${plural(out.skipped.dismissed, "song")} you dismissed` : null,
     out.skipped.canSing ? `${plural(out.skipped.canSing, "song")} you already sing` : null,
   ].filter(Boolean);
-  const via = lastfm > 0 ? `Spotify (Last.fm for ${lastfm})` : "Spotify";
-  out.summary = `Picked top tracks on ${via}${out.songs.length ? ` for ${plural(new Set(out.songs.map((s) => s.artistId)).size, "artist")}` : ""}.${left.length ? ` Left out ${left.join(" and ")}` : ""}`.trim();
+  out.summary = `Picked top tracks on Last.fm${out.songs.length ? ` for ${plural(new Set(out.songs.map((s) => s.artistId)).size, "artist")}` : ""}.${left.length ? ` Left out ${left.join(" and ")}` : ""}`.trim();
   if (out.songs.length === 0 && out.checked === 0) out.summary = out.overRepresented.length ? `Left out ${out.overRepresented.join(", ")}: already well covered in your Repertoire` : "No songs found for those artists";
   return out;
 }
@@ -556,7 +569,7 @@ function buildTools(ctx: LearnContext, state: LearnState) {
 
     top_tracks: tool({
       description:
-        "Songs by the artists you choose (Spotify, Last.fm for any it lacks). Songs already suggested, dismissed or in the Repertoire are left out for you and counted. Opens after related_artists and crowd_at or rising.",
+        "Songs by the artists you choose (Last.fm top tracks). Songs already suggested, dismissed or in the Repertoire are left out for you and counted. Opens after related_artists and crowd_at or rising.",
       inputSchema: z.object({
         artistIds: z.array(z.string().max(80)).min(1).max(4).describe("artistIds from earlier results in this run."),
         perArtist: z.number().int().min(1).max(3).default(3).describe("Songs to take per artist."),

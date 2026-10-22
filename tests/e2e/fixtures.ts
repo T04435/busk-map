@@ -32,15 +32,6 @@ export async function agentSteps(page: import("@playwright/test").Page) {
   return list;
 }
 
-/** Turn the page-level "Show raw data" switch on (it appears once the run has finished). */
-export async function showRawData(page: import("@playwright/test").Page) {
-  await agentSteps(page);
-  const toggle = page.getByRole("switch", { name: "Raw data" });
-  await toggle.scrollIntoViewIfNeeded();
-  await toggle.click();
-  await expect(toggle).toBeChecked();
-}
-
 /** Open "Full details" for the pitch at `index` (0 = the top pitch): the right-hand sheet. */
 export async function openDetails(page: import("@playwright/test").Page, index = 0) {
   const row = page.getByRole("region", { name: "Pitches", exact: true }).getByRole("listitem").nth(index);

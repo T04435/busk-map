@@ -1,3 +1,4 @@
+import { qlooBudgetSpent } from "@/server/adapters/qloo/budget";
 import "server-only";
 import { PERSONA_PROMPT } from "@/lib/agent-persona";
 import { NO_SCORES_RULE } from "@/lib/plain-scores";
@@ -10,16 +11,18 @@ import { log } from "@/server/log";
 import { LEARN_LIMITS, LEARN_MAX_PICKS, LEARN_MIN_PICKS } from "@/server/playlist/config";
 import type { LearnContext, MatchOutput } from "./context";
 import { fallbackAnswer, rankArtists } from "./fallback";
-import { formatHistory } from "./history";
+import { formatHistory, historyForModel, readFromSpotify } from "./history";
+import { nameKey } from "@/lib/text";
 import { createMockLearner } from "./mock-model";
 import { LEARN_MODEL_ID, LEARN_PROVIDER_OPTIONS } from "./models";
-import { buildSuggestions, createLearnTools, LEARN_TOOL_LABELS, LEARN_TOOL_SOURCES, LearnState, songsOpen, type LearnTools } from "./tools";
+import { buildSuggestions, createLearnTools, joinSpotifyDisplay, LEARN_TOOL_LABELS, LEARN_TOOL_SOURCES, LearnState, songsOpen, type LearnTools } from "./tools";
 import type { NewSuggestion } from "./types";
 
 /**
  * The learn agent (docs/playlist-architecture.md §2): a second ToolLoopAgent, built like the busk agent in agent/agent.ts.
- * Qloo finds and scores the artists (the Repertoire's taste, the crowds at your pitches, who is rising), Spotify (Last.fm
- * as backup) supplies their songs, and the model decides what to look at next, chooses the picks from the songs the tools
+ * Qloo finds and scores the artists (the Repertoire's taste, the crowds at your pitches, who is rising), Last.fm supplies
+ * their songs (never Spotify: its terms bar Spotify Content in an AI model; Spotify's covers and links join the picks
+ * after the model call, joinSpotifyDisplay), and the model decides what to look at next, chooses the picks from the songs the tools
  * returned, and writes one reason per pick. It never adds a song: picks are songIds from this run's top_tracks.
  *
  * Two server steps run first and stream like any other step (match_playlist, history). If the model fails, times out or
@@ -48,11 +51,16 @@ Rules:
 
 export function buildLearnPrompt(ctx: LearnContext, match: MatchOutput, history: string): string {
   const matched = match.artists.filter((a) => a.matched).map((a) => a.name);
+  // An unmatched name known only from the act's songs read from Spotify is Spotify's spelling: not named (matched ones are Qloo's).
+  const spotifyOnly = new Set(ctx.history.songs.filter(readFromSpotify).map((s) => nameKey(s.artist)));
+  for (const s of ctx.history.songs) if (!readFromSpotify(s)) spotifyOnly.delete(nameKey(s.artist));
+  for (const a of ctx.playlist.soundsLike) spotifyOnly.delete(nameKey(a.name));
+  const unmatched = match.unmatched.filter((name) => !spotifyOnly.has(nameKey(name)));
   const sounds = ctx.playlist.soundsLike.map((a) => a.name);
   const pitches = ctx.pitches.map((p) => p.name);
   return [
     `Performer: ${ctx.playlist.actName ?? "the act"}.`,
-    `Sounds like: ${sounds.join(", ") || "not given"}. Qloo matched: ${matched.join(", ") || "none"}${match.unmatched.length ? `; no match for ${match.unmatched.join(", ")}` : ""}.`,
+    `Sounds like: ${sounds.join(", ") || "not given"}. Qloo matched: ${matched.join(", ") || "none"}${unmatched.length ? `; no match for ${unmatched.join(", ")}` : ""}.`,
     `City: ${ctx.city}. Today: ${ctx.today}. Usual pitches: ${pitches.join(", ") || "none yet (use 'city' for the crowd)"}.`,
     "",
     history,
@@ -134,7 +142,7 @@ export async function runLearnAgent(ctx: LearnContext, events: LearnAgentEvents 
     return m.output;
   });
   if (!matched || match.status !== "ok") {
-    const code = match.status === "no_match" ? "no_match" : "qloo_unavailable";
+    const code = match.status === "no_match" ? "no_match" : qlooBudgetSpent() ? "qloo_budget_spent" : "qloo_unavailable";
     return result({ status: "failed", endCode: code, mode: "none", model: offline ? "mock" : "claude", picks: [], summary: null });
   }
 
@@ -153,7 +161,8 @@ export async function runLearnAgent(ctx: LearnContext, events: LearnAgentEvents 
     lastRunAt: h.lastRun ? new Date(h.lastRun.startedAt).toISOString() : null,
   }));
 
-  const prompt = buildLearnPrompt(ctx, matched, formatHistory(h).text);
+  // The act's own songs read from Spotify reach the prompt only as Last.fm lists them (historyForModel).
+  const prompt = buildLearnPrompt(ctx, matched, formatHistory(await historyForModel(h, ctx.adapters)).text);
   state.seen.add(prompt);
   state.seen.add(LEARN_INSTRUCTIONS);
   const tools = createLearnTools(ctx, state);
@@ -284,6 +293,8 @@ export async function runLearnAgent(ctx: LearnContext, events: LearnAgentEvents 
   }
 
   if (state.answer) {
+    // Spotify's covers and links join the picks only now, after the model call: the model saw Last.fm's songs alone.
+    await joinSpotifyDisplay(state, state.answer.picks.map((p) => p.songId), ctx);
     const picks = buildSuggestions(state.answer, state, ctx, ranker);
     notes.push(...state.answer.notes);
     return result({ status: "done", endCode: null, mode: ranker === "mock" ? "mock" : "agent", model: ranker === "mock" ? "mock" : "claude", picks, summary: state.answer.summary, usage });
@@ -302,10 +313,11 @@ export async function runLearnAgent(ctx: LearnContext, events: LearnAgentEvents 
   }
   const accepted = fallbackAnswer(state);
   if (accepted) {
+    await joinSpotifyDisplay(state, accepted.picks.map((p) => p.songId), ctx);
     return result({ status: "fallback", endCode: endCode ?? "stopped", mode: "fallback", model: "template", picks: buildSuggestions(accepted, state, ctx, "template"), summary: accepted.summary, usage });
   }
   const totals = totalsNow();
-  if (state.artists.size === 0) return result({ status: "failed", endCode: "qloo_unavailable", mode: "none", model: "template", picks: [], summary: null, usage });
+  if (state.artists.size === 0) return result({ status: "failed", endCode: qlooBudgetSpent() ? "qloo_budget_spent" : "qloo_unavailable", mode: "none", model: "template", picks: [], summary: null, usage });
   if (totals.songsChecked > 0 || state.coveredSeen > 0) return result({ status: "done", endCode: "nothing_new", mode: "fallback", model: "template", picks: [], summary: null, usage });
   return result({ status: "failed", endCode: endCode ?? null, mode: "none", model: "template", picks: [], summary: null, usage });
 }

@@ -9,7 +9,7 @@ import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { Button } from "@/components/ui/button";
 import { geohashBounds } from "@/lib/geo";
 import { MAP_FRAME, MAP_GESTURES, orangeCells } from "@/components/map/taste-cells";
-import { STYLE_URL, baseStyle, fillExpression, hexagon, rampColors, themeColor, whenStyle } from "@/components/map/map-shared";
+import { OSM_ATTRIBUTION, STYLE_URL, baseStyle, fillExpression, hexagon, rampColors, themeColor, whenStyle } from "@/components/map/map-shared";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
 
 /**
@@ -105,7 +105,7 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
       style: STYLE_URL,
       center: [center.lon, center.lat],
       zoom: 13.4,
-      attributionControl: { compact: true },
+      attributionControl: { compact: true, customAttribution: OSM_ATTRIBUTION },
       ...MAP_GESTURES,
     });
     instance.addControl(new NavigationControl({ showCompass: false }), "top-right");

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { LngLatBounds, Map as MapLibreMap, NavigationControl, type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { STYLE_URL, baseStyle, fillExpression, hexagon, rampColors, themeColor, whenStyle } from "@/components/map/map-shared";
+import { OSM_ATTRIBUTION, STYLE_URL, baseStyle, fillExpression, hexagon, rampColors, themeColor, whenStyle } from "@/components/map/map-shared";
 import { MAP_FRAME, MAP_GESTURES, orangeCells } from "@/components/map/taste-cells";
 
 export type HeatCell = { lat: number; lng: number; affinity: number };
@@ -84,7 +84,7 @@ export function TasteHeatMap({ center = WORLD, zoom = 1, cells, cities, label }:
 
   useEffect(() => {
     if (!container.current) return;
-    const instance = new MapLibreMap({ container: container.current, style: STYLE_URL, center: [lng, lat], zoom, attributionControl: { compact: true }, ...MAP_GESTURES });
+    const instance = new MapLibreMap({ container: container.current, style: STYLE_URL, center: [lng, lat], zoom, attributionControl: { compact: true, customAttribution: OSM_ATTRIBUTION }, ...MAP_GESTURES });
     instance.addControl(new NavigationControl({ showCompass: false }), "top-right");
     map.current = instance;
     let fellBack = false;

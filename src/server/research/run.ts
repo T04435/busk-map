@@ -40,6 +40,7 @@ import type { AdapterContext } from "@/server/adapters/core";
 import * as qloo from "@/server/adapters/qloo";
 import { withQlooUsage, type QlooUsage } from "@/server/adapters/qloo/usage";
 import { getArtistCatalogue, getArtistProfile } from "@/server/adapters/repertoire";
+import { qlooBudgetSpent } from "@/server/adapters/qloo/budget";
 import { spotifyLimitedUntil } from "@/server/adapters/repertoire/pacer";
 import { getSongs } from "@/server/adapters/songs";
 import { CITIES } from "@/server/cities";
@@ -50,7 +51,7 @@ import { boundSteps } from "@/server/learn/run";
 import { endOf, suggestionEvent } from "@/server/learn/replay";
 import type { LearnRun } from "@/server/learn/runs";
 import type { LearnStore } from "@/server/learn/store";
-import { buildSuggestions, LearnState, runTopTracks } from "@/server/learn/tools";
+import { buildSuggestions, joinSpotifyDisplay, LearnState, runTopTracks } from "@/server/learn/tools";
 import type { RunRecord } from "@/server/learn/types";
 import {
   RESEARCH_FANS_LOVE_KEPT,
@@ -93,6 +94,8 @@ export type ResearchRunArgs = {
   signal?: AbortSignal;
   /** Tests swap the step-9 model. */
   model?: LanguageModel;
+  /** Test fault `qloo-budget`: the first step ends the run as if today's Qloo budget were spent. */
+  budgetFault?: boolean;
   /** Test fault `research-slow`: wait this long at the start of every step. */
   stepDelayMs?: number;
   /** The performer's answer to "Is one of these you?": a candidate the last run offered, or none of them. */
@@ -119,7 +122,13 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 const r2 = (n: number | null | undefined) => (n === null || n === undefined || !Number.isFinite(n) ? null : Math.round(n * 100) / 100);
 const SPOTIFY_ID = /^[A-Za-z0-9]{22}$/;
 
-class QlooDown extends Error {}
+class QlooDown extends Error {
+  constructor(message: string, readonly budget = false) {
+    super(message);
+  }
+}
+/** Why Qloo is down for this run: today's budget is spent (the page then offers the examples) or Qloo is not answering. */
+const qlooEndCode = (forceBudget = false) => (forceBudget || qlooBudgetSpent() ? "qloo_budget_spent" : "qloo_unavailable") as "qloo_budget_spent" | "qloo_unavailable";
 
 /** U31: the act name was filled in from the last link (or never set) rather than typed by the user, so a new link replaces it. */
 export function actNameFollowsProfile(actName: string | null, previousProfileName: string | null | undefined): boolean {
@@ -251,6 +260,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
     const withCalls = () => (calls.length ? { calls } : {});
     try {
       if (args.stepDelayMs) await new Promise((resolve) => setTimeout(resolve, args.stepDelayMs));
+      if (args.budgetFault) throw new QlooDown("Today's Qloo budget is spent.", true);
       const output = await recordCalls(calls, () => work(via));
       const waits = Boolean((output as { waiting?: unknown }).waiting);
       (steps as Record<string, StoredStep>)[key] = { status: waits ? "waiting" : "done", output };
@@ -502,7 +512,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           return { ...empty, summary: R.fallback.noneLabel, fallback: "none", ...declinedMark, ...genreMark };
         });
         if (!found) {
-          await finish({ status: "failed", endCode: "qloo_unavailable", saved: [], usage: null });
+          await finish({ status: "failed", endCode: qlooEndCode(), saved: [], usage: null });
           return null;
         }
         // "Is one of these you?": a likely match that needs the performer's yes. The run ends cleanly (it doesn't count), the answer starts the next one.
@@ -799,15 +809,15 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
       }
 
       // --- Step 10: one Claude call ranks the songs and sums up the act ---
-      for (const s of Object.values(steps)) if (s?.output) state.seen.add(s.output);
-      const p = steps.profile?.output;
+      // The numbers the model may cite: what its prompt carries, so not the Spotify steps (profile, songs) it never sees.
+      for (const [key, s] of Object.entries(steps)) if (s?.output && key !== "profile" && key !== "songs") state.seen.add(s.output);
       const q = steps.qloo?.output;
       const fans = steps.fans?.output;
+      // No Spotify field reaches the model (Spotify Developer Terms §IV.2): the act's name is Qloo's, else the one the
+      // performer saved, never the Spotify profile's; no Spotify genres or followers. The songs are Last.fm's (runTopTracks).
       const facts: SummaryFacts = {
-        act: (mode === "full" ? actLabel : playlist.actName) ?? p?.name ?? own?.name ?? "this act",
+        act: (q?.matched ? q.name : null) ?? (mode === "full" ? actLabel : playlist.actName) ?? own?.name ?? "this act",
         ...(own || fallbackKind !== "soundsLike" ? {} : { basedOnSoundsLike: true }),
-        spotifyGenres: p?.genres.slice(0, 4) ?? [],
-        followers: p?.followers ?? null,
         description: q?.description ?? null,
         audience: q?.audience ?? [],
         genres: (steps.genres?.output?.tags ?? []).slice(0, 4).map((t) => t.name),
@@ -824,6 +834,8 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         const result = await summarise(facts, state, ctx, { offline: adapters.offline, model: args.model, signal: args.signal });
         nine.usage = result.usage;
         nine.by = result.by;
+        // Spotify's covers and links join the picks only now, after the model call: the model saw Last.fm's songs alone.
+        if (result.accepted) await joinSpotifyDisplay(state, result.accepted.picks.map((p) => p.songId), ctx);
         const picks = (nine.picks = result.accepted ? buildSuggestions(result.accepted, state, ctx, result.by) : []);
         return { summary: summaryLine(result.by, picks.length), by: result.by, picks: picks.length };
       });
@@ -836,7 +848,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
   } catch (error) {
     const down = error instanceof QlooDown;
     if (!down) log.error("research run failed", { error: error instanceof Error ? error.message : "unknown" });
-    await finish({ status: "failed", endCode: down ? "qloo_unavailable" : null, saved: [], usage: null }).catch(() => undefined);
+    await finish({ status: "failed", endCode: down ? qlooEndCode((error as QlooDown).budget) : null, saved: [], usage: null }).catch(() => undefined);
   } finally {
     run.finish();
   }

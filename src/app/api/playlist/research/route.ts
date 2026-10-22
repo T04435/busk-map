@@ -9,7 +9,7 @@ import { ensurePlaylist, guardMutation, isResponse, readSession } from "@/server
 import { LEARN_MAX_PENDING, LEARN_WINDOW_MINUTES } from "@/server/playlist/config";
 import { executeResearchRun } from "@/server/research/run";
 import { learnRunGate, refundLearnRun } from "@/server/rate-limit";
-import { adapterContextFor, clientIp, FAULTS_HEADER, learnLimitFaultRequested, researchStepDelayMs } from "@/server/request";
+import { adapterContextFor, clientIp, FAULTS_HEADER, learnLimitFaultRequested, qlooBudgetFaultRequested, researchStepDelayMs } from "@/server/request";
 
 /** A run takes well under a minute; the summary call times out at 30 s, then the data's words are used. */
 export const maxDuration = 120;
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
   registerLearnRun(run);
   const ip = clientIp(request.headers);
   const exempt = limitsExempt();
-  void executeResearchRun({ learn, playlists: session.store, playlist, spotifyId, mode: body.mode, adapters: adapterContextFor(faults), record: started.run, run, stepDelayMs: researchStepDelayMs(faults), ...(body.mode === "full" && body.qlooChoice ? { qlooChoice: body.qlooChoice } : {}), ...(body.mode === "full" && body.genre ? { genre: body.genre } : {}) }).then(() => {
+  void executeResearchRun({ learn, playlists: session.store, playlist, spotifyId, mode: body.mode, adapters: adapterContextFor(faults), record: started.run, run, stepDelayMs: researchStepDelayMs(faults), budgetFault: qlooBudgetFaultRequested(faults), ...(body.mode === "full" && body.qlooChoice ? { qlooChoice: body.qlooChoice } : {}), ...(body.mode === "full" && body.genre ? { genre: body.genre } : {}) }).then(() => {
     // A run that ended with Qloo or Spotify down didn't count: its network hit is given back.
     const end = run.events.at(-1);
     if (!exempt && end?.type === "end") refundLearnRun(end.code, ip);

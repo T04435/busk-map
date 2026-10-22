@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { holdAgentRunning } from "./layout-helpers";
-import { agentSteps, expect, LOCAL, openDetails, SATURDAY, showRawData, test, waitForPlan } from "./fixtures";
+import { agentSteps, expect, LOCAL, openDetails, SATURDAY, test, waitForPlan } from "./fixtures";
 
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
 
@@ -121,21 +121,13 @@ test.describe("the plan map draws the taste cells even with no tiles (offline)",
 test.describe("the research feed", () => {
   test.skip(!LOCAL, "Runs the mock agent; local offline server only");
 
-  test("raw data (tool names, inputs and JSON) sit behind the Show raw data switch", async ({ page }) => {
+  test("the feed is plain words: no raw data view, no tool names", async ({ page }) => {
     await page.goto("/plan?example=folk-duo");
     await waitForPlan(page);
     const feed = await agentSteps(page);
-    const toggle = page.getByRole("switch", { name: "Raw data" });
-    await expect(toggle).not.toBeChecked();
+    await expect(page.getByRole("switch", { name: "Raw data" })).toHaveCount(0);
     await expect(feed.locator("code")).toHaveCount(0);
     await expect(feed.getByTestId("agent-step-data")).toHaveCount(0);
-    await showRawData(page);
-    await expect(feed.locator("code").first()).toBeVisible();
-    await expect(feed.getByTestId("agent-step-data").first()).toBeAttached();
-    await page.getByRole("button", { name: "JSON" }).click();
-    await expect(feed.locator("pre").first()).toBeVisible();
-    await toggle.click();
-    await expect(feed.locator("code")).toHaveCount(0);
   });
 
   test("while the agent runs there is no raw switch, and the checks are plain words", async ({ page }) => {
@@ -191,7 +183,6 @@ const STATES: { name: string; open: (page: Page) => Promise<void> }[] = [
   { name: "plan ready", open: async (p) => { await p.goto("/plan?example=acoustic"); await waitForPlan(p); } },
   { name: "sheet open", open: async (p) => { await p.goto("/plan?example=folk-duo"); await waitForPlan(p); await openDetails(p); } },
   { name: "dot popover", open: async (p) => { await p.goto("/plan?example=acoustic"); await waitForPlan(p); await p.getByTestId("browse-others").scrollIntoViewIfNeeded(); await p.getByTestId("browse-others").focus(); await p.keyboard.press("Enter"); await expect(p.getByTestId("other-pitch-popover")).toBeVisible(); } },
-  { name: "raw data on", open: async (p) => { await p.goto("/plan?example=sax"); await waitForPlan(p); await showRawData(p); } },
   { name: "replay", open: async (p) => { await p.goto("/plan?example=folk-duo"); await waitForPlan(p); await p.reload(); await waitForPlan(p); } },
   { name: "qloo down", open: async (p) => { await p.goto("/plan?example=acoustic&faults=qloo"); await expect(p.getByRole("heading", { name: "No plan without taste data" })).toBeVisible(); } },
   { name: "no artist matched", open: async (p) => { await p.goto(`/plan?name=Nobody%20Knows&artists=Zzyzx%20Nobody|Qqq%20Unknown&date=${SATURDAY}&from=18&to=21`); await waitForPlan(p); } },

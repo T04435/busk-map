@@ -16,7 +16,8 @@ import { log } from "@/server/log";
 import { freshRunsAllowed, saveRunSnapshot } from "@/server/plans";
 import { recordBuskForRepertoire } from "@/server/playlist/usual";
 import { freshRunGate, refundPlanRun } from "@/server/rate-limit";
-import { adapterContextFor, clientIp, FAULTS_HEADER, freshLimitFaultRequested } from "@/server/request";
+import { adapterContextFor, clientIp, FAULTS_HEADER, freshLimitFaultRequested, qlooBudgetFaultRequested } from "@/server/request";
+import { QLOO_BUDGET_MESSAGE, qlooBudgetSpent } from "@/server/adapters/qloo/budget";
 
 /** Agent runs take 20–60 s; the agent itself times out at 90 s, then the engine's plan is assembled. */
 export const maxDuration = 120;
@@ -34,7 +35,7 @@ function jsonError(status: number, code: string, message: string, headers: Heade
  * every click is a fresh agent run. The agent starts first: nothing is
  * computed before the stream opens.
  *
- * Fresh runs are limited to 5 an hour per IP (per instance; replays and
+ * Fresh runs are limited to 30 an hour per IP (per instance; replays and
  * joined runs are free). A refusal is a 429 with Retry-After and
  * `{ error: { code: "rate_limited", message, retryAt, retryAfterS } }`.
  * The test fault `x-buskmap-faults: fresh-limit` forces it (never in production).
@@ -89,11 +90,16 @@ export async function POST(request: Request) {
   }
   // Only a run whose own request recorded a hit can give one back (B-043).
   const counted = !reused && !offline;
+  const budgetFault = qlooBudgetFaultRequested(request.headers.get(FAULTS_HEADER));
   const requestId = crypto.randomUUID();
   const encoder = new TextEncoder();
 
   const start = async (run: AgentRun, signal: AbortSignal) => {
     run.push({ type: "status", message: "Planning started" });
+    if (budgetFault) {
+      run.push({ type: "error", code: "qloo_budget_spent", message: QLOO_BUDGET_MESSAGE });
+      return;
+    }
     try {
       const { plan, usage, engineTop, agentTop } = await runPlanAgent(
         context,
@@ -121,7 +127,11 @@ export async function POST(request: Request) {
       // The plain-AI baseline starts once the agent's data is loaded, so the two don't race for Qloo's rate limit.
       void baselineFor(parsed.data, adapters, context.today);
     } catch (error) {
-      if (error instanceof QlooUnavailableError) {
+      if (error instanceof QlooUnavailableError && qlooBudgetSpent()) {
+        // Today's Qloo budget is spent: say so and offer the examples (cached data), not a generic outage.
+        run.push({ type: "error", code: "qloo_budget_spent", message: QLOO_BUDGET_MESSAGE });
+        if (counted) refundPlanRun("qloo_unavailable", ip);
+      } else if (error instanceof QlooUnavailableError) {
         run.push({ type: "error", code: "qloo_unavailable", message: "Qloo, our taste data source, is not responding. Please try again shortly." });
         if (counted) refundPlanRun("qloo_unavailable", ip);
       } else {

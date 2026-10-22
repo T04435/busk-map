@@ -121,7 +121,7 @@ test.describe("planners read the Repertoire (offline)", () => {
     await expect(page).toHaveURL(/\/plan\?example=|\/p\//);
     await waitForPlan(page);
     await expect(page.getByTestId("save-as-repertoire")).toHaveCount(0);
-    // No Repertoire switch (the plan's only switch is the research's "Raw data").
+    // No Repertoire switch.
     await expect(page.getByRole("switch", { name: /Repertoire/ })).toHaveCount(0);
     // (The one song action set names the button "Add <song>"; an example offers none.)
     await expect((await openDetails(page)).getByRole("region", { name: "Songs you should learn" }).getByRole("button", { name: /^Add / })).toHaveCount(0);

@@ -1,3 +1,4 @@
+import { QLOO_BUDGET_MESSAGE, qlooBudgetSpent } from "@/server/adapters/qloo/budget";
 import { rejectBots } from "@/server/bot";
 import { weekRequestSchema } from "@/lib/week-schema";
 import { buildWeekPlan, WeekQlooUnavailableError } from "@/server/agent/week";
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
     return Response.json({ plan }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof WeekQlooUnavailableError) {
+      if (qlooBudgetSpent()) return Response.json({ error: { code: "qloo_budget_spent", message: QLOO_BUDGET_MESSAGE } }, { status: 503 });
       return Response.json({ error: { code: "qloo_unavailable", message: "Qloo, our taste data source, is not responding. Please try again shortly." } }, { status: 503 });
     }
     log.error("week plan failed", { error: error instanceof Error ? error.message : "unknown" });

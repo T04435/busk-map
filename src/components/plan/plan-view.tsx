@@ -58,7 +58,7 @@ type RunState =
   | { status: "idle" | "running" | "done" }
   | { status: "error"; message: string }
   /** The fresh-run limit refused the run (429): nothing started, no fallback plan is built. */
-  | { status: "limited"; message: string };
+  | { status: "limited"; message: string; /** Today's Qloo budget is spent (not the per-IP limit): the page offers the example plans. */ budget?: boolean };
 
 /** What the header needs before the plan exists (agent-first: the plan arrives with the agent's answer). */
 type Heading = Pick<Plan, "cityName" | "slotLabel" | "permit" | "performerName" | "qlooMode"> & {
@@ -125,8 +125,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   const [usage, setUsage] = useState<RunUsage | null>(stored?.usage ?? null);
   /** The running research totals (the funnel): the latest `totals` event; the plan's own totals replace them once it arrives. */
   const [liveTotals, setLiveTotals] = useState<ResearchTotals | null>(stored?.totals ?? null);
-  /** The page-level "Show raw data" switch: tool names, inputs and the returned data show only when it is on. */
-  const [showRaw, setShowRaw] = useState(false);
   const wide = useWide();
   /** The run was replayed from the cache: its steps are collapsed. */
   const [replayed, setReplayed] = useState(Boolean(stored?.plan));
@@ -235,6 +233,10 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
             const by = event.plan.explanationsModel ?? heading.model;
             setFallbackNote(event.plan.explanations === "ai" ? null : couldntNote(by));
             setRevealed(true);
+            finished = true;
+          } else if (event.type === "error" && event.code === "qloo_budget_spent") {
+            // Like the fresh-run limit: no engine fallback (it would call the data sources again); the examples run on saved data.
+            setRun({ status: "limited", message: event.message, budget: true });
             finished = true;
           } else if (event.type === "error") {
             fail(event.message);
@@ -370,8 +372,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
       onRetry={qlooDown ? retry : undefined}
       when={slotShort}
       pins={plan ? plan.pitches.map((p, i) => ({ id: p.id, name: p.name, lat: p.lat, lon: p.lon, rank: i + 1 })) : undefined}
-      showRaw={showRaw}
-      onShowRawChange={setShowRaw}
       footer={live ? <DataSources status={[]} showAi={false} soFar={sourcesTouched(steps.map((s) => s.tool))} /> : dataSources}
     />
   ) : null;
@@ -430,7 +430,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
           <b className="font-bold uppercase">Qloo test data</b>
         </Banner>
       )}
-      {limited && <PlanAlert kind="limit" message={run.status === "limited" ? run.message : undefined}>{statusLine}</PlanAlert>}
+      {limited && <PlanAlert kind="limit" budget={run.status === "limited" && run.budget === true} message={run.status === "limited" ? run.message : undefined}>{statusLine}</PlanAlert>}
       {/* B-184: with no legal pitch the NoPitchPanel says it all; a note about "these pitches" would point at nothing. */}
       {plan && !pending && plan.pitches.length === 0 ? null : noTaste ? (
         <Banner testId="agent-fallback">The Hive didn&apos;t run: with no taste to go on, your pitches come straight from the city&apos;s data.</Banner>

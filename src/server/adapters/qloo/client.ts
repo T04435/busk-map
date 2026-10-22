@@ -6,6 +6,7 @@ import { addDays } from "@/lib/slot";
 import { env, type QlooBackend } from "@/server/env";
 import { log } from "@/server/log";
 import { QLOO_MOCK_BASE_URL, qlooMockFetch } from "@/server/qloo-mock/fetch";
+import { takeQlooCall } from "./budget";
 import { countLookup, lookupScope, noteQlooRequest } from "./usage";
 import { AdapterError, fetchJson } from "../core";
 import { parseEntities, toDetail, toEntity, toImpact, toPlace } from "./normalize";
@@ -111,6 +112,7 @@ export async function qlooGet<S extends z.ZodType>(backend: QlooBackend, path: s
   };
   if (backend === "mock") return once();
   for (let attempt = 0; ; attempt++) {
+    await takeQlooCall();
     await pace();
     try {
       return await once();

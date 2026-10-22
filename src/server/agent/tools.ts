@@ -7,6 +7,7 @@ import { activitySentence, activityWord } from "@/lib/activity";
 import { nameKey } from "@/lib/text";
 import * as qloo from "@/server/adapters/qloo";
 import { activityEstimate, relativeActivity, candidateAt, openDuring, pickTopPitches, scoreWindows, type Candidate, type KnownPlace, type ScoredPitch } from "@/server/scoring";
+import { reasonWithoutYear, type SetlistEntry } from "@/server/scoring/setlist";
 import { USUAL_HOTSPOTS } from "@/server/data/spots";
 import type { PlanContext } from "./context";
 import { NumberBag } from "./number-bag";
@@ -633,7 +634,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         return seen({
           summary: setlist.length ? `${setlist.length} songs for ${pitch.name}; open with ${setlist[0].title}` : "No songs given",
           pitch: pitch.name,
-          songs: setlist.slice(0, 10).map((s, i) => ({ order: i + 1, song: s.title, artist: s.artist, year: s.year, score: s.score, why: s.reason, ...(s.origin === "suggested" ? { suggested: true } : {}), ...(s.localScene ? { localScene: true } : {}) })),
+          songs: setlistForModel(setlist),
         });
       },
     }),
@@ -671,6 +672,37 @@ function buildTools(ctx: PlanContext, state: AgentState) {
   // best_hours exists only for an any-time request (plan-inputs-architecture.md 2.4); the key stays in the type.
   if (!ctx.isAnyTime) delete (tools as Partial<typeof tools>).best_hours;
   return tools;
+}
+
+/**
+ * The set as build_setlist shows it to the model: the title and artist (the performer's own, or Last.fm's for a suggested
+ * song), the score and the reason without its year. Spotify's Developer Terms (v10, §IV.2) bar Spotify Content in an AI
+ * model, so no Spotify field goes in: no release year, length, id, link or cover (they stay on the plan for display).
+ */
+export function setlistForModel(setlist: readonly SetlistEntry[]) {
+  return setlist.slice(0, 10).map((s, i) => ({
+    order: i + 1,
+    song: s.title,
+    artist: s.artist,
+    score: s.score,
+    why: reasonWithoutYear(s.reason),
+    ...(s.origin === "suggested" ? { suggested: true } : {}),
+    ...(s.localScene ? { localScene: true } : {}),
+  }));
+}
+
+/**
+ * What the page shows under a step: the output the model read, plus display-only fields joined AFTER the model read it,
+ * server-side. build_setlist: each song's release year (Spotify), matched by position in the same memoised set.
+ */
+export async function outputForPage(tool: string, input: unknown, output: unknown, ctx: Pick<PlanContext, "setlistFor">, state: Pick<AgentState, "pool">): Promise<unknown> {
+  if (tool !== "build_setlist") return output;
+  const pitchId = (input as { pitchId?: unknown } | null)?.pitchId;
+  const pitch = typeof pitchId === "string" ? state.pool.get(pitchId) : undefined;
+  const songs = (output as { songs?: unknown } | null)?.songs;
+  if (!pitch || !Array.isArray(songs)) return output;
+  const setlist = await ctx.setlistFor(pitch);
+  return { ...(output as object), songs: songs.map((s, i) => ({ ...(s as object), year: setlist[i]?.year ?? null })) };
 }
 
 type Problem = { kind: "pool" | "count" | "spacing" | "numbers"; message: string; numbers?: string[] };

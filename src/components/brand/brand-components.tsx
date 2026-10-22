@@ -149,7 +149,7 @@ export function PlanStates() {
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(300px,100%),1fr))] gap-3">
         <div className={SPEC}>
           <h4 className={SPEC_H}>PlanAlert · limit</h4>
-          <PlanAlert kind="limit" message="You've started 5 plans this hour. Try again in about 20 minutes." testId="brand-alert-limit" />
+          <PlanAlert kind="limit" message="You've started 30 plans this hour. Try again in about 20 minutes." testId="brand-alert-limit" />
         </div>
         <div className={SPEC}>
           <h4 className={SPEC_H}>PlanAlert · Qloo unavailable</h4>

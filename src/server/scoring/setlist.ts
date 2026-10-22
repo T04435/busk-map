@@ -55,6 +55,20 @@ export type SetlistEntry = {
   localScene: boolean;
 };
 
+/** The year clause of a setlist reason ("from 1995: a good era fit for …"). */
+const YEAR_CLAUSE = /^from \d{4}\b/;
+
+/**
+ * A setlist reason without its release-year clause, for the model (build_setlist): the year comes from Spotify, whose
+ * terms (v10, §IV.2) bar its content from an AI model. The performer still sees the full reason.
+ */
+export function reasonWithoutYear(reason: string): string {
+  return reason
+    .split("; ")
+    .filter((part) => !YEAR_CLAUSE.test(part))
+    .join("; ");
+}
+
 /**
  * Score weights. Missing parts drop out and the rest are rescaled, so without
  * a release year (or an age lean) a song scores 60% affinity, 40% popularity.
@@ -199,6 +213,7 @@ export function buildSetlist(
     ];
     if (sceneRaw !== undefined) why.push(`local scene act your fans would like (${strengthPhrase(sceneRaw)} match)`);
     if (playcount !== null) why.push(`${formatPlays(playcount)} Last.fm plays`);
+    // The year clause comes last and starts "from <year>": reasonWithoutYear relies on that.
     if (year !== null && fit !== null) {
       // A fit implies at least one over-represented, known age band.
       const band = leadingAgeBand(era!.ageLean)!;

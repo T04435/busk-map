@@ -1,5 +1,5 @@
 import { EXAMPLES } from "../../src/lib/examples";
-import { AGENT_KEPT_TOP3, agentSteps, CLAUDE_CREDIT, EXPLANATIONS_LABEL, expect, LOCAL, MODEL_NOTE_PREFIX, openDetails, REPLAY_LINE, SATURDAY, showRawData, test, waitForPlan } from "./fixtures";
+import { AGENT_KEPT_TOP3, agentSteps, CLAUDE_CREDIT, EXPLANATIONS_LABEL, expect, LOCAL, MODEL_NOTE_PREFIX, openDetails, REPLAY_LINE, SATURDAY, test, waitForPlan } from "./fixtures";
 
 test.describe("landing", () => {
   test("shows the three example performers and a way to plan your own busk", async ({ page }) => {
@@ -174,19 +174,9 @@ test.describe("live agent (mock model offline)", () => {
     // The live research totals fill the funnel: the plan's own numbers are the last ones.
     await expect(page.getByTestId("plan-funnel")).toBeVisible();
 
-    // Raw data, behind the page-level switch: tool names, the inputs Claude chose, the source, the thinking and the data returned.
-    await showRawData(page);
-    const crowd = feed.locator('[data-tool="crowd_at"]');
-    await expect(crowd.first()).toContainText("radiusM");
-    await expect(feed.getByText("Qloo /v2/insights · urn:heatmap")).toBeVisible();
-    await expect(feed.getByTestId("agent-note-reasoning").first()).toContainText("Thinking (summary):");
-    await expect(crowd.first().getByTestId("agent-step-data").getByRole("table").first()).toBeVisible();
-    await expect(crowd.first().getByTestId("agent-step-data").getByRole("columnheader", { name: "because" })).toBeVisible();
-    await expect(feed.locator('[data-tool="finish_plan"]')).toContainText("Accepted:");
-    await expect(page.getByTestId("agent-usage")).toContainText("model steps");
-    // Switching it off hides them again.
-    await page.getByRole("switch", { name: "Raw data" }).click();
-    await expect(feed.getByText("Qloo /v2/insights · urn:heatmap")).toHaveCount(0);
+    // No raw data view: the feed stays plain words.
+    await expect(page.getByRole("switch", { name: "Raw data" })).toHaveCount(0);
+    await expect(feed.locator('[data-tool="finish_plan"]')).toContainText("Your busk is ready");
     // Agent vs engine: the mock keeps Busk Map's top 3.
     await expect(page.getByTestId("agent-vs-engine")).toContainText("Agent vs engine");
     await expect(page.getByTestId("agent-vs-engine")).toContainText(AGENT_KEPT_TOP3);
@@ -211,10 +201,6 @@ test.describe("live agent (mock model offline)", () => {
     // U22: the replayed steps show directly, with no inner fold.
     const replayedSteps = page.getByRole("list", { name: "Research, in the order it ran" });
     await expect(replayedSteps.getByText("Your best pitches so far").first()).toBeVisible();
-    // The replay keeps each step's data: raw data shows it.
-    await page.getByRole("switch", { name: "Raw data" }).click();
-    await expect(replayedSteps.locator('[data-tool="taste_map"]').getByTestId("agent-step-data").getByRole("columnheader", { name: "affinity" })).toBeVisible();
-
     // Buskers get no re-run button: a reload replays.
     await expect(page.getByTestId("agent-status")).toHaveText(REPLAY_LINE);
     await expect(page.getByRole("button", { name: /Re-run|Plan with the agent/ })).toHaveCount(0);

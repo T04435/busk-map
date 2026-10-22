@@ -88,7 +88,7 @@ const PRINCIPLES = [
 
 const VOICE = [
   ["Pitch, busk", "A pitch is one place to play. A busk is the whole outing: three pitches, their suggested sets, one link."],
-  ["Plain words", "Say what the research found, never the tool behind it. Raw data waits behind its toggle."],
+  ["Plain words", "Say what the research found, never the tool behind it."],
   ["Honest numbers", "Every number names its source. Estimates are labelled, and nothing is invented."],
   ["Qloo first", "Taste data is the heart of every busk. Credit Qloo wherever its data changed the answer."],
 ] as const;

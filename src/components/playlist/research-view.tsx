@@ -4,6 +4,7 @@ import { FansMap } from "@/components/honeycomb/repertoire/fans-map";
 import { LIST_MAX_HEIGHT, RepertoireResultsLayout } from "@/components/honeycomb/repertoire/repertoire-sections";
 import { artist as mentionArtist, mentionsIn, song as mentionSong, spotifyHref, type Mention } from "@/lib/mention";
 import { AgentLockup } from "@/components/honeycomb/agent-lockup";
+import { PlanAlert } from "@/components/honeycomb/plan-alert";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { TrackResult } from "@/components/forms/repertoire-api";
 import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
@@ -179,7 +180,6 @@ export function ResearchView() {
   const [artists, setArtists] = useState<PickedArtist[]>([]);
   const [artistQuery, setArtistQuery] = useState("");
   const [canSingQuery, setCanSingQuery] = useState("");
-  const [showRaw, setShowRaw] = useState(false);
   const [offline, setOffline] = useState(false);
   const mounted = useRef(true);
   const joined = useRef<string | null>(null);
@@ -418,8 +418,6 @@ export function ResearchView() {
           mode={!events && replay ? "replay" : "live"}
           title={active ? R.heading : R.howBuilt}
           wording={R.waiting}
-          showRaw={showRaw}
-          onShowRawChange={setShowRaw}
           footer={<ResearchFunnel kind="learn" totals={lastTotals?.type === "totals" ? lastTotals.totals : ZERO_LEARN_TOTALS} running={active} />}
           upcoming={upcoming}
           renderWaiting={(step) =>
@@ -787,7 +785,8 @@ export function ResearchView() {
             </form>
           )}
 
-          {view.end && !view.end.ok && !running && (
+          {view.end && !view.end.ok && !running && view.end.code === "qloo_budget_spent" && <PlanAlert kind="limit" budget message={view.end.message} testId="research-end" />}
+          {view.end && !view.end.ok && !running && view.end.code !== "qloo_budget_spent" && (
             <Alert variant="destructive" className={DESTRUCTIVE} data-testid="research-end" data-code={view.end.code ?? ""}>
               <AlertTitle>{view.end.code === "qloo_unavailable" ? COPY.learn.qlooDownTitle : COPY.learn.errorTitle}</AlertTitle>
               <AlertDescription>

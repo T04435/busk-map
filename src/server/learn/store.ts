@@ -199,7 +199,7 @@ export class MemoryLearnStore implements LearnStore {
     const finished = this.latestFinished(playlistId);
     const numberOf = new Map(runs.map((r) => [r.id, r.number]));
     return {
-      songs: (this.playlists.songRows.get(playlistId) ?? []).map((s) => ({ title: s.title, artist: s.artist, key: s.songKey, state: s.state })),
+      songs: (this.playlists.songRows.get(playlistId) ?? []).map((s) => ({ title: s.title, artist: s.artist, key: s.songKey, state: s.state, own: s.own, source: s.source })),
       suggestions: [...this.suggestions(playlistId)]
         .map((s) => ({ title: s.title, artist: s.artist, key: s.songKey, status: s.status, runNumber: s.runId ? (numberOf.get(s.runId) ?? s.runNumber) : null, at: Date.parse(s.suggestedAt) }))
         .reverse(),
@@ -562,7 +562,7 @@ export class PostgresLearnStore implements LearnStore {
 
   async history(playlistId: string): Promise<HistoryData> {
     const [songs, suggestions, keys, runs] = (await Promise.all([
-      this.sql.query("SELECT title, artist, song_key, state FROM playlist_songs WHERE playlist_id = $1", [playlistId]),
+      this.sql.query("SELECT title, artist, song_key, state, own, source FROM playlist_songs WHERE playlist_id = $1", [playlistId]),
       this.sql.query(
         `SELECT s.title, s.artist, s.song_key, s.status, r.number AS run_number, s.created_at
            FROM learn_suggestions s LEFT JOIN learn_runs r ON r.id = s.run_id WHERE s.playlist_id = $1 ORDER BY s.created_at DESC, s.id DESC`,
@@ -571,13 +571,13 @@ export class PostgresLearnStore implements LearnStore {
       this.sql.query("SELECT dismissed_keys FROM playlists WHERE id = $1", [playlistId]),
       this.sql.query("SELECT number, started_at, new_count, status FROM learn_runs WHERE playlist_id = $1 AND status IN ('done', 'fallback') ORDER BY number DESC", [playlistId]),
     ])) as [
-      { title: string; artist: string; song_key: string; state: "can_sing" | "learned" }[],
+      { title: string; artist: string; song_key: string; state: "can_sing" | "learned"; own: boolean; source: HistoryData["songs"][number]["source"] }[],
       { title: string; artist: string; song_key: string; status: "pending" | "learned" | "dismissed"; run_number: number | null; created_at: Time }[],
       { dismissed_keys: string[] }[],
       { number: number; started_at: Time; new_count: number }[],
     ];
     return {
-      songs: songs.map((s) => ({ title: s.title, artist: s.artist, key: s.song_key, state: s.state })),
+      songs: songs.map((s) => ({ title: s.title, artist: s.artist, key: s.song_key, state: s.state, own: s.own, source: s.source })),
       suggestions: suggestions.map((s) => ({ title: s.title, artist: s.artist, key: s.song_key, status: s.status, runNumber: s.run_number, at: ms(s.created_at) })),
       dismissedKeys: keys[0]?.dismissed_keys ?? [],
       earlierRuns: runs.length,

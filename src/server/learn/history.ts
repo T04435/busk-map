@@ -1,5 +1,7 @@
 import "server-only";
-import { nameKey } from "@/lib/text";
+import { nameKey, songKey } from "@/lib/text";
+import type { AdapterContext } from "@/server/adapters/core";
+import { getSongs } from "@/server/adapters/songs";
 import { LEARN_HISTORY_TOKENS } from "@/server/playlist/config";
 import type { LearnStore } from "./store";
 import type { HistoryData } from "./types";
@@ -49,6 +51,32 @@ export function learnedSongs(history: HistoryData): { title: string; artist: str
     ...history.songs.filter((s) => s.state === "learned"),
     ...history.suggestions.filter((s) => s.status === "learned"),
   ].map((s) => ({ title: s.title, artist: s.artist }));
+}
+
+/** An act's own song as Repertoire research read it from the Spotify catalogue (research/run.ts step 2). */
+export const readFromSpotify = (s: HistoryData["songs"][number]) => s.own === true && s.source === "spotify";
+
+/**
+ * The history as the learn model may see it. Spotify's Developer Terms (v10, §IV.2) bar Spotify Content in an AI model, so
+ * the act's own songs read from Spotify are re-sourced from Last.fm: a song Last.fm lists among the artist's top tracks
+ * goes in under Last.fm's title and artist, any other is left out of the prompt. Songs the performer typed or picked
+ * themselves stay as they are. The no-repeat filter still uses the FULL history (`historyKeys` on `ctx.history`).
+ */
+export async function historyForModel(history: HistoryData, adapters: AdapterContext): Promise<HistoryData> {
+  const fromSpotify = history.songs.filter(readFromSpotify);
+  if (fromSpotify.length === 0) return history;
+  const artists = [...new Map(fromSpotify.map((s) => [nameKey(s.artist), s.artist])).values()];
+  const lastfm = await getSongs(artists, adapters).catch(() => null);
+  const byKey = new Map<string, { title: string; artist: string }>();
+  if (lastfm && lastfm.mode !== "fallback") {
+    for (const [asked, tracks] of Object.entries(lastfm.data)) for (const t of tracks) byKey.set(`${nameKey(asked)}|${songKey(t.title)}`, { title: t.title, artist: t.artist || asked });
+  }
+  const songs = history.songs.flatMap((s) => {
+    if (!readFromSpotify(s)) return [s];
+    const hit = byKey.get(`${nameKey(s.artist)}|${songKey(s.title)}`);
+    return hit ? [{ ...s, title: hit.title, artist: hit.artist, source: "lastfm" as const }] : [];
+  });
+  return { ...history, songs };
 }
 
 const clean = (text: string) => text.replace(/[\r\n\t|]+/g, " ").replace(/\s+/g, " ").trim();

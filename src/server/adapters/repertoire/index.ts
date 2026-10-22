@@ -77,6 +77,14 @@ export async function findArtistTracks(artist: string, market: string, context: 
   return runAdapter({ ...common(context), fallback: [], synthetic: () => syntheticArtistTracks(artist), live: () => searchArtistTracks(artist, market) });
 }
 
+/**
+ * One song by one artist ("track:… artist:…", cached for a day), for the display join after a model call
+ * (songs/catalogue.ts:spotifyDisplay): its Spotify id, link, cover, length and year. Fallback: an empty list.
+ */
+export async function findArtistTrack(title: string, artist: string, market: string, context: AdapterContext): Promise<AdapterResult<CatalogueTrack[]>> {
+  return runAdapter({ ...common(context), fallback: [], synthetic: () => syntheticScopedTrackSearch(title, artist), live: () => searchTracksByArtist(title, artist, market) });
+}
+
 /** Ids per release-count lookup (one result list). */
 export const MAX_RELEASE_IDS = 6;
 /** Bound the fan-out (Spotify rate limits per app). */

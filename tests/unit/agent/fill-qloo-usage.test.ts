@@ -55,7 +55,8 @@ describe("Suggested fill: Qloo accounting (docs/plan-inputs-architecture.md §3.
     const plan = await busk(filled);
     const suggested = plan.pitches.flatMap((p) => p.setlist.filter((s) => s.origin === "suggested"));
     expect(suggested.length).toBeGreaterThan(0);
-    expect(plan.researchTotals!.songs).toBeGreaterThanOrEqual(new Set(plan.pitches[0].setlist.map((s) => s.title)).size);
+    // build_setlist shows the model (and the totals) the first 10 songs of a set.
+    expect(plan.researchTotals!.songs).toBeGreaterThanOrEqual(Math.min(10, new Set(plan.pitches[0].setlist.map((s) => s.title)).size));
     const { planSchema } = await import("@/lib/plan-schema");
     expect(planSchema.parse(JSON.parse(JSON.stringify(plan))).pitches[0].setlist).toEqual(plan.pitches[0].setlist);
   });

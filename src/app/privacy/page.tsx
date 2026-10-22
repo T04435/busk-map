@@ -45,7 +45,7 @@ const ITEMS: Item[] = [
   {
     title: "Rate limits and your IP address",
     body: [
-      "To stop abuse and runaway costs, Busk Map counts requests per IP address (for example, 5 new plans an hour, and 6 Learn runs an hour). The counts are held in the memory of the running server for up to an hour and are not written to the database. Vercel's firewall and BotID bot check also see your IP address and browser signals to tell people from scripts.",
+      "To stop abuse and runaway costs, Busk Map counts requests per IP address (for example, 30 new plans an hour, and 6 Learn runs an hour). The counts are held in the memory of the running server for up to an hour and are not written to the database. Vercel's firewall and BotID bot check also see your IP address and browser signals to tell people from scripts.",
     ],
   },
   {

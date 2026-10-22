@@ -9,7 +9,7 @@ Status: **proposal**, 16 Oct 2026, updated 17 Oct for "Songs you should learn is
 The feature is a saved **Repertoire** with three parts:
 - **Songs you can sing**: saved once, then used by Plan a busk and the week planner.
 - **A suggested set per pitch**: today's setlist logic, unchanged.
-- **Songs you should learn**: new, and **its own AI agent run** (the "learn run"). The performer presses "Find songs to learn". A second `ToolLoopAgent` investigates with Qloo (artists, crowds, growth), takes songs from Spotify (Last.fm as backup), and picks and explains them. Its steps stream live with the busk research pattern. Every run's picks are saved to the To learn list, grouped by run, and each new run reads that history so it never repeats itself.
+- **Songs you should learn**: new, and **its own AI agent run** (the "learn run"). The performer presses "Find songs to learn". A second `ToolLoopAgent` investigates with Qloo (artists, crowds, growth), takes songs from Last.fm (never Spotify: see §2.1, "Spotify stays out of the model"), and picks and explains them; Spotify's covers and links are joined onto the saved picks afterwards, for display. Its steps stream live with the busk research pattern. Every run's picks are saved to the To learn list, grouped by run, and each new run reads that history so it never repeats itself.
 
 ## 0. Decisions needed from you
 
@@ -197,8 +197,15 @@ Indexes:
 
 Qloo has no song-level data, so the work stays split, now inside an agent loop:
 1. **Qloo** finds and scores the **artists** (the Repertoire's taste, the crowds at your pitches, who is rising).
-2. **Spotify** (Last.fm as backup) supplies the **songs** of the artists the agent chose.
+2. **Last.fm** supplies the **songs** of the artists the agent chose (`songs/catalogue.ts:catalogueOf`, top tracks).
 3. **Claude** decides what to look at next, chooses the picks from the songs the tools returned, and writes one reason per pick. It never adds a song.
+4. **Spotify** is joined onto the picks **after** the model call, for display only: id, play link, cover, length, year (`learn/tools.ts:joinSpotifyDisplay`).
+
+**Spotify stays out of the model (compliance, v1.0.3).** Spotify's Developer Terms (v10, 15 May 2025) §IV.2 bar "ingesting Spotify Content into a machine learning or AI model". So no Spotify field (track, album or artist names read from the Spotify API, ids, links, covers, popularity, genres, followers, release years, lengths) is in any prompt or tool result a model reads, in the learn agent, the Repertoire research ranking call or the busk agent:
+- **Model inputs come from Qloo first, then Last.fm.** Artists and taste: Qloo. Song candidates: Last.fm top tracks only, with no Spotify fallback (Last.fm down or without the artist: no songs). The busk agent's `build_setlist` shows title, artist, score and the reason without its release-year clause (`agent/tools.ts:setlistForModel`, `scoring/setlist.ts:reasonWithoutYear`). The research ranking call's facts carry no Spotify genres, followers or profile name.
+- **The act's own songs read from Spotify** (research step 2 saves them as own songs with `source='spotify'`) reach the learn prompt only as Last.fm lists them: a song in the artist's Last.fm top tracks goes in under Last.fm's title and artist, any other is left out (`learn/history.ts:historyForModel`). An unmatched seed name known only from those songs isn't named. Names the performer typed or picked themselves stay: they are user input. The no-repeat filter still uses the full history.
+- **Spotify is a display join, server-side, after the model call.** `songs/catalogue.ts:spotifyDisplay` matches the chosen songs by artist and title (`displayKey`): the artist's Spotify tracks first, then one scoped search per song still unmatched (at most 8). A matched song gets Spotify's id, link, cover, length and year and `songSource='spotify'`, so the page looks as before; an unmatched one keeps its Last.fm link and shows no cover. The busk step's page copy gets each song's year back the same way (`agent/tools.ts:outputForPage`).
+- Tests: `tests/unit/no-spotify-in-model.test.ts` records every prompt and tool result each model is sent and checks no Spotify field is in it, while the display data still reaches the page.
 
 Code (proposed): `src/server/learn/agent.ts` (`runLearnAgent`, `LEARN_INSTRUCTIONS`, `buildLearnPrompt`), `src/server/learn/tools.ts` (`createLearnTools`, `LearnState`, `checkPicks`), `src/server/learn/history.ts` (`loadHistory`, `formatHistory`), `src/server/learn/store.ts` (Memory and Postgres), `src/server/learn/fallback.ts`, `src/lib/learn-schema.ts` and `src/lib/learn-totals.ts` (client-safe). It mirrors `src/server/agent/` file for file, so the two agents read alike.
 
@@ -224,7 +231,7 @@ Names follow BRAND's sketch (§7). Two are **server steps** the model never call
 | `crowd_at` | Model | `{ pitch: z.enum([...usualPitchNames, "city"]), take: z.number().int().min(5).max(15).default(10) }` | Artists the crowd at one of **your** usual pitches likes, from fans of your seeds | **Qloo #5c** `client.ts:localArtists` with `where.ts:boxAround(pitch, 400 m)` (existing function, same shape as the busk agent's `crowd_at`, so it can share cache entries). `"city"` = #5 over `CITIES[city].bbox` | `{summary, pitch, artists: [{artistId, name, affinity, because, growth, alreadyInPlaylist}]}` |
 | `rising` | Model | `{ artistIds: z.array(z.string().max(80)).min(1).max(5) }`, ids from earlier results only | Momentum for up to 5 candidate artists | **Qloo #8** `client.ts:trendingWindow` (cached for the day) then `client.ts:trending` (one request each, existing) | `{summary, window: {start, end} \| null, artists: [{artistId, name, growth, trendDelta \| null}]}`, flat rows dropped as `context.ts:PlanContext.rising` does |
 | `crowd_profile` | Model, optional | `{}` | The age lean of the seeds' fans, for era fit | **Qloo #9** `client.ts:demographics` (existing) | `{summary, ageLean, bands}` |
-| `top_tracks` | Model | `{ artistIds: z.array(z.string().max(80)).min(1).max(4), perArtist: z.number().int().min(1).max(3).default(3) }`, ids from earlier results only | Songs by those artists. **Already-suggested, dismissed and can-sing songs are filtered out here, server-side**, and reported as counts | Spotify (primary): proposed `repertoire/client.ts:searchArtistTracks(artist, market)` (`/v1/search?q=artist:"…"&type=track`, `nameKey` match; the top-tracks endpoint returns 403, see the `repertoire/client.ts` header). Last.fm (backup per artist): `songs/client.ts:fetchTopTracks` (existing) | `{summary, songs: [{songId: "s-<n>", title, artist, artistId, year, durationMs, source, popularity}], skipped: {alreadySuggested, dismissed, canSing}, overRepresented: string[]}` |
+| `top_tracks` | Model | `{ artistIds: z.array(z.string().max(80)).min(1).max(4), perArtist: z.number().int().min(1).max(3).default(3) }`, ids from earlier results only | Songs by those artists. **Already-suggested, dismissed and can-sing songs are filtered out here, server-side**, and reported as counts | Last.fm only: `songs/client.ts:fetchTopTracks` via `songs/catalogue.ts:catalogueOf`. Never Spotify (§2.1): Spotify's `repertoire/client.ts:searchArtistTracks` is used only for the display join after the model call | `{summary, songs: [{songId: "s-<n>", title, artist, artistId, year: null, durationMs: null, source: "lastfm", popularity}], skipped: {alreadySuggested, dismissed, canSing}, overRepresented: string[]}` |
 | `finish_suggestions` | Model | §2.6 | The final answer, checked | none | `{accepted, summary, problems?}` |
 
 Per-run call caps (a further call is a tool error the model sees): `related_artists` 2, `crowd_at` 3, `rising` 2, `crowd_profile` 1, `top_tracks` 3 (so at most 12 artists' catalogues), `finish_suggestions` 3.
@@ -331,12 +338,12 @@ finishSuggestionsSchema = z.object({
 - picks that break rules 1–3 are dropped;
 - if at least `min(3, found)` remain, the run is accepted (`status='done'`); otherwise it falls back.
 
-**Server-side fields, never from the model:** title, artist, year, duration, image, source URL and Spotify id come from the `top_tracks` record. `because` comes from Qloo explainability of the artist's result. `basedOn`, `growth`, `isNew` and the rank are computed by the server (§2.8, §7.2).
+**Server-side fields, never from the model:** title and artist come from the `top_tracks` record (Last.fm); year, duration, image, Spotify id and the Spotify source URL are joined after the model call (`joinSpotifyDisplay`), else the Last.fm URL stays. `because` comes from Qloo explainability of the artist's result. `basedOn`, `growth`, `isNew` and the rank are computed by the server (§2.8, §7.2).
 
 **Deterministic fallback** (proposed `learn/fallback.ts`, the `setlist.ts:learnThese` ranking): used when the model fails, times out, hits the step or token cap without an accepted answer, or ends with too few valid picks.
 1. Candidates: every artist from this run's `related_artists` and `crowd_at` outputs, minus excluded and over-represented artists.
 2. Rank: growth (`audience_growth`), then trend delta, then best affinity with a bonus for an artist found both in `related_artists` and at a pitch, then Last.fm listeners.
-3. Songs: this run's `top_tracks` results, or, if it never ran, the server calls it for the top 4 artists (Spotify and Last.fm don't count against the Qloo budget).
+3. Songs: this run's `top_tracks` results, or, if it never ran, the server calls it for the top 4 artists (Last.fm and the Spotify display join don't count against the Qloo budget).
 4. Up to 6 picks, 2 per artist at most, with template reasons ("Fans of Dolly Parton also like Gillian Welch, and the crowd at Bourke St Mall likes her too."). `evidence.ranker = "template"`, `learn_runs.status = 'fallback'`, the `end` event says `mode: "fallback"`.
 5. If even that finds no songs: `end` with `code: "nothing_new"` (all songs were already in the history) or `ok: false, code: "qloo_unavailable"` (no artists at all).
 
@@ -413,7 +420,7 @@ Titles and artists are the stored, length-bounded values, with newlines and `|` 
 
 - **Hard cap: 25 requests per run** (proposed `LEARN_QLOO_BUDGET = 25`), below the 31 the tool caps alone would allow. `runLearnAgent` keeps the `QlooUsage` object that `withQlooUsage` passes in. Before each Qloo tool runs, it checks `usage.calls + worstCost(tool, input) ≤ 25` (worst costs: `related_artists` 1, `crowd_at` 1, `crowd_profile` 1, `rising` `artistIds.length` plus 5 if today's window isn't cached yet). Over the cap, the tool returns `{summary: "The Qloo budget for this run is used up", skipped: "budget"}` instead of calling, and the model is told to finish. The counter can't stop a request in flight, so the pre-check uses the worst case.
 - Against the quota (10,000 a month, `qloo-map.ts:QUOTA`): 100 typical runs ≤ 900 requests (9%), 100 cold ones ≤ 2,500.
-- Spotify (≤ 12 searches) and Last.fm (≤ 12 top-track calls) per run are cached for days and weeks and are not Qloo quota.
+- Last.fm (≤ 12 top-track calls) and the Spotify display join (one search per picked artist, plus at most 8 single-song searches) per run are cached for days and weeks and are not Qloo quota.
 
 **Model per run** (D7, §2.5): Sonnet **US$0.075–0.14**; Haiku US$0.004–0.007. With the limits below, one Repertoire can spend at most 3 runs an hour, about US$0.42. The gateway's US$50 a month budget stays the backstop (`docs/deploy.md`).
 
@@ -438,7 +445,7 @@ Proposed `rate-limit.ts:learnRunGate`, the `freshRunGate` pattern:
 | Qloo down at `match_playlist` | No model call, run `failed`, not counted against the limit | `ok: false, code: "qloo_unavailable"` |
 | No seed artist matches on Qloo | No model call. The feed shows "Qloo couldn't match …" | `ok: false, code: "no_match"` |
 | Qloo fails mid-run | The tool returns an error the model sees; it carries on with what it has, or the fallback ranks what was found | `ok: true, mode: "fallback"` if picks were made |
-| Spotify and Last.fm have nothing for an artist | The artist is dropped from that `top_tracks` result. Artist-only suggestions are never offered | – |
+| Last.fm has nothing for an artist | The artist is dropped from that `top_tracks` result. Artist-only suggestions are never offered | – |
 | Every song found was already in the history | Nothing saved. "No new songs this time: everything we found was suggested before." | `ok: true, newCount: 0, code: "nothing_new"` |
 
 (Changed from the 16 Oct draft: the Last.fm similar-artists fallback is dropped. Qloo is the brain, BRAND's sketch says "Suggestions need Qloo's taste data", and it removes a code path.)
@@ -556,7 +563,7 @@ PLAYLIST_COPY = { name: "Repertoire", canSing: "Songs you can sing", toLearn: "S
 | New call **`c12`** | `num: "12"`, "Artists like your Repertoire", `/v2/insights`, `urn:entity:artist`, `keyParams: ["signal.interests.entities=<Repertoire ids>", "feature.explainability=true", "take=20"]`, `codeRef: "client.ts:tasteArtists"`, `via: ["learn/tools.ts:related_artists"]` |
 | New variant **`c5c`** | `variantOf: "c5"`, "Crowd at your usual pitches", `codeRef: "client.ts:localArtists"`, `via: ["learn/tools.ts:crowd_at"]` |
 | `c1`, `c2`, `c8`, `c9` | Add `via` entries for `learn/tools.ts` (`match_playlist`, `rising`, `crowd_profile`) |
-| New data points | `d_taste_artists` ("artists your Repertoire's fans like", from c12 and c5c), `d_tracks` ("songs by those artists", from Spotify, with Last.fm as backup) |
+| New data points | `d_taste_artists` ("artists your Repertoire's fans like", from c12 and c5c), `d_tracks` ("songs by those artists", from Last.fm; Spotify joined for display only) |
 | Features | `f_setlist` is relabelled "Suggested set" (the id is kept, so the test traces stay valid). A new **`f_learn`** "Songs to learn", in the Repertoire page's To learn section, `combined` with Spotify, Last.fm and **Claude Sonnet (the learn agent)** |
 | Secondary sources (D6) | Add `lastfm`: songs backup |
 | Facts | A new `CALLS_PER_LEARN_RUN = "≤ 25"`. `CALLS_PER_NEW_BUSK` is unchanged |
@@ -685,7 +692,7 @@ Agreed against BRAND's `learn-run-sketch.md` §5 (17 Oct). BRAND's tool names an
 | `related_artists` | "Artists your fans also like" | `artists[].name`, `artists[].affinity`, `artists[].because[]`, `artists[].alreadyInPlaylist` | "Found 14 artists your fans also like" |
 | `rising` | "Who's rising with those crowds" | `window` (or null), `artists[].name`, `artists[].growth`, `artists[].trendDelta` | "Checked who's rising with those crowds" |
 | `crowd_profile` (optional) | "The age of your fans" | `ageLean`, `bands` | "Your fans lean 25–34" |
-| `top_tracks` | "Top songs by those artists" | `songs[].title`, `songs[].artist`, `songs[].source`, `skipped.alreadySuggested`, `skipped.dismissed`, `skipped.canSing` | "Picked top tracks on Spotify (Last.fm for 1). Left out 5 songs suggested before and 2 you dismissed" |
+| `top_tracks` | "Top songs by those artists" | `songs[].title`, `songs[].artist`, `songs[].source`, `skipped.alreadySuggested`, `skipped.dismissed`, `skipped.canSing` | "Picked top tracks on Last.fm for 3 artists. Left out 5 songs suggested before and 2 songs you dismissed" |
 | `finish_suggestions` | "Choosing and explaining" | `accepted`, `summary`, `problems[]` (when rejected) | "Ranked 6 songs and wrote why" / "Rejected: … (fixing)" |
 
 ### 7.2 The stream: `POST /api/playlist/learn` (NDJSON) and `GET /api/playlist/learn/runs/<runId>/events` (join or replay)
@@ -705,7 +712,7 @@ Order: `run` → `status` → steps (`note`, `tool-start`, `tool-end`, and `tota
 
 Field notes (what the server can really know):
 - `because`: from Qloo explainability on the artist's `related_artists` or `crowd_at` result. Every suggested artist comes from one of those, but explainability can be empty for a result, so it is nullable.
-- `year`, `durationMs`, `image`: Spotify only. A Last.fm song has `null` for all three; its `sourceUrl` is the Last.fm track page.
+- `year`, `durationMs`, `image`: Spotify only, joined after the model call. A song the join can't match on Spotify has `null` for all three; its `songSource` is `lastfm` and its `sourceUrl` is the Last.fm track page.
 - `growth`: Qloo `audience_growth`. Live Qloo returns 0 for every artist checked (data map §5), so the server sends `null` when it is 0 or missing, and the card hides it. `trendDelta` is from `rising`, in **percentile points**: the change in the artist's Qloo population percentile (0–100) between the oldest and newest week of the trending window, positive is rising. It is never the week-over-week `population_percent_delta` (a percent, a different unit). `null` when the artist wasn't checked, the trend is flat or the window has one week only.
 - `isNew`: computed by the server. On a live run every `suggestion` is new (D9 forbids repeats), so it is `true`; on a replay or in the list it is true only for the latest finished run.
 - `code` with `ok: true`: `timeout`, `stopped` (step or token cap) or `model_unavailable` together with `mode: "fallback"` means the picks came from the data, not the model; `nothing_new` with `newCount: 0` means everything found was already in the history. `mode: "none"` goes with `ok: false` (nothing was picked).

@@ -2,7 +2,7 @@
 
 Run on 2026-10-17 against the live Qloo hackathon API (`https://hackathon.api.qloo.com`). Qloo only, no model calls.
 Script: `scripts/probe-qloo-cities.mjs` (re-run with `node --env-file=.env.local scripts/probe-qloo-cities.mjs`).
-It prints aggregates only. No Qloo response data is stored in the repo (Qloo terms); the names below are a 5-name sample per run.
+It prints aggregates only. Qloo responses are cached privately server-side (Qloo Support confirmed this is allowed). No Qloo response data is kept in this repo: no locality ids, counts or artist names from live responses.
 
 ## Method
 
@@ -17,24 +17,11 @@ The script calls the Qloo HTTP API directly, because the adapter is `server-only
 
 ## Results
 
-| City | Locality resolved (top hit, id, distance) | Heatmap cells (total / meaningful) | Places (total / with hours) | Artists (count, local?) | Verdict |
-|---|---|---|---|---|---|
-| Melbourne | No: "Melbourne" `926C7106-54C9-4282-BE9B-59740E424698`, 27 km off (the Knox one; a 2nd hit is within 25 km) | 216 / 108 | 50 / 39 | 20, no: Katy Perry, Adele, Taylor Swift | good |
-| Sydney | No: "Sydney" `0F9C5FE4-0CF0-4892-848D-97E8374FBB88`, 29 km off (a 2nd hit is within 25 km) | 190 / 95 | 50 / 29 | 20, no: same names | good |
-| Brisbane | Yes: "Brisbane" `5119DE3E-2BE5-4228-88D5-63B509E4CB76`, 4 km | 163 / 82 | 50 / 35 | 20, no: same names | good |
-| London | Yes: "London" `4F18635D-75D6-43EC-B8B9-8DFAEB8C5A29`, 1 km | 266 / 133 | 50 / 26 | 20, no: same names | good |
-| New York | No: "New York" `BDFC9271-4583-412E-84D8-F285BB8220FE`, 275 km off (state-level; a 2nd hit is within 25 km) | 221 / 111 | 50 / 26 | 20, no: Katy Perry, Adele, Maroon 5 | good |
-| Los Angeles | Yes: "Los Angeles" `10F17338-97FE-40A3-9434-F6D59F000A9E`, 16 km | 176 / 88 | 50 / 36 | 20, no: same names | good |
-| Toronto | Yes: "Toronto" `21B069AF-1377-44DB-937F-87AC8B45A072`, 8 km | 224 / 112 | 50 / 39 | 20, no: same names | good |
-| Paris | Yes: "Paris" `E60F73CC-47E3-4B80-AB16-BA3D2341BBDE`, 1 km | 260 / 130 | 50 / 33 | 20, no: same names | good |
-| Berlin | Yes: "Berlin" `302C82B3-3EB5-43A8-9A74-6AE11368E716`, 2 km | 247 / 124 | 50 / 28 | 20, no: same names | good |
-| Tokyo | No: "東京都" (the prefecture) `1576B6BC-C790-4C9A-878C-EF722DB7814A`, 640 km off (a 2nd hit is within 25 km) | 181 / 91 | 50 / 37 | 20, no: same names | good |
-| Mexico City | Yes: "Ciudad de México" `6A479AAF-1D8D-4EA2-AC1E-29B0906063AC`, 6 km | 163 / 82 | 50 / 35 | 20, no: same names | good |
-| Austin | Yes: "Austin" `C93C0541-F43D-484E-AC86-E27A54E5B1D0`, 3 km | 172 / 86 | 50 / 37 | 20, no: same names | good |
+All 12 probed cities (Melbourne, Sydney, Brisbane, London, New York, Los Angeles, Toronto, Paris, Berlin, Tokyo, Mexico City, Austin) came out **good** under the rules below: the heatmap, places and artists calls all returned enough results everywhere. The per-city counts, locality ids and artist names are not recorded here; re-run the script to see them.
 
-Melbourne's top-hit coordinates are 27 km off the CBD, which fits the known City of Knox mis-resolution. Sydney, New York and Tokyo also have a wrong top hit. Names alone are not safe: the app's WKT polygon is right.
+**Locality names are not safe to resolve by.** The top `/search` hit for a city name was often the wrong place: a suburb or council area for Melbourne, a state-level hit for New York, the prefecture for Tokyo. Every city had a correct hit within the top 5, but the app never resolves by name, and its WKT polygon is right.
 
-**Artists are not local anywhere.** The top 5 are the same global pop acts (Katy Perry, Adele, Taylor Swift, Bruno Mars, plus one of One Direction, Maroon 5, Sam Smith or Justin Bieber) in all 12 cities. The shared global-pop signal probably dominates the location signal, so this probe cannot tell whether a city has local-scene artists. It only shows that the call works everywhere. A local-scene check needs a signal from a local act in each city.
+**Artists are not local anywhere.** With a shared global-pop signal, the top artists were the same global pop acts in all 12 cities. That signal probably dominates the location signal, so this probe cannot tell whether a city has local-scene artists. It only shows that the call works everywhere. A local-scene check needs a signal from a local act in each city.
 
 ## Verdict rules
 

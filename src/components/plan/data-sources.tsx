@@ -1,4 +1,6 @@
+import { Source, Sources, SourcesContent, SourcesTrigger } from "@/components/ai-elements/sources";
 import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
 import type { DataStatus } from "@/lib/plan-schema";
 import { QLOO_TEST_LABEL, SOURCES, type SourceId } from "@/lib/sources";
@@ -40,35 +42,47 @@ export function statusText(s: DataStatus): string {
   return `${s.source === "qloo" && s.mode === "synthetic" ? QLOO_TEST_LABEL : MODE_LABEL[s.mode]}${s.reason ? `: ${REASON_LABEL[s.reason] ?? s.reason}` : ""}`;
 }
 
-/** Every data source, its credit and licence (the DS SourceAttribution). */
+/** Every data source, its credit and licence (the DS SourceAttribution), on AI Elements Sources: always open, so every credit stays visible. */
 export function DataSources({ status, showAi, soFar }: { status: DataStatus[]; showAi: boolean; /** While the run is live: only the sources it has touched so far. */ soFar?: SourceId[] }) {
   const used = new Map(status.map((s) => [s.source, s]));
   const ids: SourceId[] = ["qloo", "melbourne-busking", "osm", "ticketmaster", "lastfm", "open-meteo", "spotify", "openfreemap"];
   if (showAi) ids.push("ai");
   const shown = soFar ? ids.filter((id) => soFar.includes(id)) : ids;
   return (
+    <Sources defaultOpen asChild>
     <section aria-label="Data used" data-testid="data-used">
-      <h3 className="m-0 mb-1.5 font-mono text-[11px] leading-4 font-medium tracking-[0.06em] text-muted-foreground uppercase">{soFar ? "Data used so far" : "Data used"}</h3>
+      <h3 className="m-0 mb-1.5 font-mono text-[11px] leading-4 font-medium tracking-[0.06em] text-muted-foreground uppercase">
+        <SourcesTrigger count={shown.length} className="inline cursor-pointer text-left uppercase">
+          {soFar ? "Data used so far" : "Data used"}
+        </SourcesTrigger>
+      </h3>
+      <SourcesContent asChild>
       <ul className="m-0 list-none p-0">
         {shown.map((id) => {
           const source = SOURCES[id];
           const s = used.get(id);
           return (
-            <li key={id} className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 border-t border-border py-2.5 text-sm leading-5 first:border-t-0">
-              <div>
-                <div className="flex flex-wrap items-center gap-x-2 font-bold">
-                  {id === "qloo" || id === "spotify" || id === "lastfm" ? <SourceLogo source={id} height={14} /> : null}
-                  <a className="underline decoration-[1.5px] underline-offset-3 hover:decoration-[2.5px]" href={source.url} target="_blank" rel="noreferrer">
-                    {source.credit}
-                  </a>
-                </div>
-                <div className="text-[13px] text-muted-foreground">{source.licence}</div>
-              </div>
-              {(s || soFar) && <DataStatusBadge status={s ? s.mode : "live"} label={s ? statusText(s) : "Live"} />}
-            </li>
+            <Item key={id} asChild className="grid grid-cols-[1fr_auto] items-stretch gap-x-3 gap-y-0.5 border-t border-border py-2.5 text-sm leading-5 first:border-t-0">
+              <li>
+                <ItemContent className="block min-w-auto">
+                  <ItemTitle className="flex flex-wrap items-center gap-x-2">
+                    {id === "qloo" || id === "spotify" || id === "lastfm" ? <SourceLogo source={id} height={14} /> : null}
+                    <Source className="inline underline decoration-[1.5px] underline-offset-3 hover:decoration-[2.5px]" href={source.url}>
+                      {source.credit}
+                    </Source>
+                  </ItemTitle>
+                  <ItemDescription asChild className="text-[13px] leading-[inherit]">
+                    <div>{source.licence}</div>
+                  </ItemDescription>
+                </ItemContent>
+                {(s || soFar) && <DataStatusBadge status={s ? s.mode : "live"} label={s ? statusText(s) : "Live"} />}
+              </li>
+            </Item>
           );
         })}
       </ul>
+      </SourcesContent>
     </section>
+    </Sources>
   );
 }

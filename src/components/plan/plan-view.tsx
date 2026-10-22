@@ -144,7 +144,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   // The plain-AI baseline (a control: agreement is a badge, never a score change).
   // Asked once the plan is shown: during the agent's run the server starts it after the agent's data is in.
   const baseline = useBaseline(request, faults, revealed);
-  const agreedWith = new Map(baseline.status === "done" ? baseline.baseline.bothAgree.map((a) => [a.pitchId, a.plainName]) : []);
+  const agreedWith = new Set(baseline.status === "done" ? baseline.baseline.bothAgree.map((a) => a.pitchId) : []);
 
   const opener = useRef<HTMLElement | null>(null);
   const openDetails = useCallback(
@@ -473,7 +473,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
               <>
                 <DiscoveryBadge discovery={pitch.discovery} />
                 <FoundByBadge origin={pitch.origin} written={written} model={model} />
-                {agreedWith.has(pitch.id) && <BothAgreeBadge title={`The plain AI also named ${agreedWith.get(pitch.id)}`} />}
+                {agreedWith.has(pitch.id) && <BothAgreeBadge />}
               </>
             }
           />

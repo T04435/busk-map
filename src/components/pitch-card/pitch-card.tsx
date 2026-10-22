@@ -55,8 +55,8 @@ export function ScoreBreakdown({ pitch, weights }: { pitch: PlanPitch; weights?:
                 {note ? <span className="text-[13px] leading-[18px] text-muted-foreground">{note}</span> : null}
               </span>
               {weights ? (
-                <span className="font-mono text-[13px] leading-none text-muted-foreground" title="Weight">
-                  × {weights[weight].toFixed(2)}
+                <span className="font-mono text-[13px] leading-none text-muted-foreground">
+                  <span className="sr-only">Weight </span>× {weights[weight].toFixed(2)}
                 </span>
               ) : null}
             </li>

@@ -67,7 +67,7 @@ export function ResearchFunnel({
     const text = fmt(n);
     const name = n === 1 ? s.one : s.many;
     items.push(
-      <li key={s.key} title={s.src} className={STEP}>
+      <li key={s.key} className={STEP}>
         <HexCell size={30} tone={busy ? "dashed" : "default"} fontSize={text.length > 3 ? 10 : 12} className={CELL} label={busy ? `${s.many}: checking` : `${n} ${name} (${s.src})`}>
           {busy ? <Loader size={14} label="Checking" className="text-primary" /> : text}
         </HexCell>

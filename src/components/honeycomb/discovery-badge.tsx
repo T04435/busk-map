@@ -10,7 +10,7 @@ export type Discovery = "hidden-gem" | "usual" | "none" | null | undefined;
 export function DiscoveryBadge({ discovery, className }: { discovery: Discovery; className?: string }) {
   if (discovery === "hidden-gem") {
     return (
-      <Badge variant="gem" title="A strong taste fit off the usual busking circuit" className={className}>
+      <Badge variant="gem" className={className}>
         <Icon name="gem" size={14} strokeWidth={2.5} />
         Hidden gem
       </Badge>

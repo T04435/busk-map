@@ -87,7 +87,7 @@ export function PartnersSection({ partners = BUILT_WITH }: { partners?: Partner[
         </InView>
       </div>
 
-      {/* Built with: a logo wall; each cell names the partner and its role for screen readers and on hover. */}
+      {/* Built with: a logo wall; each cell names the partner and its role for screen readers. */}
       <div className="flex flex-col items-center gap-4">
         <h3 className="m-0 font-mono text-xs leading-4 font-bold tracking-[0.12em] text-muted-foreground uppercase">Built with</h3>
         <ul aria-label="Built with" className="m-0 grid w-full list-none grid-cols-[repeat(auto-fill,minmax(min(180px,100%),1fr))] gap-px border-2 border-rule bg-border p-0">
@@ -95,7 +95,6 @@ export function PartnersSection({ partners = BUILT_WITH }: { partners?: Partner[
             <li key={p.name} className="flex bg-card">
               <a
                 href={p.href}
-                title={`${p.name}: ${p.role}`}
                 className="flex min-h-24 w-full items-center justify-center px-4 text-foreground no-underline hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none"
               >
                 <LogoSlot partner={p} />

@@ -6,7 +6,7 @@ import { env } from "@/server/env";
 import { log } from "@/server/log";
 import { AdapterError, errorKindOf, fetchJson } from "../core";
 import { cacheBody, cachedCall, safeParams } from "../call-log";
-import { BudgetExhausted, CallBudget, CATALOGUE_CALL_BUDGET, CATALOGUE_QUEUE_WAIT_MS, DEFAULT_RETRY_AFTER_S, MAX_QUEUE_WAIT_MS, SHORT_RETRY_AFTER_S, countSpotifyCall, limitSpotifyUntil, paceSpotify, spotifyLimitedUntil } from "./pacer";
+import { BudgetExhausted, CallBudget, CATALOGUE_CALL_BUDGET, CATALOGUE_DEADLINE_MS, CATALOGUE_QUEUE_WAIT_MS, DEFAULT_RETRY_AFTER_S, MAX_QUEUE_WAIT_MS, SHORT_RETRY_AFTER_S, countSpotifyCall, limitSpotifyUntil, paceSpotify, spotifyLimitedUntil } from "./pacer";
 import {
   albumTracksSchema,
   albumsBatchSchema,
@@ -84,7 +84,14 @@ async function spotify<S extends z.ZodType>(path: string, schema: S, budget?: Ca
     // The message ends like fetchJson's, so errorKindOf still reads "rate_limited" after a "use cache" boundary.
     if (until) throw new AdapterError("repertoire", "rate_limited", `Spotify is limited until ${until.toISOString()} (returned HTTP 429)`, 429);
     budget?.take();
-    await paceSpotify(maxQueueWaitMs);
+    // A budget with a deadline never queues past it: a slot after the deadline ends the fetch (the songs found so far stay).
+    const queueWait = budget ? budget.capWait(maxQueueWaitMs) : maxQueueWaitMs;
+    try {
+      await paceSpotify(queueWait);
+    } catch (error) {
+      if (budget && queueWait < maxQueueWaitMs) throw new BudgetExhausted("deadline");
+      throw error;
+    }
     await countSpotifyCall();
     try {
       return await fetchJson(`${API}${path}`, {
@@ -105,6 +112,7 @@ async function spotify<S extends z.ZodType>(path: string, schema: S, budget?: Ca
         await limitSpotifyUntil(new Date(Date.now() + 60_000));
         throw error;
       }
+      if (budget && wait * 1000 > budget.remainingMs()) throw new BudgetExhausted("deadline");
       await new Promise((r) => setTimeout(r, wait * 1000));
     }
   }
@@ -288,7 +296,7 @@ async function fetchReleaseCountCached(artistId: string, market: string): Promis
 /**
  * An artist's own songs: albums and singles, deduplicated by title. Spotify calls: the artist's album list (10 per page),
  * then Get Several Albums (20 per call, each album with its first 50 tracks; `tracks.next` is followed only for longer
- * albums): about 39 calls for 256 releases, where one call per release took 282. The fetch has a call budget; when it is
+ * albums): about 39 calls for 256 releases, where one call per release took 282. The fetch has a call budget and a 20 s deadline (CATALOGUE_DEADLINE_MS); when either is
  * used up, or Spotify rate-limits part-way, the songs found so far are returned and cached briefly. Fails (so nothing is
  * cached and the caller falls back to Last.fm) when nothing was found.
  */
@@ -300,7 +308,7 @@ async function fetchArtistCatalogueCached(artistId: string, market: string): Pro
   "use cache: remote";
   return cacheBody("spotify.fetchArtistCatalogue", [artistId, market], async () => {
     cacheTag("repertoire");
-    const budget = new CallBudget(CATALOGUE_CALL_BUDGET);
+    const budget = new CallBudget(CATALOGUE_CALL_BUDGET, Date.now() + CATALOGUE_DEADLINE_MS);
     let partial: "budget" | "limited" | "error" | null = null;
     const stop = (error: unknown) => {
       if (error instanceof BudgetExhausted) return (partial ??= "budget");
@@ -309,23 +317,6 @@ async function fetchArtistCatalogueCached(artistId: string, market: string): Pro
     };
 
     const albums: (RawAlbum & { id: string })[] = [];
-    let path: string | null = `/artists/${encodeURIComponent(artistId)}/albums?${new URLSearchParams({
-      include_groups: "album,single",
-      limit: "10",
-      market,
-    })}`;
-    try {
-      for (let page = 0; path && page < ALBUM_PAGES_SAFETY; page++) {
-        const body: z.infer<typeof albumsSchema> = await spotify(path, albumsSchema, budget, CATALOGUE_QUEUE_WAIT_MS);
-        albums.push(...body.items);
-        path = body.next ? body.next.replace(API, "") : null;
-      }
-    } catch (error) {
-      // The first page failing is a failed catalogue; a later page failing leaves the releases found so far.
-      if (albums.length === 0) throw error;
-      stop(error);
-    }
-
     const trackLists: CatalogueTrack[][] = [];
     /** An album's first page of tracks, from either route, with its own next link. */
     type AlbumTracks = { album: RawAlbum; items: z.infer<typeof albumTracksSchema>["items"]; next: string | null };
@@ -347,41 +338,75 @@ async function fetchArtistCatalogueCached(artistId: string, market: string): Pro
         if (partial) break;
       }
     };
-    try {
-      for (let from = 0; from < albums.length; from += ALBUMS_PER_BATCH) {
-        const group = albums.slice(from, from + ALBUMS_PER_BATCH);
-        let found: AlbumTracks[] | null = null;
-        if (Date.now() >= batchRefusedUntil) {
+    /** One group of up to ALBUMS_PER_BATCH releases: Get Several Albums, or one by one once that is refused. */
+    const readGroup = async (group: (RawAlbum & { id: string })[]) => {
+      let found: AlbumTracks[] | null = null;
+      if (Date.now() >= batchRefusedUntil) {
+        try {
+          const params = new URLSearchParams({ ids: group.map((a) => a.id).join(","), market });
+          const body: z.infer<typeof albumsBatchSchema> = await spotify(`/albums?${params}`, albumsBatchSchema, budget, CATALOGUE_QUEUE_WAIT_MS);
+          found = body.albums.flatMap((album) => (album ? [{ album, items: album.tracks.items, next: album.tracks.next ?? null }] : []));
+        } catch (error) {
+          if (!batchRefused(error)) throw error;
+          // Spotify refused the batch call itself (an endpoint closed to this app, or a shape we don't read): say why once, and
+          // read the albums one by one from here on (within the call budget) instead of losing the whole catalogue.
+          batchRefusedUntil = Date.now() + BATCH_RETRY_AFTER_MS;
+          log.warn("spotify batch albums refused; reading albums one by one", { kind: (error as AdapterError).kind, status: (error as AdapterError).status ?? null });
+        }
+      }
+      if (found === null) {
+        found = [];
+        for (const album of group) {
           try {
-            const params = new URLSearchParams({ ids: group.map((a) => a.id).join(","), market });
-            const body: z.infer<typeof albumsBatchSchema> = await spotify(`/albums?${params}`, albumsBatchSchema, budget, CATALOGUE_QUEUE_WAIT_MS);
-            found = body.albums.flatMap((album) => (album ? [{ album, items: album.tracks.items, next: album.tracks.next ?? null }] : []));
+            const body: z.infer<typeof albumTracksSchema> = await spotify(`/albums/${encodeURIComponent(album.id)}/tracks?${new URLSearchParams({ limit: "50", market })}`, albumTracksSchema, budget, CATALOGUE_QUEUE_WAIT_MS);
+            found.push({ album, items: body.items, next: body.next ?? null });
           } catch (error) {
-            if (!batchRefused(error)) throw error;
-            // Spotify refused the batch call itself (an endpoint closed to this app, or a shape we don't read): say why once, and
-            // read the albums one by one from here on (within the call budget) instead of losing the whole catalogue.
-            batchRefusedUntil = Date.now() + BATCH_RETRY_AFTER_MS;
-            log.warn("spotify batch albums refused; reading albums one by one", { kind: (error as AdapterError).kind, status: (error as AdapterError).status ?? null });
+            stop(error);
+            break;
           }
         }
-        if (found === null) {
-          found = [];
-          for (const album of group) {
-            try {
-              const body: z.infer<typeof albumTracksSchema> = await spotify(`/albums/${encodeURIComponent(album.id)}/tracks?${new URLSearchParams({ limit: "50", market })}`, albumTracksSchema, budget, CATALOGUE_QUEUE_WAIT_MS);
-              found.push({ album, items: body.items, next: body.next ?? null });
-            } catch (error) {
-              stop(error);
-              break;
-            }
-          }
+      }
+      await take(found);
+    };
+
+    let path: string | null = `/artists/${encodeURIComponent(artistId)}/albums?${new URLSearchParams({
+      include_groups: "album,single",
+      limit: "10",
+      market,
+    })}`;
+    // The first album page failing is a failed catalogue (thrown after the loop, past the partial handling).
+    let failed: unknown = null;
+    let read = 0;
+    try {
+      // The tracks are read as the releases come in (newest first), a group of ALBUMS_PER_BATCH at a time, so a fetch cut
+      // short by its deadline or budget still has the newest songs rather than a full release list and no tracks.
+      for (let page = 0; path && page < ALBUM_PAGES_SAFETY && !partial; page++) {
+        let body: z.infer<typeof albumsSchema>;
+        try {
+          body = await spotify(path, albumsSchema, budget, CATALOGUE_QUEUE_WAIT_MS);
+        } catch (error) {
+          // A later page failing leaves the releases found so far.
+          if (albums.length === 0) failed = error;
+          else stop(error);
+          break;
         }
-        await take(found);
-        if (partial) break;
+        albums.push(...body.items);
+        path = body.next ? body.next.replace(API, "") : null;
+        while (!partial && albums.length - read >= ALBUMS_PER_BATCH) {
+          const group = albums.slice(read, read + ALBUMS_PER_BATCH);
+          read += group.length;
+          await readGroup(group);
+        }
+      }
+      while (!failed && !partial && read < albums.length) {
+        const group = albums.slice(read, read + ALBUMS_PER_BATCH);
+        read += group.length;
+        await readGroup(group);
       }
     } catch (error) {
       stop(error);
     }
+    if (failed) throw failed;
 
     const seen = new Set<string>();
     const result = trackLists.flat().filter((track) => {

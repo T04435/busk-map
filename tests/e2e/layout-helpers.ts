@@ -65,7 +65,10 @@ async function clippedPlaceholders(page: Page): Promise<string[]> {
 
 /** Visible, in view and on top: the element at its centre is the control itself or inside it. */
 export async function expectOnTop(control: Locator, what: string) {
-  await control.scrollIntoViewIfNeeded();
+  // The page can re-render a node after hydration: scroll through the locator again until it sticks, never on a stale handle.
+  await expect(async () => {
+    await control.scrollIntoViewIfNeeded({ timeout: 2_000 });
+  }, `${what}: scroll into view`).toPass({ timeout: 10_000 });
   await expect(control, what).toBeVisible();
   await expect
     .poll(

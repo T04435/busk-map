@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { countSpotifyCall, DAILY_MAX_CALLS, MAX_QUEUE_WAIT_MS, MemoryBackoffStore, MemoryUsageStore, paceSpotify, PACE_MS, WINDOW_MAX_CALLS, WINDOW_MS, resetPacerForTests, spotifyLimitedUntil } from "@/server/adapters/repertoire/pacer";
+import { BudgetExhausted, CallBudget, CATALOGUE_DEADLINE_MS, countSpotifyCall, DAILY_MAX_CALLS, MAX_QUEUE_WAIT_MS, MemoryBackoffStore, MemoryUsageStore, paceSpotify, PACE_MS, WINDOW_MAX_CALLS, WINDOW_MS, resetPacerForTests, spotifyLimitedUntil } from "@/server/adapters/repertoire/pacer";
 import { json, LIVE, mockFetch, route } from "../../helpers";
 
 const LINK = "https://open.spotify.com/artist/0SNWoGaDlrCompmg9rXeNq";
@@ -83,13 +83,54 @@ describe("Spotify pacer, budget and breaker (U34)", () => {
     expect(times[4] - times[0]).toBe(2000);
   });
 
+  it("a budget with a deadline refuses calls past it and caps waits to the time left", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-23T10:00:00Z"));
+    const budget = new CallBudget(60, Date.now() + 20_000);
+    budget.take();
+    expect(budget.capWait(30_000)).toBe(20_000);
+    vi.advanceTimersByTime(15_000);
+    expect(budget.capWait(30_000)).toBe(5_000);
+    expect(budget.capWait(1_000)).toBe(1_000);
+    vi.advanceTimersByTime(5_000);
+    expect(budget.remainingMs()).toBe(0);
+    expect(() => budget.take()).toThrow(BudgetExhausted);
+    expect(() => budget.take()).toThrow(/time for this Spotify fetch/);
+    expect(budget.spent).toBe(1);
+    // Without a deadline only the call count limits it.
+    expect(new CallBudget(1).capWait(30_000)).toBe(30_000);
+  });
+
+  it("stops at the catalogue's 20 s deadline and returns the newest songs read so far (U34 pacing on a big catalogue)", async () => {
+    expect(CATALOGUE_DEADLINE_MS).toBe(20_000);
+    vi.useFakeTimers();
+    // Real pace (500 ms) and window (20 calls per 30 s): the window fills in about 10 s, the next slot is past the deadline.
+    resetPacerForTests({ dailyMax: Infinity });
+    const { getArtistCatalogue } = await fresh();
+    const { calls } = mockFetch([tokenRoute, artistAlbums(450), batch()]);
+    const started = Date.now();
+    let doneAt = 0;
+    const pending = getArtistCatalogue(LINK, "AU", LIVE).finally(() => (doneAt = Date.now()));
+    await vi.advanceTimersByTimeAsync(60_000);
+    const result = await pending;
+    expect(result.mode).toBe("live");
+    // 20 calls fit: 14 release pages and 6 batches (7 would need the 21st call), so 120 songs, newest releases first.
+    expect(spotifyCalls(calls)).toHaveLength(20);
+    expect(albumCalls(calls)).toHaveLength(6);
+    expect(result.data).toHaveLength(120);
+    expect(result.data[0].title).toBe("Song al0");
+    // It gave up as soon as the next free slot was past the deadline, rather than queueing 30 s for it.
+    expect(doneAt - started).toBeLessThan(CATALOGUE_DEADLINE_MS);
+  });
+
   it("stops at the per-fetch call budget (60) and returns what it has", async () => {
     const { getArtistCatalogue } = await fresh();
     const { calls } = mockFetch([tokenRoute, artistAlbums(450), batch()]);
     const result = await getArtistCatalogue(LINK, "AU", LIVE);
     expect(spotifyCalls(calls)).toHaveLength(60);
-    expect(albumCalls(calls)).toHaveLength(15);
-    expect(result.data).toHaveLength(300);
+    // Tracks are read as the release pages come in (two pages, then one batch of 20): 40 pages + 20 batches = 400 songs.
+    expect(albumCalls(calls)).toHaveLength(20);
+    expect(result.data).toHaveLength(400);
   });
 
   it("a long Retry-After pauses all Spotify calls until it passes, and survives a restart", async () => {

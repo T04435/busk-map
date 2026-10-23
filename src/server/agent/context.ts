@@ -237,6 +237,16 @@ export class PlanContext {
     return own;
   }
 
+  /**
+   * The act's genres as Qloo tag ids (`signal.interests.tags`), only when Qloo doesn't know the act (no own artist): beside the
+   * artists you sound like in the taste reads, so a genres-only answer still gives a taste signal. Empty otherwise, and then
+   * every call is the one it always was (same params, same cache key).
+   */
+  signalTags(): string[] {
+    if (this.ownArtist()) return [];
+    return qloo.sceneTags((this.request.performer.genreTags ?? []).map((g) => g.id));
+  }
+
   /** The signal as Qloo gets it: own artist first (see ownWeight), then the artists you sound like. */
   private withOwn(soft: string[]): string[] {
     const own = this.ownArtist();
@@ -288,8 +298,9 @@ export class PlanContext {
     return this.once("tasteCells", async () => {
       const soft = await this.soundsLikeIds();
       const ids = this.withOwn(soft);
-      if (ids.length === 0) return [];
-      let cells = await this.track("taste", () => qloo.tasteMap(ids, this.city.bbox, this.adapters));
+      const tags = this.signalTags();
+      if (ids.length === 0 && tags.length === 0) return [];
+      let cells = await this.track("taste", () => qloo.tasteMap(ids, this.city.bbox, this.adapters, undefined, tags));
       if (cells.length === 0 && !this.qlooFailed() && ids.length > soft.length && soft.length > 0) {
         // Qloo found nothing usable with the own artist: fall back to the artists you sound like only (the extra read costs one call).
         const fallback = await this.track("taste:soft", () => qloo.tasteMap(soft, this.city.bbox, this.adapters));
@@ -301,7 +312,7 @@ export class PlanContext {
       }
       if (cells.length > 0 || this.qlooFailed()) return cells;
       const useIds = this.ownDropped ? soft : ids;
-      const wider = await this.track("taste:wide", () => qloo.tasteMap(useIds, widen(this.city.bbox, WIDEN_FACTOR), this.adapters));
+      const wider = await this.track("taste:wide", () => qloo.tasteMap(useIds, widen(this.city.bbox, WIDEN_FACTOR), this.adapters, undefined, tags));
       this.notes.push(
         wider.length > 0
           ? "Qloo had no taste data for the city centre alone, so the taste map uses a wider area."
@@ -315,11 +326,12 @@ export class PlanContext {
   places() {
     return this.once("placesWithRetry", async () => {
       const ids = await this.entityIds();
-      if (ids.length === 0) return [];
-      const found = await this.track("places", () => qloo.busyPlaces(ids, this.city.center, PLACES_RADIUS_M, this.weekday, this.adapters));
+      const tags = this.signalTags();
+      if (ids.length === 0 && tags.length === 0) return [];
+      const found = await this.track("places", () => qloo.busyPlaces(ids, this.city.center, PLACES_RADIUS_M, this.weekday, this.adapters, tags));
       if (found.length > 0 || this.qlooFailed()) return found;
       const wider = await this.track("places:wide", () =>
-        qloo.busyPlaces(ids, this.city.center, PLACES_RADIUS_M * WIDEN_FACTOR, this.weekday, this.adapters),
+        qloo.busyPlaces(ids, this.city.center, PLACES_RADIUS_M * WIDEN_FACTOR, this.weekday, this.adapters, tags),
       );
       this.notes.push(
         wider.length > 0
@@ -333,8 +345,9 @@ export class PlanContext {
   /** What this city's crowd likes given the performer's artists, with Qloo's explainability. */
   private async localCrowd(): Promise<qloo.LocalArtists> {
     const ids = await this.entityIds();
-    if (ids.length === 0) return { artists: [], impact: [] };
-    return this.track("localArtists", () => qloo.localArtists(ids, this.city.bbox, LOCAL_ARTISTS_TAKE, this.adapters));
+    const tags = this.signalTags();
+    if (ids.length === 0 && tags.length === 0) return { artists: [], impact: [] };
+    return this.track("localArtists", () => qloo.localArtists(ids, this.city.bbox, LOCAL_ARTISTS_TAKE, this.adapters, tags));
   }
 
   async localArtists(): Promise<qloo.QlooEntity[]> {
@@ -367,8 +380,9 @@ export class PlanContext {
 
   async crowdProfile() {
     const ids = await this.entityIds();
-    if (ids.length === 0) return null;
-    return this.track("crowd", () => qloo.crowdProfile(ids, this.adapters));
+    const tags = this.signalTags();
+    if (ids.length === 0 && tags.length === 0) return null;
+    return this.track("crowd", () => qloo.crowdProfile(ids, this.adapters, tags));
   }
 
   pitchData() {

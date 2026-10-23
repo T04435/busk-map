@@ -35,6 +35,12 @@ export default function BusksPage({ searchParams }: PageProps<"/busks">) {
 }
 
 /**
+ * The form's key: a Repertoire saved since the form was drawn (research adding sound-alikes, say) starts it afresh. Cache
+ * Components keeps this page mounted while hidden (React Activity), and new props alone never reset the form's state.
+ */
+const formKey = (base: string, repertoire: { revision: number } | null) => `${base}:${repertoire?.revision ?? 0}`;
+
+/**
  * `?again=<plan id>` (from a plan whose slot has passed): the form pre-filled with that act, on the next same weekday (an
  * any-time plan opens on Any time, on the next date a window can still start). Without it, the form defaults to Any time
  * and pre-fills from this device's Repertoire (its cookie), if any.
@@ -64,7 +70,7 @@ async function OwnAct({ searchParams }: Pick<PageProps<"/busks">, "searchParams"
             ))}
           </ul>
         </section>
-        <PerformerForm defaultDate={nextAnyTimeDate(today, hour)} today={today} repertoire={repertoire} />
+        <PerformerForm key={formKey("act", repertoire)} defaultDate={nextAnyTimeDate(today, hour)} today={today} repertoire={repertoire} />
       </>
     );
   }
@@ -80,7 +86,7 @@ async function OwnAct({ searchParams }: Pick<PageProps<"/busks">, "searchParams"
         Planning again for {performer.name}. Your act, artists, songs and permit come from your earlier busk: pick a new date and time.
       </Banner>
       <PerformerForm
-        key={stored.id}
+        key={formKey(stored.id, repertoire)}
         defaultDate={when.defaultDate}
         today={today}
         prefill={when.prefill}

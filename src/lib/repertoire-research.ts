@@ -181,10 +181,18 @@ export type ResearchSnapshot = {
 /** The busk local scene's optional input: the act's genre tags (step 8), at most this many. */
 export const MAX_ACT_GENRES = 6;
 
-/** The act's genre tags from a snapshot (step 8, else the Qloo entity's genres by name), for the busk form. */
+/**
+ * The act's genre tags from a snapshot, for the busk form: the genres the performer answered when Qloo doesn't know the act
+ * (step 3's genreTags) first, then step 8's, once each by id.
+ */
 export function actGenresOf(snapshot: ResearchSnapshot | null | undefined): { id: string; name: string }[] {
-  const tags = snapshot?.steps.genres?.output?.tags ?? [];
-  return tags.filter((t) => t.id && t.name).slice(0, MAX_ACT_GENRES).map((t) => ({ id: t.id, name: t.name }));
+  const qloo = snapshot?.steps.qloo?.output;
+  const answered = qloo && !qloo.matched ? (qloo.genreTags ?? []) : [];
+  const tags = [...answered, ...(snapshot?.steps.genres?.output?.tags ?? [])];
+  return tags
+    .filter((t, i) => t.id && t.name && tags.findIndex((u) => u.id === t.id) === i)
+    .slice(0, MAX_ACT_GENRES)
+    .map((t) => ({ id: t.id, name: t.name }));
 }
 
 // --- POST /api/playlist/research ---

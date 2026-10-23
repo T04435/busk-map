@@ -151,6 +151,11 @@ function listEntities(path: string, params: Params, items: unknown[]) {
 }
 
 const ids = (list: readonly string[]) => list.join(",");
+/**
+ * Genre tags sent beside the entities (`signal.interests.tags`): the act's genres when Qloo doesn't know the act. A lookup
+ * key gains them only when there are some, so a call without tags keeps the key (and the cached answer) it always had.
+ */
+const withTags = (tags: readonly string[] | undefined): [readonly string[]] | [] => (tags?.length ? [tags] : []);
 
 // ---- Tool calls (spec.md, Agent design) ----------------------------------
 
@@ -220,13 +225,16 @@ export type HeatmapBoundary = "city" | "neighborhood";
 
 /** `urn:heatmap`: where in the area this taste concentrates. */
 /** `boundary` (U40): Qloo's `output.heatmap.boundary` (documented values "city" and "neighborhood"); omitted, cells are geohash squares. */
-export async function heatmap(backend: QlooBackend, entityIds: string[], area: BBox, boundary?: HeatmapBoundary): Promise<HeatCell[]> {
-  return countLookup("heatmap", [backend, entityIds, area, boundary ?? null], () => heatmapCached(backend, entityIds, area, boundary));
+export async function heatmap(backend: QlooBackend, entityIds: string[], area: BBox, boundary?: HeatmapBoundary, tagIds: readonly string[] = []): Promise<HeatCell[]> {
+  const tags = sceneTags(tagIds);
+  return countLookup("heatmap", [backend, entityIds, area, boundary ?? null, ...withTags(tags)], () =>
+    tags.length ? heatmapCached(backend, entityIds, area, boundary, tags) : heatmapCached(backend, entityIds, area, boundary),
+  );
 }
 
-async function heatmapCached(backend: QlooBackend, entityIds: string[], area: BBox, boundary?: HeatmapBoundary): Promise<HeatCell[]> {
+async function heatmapCached(backend: QlooBackend, entityIds: string[], area: BBox, boundary?: HeatmapBoundary, tagIds?: string[]): Promise<HeatCell[]> {
   "use cache: remote";
-  return lookupScope("heatmap", [backend, entityIds, area, boundary ?? null], async () => {
+  return lookupScope("heatmap", [backend, entityIds, area, boundary ?? null, ...withTags(tagIds)], async () => {
     // A world-sized area is the Repertoire's "Where your fans are": fresh for 24 h. City-sized areas (the planner) keep "days".
     if (area.east - area.west > 180 || area.north - area.south > 120) cacheLife({ stale: 3600, revalidate: 86400, expire: 86400 });
     else cacheLife("days");
@@ -234,6 +242,7 @@ async function heatmapCached(backend: QlooBackend, entityIds: string[], area: BB
     const params = {
       "filter.type": "urn:heatmap",
       "signal.interests.entities": ids(entityIds),
+      "signal.interests.tags": tagIds?.length ? ids(tagIds) : undefined,
       "filter.location": wktPolygon(area),
       ...(boundary ? { "output.heatmap.boundary": boundary } : {}),
     };
@@ -261,8 +270,12 @@ export async function places(
   center: LatLon,
   radiusM: number,
   weekday: string | null,
+  tagIds: readonly string[] = [],
 ): Promise<QlooPlace[]> {
-  return countLookup("places", [backend, entityIds, center, radiusM, weekday], () => placesCached(backend, entityIds, center, radiusM, weekday));
+  const tags = sceneTags(tagIds);
+  return countLookup("places", [backend, entityIds, center, radiusM, weekday, ...withTags(tags)], () =>
+    tags.length ? placesCached(backend, entityIds, center, radiusM, weekday, tags) : placesCached(backend, entityIds, center, radiusM, weekday),
+  );
 }
 
 async function placesCached(
@@ -271,9 +284,10 @@ async function placesCached(
   center: LatLon,
   radiusM: number,
   weekday: string | null,
+  tagIds?: string[],
 ): Promise<QlooPlace[]> {
   "use cache: remote";
-  return lookupScope("places", [backend, entityIds, center, radiusM, weekday], async () => {
+  return lookupScope("places", [backend, entityIds, center, radiusM, weekday, ...withTags(tagIds)], async () => {
     cacheLife("days");
     cacheTag("qloo", "qloo:places");
     const params = {
@@ -282,6 +296,7 @@ async function placesCached(
       "filter.location.radius": radiusM,
       "filter.hours": weekday ?? undefined,
       "signal.interests.entities": ids(entityIds),
+      "signal.interests.tags": tagIds?.length ? ids(tagIds) : undefined,
       take: MAX_TAKE,
     };
     const body = await qlooGet(backend, "/v2/insights", params, entitiesResponseSchema);
@@ -296,19 +311,23 @@ async function placesCached(
  * explanations: per result, and the top-level aggregate (each input artist's
  * average effect on the top 3, 5, 10 and all results).
  */
-export async function localArtists(backend: QlooBackend, entityIds: string[], area: BBox, take: number): Promise<LocalArtists> {
-  return countLookup("localArtists", [backend, entityIds, area, take], () => localArtistsCached(backend, entityIds, area, take));
+export async function localArtists(backend: QlooBackend, entityIds: string[], area: BBox, take: number, tagIds: readonly string[] = []): Promise<LocalArtists> {
+  const tags = sceneTags(tagIds);
+  return countLookup("localArtists", [backend, entityIds, area, take, ...withTags(tags)], () =>
+    tags.length ? localArtistsCached(backend, entityIds, area, take, tags) : localArtistsCached(backend, entityIds, area, take),
+  );
 }
 
-async function localArtistsCached(backend: QlooBackend, entityIds: string[], area: BBox, take: number): Promise<LocalArtists> {
+async function localArtistsCached(backend: QlooBackend, entityIds: string[], area: BBox, take: number, tagIds?: string[]): Promise<LocalArtists> {
   "use cache: remote";
-  return lookupScope("localArtists", [backend, entityIds, area, take], async () => {
+  return lookupScope("localArtists", [backend, entityIds, area, take, ...withTags(tagIds)], async () => {
     cacheLife("days");
     cacheTag("qloo", "qloo:artists");
     const params = {
       "filter.type": "urn:entity:artist",
       "signal.location": wktPolygon(area),
       "signal.interests.entities": ids(entityIds),
+      "signal.interests.tags": tagIds?.length ? ids(tagIds) : undefined,
       "feature.explainability": entityIds.length > 0 ? true : undefined,
       take: Math.min(take, MAX_TAKE),
     };
@@ -553,16 +572,17 @@ export async function trending(backend: QlooBackend, entityIds: string[], startD
 }
 
 /** `urn:demographics`: the age and gender lean of fans of these artists. */
-export async function demographics(backend: QlooBackend, entityIds: string[]): Promise<CrowdProfile | null> {
-  return countLookup("demographics", [backend, entityIds], () => demographicsCached(backend, entityIds));
+export async function demographics(backend: QlooBackend, entityIds: string[], tagIds: readonly string[] = []): Promise<CrowdProfile | null> {
+  const tags = sceneTags(tagIds);
+  return countLookup("demographics", [backend, entityIds, ...withTags(tags)], () => (tags.length ? demographicsCached(backend, entityIds, tags) : demographicsCached(backend, entityIds)));
 }
 
-async function demographicsCached(backend: QlooBackend, entityIds: string[]): Promise<CrowdProfile | null> {
+async function demographicsCached(backend: QlooBackend, entityIds: string[], tagIds?: string[]): Promise<CrowdProfile | null> {
   "use cache: remote";
-  return lookupScope("demographics", [backend, entityIds], async () => {
+  return lookupScope("demographics", [backend, entityIds, ...withTags(tagIds)], async () => {
     cacheLife("days");
     cacheTag("qloo", "qloo:demographics");
-    const params = { "filter.type": "urn:demographics", "signal.interests.entities": ids(entityIds) };
+    const params = { "filter.type": "urn:demographics", "signal.interests.entities": ids(entityIds), "signal.interests.tags": tagIds?.length ? ids(tagIds) : undefined };
     const body = await qlooGet(backend, "/v2/insights", params, demographicsResponseSchema);
     logIfEmpty("/v2/insights", params, body.results.demographics.length);
     const rows = body.results.demographics;

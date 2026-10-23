@@ -176,7 +176,13 @@ const Section = ({ title, children }: { title: string; children: ReactNode }) =>
 /** `pins`: the busk's ranked pitches, once the plan exists, so a card's mini map can show them. */
 export type MiniPin = { id: string; name: string; lat: number; lon: number; rank: number };
 type Ctx = { when?: string; pins?: MiniPin[]; model?: ExplanationsModel | null };
-type ToolUi = { doing: (s: AgentStep) => string; title: (s: AgentStep) => string; render: (out: Rec, s: AgentStep, ctx: Ctx) => ReactNode };
+type ToolUi = {
+  doing: (s: AgentStep) => string;
+  title: (s: AgentStep) => string;
+  render: (out: Rec, s: AgentStep, ctx: Ctx) => ReactNode;
+  /** A tool whose whole result is one line: the feed sets it right under the title, beside the step cell. */
+  line?: (out: Rec) => RichTextData | string;
+};
 
 /** "Gillian Welch 0.31; Paul Kelly 0.2" → the because chips, each with its explained weight (0–100). */
 const becauseArtists = (s: string) =>
@@ -193,6 +199,7 @@ const becauseArtists = (s: string) =>
 const researchUi = (line: (o: Rec) => RichTextData | string): ToolUi => ({
   doing: (s) => s.label,
   title: (s) => s.label,
+  line,
   render: (o) => (
     <Foot>
       <RichText text={line(o)} />

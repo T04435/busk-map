@@ -59,6 +59,8 @@ export type ViewInput = {
   playlist?: Pick<PlaylistView, "songs" | "soundsLike"> & Partial<Pick<PlaylistView, "spotifyProfile" | "spotifyArtistId">> | null;
   /** The Learn list's suggestions (GET /api/playlist/learn); when given they are the To learn list. */
   suggestions?: readonly LearnSuggestionView[] | null;
+  /** The live stream ended with no `end` (the connection dropped, or the server was stopped): the run is over, cut short. */
+  cut?: boolean;
 };
 
 type Outputs = { [K in ResearchStepKey]?: StepOutputs[K] | null };
@@ -208,7 +210,7 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
     const paused = end?.code === "needs_sounds_like" || (!run && Boolean(snapshot?.waiting));
     let st = status.get(key) ?? (snapshot && !run && !paused ? "skipped" : "pending");
     // A live run that ended: a step it never started was skipped (or cut short, if it was still running). A paused run's are not started yet.
-    if (end && !paused && ran.includes(key) && (st === "pending" || st === "running")) st = st === "running" ? "failed" : "skipped";
+    if ((end || input.cut) && !paused && ran.includes(key) && (st === "pending" || st === "running")) st = st === "running" ? "failed" : "skipped";
     const f = found.get(key);
     const songsFrom = key === "songs" && st === "done" && outputs.songs && outputs.songs.source !== "none" ? outputs.songs.source : undefined;
     const source = via.get(key) ?? songsFrom;
@@ -260,7 +262,7 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
     learned: playlist ? playlist.songs.filter((s) => s.state === "learned").map((s) => songOf(s, media, ownPhoto)) : null,
   };
 
-  const phase: RepertoirePhase = run ? (end ? "done" : "running") : snapshot ? "done" : "empty";
+  const phase: RepertoirePhase = run ? (end || input.cut ? "done" : "running") : snapshot ? "done" : "empty";
   const mode = liveMode ?? snapshot?.mode ?? null;
   return {
     phase,

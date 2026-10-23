@@ -48,6 +48,11 @@ export interface PlaylistStore {
   songs(playlistId: string): Promise<StoredSong[]>;
   /** Adds a "can sing" song. Refuses a repeat (same song key). */
   addSong(playlistId: string, song: AddSongInput): Promise<AddSongResult>;
+  /**
+   * Adds many "can sing" songs at once (research step 2): one transaction, one multi-row INSERT … ON CONFLICT. A result per
+   * input, in order, as addSong would give it; a song repeated within the batch is a duplicate of its first copy.
+   */
+  addSongs(playlistId: string, songs: readonly AddSongInput[]): Promise<AddSongResult[]>;
   setSongState(playlistId: string, songId: string, state: SongState): Promise<StoredSong | null>;
   removeSong(playlistId: string, songId: string): Promise<boolean>;
   /** Act name, sounds like, usual pitches. A stale `revision` is refused. */
@@ -231,6 +236,12 @@ export class MemoryPlaylistStore implements PlaylistStore {
     return { ok: true, song: structuredClone(song) };
   }
 
+  async addSongs(playlistId: string, songs: readonly AddSongInput[]): Promise<AddSongResult[]> {
+    const out: AddSongResult[] = [];
+    for (const song of songs) out.push(await this.addSong(playlistId, song));
+    return out;
+  }
+
   /** A song typed into Songs you can sing that matches a pending suggestion marks it learned, so the two lists agree (docs §1.2). */
   private markSuggestionLearned(playlistId: string, songKey: string) {
     const pending = this.suggestionRows.get(playlistId)?.find((x) => x.songKey === songKey && x.status === "pending");
@@ -372,6 +383,8 @@ type SongRow = {
 };
 
 const PLAYLIST_COLUMNS = "id, act_name, sounds_like, spotify_artist_id, spotify_profile, qloo_artist_id, research, usual_pitches, recent_busks, city, revision, created_at, last_seen_at";
+/** Rows per multi-row INSERT in addSongs. */
+const ADD_SONGS_CHUNK = 500;
 const SONG_COLUMNS = "id::text AS id, song_key, state, source, title, artist, own, spotify_track_id, year, duration_ms, image, artist_image, added_at";
 
 const toRecord = (r: PlaylistRow): PlaylistRecord => ({
@@ -508,6 +521,94 @@ export class PostgresPlaylistStore implements PlaylistStore {
       [playlistId, songKey, s.image ?? null, s.artistImage ?? null, upgrade, s.title, s.spotifyTrackId ?? null, s.year ?? null, s.durationMs ?? null],
     )) as unknown[];
     return { ok: false, reason: existing.length ? "duplicate" : "missing" };
+  }
+
+  async addSongs(playlistId: string, songs: readonly AddSongInput[]): Promise<AddSongResult[]> {
+    // A batch of up to ADD_SONGS_CHUNK rows per transaction keeps each request small; a big catalogue is a few round trips.
+    const out: AddSongResult[] = [];
+    const seen = new Set<string>();
+    for (let from = 0; from < songs.length; from += ADD_SONGS_CHUNK) {
+      const chunk = songs.slice(from, from + ADD_SONGS_CHUNK);
+      // A key already written by an earlier chunk is a duplicate here too (its first copy wins).
+      const fresh = chunk.map((s) => !seen.has(playlistSongKey(s.artist, s.title)));
+      const results = await this.addSongsChunk(playlistId, chunk.filter((_, i) => fresh[i]));
+      let k = 0;
+      for (const [i, s] of chunk.entries()) {
+        seen.add(playlistSongKey(s.artist, s.title));
+        out.push(fresh[i] ? results[k++] : { ok: false, reason: "duplicate" });
+      }
+      if (results.some((r) => !r.ok && r.reason === "missing")) {
+        for (let i = out.length; i < songs.length; i++) out.push({ ok: false, reason: "missing" });
+        break;
+      }
+    }
+    return out;
+  }
+
+  private async addSongsChunk(playlistId: string, songs: readonly AddSongInput[]): Promise<AddSongResult[]> {
+    if (songs.length === 0) return [];
+    const keys = songs.map((s) => playlistSongKey(s.artist, s.title));
+    // The first copy of a key is written; a later copy in the same batch is a duplicate of it.
+    const firstAt = new Map<string, number>();
+    keys.forEach((k, i) => firstAt.has(k) || firstAt.set(k, i));
+    const batch = [...firstAt.values()].map((i) => ({ key: keys[i], s: songs[i] }));
+    const params = [
+      playlistId,
+      batch.map((b) => b.key),
+      batch.map((b) => b.s.source),
+      batch.map((b) => b.s.title),
+      batch.map((b) => b.s.artist),
+      batch.map((b) => b.s.own),
+      batch.map((b) => b.s.spotifyTrackId ?? null),
+      batch.map((b) => b.s.year ?? null),
+      batch.map((b) => b.s.durationMs ?? null),
+      batch.map((b) => b.s.image ?? null),
+      batch.map((b) => b.s.artistImage ?? null),
+    ];
+    const rows = "unnest($2::text[], $3::text[], $4::text[], $5::text[], $6::boolean[], $7::text[], $8::smallint[], $9::integer[], $10::text[], $11::text[]) WITH ORDINALITY AS v(song_key, source, title, artist, own, spotify_track_id, year, duration_ms, image, artist_image, ord)";
+    // One transaction (one HTTP round trip): lock the Repertoire, fill in the repeats as addSong does (before the INSERT, so
+    // only rows already there), then insert the rest, mark matching pending suggestions learned and bump the revision once.
+    const [locked, , inserted] = (await this.sql.transaction((txn) => [
+      txn.query("SELECT id FROM playlists WHERE id = $1::uuid FOR UPDATE", [playlistId]),
+      txn.query(
+        `UPDATE playlist_songs ps SET
+            image = COALESCE(ps.image, v.image), artist_image = COALESCE(ps.artist_image, v.artist_image),
+            title = CASE WHEN v.source = 'spotify' AND ps.source IN ('lastfm', 'typed') THEN v.title ELSE ps.title END,
+            spotify_track_id = CASE WHEN v.source = 'spotify' AND ps.source IN ('lastfm', 'typed') THEN COALESCE(v.spotify_track_id, ps.spotify_track_id) ELSE ps.spotify_track_id END,
+            year = COALESCE(ps.year, v.year), duration_ms = COALESCE(ps.duration_ms, v.duration_ms),
+            source = CASE WHEN v.source = 'spotify' AND ps.source IN ('lastfm', 'typed') THEN 'spotify' ELSE ps.source END
+          FROM ${rows}
+          WHERE ps.playlist_id = $1::uuid AND ps.song_key = v.song_key
+          RETURNING ps.song_key`,
+        params,
+      ),
+      txn.query(
+        `WITH ins AS (
+           INSERT INTO playlist_songs (playlist_id, song_key, state, source, title, artist, own, spotify_track_id, year, duration_ms, image, artist_image)
+           SELECT $1::uuid, v.song_key, 'can_sing', v.source, v.title, v.artist, v.own, v.spotify_track_id, v.year, v.duration_ms, v.image, v.artist_image
+           FROM ${rows}
+           WHERE EXISTS (SELECT 1 FROM playlists WHERE id = $1::uuid)
+           ORDER BY v.ord
+           ON CONFLICT (playlist_id, song_key) DO NOTHING
+           RETURNING ${SONG_COLUMNS}
+         ),
+         learned AS (
+           UPDATE learn_suggestions SET status = 'learned', learned_at = now()
+           WHERE playlist_id = $1::uuid AND status = 'pending' AND song_key IN (SELECT song_key FROM ins)
+         ),
+         bumped AS (
+           UPDATE playlists SET revision = revision + 1, updated_at = now() WHERE id = $1::uuid AND EXISTS (SELECT 1 FROM ins)
+         )
+         SELECT * FROM ins`,
+        params,
+      ),
+    ])) as [unknown[], unknown[], SongRow[]];
+    if (locked.length === 0) return songs.map(() => ({ ok: false, reason: "missing" }));
+    const byKey = new Map(inserted.map((r) => [r.song_key, r]));
+    return keys.map((k, i): AddSongResult => {
+      const row = firstAt.get(k) === i ? byKey.get(k) : undefined;
+      return row ? { ok: true, song: toSong(row) } : { ok: false, reason: "duplicate" };
+    });
   }
 
   async setSongState(playlistId: string, songId: string, state: SongState) {

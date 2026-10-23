@@ -63,6 +63,16 @@ describe("toRepertoireView", () => {
     expect(v.totals.toLearn).toBeNull();
   });
 
+  it("cut: a stream that ended with no end is over, not running; the step it was on is failed (cut) and the rest skipped", async () => {
+    const { events } = await fullRun();
+    const mid = [...cutAfter(events, "research_qloo"), events.find((e) => e.type === "tool-start" && e.tool === "research_sounds_like")!];
+    const v = toRepertoireView({ events: mid, cut: true });
+    expect(v.phase).toBe("done");
+    expect(v.end).toBeNull();
+    expect(statuses(v)).toMatchObject({ profile: "done", songs: "done", qloo: "done", soundsLike: "failed", fans: "skipped", summary: "skipped" });
+    expect(toRepertoireView({ events: mid }).phase).toBe("running");
+  });
+
   it("Hive Identity: the songs step says its live source (Spotify first) for its running mark, and a done step keeps the source it came from", async () => {
     const { events } = await fullRun();
     const startSongs = events.findIndex((e) => e.type === "tool-start" && e.tool === "research_songs");

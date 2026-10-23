@@ -83,8 +83,11 @@ export const LEARN_LIMITS = {
   timeoutMs: 75_000,
   /** `finish_suggestions` rejections before the run gives up on the model's words. */
   maxRejections: 2,
-  /** A `running` row older than timeoutMs + this is marked failed by the next request for that Repertoire. */
-  staleGraceMs: 30_000,
+  /**
+   * A `running` row older than timeoutMs + this (150 s) is marked failed by the next request for that Repertoire. It must be
+   * at least the routes' maxDuration (120 s): at 105 s a run still going on its instance was swept as failed.
+   */
+  staleGraceMs: 75_000,
 } as const;
 
 /** Per-run call caps for the model's tools (a further call is a tool error the model sees). */
@@ -105,6 +108,12 @@ export const SUGGEST_RELATED_TAKE = 20;
 
 // --- Repertoire research (hackathons/qloo-2026/repertoire-research-spec.md) ---
 
+/**
+ * Time limits of one research run, inside the routes' maxDuration of 120 s (research and research/<runId>/input). A step
+ * that takes longer than `stepMs` fails ("took too long") and ends the run; `runMs` after the start a watchdog ends the run
+ * as failed (end code "timeout") so the stream always gets its `end` before the function is stopped.
+ */
+export const RESEARCH_TIMEOUTS = { stepMs: 45_000, runMs: 110_000 } as const;
 /** Sound-alikes (step 4) saved as your "Artists you sound like" when that list is empty. */
 export const RESEARCH_SOUNDS_LIKE_SAVED = 6;
 /** Sound-alikes that join your own artist in step 6's signal. */

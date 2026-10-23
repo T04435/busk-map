@@ -74,6 +74,18 @@ export function researchStepDelayMs(faults: string | null | undefined): number {
 }
 
 /**
+ * Test fault `research-cut`: a Repertoire research run stops right after step 2 ("Your songs") starts, as if the function were
+ * stopped mid-step: the stream ends with no `end` and the run row stays `running` (until the stale sweep). Lets a test look at
+ * the page's stopped state (the step cut, the Stopped tag, Try again). Same gate as the others.
+ */
+export const RESEARCH_CUT_FAULT = "research-cut";
+
+export function researchCutRequested(faults: string | null | undefined): boolean {
+  if (!testSwitches().allowFaults || !faults) return false;
+  return faults.split(",").some((s) => s.trim() === RESEARCH_CUT_FAULT);
+}
+
+/**
  * The test faults a page passes on to its API calls: the provider outages plus `fresh-limit`.
  * Empty unless fault injection is allowed (never in production).
  */

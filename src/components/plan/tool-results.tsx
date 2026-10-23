@@ -176,7 +176,13 @@ const Section = ({ title, children }: { title: string; children: ReactNode }) =>
 /** `pins`: the busk's ranked pitches, once the plan exists, so a card's mini map can show them. */
 export type MiniPin = { id: string; name: string; lat: number; lon: number; rank: number };
 type Ctx = { when?: string; pins?: MiniPin[]; model?: ExplanationsModel | null };
-type ToolUi = { doing: (s: AgentStep) => string; title: (s: AgentStep) => string; render: (out: Rec, s: AgentStep, ctx: Ctx) => ReactNode };
+type ToolUi = {
+  doing: (s: AgentStep) => string;
+  title: (s: AgentStep) => string;
+  render: (out: Rec, s: AgentStep, ctx: Ctx) => ReactNode;
+  /** A tool whose whole result is one line: the feed sets it right under the title, beside the step cell. */
+  line?: (out: Rec) => RichTextData | string;
+};
 
 /** "Gillian Welch 0.31; Paul Kelly 0.2" → the because chips, each with its explained weight (0–100). */
 const becauseArtists = (s: string) =>
@@ -193,6 +199,7 @@ const becauseArtists = (s: string) =>
 const researchUi = (line: (o: Rec) => RichTextData | string): ToolUi => ({
   doing: (s) => s.label,
   title: (s) => s.label,
+  line,
   render: (o) => (
     <Foot>
       <RichText text={line(o)} />
@@ -210,10 +217,11 @@ const RESEARCH_UI: Record<string, ToolUi> = {
   research_songs: researchUi((o) => {
     const songs = arr(o.songs).filter((x) => str(x.title));
     if (!songs.length) return str(o.summary) ?? "";
-    const from = str(o.source) === "spotify" || str(o.source) === "lastfm" ? [" from ", mentionSource(str(o.source) as "spotify" | "lastfm")] : [];
+    // The source's logo is an image: its name follows in words, so the line never reads "from ,".
+    const from = str(o.source) === "spotify" || str(o.source) === "lastfm" ? [" from ", mentionSource(str(o.source) as "spotify" | "lastfm"), str(o.source) === "spotify" ? " Spotify" : " Last.fm"] : [];
     // Spotify gave no catalogue (rate-limited or down): say so plainly, then what was added from Last.fm.
     if (o.spotifyDown === "limited" || o.spotifyDown === "down") {
-      return [o.spotifyDown === "limited" ? "Spotify isn't answering right now, so " : "Spotify didn't answer, so ", `${num(o.added) ?? songs.length} of your songs come from `, mentionSource("lastfm"), ", including ", ...listOf(songs.slice(0, 3).map((x) => mentionSong(str(x.title) as string, { artist: str(x.artist), image: str(x.image), href: str(x.href) })))];
+      return [o.spotifyDown === "limited" ? "Spotify isn't answering right now, so " : "Spotify didn't answer, so ", `${num(o.added) ?? songs.length} of your songs come from `, mentionSource("lastfm"), " Last.fm, including ", ...listOf(songs.slice(0, 3).map((x) => mentionSong(str(x.title) as string, { artist: str(x.artist), image: str(x.image), href: str(x.href) })))];
     }
     return [
       `Added ${num(o.added) ?? songs.length} of your songs`,

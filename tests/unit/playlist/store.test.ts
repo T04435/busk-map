@@ -190,11 +190,60 @@ describe("PostgresPlaylistStore SQL shape", () => {
     expect(calls[2].text).toMatch(/revision = revision \+ 1/);
   });
 
+  it("adds many songs in ONE transaction: lock, fill in repeats, one multi-row INSERT … ON CONFLICT with the learned mark and one bump", async () => {
+    const row2 = { ...songRow, id: "8", song_key: "artist|song 2", title: "Song 2" };
+    const { store, calls } = fake([[{ id: "pid" }], [{ song_key: "artist|song 3" }], [songRow, row2]]);
+    const r = await store.addSongs("pid", [song(1), song(2), song(3), song(1)]);
+    expect(r).toEqual([
+      { ok: true, song: expect.objectContaining({ id: "7", title: "Song 1" }) },
+      { ok: true, song: expect.objectContaining({ id: "8", title: "Song 2" }) },
+      { ok: false, reason: "duplicate" },
+      // The same song twice in a batch: the second copy is a duplicate of the first.
+      { ok: false, reason: "duplicate" },
+    ]);
+    expect(calls).toHaveLength(3);
+    expect(calls[0].text).toMatch(/FOR UPDATE$/);
+    expect(calls[1].text).toMatch(/^UPDATE playlist_songs ps SET/);
+    expect(calls[1].text).toMatch(/FROM unnest\(/);
+    expect(calls[2].text).toMatch(/INSERT INTO playlist_songs/);
+    expect(calls[2].text).toMatch(/ON CONFLICT \(playlist_id, song_key\) DO NOTHING/);
+    expect(calls[2].text).toMatch(/UPDATE learn_suggestions SET status = 'learned'/);
+    expect(calls[2].text).toMatch(/revision = revision \+ 1/);
+    // One row per distinct song, as arrays (the repeat is not sent).
+    expect(calls[2].params[1]).toEqual(["artist|song 1", "artist|song 2", "artist|song 3"]);
+    expect(calls[2].params).toHaveLength(11);
+  });
+
+  it("addSongs splits a big catalogue into 500-row statements and reports a missing Repertoire for every song", async () => {
+    const many = Array.from({ length: 1200 }, (_, i) => song(i));
+    const big = fake([]);
+    const r = await big.store.addSongs("pid", many);
+    // The fake's empty lock answer reads as a missing Repertoire: the first chunk says so, and the rest are not sent.
+    expect(r).toHaveLength(1200);
+    expect(r.every((x) => !x.ok && x.reason === "missing")).toBe(true);
+    expect(big.calls).toHaveLength(3);
+    expect((big.calls[2].params[1] as string[]).length).toBe(500);
+    const ok = fake([[{ id: "pid" }], [], [], [{ id: "pid" }], [], [], [{ id: "pid" }], [], []]);
+    await ok.store.addSongs("pid", many);
+    expect(ok.calls.filter((c) => /INSERT INTO playlist_songs/.test(c.text)).map((c) => (c.params[1] as string[]).length)).toEqual([500, 500, 200]);
+    expect(await ok.store.addSongs("pid", [])).toEqual([]);
+  });
+
   it("tells a repeat from a missing Repertoire when the INSERT returns nothing", async () => {
     const dup = fake([[{ id: "pid" }], [], [{ one: 1 }]]);
     expect(await dup.store.addSong("pid", song(1))).toEqual({ ok: false, reason: "duplicate" });
     const gone = fake([[{ id: "pid" }], [], []]);
     expect(await gone.store.addSong("pid", song(1))).toEqual({ ok: false, reason: "missing" });
+  });
+
+  it("the memory store's addSongs gives addSong's result per song, in order", async () => {
+    const store = new MemoryPlaylistStore();
+    const p = await store.create(hashToken(newToken()));
+    await store.addSong(p.id, song(2));
+    const r = await store.addSongs(p.id, [song(1), song(2), song(3), song(1)]);
+    expect(r.map((x) => (x.ok ? x.song.title : x.reason))).toEqual(["Song 1", "duplicate", "Song 3", "duplicate"]);
+    expect((await store.songs(p.id)).map((x) => x.title)).toEqual(["Song 2", "Song 1", "Song 3"]);
+    expect(await store.addSongs("missing", [song(1)])).toEqual([{ ok: false, reason: "missing" }]);
   });
 
   it("the memory store lets simultaneous saves past 60 songs all land", async () => {

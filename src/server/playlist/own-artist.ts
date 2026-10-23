@@ -104,19 +104,27 @@ export async function findOwnOnQloo(spotifyId: string, name: string, context: Ad
   return { entity: null, qloo: "unknown", by: null, candidates: decision.kind === "ask" ? decision.candidates.map(candidateView) : [], weak: false, searches };
 }
 
+/** Saved sound-alikes (with a Qloo id) that stand in for an act Qloo doesn't know, at most. */
+export const SOUNDS_LIKE_SIGNAL = 3;
+
 /**
  * Artists whose fans overlap this performer's: Qloo insights (`filter.type=urn:entity:artist`) signalled with the
- * performer's own entity. Cached for days by the Qloo client; the own artist is left out.
+ * performer's own entity. When Qloo doesn't know the act, the saved "Artists you sound like" Qloo knows are the signal
+ * instead (unknown_artist only when there are none). Cached for days by the Qloo client; the own artist and the ones
+ * already saved are left out.
  */
 export async function soundsLikeFor(playlist: PlaylistRecord, context: AdapterContext): Promise<SoundsLikeSuggestions> {
   const none = (status: SoundsLikeStatus): SoundsLikeSuggestions => ({ status, artists: [] });
   if (!playlist.spotifyArtistId) return none("no_artist");
-  if (!playlist.qlooArtistId) return none(playlist.spotifyProfile ? "unknown_artist" : "not_loaded");
-  const result = await tasteArtists([playlist.qlooArtistId], SOUNDS_LIKE_TAKE + 2, context);
+  const alikes = playlist.qlooArtistId ? [] : playlist.soundsLike.flatMap((a) => (a.qlooId ? [a.qlooId] : [])).slice(0, SOUNDS_LIKE_SIGNAL);
+  if (!playlist.qlooArtistId && alikes.length === 0) return none(playlist.spotifyProfile ? "unknown_artist" : "not_loaded");
+  const signal = playlist.qlooArtistId ? [playlist.qlooArtistId] : alikes;
+  const result = await tasteArtists(signal, SOUNDS_LIKE_TAKE + 2 + (playlist.qlooArtistId ? 0 : playlist.soundsLike.length), context);
   if (result.mode === "fallback") return none("unavailable");
   const own = playlist.spotifyProfile ? nameKey(playlist.spotifyProfile.name) : null;
+  const saved = playlist.qlooArtistId ? new Set<string>() : new Set(playlist.soundsLike.map((a) => nameKey(a.name)));
   const artists = result.data.artists
-    .filter((a) => a.id !== playlist.qlooArtistId && nameKey(a.name) !== own)
+    .filter((a) => !signal.includes(a.id) && nameKey(a.name) !== own && !saved.has(nameKey(a.name)))
     .slice(0, SOUNDS_LIKE_TAKE)
     .map((a) => ({
       name: a.name,

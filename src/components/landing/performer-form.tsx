@@ -24,7 +24,7 @@ import { planSearchParams } from "@/lib/plan-url";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import { type PlaylistView, type SpotifyProfile } from "@/lib/playlist-schema";
 import { choiceForHours, hoursOf, type TimeChoice } from "@/lib/time-slots";
-import { ArtistPicker, typedArtists, type PickedArtist } from "./artist-picker";
+import { ArtistPicker, MAX_PICKED_ARTISTS, typedArtists, type PickedArtist } from "./artist-picker";
 
 // "|" and "~" separate values in the plan URL.
 const clean = (s: string) => s.replace(/[|~]/g, " ").trim();
@@ -67,14 +67,31 @@ const prefillSongs = (prefill: FormPrefill | undefined): PickedSong[] =>
     own: song.own,
   }));
 
-/** The Repertoire as the form's fields (docs/playlist-architecture.md §3.1): name, sounds-like artists, songs. */
+/** The Repertoire as the form's fields (docs/playlist-architecture.md §3.1): name and songs (its sound-alikes: startingArtists). */
 const repertoireFields = (view: PlaylistView) => ({
   name: view.actName ?? "",
-  artists: view.soundsLike.map((a): PickedArtist => ({ name: a.name, spotifyId: a.spotifyId ?? null, qlooId: a.qlooId ?? null, image: a.image ?? null })),
   picked: view.songs.map(
     (song): PickedSong => ({ key: `rep-${song.id}`, title: song.title, artist: song.artist, durationMs: song.durationMs, own: song.own }),
   ),
 });
+
+/**
+ * The artists the form starts with: planning again, the plan's artists, then the Repertoire's sound-alikes it lacks (by name);
+ * otherwise the Repertoire's. Never fewer than the Repertoire has (up to the picker's maximum), so an act Qloo doesn't know
+ * still starts with the sound-alikes its research saved.
+ */
+export function startingArtists(prefill: FormPrefill | undefined, repertoire: Pick<PlaylistView, "soundsLike"> | null): PickedArtist[] {
+  const fromRep = repertoire ? repertoire.soundsLike.map((a): PickedArtist => ({ name: a.name, spotifyId: a.spotifyId ?? null, qlooId: a.qlooId ?? null, image: a.image ?? null })) : [];
+  const out = prefillArtists(prefill);
+  for (const a of fromRep) {
+    if (out.length >= MAX_PICKED_ARTISTS) break;
+    const at = out.findIndex((b) => b.name.toLowerCase() === a.name.toLowerCase());
+    // The plan's copy keeps its place; the Repertoire fills in ids and the photo it lacks.
+    if (at >= 0) out[at] = { ...out[at], spotifyId: out[at].spotifyId ?? a.spotifyId, qlooId: out[at].qlooId ?? a.qlooId ?? null, image: out[at].image ?? a.image };
+    else out.push(a);
+  }
+  return out;
+}
 
 /** The Repertoire's saved Spotify profile as ArtistProfile draws it (read-only here: no audience tags, no refresh). */
 const profileOf = (profile: SpotifyProfile) => ({ name: profile.name, image: profilePhoto(profile.images), genres: profile.genres, audience: [], followers: profile.followers ?? null });
@@ -124,7 +141,8 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
   const rep = repertoire;
   const repAct = rep && !prefill ? repertoireFields(rep) : null;
   const [name, setName] = useState(repAct?.name ?? prefill?.performer.name ?? "");
-  const [artists, setArtists] = useState<PickedArtist[]>(() => repAct?.artists ?? prefillArtists(prefill));
+  // The artists start from the plan (planning again) and the Repertoire's sound-alikes together, never one wiping the other.
+  const [artists, setArtists] = useState<PickedArtist[]>(() => startingArtists(prefill, rep));
   const [artistQuery, setArtistQuery] = useState("");
   // The songs the busk carries: the Repertoire's (or, planning again, the last busk's).
   const songs = useMemo<PickedSong[]>(() => (prefill ? prefillSongs(prefill) : rep ? repertoireFields(rep).picked : []), [prefill, rep]);
@@ -163,7 +181,8 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
   /** What the form holds now, as the request will carry it. */
   function currentFields() {
     const parsedSongs = songs.map((p) => ({ title: p.title, artist: p.artist, own: p.own, ...(p.durationMs ? { durationMs: p.durationMs } : {}) }));
-    const chosen = [...artists];
+    // An empty picker never fails the busk while the Repertoire has sound-alikes: they are the act's answer to "who you sound like".
+    const chosen = artists.length > 0 ? [...artists] : startingArtists(undefined, rep);
     for (const typed of typedArtists(artistQuery)) {
       if (!chosen.some((a) => a.name.toLowerCase() === typed.toLowerCase())) chosen.push({ name: typed, spotifyId: null, image: null });
     }
@@ -274,7 +293,7 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
         </div>
         <SoundsLikeSuggestionsList
           enabled={Boolean(rep?.spotifyArtistId)}
-          refreshKey={`${rep?.qlooArtistId ?? ""}|${rep?.spotifyProfile?.fetchedAt ?? ""}`}
+          refreshKey={`${rep?.qlooArtistId ?? ""}|${rep?.spotifyProfile?.fetchedAt ?? ""}|${rep?.qlooArtistId ? "" : (rep?.soundsLike ?? []).map((a) => a.qlooId ?? "").join(",")}`}
           picked={currentFields().chosen.map((a) => a.name)}
           onAdd={(add) => setArtists((current) => withSuggested(current, add))}
         />

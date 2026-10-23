@@ -32,6 +32,11 @@ export const SHORT_RETRY_AFTER_S = 30;
 export const DEFAULT_RETRY_AFTER_S = 2;
 /** Spotify calls one catalogue fetch may spend (album list pages + batches + track pages, retries included). */
 export const CATALOGUE_CALL_BUDGET = 60;
+/**
+ * Wall-clock time one catalogue fetch may take. At 20 s it stops and returns the songs found so far (a partial catalogue),
+ * so research step 2 stays well inside the function's 120 s (a big catalogue paced at 2 calls a second took minutes).
+ */
+export const CATALOGUE_DEADLINE_MS = 35_000;
 const ADAPTER = "spotify";
 /** How often an instance re-reads the shared row while it believes Spotify is fine. */
 const RECHECK_MS = 30_000;
@@ -235,22 +240,34 @@ export async function countSpotifyCall(): Promise<void> {
   if (s.dayCalls === s.dailyMax) await limitSpotifyUntil(midnightUtc(now));
 }
 
-/** A per-fetch allowance of Spotify calls. */
+/** A per-fetch allowance of Spotify calls, and optionally of wall-clock time (a deadline in epoch ms). */
 export class CallBudget {
   private used = 0;
-  constructor(readonly max: number) {}
+  constructor(
+    readonly max: number,
+    readonly deadline = Number.POSITIVE_INFINITY,
+  ) {}
   take() {
     if (this.used >= this.max) throw new BudgetExhausted();
+    if (Date.now() >= this.deadline) throw new BudgetExhausted("deadline");
     this.used++;
   }
   get spent() {
     return this.used;
   }
+  /** Time left before the deadline (Infinity without one), never negative. */
+  remainingMs() {
+    return Math.max(0, this.deadline - Date.now());
+  }
+  /** A wait (for a pacer slot or a short Retry-After) capped to the time left. */
+  capWait(ms: number) {
+    return Math.min(ms, this.remainingMs());
+  }
 }
 
 export class BudgetExhausted extends Error {
-  constructor() {
-    super("Spotify call budget for this fetch is used up");
+  constructor(readonly why: "calls" | "deadline" = "calls") {
+    super(why === "deadline" ? "The time for this Spotify fetch is used up" : "Spotify call budget for this fetch is used up");
     this.name = "BudgetExhausted";
   }
 }

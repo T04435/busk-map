@@ -90,8 +90,8 @@ export function resolveSpotifyArtists(spotifyIds: string[], context: AdapterCont
 }
 
 /** taste_map: heatmap cells for the performer's artists over the area. */
-export function tasteMap(entityIds: string[], area: BBox, context: AdapterContext, boundary?: client.HeatmapBoundary): Promise<AdapterResult<HeatCell[]>> {
-  return run(context, [], (backend) => client.heatmap(backend, entityIds, area, boundary));
+export function tasteMap(entityIds: string[], area: BBox, context: AdapterContext, boundary?: client.HeatmapBoundary, tagIds: readonly string[] = []): Promise<AdapterResult<HeatCell[]>> {
+  return run(context, [], (backend) => client.heatmap(backend, entityIds, area, boundary, tagIds));
 }
 
 /** busy_places: places near a point, open on the slot's weekday (or any day, with null). */
@@ -101,13 +101,14 @@ export function busyPlaces(
   radiusM: number,
   weekday: string | null,
   context: AdapterContext,
+  tagIds: readonly string[] = [],
 ): Promise<AdapterResult<QlooPlace[]>> {
-  return run(context, [], (backend) => client.places(backend, entityIds, center, radiusM, weekday));
+  return run(context, [], (backend) => client.places(backend, entityIds, center, radiusM, weekday, tagIds));
 }
 
 /** local_artists: what this crowd likes, with explainability (per result and aggregate). */
-export function localArtists(entityIds: string[], area: BBox, take: number, context: AdapterContext): Promise<AdapterResult<LocalArtists>> {
-  return run<LocalArtists>(context, { artists: [], impact: [] }, (backend) => client.localArtists(backend, entityIds, area, take));
+export function localArtists(entityIds: string[], area: BBox, take: number, context: AdapterContext, tagIds: readonly string[] = []): Promise<AdapterResult<LocalArtists>> {
+  return run<LocalArtists>(context, { artists: [], impact: [] }, (backend) => client.localArtists(backend, entityIds, area, take, tagIds));
 }
 
 /** taste_artists: artists whose fans overlap these artists' fans, anywhere, with explainability (the learn run's related_artists). */
@@ -141,8 +142,8 @@ export function rising(entityIds: string[], startDate: string, endDate: string, 
 }
 
 /** crowd_profile: age and gender lean of fans of these artists. */
-export function crowdProfile(entityIds: string[], context: AdapterContext): Promise<AdapterResult<CrowdProfile | null>> {
-  return run<CrowdProfile | null>(context, null, (backend) => client.demographics(backend, entityIds));
+export function crowdProfile(entityIds: string[], context: AdapterContext, tagIds: readonly string[] = []): Promise<AdapterResult<CrowdProfile | null>> {
+  return run<CrowdProfile | null>(context, null, (backend) => client.demographics(backend, entityIds, tagIds));
 }
 
 /** crowd_tags: the genres that characterise this crowd around a pitch (urn:tag). */

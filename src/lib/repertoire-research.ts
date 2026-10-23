@@ -86,6 +86,8 @@ export type QlooOutput = {
   foundByHive?: boolean;
   /** fallback "genres": the Qloo genre tags used as the signal. */
   genreTags?: { id: string; name: string }[];
+  /** Last.fm's similar artists the Hive found for the act when Qloo confirmed none of them: step 4's "who you sound like". */
+  similar?: { name: string; spotifyId?: string; image?: string }[];
   /** A genre the performer picked when nothing else was found; kept for this link so a refresh uses it again. */
   genrePick?: string;
 };
@@ -97,7 +99,8 @@ export type ResearchArtistOut = { name: string; qlooId: string; spotifyId?: stri
 export type ResearchAsk = { asks: number; tried: { artists: string[]; genres: string[] } };
 export type SoundsLikeOutput = BasedOn & {
   summary: string;
-  artists: ResearchArtistOut[];
+  /** qlooId is absent for a Last.fm sound-alike Qloo doesn't know (QlooOutput.similar). */
+  artists: (Omit<ResearchArtistOut, "qlooId"> & { qlooId?: string })[];
   /** True when they were saved as your "Artists you sound like" (only when that list was empty). */
   saved: boolean;
   /** The run is paused here: Qloo has no taste signal for the act, so the step asks for artists you sound like, or a genre. */
@@ -181,10 +184,18 @@ export type ResearchSnapshot = {
 /** The busk local scene's optional input: the act's genre tags (step 8), at most this many. */
 export const MAX_ACT_GENRES = 6;
 
-/** The act's genre tags from a snapshot (step 8, else the Qloo entity's genres by name), for the busk form. */
+/**
+ * The act's genre tags from a snapshot, for the busk form: the genres the performer answered when Qloo doesn't know the act
+ * (step 3's genreTags) first, then step 8's, once each by id.
+ */
 export function actGenresOf(snapshot: ResearchSnapshot | null | undefined): { id: string; name: string }[] {
-  const tags = snapshot?.steps.genres?.output?.tags ?? [];
-  return tags.filter((t) => t.id && t.name).slice(0, MAX_ACT_GENRES).map((t) => ({ id: t.id, name: t.name }));
+  const qloo = snapshot?.steps.qloo?.output;
+  const answered = qloo && !qloo.matched ? (qloo.genreTags ?? []) : [];
+  const tags = [...answered, ...(snapshot?.steps.genres?.output?.tags ?? [])];
+  return tags
+    .filter((t, i) => t.id && t.name && tags.findIndex((u) => u.id === t.id) === i)
+    .slice(0, MAX_ACT_GENRES)
+    .map((t) => ({ id: t.id, name: t.name }));
 }
 
 // --- POST /api/playlist/research ---

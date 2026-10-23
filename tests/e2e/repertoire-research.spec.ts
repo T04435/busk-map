@@ -45,6 +45,19 @@ test.describe("Repertoire research (offline)", () => {
     await expect(page.getByTestId("research-notice")).toContainText("isn't a Spotify artist link");
   });
 
+  test("a run cut off mid-step (the stream ends with no end) shows as stopped: the step cut, the Stopped tag and Try again", async ({ page }) => {
+    // `faults=research-cut`: the server drops the run right after step 2 ("Your songs") starts, as a stopped function would.
+    await research(page, LINK, "research-cut");
+    const stream = page.getByTestId("agent-stream").first();
+    await expect(stream.getByTestId("agent-tag")).toHaveText("Stopped", { timeout: 20_000 });
+    await expect(page.getByTestId("research-page")).not.toHaveAttribute("data-phase", "running");
+    await expect(stream.getByText("Stopped before it finished.")).toHaveCount(1);
+    await expect(stream.getByText("The research stopped before finishing")).toBeVisible();
+    await expect(stream.getByRole("button", { name: "Try again" })).toBeVisible();
+    // Never "still going": no live heading, no running spinner left behind.
+    await expect(stream.getByRole("heading", { name: "Researching your act" })).toHaveCount(0);
+  });
+
   test("the run streams with the research on top, then the results land in order and the research folds below", async ({ page }) => {
     await research(page, LINK, "research-slow");
     const stream = page.getByTestId("agent-stream").first();

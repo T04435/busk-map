@@ -8,6 +8,7 @@ import { type CSSProperties, type ReactNode } from "react";
 import { cn } from "cn";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
+import { RichText } from "@/components/honeycomb/mention";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -58,7 +59,9 @@ function ToolCard({ step, model, when, pins, fresh, renderWaiting }: { step: Age
   const say = step.notes.filter((n) => n.kind === "text").map((n) => n.text);
   const title = running ? `${ui?.doing(step) ?? step.label}…` : (ui?.title(step) ?? step.label);
   const out = step.output !== null && typeof step.output === "object" ? (step.output as Record<string, unknown>) : {};
-  const foot = (text: string) => <p className="m-0 text-[13px] leading-[18px] text-muted-foreground">{text}</p>;
+  const foot = (text: ReactNode) => <p className="m-0 text-[13px] leading-[18px] text-muted-foreground">{text}</p>;
+  // One-line results sit right under the title, beside the step cell (no gap under a one-line title); only wide content goes below.
+  let lead: ReactNode = null;
   let body: ReactNode = null;
   if (running)
     body = (
@@ -68,11 +71,17 @@ function ToolCard({ step, model, when, pins, fresh, renderWaiting }: { step: Age
       </div>
     );
   else if (rejected) body = ui?.render(out, step, { when, pins, model });
-  else if (bad) body = foot("This check didn't come back, so the plan goes on without it.");
-  else if (cut) body = foot("Stopped before it finished.");
-  else if (waiting) body = renderWaiting ? renderWaiting(step) : step.summary ? foot(step.summary) : null;
-  else if (step.output !== undefined && ui) body = ui.render(out, step, { when, pins, model });
-  else if (step.summary) body = foot(step.summary);
+  else if (bad) lead = foot("This check didn't come back, so the plan goes on without it.");
+  else if (cut) lead = foot("Stopped before it finished.");
+  else if (waiting) {
+    if (renderWaiting) body = renderWaiting(step);
+    else if (step.summary) lead = foot(step.summary);
+  } else if (step.output !== undefined && ui) {
+    const line = ui.line?.(out);
+    if (line !== undefined) {
+      if (line.length) lead = foot(<RichText text={line} />);
+    } else body = ui.render(out, step, { when, pins, model });
+  } else if (step.summary) lead = foot(step.summary);
   return (
     <li
       data-testid="agent-step"
@@ -103,6 +112,7 @@ function ToolCard({ step, model, when, pins, fresh, renderWaiting }: { step: Age
               {say.join(" ")}
             </Say>
           ) : null}
+          {lead}
         </div>
         <span className="sr-only">{rejected ? "rejected" : waiting ? "waiting for you" : step.status}</span>
         </div>

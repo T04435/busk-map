@@ -39,7 +39,7 @@ import { recordCalls } from "@/server/adapters/call-log";
 import type { AdapterContext } from "@/server/adapters/core";
 import * as qloo from "@/server/adapters/qloo";
 import { withQlooUsage, type QlooUsage } from "@/server/adapters/qloo/usage";
-import { getArtistCatalogue, getArtistProfile } from "@/server/adapters/repertoire";
+import { findArtists, getArtistCatalogue, getArtistProfile } from "@/server/adapters/repertoire";
 import { qlooBudgetSpent } from "@/server/adapters/qloo/budget";
 import { spotifyLimitedUntil } from "@/server/adapters/repertoire/pacer";
 import { getSongs } from "@/server/adapters/songs";
@@ -60,6 +60,7 @@ import {
   RESEARCH_LEARN_ARTISTS,
   RESEARCH_LEARN_PER_ARTIST,
   RESEARCH_SIGNAL_SOUND_ALIKES,
+  RESEARCH_TIMEOUTS,
   RESEARCH_SOUNDS_LIKE_SAVED,
 } from "@/server/playlist/config";
 import { fansMapFor } from "./fans-map";
@@ -98,6 +99,10 @@ export type ResearchRunArgs = {
   budgetFault?: boolean;
   /** Test fault `research-slow`: wait this long at the start of every step. */
   stepDelayMs?: number;
+  /** Test fault `research-cut`: the run stops right after this step starts, with no `end` and the row left running (a stopped function). */
+  cutAt?: ResearchStepKey;
+  /** Tests shorten the step timeout and the run watchdog (RESEARCH_TIMEOUTS). */
+  timeouts?: { stepMs: number; runMs: number };
   /** The performer's answer to "Is one of these you?": a candidate the last run offered, or none of them. */
   qlooChoice?: { id: string } | { none: true };
   /** A genre the performer picked ("Your genre"), used as the first Qloo genre tag when Qloo and Last.fm give the Hive nothing else. */
@@ -127,6 +132,15 @@ class QlooDown extends Error {
     super(message);
   }
 }
+/** Test fault `research-cut`: the run is dropped as a stopped function would drop it. */
+class RunCut extends Error {}
+/** A step ran past RESEARCH_TIMEOUTS.stepMs: the step fails and the run ends (end code "timeout"). */
+class StepTimeout extends Error {
+  constructor(label: string) {
+    super(`${label} took too long`);
+  }
+}
+
 /** Why Qloo is down for this run: today's budget is spent (the page then offers the examples) or Qloo is not answering. */
 const qlooEndCode = (forceBudget = false) => (forceBudget || qlooBudgetSpent() ? "qloo_budget_spent" : "qloo_unavailable") as "qloo_budget_spent" | "qloo_unavailable";
 
@@ -185,7 +199,13 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
   // A resumed run sends its kept steps again first, so the panel is the one the performer left, then carries on.
   const kept = resume && waitingBefore ? keptSteps(resume.stored, waitingBefore.stepId) : [];
   const stored: StoredLearnStep[] = [...kept];
+  const timeouts = args.timeouts ?? RESEARCH_TIMEOUTS;
+  /** Set once the run's `end` is on its way (by the steps, an error or the watchdog): nothing is pushed after it. */
+  let ended = false;
+  /** The step going on now, for the watchdog to close. */
+  let openStep: { id: string; tool: string; key: ResearchStepKey; label: string } | null = null;
   const push = (event: LearnStreamEvent) => {
+    if (ended) return;
     run.push(event);
     if (event.type === "status" || event.type === "note" || event.type === "tool-start" || event.type === "tool-end" || event.type === "totals") stored.push(event);
   };
@@ -219,6 +239,9 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
   const usageTotal = (): QlooUsage => ({ calls: usageNow.calls + (base?.qlooCalls ?? 0), cacheHits: usageNow.cacheHits + (base?.qlooCacheHits ?? 0) });
 
   const finish = async (end: { status: "done" | "failed" | "fallback"; endCode: RunRecord["endCode"]; saved: Awaited<ReturnType<LearnStore["insertSuggestions"]>>; usage: RunRecord["usage"]; waiting?: ResearchWaiting }) => {
+    // One end per run: the steps, an error and the watchdog may race to it.
+    if (ended) return;
+    ended = true;
     // Steps never started this run are skipped (a full run that stopped early; "more" leaves the others as they were). A paused
     // run's are not started yet, so they stay out of the snapshot.
     if (!end.waiting) for (const k of mode === "more" ? MORE_STEPS : RESEARCH_STEPS) if (!steps[k]) (steps as Record<string, StoredStep>)[k] = { status: "skipped", output: null };
@@ -249,19 +272,31 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
 
   /** One step: tool-start, the work, tool-end, then the running totals. A thrown error is a failed step (and the run goes on). */
   async function step<K extends ResearchStepKey>(key: K, input: unknown, work: (via: (source: MentionSource) => void) => Promise<StepOutputs[K]>): Promise<StepOutputs[K] | null> {
+    // The watchdog already ended the run: no further step starts.
+    if (ended) throw new StepTimeout(RESEARCH_LABELS[key]);
     const id = `rs-${++n}`;
     lastStepId = id;
     const tool = RESEARCH_TOOLS[key];
+    openStep = { id, tool, key, label: RESEARCH_LABELS[key] };
     push({ type: "tool-start", id, tool, label: RESEARCH_LABELS[key], input });
+    if (args.cutAt === key) {
+      ended = true;
+      throw new RunCut();
+    }
     // `via`: a step with a backup source says which one it is on now, so its running mark shows that source.
     const via = (source: MentionSource) => push({ type: "tool-source", id, source });
     // Every external call the step makes (provider, endpoint, params, status, count, ms, cached), for its RAW panel.
     const calls: CallRecord[] = [];
     const withCalls = () => (calls.length ? { calls } : {});
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       if (args.stepDelayMs) await new Promise((resolve) => setTimeout(resolve, args.stepDelayMs));
       if (args.budgetFault) throw new QlooDown("Today's Qloo budget is spent.", true);
-      const output = await recordCalls(calls, () => work(via));
+      // The work can't be cancelled; past the step's time it is left behind and the run ends without it.
+      const late = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new StepTimeout(RESEARCH_LABELS[key])), timeouts.stepMs);
+      });
+      const output = await Promise.race([recordCalls(calls, () => work(via)), late]);
       const waits = Boolean((output as { waiting?: unknown }).waiting);
       (steps as Record<string, StoredStep>)[key] = { status: waits ? "waiting" : "done", output };
       push({ type: "tool-end", id, tool, ok: true, summary: output.summary, output, ...withCalls() });
@@ -270,9 +305,11 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
       const message = error instanceof Error ? error.message : String(error);
       (steps as Record<string, StoredStep>)[key] = { status: "failed", output: null };
       push({ type: "tool-end", id, tool, ok: false, summary: message.slice(0, 300), output: { error: message.slice(0, 600) }, ...withCalls() });
-      if (error instanceof QlooDown) throw error;
+      if (error instanceof QlooDown || error instanceof StepTimeout) throw error;
       return null;
     } finally {
+      clearTimeout(timer);
+      if (openStep?.id === id) openStep = null;
       push({ type: "totals", totals: researchTotals(steps, usageTotal()) });
     }
   }
@@ -288,6 +325,19 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
       }
     }
     return false;
+  }
+
+  /**
+   * Sound-alikes the run found by itself (the Hive's Last.fm similar artists) saved as "Artists you sound like", marked as the
+   * Hive's: merged after the ones already there, up to SOUNDS_LIKE_MAX, and only while the performer has picked none of their own.
+   */
+  async function saveHiveAlikes(list: readonly SoundsLike[]): Promise<boolean> {
+    const fresh = (await playlists.get(playlist.id)) ?? playlist;
+    if (fresh.soundsLike.some((a) => a.foundBy !== "hive")) return false;
+    const have = new Set(fresh.soundsLike.map((a) => nameKey(a.name)));
+    const added = list.filter((a) => !have.has(nameKey(a.name)) && have.add(nameKey(a.name))).map((a): SoundsLike => ({ ...a, name: a.name.slice(0, 80), foundBy: "hive" }));
+    if (added.length === 0) return false;
+    return patch({ soundsLike: [...fresh.soundsLike, ...added].slice(0, SOUNDS_LIKE_MAX) });
   }
 
   /** What stands in for the act when Qloo doesn't know it. alikes: artists like it (the performer's own, or found by the Hive); tags: its Spotify genres as Qloo tags; neither: no taste data. */
@@ -315,6 +365,23 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
     return playlist.soundsLike.filter((a) => a.qlooId).slice(0, RESEARCH_SIGNAL_SOUND_ALIKES) as (SoundsLike & { qlooId: string })[];
   }
 
+  // The run watchdog: before the function's maxDuration, a run still going is ended as failed (end code "timeout"), its open
+  // step closed as too long, so the stream gets its `end` and the row never stays `running`.
+  const watchdog = setTimeout(() => {
+    if (ended) return;
+    log.warn("research run ran out of time", { runId: record.id, step: openStep?.key ?? null });
+    if (openStep) {
+      const message = new StepTimeout(openStep.label).message;
+      (steps as Record<string, StoredStep>)[openStep.key] = { status: "failed", output: null };
+      push({ type: "tool-end", id: openStep.id, tool: openStep.tool, ok: false, summary: message, output: { error: message } });
+      openStep = null;
+    }
+    void finish({ status: "failed", endCode: "timeout", saved: [], usage: null })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!run.done) run.finish();
+      });
+  }, timeouts.runMs);
   try {
     const today = serverToday(CITIES.melbourne.timeZone);
     await withQlooUsage(async (usage) => {
@@ -392,8 +459,11 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             tracks = top.map((t) => ({ id: null, title: t.title, artist: profile.name, own: true, year: null, durationMs: null, album: null, image: null, href: null }));
           }
           const out: SongsOutput = { summary: "", source, songs: [], added: 0, already: 0, ...(spotifyDown ? { spotifyDown: limited ? ("limited" as const) : ("down" as const) } : {}) };
-          for (const t of tracks) {
-            const res = await playlists.addSong(playlist.id, {
+          // All of the act's own songs (U16), written in one batch: one transaction per song took minutes for a big catalogue
+          // and the function was stopped mid-step.
+          const results = await playlists.addSongs(
+            playlist.id,
+            tracks.map((t) => ({
               title: t.title.slice(0, 120),
               artist: t.artist.slice(0, 80),
               own: true,
@@ -404,7 +474,10 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
               // Covers persist (migration 010): the track or album art, and the act's own photo.
               ...(t.image && /^https:\/\//.test(t.image) && t.image.length <= 500 ? { image: t.image } : {}),
               ...(t.own && profile.image && /^https:\/\//.test(profile.image) && profile.image.length <= 500 ? { artistImage: profile.image } : {}),
-            });
+            })),
+          );
+          for (const [i, t] of tracks.entries()) {
+            const res = results[i];
             if (res.ok) out.added++;
             else if (res.reason === "duplicate") out.already++;
             else break;
@@ -497,19 +570,44 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             const found = hive.alikes.map((a): SoundsLike & { qlooId: string } => ({ name: a.name, qlooId: a.qlooId, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.image ? { image: a.image } : {}), foundBy: "hive" }));
             signalAlikes.current = found;
             // Saved as "Artists you sound like" (marked as the Hive's) only when the performer has none of their own: theirs are never overwritten.
-            if (playlist.soundsLike.length === 0) await patch({ soundsLike: found.slice(0, RESEARCH_SOUNDS_LIKE_SAVED) });
+            await saveHiveAlikes(found.slice(0, RESEARCH_SOUNDS_LIKE_SAVED));
             return { ...empty, summary: R.fallback.label(found.slice(0, 3).map((a) => a.name)), fallback: "soundsLike", foundByHive: true, ...declinedMark, ...genreMark };
           }
+          // Last.fm knows artists like the act but Qloo confirmed none of them by name: each is looked up on Spotify (an exact name
+          // gives its id and photo), and a Spotify id is Qloo's certain lookup. Any Qloo knows that way are the signal, as above;
+          // otherwise they are still who the act sounds like (step 4 lists them and they are saved) and the act's genres are the signal.
+          const market = CITIES[(playlist.city in CITIES ? playlist.city : "melbourne") as keyof typeof CITIES].countryCode;
+          const similar: SoundsLike[] = [];
+          for (const name of hive.similar.slice(0, RESEARCH_SOUNDS_LIKE_SAVED)) {
+            const res = await findArtists(name, market, adapters).catch(() => null);
+            const hit = res && res.mode !== "fallback" ? res.data.find((a) => nameKey(a.name) === nameKey(name)) : undefined;
+            similar.push({
+              name: name.slice(0, 80),
+              ...(hit && SPOTIFY_ID.test(hit.id) && hit.id !== args.spotifyId ? { spotifyId: hit.id } : {}),
+              ...(hit?.image && /^https:\/\//.test(hit.image) && hit.image.length <= 500 ? { image: hit.image } : {}),
+            });
+          }
+          const byId = similar.filter((a) => a.spotifyId);
+          const confirmed = byId.length ? await resolveSoundAlikes(byId, { name: profile.name, actName: actLabel, spotifyId: args.spotifyId }, adapters) : null;
+          if (confirmed && !confirmed.unavailable && confirmed.found.length > 0) {
+            const qlooOf = new Map(byId.flatMap((a, i) => (confirmed.matches[i] ? [[nameKey(a.name), confirmed.matches[i]!.qlooId] as const] : [])));
+            const all = similar.map((a): SoundsLike => (qlooOf.has(nameKey(a.name)) ? { ...a, qlooId: qlooOf.get(nameKey(a.name)) } : a));
+            signalAlikes.current = all.filter((a): a is SoundsLike & { qlooId: string } => Boolean(a.qlooId)).map((a) => ({ ...a, foundBy: "hive" as const }));
+            await saveHiveAlikes(all);
+            return { ...empty, summary: R.fallback.label(signalAlikes.current.slice(0, 3).map((a) => a.name)), fallback: "soundsLike", foundByHive: true, ...declinedMark, ...genreMark };
+          }
+          const similarMark = similar.length ? { similar } : {};
+          if (similar.length) await saveHiveAlikes(similar);
           if (hive.source === "genres") {
             genreSignal.tags = hive.tags;
-            return { ...empty, summary: R.fallback.genresLabel(hive.tags.slice(0, 3).map((t) => t.name)), fallback: "genres", genreTags: hive.tags, ...declinedMark, ...genreMark };
+            return { ...empty, summary: R.fallback.genresLabel(hive.tags.slice(0, 3).map((t) => t.name)), fallback: "genres", genreTags: hive.tags, ...declinedMark, ...genreMark, ...similarMark };
           }
           // Nothing else to go on: a weak match (a name Qloo has, with no genre) is better than no taste data at all.
           if (weak) {
             by = weak.by;
             return matchedOut(weak);
           }
-          return { ...empty, summary: R.fallback.noneLabel, fallback: "none", ...declinedMark, ...genreMark };
+          return { ...empty, summary: R.fallback.noneLabel, fallback: "none", ...declinedMark, ...genreMark, ...similarMark };
         });
         if (!found) {
           await finish({ status: "failed", endCode: qlooEndCode(), saved: [], usage: null });
@@ -655,6 +753,11 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
               .slice(0, RESEARCH_SOUNDS_LIKE_SAVED)
               .map((e) => ({ name: e.name, qlooId: e.id, ...(e.spotifyId && SPOTIFY_ID.test(e.spotifyId) ? { spotifyId: e.spotifyId } : {}), ...(e.image && /^https:\/\//.test(e.image) ? { image: e.image } : {}), ...(e.tags.length ? { tags: e.tags.slice(0, 3).map((t) => t.name) } : {}), affinity: r2(e.affinity) }));
             genreAlikes = artists.slice(0, RESEARCH_SIGNAL_SOUND_ALIKES).map((a) => ({ qlooId: a.qlooId, name: a.name }));
+            // The Hive's Last.fm sound-alikes, when it found some, are who the act sounds like; the genre's artists only stand in as the signal.
+            if (found.similar?.length) {
+              const lastfm = found.similar.map((a) => ({ ...a, affinity: null }));
+              return { summary: `You sound like ${lastfm.slice(0, 3).map((a) => a.name).join(", ")}`, artists: lastfm, saved: playlist.soundsLike.some((a) => a.foundBy === "hive"), basedOn: "genres" };
+            }
             return { summary: artists.length ? basedOnGenre(andList(artists.slice(0, 3).map((a) => a.name))) : "Qloo found no artists in your genre", artists, saved: false, basedOn: "genres" };
           }
           if (!own) {
@@ -847,9 +950,13 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
     });
   } catch (error) {
     const down = error instanceof QlooDown;
-    if (!down) log.error("research run failed", { error: error instanceof Error ? error.message : "unknown" });
-    await finish({ status: "failed", endCode: down ? qlooEndCode((error as QlooDown).budget) : null, saved: [], usage: null }).catch(() => undefined);
+    const late = error instanceof StepTimeout;
+    // research-cut: no end and no finishRun, so the row stays running like a function stopped mid-step.
+    if (error instanceof RunCut) return;
+    if (!down && !late) log.error("research run failed", { error: error instanceof Error ? error.message : "unknown" });
+    await finish({ status: "failed", endCode: down ? qlooEndCode((error as QlooDown).budget) : late ? "timeout" : null, saved: [], usage: null }).catch(() => undefined);
   } finally {
-    run.finish();
+    clearTimeout(watchdog);
+    if (!run.done) run.finish();
   }
 }

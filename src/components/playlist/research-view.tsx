@@ -132,6 +132,8 @@ function ListScroll({ label, maxHeight = LIST_MAX_HEIGHT, children }: { label: s
 }
 
 const R = COPY.research;
+/** How often the list is read while a joined run is going on another instance (409 running_elsewhere). */
+const ELSEWHERE_POLL_MS = 3000;
 /** shadcn's destructive description is destructive/90 (4.49:1): full strength passes AA. */
 const DESTRUCTIVE = "*:data-[slot=alert-description]:text-destructive";
 
@@ -171,6 +173,8 @@ export function ResearchView() {
   const [events, setEvents] = useState<LearnStreamEvent[] | null>(null);
   const [replay, setReplay] = useState<LearnStreamEvent[] | null>(null);
   const [running, setRunning] = useState(false);
+  /** The last stream ended with no `end`: the run is shown stopped (the step cut short, Try again), never as still going. */
+  const [cut, setCut] = useState(false);
   const [notice, setNotice] = useState<{ kind: "error" | "info"; text: string } | null>(null);
   const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
@@ -206,6 +210,7 @@ export function ResearchView() {
   const consume = useCallback(
     async (stream: AsyncGenerator<LearnStreamEvent>) => {
       setRunning(true);
+      setCut(false);
       let ended = false;
       try {
         for await (const event of stream) {
@@ -217,7 +222,8 @@ export function ResearchView() {
         // below
       }
       if (!mounted.current) return;
-      if (!ended) setNotice({ kind: "error", text: COPY.learn.errors.unavailable });
+      // A stream that ends with no `end` (dropped, or the server stopped mid-step) is a stopped run: the feed's own alert says so.
+      if (!ended) setCut(true);
       setRunning(false);
       await reload();
     },
@@ -237,12 +243,26 @@ export function ResearchView() {
     };
   }, [apply]);
 
-  // A run already going (a reload, a second tab) is joined.
+  // A run already going (a reload, a second tab) is joined. One going on another server instance (or one whose function was
+  // stopped, until the stale sweep marks it failed) is a 409 running_elsewhere: the list is polled until the run leaves
+  // `running`, then it is replayed (its end, or the failed state the sweep gave it).
   const runningId = list?.running?.runId ?? null;
   useEffect(() => {
     if (!runningId || running || joined.current === runningId) return;
     joined.current = runningId;
-    void joinLearn(runningId).then((r) => r.ok && mounted.current && void consume(r.events));
+    const still = () => mounted.current && joined.current === runningId;
+    void (async () => {
+      let r = await joinLearn(runningId);
+      while (!r.ok && r.code === "running_elsewhere" && still()) {
+        await new Promise((resolve) => setTimeout(resolve, ELSEWHERE_POLL_MS));
+        if (!still()) return;
+        const l = await loadLearn();
+        if (!still()) return;
+        if (l.ok && l.list.running?.runId === runningId) continue;
+        r = await joinLearn(runningId);
+      }
+      if (r.ok && still()) void consume(r.events);
+    })();
   }, [runningId, running, consume]);
 
   // The folded research of a saved run: its stored steps, replayed once (no model, no Qloo).
@@ -262,8 +282,8 @@ export function ResearchView() {
   }, [snapshotRun, events, running]);
 
   const view: RepertoireView = useMemo(
-    () => toRepertoireView({ snapshot: playlist?.research ?? null, events, playlist, suggestions: running ? null : (list?.suggestions ?? null) }),
-    [playlist, events, list, running],
+    () => toRepertoireView({ snapshot: playlist?.research ?? null, events, playlist, suggestions: running ? null : (list?.suggestions ?? null), cut: cut && !running }),
+    [playlist, events, list, running, cut],
   );
 
   useEffect(() => {
@@ -276,6 +296,7 @@ export function ResearchView() {
   async function start(body: { link?: string; refresh?: boolean; mode?: "full" | "more"; qlooChoice?: { id: string } | { none: true }; genre?: string }) {
     setNotice(null);
     setInfo("");
+    setCut(false);
     setRunning(true);
     setEvents([]);
     const result = await startResearch(body, pageFaults());
@@ -348,7 +369,15 @@ export function ResearchView() {
   const research = playlist?.research ?? null;
   const hasContent = view.phase !== "empty" || (playlist?.songs.length ?? 0) > 0 || (list?.suggestions.length ?? 0) > 0;
   const showForm = !running && (!research || changingLink);
-  const live = running || (events !== null && !view.end);
+  const stopped = cut && !running && events !== null && !view.end;
+  const live = running || (events !== null && !view.end && !stopped);
+  /** Try again after a stopped run: the same kind of run, for the same link. */
+  const retryCut = () => {
+    const kind = events?.find((e) => e.type === "run");
+    const id = playlist?.spotifyArtistId ?? research?.spotifyArtistId ?? parseSpotifyArtistId(link.trim());
+    if (kind?.type === "run" && kind.inputs.kind === "more") void start({ mode: "more" });
+    else if (id) void start({ link: id, refresh: true });
+  };
   const feedEvents = events && events.length > 0 ? events : replay;
   const feed = feedEvents ? stepsOf(feedEvents) : [];
   const songs = playlist?.songs ?? [];
@@ -414,7 +443,8 @@ export function ResearchView() {
         <AgentStepStream
           steps={feed}
           model={runEvent?.type === "run" && runEvent.model === "claude" ? "claude" : "mock"}
-          phase={live ? "working" : askRun ? "waiting" : "done"}
+          phase={live ? "working" : askRun ? "waiting" : stopped ? "stopped" : "done"}
+          onRetry={stopped ? retryCut : undefined}
           mode={!events && replay ? "replay" : "live"}
           title={active ? R.heading : R.howBuilt}
           wording={R.waiting}
@@ -720,7 +750,7 @@ export function ResearchView() {
   // U37 to U43: BRAND's rows. The act (profile + act name | Your audience), the fans (who | sound-alikes over also love), the map,
   // the songs (can sing | learn + learned), then the research. The layout puts the research first while it runs (CSS order).
   // U21/U22: the research is always shown, in one surface: no fold, no chevron, no card inside it.
-  const researchNode = live ? researchFeed() : research && feed.length > 0 ? <div data-testid="research-steps">{researchFeed()}</div> : null;
+  const researchNode = live || stopped ? researchFeed() : research && feed.length > 0 ? <div data-testid="research-steps">{researchFeed()}</div> : null;
   const showResults = (hasContent || running) && (running || !changingLink);
   const results = (
     <div data-testid="research-results">

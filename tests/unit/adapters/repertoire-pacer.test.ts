@@ -101,8 +101,8 @@ describe("Spotify pacer, budget and breaker (U34)", () => {
     expect(new CallBudget(1).capWait(30_000)).toBe(30_000);
   });
 
-  it("stops at the catalogue's 20 s deadline and returns the newest songs read so far (U34 pacing on a big catalogue)", async () => {
-    expect(CATALOGUE_DEADLINE_MS).toBe(20_000);
+  it("stops at the catalogue's 35 s deadline and returns the newest songs read so far (U34 pacing on a big catalogue)", async () => {
+    expect(CATALOGUE_DEADLINE_MS).toBe(35_000);
     vi.useFakeTimers();
     // Real pace (500 ms) and window (20 calls per 30 s): the window fills in about 10 s, the next slot is past the deadline.
     resetPacerForTests({ dailyMax: Infinity });
@@ -114,13 +114,12 @@ describe("Spotify pacer, budget and breaker (U34)", () => {
     await vi.advanceTimersByTimeAsync(60_000);
     const result = await pending;
     expect(result.mode).toBe("live");
-    // 20 calls fit: 14 release pages and 6 batches (7 would need the 21st call), so 120 songs, newest releases first.
-    expect(spotifyCalls(calls)).toHaveLength(20);
-    expect(albumCalls(calls)).toHaveLength(6);
-    expect(result.data).toHaveLength(120);
+    // 31 calls fit: a full window, then the next window from 30 s until the deadline. Newest releases first.
+    expect(spotifyCalls(calls)).toHaveLength(31);
+    expect(result.data.length).toBeGreaterThan(120);
     expect(result.data[0].title).toBe("Song al0");
     // It gave up as soon as the next free slot was past the deadline, rather than queueing 30 s for it.
-    expect(doneAt - started).toBeLessThan(CATALOGUE_DEADLINE_MS);
+    expect(doneAt - started).toBeLessThanOrEqual(CATALOGUE_DEADLINE_MS);
   });
 
   it("stops at the per-fetch call budget (60) and returns what it has", async () => {

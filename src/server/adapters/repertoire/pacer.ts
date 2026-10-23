@@ -36,7 +36,7 @@ export const CATALOGUE_CALL_BUDGET = 60;
  * Wall-clock time one catalogue fetch may take. At 20 s it stops and returns the songs found so far (a partial catalogue),
  * so research step 2 stays well inside the function's 120 s (a big catalogue paced at 2 calls a second took minutes).
  */
-export const CATALOGUE_DEADLINE_MS = 20_000;
+export const CATALOGUE_DEADLINE_MS = 35_000;
 const ADAPTER = "spotify";
 /** How often an instance re-reads the shared row while it believes Spotify is fine. */
 const RECHECK_MS = 30_000;

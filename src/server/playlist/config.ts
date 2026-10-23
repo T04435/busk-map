@@ -113,7 +113,7 @@ export const SUGGEST_RELATED_TAKE = 20;
  * that takes longer than `stepMs` fails ("took too long") and ends the run; `runMs` after the start a watchdog ends the run
  * as failed (end code "timeout") so the stream always gets its `end` before the function is stopped.
  */
-export const RESEARCH_TIMEOUTS = { stepMs: 45_000, runMs: 110_000 } as const;
+export const RESEARCH_TIMEOUTS = { stepMs: 50_000, runMs: 110_000 } as const;
 /** Sound-alikes (step 4) saved as your "Artists you sound like" when that list is empty. */
 export const RESEARCH_SOUNDS_LIKE_SAVED = 6;
 /** Sound-alikes that join your own artist in step 6's signal. */

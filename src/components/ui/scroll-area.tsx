@@ -25,7 +25,8 @@ function ScrollArea({
         role={label ? "region" : undefined}
         aria-label={label}
         className={cn(
-          "size-full rounded-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none [&>div]:block!",
+          // relative: absolute children (sr-only labels, icons) are placed and clipped inside the scroller, not past the page's end.
+          "relative size-full rounded-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none [&>div]:block!",
           maxHeight
         )}
       >

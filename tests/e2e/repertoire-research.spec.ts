@@ -58,6 +58,18 @@ test.describe("Repertoire research (offline)", () => {
     await expect(stream.getByRole("heading", { name: "Researching your act" })).toHaveCount(0);
   });
 
+  test("song lists keep their rows' hidden labels inside the scroller, so the page ends at the footer", async ({ page }) => {
+    await research(page, LINK);
+    await done(page);
+    // With 300 songs, a row's absolute child placed against an element outside the scroller hangs far below the footer.
+    const escaped = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('[data-slot="scroll-area-viewport"]')].flatMap((v) =>
+        [...v.querySelectorAll<HTMLElement>(".sr-only")].filter((e) => e.offsetParent && !v.contains(e.offsetParent) && e.offsetParent !== v).map((e) => e.textContent)
+      )
+    );
+    expect(escaped).toEqual([]);
+  });
+
   test("the run streams with the research on top, then the results land in order and the research folds below", async ({ page }) => {
     await research(page, LINK, "research-slow");
     const stream = page.getByTestId("agent-stream").first();

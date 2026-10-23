@@ -241,13 +241,14 @@ describe("path 4: Qloo doesn't know the act, so the Hive finds artists like it a
     const s = v.research.steps as ResearchSnapshot["steps"];
     expect(s.qloo!.output).toMatchObject({ matched: false, fallback: "genres", genreTags: [{ id: expect.stringMatching(/^urn:tag:genre/), name: "Indie Folk" }], summary: PLAYLIST_COPY.research.fallback.genresLabel(["Indie Folk"]) });
     expect(s.qloo!.output!.summary).toBe("Qloo doesn't know you yet, so this is based on your genres: Indie Folk.");
-    // The genre's artists on Qloo stand in for who the act sounds like (never saved as the performer's), and every Qloo step asks Qloo.
-    expect(v.soundsLike).toHaveLength(0);
-    expect(s.soundsLike!.output).toMatchObject({ basedOn: "genres" });
-    const genreAlikes = s.soundsLike!.output!.artists.map((a) => a.name);
-    expect(genreAlikes.length).toBeGreaterThan(0);
+    // Last.fm's similar artists are who the act sounds like (listed, and saved as the Hive's); the genre's Qloo artists are the signal.
+    const similar: string[] = [...OFFLINE_TEST_ACTS.unresolved.similar];
+    expect(s.qloo!.output!.similar!.map((a) => a.name)).toEqual(similar);
+    expect(v.soundsLike.map((a: { name: string; foundBy?: string }) => [a.name, a.foundBy])).toEqual(similar.map((name) => [name, "hive"]));
+    expect(s.soundsLike!.output).toMatchObject({ basedOn: "genres", saved: true, summary: `You sound like ${similar.join(", ")}` });
+    expect(s.soundsLike!.output!.artists.map((a) => a.name)).toEqual(similar);
     expect(s.fansLove!.output).toMatchObject({ basedOn: "genres", signalledBy: ["Indie Folk"] });
-    expect(s.fansLove!.output!.artists.some((a) => genreAlikes.includes(a.name))).toBe(false);
+    expect(s.fansLove!.output!.artists.some((a) => similar.includes(a.name))).toBe(false);
     expect(s.fansLove!.output!.artists.length).toBeGreaterThan(0);
     expect(s.genres!.output).toMatchObject({ basedOn: "genres" });
     expect(s.genres!.output!.tags.map((t) => t.name)).toEqual(["Indie Folk"]);

@@ -86,6 +86,8 @@ export type QlooOutput = {
   foundByHive?: boolean;
   /** fallback "genres": the Qloo genre tags used as the signal. */
   genreTags?: { id: string; name: string }[];
+  /** Last.fm's similar artists the Hive found for the act when Qloo confirmed none of them: step 4's "who you sound like". */
+  similar?: { name: string; spotifyId?: string; image?: string }[];
   /** A genre the performer picked when nothing else was found; kept for this link so a refresh uses it again. */
   genrePick?: string;
 };
@@ -97,7 +99,8 @@ export type ResearchArtistOut = { name: string; qlooId: string; spotifyId?: stri
 export type ResearchAsk = { asks: number; tried: { artists: string[]; genres: string[] } };
 export type SoundsLikeOutput = BasedOn & {
   summary: string;
-  artists: ResearchArtistOut[];
+  /** qlooId is absent for a Last.fm sound-alike Qloo doesn't know (QlooOutput.similar). */
+  artists: (Omit<ResearchArtistOut, "qlooId"> & { qlooId?: string })[];
   /** True when they were saved as your "Artists you sound like" (only when that list was empty). */
   saved: boolean;
   /** The run is paused here: Qloo has no taste signal for the act, so the step asks for artists you sound like, or a genre. */

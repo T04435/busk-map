@@ -39,7 +39,7 @@ import { recordCalls } from "@/server/adapters/call-log";
 import type { AdapterContext } from "@/server/adapters/core";
 import * as qloo from "@/server/adapters/qloo";
 import { withQlooUsage, type QlooUsage } from "@/server/adapters/qloo/usage";
-import { getArtistCatalogue, getArtistProfile } from "@/server/adapters/repertoire";
+import { findArtists, getArtistCatalogue, getArtistProfile } from "@/server/adapters/repertoire";
 import { qlooBudgetSpent } from "@/server/adapters/qloo/budget";
 import { spotifyLimitedUntil } from "@/server/adapters/repertoire/pacer";
 import { getSongs } from "@/server/adapters/songs";
@@ -327,6 +327,19 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
     return false;
   }
 
+  /**
+   * Sound-alikes the run found by itself (the Hive's Last.fm similar artists) saved as "Artists you sound like", marked as the
+   * Hive's: merged after the ones already there, up to SOUNDS_LIKE_MAX, and only while the performer has picked none of their own.
+   */
+  async function saveHiveAlikes(list: readonly SoundsLike[]): Promise<boolean> {
+    const fresh = (await playlists.get(playlist.id)) ?? playlist;
+    if (fresh.soundsLike.some((a) => a.foundBy !== "hive")) return false;
+    const have = new Set(fresh.soundsLike.map((a) => nameKey(a.name)));
+    const added = list.filter((a) => !have.has(nameKey(a.name)) && have.add(nameKey(a.name))).map((a): SoundsLike => ({ ...a, name: a.name.slice(0, 80), foundBy: "hive" }));
+    if (added.length === 0) return false;
+    return patch({ soundsLike: [...fresh.soundsLike, ...added].slice(0, SOUNDS_LIKE_MAX) });
+  }
+
   /** What stands in for the act when Qloo doesn't know it. alikes: artists like it (the performer's own, or found by the Hive); tags: its Spotify genres as Qloo tags; neither: no taste data. */
   const signalAlikes: { current: (SoundsLike & { qlooId: string })[] | null } = { current: null };
   const genreSignal: { tags: { id: string; name: string }[] } = { tags: [] };
@@ -557,19 +570,44 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             const found = hive.alikes.map((a): SoundsLike & { qlooId: string } => ({ name: a.name, qlooId: a.qlooId, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.image ? { image: a.image } : {}), foundBy: "hive" }));
             signalAlikes.current = found;
             // Saved as "Artists you sound like" (marked as the Hive's) only when the performer has none of their own: theirs are never overwritten.
-            if (playlist.soundsLike.length === 0) await patch({ soundsLike: found.slice(0, RESEARCH_SOUNDS_LIKE_SAVED) });
+            await saveHiveAlikes(found.slice(0, RESEARCH_SOUNDS_LIKE_SAVED));
             return { ...empty, summary: R.fallback.label(found.slice(0, 3).map((a) => a.name)), fallback: "soundsLike", foundByHive: true, ...declinedMark, ...genreMark };
           }
+          // Last.fm knows artists like the act but Qloo confirmed none of them by name: each is looked up on Spotify (an exact name
+          // gives its id and photo), and a Spotify id is Qloo's certain lookup. Any Qloo knows that way are the signal, as above;
+          // otherwise they are still who the act sounds like (step 4 lists them and they are saved) and the act's genres are the signal.
+          const market = CITIES[(playlist.city in CITIES ? playlist.city : "melbourne") as keyof typeof CITIES].countryCode;
+          const similar: SoundsLike[] = [];
+          for (const name of hive.similar.slice(0, RESEARCH_SOUNDS_LIKE_SAVED)) {
+            const res = await findArtists(name, market, adapters).catch(() => null);
+            const hit = res && res.mode !== "fallback" ? res.data.find((a) => nameKey(a.name) === nameKey(name)) : undefined;
+            similar.push({
+              name: name.slice(0, 80),
+              ...(hit && SPOTIFY_ID.test(hit.id) && hit.id !== args.spotifyId ? { spotifyId: hit.id } : {}),
+              ...(hit?.image && /^https:\/\//.test(hit.image) && hit.image.length <= 500 ? { image: hit.image } : {}),
+            });
+          }
+          const byId = similar.filter((a) => a.spotifyId);
+          const confirmed = byId.length ? await resolveSoundAlikes(byId, { name: profile.name, actName: actLabel, spotifyId: args.spotifyId }, adapters) : null;
+          if (confirmed && !confirmed.unavailable && confirmed.found.length > 0) {
+            const qlooOf = new Map(byId.flatMap((a, i) => (confirmed.matches[i] ? [[nameKey(a.name), confirmed.matches[i]!.qlooId] as const] : [])));
+            const all = similar.map((a): SoundsLike => (qlooOf.has(nameKey(a.name)) ? { ...a, qlooId: qlooOf.get(nameKey(a.name)) } : a));
+            signalAlikes.current = all.filter((a): a is SoundsLike & { qlooId: string } => Boolean(a.qlooId)).map((a) => ({ ...a, foundBy: "hive" as const }));
+            await saveHiveAlikes(all);
+            return { ...empty, summary: R.fallback.label(signalAlikes.current.slice(0, 3).map((a) => a.name)), fallback: "soundsLike", foundByHive: true, ...declinedMark, ...genreMark };
+          }
+          const similarMark = similar.length ? { similar } : {};
+          if (similar.length) await saveHiveAlikes(similar);
           if (hive.source === "genres") {
             genreSignal.tags = hive.tags;
-            return { ...empty, summary: R.fallback.genresLabel(hive.tags.slice(0, 3).map((t) => t.name)), fallback: "genres", genreTags: hive.tags, ...declinedMark, ...genreMark };
+            return { ...empty, summary: R.fallback.genresLabel(hive.tags.slice(0, 3).map((t) => t.name)), fallback: "genres", genreTags: hive.tags, ...declinedMark, ...genreMark, ...similarMark };
           }
           // Nothing else to go on: a weak match (a name Qloo has, with no genre) is better than no taste data at all.
           if (weak) {
             by = weak.by;
             return matchedOut(weak);
           }
-          return { ...empty, summary: R.fallback.noneLabel, fallback: "none", ...declinedMark, ...genreMark };
+          return { ...empty, summary: R.fallback.noneLabel, fallback: "none", ...declinedMark, ...genreMark, ...similarMark };
         });
         if (!found) {
           await finish({ status: "failed", endCode: qlooEndCode(), saved: [], usage: null });
@@ -715,6 +753,11 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
               .slice(0, RESEARCH_SOUNDS_LIKE_SAVED)
               .map((e) => ({ name: e.name, qlooId: e.id, ...(e.spotifyId && SPOTIFY_ID.test(e.spotifyId) ? { spotifyId: e.spotifyId } : {}), ...(e.image && /^https:\/\//.test(e.image) ? { image: e.image } : {}), ...(e.tags.length ? { tags: e.tags.slice(0, 3).map((t) => t.name) } : {}), affinity: r2(e.affinity) }));
             genreAlikes = artists.slice(0, RESEARCH_SIGNAL_SOUND_ALIKES).map((a) => ({ qlooId: a.qlooId, name: a.name }));
+            // The Hive's Last.fm sound-alikes, when it found some, are who the act sounds like; the genre's artists only stand in as the signal.
+            if (found.similar?.length) {
+              const lastfm = found.similar.map((a) => ({ ...a, affinity: null }));
+              return { summary: `You sound like ${lastfm.slice(0, 3).map((a) => a.name).join(", ")}`, artists: lastfm, saved: playlist.soundsLike.some((a) => a.foundBy === "hive"), basedOn: "genres" };
+            }
             return { summary: artists.length ? basedOnGenre(andList(artists.slice(0, 3).map((a) => a.name))) : "Qloo found no artists in your genre", artists, saved: false, basedOn: "genres" };
           }
           if (!own) {

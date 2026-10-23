@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ArtistPicker, typedArtists, type PickedArtist } from "@/components/landing/artist-picker";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MAX_RESEARCH_GENRES } from "@/lib/repertoire-research";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import type { ResearchAnswer } from "./learn-api";
@@ -42,17 +43,28 @@ export function ResearchAsk({ message, busy, onSubmit }: { message: string; busy
         }}
       >
         <ArtistPicker value={artists} onChange={setArtists} query={query} onQueryChange={setQuery} />
-        <div role="group" aria-label={R.ask.genreLabel} className="flex flex-wrap items-center gap-1.5" data-testid="research-genre-pick">
+        <ToggleGroup
+          type="multiple"
+          value={genres}
+          onValueChange={setGenres}
+          rovingFocus={false}
+          variant="button"
+          size="button-sm"
+          spacing={1.5}
+          aria-label={R.ask.genreLabel}
+          className="w-auto"
+          data-testid="research-genre-pick"
+        >
           <span className="text-sm font-bold">{R.ask.genreLabel}</span>
           {R.genrePick.options.map((option) => {
             const on = genres.includes(option);
             return (
-              <Button key={option} type="button" variant={on ? "default" : "outline"} size="sm" aria-pressed={on} disabled={busy || (!on && genres.length >= MAX_RESEARCH_GENRES)} onClick={() => setGenres(on ? genres.filter((g) => g !== option) : [...genres, option])}>
+              <ToggleGroupItem key={option} value={option} disabled={busy || (!on && genres.length >= MAX_RESEARCH_GENRES)}>
                 {option}
-              </Button>
+              </ToggleGroupItem>
             );
           })}
-        </div>
+        </ToggleGroup>
         <div>
           <Button type="submit" size="sm" disabled={busy || !ready} data-testid="research-ask-carry-on">
             {R.ask.carryOn}

@@ -14,7 +14,7 @@ import { ExampleActCard } from "@/components/honeycomb/example-act-card";
 import { FormMessage } from "@/components/honeycomb/form-message";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { LeanBar } from "@/components/honeycomb/lean-bar";
-import { Loader } from "@/components/honeycomb/loader";
+import { Spinner } from "@/components/ui/spinner";
 import { QlooWordmark } from "@/components/honeycomb/logo";
 import { NoteCard } from "@/components/honeycomb/note-card";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
@@ -187,7 +187,7 @@ export function PlanStates() {
         <div className={SPEC}>
           <h4 className={SPEC_H}>Loader · Numbers</h4>
           <div className="flex flex-wrap items-center gap-4">
-            <HexCell size={56} tone="dashed"><Loader size={22} label="Working" /></HexCell>
+            <HexCell size={56} tone="dashed"><Spinner size={22} label="Working" /></HexCell>
             <ScoreCell value={91} size="lg" label="Score" tone="primary" />
             <ScoreCell value={64} size="md" label="Taste match" />
             <ScoreCell value={null} size="md" label="Score" />

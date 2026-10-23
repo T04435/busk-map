@@ -21,8 +21,11 @@ test.describe("pitch details sheet", () => {
     await expect(sheet.getByTestId("pitch-card")).toBeVisible();
     await expect(sheet.getByRole("region", { name: "Suggested set" })).toBeVisible();
     await expect(sheet.getByRole("region", { name: "Who this crowd likes" })).toBeVisible();
-    // The pitch card's ScoreBreakdown also heads itself "How this score adds up"; open the weights disclosure by its summary.
-    await sheet.getByTestId("score-details").locator("summary").filter({ hasText: "How this score adds up" }).click();
+    // The pitch card's ScoreBreakdown also heads itself "How this score adds up"; open the weights disclosure by its trigger.
+    const scoreFold = sheet.getByTestId("score-details").getByRole("button", { name: "How this score adds up" });
+    await expect(scoreFold).toHaveAttribute("aria-expanded", "false");
+    await scoreFold.click();
+    await expect(scoreFold).toHaveAttribute("aria-expanded", "true");
     await expect(sheet.getByRole("region", { name: "How pitches are scored" })).toBeVisible();
     await expect(sheet.getByRole("region", { name: "Estimated activity by hour" })).toBeVisible();
     // Focus is inside the sheet and stays there while tabbing.

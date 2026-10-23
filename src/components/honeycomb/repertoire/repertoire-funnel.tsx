@@ -1,6 +1,6 @@
 import { cn } from "cn";
 import { HexCell } from "@/components/honeycomb/hex-cell";
-import { Loader } from "@/components/honeycomb/loader";
+import { Spinner } from "@/components/ui/spinner";
 import type { RepertoireTotals } from "./types";
 
 /** The DS formatCount: 1.2K, 12K, 3.4M. Counts under 1000 stay as they are. */
@@ -45,7 +45,7 @@ export function RepertoireFunnel({ totals, live, className }: { totals: Partial<
     const text = fmt(n);
     const name = n === 1 ? s.one : s.many;
     items.push(
-      <li key={s.key} title={s.src} className={STEP}>
+      <li key={s.key} className={STEP}>
         <HexCell size={30} fontSize={text.length > 3 ? 10 : 12} className={cn(CELL, s.qloo && "text-qloo")} label={`${n} ${name} (${s.src})`}>
           {text}
         </HexCell>
@@ -65,7 +65,7 @@ export function RepertoireFunnel({ totals, live, className }: { totals: Partial<
           className={CELL}
           label={ready ? `${toLearn} ${toLearn === 1 ? "song" : "songs"} to learn` : "Choosing songs to learn"}
         >
-          {ready ? text : <Loader size={14} label="Choosing" className="bm-loader-think text-primary" />}
+          {ready ? text : <Spinner size={14} label="Choosing" aria-hidden="true" className="bm-loader-think text-primary" />}
         </HexCell>
         <span className={ready ? "text-signal-text" : "font-normal text-muted-foreground"}>
           {ready ? (toLearn === 1 ? "song to learn" : "songs to learn") : "choosing songs"}

@@ -3,7 +3,7 @@
 import { Fragment } from "react";
 import { cn } from "cn";
 import { HexCell } from "@/components/honeycomb/hex-cell";
-import { Loader } from "@/components/honeycomb/loader";
+import { Spinner } from "@/components/ui/spinner";
 import type { LearnLive } from "@/lib/learn-live";
 import { funnelOf } from "@/lib/learn-plain";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
@@ -42,7 +42,7 @@ export function ResearchFunnel({ kind, totals, running }: { kind: "learn"; total
                 >
                   {choosing ? (
                     <>
-                      <Loader size={14} label="Choosing" className="bm-loader-think text-primary" />
+                      <Spinner size={14} label="Choosing" className="bm-loader-think text-primary" />
                       <span className="sr-only">choosing songs</span>
                     </>
                   ) : (

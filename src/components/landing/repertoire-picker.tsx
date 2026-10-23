@@ -5,7 +5,7 @@ import type { TrackResult } from "@/components/forms/repertoire-api";
 import { FormMessage } from "@/components/honeycomb/form-message";
 import { Icon } from "@/components/honeycomb/icon";
 import { IconAction } from "@/components/honeycomb/icon-action";
-import { Loader } from "@/components/honeycomb/loader";
+import { Spinner } from "@/components/ui/spinner";
 import { SongActions } from "@/components/honeycomb/song-actions";
 import { SongRow } from "@/components/honeycomb/song-row";
 import { SongTag } from "@/components/honeycomb/song-tag";
@@ -275,7 +275,7 @@ export function RepertoirePicker({
         <div aria-live="polite">
           {loading ? (
             <FormMessage>
-              <Loader size={16} label="Loading" className="mr-1 inline-block align-middle text-primary" /> Loading your songs…
+              <Spinner size={16} label="Loading" className="mr-1 inline-block align-middle text-primary" /> Loading your songs…
             </FormMessage>
           ) : searchNote ? (
             <FormMessage>{searchNote}</FormMessage>

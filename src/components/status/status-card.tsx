@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
+import { Empty, EmptyContent, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 /**
  * The card behind every not-found and error page (site-wide 404, /p/<id> not found, error.tsx, global-error.tsx), so
  * they match. A honeycomb cell lifted by an offset (72px: dashed with a pin for not-found, the error tone with a warning for errors; the DS StatusCard), the title in display caps, one sentence, a footnote in mono, the actions. No hooks: usable from server and
- * client components. The title is styled from the wrapper so the markup stays a plain <h1>.
+ * client components. Built on shadcn Empty, left-aligned. The title is styled from the wrapper so the markup stays a plain <h1>.
  */
 export function StatusCard({
   title,
@@ -39,20 +40,24 @@ export function StatusCard({
           {numeral}
         </p>
       ) : null}
-      <section
+      <Empty
         data-testid={testId}
         data-tone={tone}
         role={error ? (embedded ? "group" : "alert") : undefined}
         className="mr-auto flex w-full max-w-[560px] flex-col items-start gap-4 border-2 border-rule bg-card p-6 text-left [&_h1]:m-0 [&_h1]:font-display [&_h1]:text-[clamp(40px,7vw,56px)] [&_h1]:leading-[0.95] [&_h1]:font-extrabold [&_h1]:uppercase [&_h3]:m-0 [&_h3]:font-display [&_h3]:text-[clamp(40px,7vw,56px)] [&_h3]:leading-[0.95] [&_h3]:font-extrabold [&_h3]:uppercase"
       >
-        <HexCell size={72} tone={error ? "error" : "dashed"} lift>
-          <Icon name={error ? "warning" : "pin"} size={30} />
-        </HexCell>
-        <Title>{title}</Title>
-        <p className="m-0 text-[17px] leading-[26px] text-foreground">{description}</p>
+        <EmptyMedia>
+          <HexCell size={72} tone={error ? "error" : "dashed"} lift>
+            <Icon name={error ? "warning" : "pin"} size={30} />
+          </HexCell>
+        </EmptyMedia>
+        <EmptyTitle>
+          <Title>{title}</Title>
+        </EmptyTitle>
+        <EmptyDescription className="max-w-none text-[17px] leading-[26px] text-foreground">{description}</EmptyDescription>
         {footnote ? <p className="m-0 font-mono text-xs leading-4 font-medium text-muted-foreground">{footnote}</p> : null}
-        <div className="flex flex-wrap gap-3 max-sm:w-full max-sm:[&>*:not(.sr-only)]:w-full">{actions}</div>
-      </section>
+        <EmptyContent className="justify-start max-sm:w-full max-sm:[&>*:not(.sr-only)]:w-full">{actions}</EmptyContent>
+      </Empty>
     </Wrapper>
   );
 }

@@ -40,7 +40,6 @@ export function DemoVideo() {
         width={1280}
         height={720}
         poster="/video/busk-map-demo-poster.jpg"
-        title="Busk Map demo"
         aria-label="Busk Map demo video, 1 min 28 s, with captions"
         className="block aspect-video max-h-[720px] w-full bg-background object-contain"
       >

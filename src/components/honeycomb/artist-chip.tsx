@@ -4,6 +4,7 @@ import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
 import { IconAction } from "@/components/honeycomb/icon-action";
 import { Icon } from "@/components/honeycomb/icon";
 import { SongTag } from "@/components/honeycomb/song-tag";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 
 const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none";
 
@@ -91,27 +92,33 @@ export function ArtistChip({
   const cell = size === "lg" ? 48 : 36;
   const hasAction = state === "suggested" || state === "picked";
   return (
-    <div data-slot="artist-chip" data-state={state} data-size={size} className={cn("flex min-h-11 items-stretch", className)}>
+    <Item data-slot="artist-chip" data-state={state} data-size={size} className={cn("min-h-11 flex-nowrap items-stretch gap-0", className)}>
       <div className="flex min-w-0 flex-1 items-center gap-2.5 py-1.5 pr-2.5">
-        <HexCell size={cell} tone={cellTone} image={image} fontSize={size === "lg" ? 16 : 13}>
-          {initialsOf(name)}
-        </HexCell>
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <ItemMedia>
+          <HexCell size={cell} tone={cellTone} image={image} fontSize={size === "lg" ? 16 : 13}>
+            {initialsOf(name)}
+          </HexCell>
+        </ItemMedia>
+        <ItemContent className="gap-1">
           <div>
-            <p className="m-0 text-base leading-5 text-balance">{nameEl(nameCls)}</p>
-            {meta ? <p className="m-0 font-mono text-[11px] leading-4 text-muted-foreground [overflow-wrap:anywhere]">{meta}</p> : null}
+            <ItemTitle asChild className="m-0 text-base leading-5 font-normal text-balance">
+              <p>{nameEl(nameCls)}</p>
+            </ItemTitle>
+            {meta ? (
+              <ItemDescription className="font-mono text-[11px] leading-4 [overflow-wrap:anywhere]">{meta}</ItemDescription>
+            ) : null}
           </div>
           {info ? <div className="flex flex-wrap gap-1.5">{info}</div> : null}
           {children}
-        </div>
+        </ItemContent>
         {score ? <div className="flex flex-none items-center self-center">{score}</div> : null}
       </div>
       {state === "added" ? (
-        <div className="flex items-center px-2.5">
+        <ItemActions className="gap-0 px-2.5">
           <SongTag kind="added" />
-        </div>
+        </ItemActions>
       ) : hasAction ? (
-        <div className="flex">
+        <ItemActions className="items-stretch gap-0">
           {interactive ? (
             suggested ? (
               <IconAction icon="plus" label={`Add ${name}`} onClick={onAdd} className="h-full min-h-11" />
@@ -123,9 +130,9 @@ export function ArtistChip({
               <Icon name={suggested ? "plus" : "x"} size={18} />
             </span>
           )}
-        </div>
+        </ItemActions>
       ) : null}
-    </div>
+    </Item>
   );
 }
 

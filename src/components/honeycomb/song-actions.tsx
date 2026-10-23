@@ -4,7 +4,7 @@ import { LearnItMenu } from "@/components/songs/learn-it-menu";
 /**
  * THE song action set. Each action shows only when its callback is given, always in this order: Learn it, Learned, Not for
  * me, Undo, Move to can sing, Add (or Added), Remove. Built from IconAction, so every one is an icon with its name as the
- * accessible name and tooltip. Put it in a SongRow's `actions` slot.
+ * accessible name. Put it in a SongRow's `actions` slot.
  */
 export function SongActions({
   title,

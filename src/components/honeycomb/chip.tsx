@@ -1,10 +1,10 @@
 import type { ComponentProps, ReactNode } from "react";
-import { cn } from "cn";
+import { Badge } from "@/components/ui/badge";
+import { Toggle } from "@/components/ui/toggle";
 
-const base =
-  "inline-flex min-h-8 items-center gap-1.5 rounded-none border-[1.5px] border-rule px-3 py-1 text-sm leading-5 font-sans";
+const iconSlot = (icon: ReactNode) => (icon ? <span aria-hidden="true" className="[&>svg]:size-4">{icon}</span> : null);
 
-/** A square chip. With `selected` it is a toggle (`aria-pressed`) and inverts when on; without, a plain label. */
+/** A square chip. With `selected` it is a toggle (`aria-pressed`, shadcn Toggle) and inverts when on; without, a plain label (shadcn Badge). */
 export function Chip({
   icon,
   selected,
@@ -14,22 +14,16 @@ export function Chip({
 }: Omit<ComponentProps<"button">, "children"> & { icon?: ReactNode; selected?: boolean; children: ReactNode }) {
   if (selected === undefined && !props.onClick) {
     return (
-      <span data-slot="chip" className={cn(base, "bg-transparent", className)}>
-        {icon ? <span aria-hidden="true" className="[&>svg]:size-4">{icon}</span> : null}
+      <Badge variant="chip" data-slot="chip" className={className}>
+        {iconSlot(icon)}
         {children}
-      </span>
+      </Badge>
     );
   }
   return (
-    <button
-      type="button"
-      data-slot="chip"
-      aria-pressed={Boolean(selected)}
-      className={cn(base, "min-h-10 cursor-pointer bg-transparent hover:bg-secondary aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:font-bold aria-pressed:text-background", className)}
-      {...props}
-    >
-      {icon ? <span aria-hidden="true" className="[&>svg]:size-4">{icon}</span> : null}
+    <Toggle variant="chip" data-slot="chip" pressed={Boolean(selected)} className={className} {...props}>
+      {iconSlot(icon)}
       {children}
-    </button>
+    </Toggle>
   );
 }

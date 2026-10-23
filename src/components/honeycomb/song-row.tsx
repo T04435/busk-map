@@ -5,6 +5,7 @@ import { Icon } from "@/components/honeycomb/icon";
 import { Mention } from "@/components/honeycomb/mention";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import type { MentionSource } from "@/lib/mention";
 
 /** m:ss from milliseconds. */
@@ -17,7 +18,7 @@ function formatDuration(ms: number): string {
  * THE song component: every place a song shows (repertoire, search results, picked songs, suggested set, songs to
  * learn, learn-run results, setlists, tool cards) uses this row. A cover cell, the title and a meta line, then slots
  * that take only the unified parts: `tags` (SongTag), `info` (InfoTag), `reason` (Reason), `score` (ScoreCell), `actions`
- * (SongActions). Duration lives here only. Titles and artists wrap, never truncate.
+ * (SongActions). Duration lives here only. Titles and artists wrap, never truncate. Built on shadcn Item.
  * - size sm|md: 32 or 44px cover. `compact`: the agent tool cards (28px cover, small type, tight rows).
  * - `index` is the set position (setlists), two digits before the cover.
  * - `interactive={false}`: a combobox option. Nothing focusable inside (no link, no actions; the option is the control),
@@ -106,9 +107,9 @@ export function SongRow({
       data-slot="song-row"
       className={cn("@container", compact ? "py-1.5" : "py-3", muted && "opacity-60", className)}
     >
-      <div
+      <Item
         className={cn(
-          "grid items-start gap-x-3",
+          "grid items-start gap-x-3 gap-y-0",
           index != null
             ? hasRight
               ? "grid-cols-[auto_auto_minmax(0,1fr)_auto]"
@@ -123,52 +124,58 @@ export function SongRow({
             {String(index).padStart(2, "0")}
           </span>
         ) : null}
-        <HexCell size={cover} tone="media" image={coverImage} fontSize={Math.round(cover * 0.4)}>
-          <Icon name="music" size={Math.round(cover * 0.45)} />
-        </HexCell>
-        <div className="min-w-0">
-          <p className={cn("m-0 font-bold text-balance [overflow-wrap:anywhere]", compact ? "text-sm leading-5" : "text-base leading-6")}>
-            {href && interactive ? (
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                // A block of its own, one line high: the title link is a 24px target (WCAG 2.2 target size) even with the artist link right under it.
-                className="inline-block max-w-full min-h-6 text-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none"
-              >
-                {title}
-                <span className="sr-only"> (opens Spotify)</span>
-              </a>
-            ) : (
-              title
-            )}
-          </p>
-          <div className={cn("flex flex-wrap items-center gap-x-1.5 gap-y-1 leading-5 text-muted-foreground", compact ? "text-xs" : "text-sm")}>
-            {who.length > 0 ? (
-              // The artists as inline mentions (U14): hex photo plus the name in brand orange, the same as in a reason.
-              <span data-slot="song-artists" className="[overflow-wrap:anywhere]">
-                {who.map((a, i) => (
-                  <span key={`${a.name}-${i}`}>
-                    {i > 0 ? ", " : null}
-                    <Mention mention={{ kind: "artist", name: a.name, image: a.image, href: interactive ? a.href : null }} />
-                  </span>
-                ))}
-              </span>
-            ) : null}
-            {meta ? <span className="[overflow-wrap:anywhere]">{who.length > 0 ? `· ${meta}` : meta}</span> : null}
-            {source ? <SourceLogo source={source} height={compact ? 12 : 14} /> : null}
-            {tags}
-            {durationMs != null ? (
-              <span className="ml-auto font-mono text-xs tabular-nums">{formatDuration(durationMs)}</span>
-            ) : null}
-          </div>
+        <ItemMedia>
+          <HexCell size={cover} tone="media" image={coverImage} fontSize={Math.round(cover * 0.4)}>
+            <Icon name="music" size={Math.round(cover * 0.45)} />
+          </HexCell>
+        </ItemMedia>
+        <ItemContent className="block">
+          <ItemTitle asChild className={cn("m-0 font-bold text-balance [overflow-wrap:anywhere]", compact ? "text-sm leading-5" : "text-base leading-6")}>
+            <p>
+              {href && interactive ? (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  // A block of its own, one line high: the title link is a 24px target (WCAG 2.2 target size) even with the artist link right under it.
+                  className="inline-block max-w-full min-h-6 text-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none"
+                >
+                  {title}
+                  <span className="sr-only"> (opens Spotify)</span>
+                </a>
+              ) : (
+                title
+              )}
+            </p>
+          </ItemTitle>
+          <ItemDescription asChild className={cn("flex flex-wrap items-center gap-x-1.5 gap-y-1 leading-5 text-muted-foreground", compact ? "text-xs" : "text-sm")}>
+            <div>
+              {who.length > 0 ? (
+                // The artists as inline mentions (U14): hex photo plus the name in brand orange, the same as in a reason.
+                <span data-slot="song-artists" className="[overflow-wrap:anywhere]">
+                  {who.map((a, i) => (
+                    <span key={`${a.name}-${i}`}>
+                      {i > 0 ? ", " : null}
+                      <Mention mention={{ kind: "artist", name: a.name, image: a.image, href: interactive ? a.href : null }} />
+                    </span>
+                  ))}
+                </span>
+              ) : null}
+              {meta ? <span className="[overflow-wrap:anywhere]">{who.length > 0 ? `· ${meta}` : meta}</span> : null}
+              {source ? <SourceLogo source={source} height={compact ? 12 : 14} /> : null}
+              {tags}
+              {durationMs != null ? (
+                <span className="ml-auto font-mono text-xs tabular-nums">{formatDuration(durationMs)}</span>
+              ) : null}
+            </div>
+          </ItemDescription>
           {info ? <div className="mt-1.5 flex flex-wrap gap-1.5">{info}</div> : null}
           {reason ? <div className="mt-2">{reason}</div> : null}
           {children ? <div className="mt-2 text-sm">{children}</div> : null}
-        </div>
+        </ItemContent>
         {hasRight ? (
           // The score and an icon or two stay at the right on every width; more than two wrap under the text on a narrow row.
-          <div
+          <ItemActions
             className={cn(
               "-my-1 flex items-center gap-1",
               // Three or more actions would squeeze the text on a phone: they drop under it instead.
@@ -179,9 +186,9 @@ export function SongRow({
           >
             {hasScore ? <ScoreCell value={score} size={compact || size === "sm" ? "sm" : "md"} label={scoreLabel} /> : null}
             {showActions ? actions : null}
-          </div>
+          </ItemActions>
         ) : null}
-      </div>
+      </Item>
     </Tag>
   );
 }

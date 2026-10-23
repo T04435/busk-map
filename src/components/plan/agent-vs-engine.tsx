@@ -1,4 +1,5 @@
 import { cn } from "cn";
+import { Plan as PlanCard, PlanContent, PlanHeader, PlanTitle } from "@/components/ai-elements/plan";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { HIVE_SIZES, HiveMark } from "@/components/honeycomb/hive-mark";
 import { Icon } from "@/components/honeycomb/icon";
@@ -11,7 +12,8 @@ import { modelName, type ExplanationsModel } from "@/lib/sources";
 /**
  * Above the research: did the model keep Busk Map's own top 3, or change it, and why. Keeping it is the common case, so it shows
  * the three pitches ticked, as a check that passed. "Agent vs engine" stays only as the small mono label, after the Hive's mark at rest
- * (HIVE_SIZES.eyebrow; brand words: busk-facing copy says "Busk Map"). Ported from the DS AgentVsEngine.
+ * (HIVE_SIZES.eyebrow; brand words: busk-facing copy says "Busk Map"). Ported from the DS AgentVsEngine, on AI Elements Plan
+ * (always open: no trigger).
  */
 export function AgentVsEngine({
   agent,
@@ -27,16 +29,18 @@ export function AgentVsEngine({
   const kept = agent.changes.length === 0;
   const where = (p: { engineRank: number | null }) => (p.engineRank === null ? `added by ${modelName(model)}` : `Busk Map's no. ${p.engineRank}`);
   return (
-    <section
+    <PlanCard
+      defaultOpen
+      role="region"
       data-testid="agent-vs-engine"
       aria-label="The model and Busk Map's scores"
-      className={cn("grid gap-3 border-2 border-rule bg-card px-5 py-4", !kept && "shadow-[4px_4px_0_var(--primary)]")}
+      className={cn("grid gap-3 overflow-visible px-5 py-4 text-[length:inherit] text-[color:inherit]", !kept && "shadow-[4px_4px_0_var(--primary)]")}
     >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3">
+      <PlanHeader className="grid auto-rows-auto grid-cols-[auto_minmax(0,1fr)] gap-3 px-0">
         <HexCell size={34} tone={kept ? "default" : "primary"}>
           <Icon name={kept ? "check" : "refresh"} size={16} strokeWidth={2.5} />
         </HexCell>
-        <div className="min-w-0">
+        <PlanTitle>
           <span className="flex items-center gap-1.5 font-mono text-[10px] leading-4 font-bold tracking-[0.08em] text-muted-foreground uppercase">
             <HiveMark size={HIVE_SIZES.eyebrow} decorative className="-my-1" />
             Agent vs engine
@@ -44,8 +48,9 @@ export function AgentVsEngine({
           <Heading className="m-0 font-display text-[22px] leading-6 font-extrabold uppercase" data-testid="agent-vs-engine-title">
             {agentVsEngineTitle(agent.changes.length, model)}
           </Heading>
-        </div>
-      </div>
+        </PlanTitle>
+      </PlanHeader>
+      <PlanContent className="px-0">
       {kept ? (
         <ol className="m-0 flex list-none flex-wrap gap-2 p-0">
           {agent.engineTop.slice(0, 3).map((p, i) => (
@@ -84,6 +89,7 @@ export function AgentVsEngine({
           ))}
         </ol>
       )}
-    </section>
+      </PlanContent>
+    </PlanCard>
   );
 }

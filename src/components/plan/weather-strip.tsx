@@ -1,5 +1,7 @@
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
+import { Badge } from "@/components/ui/badge";
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { formatHour } from "@/lib/slot";
 import type { Plan } from "@/lib/plan-schema";
 
@@ -20,15 +22,19 @@ export function WeatherStrip({
 }) {
   if (!weather)
     return (
-      <div role="status" data-testid="weather-unavailable" className="flex items-center gap-3 border-[1.5px] border-dashed border-input px-4 py-3">
-        <HexCell size={36} tone="dashed">
-          <Icon name="cloud" size={18} />
-        </HexCell>
-        <div>
-          <div className="font-mono text-xs leading-4 font-bold tracking-[0.06em] uppercase">No forecast for this slot</div>
-          <div className="text-sm leading-5 text-muted-foreground">Weather is left out of the score.</div>
-        </div>
-      </div>
+      <Item role="status" data-testid="weather-unavailable" variant="outline" className="flex-nowrap px-4 py-3">
+        <ItemMedia>
+          <HexCell size={36} tone="dashed">
+            <Icon name="cloud" size={18} />
+          </HexCell>
+        </ItemMedia>
+        <ItemContent className="flex-initial">
+          <ItemTitle className="font-mono text-xs leading-4 tracking-[0.06em] uppercase">No forecast for this slot</ItemTitle>
+          <ItemDescription asChild>
+            <div>Weather is left out of the score.</div>
+          </ItemDescription>
+        </ItemContent>
+      </Item>
     );
   const inSlot = (hour: number) => hour >= slot.startHour && hour < slot.endHour;
   const wet = weather.hours.filter((h) => inSlot(h.hour) && (h.precipitationProbability ?? 0) >= 50).length;
@@ -69,9 +75,9 @@ export function WeatherStrip({
         {before.map((h) => column(h, false))}
         {within.length ? (
           <div role="none" className="relative flex flex-[3_0_auto] border-2 border-rule">
-            <span aria-hidden="true" className="absolute -top-[13px] left-2 bg-primary px-1.5 py-[3px] font-mono text-[11px] leading-[14px] font-bold tracking-[0.06em] whitespace-nowrap text-primary-foreground uppercase shadow-[inset_0_0_0_2px_var(--fill-rule)]">
+            <Badge aria-hidden="true" variant="tag-slot" className="absolute -top-[13px] left-2">
               Your slot {slot.startHour}–{slot.endHour}
-            </span>
+            </Badge>
             {within.map((h, i) => column(h, true, i > 0))}
           </div>
         ) : null}

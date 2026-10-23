@@ -78,7 +78,8 @@ test.describe("landing, as the deck draws it", () => {
     await expect(video).toHaveAttribute("preload", "none");
     await expect(video).toHaveAttribute("poster", "/video/busk-map-demo-poster.jpg");
     await expect(video).not.toHaveAttribute("autoplay", /.*/);
-    await expect(video).toHaveAttribute("title", /Busk Map demo/);
+    await expect(video).toHaveAttribute("aria-label", /Busk Map demo/);
+    await expect(video).not.toHaveAttribute("title", /.*/); // no native tooltip
     await expect(video.locator("track[kind=captions][srclang=en]")).toHaveAttribute("src", "/video/busk-map-demo.en.vtt");
     const box = await video.boundingBox();
     expect(Math.abs(box!.width / box!.height - 16 / 9)).toBeLessThan(0.05);

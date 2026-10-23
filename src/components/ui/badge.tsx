@@ -33,6 +33,22 @@ const badgeVariants = cva(
         outline: `[--tone:var(--muted-foreground)] ${tint} [a]:hover:bg-secondary`,
         ghost: "border-transparent text-foreground hover:bg-secondary",
         link: "border-transparent text-signal-text normal-case underline underline-offset-4 hover:decoration-2",
+        // The entity tags, each the DS look exactly (they reset the badge box above; no colour transition, as the DS tags).
+        // Chip: a square sans label on a 1.5px rule (Chip).
+        chip: "transition-none min-h-8 max-w-none shrink justify-start gap-1.5 border-rule bg-transparent px-3 py-1 text-left font-sans text-sm leading-5 font-normal tracking-normal normal-case",
+        // Song: mono caps on a 2px rule over the card (SongTag).
+        song: "transition-none min-h-0 max-w-none shrink justify-start gap-1.5 border-2 border-rule bg-card px-1.5 text-left text-foreground [&>svg]:size-3!",
+        // Data: mono, medium, sentence case, a hairline whose colour is the tone's; the words wrap, never truncate (InfoTag).
+        data: "transition-none min-h-0 shrink items-start justify-start gap-1.5 border bg-transparent px-1.5 text-left font-medium tracking-normal normal-case [overflow-wrap:anywhere] [&>svg]:size-3!",
+        // Step tags (the research feeds): the text's own box with an inset 1.5px rule. `tag` keeps the text colour.
+        tag: "transition-none min-h-0 shrink border-0 px-1.5 py-[3px] leading-[normal] shadow-[inset_0_0_0_1.5px_var(--rule)]",
+        "tag-quiet": "transition-none min-h-0 shrink border-0 px-1.5 py-[3px] leading-[normal] text-muted-foreground shadow-[inset_0_0_0_1.5px_var(--border)]",
+        "tag-failed": "transition-none min-h-0 shrink border-0 px-1.5 py-[3px] leading-[normal] text-destructive shadow-[inset_0_0_0_1.5px_var(--destructive)]",
+        // On: the orange fill. `tag-live` alone, `tag-on` with the rule (the feed's Live).
+        "tag-live": "transition-none min-h-0 shrink border-0 bg-primary px-1.5 py-[3px] leading-[normal] text-primary-foreground",
+        "tag-on": "transition-none min-h-0 shrink border-0 bg-primary px-1.5 py-[3px] leading-[normal] text-primary-foreground shadow-[inset_0_0_0_1.5px_var(--rule)]",
+        // The forecast's "Your slot": the orange fill on its 2px day rule.
+        "tag-slot": "transition-none min-h-0 shrink border-0 bg-primary px-1.5 py-[3px] leading-[14px] whitespace-nowrap text-primary-foreground shadow-[inset_0_0_0_2px_var(--fill-rule)]",
       },
     },
     defaultVariants: {

@@ -6,7 +6,7 @@ import { loadListeners, loadReleases, searchArtists, type ArtistResult } from "@
 import { useLiveSearch } from "@/components/forms/use-live-search";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
 import { Icon } from "@/components/honeycomb/icon";
-import { Loader } from "@/components/honeycomb/loader";
+import { Spinner } from "@/components/ui/spinner";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { formatCount, MIN_QUERY_CHARS } from "@/lib/live-search";
@@ -162,7 +162,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
             )}
             {state.status === "loading" && (
               <p role="status" className={LINE}>
-                <Loader size={18} label="Searching" className="text-primary" />
+                <Spinner size={18} label="Searching" className="text-primary" />
                 Searching Spotify…
               </p>
             )}

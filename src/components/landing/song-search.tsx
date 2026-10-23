@@ -5,7 +5,7 @@ import { searchTracks, type TrackResult } from "@/components/forms/repertoire-ap
 import { useLiveSearch } from "@/components/forms/use-live-search";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
-import { Loader } from "@/components/honeycomb/loader";
+import { Spinner } from "@/components/ui/spinner";
 import { SongRow } from "@/components/honeycomb/song-row";
 import { SPOTIFY_ARTIST_URL } from "@/lib/mention";
 import { SongTag } from "@/components/honeycomb/song-tag";
@@ -164,7 +164,7 @@ export function SongSearch({
           {state.status === "idle" && <p className={LINE}>Type {MIN_QUERY_CHARS} or more letters to search Spotify.</p>}
           {state.status === "loading" && (
             <p role="status" className={LINE}>
-              <Loader size={18} label="Searching" className="text-primary" />
+              <Spinner size={18} label="Searching" className="text-primary" />
               Searching Spotify…
             </p>
           )}

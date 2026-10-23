@@ -13,7 +13,9 @@ function RadioGroup({
   return (
     <RadioGroupPrimitive.Root
       data-slot="radio-group"
-      className={cn("grid w-full gap-2", className)}
+      // Inside a form, Radix adds a hidden native radio beside each item, shifted left by its own width. Card items (asChild,
+      // the time slots) sit straight in the grid, so that input would hang past the page edge: keep it out of the layout.
+      className={cn("grid w-full gap-2 [&>input[aria-hidden]]:hidden", className)}
       {...props}
     />
   )
@@ -21,8 +23,18 @@ function RadioGroup({
 
 function RadioGroupItem({
   className,
+  asChild,
+  children,
   ...props
 }: React.ComponentProps<typeof RadioGroupPrimitive.Item>) {
+  // asChild: the child is the whole choice (a slot card); it draws its own picked state from aria-checked.
+  if (asChild) {
+    return (
+      <RadioGroupPrimitive.Item asChild data-slot="radio-group-item" className={className} {...props}>
+        {children}
+      </RadioGroupPrimitive.Item>
+    )
+  }
   // The choice card shows the focus (.bm-choice:focus-within, in choice-cards.tsx), not the radio.
   // A cell inside a cell: the outer honeycomb is the choice, the orange one inside says which is picked.
   return (

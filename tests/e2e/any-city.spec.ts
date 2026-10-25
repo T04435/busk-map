@@ -185,7 +185,7 @@ test.describe("any city (offline)", () => {
 
   test("Repertoire: a fans city's \"Plan a busk here\" opens /busks with that city selected", async ({ page }) => {
     await page.goto("/repertoire");
-    await page.getByLabel("Your Spotify artist link").fill(`https://open.spotify.com/artist/${OFFLINE_TEST_ARTIST.spotifyId}`);
+    await page.getByLabel("Your Spotify artist", { exact: true }).fill(`https://open.spotify.com/artist/${OFFLINE_TEST_ARTIST.spotifyId}`);
     await page.getByRole("button", { name: "Research my act" }).click();
     await expect(page.getByTestId("research-end")).toBeVisible({ timeout: 20_000 });
     const cities = page.getByTestId("fans-cities").getByTestId("fans-city");

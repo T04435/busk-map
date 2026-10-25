@@ -10,3 +10,9 @@ export function parseSpotifyArtistId(input: string): string | null {
 
 /** The profile link shown in the field for a saved id. */
 export const spotifyArtistUrl = (id: string) => `https://open.spotify.com/artist/${id}`;
+
+/** Text that is a link or URI rather than a name to search for: a Spotify artist id, any http(s) URL or a spotify: URI. */
+export function looksLikeLink(input: string): boolean {
+  const value = input.trim();
+  return parseSpotifyArtistId(value) !== null || /^(?:https?:\/\/|spotify:|open\.spotify\.com\/)/i.test(value);
+}

@@ -59,6 +59,46 @@ describe("ArtistPicker (B-172, B-175)", () => {
   });
 });
 
+describe("ArtistPicker single mode (the act's own Spotify artist, /repertoire)", () => {
+  const single = (over: Partial<Parameters<typeof ArtistPicker>[0]> = {}) =>
+    html(createElement(ArtistPicker, { mode: "single", label: "Your Spotify artist", placeholder: "Search Spotify or paste your artist link", value: [], onChange: () => {}, query: "", onQueryChange: () => {}, focusId: "research-link", ...over }));
+
+  it("is one labelled search box, with no count hint and no typed-name row", () => {
+    const out = single();
+    expect(out).toContain('role="combobox"');
+    expect(out).toContain("Your Spotify artist");
+    expect(out).toContain('placeholder="Search Spotify or paste your artist link"');
+    expect(out).toContain('data-focus-id="research-link"');
+    expect(out).not.toContain('data-testid="artists-hint"');
+    expect(out).not.toContain("Not on Spotify?");
+    expect(out).not.toContain("Artists you sound like");
+  });
+
+  it("shows a pasted link as typed, with no list and no search", () => {
+    for (const query of ["https://open.spotify.com/artist/IBaXCJ49QlTYT2jOrEp66p", "spotify:artist:IBaXCJ49QlTYT2jOrEp66p"]) {
+      const out = single({ query });
+      expect(out).toContain(`value="${query}"`);
+      expect(out).not.toContain('role="listbox"');
+      expect(out).not.toContain("Type 2 or more letters");
+      expect(out).toContain('aria-expanded="false"');
+    }
+  });
+
+  it("once picked, the box gives way to the artist's chip (Spotify link, Remove), so there is only ever one", () => {
+    const out = single({ value: [{ name: "Julia Jacklin", spotifyId: "IBaXCJ49QlTYT2jOrEp66p", image: null }] });
+    expect(out).not.toContain('role="combobox"');
+    expect(out).toContain('aria-label="Your Spotify artist"');
+    expect(out).toContain("https://open.spotify.com/artist/IBaXCJ49QlTYT2jOrEp66p");
+    expect(out).toContain('aria-label="Remove Julia Jacklin"');
+  });
+
+  it("multi mode keeps its typed-name row and hint", () => {
+    const out = html(createElement(ArtistPicker, { value: [], onChange: () => {}, query: "", onQueryChange: () => {} }));
+    expect(out).toContain('data-testid="artists-hint"');
+    expect(out).toContain("Artists you sound like");
+  });
+});
+
 describe("PicksList (B-176)", () => {
   const song = (over: Partial<PickedSong>): PickedSong => ({ key: "a", title: "A very long song title that must never be lost", artist: "Artist", album: null, image: null, durationMs: 180000, own: false, ...over });
   it("has the Your picks header with the count and total time, and no Your song tag (the user removed it, 18 Oct)", () => {

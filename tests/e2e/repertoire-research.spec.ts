@@ -13,7 +13,7 @@ const SHOTS = process.env.REPERTOIRE_SHOTS;
 const LINK = `https://open.spotify.com/artist/${OFFLINE_TEST_ARTIST.spotifyId}`;
 type Page = import("@playwright/test").Page;
 
-const field = (page: Page) => page.getByLabel("Your Spotify artist link");
+const field = (page: Page) => page.getByLabel("Your Spotify artist", { exact: true });
 const linkOf = (spotifyId: string) => `https://open.spotify.com/artist/${spotifyId}`;
 /** `faults=research-slow` holds each step 600 ms (offline test mode), so the running state can be looked at before the run is over. */
 async function research(page: Page, link = LINK, faults?: string) {
@@ -26,11 +26,11 @@ const done = (page: Page) => expect(page.getByTestId("research-end")).toBeVisibl
 test.describe("Repertoire research (offline)", () => {
   test.skip(!LOCAL, "Writes to the local offline server's memory store and uses the mock artist");
 
-  test("empty state: one field and its example, nothing else; browsing sets no cookie", async ({ page }) => {
+  test("empty state: one field, nothing else; browsing sets no cookie", async ({ page }) => {
     await page.goto("/repertoire");
     await expect(page.getByRole("heading", { level: 1, name: "Your Repertoire" })).toBeVisible();
     await expect(field(page)).toBeVisible();
-    await expect(page.getByText("It looks like open.spotify.com/artist/…")).toBeVisible();
+    await expect(field(page)).toHaveAttribute("placeholder", "Search Spotify or paste your artist link");
     await expect(page.getByText(/We read your Spotify profile and your songs/)).toHaveCount(0);
     await expect(page.getByTestId("research-results")).toHaveCount(0);
     await expect(page.getByRole("combobox", { name: "Search songs on Spotify" })).toHaveCount(0);
@@ -38,6 +38,49 @@ test.describe("Repertoire research (offline)", () => {
     // Offline only: the test artist fills the field.
     await page.getByTestId("research-test-artist").click();
     await expect(field(page)).toHaveValue(LINK);
+  });
+
+  test("the field looks the act up on Spotify: type the name, pick it, research it (axe clean, open and picked)", async ({ page }) => {
+    await page.goto("/repertoire");
+    await field(page).fill(OFFLINE_TEST_ARTIST.name.slice(0, 5));
+    const option = page.getByRole("option", { name: new RegExp(OFFLINE_TEST_ARTIST.name) }).first();
+    await expect(option).toBeVisible();
+    await expect(field(page)).toHaveAttribute("aria-expanded", "true");
+    // No "add as typed" row: the act must be a Spotify artist.
+    await expect(page.getByText("Not on Spotify?")).toHaveCount(0);
+    expect((await new AxeBuilder({ page }).withTags(WCAG).analyze()).violations).toEqual([]);
+    await option.click();
+    // One pick: the box gives way to the artist's chip, focus on its Remove.
+    const chip = page.getByRole("list", { name: "Your Spotify artist" });
+    await expect(chip.getByRole("link", { name: OFFLINE_TEST_ARTIST.name })).toHaveAttribute("href", LINK);
+    await expect(page.getByRole("button", { name: `Remove ${OFFLINE_TEST_ARTIST.name}` })).toBeFocused();
+    await expect(page.getByRole("combobox", { name: "Your Spotify artist" })).toHaveCount(0);
+    expect((await new AxeBuilder({ page }).withTags(WCAG).analyze()).violations).toEqual([]);
+    // Remove brings the box back, focused, for another try.
+    await page.getByRole("button", { name: `Remove ${OFFLINE_TEST_ARTIST.name}` }).click();
+    await expect(field(page)).toBeFocused();
+    await field(page).fill(OFFLINE_TEST_ARTIST.name);
+    await page.getByRole("option", { name: new RegExp(OFFLINE_TEST_ARTIST.name) }).first().click();
+    await page.getByRole("button", { name: "Research my act" }).click();
+    await done(page);
+    await expect(page.getByTestId("profile-name")).toHaveText(OFFLINE_TEST_ARTIST.name);
+  });
+
+  test("a pasted link still runs, with Enter, and is never searched for", async ({ page }) => {
+    await page.goto("/repertoire");
+    await field(page).fill(LINK);
+    await expect(page.getByRole("option")).toHaveCount(0);
+    await expect(field(page)).toHaveAttribute("aria-expanded", "false");
+    await field(page).press("Enter");
+    await done(page);
+    await expect(page.getByTestId("profile-name")).toHaveText(OFFLINE_TEST_ARTIST.name);
+  });
+
+  test("a name typed but not picked asks for a pick", async ({ page }) => {
+    await page.goto("/repertoire");
+    await field(page).fill("Nobody in particular");
+    await page.getByRole("button", { name: "Research my act" }).click();
+    await expect(page.getByTestId("research-notice")).toContainText("Pick your act from the Spotify results");
   });
 
   test("a bad link is refused in plain words, before anything runs", async ({ page }) => {

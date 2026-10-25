@@ -11,6 +11,7 @@ import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { formatCount, MIN_QUERY_CHARS } from "@/lib/live-search";
 import { SPOTIFY_ARTIST_URL } from "@/lib/mention";
+import { looksLikeLink } from "@/lib/spotify-link";
 
 /** An artist chip: picked from Spotify (with its id), suggested by Qloo (qlooId, and a spotifyId when Qloo has one), or typed as free text (both null). */
 export type PickedArtist = { name: string; spotifyId: string | null; image: string | null; qlooId?: string | null };
@@ -38,15 +39,32 @@ type Props = {
   onQueryChange: (query: string) => void;
   /** The section around it already says "Artists you sound like" (/repertoire, U28): no second visible label. */
   hideLabel?: boolean;
+  /**
+   * "single": one Spotify artist (the act itself, /repertoire). A pick replaces the value and the field gives way to its chip;
+   * no typed names; a pasted link or spotify: URI stays in the box unsearched, and Enter then submits the surrounding form.
+   */
+  mode?: "multi" | "single";
+  /** The field's label (default "Artists you sound like"). */
+  label?: string;
+  placeholder?: string;
+  /** Marks the search box for focus management (`data-focus-id`). */
+  focusId?: string;
+  disabled?: boolean;
 };
 
-/** "Artists you sound like": a multi-select chip picker over live Spotify search, with free text as a fallback. */
-export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel = false }: Props) {
+/**
+ * "Artists you sound like": a multi-select chip picker over live Spotify search, with free text as a fallback.
+ * In single mode, the one-artist lookup for the act's own Spotify artist.
+ */
+export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel = false, mode = "multi", label = LABEL, placeholder, focusId, disabled = false }: Props) {
+  const single = mode === "single";
   const { state, update, cancel } = useLiveSearch<ArtistResult>(searchArtists);
   const [listeners, setListeners] = useState<Record<string, number | null>>({});
   const [releases, setReleases] = useState<Record<string, number>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const hintId = useId();
+  const chipsRef = useRef<HTMLUListElement>(null);
+  const refocus = useRef<"input" | "chip" | null>(null);
 
   // Release counts (Spotify) and listener counts (Last.fm) load after the results show, never blocking them.
   useEffect(() => {
@@ -61,7 +79,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
   }, [state]);
 
   const has = (name: string) => value.some((a) => a.name.toLowerCase() === name.toLowerCase());
-  const full = value.length >= MAX_PICKED_ARTISTS;
+  const full = value.length >= (single ? 1 : MAX_PICKED_ARTISTS);
 
   function add(artists: PickedArtist[]) {
     const next = [...value];
@@ -76,6 +94,12 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
   }
 
   function setQuery(text: string) {
+    if (single) {
+      onQueryChange(text);
+      // A pasted link is the answer itself: nothing to search for.
+      update(looksLikeLink(text) ? "" : text);
+      return;
+    }
     // Commas finish a typed chip; the text after the last one stays in the box.
     if (/[,\n]/.test(text)) {
       const parts = text.split(/[,\n]/);
@@ -88,31 +112,44 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
   }
 
   function pick(artist: PickedArtist) {
-    add([artist]);
+    if (single) {
+      refocus.current = "chip";
+      onChange([artist]);
+    }
+    else add([artist]);
     cancel();
     onQueryChange("");
     update("");
     // The list closes and the search box keeps focus, so the next artist can be searched straight away.
-    inputRef.current?.focus();
+    if (!single) inputRef.current?.focus();
   }
 
-  const typed = clean(query);
+  // Single mode: the box and the chip take turns, so focus follows: a pick lands on the chip, removing it back in the box.
+  useEffect(() => {
+    const target = refocus.current;
+    refocus.current = null;
+    if (target === "input") inputRef.current?.focus();
+    if (target === "chip") chipsRef.current?.querySelector<HTMLElement>("button")?.focus();
+  }, [value]);
+
+  const typed = single && looksLikeLink(query) ? "" : clean(query);
   const results = state.status === "done" ? state.results : [];
   // The listbox exists only while it has options: Spotify results, or the "add as typed" row.
-  const listed = results.length > 0 || !has(typed);
+  const offerTyped = !single && !has(typed);
+  const listed = results.length > 0 || offerTyped;
   // Keyboard focus starts on the first result each time new results arrive.
   const [active, setActive] = useState<{ query: string; value: string } | null>(null);
-  const activeValue = active && active.query === state.query && state.status === "done" ? active.value : results[0] ? `spotify:${results[0].id}` : "typed";
+  const activeValue = active && active.query === state.query && state.status === "done" ? active.value : results[0] ? `spotify:${results[0].id}` : offerTyped ? "typed" : "";
 
   return (
     <div className="space-y-2">
       {hideLabel ? null : (
         <p className="text-label font-bold" aria-hidden>
-          {LABEL}
+          {label}
         </p>
       )}
       {value.length > 0 && (
-        <ul aria-label="Artists you picked" className="m-0 flex list-none flex-col items-stretch gap-2 p-0">
+        <ul ref={chipsRef} aria-label={single ? label : "Artists you picked"} className="m-0 flex list-none flex-col items-stretch gap-2 p-0">
           {value.map((artist) => (
             <li key={artist.name}>
               <ArtistChip
@@ -121,16 +158,20 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
                 href={artist.spotifyId ? SPOTIFY_ARTIST_URL(artist.spotifyId) : undefined}
                 source={artistSource(artist) === "spotify" ? undefined : artistSource(artist)}
                 state="picked"
-                onRemove={() => onChange(value.filter((a) => a !== artist))}
+                onRemove={() => {
+                  refocus.current = single ? "input" : null;
+                  onChange(value.filter((a) => a !== artist));
+                }}
               />
             </li>
           ))}
         </ul>
       )}
+      {single && full ? null : (
       <Command
         shouldFilter={false}
         loop
-        label={LABEL}
+        label={label}
         className="h-auto gap-1 overflow-visible border-0 bg-transparent p-0"
         value={activeValue}
         onValueChange={(value) => setActive({ query: state.query, value })}
@@ -140,10 +181,13 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
           expanded={Boolean(typed) && listed}
           value={query}
           onValueChange={setQuery}
-          placeholder={full ? `Up to ${MAX_PICKED_ARTISTS} artists` : "Search Spotify, e.g. Paul Kelly"}
-          disabled={full}
-          aria-describedby={hintId}
+          placeholder={placeholder ?? (full ? `Up to ${MAX_PICKED_ARTISTS} artists` : "Search Spotify, e.g. Paul Kelly")}
+          disabled={full || disabled}
+          aria-describedby={single ? undefined : hintId}
+          data-focus-id={focusId}
           onKeyDown={(e) => {
+            // Single mode: with no list to pick from (a pasted link), Enter submits the form, as a plain field would.
+            if (single && e.key === "Enter" && (looksLikeLink(query) || !query.trim())) e.currentTarget.form?.requestSubmit();
             if (e.key === "Backspace" && query === "" && value.length > 0) onChange(value.slice(0, -1));
             if (e.key === "Escape" && query) {
               e.preventDefault();
@@ -151,9 +195,11 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
             }
           }}
         />
-        <p id={hintId} className="m-0 text-sm leading-5 text-muted-foreground" data-testid="artists-hint">
-          {full ? "That’s the most. Remove one to add another." : `${value.length} of ${MAX_PICKED_ARTISTS}. Type a comma to add a name that isn’t on Spotify.`}
-        </p>
+        {single ? null : (
+          <p id={hintId} className="m-0 text-sm leading-5 text-muted-foreground" data-testid="artists-hint">
+            {full ? "That’s the most. Remove one to add another." : `${value.length} of ${MAX_PICKED_ARTISTS}. Type a comma to add a name that isn’t on Spotify.`}
+          </p>
+        )}
         {typed && (
           <div className="border-2 border-rule bg-popover p-1">
             {/* Status lines sit beside the list, never inside it: a listbox holds only options (and groups of them). */}
@@ -215,7 +261,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
                     })}
                   </CommandGroup>
                 )}
-                {!has(typed) && (
+                {offerTyped && (
                   <CommandGroup heading="Not on Spotify?">
                     <CommandItem value="typed" onSelect={() => pick({ name: typed, spotifyId: null, image: null })}>
                       <Icon name="plus" size={18} />
@@ -228,6 +274,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
           </div>
         )}
       </Command>
+      )}
     </div>
   );
 }

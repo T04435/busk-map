@@ -43,7 +43,7 @@ describe("candidates in a city with no walkable spots", () => {
   it("stands a pitch at each top taste cell, named after a nearby Qloo place, with the city's rules line", () => {
     const rules = rulesFor(tokyo).general;
     const { candidates, funnel } = buildCandidatesWithFunnel({ sites: [], zones: [], spots: [], hotspots: [], cells, permit: "general", generalRules: rules, cellNames: [{ name: "Synthetic Bar 1", lat: 35.6901, lon: 139.6902 }] });
-    expect(candidates.map((c) => c.name)).toEqual(["Near Synthetic Bar 1", "Taste spot", "Taste spot (2)"]);
+    expect(candidates.map((c) => c.name)).toEqual(["Near Synthetic Bar 1", "Taste spot", "Taste spot, south-west"]);
     expect(candidates[0]).toMatchObject({ id: "cell:xn774c0", origin: "taste", kind: "public-space", rules, cell: { rank: 1 } });
     expect(funnel).toMatchObject({ cells: 3, topCells: 3, candidates: 3 });
   });

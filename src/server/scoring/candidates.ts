@@ -178,8 +178,8 @@ export function tasteSpotName(point: LatLon, { areas = [], venues = [], streets 
       .map((x) => x.v);
   const within = (places: readonly (LatLon & { name: string })[], radius: number) => closest(places, radius).map((v) => v.name.trim());
   const near = within(venues, CELL_NAME_RADIUS_M);
-  // The compass hint reads from what the name names: its venue, else its area's (or the city's) centre.
-  const anchor: LatLon | undefined = closest(venues, CELL_NAME_RADIUS_M)[0] ?? chosen ?? cityCenter;
+  // The compass hint reads from what the name names: its venue, else its area's (or the city's) centre, else the nearest place.
+  const anchor: LatLon | undefined = closest(venues, CELL_NAME_RADIUS_M)[0] ?? chosen ?? cityCenter ?? closest([...venues, ...streets], Infinity)[0];
   const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
   const label = (venue: string | undefined) =>
     venue ? (area && !same(area, venue) ? `${area} · near ${venue}` : `Near ${venue}`) : area || city ? `${area ?? city} taste spot` : "Taste spot";

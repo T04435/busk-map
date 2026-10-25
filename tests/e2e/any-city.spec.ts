@@ -1,11 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { EXAMPLES } from "../../src/lib/examples";
 import { OFFLINE_TEST_ARTIST } from "../../src/lib/repertoire-research";
-import { expect, LOCAL, test, waitForPlan } from "./fixtures";
+import { expect, LOCAL, openDetails, test, waitForPlan } from "./fixtures";
 
 /**
  * V2 2.1 "Any city": the busk form's city search, a plan in another city (offline mode's second city, Tokyo), and
- * Melbourne exactly as before. Offline server, mock model, synthetic geocoder.
+ * Melbourne exactly as before. Offline server, mock model, synthetic geocoder. V2 2.3: Tokyo's pitches stand at
+ * OpenStreetMap public spaces (offline: the synthetic Overpass answer, "Synthetic OSM …"), credited to OSM.
  */
 type Page = import("@playwright/test").Page;
 const form = (page: Page) => page.getByRole("form", { name: "Plan for your own act" });
@@ -63,10 +64,19 @@ test.describe("any city (offline)", () => {
     await expect(page.getByText(/^(Shared busk · )?Tokyo · /).first()).toBeVisible();
     const pitches = page.getByRole("region", { name: "Pitches", exact: true }).locator("button[data-pitch-name]");
     await expect(pitches).toHaveCount(3);
-    for (const name of await pitches.evaluateAll((els) => els.map((el) => el.getAttribute("data-pitch-name") ?? ""))) expect(name).not.toMatch(/Federation|Bourke|Flinders|Degraves/);
+    for (const name of await pitches.evaluateAll((els) => els.map((el) => el.getAttribute("data-pitch-name") ?? ""))) {
+      expect(name).not.toMatch(/Federation|Bourke|Flinders|Degraves/);
+      // OpenStreetMap public spaces, not taste-cell names ("Near …", "Taste area …").
+      expect(name).toMatch(/^Synthetic OSM |^Pedestrian street$/);
+    }
     await expect(await mapCentre(page)).toHaveAttribute("data-center", "35.6895,139.6917", { timeout: 15_000 });
     // No City of Melbourne busking layers in Tokyo.
     await expect(page.getByTestId("data-used")).not.toContainText("City of Melbourne");
+    await expect(page.getByTestId("data-used")).toContainText("© OpenStreetMap contributors");
+    // The pitch's own sheet credits OpenStreetMap.
+    const sheet = await openDetails(page);
+    await expect(sheet.getByText("© OpenStreetMap contributors")).toBeVisible();
+    await page.keyboard.press("Escape");
 
     // Planning again keeps the city.
     const id = new URL(page.url()).pathname.split("/").pop();

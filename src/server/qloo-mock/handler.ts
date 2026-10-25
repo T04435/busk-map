@@ -51,8 +51,9 @@ import {
   type ScenarioArtist,
   type Genre,
 } from "./catalog";
-import { DAYS, MOCK_PLACES, PLACE_BY_ID, categoryTag, placeFit, type MockPlace } from "./places";
+import { DAYS, MOCK_PLACES, PLACE_BY_ID, REGION_PLACES, categoryTag, placeFit, type MockPlace } from "./places";
 import { WORLD_PLACES } from "@/lib/world-places";
+import { toMockFrame } from "@/server/offline-city";
 import { GENRE_DEMOGRAPHICS, MOCK_COVERAGE, cosine, density, liftAt, mixGenres, tasteAt, type GenreVector } from "./taste-field";
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
@@ -200,7 +201,10 @@ function samplePoints(area: Area): LatLon[] {
   return inside.length > 0 ? inside : points;
 }
 
-const covered = (point: LatLon) => inBBox(point, MOCK_COVERAGE);
+/** Where the mock has data: Melbourne's inner suburbs, and the same area moved onto offline mode's second city (Tokyo). */
+const covered = (point: LatLon) => inBBox(toMockFrame(point), MOCK_COVERAGE);
+/** Melbourne itself (local acts get a boost only there). */
+const inMelbourneCoverage = (point: LatLon) => inBBox(point, MOCK_COVERAGE);
 
 function localityPayload(locality: Locality) {
   const lat = (locality.bbox.south + locality.bbox.north) / 2;
@@ -524,7 +528,8 @@ function places(params: Params, key: string): Response {
   const exclude = new Set(params.list("filter.exclude.entities").map((s) => s.toUpperCase()));
   const center = area?.kind === "point" ? area.point : null;
 
-  const found = MOCK_PLACES.filter((p) => {
+  // Offline mode's second city has its own (moved) places; search by name stays Melbourne's.
+  const found = [...MOCK_PLACES, ...REGION_PLACES].filter((p) => {
     if (area && !contains(area, p)) return false;
     // filter.hours: invalid day names are ignored, like any invalid parameter.
     if (day && ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].includes(day) && !(p.hours[day as keyof typeof p.hours]?.length)) return false;
@@ -581,7 +586,7 @@ function artists(params: Params, key: string): Response {
 
   const withMix = hasMix(signals.mix);
   const area = signals.area;
-  const inMelbourne = area ? samplePoints(area).some(covered) : false;
+  const inMelbourne = area ? samplePoints(area).some(inMelbourneCoverage) : false;
   const sample = area ? samplePoints(area).filter(covered) : [];
 
   const scored = pool

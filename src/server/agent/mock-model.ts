@@ -79,7 +79,7 @@ function finish(results: ToolResult[], scenario: MockScenario, rejections: numbe
   };
 }
 
-type TasteOut = { strongest?: { near: string | null }[] };
+type TasteOut = { strongest?: { near: string | null; lat?: number; lon?: number }[] };
 type CheckOut = { pitchId?: string | null; inPool?: boolean };
 
 /**
@@ -115,18 +115,25 @@ export function nextMove(results: ToolResult[], tools: string[], scenario: MockS
     return { text: "One more look.", calls: [looks[Math.min(results.length, looks.length - 1)]] };
   }
   if (!done("taste_map").length) return { text: "We'll start with the taste map to see where this act's fans concentrate.", calls: [{ toolName: "taste_map", input: {} }] };
-  const strongest = (done("taste_map")[0]?.output.value as TasteOut | undefined)?.strongest?.find((c) => c.near)?.near ?? "Federation Square";
+  const cells = (done("taste_map")[0]?.output.value as TasteOut | undefined)?.strongest ?? [];
+  // A city where Busk Map knows no place by name (any city but Melbourne): the strongest cell by its coordinates.
+  const unnamed = cells.length > 0 && cells.every((c) => !c.near) && typeof cells[0].lat === "number" && typeof cells[0].lon === "number";
+  const strongest = unnamed ? "the strongest taste cell" : (cells.find((c) => c.near)?.near ?? "Federation Square");
+  const at = unnamed ? { lat: cells[0].lat, lon: cells[0].lon } : { place: strongest };
   if (!done("crowd_at").length) {
     return {
       reasoning: `The taste map's strongest area is near ${strongest}; who is there, and how busy it is, decides whether it makes our shortlist.`,
       text: `Checking who the crowd is near ${strongest}, and how busy it is estimated to be at the start of the slot.`,
       calls: [
-        { toolName: "crowd_at", input: { at: { place: strongest }, radiusM: 400 } },
-        { toolName: "activity_at", input: { at: { place: strongest } } },
+        { toolName: "crowd_at", input: { at, radiusM: 400 } },
+        { toolName: "activity_at", input: { at } },
       ],
     };
   }
-  if (!done("check_pitch").length) return { text: "Federation Square is a well-known spot; checking whether the rules allow it, for our shortlist.", calls: [{ toolName: "check_pitch", input: { spot: { place: "Federation Square" } } }] };
+  if (!done("check_pitch").length) {
+    if (unnamed) return { text: "Checking the strongest taste cell as a spot, for our shortlist.", calls: [{ toolName: "check_pitch", input: { spot: at } }] };
+    return { text: "Federation Square is a well-known spot; checking whether the rules allow it, for our shortlist.", calls: [{ toolName: "check_pitch", input: { spot: { place: "Federation Square" } } }] };
+  }
   if (!scored && offered("score_pitches")) {
     const checked = done("check_pitch").at(-1)?.output.value as CheckOut | undefined;
     const add = checked?.pitchId && !checked.inPool ? [checked.pitchId] : [];

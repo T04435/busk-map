@@ -34,6 +34,9 @@ export const MAX_SPOTS_PER_CELL = 3;
 export const USUAL_SPOT_RADIUS_M = 180;
 /** A cell-centre pitch takes the name of a Qloo place within this distance. */
 export const CELL_NAME_RADIUS_M = 400;
+/** Cell-centre pitches: at most this many, at least this far apart (fine heatmap cells are 150 m, so neighbours would crowd the pool). */
+export const MAX_CELL_PITCHES = 24;
+export const CELL_PITCH_SPACING_M = 250;
 /** Melbourne's general-permit rules line (the default). */
 export const GENERAL_RULES = "General busking permit: most CBD footpaths and public spaces, subject to clearances.";
 
@@ -218,8 +221,10 @@ export function buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots
 
   const top = topCells(cells);
   if (spots.length === 0 && hotspots.length === 0 && cellNames) {
-    // No walkable spots for this city: each top cell's centre is a pitch.
+    // No walkable spots for this city: the top cells' centres are the pitches, spaced out.
     for (const cell of top) {
+      if (candidates.length >= MAX_CELL_PITCHES) break;
+      if (candidates.some((c) => distanceM(c, cell) < CELL_PITCH_SPACING_M)) continue;
       const ref = { lat: cell.lat, lon: cell.lon, affinity: cell.affinity, rank: cell.rank };
       const near = cellNames
         .map((place) => ({ place, d: distanceM(cell, place) }))

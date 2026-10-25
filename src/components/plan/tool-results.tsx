@@ -41,8 +41,10 @@ export function placeOf(step: AgentStep): string {
   if (label) return label.replace(/^near /, "");
   const input = rec(step.input);
   const where = rec(input.at ?? input.near ?? input.spot ?? input.point);
-  return str(where.spot) ?? str(where.label) ?? str(where.pitchName) ?? (str(where.pitchId) ? String(where.pitchId).replace(/^[a-z]+:(osm:)?/, "").replace(/-/g, " ") : null) ?? "this spot";
+  return str(where.spot) ?? str(where.place) ?? str(where.label) ?? str(where.pitchName) ?? (str(where.pitchId) ? String(where.pitchId).replace(/^[a-z]+:(osm:)?/, "").replace(/-/g, " ") : null) ?? "this spot";
 }
+/** A check_pitch step in a city whose busking rules aren't checked (tools.ts UNCHECKED_TOOL, or its output). */
+const rulesUnchecked = (step: AgentStep) => rec(step.output).legal === "not checked" || /rules not checked/.test(step.label ?? "");
 const forPitch = (step: AgentStep) => /for (.+?)[;:]/.exec(step.summary ?? "")?.[1] ?? "this pitch";
 
 /** The DS icon tone: the colour a fact's icon takes (bm-ic-*). */
@@ -403,8 +405,9 @@ export const TOOL_UI: Record<string, ToolUi> = {
     },
   },
   check_pitch: {
-    doing: (s) => `Checking the busking rules at ${placeOf(s)}`,
-    title: (s) => `The rules at ${str(rec(s.output).name) ?? placeOf(s)}`,
+    // V2 2.4: where the rules aren't checked the step only looks at a spot (its server label says so), so it names no rules.
+    doing: (s) => (rulesUnchecked(s) ? `Looking at ${placeOf(s)}` : `Checking the busking rules at ${placeOf(s)}`),
+    title: (s) => (rulesUnchecked(s) ? `A look at ${str(rec(s.output).name) ?? placeOf(s)}` : `The rules at ${str(rec(s.output).name) ?? placeOf(s)}`),
     render: (o) => {
       const out = o.legal === "ruled out";
       // V2 2.4: a city with no council rules: nothing is ruled in or out.

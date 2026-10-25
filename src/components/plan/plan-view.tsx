@@ -330,8 +330,11 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
                 ? "replayed"
                 : "done"
               : null;
+  // V2 2.2: outside Melbourne each signal names its level ("Live data", "Estimate", "Not checked"); Melbourne keeps today's labels.
+  const levels = levelsToLabel(request.city, plan?.cityLevels ?? null);
+  const checked = rulesChecked(levels);
   // A finished run has no "Researched by" sentence: only its usage line stays.
-  const statusLine = <AgentStatusLine state={agentState === "done" ? null : agentState} usage={usage} model={model} note={replayed ? replayNote(replay?.note ?? runNote) : null} />;
+  const statusLine = <AgentStatusLine state={agentState === "done" ? null : agentState} usage={usage} model={model} rulesChecked={checked} note={replayed ? replayNote(replay?.note ?? runNote) : null} />;
 
   const sourcesDown = plan ? plan.dataStatus.filter((s) => s.mode === "fallback" && s.source !== "qloo") : [];
   const DOWN: Record<string, { title: string; effect: string }> = {
@@ -341,9 +344,6 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     osm: { title: "OpenStreetMap didn't answer", effect: "Pitches stand at the strongest taste areas instead of named public spaces." },
   };
 
-  // V2 2.2: outside Melbourne each signal names its level ("Live data", "Estimate", "Not checked"); Melbourne keeps today's labels.
-  const levels = levelsToLabel(request.city, plan?.cityLevels ?? null);
-  const checked = rulesChecked(levels);
   const levelOf = levels
     ? (signal: LevelSignal) => levelWord(signal, levels, plan ? liveSource(signal, plan.dataStatus) : heading.qlooMode === "live")
     : undefined;
@@ -576,7 +576,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
 
               {!exampleId && <SaveAsRepertoire performer={request.performer} />}
               <WeatherStrip weather={plan.weather} slot={plan.slot} level={levelOf?.("weather")} />
-              <ComparePanel state={baseline} pitches={plan.pitches} />
+              <ComparePanel state={baseline} pitches={plan.pitches} rulesChecked={checked} />
             </>
           )}
 

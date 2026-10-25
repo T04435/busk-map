@@ -1,3 +1,4 @@
+import { MELBOURNE } from "@/lib/city";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SYNTHETIC_RAW as SONGS_RAW } from "@/server/adapters/songs/fixtures/synthetic";
 import { SYNTHETIC_RAW as WEATHER_RAW } from "@/server/adapters/weather/fixtures/synthetic";
@@ -106,7 +107,7 @@ describe("getWeather (Open-Meteo)", () => {
   it("returns the slot's hours in local time", async () => {
     const { getWeather } = await import("@/server/adapters/weather");
     const { calls } = mockFetch([route((u) => u.host === "api.open-meteo.com", () => json(WEATHER_RAW))]);
-    const result = await getWeather("melbourne", slot, LIVE, "2026-10-15");
+    const result = await getWeather(MELBOURNE, slot, LIVE, "2026-10-15");
     expect(result.mode).toBe("live");
     expect(calls[0].url.searchParams.get("timezone")).toBe("Australia/Melbourne");
     expect(calls[0].url.searchParams.get("start_date")).toBe("2026-10-17");
@@ -125,16 +126,16 @@ describe("getWeather (Open-Meteo)", () => {
   it("falls back outside the forecast range without calling the API", async () => {
     const { getWeather } = await import("@/server/adapters/weather");
     const { calls } = mockFetch([]);
-    const late = await getWeather("melbourne", { ...slot, date: "2026-11-30" }, LIVE, "2026-10-15");
+    const late = await getWeather(MELBOURNE, { ...slot, date: "2026-11-30" }, LIVE, "2026-10-15");
     expect(late).toMatchObject({ mode: "fallback", reason: "not_found", data: null });
-    const early = await getWeather("melbourne", { ...slot, date: "2026-10-01" }, LIVE, "2026-10-15");
+    const early = await getWeather(MELBOURNE, { ...slot, date: "2026-10-01" }, LIVE, "2026-10-15");
     expect(early.mode).toBe("fallback");
     expect(calls).toHaveLength(0);
   });
 
   it("is synthetic offline", async () => {
     const { getWeather } = await import("@/server/adapters/weather");
-    const result = await getWeather("melbourne", slot, OFFLINE, "2026-10-15");
+    const result = await getWeather(MELBOURNE, slot, OFFLINE, "2026-10-15");
     expect(result.mode).toBe("synthetic");
     expect(result.data?.hours).toHaveLength(3);
   });

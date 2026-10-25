@@ -3,7 +3,7 @@ import { nameKey } from "@/lib/text";
 import type { AdapterContext } from "@/server/adapters/core";
 import * as qloo from "@/server/adapters/qloo";
 import type { QlooUsage } from "@/server/adapters/qloo/usage";
-import { CITIES, type CityId } from "@/server/cities";
+import { knownCity, type CityId } from "@/server/cities";
 import { LEARN_QLOO_BUDGET } from "@/server/playlist/config";
 import type { PlaylistRecord } from "@/server/playlist/store";
 import { historyKeys, learnedSongs, songsPerArtist, type HistoryKeys } from "./history";
@@ -74,12 +74,12 @@ export class LearnContext {
     this.sungArtists = new Set(history.songs.map((s) => nameKey(s.artist)));
     this.soundsLikeArtists = new Set(playlist.soundsLike.map((a) => nameKey(a.name)));
     this.seeds = seedArtists(playlist, history);
-    this.city = (playlist.city in CITIES ? playlist.city : "melbourne") as CityId;
-    this.market = CITIES[this.city].countryCode;
+    this.city = knownCity(playlist.city).id;
+    this.market = knownCity(this.city).countryCode;
   }
 
   get area() {
-    return CITIES[this.city].bbox;
+    return knownCity(this.city).bbox;
   }
 
   /** The usual pitches by name (D4); empty means the city crowd. */

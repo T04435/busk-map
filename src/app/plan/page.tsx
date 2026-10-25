@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/honeycomb/page-header";
 import { PlanAlert } from "@/components/honeycomb/plan-alert";
 import { parsePlanParams } from "@/lib/plan-url";
 import { serverLocalNow } from "@/server/clock";
-import { CITIES } from "@/server/cities";
+import { MELBOURNE } from "@/server/cities";
 import { longUrlTarget } from "@/server/plans";
 import { adapterContextFor, clientIp, pageFaultsFor, renderFaultRequested } from "@/server/request";
 
@@ -37,7 +37,7 @@ async function PlanContent({ searchParams }: Pick<PageProps<"/plan">, "searchPar
   const params = await searchParams;
   // Plans depend on today's date and live data: always render at request time.
   await connection();
-  const parsed = parsePlanParams(params, serverLocalNow(CITIES.melbourne.timeZone));
+  const parsed = parsePlanParams(params, serverLocalNow(MELBOURNE.timeZone));
   if (!parsed.ok) {
     return (
       <div className="space-y-6">

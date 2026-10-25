@@ -2,7 +2,7 @@ import { QLOO_BUDGET_MESSAGE, qlooBudgetSpent } from "@/server/adapters/qloo/bud
 import { rejectBots } from "@/server/bot";
 import { weekRequestSchema } from "@/lib/week-schema";
 import { buildWeekPlan, WeekQlooUnavailableError } from "@/server/agent/week";
-import { CITIES } from "@/server/cities";
+import { knownCity } from "@/server/cities";
 import { testSwitches } from "@/server/env";
 import { log } from "@/server/log";
 import { planLimiter } from "@/server/rate-limit";
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     const plan = await buildWeekPlan(
       parsed.data,
       adapterContextFor(request.headers.get(FAULTS_HEADER)),
-      serverToday(CITIES[parsed.data.city].timeZone),
+      serverToday(knownCity(parsed.data.city).timeZone),
       true,
       serverNow(),
     );

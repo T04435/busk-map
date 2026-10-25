@@ -10,7 +10,7 @@ import { planKey, planStore } from "@/server/agent/plan-store";
 import { engineContext, presetIdFor } from "@/server/agent/preload";
 import { AgentRun, hasSharedRun, RUN_TTL_MS, sharedRun, sharedRunWithStore } from "@/server/agent/runs";
 import { agentRecord, comparisonStore, recordAgentRun } from "@/server/comparisons/store";
-import { CITIES } from "@/server/cities";
+import { cityOf } from "@/server/cities";
 import { testSwitches } from "@/server/env";
 import { log } from "@/server/log";
 import { freshRunsAllowed, saveRunSnapshot } from "@/server/plans";
@@ -172,7 +172,7 @@ export async function POST(request: Request) {
         if (event.type === "plan") void recordBuskForRepertoire(request.headers.get("cookie"), parsed.data, event.plan, storeKey, { example: Boolean(presetId) });
       };
       if (joined) {
-        const at = new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", timeZone: CITIES[parsed.data.city].timeZone }).format(run.startedAt);
+        const at = new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", timeZone: cityOf(parsed.data).timeZone }).format(run.startedAt);
         send(
           run.done
             ? { type: "status", message: `Researched at ${at}. Showing that research: nothing new was asked.`, replay: true }

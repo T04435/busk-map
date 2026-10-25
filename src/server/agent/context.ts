@@ -13,8 +13,7 @@ import { findReleaseYears } from "@/server/adapters/repertoire";
 import { getSongs } from "@/server/adapters/songs";
 import { boundSongs, PLAN_SONGS_CONSIDERED } from "@/lib/plan-songs-bound";
 import { getWeather } from "@/server/adapters/weather";
-import { CITIES } from "@/server/cities";
-import { PUBLIC_SPOTS, USUAL_HOTSPOTS } from "@/server/data/spots";
+import { cityLevels, cityOf, hotspotsFor, pitchesFor, rulesFor, spotifyMarket, type City } from "@/server/cities";
 import {
   activityEstimate,
   buildCandidatesWithFunnel,
@@ -44,6 +43,9 @@ import {
   type Weights,
 } from "@/server/scoring";
 import { serverLocalNow, serverToday } from "@/server/clock";
+import type { CandidateInputs } from "@/server/scoring/candidates";
+
+type ScoreLegality = Pick<CandidateInputs, "sites" | "zones" | "hotspots" | "permit" | "generalRules">;
 import { LEARN_MAX_PER_ARTIST, SUGGEST_ARTISTS_PER_PITCH, SUGGEST_CATALOGUE_LOOKUPS, SUGGEST_RELATED_TAKE } from "@/server/playlist/config";
 import { fillAsRepertoire, mergeFillArtists, pickFillSongs, rankFillArtists, type FillArtist } from "@/server/scoring/fill";
 import { catalogueOf, displayKey, spotifyDisplay, type SpotifyDisplay } from "@/server/songs/catalogue";
@@ -113,7 +115,7 @@ export class PlanContext {
   readonly songs$: PlanRequest["performer"]["songs"];
   readonly adapters: AdapterContext;
   readonly today: string;
-  readonly city;
+  readonly city: City;
   readonly weights: Weights;
   private readonly memo = new Map<string, Promise<unknown>>();
   private readonly statuses = new Map<string, Status>();
@@ -127,7 +129,7 @@ export class PlanContext {
     this.request = request;
     this.songs$ = boundSongs(request.performer.songs, PLAN_SONGS_CONSIDERED);
     this.adapters = adapters;
-    this.city = CITIES[request.city];
+    this.city = cityOf(request);
     this.today = today ?? serverToday(this.city.timeZone);
     this.nowHour = nowHour ?? serverLocalNow(this.city.timeZone).hour;
     this.weights = normalizeWeights(request.weights);
@@ -385,8 +387,20 @@ export class PlanContext {
     return this.track("crowd", () => qloo.crowdProfile(ids, this.adapters, tags));
   }
 
+  /** The council's busking layers. A city with no council data gets none, and no "pitches" source at all (cityLevels().rules). */
   pitchData() {
-    return this.track("pitches", () => getPitches(this.request.city, this.adapters));
+    if (rulesFor(this.city).level !== "local") return this.once("pitches:none", async () => ({ sites: [], zones: [] }) as Awaited<ReturnType<typeof getPitches>>["data"]);
+    return this.track("pitches", () => getPitches(this.city, this.adapters));
+  }
+
+  /** What decides whether a point can be a pitch here: the council's layers (Melbourne), the hotspots, the permit, the rules line. */
+  legality(pitchData: { sites: ScoreLegality["sites"]; zones: ScoreLegality["zones"] }): ScoreLegality {
+    return { sites: pitchData.sites, zones: pitchData.zones, hotspots: hotspotsFor(this.city), permit: this.request.permit, generalRules: rulesFor(this.city).general };
+  }
+
+  /** How much each signal knows about this city (lib/city.ts). */
+  get levels() {
+    return cityLevels(this.city);
   }
 
   events() {
@@ -395,9 +409,9 @@ export class PlanContext {
       const { date } = this.request.slot;
       const from = zonedHourToUtc(date, ANY_TIME_DAY.startHour - EVENTS_LOOKBACK_HOURS, this.city.timeZone).toISOString();
       const to = zonedHourToUtc(date, ANY_TIME_DAY.endHour + 1, this.city.timeZone).toISOString();
-      return this.track("events", () => getEventsBetween(this.request.city, from, to, this.adapters));
+      return this.track("events", () => getEventsBetween(this.city, from, to, this.adapters));
     }
-    return this.track("events", () => getEvents(this.request.city, this.fixedSlot(), this.adapters));
+    return this.track("events", () => getEvents(this.city, this.fixedSlot(), this.adapters));
   }
 
   /**
@@ -434,7 +448,7 @@ export class PlanContext {
   weather() {
     // Any time: the day's hours, 10 am to 10 pm.
     const slot = isAnyTime(this.request.slot) ? { date: this.request.slot.date, ...ANY_TIME_DAY } : this.fixedSlot();
-    return this.track("weather", () => getWeather(this.request.city, slot, this.adapters, this.today));
+    return this.track("weather", () => getWeather(this.city, slot, this.adapters, this.today));
   }
 
   /** Last.fm top tracks for the repertoire's artists and the rising artists. */
@@ -450,18 +464,23 @@ export class PlanContext {
   candidates() {
     return this.once("candidates", async () => {
       const [pitchData, cells] = await Promise.all([this.pitchData(), this.tasteCells()]);
+      const spots = pitchesFor(this.city);
       if (this.statuses.get("pitches")?.mode === "fallback") {
         // Without the council's layers nothing can be checked against the rules: recommend nothing.
         this.notes.push("The council's busking rules are unavailable right now, so Busk Map can't check which spots are allowed. Try again later.");
         return { candidates: [], funnel: null };
       }
+      // No walkable spots for this city (yet: OSM pitches, V2 2.3): the strongest taste cells stand as pitches, named after a Qloo place.
+      const places = spots.length === 0 && cells.length > 0 ? await this.places() : [];
       return buildCandidatesWithFunnel({
         sites: pitchData.sites,
         zones: pitchData.zones,
-        spots: PUBLIC_SPOTS,
+        spots,
         cells,
-        hotspots: USUAL_HOTSPOTS,
+        hotspots: hotspotsFor(this.city),
         permit: this.request.permit,
+        generalRules: rulesFor(this.city).general,
+        cellNames: places,
       });
     });
   }
@@ -479,7 +498,8 @@ export class PlanContext {
    * call: the first HOTSPOT_CROWD_TAKE are the contrast's group, all of them are the local scene's step 1 (genre over-index).
    */
   hotspotCrowd() {
-    const [hotspot] = USUAL_HOTSPOTS;
+    // A city with no known hotspots reads the crowd at its centre.
+    const hotspot = hotspotsFor(this.city)[0] ?? { name: `central ${this.city.name}`, ...this.city.center };
     const d = 0.004;
     const box = { south: hotspot.lat - d, north: hotspot.lat + d, west: hotspot.lon - d, east: hotspot.lon + d };
     return this.track("hotspotCrowd", () => qloo.localArtists([], box, USUAL_CROWD_TAKE, this.adapters)).then(({ artists }) => ({ hotspot: hotspot.name, artists }));
@@ -644,7 +664,7 @@ export class PlanContext {
   releaseYears() {
     const songs = this.songs$.filter((s) => !s.own);
     if (songs.length === 0) return Promise.resolve({} as Record<string, number>);
-    return this.track("years", () => findReleaseYears(songs, this.city.countryCode, this.adapters));
+    return this.track("years", () => findReleaseYears(songs, spotifyMarket(this.city), this.adapters));
   }
 
   /** Suggested songs asked for (docs/plan-inputs-architecture.md D4); 0 when the act asked for none. */
@@ -690,7 +710,7 @@ export class PlanContext {
       if (this.catalogueLookups >= SUGGEST_CATALOGUE_LOOKUPS) return Promise.resolve(null);
       this.catalogueLookups++;
     }
-    return this.once(key, () => catalogueOf(artist, this.city.countryCode, this.adapters));
+    return this.once(key, () => catalogueOf(artist, spotifyMarket(this.city), this.adapters));
   }
 
   /**
@@ -738,7 +758,7 @@ export class PlanContext {
       });
       // Spotify's id, link, cover, length and year join the picked songs here, for display and era fit only: build_setlist
       // shows the model the title, artist and Last.fm-based words, never these fields (tools.ts:setlistForModel).
-      const display = picks.length ? await this.once(`display:${picks.map((p) => displayKey(p.track.artist, p.track.title)).join("~")}`, () => spotifyDisplay(picks.map((p) => p.track), this.city.countryCode, this.adapters).catch(() => new Map<string, SpotifyDisplay>())) : new Map<string, SpotifyDisplay>();
+      const display = picks.length ? await this.once(`display:${picks.map((p) => displayKey(p.track.artist, p.track.title)).join("~")}`, () => spotifyDisplay(picks.map((p) => p.track), spotifyMarket(this.city), this.adapters).catch(() => new Map<string, SpotifyDisplay>())) : new Map<string, SpotifyDisplay>();
       for (const p of picks) {
         const d = display.get(displayKey(p.track.artist, p.track.title));
         if (d) Object.assign(p, { source: "spotify" as const, track: { ...p.track, spotifyTrackId: d.spotifyTrackId, url: d.url, image: d.image, year: d.year, durationMs: d.durationMs } });

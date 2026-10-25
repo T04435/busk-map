@@ -531,7 +531,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
           )}
 
           {plan.pitches.length === 0 ? (
-            <NoPitchPanel permit={request.permit} when={nightWord(request.slot)} againHref={shareId ? `/busks?again=${shareId}` : "/busks"} rulesHref={plan.rulesUrl} />
+            <NoPitchPanel permit={request.permit} when={nightWord(request.slot)} againHref={shareId ? `/busks?again=${shareId}` : "/busks"} rulesHref={plan.rulesUrl ?? undefined} />
           ) : (
             <>
               {wide && plan.agent && !noTaste && <AgentVsEngine agent={plan.agent} model={model} level={2} />}

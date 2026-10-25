@@ -43,7 +43,7 @@ import { findArtists, getArtistCatalogue, getArtistProfile } from "@/server/adap
 import { qlooBudgetSpent } from "@/server/adapters/qloo/budget";
 import { spotifyLimitedUntil } from "@/server/adapters/repertoire/pacer";
 import { getSongs } from "@/server/adapters/songs";
-import { CITIES } from "@/server/cities";
+import { knownCity, MELBOURNE } from "@/server/cities";
 import { serverToday } from "@/server/clock";
 import { log } from "@/server/log";
 import { LearnContext } from "@/server/learn/context";
@@ -383,7 +383,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
       });
   }, timeouts.runMs);
   try {
-    const today = serverToday(CITIES.melbourne.timeZone);
+    const today = serverToday(MELBOURNE.timeZone);
     await withQlooUsage(async (usage) => {
       usageNow = usage;
       const fromQloo = <T>(result: { mode: string; data: T }, what: string): T => {
@@ -433,7 +433,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         // 2. Your songs, straight into Songs you can sing.
         await step("songs", { artist: profile.name }, async (via): Promise<SongsOutput> => {
           via("spotify");
-          const market = CITIES[(playlist.city in CITIES ? playlist.city : "melbourne") as keyof typeof CITIES].countryCode;
+          const market = knownCity(playlist.city).countryCode;
           const cat = await getArtistCatalogue(args.spotifyId, market, adapters);
           let source: SongsOutput["source"] = "spotify";
           // Spotify answered nothing: rate-limited (say so plainly) or just down. The songs then come from Last.fm.
@@ -576,7 +576,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           // Last.fm knows artists like the act but Qloo confirmed none of them by name: each is looked up on Spotify (an exact name
           // gives its id and photo), and a Spotify id is Qloo's certain lookup. Any Qloo knows that way are the signal, as above;
           // otherwise they are still who the act sounds like (step 4 lists them and they are saved) and the act's genres are the signal.
-          const market = CITIES[(playlist.city in CITIES ? playlist.city : "melbourne") as keyof typeof CITIES].countryCode;
+          const market = knownCity(playlist.city).countryCode;
           const similar: SoundsLike[] = [];
           for (const name of hive.similar.slice(0, RESEARCH_SOUNDS_LIKE_SAVED)) {
             const res = await findArtists(name, market, adapters).catch(() => null);

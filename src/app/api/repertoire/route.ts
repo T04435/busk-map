@@ -2,7 +2,7 @@ import { rejectBots } from "@/server/bot";
 import { z } from "zod";
 import { findArtists, findReleaseCounts, findTracks, getArtistCatalogue, MAX_RELEASE_IDS } from "@/server/adapters/repertoire";
 import { getListeners, MAX_LISTENER_ARTISTS } from "@/server/adapters/songs";
-import { CITIES } from "@/server/cities";
+import { MELBOURNE } from "@/server/cities";
 import { testSwitches } from "@/server/env";
 import { repertoireLimiter } from "@/server/rate-limit";
 import { adapterContextFor, clientIp, FAULTS_HEADER } from "@/server/request";
@@ -71,7 +71,7 @@ export async function GET(request: Request) {
     return json({ error: { code: "invalid_request", message: "Invalid search." } }, { status: 400 });
   }
   const context = adapterContextFor(request.headers.get(FAULTS_HEADER));
-  const market = CITIES.melbourne.countryCode;
+  const market = MELBOURNE.countryCode;
   const query = parsed.data;
   switch (query.type) {
     case "tracks": {

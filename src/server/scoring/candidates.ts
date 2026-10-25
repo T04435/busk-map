@@ -32,6 +32,10 @@ export const SNAP_RADIUS_M = 550;
 export const FINE_SNAP_RADIUS_M = 250;
 export const MAX_SPOTS_PER_CELL = 3;
 export const USUAL_SPOT_RADIUS_M = 180;
+/** A cell-centre pitch takes the name of a Qloo place within this distance. */
+export const CELL_NAME_RADIUS_M = 400;
+/** Melbourne's general-permit rules line (the default). */
+export const GENERAL_RULES = "General busking permit: most CBD footpaths and public spaces, subject to clearances.";
 
 const RESTRICTED = new Set(["no-busking", "private", "pavement-art", "premium", "unknown"]);
 
@@ -98,6 +102,13 @@ export type CandidateInputs = {
   cells: HeatCellInput[];
   hotspots: HotspotInput[];
   permit: PerformerPermit;
+  /** The rules line for a pitch that isn't a council site (the city's, server/cities.ts rulesFor). Melbourne's by default. */
+  generalRules?: string;
+  /**
+   * A city with no walkable spots (spots empty, no hotspots): the top taste cells themselves become the candidates, each named
+   * after the nearest of these places (Qloo's busy places). The seam OSM pitches (V2 2.3) replace by filling `spots`.
+   */
+  cellNames?: (LatLon & { name: string })[];
 };
 
 /** How the data narrowed down to the candidates, for the "how this plan was found" line. */
@@ -131,7 +142,7 @@ export function ruledOut(point: LatLon, sites: SiteInput[], zones: ZoneInput[], 
  */
 export function candidateAt(
   point: LatLon & { id: string; name: string },
-  { sites, zones, hotspots, permit }: Pick<CandidateInputs, "sites" | "zones" | "hotspots" | "permit">,
+  { sites, zones, hotspots, permit, generalRules = GENERAL_RULES }: Pick<CandidateInputs, "sites" | "zones" | "hotspots" | "permit" | "generalRules">,
 ): Candidate | null {
   if (ruledOut(point, sites, zones, permit)) return null;
   const unamplified = nearLines(point, zones, "unamplified", UNAMPLIFIED_LINE_BUFFER_M);
@@ -144,7 +155,7 @@ export function candidateAt(
     origin: "fallback",
     cell: null,
     permit: "general",
-    rules: "General busking permit: most CBD footpaths and public spaces, subject to clearances.",
+    rules: generalRules,
     rulesUrl: null,
     amplification: unamplified ? "unamplified-zone" : "allowed",
     cautions: cautionsFor(null, permit, unamplified),
@@ -152,7 +163,7 @@ export function candidateAt(
   };
 }
 
-export function buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots, permit }: CandidateInputs): { candidates: Candidate[]; funnel: CandidateFunnel } {
+export function buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots, permit, generalRules = GENERAL_RULES, cellNames }: CandidateInputs): { candidates: Candidate[]; funnel: CandidateFunnel } {
   let considered = 0;
   let excluded = 0;
   const blocked = (point: LatLon) => ruledOut(point, sites, zones, permit);
@@ -173,7 +184,7 @@ export function buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots
       usualSpot: usualSpotAt(candidate, hotspots),
     });
   };
-  const general = { permit: "general" as const, rules: "General busking permit: most CBD footpaths and public spaces, subject to clearances.", rulesUrl: null };
+  const general = { permit: "general" as const, rules: generalRules, rulesUrl: null };
 
   // Council-designated sites open to this permit: official, so they win spacing ties.
   for (const site of sites) {
@@ -206,6 +217,19 @@ export function buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots
   }
 
   const top = topCells(cells);
+  if (spots.length === 0 && hotspots.length === 0 && cellNames) {
+    // No walkable spots for this city: each top cell's centre is a pitch.
+    for (const cell of top) {
+      const ref = { lat: cell.lat, lon: cell.lon, affinity: cell.affinity, rank: cell.rank };
+      const near = cellNames
+        .map((place) => ({ place, d: distanceM(cell, place) }))
+        .filter((x) => x.d <= CELL_NAME_RADIUS_M)
+        .sort((a, b) => a.d - b.d)[0]?.place;
+      const id = `cell:${cell.geohash ?? `${cell.lat.toFixed(4)},${cell.lon.toFixed(4)}`}`;
+      add({ id, name: near ? `Near ${near.name}` : `Taste area ${cell.rank}`, lat: cell.lat, lon: cell.lon, kind: "public-space", origin: "taste", cell: ref, ...general }, null);
+    }
+    return funnel(top.length);
+  }
   const snapRadius = isFineHeatmap(cells) ? FINE_SNAP_RADIUS_M : SNAP_RADIUS_M;
   for (const cell of top) {
     const ref = { lat: cell.lat, lon: cell.lon, affinity: cell.affinity, rank: cell.rank };

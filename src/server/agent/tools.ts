@@ -8,7 +8,6 @@ import { nameKey } from "@/lib/text";
 import * as qloo from "@/server/adapters/qloo";
 import { activityEstimate, relativeActivity, candidateAt, openDuring, pickTopPitches, scoreWindows, type Candidate, type KnownPlace, type ScoredPitch } from "@/server/scoring";
 import { reasonWithoutYear, type SetlistEntry } from "@/server/scoring/setlist";
-import { USUAL_HOTSPOTS } from "@/server/data/spots";
 import type { PlanContext } from "./context";
 import { NumberBag } from "./number-bag";
 
@@ -200,7 +199,7 @@ export function createTools(ctx: PlanContext, state: AgentState) {
 function buildTools(ctx: PlanContext, state: AgentState) {
   const area = ctx.city.bbox;
   let placesCache: Promise<KnownPlace[]> | null = null;
-  const places = () => (placesCache ??= ctx.pitchData().then((pitchData) => knownPlaces(pitchData.sites)));
+  const places = () => (placesCache ??= ctx.pitchData().then((pitchData) => knownPlaces(pitchData.sites, ctx.city)));
   const knownPitches = async () => [...(await ctx.ranked()), ...state.pool.values()];
   const where = async (w: Where): Promise<Resolved> => resolveWhere(w, { area, pitches: await knownPitches(), places: await places() });
   const ids = () => ctx.entityIds();
@@ -478,7 +477,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         const id = `agent:${nameKey(point.label).replaceAll(" ", "-").slice(0, 40) || `${r4(point.lat)},${r4(point.lon)}`}`;
         const candidate = candidateAt(
           { id, name: point.label.replace(/^near /, "Near "), lat: point.lat, lon: point.lon },
-          { sites: pitchData.sites, zones: pitchData.zones, hotspots: USUAL_HOTSPOTS, permit: ctx.request.permit },
+          ctx.legality(pitchData),
         );
         if (candidate) candidate.origin = "agent";
         if (!candidate) {

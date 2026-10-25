@@ -1,3 +1,4 @@
+import { MELBOURNE } from "@/lib/city";
 import { describe, expect, it, vi } from "vitest";
 import { weekPlanSchema, weekRequestSchema } from "@/lib/week-schema";
 import { EXAMPLES } from "@/lib/examples";
@@ -136,14 +137,14 @@ describe("week adapters (live, mocked fetch)", () => {
         json({ hourly: { time: hours, temperature_2m: hours.map(() => 20), precipitation_probability: hours.map(() => 0), precipitation: hours.map(() => 0), wind_speed_10m: hours.map(() => 5), weather_code: hours.map(() => 1) } }),
       ),
     ]);
-    const result = await getWeatherWeek("melbourne", "2026-10-24", 7, LIVE, "2026-10-15");
+    const result = await getWeatherWeek(MELBOURNE, "2026-10-24", 7, LIVE, "2026-10-15");
     expect(calls[0].url.searchParams.get("end_date")).toBe("2026-10-30");
     expect(Object.keys(result.data)).toEqual(["2026-10-29", "2026-10-30"]);
     expect(result.data["2026-10-30"]).toHaveLength(24);
 
-    const beyond = await getWeatherWeek("melbourne", "2026-11-20", 7, LIVE, "2026-10-15");
+    const beyond = await getWeatherWeek(MELBOURNE, "2026-11-20", 7, LIVE, "2026-10-15");
     expect(beyond).toMatchObject({ mode: "fallback", reason: "not_found", data: {} });
-    expect(Object.keys((await getWeatherWeek("melbourne", "2026-10-15", 7, OFFLINE, "2026-10-15")).data)).toHaveLength(7);
+    expect(Object.keys((await getWeatherWeek(MELBOURNE, "2026-10-15", 7, OFFLINE, "2026-10-15")).data)).toHaveLength(7);
   });
 
   it("searches events across the whole week with the city's single daily request", async () => {
@@ -154,7 +155,7 @@ describe("week adapters (live, mocked fetch)", () => {
     const { getEventsBetween } = await import("@/server/adapters/events");
     const { json, route } = await import("../../helpers");
     const { calls } = mockFetch([route(() => true, () => json({ page: { totalElements: 0 } }))]);
-    const result = await getEventsBetween("melbourne", "2026-10-14T13:00:00.000Z", "2026-10-21T13:00:00.000Z", LIVE);
+    const result = await getEventsBetween(MELBOURNE, "2026-10-14T13:00:00.000Z", "2026-10-21T13:00:00.000Z", LIVE);
     expect(result).toMatchObject({ mode: "live", data: [] });
     expect(calls).toHaveLength(1);
     // Yesterday (UTC) through the next 8 days covers the whole week being planned.

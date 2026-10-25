@@ -10,7 +10,7 @@ import { getEventsBetween } from "@/server/adapters/events";
 import { getPitches } from "@/server/adapters/pitches";
 import * as qloo from "@/server/adapters/qloo";
 import { getWeatherWeek } from "@/server/adapters/weather";
-import { CITIES } from "@/server/cities";
+import { knownCity } from "@/server/cities";
 import { PUBLIC_SPOTS, USUAL_HOTSPOTS } from "@/server/data/spots";
 import { providerStatus } from "@/server/env";
 import { log } from "@/server/log";
@@ -104,7 +104,7 @@ export async function buildWeekPlan(
   explain: boolean,
   now: Date = new Date(),
 ): Promise<WeekPlan> {
-  const city = CITIES[request.city];
+  const city = knownCity(request.city);
   const statuses = new Map<string, Status>();
   const notes: string[] = [];
   const track = <T>(result: AdapterResult<T>): T => {
@@ -130,9 +130,9 @@ export async function buildWeekPlan(
   const [cells, places, pitchData, events, weather] = await Promise.all([
     ids.length ? qloo.tasteMap(ids, city.bbox, adapters).then(track) : Promise.resolve([]),
     ids.length ? qloo.busyPlaces(ids, city.center, PLACES_RADIUS_M, null, adapters).then(track) : Promise.resolve([]),
-    getPitches(request.city, adapters).then(track),
-    getEventsBetween(request.city, weekStart.toISOString(), weekEnd.toISOString(), adapters).then(track),
-    getWeatherWeek(request.city, request.startDate, WEEK_DAYS, adapters, today).then(track),
+    getPitches(city, adapters).then(track),
+    getEventsBetween(city, weekStart.toISOString(), weekEnd.toISOString(), adapters).then(track),
+    getWeatherWeek(city, request.startDate, WEEK_DAYS, adapters, today).then(track),
   ]);
   if (statuses.get("qloo")?.mode === "fallback") throw new WeekQlooUnavailableError("Qloo is unavailable");
   if (cells.length === 0) notes.push("Qloo had no taste data for this area, so taste was left out of the scores.");

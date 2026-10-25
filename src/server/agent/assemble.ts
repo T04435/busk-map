@@ -11,6 +11,7 @@ import * as qloo from "@/server/adapters/qloo";
 import { agentChanges } from "@/lib/agent-vs-engine";
 import { fromEngine, fromToolOutputs, type ToolResult } from "@/lib/research-totals";
 import type { PlanContext } from "./context";
+import { cityLevels, MELBOURNE, rulesFor } from "@/server/cities";
 
 /** What the model contributes: words only. Numbers and places come from the engine. */
 export type AiText = {
@@ -19,10 +20,16 @@ export type AiText = {
   notes: string[];
 };
 
-const TIME_FORMAT = new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Australia/Melbourne" });
+const clocks = new Map<string, Intl.DateTimeFormat>();
+/** "9:45 pm" in the city's time zone. */
+function clockTime(iso: string, timeZone: string): string {
+  let format = clocks.get(timeZone);
+  if (!format) clocks.set(timeZone, (format = new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", hour12: true, timeZone })));
+  return format.format(new Date(iso));
+}
 
 /** A plain, factual "why" built only from the evidence. Used when the model is unavailable. */
-export function templateWhy(pitch: ScoredPitch, weekday: string, startHour: number, relative: number | null = null): string {
+export function templateWhy(pitch: ScoredPitch, weekday: string, startHour: number, relative: number | null = null, timeZone = MELBOURNE.timeZone): string {
   const parts: string[] = [];
   if (pitch.factors.taste !== null) {
     const area = pitch.cell ? (pitch.cell.rank === 1 ? "your strongest area on Qloo's taste map" : `your no. ${pitch.cell.rank} area on Qloo's taste map`) : "this part of the city";
@@ -38,7 +45,7 @@ export function templateWhy(pitch: ScoredPitch, weekday: string, startHour: numb
   }
   const event = pitch.evidence.events[0];
   if (event) {
-    const time = TIME_FORMAT.format(new Date(event.moment === "leaving" ? event.end : event.start));
+    const time = clockTime(event.moment === "leaving" ? event.end : event.start, timeZone);
     const match = event.tasteMatch ? ` Qloo rates ${event.tasteMatch.artist}'s fans a ${strengthPhrase(event.tasteMatch.affinity)} match for your taste.` : "";
     parts.push(`${event.name} crowd ${event.moment === "leaving" ? "leaves" : "arrives"} around ${time}${event.endEstimated && event.moment === "leaving" ? " (estimated)" : ""}.${match}`);
   }
@@ -52,7 +59,7 @@ export const windowLabel = (w: { startHour: number; endHour: number }) => `${for
  * Why this pitch's best window is the best one, from the window's evidence only (no model):
  * "Best 6 pm–9 pm: busy, with popular places open nearby (estimate), the Forum crowd leaving at 9:45 pm, dry".
  */
-export function windowWhy(pitch: ScoredPitch, weather: { hour: number; precipitationProbability: number | null }[] | null, relative: number | null = null): string {
+export function windowWhy(pitch: ScoredPitch, weather: { hour: number; precipitationProbability: number | null }[] | null, relative: number | null = null, timeZone = MELBOURNE.timeZone): string {
   const w = pitch.window;
   if (!w) return "";
   const parts: string[] = [];
@@ -60,7 +67,7 @@ export function windowWhy(pitch: ScoredPitch, weather: { hour: number; precipita
   if (activity) parts.push(activity);
   const event = pitch.evidence.events[0];
   if (event) {
-    const time = TIME_FORMAT.format(new Date(event.moment === "leaving" ? event.end : event.start));
+    const time = clockTime(event.moment === "leaving" ? event.end : event.start, timeZone);
     parts.push(`the ${event.name} crowd ${event.moment === "leaving" ? "leaving" : "arriving"} at ${time}${event.endEstimated && event.moment === "leaving" ? " (estimated)" : ""}`);
   }
   const rain = (weather ?? []).filter((h) => h.hour >= w.startHour && h.hour < w.endHour).flatMap((h) => (h.precipitationProbability === null ? [] : [h.precipitationProbability]));
@@ -81,6 +88,7 @@ function toPlanPitch(
   weather: { hour: number; precipitationProbability: number | null }[] | null,
   hourly: number[] | null = null,
   relative: number | null = null,
+  timeZone = MELBOURNE.timeZone,
 ): PlanPitch {
   return {
     window: pitch.window
@@ -89,7 +97,7 @@ function toPlanPitch(
           endHour: pitch.window.endHour,
           label: windowLabel(pitch.window),
           score: pitch.score,
-          why: windowWhy(pitch, weather, relative),
+          why: windowWhy(pitch, weather, relative, timeZone),
           runnersUp: pitch.window.runnersUp,
         }
       : null,
@@ -129,7 +137,7 @@ function toPlanPitch(
         name: e.name,
         venue: e.venue.name,
         moment: e.moment,
-        localTime: TIME_FORMAT.format(new Date(e.moment === "leaving" ? e.end : e.start)),
+        localTime: clockTime(e.moment === "leaving" ? e.end : e.start, timeZone),
         endEstimated: e.endEstimated,
         url: e.url ?? null,
         tasteMatch: e.tasteMatch ?? null,
@@ -232,7 +240,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
       const fromAi = aiWhy.get(pitch.id);
       const slotOf = context.slotFor(pitch);
       const relative = pitch.activityBasis === "none" ? null : relativeActivity(pitch.evidence.activity.level, poolLevels);
-      const why = fromAi || templateWhy(pitch, context.weekday, slotOf.startHour, relative);
+      const why = fromAi || templateWhy(pitch, context.weekday, slotOf.startHour, relative, city.timeZone);
       return toPlanPitch(
         pitch,
         why,
@@ -241,6 +249,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
         weather?.hours ?? null,
         pitch.activityBasis === "none" ? null : ((await context.activityDay(pitch))?.map((h) => round2(h.level)) ?? null),
         relative,
+        city.timeZone,
       );
     }),
   );
@@ -363,7 +372,8 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
       : null,
     resolvedArtists: artists.map((a) => ({ query: a.query, matched: a.entity?.name ?? null })),
     dataStatus: context.dataStatus(),
-    rulesUrl: city.rulesUrl,
+    rulesUrl: rulesFor(city).url,
+    cityLevels: cityLevels(city),
     qlooFailed: context.qlooFailed(),
     agent:
       usedAi && valid

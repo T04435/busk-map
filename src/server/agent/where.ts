@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { distanceM, inBBox, type BBox, type LatLon } from "@/lib/geo";
-import { PUBLIC_SPOTS, USUAL_HOTSPOTS } from "@/server/data/spots";
+import { hotspotsFor, MELBOURNE, pitchesFor, type City } from "@/server/cities";
 import { locate, type KnownPlace, type ScoredPitch } from "@/server/scoring";
 import { HOTSPOT_ALIASES } from "./compare";
 
@@ -23,12 +23,12 @@ export type Where = z.infer<typeof whereSchema>;
 
 export type Resolved = LatLon & { label: string; via: "pitch" | "place" | "coordinates"; pitchId: string | null };
 
-/** Places Busk Map knows by name: hotspots (with common names), public spots, council sites. */
-export function knownPlaces(sites: { name: string; lat: number; lon: number }[]): KnownPlace[] {
+/** Places Busk Map knows by name in a city: hotspots (with common names), public spots, council sites. */
+export function knownPlaces(sites: { name: string; lat: number; lon: number }[], city: Pick<City, "id"> = MELBOURNE): KnownPlace[] {
   const aliases = (name: string) => HOTSPOT_ALIASES.filter(([, target]) => target === name).map(([pattern]) => pattern);
   return [
-    ...USUAL_HOTSPOTS.map((h) => ({ name: h.name, lat: h.lat, lon: h.lon, aliases: aliases(h.name) })),
-    ...PUBLIC_SPOTS.map((s) => ({ name: s.name, lat: s.lat, lon: s.lon })),
+    ...hotspotsFor(city).map((h) => ({ name: h.name, lat: h.lat, lon: h.lon, aliases: aliases(h.name) })),
+    ...pitchesFor(city).map((s) => ({ name: s.name, lat: s.lat, lon: s.lon })),
     ...sites.map((s) => ({ name: s.name, lat: s.lat, lon: s.lon })),
   ];
 }

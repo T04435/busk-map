@@ -4,7 +4,7 @@ import { fromLearnOutputs } from "@/lib/learn-totals";
 import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import type { AdapterContext } from "@/server/adapters/core";
 import { withQlooUsage } from "@/server/adapters/qloo/usage";
-import { CITIES } from "@/server/cities";
+import { MELBOURNE } from "@/server/cities";
 import { log } from "@/server/log";
 import { LEARN_LIMITS, LEARN_STEPS_MAX_BYTES } from "@/server/playlist/config";
 import type { PlaylistRecord } from "@/server/playlist/store";
@@ -59,7 +59,7 @@ export async function executeLearnRun(args: {
   });
   push({ type: "status", message: PLAYLIST_COPY.learn.runStarted });
   try {
-    const today = serverToday(CITIES.melbourne.timeZone);
+    const today = serverToday(MELBOURNE.timeZone);
     const outcome = await withQlooUsage(async (usage) => {
       const ctx = new LearnContext(adapters, playlist, history, today, usage);
       const result = await runLearnAgent(

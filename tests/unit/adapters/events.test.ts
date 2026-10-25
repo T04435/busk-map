@@ -1,3 +1,4 @@
+import { MELBOURNE } from "@/lib/city";
 import { describe, expect, it, vi } from "vitest";
 import { getEvents } from "@/server/adapters/events";
 import { SYNTHETIC_RAW } from "@/server/adapters/events/fixtures/synthetic";
@@ -14,7 +15,7 @@ describe("getEvents", () => {
     const { getEvents: fresh } = await import("@/server/adapters/events");
     const { calls } = mockFetch([route((u) => u.host === "app.ticketmaster.com", () => json(SYNTHETIC_RAW))]);
 
-    const result = await fresh("melbourne", slot, LIVE);
+    const result = await fresh(MELBOURNE, slot, LIVE);
 
     expect(result.mode).toBe("live");
     const params = calls[0].url.searchParams;
@@ -39,7 +40,7 @@ describe("getEvents", () => {
     expect(result.data[1]).toMatchObject({ endEstimated: false, artists: [], venue: { name: "Venue" } });
 
     // A slot on another day gets none of these events, from the same kind of request.
-    const other = await fresh("melbourne", { date: "2026-10-20", startHour: 9, endHour: 11 }, LIVE);
+    const other = await fresh(MELBOURNE, { date: "2026-10-20", startHour: 9, endHour: 11 }, LIVE);
     expect(other.data).toEqual([]);
     vi.useRealTimers();
   });
@@ -50,7 +51,7 @@ describe("getEvents", () => {
     const { getEvents: fresh } = await import("@/server/adapters/events");
     let n = 0;
     mockFetch([route((u) => u.host === "app.ticketmaster.com", () => (n++ === 0 ? new Response("busy", { status: 503 }) : json(SYNTHETIC_RAW)))]);
-    const result = await fresh("melbourne", slot, LIVE);
+    const result = await fresh(MELBOURNE, slot, LIVE);
     expect(n).toBe(2);
     expect(result.mode).toBe("live");
   });
@@ -60,7 +61,7 @@ describe("getEvents", () => {
     vi.resetModules();
     const { getEvents: fresh } = await import("@/server/adapters/events");
     const { calls } = mockFetch([]);
-    const result = await fresh("melbourne", slot, LIVE);
+    const result = await fresh(MELBOURNE, slot, LIVE);
     expect(result).toMatchObject({ mode: "fallback", reason: "missing_key", data: [] });
     expect(calls).toHaveLength(0);
   });
@@ -70,12 +71,12 @@ describe("getEvents", () => {
     vi.resetModules();
     const { getEvents: fresh } = await import("@/server/adapters/events");
     mockFetch([route(() => true, () => json({ fault: "rate" }, 429))]);
-    const result = await fresh("melbourne", slot, LIVE);
+    const result = await fresh(MELBOURNE, slot, LIVE);
     expect(result).toMatchObject({ mode: "fallback", reason: "rate_limited", data: [] });
   });
 
   it("serves synthetic events offline", async () => {
-    const result = await getEvents("melbourne", slot, OFFLINE);
+    const result = await getEvents(MELBOURNE, slot, OFFLINE);
     expect(result.mode).toBe("synthetic");
     expect(result.data.length).toBe(5);
   });

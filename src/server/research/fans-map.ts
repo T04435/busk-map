@@ -7,7 +7,7 @@ import type { AdapterContext } from "@/server/adapters/core";
 import * as qloo from "@/server/adapters/qloo";
 import type { HeatCell } from "@/server/adapters/qloo/schema";
 import { knownPlaces, nearestName } from "@/server/agent/where";
-import { CITIES, CITY_IDS, type CityId } from "@/server/cities";
+import { KNOWN_CITIES, knownCity, type CityId } from "@/server/cities";
 
 /** The heat cells the snapshot keeps (the strongest), so the saved research stays small. */
 export const FANS_MAP_MAX_CELLS = 200;
@@ -52,7 +52,7 @@ export async function fansMapFor(args: { own: { id: string; name: string } | nul
 }
 
 /** The Busk Map city whose planning area holds a point. */
-export const buskMapCityAt = (point: { lat: number; lon: number }): CityId | null => CITY_IDS.find((id) => inBBox(point, CITIES[id].bbox)) ?? null;
+export const buskMapCityAt = (point: { lat: number; lon: number }): CityId | null => KNOWN_CITIES.find((city) => inBBox(point, city.bbox))?.id ?? null;
 
 type Named = { group: string; name: string; cityId: CityId | null };
 
@@ -61,7 +61,7 @@ function nameCell(c: HeatCell, known: ReturnType<typeof knownPlaces>): Named | n
   const { place, km } = nearestWorldPlace(c);
   if (km > FANS_MAP_WORLD_RADIUS_KM) return null;
   const cityId = buskMapCityAt(c);
-  const name = cityId ? (nearestName(c, known, FANS_MAP_NAME_RADIUS_M) ?? CITIES[cityId].name) : worldPlaceLabel(place);
+  const name = cityId ? (nearestName(c, known, FANS_MAP_NAME_RADIUS_M) ?? knownCity(cityId).name) : worldPlaceLabel(place);
   return { group: `${place.name}|${place.country}`, name, cityId };
 }
 

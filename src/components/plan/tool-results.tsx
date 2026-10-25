@@ -270,7 +270,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
       // Before the plan exists the strongest cells stand in as pins: the top 3 numbered, the rest small dots.
       const pins: MiniPin[] = ctx.pins?.length
         ? ctx.pins
-        : strongest.map((c, i) => ({ id: `cell-${i}`, name: str(c.near) ?? "A block without a name", lat: num(c.lat) as number, lon: num(c.lon) as number, rank: i + 1 }));
+        : strongest.map((c, i) => ({ id: `cell-${i}`, name: str(c.name) ?? str(c.near) ?? `Taste area ${i + 1}`, lat: num(c.lat) as number, lon: num(c.lon) as number, rank: i + 1 }));
       return <MiniTasteMap cells={strongest} pins={pins} />;
     },
   },

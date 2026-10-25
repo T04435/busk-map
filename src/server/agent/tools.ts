@@ -125,6 +125,19 @@ export class AgentState {
   readonly calls: string[] = [];
 }
 
+/**
+ * A taste cell's name for outputs: the nearest known place; else the name of the pitch the engine stood on that cell (its
+ * "Near …" or "Taste area N", so the step reads like the plan); else "Taste area N" by its rank in this result.
+ */
+export function cellName(cell: LatLon, rank: number, known: KnownPlace[], pitches: readonly { name: string; lat: number; lon: number; origin?: string }[]): string {
+  const named = nearestName(cell, known);
+  if (named) return named;
+  const pitch = pitches.filter((p) => p.origin === "taste" && distanceM(p, cell) <= CELL_PITCH_MATCH_M).sort((a, b) => distanceM(a, cell) - distanceM(b, cell))[0];
+  return pitch?.name ?? `Taste area ${rank}`;
+}
+/** How close a taste-cell pitch must stand to a cell to lend it its name. */
+const CELL_PITCH_MATCH_M = 60;
+
 /** A point, labelled, for outputs. */
 const at = (r: Resolved) => ({ label: r.label, lat: r4(r.lat), lon: r4(r.lon), ...(r.pitchId ? { pitchId: r.pitchId } : {}) });
 
@@ -275,11 +288,13 @@ function buildTools(ctx: PlanContext, state: AgentState) {
                 qloo.tasteMap(signalIds, box, ctx.adapters, undefined, tags),
               );
         const known = await places();
+        const pitches = (await ctx.candidates()).candidates;
         const max = Math.max(0, ...cells.map((c) => c.affinity));
         const top = [...cells].sort((a, b) => b.affinity - a.affinity).slice(0, 8);
+        const names = top.map((c, i) => cellName(c, i + 1, known, pitches));
         return seen({
           summary: cells.length
-            ? `${cells.length} cells for ${all ? "all your artists" : signalNames.join(", ")}${zoom ? ` around ${zoom.label}` : ""}; strongest near ${nearestName(top[0], known) ?? "an unnamed block"}`
+            ? `${cells.length} cells for ${all ? "all your artists" : signalNames.join(", ")}${zoom ? ` around ${zoom.label}` : ""}; strongest: ${names[0]}`
             : "No taste data for that area",
           signals: signalNames,
           area: zoom ? { around: zoom.label, radiusM: snapRadius(radiusM, 800) } : "planning area",
@@ -287,6 +302,8 @@ function buildTools(ctx: PlanContext, state: AgentState) {
           strongest: top.map((c, i) => ({
             rank: i + 1,
             near: nearestName(c, known),
+            // Additive: what the cell is called on the page (a known place, the pitch on it, or "Taste area N"), never "unnamed".
+            name: names[i],
             lat: r4(c.lat),
             lon: r4(c.lon),
             affinity: max > 0 ? r2(c.affinity / max) : 0,

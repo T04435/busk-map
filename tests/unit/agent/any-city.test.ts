@@ -59,6 +59,36 @@ describe("a plan in Tokyo (offline)", () => {
     expect(plan.dataStatus).toContainEqual({ adapter: "osm", source: "osm", mode: "fallback", reason: "fault_injected" });
   });
 
+  it("names every taste cell in the taste map step like the pitches (never an unnamed block) when OpenStreetMap is down", async () => {
+    vi.resetModules();
+    mockFetch([]);
+    const { PlanContext } = await import("@/server/agent/context");
+    const { createTools, AgentState, cellName } = await import("@/server/agent/tools");
+    const request = planRequestSchema.parse({ ...requestFieldsOf(TOKYO), slot, performer: EXAMPLES[0].performer });
+    const ctx = new PlanContext(request, { offline: true, faults: ["osm"] }, "2026-10-15");
+    const tools = createTools(ctx, new AgentState());
+    const out = (await (tools.taste_map.execute as (i: unknown, o: unknown) => Promise<unknown>)({}, { toolCallId: "t", messages: [] })) as {
+      summary: string;
+      strongest: { rank: number; near: string | null; name: string }[];
+    };
+    expect(out.strongest.length).toBeGreaterThan(0);
+    const pitchNames = new Set((await ctx.candidates()).candidates.map((c) => c.name));
+    for (const cell of out.strongest) {
+      expect(cell.name).toMatch(/^(Near |Taste area )/);
+      // A cell the engine stood a pitch on carries that pitch's name; any other is "Taste area N" by its rank here.
+      if (!pitchNames.has(cell.name)) expect(cell.name).toBe(`Taste area ${cell.rank}`);
+    }
+    expect(out.strongest.some((c) => pitchNames.has(c.name))).toBe(true);
+    expect(out.summary).toContain(`strongest: ${out.strongest[0].name}`);
+    expect(JSON.stringify(out)).not.toMatch(/unnamed|without a name/i);
+
+    // The rule itself: a known place first, then the pitch on the cell, then the rank.
+    const cell = { lat: 35.68, lon: 139.69 };
+    expect(cellName(cell, 4, [{ name: "Shibuya Crossing", lat: 35.6801, lon: 139.6901 }], [])).toBe("Shibuya Crossing");
+    expect(cellName(cell, 4, [], [{ name: "Near Hachiko", lat: 35.6802, lon: 139.69, origin: "taste" }])).toBe("Near Hachiko");
+    expect(cellName(cell, 4, [], [{ name: "Far away", lat: 35.69, lon: 139.69, origin: "taste" }])).toBe("Taste area 4");
+  });
+
   it("keeps a Melbourne plan on Melbourne's own data", async () => {
     const { PlanContext, runPlanAgent } = await load();
     const request = planRequestSchema.parse({ city: "melbourne", slot, performer: EXAMPLES[0].performer });

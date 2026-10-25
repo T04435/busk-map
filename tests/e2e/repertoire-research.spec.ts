@@ -448,11 +448,15 @@ test.describe("Repertoire research (offline)", () => {
     for (const name of ["Reggaeton", "Dembow", "Cuban Urban"]) await expect(genres.getByRole("button", { name, exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(genres.getByRole("button", { name: "Reggae", exact: true })).toHaveAttribute("aria-pressed", "false");
     // No gap: the ask starts right under the step's title row (the title and its "Your turn" tag, which wraps on a phone).
-    const step = page.locator('[data-testid="agent-step"][data-status="waiting"]');
-    const title = await step.locator("b").first().locator("..").boundingBox();
-    const line = await ask.getByTestId("research-ask-line").boundingBox();
-    expect(line!.y - (title!.y + title!.height), "space between the title and the ask").toBeLessThanOrEqual(16);
-    expect(line!.y).toBeGreaterThanOrEqual(title!.y + title!.height - 1);
+    // Both measured in one frame: the page scrolls the ask into view smoothly, so two separate reads can disagree.
+    const { gap } = await page.evaluate(() => {
+      const step = document.querySelector('[data-testid="agent-step"][data-status="waiting"]')!;
+      const row = step.querySelector("b")!.parentElement!.getBoundingClientRect();
+      const line = step.querySelector('[data-testid="research-ask-line"]')!.getBoundingClientRect();
+      return { gap: line.top - row.bottom };
+    });
+    expect(gap, "space between the title and the ask").toBeLessThanOrEqual(16);
+    expect(gap).toBeGreaterThanOrEqual(-1);
     // Carry on as it is confirms them.
     await page.getByTestId("research-ask-carry-on").click();
     await done(page);

@@ -8,7 +8,7 @@ import { log } from "@/server/log";
 import { QLOO_MOCK_BASE_URL, qlooMockFetch } from "@/server/qloo-mock/fetch";
 import { takeQlooCall } from "./budget";
 import { countLookup, lookupScope, noteQlooRequest } from "./usage";
-import { AdapterError, fetchJson } from "../core";
+import { AdapterError, errorKindOf, fetchJson } from "../core";
 import { parseEntities, toDetail, toEntity, toImpact, toPlace } from "./normalize";
 import {
   compareResponseSchema,
@@ -121,6 +121,27 @@ export async function qlooGet<S extends z.ZodType>(backend: QlooBackend, path: s
       log.warn("qloo rate limited; retrying", { path, attempt: attempt + 1 });
       await sleep(RATE_RETRY_MS);
     }
+  }
+}
+
+/** A server error (HTTP 5xx), a timeout or a dropped connection: worth one more try. */
+export function isServerError(error: unknown): boolean {
+  const kind = errorKindOf(error);
+  if (kind === "timeout" || kind === "network") return true;
+  if (kind !== "http") return false;
+  const status = error instanceof AdapterError && error.status ? error.status : Number(/returned HTTP (\d{3})/.exec(error instanceof Error ? error.message : String(error))?.[1] ?? 0);
+  return status >= 500;
+}
+
+/** One retry of a call that failed with a server error (isServerError), after a short pause. Other errors throw at once. */
+export async function retryOnceOnServerError<T>(load: () => Promise<T>, path: string, pauseMs = 400): Promise<T> {
+  try {
+    return await load();
+  } catch (error) {
+    if (!isServerError(error)) throw error;
+    log.warn("qloo server error; retrying once", { path, kind: errorKindOf(error) });
+    await sleep(pauseMs);
+    return load();
   }
 }
 
@@ -710,7 +731,8 @@ async function searchGenreTagsCached(backend: QlooBackend, text: string, take: n
     cacheLife("days");
     cacheTag("qloo", "qloo:tags");
     const params = { "filter.query": text, "filter.tag.types": types, take: Math.min(take, MAX_TAKE) };
-    const body = await orNotFound(() => qlooGet(backend, "/v2/tags", params, tagsResponseSchema), { results: { tags: [] } });
+    // A 5xx or a timeout is tried once more (live, 25 Oct: one /v2/tags 502 lost an act's genres). A failure throws, so it isn't cached.
+    const body = await orNotFound(() => retryOnceOnServerError(() => qlooGet(backend, "/v2/tags", params, tagsResponseSchema), "/v2/tags"), { results: { tags: [] } });
     logIfEmpty("/v2/tags", params, body.results.tags.length);
     return body.results.tags.map((tag) => ({ id: tag.tag_id ?? tag.id ?? "", name: tag.name, affinity: null })).filter((t) => t.id);
   });

@@ -1,3 +1,4 @@
+import { isPlaceOrPeopleTag } from "./genre-tags";
 /**
  * Finding the act on Qloo without picking the wrong artist. Pure, client-safe, no I/O: the name variants worth searching,
  * the confidence rule, and the decision (a certain match, a short list for the user to confirm, or nothing).
@@ -190,12 +191,12 @@ const TAG_NOISE = new Set([
   "australian", "american", "british", "canadian", "irish", "scottish", "english", "melbourne", "sydney", "new york", "nyc", "brooklyn", "usa", "uk", "australia",
 ]);
 /** Last.fm tag names fit to look up as Qloo genre tags: lowercased, trimmed, no "seen live", places, years or the act's own name; once each, in order. */
-export function usableTagNames(tags: readonly string[], actNames: readonly (string | null | undefined)[] = [], max = 5): string[] {
+export function usableTagNames(tags: readonly string[], actNames: readonly (string | null | undefined)[] = [], max = 10): string[] {
   const acts = new Set(actNames.map((n) => normName(n ?? "")).filter(Boolean));
   const out: string[] = [];
   for (const raw of tags) {
     const t = raw.normalize("NFC").toLowerCase().replace(/\s+/g, " ").trim();
-    if (t.length < 3 || t.length > 30 || /\d/.test(t) || TAG_NOISE.has(t) || /\b(?:under|listeners|favou?rite|albums? i own|my )\b/.test(t) || acts.has(normName(t))) continue;
+    if (t.length < 3 || t.length > 30 || /\d/.test(t) || TAG_NOISE.has(t) || isPlaceOrPeopleTag(t) || /\b(?:under|listeners|favou?rite|albums? i own|my )\b/.test(t) || acts.has(normName(t))) continue;
     if (!out.includes(t)) out.push(t);
     if (out.length >= max) break;
   }
@@ -262,7 +263,9 @@ export function buttonGenreTag(genre: string): { id: string; name: string } | nu
 export function pickGenreTag(tags: readonly { id: string; name: string }[], genre: string, options: { broad?: boolean } = {}): { id: string; name: string } | null {
   const want = normGenre(genre);
   if (!want) return null;
-  const music = tags.filter((t) => (options.broad ? isGenreTagId(t.id) : t.id.startsWith("urn:tag:genre:music")));
+  // Never a place, a people or a language (Qloo has urn:tag:genre:music:american and a "CUBA" tag): a genre only.
+  if (isPlaceOrPeopleTag(genre)) return null;
+  const music = tags.filter((t) => (options.broad ? isGenreTagId(t.id) : t.id.startsWith("urn:tag:genre:music")) && !isPlaceOrPeopleTag(t.name) && !isPlaceOrPeopleTag(tagSlug(t.id)));
   const exact = music.find((t) => tagSlug(t.id) === want || normGenre(t.name) === want);
   if (exact) return exact;
   const squashed = want.replace(/ /g, "");

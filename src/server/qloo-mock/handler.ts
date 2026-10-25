@@ -800,6 +800,9 @@ const NOISY_EXTRA_TAGS = [
   { id: "urn:tag:genre:music:indie", name: '"indie"', words: "indie" },
   { id: "urn:tag:genre:music:singersongwriter", name: "Singersongwriter", words: "singer songwriter singersongwriter" },
   { id: "urn:tag:genre:music:singer_songwritergdchill", name: "Singer-songwritergdchill", words: "singer songwriter" },
+  // Live /v2/tags has places as music "genres" too (urn:tag:genre:music:american, "Australia", and a "CUBA" tag, 25 Oct).
+  { id: "urn:tag:genre:music:cuba", name: "CUBA", words: "cuba cuban" },
+  { id: "urn:tag:genre:music:american", name: "American", words: "american" },
 ];
 
 function tagSearch(params: Params, key: string): Response {

@@ -59,7 +59,7 @@ const sceneCompare = () => compares().find((u) => list(u, "b.signal.interests.en
 const sceneList = () => seen.filter((u) => u.pathname === "/v2/insights" && u.searchParams.has("signal.interests.tags"));
 /** The re-score: the scene list as results, the act's artists as the signal, no location (the headliner match sends at most 6 results). */
 const isRescore = (u: URL) => u.pathname === "/v2/insights" && list(u, "filter.results.entities").length >= 10 && u.searchParams.has("signal.interests.entities") && !u.searchParams.has("signal.location");
-const globalPop = () => seen.filter((u) => u.pathname === "/v2/insights" && u.searchParams.get("filter.type") === "urn:entity:artist" && [...u.searchParams.keys()].every((k) => k === "filter.type" || k === "take"));
+const globalPop = () => seen.filter((u) => u.pathname === "/v2/insights" && u.searchParams.get("filter.type") === "urn:entity:artist" && [...u.searchParams.keys()].every((k) => k === "filter.type" || k === "filter.popularity.min" || k === "take"));
 
 beforeEach(() => {
   cache.clear();
@@ -163,7 +163,7 @@ describe("local scene: call accounting and the cache", () => {
 
 describe("local scene: failure falls back to today's behaviour", () => {
   it.each([
-    ["the global-pop set", (u: URL) => u.pathname === "/v2/insights" && [...u.searchParams.keys()].every((k) => k === "filter.type" || k === "take")],
+    ["the global-pop set", (u: URL) => u.pathname === "/v2/insights" && [...u.searchParams.keys()].every((k) => k === "filter.type" || k === "filter.popularity.min" || k === "take")],
     ["the compare", (u: URL) => u.pathname === "/v2/analysis/compare" && list(u, "b.signal.interests.entities").length === 20],
     ["the scene list", (u: URL) => u.searchParams.has("signal.interests.tags")],
     ["the re-score", isRescore],

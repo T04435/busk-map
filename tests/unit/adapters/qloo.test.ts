@@ -316,6 +316,71 @@ describe("qloo with a key", () => {
   });
 });
 
+describe("qloo never sends a request with nothing to signal", () => {
+  beforeEach(() => vi.stubEnv("QLOO_API_KEY", "synthetic-test-key"));
+
+  // Live Qloo answers such a request with 400 "at least one valid signal or filter is required for entity insights".
+  const refusal = () => json({ errors: [{ message: "at least one valid signal or filter is required for entity insights" }] }, 400);
+  const blank = ["", " ", "a,b", "has space"];
+
+  it("skips every builder with empty or malformed signal inputs: no request, empty data, a typed no_signal result (not an outage)", async () => {
+    const qloo = await fresh();
+    const { calls } = mockFetch([route(() => true, refusal)]);
+    const skipped = [
+      ["tasteMap", await qloo.tasteMap([], area, LIVE), []],
+      ["tasteMap (malformed ids, no tags)", await qloo.tasteMap(blank, area, LIVE, undefined, ["rock", " "]), []],
+      ["busyPlaces", await qloo.busyPlaces([], center, 400, "saturday", LIVE), []],
+      ["tasteArtists", await qloo.tasteArtists([], 10, LIVE), { artists: [], impact: [] }],
+      ["artistAffinityAt", await qloo.artistAffinityAt([], center, 400, LIVE), {}],
+      ["tasteMatch (no signal)", await qloo.tasteMatch(["x"], [], LIVE), {}],
+      ["tasteMatch (no results)", await qloo.tasteMatch([], ["x"], LIVE), {}],
+      ["crowdProfile", await qloo.crowdProfile(blank, LIVE), null],
+      ["actGenres", await qloo.actGenres([], 6, LIVE), []],
+      ["compareGenres", await qloo.compareGenres([], ["b"], LIVE), []],
+      ["sceneArtists", await qloo.sceneArtists([" "], area, 20, LIVE), []],
+      ["tagArtists", await qloo.tagArtists(["not-a-tag"], 10, LIVE), []],
+      ["trendingWindow", await qloo.trendingWindow(" ", "2026-10-15", LIVE), null],
+    ] as const;
+    for (const [name, result, empty] of skipped) {
+      expect({ name, mode: result.mode, reason: result.reason, data: result.data }).toEqual({ name, mode: "live", reason: "no_signal", data: empty });
+      expect(qloo.noSignal(result)).toBe(true);
+    }
+    expect(calls).toHaveLength(0);
+  });
+
+  it("sends a call whose only signal is a location or the act's genres, and drops malformed entity ids", async () => {
+    const qloo = await fresh();
+    const { calls } = mockFetch([
+      route((u) => u.searchParams.get("filter.type") === "urn:heatmap", () => json(SYNTHETIC_RAW.heatmap)),
+      route((u) => u.searchParams.get("filter.type") === "urn:tag", () => json({ success: true, results: { tags: [] } })),
+      route((u) => u.searchParams.get("filter.type") === "urn:entity:artist", () => json(SYNTHETIC_RAW.insightsArtists)),
+    ]);
+    expect((await qloo.tasteMap([" "], area, LIVE, undefined, ["urn:tag:genre:music:fado"])).mode).toBe("live");
+    expect(calls[0].url.searchParams.has("signal.interests.entities")).toBe(false);
+    expect(calls[0].url.searchParams.get("signal.interests.tags")).toBe("urn:tag:genre:music:fado");
+    // The area (local artists) and the point (crowd genres) are location signals on their own.
+    expect((await qloo.localArtists([], area, 10, LIVE)).reason).toBeUndefined();
+    expect((await qloo.crowdTags(["", "ok-id"], center, 400, 6, LIVE)).reason).toBeUndefined();
+    expect(calls[2].url.searchParams.get("signal.interests.entities")).toBe("ok-id");
+    expect(calls).toHaveLength(3);
+  });
+
+  it("asks for the global-pop set with a popularity filter, never with filter.type alone", async () => {
+    const qloo = await fresh();
+    const { calls } = mockFetch([route((u) => u.searchParams.get("filter.type") === "urn:entity:artist", () => json(SYNTHETIC_RAW.insightsArtists))]);
+    await qloo.globalArtists(20, LIVE);
+    const params = calls[0].url.searchParams;
+    expect(params.get("filter.popularity.min")).toBe("0.9");
+    expect([...params.keys()].sort()).toEqual(["filter.popularity.min", "filter.type", "take"]);
+  });
+
+  it("recovers the no_signal kind from an error that lost its class in the cache", async () => {
+    const { AdapterError, errorKindOf } = await import("@/server/adapters/core");
+    expect(errorKindOf(new Error("Qloo heatmap skipped: no valid signal or filter to send"))).toBe("no_signal");
+    expect(errorKindOf(new AdapterError("qloo", "no_signal", "x"))).toBe("no_signal");
+  });
+});
+
 describe("extractExplanations", () => {
   it("finds id and score pairs at any depth and ignores junk", () => {
     expect(extractExplanations({ a: { b: [{ id: "x", score: 0.5 }, { id: "y", weight: 0.2 }, { id: "z" }] } })).toEqual([

@@ -575,6 +575,9 @@ function artists(params: Params, key: string): Response {
   const popMin = params.number("filter.popularity.min");
   const popMax = params.number("filter.popularity.max");
   const inputIds = new Set(signals.entityIds);
+  // Live Qloo (2026-10-25): an artist request with filter.type alone, no signal and no filter, is refused.
+  const anything = signals.entityIds.length > 0 || signals.tags.length > 0 || signals.area != null || params.get("signal.interests.entities") !== null || only.size > 0 || tagFilter.length > 0 || popMin !== null || popMax !== null;
+  if (!anything) throw new BadRequest("at least one valid signal or filter is required for entity insights");
 
   // Ids outside the catalogue are unknown to the mock, as they would be to Qloo.
   const pool: CatalogArtist[] = only.size

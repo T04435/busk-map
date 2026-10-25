@@ -151,6 +151,21 @@ function listEntities(path: string, params: Params, items: unknown[]) {
 }
 
 const ids = (list: readonly string[]) => list.join(",");
+
+/** Qloo entity ids fit for a signal or a results filter: trimmed, non-empty, with no comma (the list separator) or space, once each. */
+export function entitySignal(entityIds: readonly string[]): string[] {
+  return [...new Set(entityIds.map((id) => id.trim()).filter((id) => /^[^\s,]+$/.test(id)))];
+}
+
+/**
+ * Qloo answers a request with nothing valid to go on with 400 "at least one valid signal or filter is required for entity
+ * insights". Such a request is never sent: the call throws this typed "no signal" error instead (no Qloo request, no quota),
+ * and index.ts turns it into empty data with `reason: "no_signal"`, which is not an outage.
+ */
+function noSignal(call: string): never {
+  throw new AdapterError("qloo", "no_signal", `Qloo ${call} skipped: ${NO_SIGNAL_MESSAGE}`);
+}
+export const NO_SIGNAL_MESSAGE = "no valid signal or filter to send";
 /**
  * Genre tags sent beside the entities (`signal.interests.tags`): the act's genres when Qloo doesn't know the act. A lookup
  * key gains them only when there are some, so a call without tags keeps the key (and the cached answer) it always had.
@@ -225,8 +240,10 @@ export type HeatmapBoundary = "city" | "neighborhood";
 
 /** `urn:heatmap`: where in the area this taste concentrates. */
 /** `boundary` (U40): Qloo's `output.heatmap.boundary` (documented values "city" and "neighborhood"); omitted, cells are geohash squares. */
-export async function heatmap(backend: QlooBackend, entityIds: string[], area: BBox, boundary?: HeatmapBoundary, tagIds: readonly string[] = []): Promise<HeatCell[]> {
+export async function heatmap(backend: QlooBackend, rawIds: string[], area: BBox, boundary?: HeatmapBoundary, tagIds: readonly string[] = []): Promise<HeatCell[]> {
   const tags = sceneTags(tagIds);
+  const entityIds = entitySignal(rawIds);
+  if (entityIds.length === 0 && tags.length === 0) noSignal("heatmap");
   return countLookup("heatmap", [backend, entityIds, area, boundary ?? null, ...withTags(tags)], () =>
     tags.length ? heatmapCached(backend, entityIds, area, boundary, tags) : heatmapCached(backend, entityIds, area, boundary),
   );
@@ -266,13 +283,16 @@ async function heatmapCached(backend: QlooBackend, entityIds: string[], area: BB
  */
 export async function places(
   backend: QlooBackend,
-  entityIds: string[],
+  rawIds: string[],
   center: LatLon,
   radiusM: number,
   weekday: string | null,
   tagIds: readonly string[] = [],
 ): Promise<QlooPlace[]> {
   const tags = sceneTags(tagIds);
+  const entityIds = entitySignal(rawIds);
+  // Places are ranked for a taste: with no artist and no genre there is nothing to rank by (and Qloo may refuse the call).
+  if (entityIds.length === 0 && tags.length === 0) noSignal("places");
   return countLookup("places", [backend, entityIds, center, radiusM, weekday, ...withTags(tags)], () =>
     tags.length ? placesCached(backend, entityIds, center, radiusM, weekday, tags) : placesCached(backend, entityIds, center, radiusM, weekday),
   );
@@ -311,8 +331,10 @@ async function placesCached(
  * explanations: per result, and the top-level aggregate (each input artist's
  * average effect on the top 3, 5, 10 and all results).
  */
-export async function localArtists(backend: QlooBackend, entityIds: string[], area: BBox, take: number, tagIds: readonly string[] = []): Promise<LocalArtists> {
+export async function localArtists(backend: QlooBackend, rawIds: string[], area: BBox, take: number, tagIds: readonly string[] = []): Promise<LocalArtists> {
   const tags = sceneTags(tagIds);
+  // The area is the location signal, so this call always has one; the act's artists and genres sharpen it when present.
+  const entityIds = entitySignal(rawIds);
   return countLookup("localArtists", [backend, entityIds, area, take, ...withTags(tags)], () =>
     tags.length ? localArtistsCached(backend, entityIds, area, take, tags) : localArtistsCached(backend, entityIds, area, take),
   );
@@ -343,7 +365,9 @@ async function localArtistsCached(backend: QlooBackend, entityIds: string[], are
  * `urn:entity:artist` liked by fans of these artists anywhere (no location signal), with explainability: which of the
  * input artists explain each result. The learn run's `related_artists` (docs/playlist-architecture.md §2.2, call #12).
  */
-export async function tasteArtists(backend: QlooBackend, entityIds: string[], take: number): Promise<LocalArtists> {
+export async function tasteArtists(backend: QlooBackend, rawIds: string[], take: number): Promise<LocalArtists> {
+  const entityIds = entitySignal(rawIds);
+  if (entityIds.length === 0) noSignal("taste artists");
   return countLookup("tasteArtists", [backend, entityIds, take], () => tasteArtistsCached(backend, entityIds, take));
 }
 
@@ -367,10 +391,13 @@ async function tasteArtistsCached(backend: QlooBackend, entityIds: string[], tak
 }
 
 /**
- * `urn:entity:artist` with no signal at all: Qloo's globally popular artists, the "global-pop set" that
+ * `urn:entity:artist` with no taste signal, only a popularity floor: Qloo's globally popular artists, the "global-pop set" that
  * `/v2/analysis/compare` measures a city's crowd against (local scene, step 1). The same answer for every city, so it is
  * fetched once per cache lifetime and shared by all busks.
  */
+/** The popularity floor (0–1) of the global-pop set: Qloo's most popular artists. */
+export const GLOBAL_POP_MIN_POPULARITY = 0.9;
+
 export async function globalArtists(backend: QlooBackend, take: number): Promise<QlooEntity[]> {
   return countLookup("globalArtists", [backend, take], () => globalArtistsCached(backend, take));
 }
@@ -380,7 +407,9 @@ async function globalArtistsCached(backend: QlooBackend, take: number): Promise<
   return lookupScope("globalArtists", [backend, take], async () => {
     cacheLife("days");
     cacheTag("qloo", "qloo:artists");
-    const params = { "filter.type": "urn:entity:artist", take: Math.min(take, MAX_TAKE) };
+    // Qloo refuses an artist request with no signal and no filter ("at least one valid signal or filter is required for entity
+    // insights"), so the global-pop set is asked for as what it is: the most popular artists, by a popularity filter.
+    const params = { "filter.type": "urn:entity:artist", "filter.popularity.min": GLOBAL_POP_MIN_POPULARITY, take: Math.min(take, MAX_TAKE) };
     const body = await qlooGet(backend, "/v2/insights", params, insightsEntitiesResponseSchema);
     return listEntities("/v2/insights", params, body.results.entities).map(toEntity);
   });
@@ -395,7 +424,7 @@ async function globalArtistsCached(backend: QlooBackend, take: number): Promise<
 export async function sceneArtists(backend: QlooBackend, tagIds: string[], area: BBox, take: number): Promise<QlooEntity[]> {
   const tags = sceneTags(tagIds);
   // Nothing valid to send: Qloo answers a tag-less or malformed signal with "at least one valid signal or filter is required".
-  if (tags.length === 0) return [];
+  if (tags.length === 0) noSignal("local scene");
   return countLookup("sceneArtists", [backend, tags, area, take], () => sceneArtistsCached(backend, tags, area, take));
 }
 
@@ -440,7 +469,9 @@ async function sceneArtistsCached(backend: QlooBackend, tagIds: string[], area: 
 }
 
 /** Score specific artists for the crowd around one point (`filter.results.entities`). */
-export async function affinityAt(backend: QlooBackend, entityIds: string[], point: LatLon, radiusM: number): Promise<Record<string, number>> {
+export async function affinityAt(backend: QlooBackend, rawIds: string[], point: LatLon, radiusM: number): Promise<Record<string, number>> {
+  const entityIds = entitySignal(rawIds);
+  if (entityIds.length === 0) noSignal("affinity at a point");
   return countLookup("affinityAt", [backend, entityIds, point, radiusM], () => affinityAtCached(backend, entityIds, point, radiusM));
 }
 
@@ -469,7 +500,10 @@ async function affinityAtCached(backend: QlooBackend, entityIds: string[], point
  * affinity of `resultIds` given `signalIds` (no location). Used to weigh an
  * event's crowd by how close its headliner's fans are to the performer's.
  */
-export async function affinityFor(backend: QlooBackend, resultIds: string[], signalIds: string[]): Promise<Record<string, number>> {
+export async function affinityFor(backend: QlooBackend, rawResults: string[], rawSignal: string[]): Promise<Record<string, number>> {
+  const resultIds = entitySignal(rawResults);
+  const signalIds = entitySignal(rawSignal);
+  if (resultIds.length === 0 || signalIds.length === 0) noSignal("taste match");
   return countLookup("affinityFor", [backend, resultIds, signalIds], () => affinityForCached(backend, resultIds, signalIds));
 }
 
@@ -496,7 +530,9 @@ async function affinityForCached(backend: QlooBackend, resultIds: string[], sign
  * `population_percentile` as a 0–1 fraction and `population_rank` as a
  * string; percentiles are returned here on a 0–100 scale.
  */
-export async function trendingFor(backend: QlooBackend, entityId: string, startDate: string, endDate: string): Promise<TrendRow | null> {
+export async function trendingFor(backend: QlooBackend, rawId: string, startDate: string, endDate: string): Promise<TrendRow | null> {
+  const [entityId] = entitySignal([rawId]);
+  if (!entityId) noSignal("trending");
   return countLookup("trendingFor", [backend, entityId, startDate, endDate], () => trendingForCached(backend, entityId, startDate, endDate));
 }
 
@@ -572,8 +608,10 @@ export async function trending(backend: QlooBackend, entityIds: string[], startD
 }
 
 /** `urn:demographics`: the age and gender lean of fans of these artists. */
-export async function demographics(backend: QlooBackend, entityIds: string[], tagIds: readonly string[] = []): Promise<CrowdProfile | null> {
+export async function demographics(backend: QlooBackend, rawIds: string[], tagIds: readonly string[] = []): Promise<CrowdProfile | null> {
   const tags = sceneTags(tagIds);
+  const entityIds = entitySignal(rawIds);
+  if (entityIds.length === 0 && tags.length === 0) noSignal("demographics");
   return countLookup("demographics", [backend, entityIds, ...withTags(tags)], () => (tags.length ? demographicsCached(backend, entityIds, tags) : demographicsCached(backend, entityIds)));
 }
 
@@ -600,7 +638,9 @@ async function demographicsCached(backend: QlooBackend, entityIds: string[], tag
  * `urn:tag` taste analysis: the music genres that characterise fans of these
  * artists around a point (signal.location), strongest first.
  */
-export async function crowdTags(backend: QlooBackend, entityIds: string[], point: LatLon, radiusM: number, take: number): Promise<TasteTag[]> {
+export async function crowdTags(backend: QlooBackend, rawIds: string[], point: LatLon, radiusM: number, take: number): Promise<TasteTag[]> {
+  // The point is the location signal, so this call always has one; the act's artists sharpen it when present.
+  const entityIds = entitySignal(rawIds);
   return countLookup("crowdTags", [backend, entityIds, point, radiusM, take], () => crowdTagsCached(backend, entityIds, point, radiusM, take));
 }
 
@@ -628,7 +668,9 @@ async function crowdTagsCached(backend: QlooBackend, entityIds: string[], point:
  * `urn:tag` taste analysis with no location: the music genres that characterise fans of these artists anywhere, strongest
  * first (Repertoire research, step 8: "Your sound in genres").
  */
-export async function artistGenres(backend: QlooBackend, entityIds: string[], take: number): Promise<TasteTag[]> {
+export async function artistGenres(backend: QlooBackend, rawIds: string[], take: number): Promise<TasteTag[]> {
+  const entityIds = entitySignal(rawIds);
+  if (entityIds.length === 0) noSignal("act genres");
   return countLookup("artistGenres", [backend, entityIds, take], () => artistGenresCached(backend, entityIds, take));
 }
 
@@ -676,7 +718,7 @@ async function searchGenreTagsCached(backend: QlooBackend, text: string, take: n
  */
 export async function tagArtists(backend: QlooBackend, tagIds: string[], take: number): Promise<QlooEntity[]> {
   const tags = sceneTags(tagIds);
-  if (tags.length === 0) return [];
+  if (tags.length === 0) noSignal("tag artists");
   return countLookup("tagArtists", [backend, tags, take], () => tagArtistsCached(backend, tags, take));
 }
 
@@ -706,7 +748,10 @@ export const GENRE_SUBTYPE = "urn:tag:genre:music";
  * group's tags with a count of the group's entities carrying it; a genre's
  * value per group is that count over the group's size (0–1).
  */
-export async function compareGenres(backend: QlooBackend, groupA: string[], groupB: string[]): Promise<GenreContrast[]> {
+export async function compareGenres(backend: QlooBackend, rawA: string[], rawB: string[]): Promise<GenreContrast[]> {
+  const groupA = entitySignal(rawA);
+  const groupB = entitySignal(rawB);
+  if (groupA.length === 0 || groupB.length === 0) noSignal("compare");
   return countLookup("compareGenres", [backend, groupA, groupB], () => compareGenresCached(backend, groupA, groupB));
 }
 

@@ -259,22 +259,29 @@ function buildTools(ctx: PlanContext, state: AgentState) {
           if (chosen.length === 0) throw new WhereError(`None of ${signals.join(", ")} is a matched artist. Matched: ${artists.map((a) => a.entity!.name).join(", ")}.`);
         }
         const all = chosen.length === artists.length;
+        // The act's genres signal beside the artists when Qloo doesn't know the act (or none of the artists it sounds like).
+        const tags = all ? ctx.signalTags() : [];
         const zoom = around ? await where(around) : null;
         const box = zoom ? boxAround(snapPoint(zoom), snapRadius(radiusM, 800), area) : area;
+        const signalIds = chosen.map((a) => a.entity!.id);
+        const signalNames = [...chosen.map((a) => a.entity!.name), ...(chosen.length === 0 && tags.length ? ["your genres"] : [])];
+        if (signalIds.length === 0 && tags.length === 0) {
+          return seen({ summary: "No taste to map: Qloo matched none of your artists and has no genres for your act", signals: [], area: zoom ? { around: zoom.label, radiusM: snapRadius(radiusM, 800) } : "planning area", cells: 0, strongest: [] });
+        }
         const cells =
           all && !zoom
             ? await ctx.tasteCells()
-            : await ctx.trackQloo(`agent:taste:${chosen.map((a) => a.entity!.id).sort().join(",")}:${JSON.stringify(box)}`, () =>
-                qloo.tasteMap(chosen.map((a) => a.entity!.id), box, ctx.adapters),
+            : await ctx.trackQloo(`agent:taste:${[...signalIds].sort().join(",")}:${[...tags].sort().join(",")}:${JSON.stringify(box)}`, () =>
+                qloo.tasteMap(signalIds, box, ctx.adapters, undefined, tags),
               );
         const known = await places();
         const max = Math.max(0, ...cells.map((c) => c.affinity));
         const top = [...cells].sort((a, b) => b.affinity - a.affinity).slice(0, 8);
         return seen({
           summary: cells.length
-            ? `${cells.length} cells for ${all ? "all your artists" : chosen.map((a) => a.entity!.name).join(", ")}${zoom ? ` around ${zoom.label}` : ""}; strongest near ${nearestName(top[0], known) ?? "an unnamed block"}`
+            ? `${cells.length} cells for ${all ? "all your artists" : signalNames.join(", ")}${zoom ? ` around ${zoom.label}` : ""}; strongest near ${nearestName(top[0], known) ?? "an unnamed block"}`
             : "No taste data for that area",
-          signals: chosen.map((a) => a.entity!.name),
+          signals: signalNames,
           area: zoom ? { around: zoom.label, radiusM: snapRadius(radiusM, 800) } : "planning area",
           cells: cells.length,
           strongest: top.map((c, i) => ({
@@ -298,10 +305,12 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         const radius = snapRadius(radiusM, 400);
         const snapped = snapPoint(point);
         const entityIds = await ids();
-        if (entityIds.length === 0) throw new WhereError("No matched artists: there is no taste to profile.");
+        // No matched artist (Qloo doesn't know the act or the artists it sounds like): the act's genres carry the taste, and the
+        // point itself is a location signal, so the crowd there is still read rather than the look failing.
+        const tags = ctx.signalTags();
         const box = boxAround(snapped, radius, area);
         const [crowd, genres, profile, resolved, scene] = await Promise.all([
-          ctx.trackQloo(`agent:crowd:${JSON.stringify(box)}`, () => qloo.localArtists(entityIds, box, 10, ctx.adapters)),
+          ctx.trackQloo(`agent:crowd:${JSON.stringify(box)}${tags.length && entityIds.length === 0 ? `:${tags.join(",")}` : ""}`, () => qloo.localArtists(entityIds, box, 10, ctx.adapters, entityIds.length ? [] : tags)),
           ctx.trackQloo(`agent:genres:${snapped.lat},${snapped.lon},${radius}`, () => qloo.crowdTags(entityIds, snapped, radius, 6, ctx.adapters)),
           ctx.crowdProfile(),
           ctx.artists(),
@@ -351,8 +360,12 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         const dayWide = ctx.isAnyTime && openAt === undefined && !best;
         const hour = openAt ?? best?.startHour ?? (ctx.isAnyTime ? ANY_TIME_DAY.startHour : ctx.slotFor({}).startHour);
         const entityIds = await ids();
+        const tags = ctx.signalTags();
+        if (entityIds.length === 0 && tags.length === 0) {
+          return seen({ summary: `No taste to rank places by near ${point.label}: Qloo matched none of your artists and has no genres for your act`, at: at(point), radiusM: radius, hour, places: [] });
+        }
         const found = await ctx.trackQloo(`agent:places:${snapped.lat},${snapped.lon},${radius}`, () =>
-          qloo.busyPlaces(entityIds, snapped, radius, ctx.weekday, ctx.adapters),
+          qloo.busyPlaces(entityIds, snapped, radius, ctx.weekday, ctx.adapters, tags),
         );
         const rows = found.slice(0, 10).map((p) => ({
           name: p.name,

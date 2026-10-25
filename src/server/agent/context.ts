@@ -180,7 +180,8 @@ export class PlanContext {
       // Keep the worst status per adapter: fallback beats synthetic beats live.
       const rank = { live: 0, synthetic: 1, fallback: 2 } as const;
       if (!previous || rank[result.mode] > rank[previous.mode]) {
-        this.statuses.set(result.adapter, { adapter: result.adapter, source: result.source, mode: result.mode, reason: result.reason });
+        // A reason is why a source fell back; a skipped call with nothing to signal (no_signal) is not a fallback and shows none.
+        this.statuses.set(result.adapter, { adapter: result.adapter, source: result.source, mode: result.mode, ...(result.mode === "fallback" ? { reason: result.reason } : {}) });
       }
       return result.data;
     });

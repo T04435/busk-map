@@ -438,6 +438,16 @@ function requireSignal(signals: Signals, params: Params) {
 
 /** Live heatmaps over a city-centre polygon come back at geohash precision 7 (about 150 m cells). */
 const HEATMAP_PRECISION = 7;
+/** ...and over a metro-sized one (wider than METRO_SPAN_KM) at precision 6 (about 1.2 by 0.6 km), as the mock models it. */
+const METRO_HEATMAP_PRECISION = 6;
+const METRO_SPAN_KM = 10;
+
+/** The precision the mock answers an area at: coarser for a whole metro (lib/city.ts isMetro) than for a city centre or a district. */
+function heatmapPrecision(box: BBox): number {
+  const midLat = ((box.north + box.south) / 2) * (Math.PI / 180);
+  const spanKm = Math.max(box.north - box.south, (box.east - box.west) * Math.cos(midLat)) * 111.32;
+  return spanKm > METRO_SPAN_KM ? METRO_HEATMAP_PRECISION : HEATMAP_PRECISION;
+}
 
 let coverageLifts: { key: string; lifts: number[] } | null = null;
 
@@ -485,7 +495,7 @@ function heatmap(params: Params, key: string): Response {
   // A world-sized area (the Repertoire's "Where your fans are") can't be walked cell by cell: the mock answers with the local
   // Melbourne field plus a few synthetic clusters in cities around the world, so the global map has somewhere to point.
   const worldwide = box.east - box.west > WORLD_SPAN_DEG || box.north - box.south > WORLD_SPAN_DEG;
-  const cells = (worldwide ? worldCells(area, box, signals.mix, mixKey) : geohashesInBBox(box, HEATMAP_PRECISION)
+  const cells = (worldwide ? worldCells(area, box, signals.mix, mixKey) : geohashesInBBox(box, heatmapPrecision(box))
     .map((geohash) => ({ geohash, center: geohashCenter(geohash) }))
     .filter((c) => contains(area, c.center) && covered(c.center))
     .map((c) => ({ ...c, lift: liftAt(signals.mix, c.center, `${c.geohash}:${mixKey}`) })))

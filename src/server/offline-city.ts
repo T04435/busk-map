@@ -12,6 +12,20 @@ import { distanceM, type LatLon } from "@/lib/geo";
 
 export const TOKYO: City = cityFromPlace("tokyo-jp", { name: "Tokyo", country: "Japan", countryCode: "JP", lat: 35.6895, lon: 139.6917, timeZone: "Asia/Tokyo" });
 
+/**
+ * Offline mode's large metro: Tokyo picked from the geocoder plans its suburbs too (lib/city.ts radiusForPlace), so the
+ * synthetic data needs taste beyond the centre. These hubs, in Melbourne's frame 4 to 5 km out from its centre (east, south
+ * and north), add taste for every genre in an offline region only (never Melbourne's own field), and the synthetic Overpass
+ * answer has public spaces at each. Invented points, no claim about any real place.
+ */
+export const OFFLINE_METRO_HUBS: readonly (LatLon & { label: string; weight: number })[] = [
+  { label: "East", lat: -37.815, lon: 145.015, weight: 0.95 },
+  { label: "South", lat: -37.855, lon: 144.975, weight: 0.9 },
+  { label: "North", lat: -37.772, lon: 144.96, weight: 0.85 },
+];
+/** How far a hub's taste reaches (the Gaussian's sigma, metres). */
+export const OFFLINE_METRO_HUB_SIGMA_M = 500;
+
 /** Regions the offline Qloo mock answers for besides Melbourne. */
 export const OFFLINE_REGIONS: readonly City[] = [TOKYO];
 

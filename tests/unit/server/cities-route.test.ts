@@ -31,7 +31,9 @@ describe("GET /api/cities (Open-Meteo geocoding)", () => {
     const ids = body.cities.map((c: { id: string }) => c.id);
     // The bay is not a populated place: left out.
     expect(ids).toEqual(["melbourne", "melbourne-florida-us", "tokyo-jp", "london-england-gb", "lisbon-pt"]);
-    expect(body.cities[2]).toEqual({ id: "tokyo-jp", name: "Tokyo", country: "Japan", countryCode: "JP", lat: 35.6895, lon: 139.6917, timeZone: "Asia/Tokyo", region: "Tokyo" });
+    expect(body.cities[2]).toEqual({ id: "tokyo-jp", name: "Tokyo", country: "Japan", countryCode: "JP", lat: 35.6895, lon: 139.6917, timeZone: "Asia/Tokyo", radiusKm: 15, region: "Tokyo" });
+    // Each city's planning radius from its population and feature code; the built-in Melbourne keeps its own area.
+    expect(body.cities.map((c: { radiusKm?: number }) => c.radiusKm)).toEqual([undefined, 6, 15, 15, 10]);
   });
 
   it("drops malformed rows and unknown time zones, keeps the rest", async () => {

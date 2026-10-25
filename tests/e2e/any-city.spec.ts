@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { EXAMPLES } from "../../src/lib/examples";
 import { OFFLINE_TEST_ARTIST } from "../../src/lib/repertoire-research";
+import { serverDay } from "./clock";
 import { expect, LOCAL, openDetails, test, waitForPlan } from "./fixtures";
 
 /**
@@ -57,7 +58,8 @@ test.describe("any city (offline)", () => {
     await form(page).getByRole("button", { name: "Plan my busk" }).click();
     const body = (await posted).postDataJSON();
     expect(body.city).toBe("tokyo-jp");
-    expect(body.place).toEqual({ name: "Tokyo", country: "Japan", countryCode: "JP", lat: 35.6895, lon: 139.6917, timeZone: "Asia/Tokyo" });
+    // A metro: the place carries its planning radius (the city and its suburbs).
+    expect(body.place).toEqual({ name: "Tokyo", country: "Japan", countryCode: "JP", lat: 35.6895, lon: 139.6917, timeZone: "Asia/Tokyo", radiusKm: 15 });
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await waitForPlan(page);
     // The eyebrow names the city (a second device may get the first one's run as a shared replay).
@@ -82,6 +84,44 @@ test.describe("any city (offline)", () => {
     const id = new URL(page.url()).pathname.split("/").pop();
     await page.goto(`/busks?again=${id}`);
     await expect(cityField(page)).toContainText("Tokyo, Japan");
+  });
+
+  test("Tokyo with its suburbs: the plan searches districts and spreads the pitches over at least two", async ({ page }, testInfo) => {
+    await page.goto("/busks");
+    await pickCity(page, "Tok", "Tokyo, Japan");
+    // Its own act per project, so each device runs the plan (not a replay of another test's run).
+    await form(page).getByLabel("Act name").fill(`Metro ${testInfo.project.name}`);
+    await form(page).getByLabel("Artists you sound like").fill("Paul Kelly");
+    await form(page).getByRole("button", { name: "Plan my busk" }).click();
+    await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
+    await waitForPlan(page);
+    const names = await page
+      .getByRole("region", { name: "Pitches", exact: true })
+      .locator("button[data-pitch-name]")
+      .evaluateAll((els) => els.map((el) => el.getAttribute("data-pitch-name") ?? ""));
+    expect(names).toHaveLength(3);
+    // The synthetic metro's suburbs name their spots "Synthetic OSM East …", "… South …", "… North …"; the rest are the centre.
+    const districtOf = (name: string) => /^Synthetic OSM (East|South|North) /.exec(name)?.[1] ?? "centre";
+    const counts = new Map<string, number>();
+    for (const name of names) counts.set(districtOf(name), (counts.get(districtOf(name)) ?? 0) + 1);
+    expect(counts.size, names.join(", ")).toBeGreaterThanOrEqual(2);
+    expect(Math.max(...counts.values()), names.join(", ")).toBeLessThanOrEqual(2);
+    // The map frames the districts the plan searched.
+    expect(Number(await (await mapCentre(page)).getAttribute("data-districts"))).toBeGreaterThanOrEqual(3);
+  });
+
+  test("an old Tokyo link (no radius in its place) still plans the city centre only", async ({ page }, testInfo) => {
+    const params = new URLSearchParams({ name: `Old link ${testInfo.project.name}`, artists: "Paul Kelly", date: serverDay(10), city: "tokyo-jp", place: "Tokyo~JP~35.6895~139.6917~Asia/Tokyo~Japan" });
+    await page.goto(`/plan?${params}`);
+    await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
+    await waitForPlan(page);
+    const names = await page
+      .getByRole("region", { name: "Pitches", exact: true })
+      .locator("button[data-pitch-name]")
+      .evaluateAll((els) => els.map((el) => el.getAttribute("data-pitch-name") ?? ""));
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) expect(name).not.toMatch(/^Synthetic OSM (East|South|North) /);
+    await expect(await mapCentre(page)).not.toHaveAttribute("data-districts");
   });
 
   test("the city search is an accessible combobox in a popover", async ({ page }) => {

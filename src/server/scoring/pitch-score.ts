@@ -204,12 +204,39 @@ export function rankPitches(candidates: Candidate[], inputs: ScoreInputs, weight
 /** The plan's top pitches are at least this far apart, so the options differ (shown in "How pitches are scored"). */
 export const MIN_PITCH_SPACING_M = 250;
 
-/** The best `count` pitches, at least `minSpacingM` apart so the options differ. */
-export function pickTopPitches(ranked: ScoredPitch[], count = 3, minSpacingM = MIN_PITCH_SPACING_M): ScoredPitch[] {
+/** How the top pitches spread over a metro's districts (scoring/districts.ts): each pitch's district, and the most per district. */
+export type DistrictSpread = { districtOf: (point: LatLon) => string | null; maxPerDistrict: number };
+
+/**
+ * The best `count` pitches, at least `minSpacingM` apart so the options differ. With `spread` (a metro planned in districts),
+ * at most `maxPerDistrict` come from one district while other districts have pitches; only when they run out is the rest
+ * filled from the best left, so a plan still has `count` pitches.
+ */
+export function pickTopPitches(ranked: ScoredPitch[], count = 3, minSpacingM = MIN_PITCH_SPACING_M, spread?: DistrictSpread): ScoredPitch[] {
   const picked: ScoredPitch[] = [];
+  const spaced = (pitch: ScoredPitch) => picked.every((p) => distanceM(p, pitch) >= minSpacingM);
+  if (spread) {
+    const perDistrict = new Map<string, number>();
+    for (const pitch of ranked) {
+      if (picked.length === count) break;
+      const district = spread.districtOf(pitch);
+      const n = district === null ? 0 : (perDistrict.get(district) ?? 0);
+      if (n >= spread.maxPerDistrict || !spaced(pitch)) continue;
+      picked.push(pitch);
+      if (district !== null) perDistrict.set(district, n + 1);
+    }
+    if (picked.length < count) {
+      for (const pitch of ranked) {
+        if (picked.length === count) break;
+        if (!picked.includes(pitch) && spaced(pitch)) picked.push(pitch);
+      }
+      picked.sort((a, b) => ranked.indexOf(a) - ranked.indexOf(b));
+    }
+    return picked;
+  }
   for (const pitch of ranked) {
     if (picked.length === count) break;
-    if (picked.every((p) => distanceM(p, pitch) >= minSpacingM)) picked.push(pitch);
+    if (spaced(pitch)) picked.push(pitch);
   }
   return picked;
 }

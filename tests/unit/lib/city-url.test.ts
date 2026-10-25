@@ -27,6 +27,28 @@ describe("the city in a plan URL", () => {
     expect(optionOf(request)).toMatchObject({ id: "tokyo-jp", name: "Tokyo", timeZone: "Asia/Tokyo" });
   });
 
+  it("round-trips a metro's planning radius as the place's last field", () => {
+    const request = planRequestSchema.parse({ ...requestFieldsOf({ ...TOKYO, radiusKm: 15 }), ...base });
+    const params = planSearchParams(request);
+    expect(params.get("place")).toBe("Tokyo~JP~35.6895~139.6917~Asia/Tokyo~Japan~15");
+    const parsed = parsePlanParams(Object.fromEntries(params), NOW);
+    expect(parsed.ok && parsed.request).toEqual(request);
+    expect(parsed.ok && parsed.request.place?.radiusKm).toBe(15);
+    expect(optionOf(request)).toMatchObject({ id: "tokyo-jp", radiusKm: 15 });
+  });
+
+  it("reads an old place param (no radius) as the 3 km area it always planned", async () => {
+    const { cityOfRequest } = await import("@/lib/city");
+    const place = parsePlaceParam("Tokyo~JP~35.6895~139.6917~Asia/Tokyo~Japan");
+    expect(place).toEqual({ name: "Tokyo", country: "Japan", countryCode: "JP", lat: 35.6895, lon: 139.6917, timeZone: "Asia/Tokyo" });
+    expect(place).not.toHaveProperty("radiusKm");
+    const city = cityOfRequest({ city: "tokyo-jp", place })!;
+    expect(city.radiusKm).toBe(3);
+    expect(city.bbox.north - city.bbox.south).toBeCloseTo(3.2 / 111.32, 3);
+    // An unreadable radius makes the place unreadable, never a different area.
+    expect(parsePlaceParam("Tokyo~JP~35.6895~139.6917~Asia/Tokyo~Japan~huge")).toBeUndefined();
+  });
+
   it("refuses a non-Melbourne city whose place is missing or unreadable", () => {
     expect(parsePlanParams({ name: "Jess", artists: "Paul Kelly", date: "2026-10-31", city: "tokyo-jp" }, NOW).ok).toBe(false);
     expect(parsePlanParams({ name: "Jess", artists: "Paul Kelly", date: "2026-10-31", city: "tokyo-jp", place: "Tokyo~JP~x~y~Asia/Tokyo~Japan" }, NOW).ok).toBe(false);

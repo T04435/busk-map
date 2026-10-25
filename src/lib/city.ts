@@ -48,7 +48,25 @@ export const MELBOURNE: City = {
 /** Half-size of a geocoded city's planning area: about Melbourne's (3 km by 4 km), centred on the geocoder's point. */
 export const PLANNING_HALF_HEIGHT_KM = 1.6;
 export const PLANNING_HALF_WIDTH_KM = 2.1;
+/** A place with no size on record (old links, small towns): Melbourne's CBD-sized area. */
 export const DEFAULT_RADIUS_KM = 3;
+/** The planning radii a place may get, by its size (radiusForPlace). */
+export const PLANNING_RADII_KM = [3, 6, 10, 15] as const;
+export const MAX_RADIUS_KM = 15;
+
+/**
+ * How far around a geocoded place the plan looks (km), from the geocoder's population and GeoNames feature code: a metro
+ * covers the city and its suburbs, a town its centre. A capital (PPLC) gets at least 10 km and a region's seat (PPLA) at
+ * least 6 km, since GeoNames counts only the city proper. A section of a city (PPLX, a neighbourhood) stays at 3 km.
+ */
+export function radiusForPlace(place: { population?: number | null; featureCode?: string | null }): number {
+  const pop = place.population ?? 0;
+  const code = place.featureCode ?? "";
+  if (code === "PPLX") return DEFAULT_RADIUS_KM;
+  const byPop = pop >= 1_000_000 ? 15 : pop >= 250_000 ? 10 : pop >= 50_000 ? 6 : DEFAULT_RADIUS_KM;
+  const floor = code === "PPLC" ? 10 : code === "PPLA" ? 6 : DEFAULT_RADIUS_KM;
+  return Math.max(byPop, floor);
+}
 
 /** A city slug: lower-case words joined by hyphens. */
 export const citySlugSchema = z
@@ -76,6 +94,11 @@ export const cityPlaceSchema = z.object({
   lat: z.number().min(-90).max(90),
   lon: z.number().min(-180).max(180),
   timeZone: z.string().max(64).refine(isTimeZone, "Unknown time zone"),
+  /**
+   * The planning radius (km, radiusForPlace). OPTIONAL and never defaulted: a place without it (links and stored requests from
+   * before metro areas) plans the CBD-sized area it always did, with the same request hash.
+   */
+  radiusKm: z.number().int().min(1).max(MAX_RADIUS_KM).optional(),
 });
 
 export type CityPlace = z.infer<typeof cityPlaceSchema>;
@@ -129,9 +152,16 @@ export function citySlug(place: Pick<CityPlace, "name" | "countryCode" | "lat" |
     .replace(/-+$/, "");
 }
 
-/** A geocoded place as a City. */
+/** Whether a city plans a metro area in districts (a radius past the CBD-sized default). Never Melbourne. */
+export const isMetro = (city: Pick<City, "radiusKm" | "source">) => city.source !== "builtin" && city.radiusKm > DEFAULT_RADIUS_KM;
+
+/**
+ * A geocoded place as a City. With no radius (or the default one) the planning area is the CBD-sized box it always was; a
+ * larger radius makes it a square reaching `radiusKm` from the centre each way (the city and its suburbs).
+ */
 export function cityFromPlace(id: string, place: CityPlace): City {
   const center = { lat: r4(place.lat), lon: r4(place.lon) };
+  const radiusKm = place.radiusKm ?? DEFAULT_RADIUS_KM;
   return {
     id,
     name: place.name,
@@ -139,15 +169,16 @@ export function cityFromPlace(id: string, place: CityPlace): City {
     countryCode: place.countryCode,
     center,
     timeZone: place.timeZone,
-    bbox: boxAround(center),
-    radiusKm: DEFAULT_RADIUS_KM,
+    bbox: radiusKm > DEFAULT_RADIUS_KM ? boxAround(center, radiusKm, radiusKm) : boxAround(center),
+    radiusKm,
     source: "open-meteo",
   };
 }
 
-/** The place a City stands for, as a request carries it. */
+/** The place a City stands for, as a request carries it. The radius only when it isn't the default (old hashes stay). */
 export function placeOf(city: City): CityPlace {
-  return { name: city.name, country: city.country, countryCode: city.countryCode, lat: city.center.lat, lon: city.center.lon, timeZone: city.timeZone };
+  const place = { name: city.name, country: city.country, countryCode: city.countryCode, lat: city.center.lat, lon: city.center.lon, timeZone: city.timeZone };
+  return city.source !== "builtin" && city.radiusKm !== DEFAULT_RADIUS_KM ? { ...place, radiusKm: city.radiusKm } : place;
 }
 
 export const isMelbourne = (city: Pick<City, "id">) => city.id === DEFAULT_CITY_ID;
@@ -205,19 +236,25 @@ export function cityLevels(city: Pick<City, "id">): CityLevels {
 }
 
 /**
- * A place in a plan URL: `place=Tokyo~JP~35.6895~139.6917~Asia/Tokyo~Japan` beside `city=tokyo-jp`. Melbourne links carry
- * neither, as before.
+ * A place in a plan URL: `place=Tokyo~JP~35.6895~139.6917~Asia/Tokyo~Japan` beside `city=tokyo-jp`, then the planning radius
+ * when the place has one (`~15`). Melbourne links carry neither, as before.
  */
 export function placeParam(place: CityPlace): string {
   const clean = (s: string) => s.replace(/~/g, " ");
-  return [clean(place.name), place.countryCode, place.lat, place.lon, place.timeZone, clean(place.country)].join("~");
+  const parts: (string | number)[] = [clean(place.name), place.countryCode, place.lat, place.lon, place.timeZone, clean(place.country)];
+  if (place.radiusKm !== undefined) parts.push(place.radiusKm);
+  return parts.join("~");
 }
 
-/** The place in a plan URL, or undefined when absent or unreadable (the request schema then refuses a non-Melbourne city). */
+/**
+ * The place in a plan URL, or undefined when absent or unreadable (the request schema then refuses a non-Melbourne city).
+ * A link from before metro areas has no radius: it plans the CBD-sized area it always did.
+ */
 export function parsePlaceParam(value: string | undefined): CityPlace | undefined {
   if (!value) return undefined;
-  const [name, countryCode, lat, lon, timeZone, country] = value.split("~");
-  const parsed = cityPlaceSchema.safeParse({ name, countryCode, lat: Number(lat), lon: Number(lon), timeZone, country });
+  const [name, countryCode, lat, lon, timeZone, country, radius] = value.split("~");
+  const radiusKm = radius === undefined || radius === "" ? undefined : Number(radius);
+  const parsed = cityPlaceSchema.safeParse({ name, countryCode, lat: Number(lat), lon: Number(lon), timeZone, country, ...(radiusKm === undefined ? {} : { radiusKm }) });
   return parsed.success ? parsed.data : undefined;
 }
 
@@ -230,8 +267,8 @@ export function optionOf(request: { city?: string; place?: CityPlace }): CityOpt
 /** The request fields for a picked city: nothing extra for Melbourne, slug and place for any other. */
 export function requestFieldsOf(option: CityOption): { city: string; place?: CityPlace } {
   if (option.id === DEFAULT_CITY_ID) return { city: DEFAULT_CITY_ID };
-  const { name, country, countryCode, lat, lon, timeZone } = option;
-  return { city: option.id, place: { name, country, countryCode, lat, lon, timeZone } };
+  const { name, country, countryCode, lat, lon, timeZone, radiusKm } = option;
+  return { city: option.id, place: { name, country, countryCode, lat, lon, timeZone, ...(radiusKm !== undefined ? { radiusKm } : {}) } };
 }
 
 /**

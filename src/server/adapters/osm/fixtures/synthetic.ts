@@ -6,7 +6,7 @@
 // carries what a real one does: ways with a centre, unnamed features and a long street split in two pieces.
 import { MELBOURNE, type City } from "@/lib/city";
 import { PUBLIC_SPOTS, type SpotKind } from "@/server/data/spots";
-import { fromMockFrame, offlineRegionAt } from "@/server/offline-city";
+import { fromMockFrame, OFFLINE_METRO_HUBS, offlineRegionAt } from "@/server/offline-city";
 
 const TAGS: Record<SpotKind, (name: string) => Record<string, string>> = {
   square: (name) => ({ place: "square", name }),
@@ -46,5 +46,13 @@ export function syntheticOverpass(city: Pick<City, "center">): { elements: El[] 
   // An unnamed pedestrian area away from the others, and a row with no position (dropped).
   elements.push({ type: "way", id: 8_999_002, center: { lat: region.center.lat + 0.0125, lon: region.center.lon - 0.019 }, tags: { highway: "pedestrian", area: "yes" } });
   elements.push({ type: "way", id: 8_999_003, tags: { place: "square", name: "Synthetic OSM no position" } });
+  // Offline mode's large metro: a square, a pedestrian street and a park at each taste hub 4 to 5 km out (offline-city.ts).
+  OFFLINE_METRO_HUBS.forEach((hub, h) => {
+    const near = (dLat: number, dLon: number) => fromMockFrame({ lat: hub.lat + dLat, lon: hub.lon + dLon }, region);
+    const id = 7_000_000 + h * 10;
+    elements.push({ type: "node", id, ...near(0.0004, 0.0003), tags: TAGS.square(`Synthetic OSM ${hub.label} Square`) });
+    elements.push({ type: "way", id: id + 1, center: near(-0.003, -0.0015), tags: TAGS["pedestrian-street"](`Synthetic OSM ${hub.label} Street`) });
+    elements.push({ type: "way", id: id + 2, center: near(0.0025, -0.004), tags: TAGS["park-edge"](`Synthetic OSM ${hub.label} Park`) });
+  });
   return { elements };
 }

@@ -38,19 +38,40 @@ export function overpassUserAgent(): string {
   return `BuskMap/${appVersion.version} (busking planner${repo ? `; ${repo}` : ""})`;
 }
 
-/** The city's spots, recorded on the research step (a cache hit shows as a cached call). */
-export async function fetchOsmSpotsRecorded(box: BBox): Promise<PublicSpot[]> {
+/**
+ * The endpoint a district's query tries first: a metro's districts are queried at once, so each starts on its own endpoint
+ * instead of all queueing on the first. A pure function of the rounded box, so the same district always gets the same one
+ * (and the same cache key).
+ */
+export function endpointOffset(box: BBox): number {
+  const key = osmCacheKey(box);
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return h % OVERPASS_ENDPOINTS.length;
+}
+
+/** The endpoints in the order a query tries them, starting at `offset`. */
+export const rotatedEndpoints = (offset: number): string[] => OVERPASS_ENDPOINTS.map((_, i) => OVERPASS_ENDPOINTS[(i + offset) % OVERPASS_ENDPOINTS.length]);
+
+/**
+ * The city's (or one district's) spots, recorded on the research step (a cache hit shows as a cached call). `rotate`: start
+ * on the box's own endpoint (endpointOffset), for queries sent side by side.
+ */
+export async function fetchOsmSpotsRecorded(box: BBox, rotate = false): Promise<PublicSpot[]> {
   const b = overpassBBox(box);
-  return cachedCall("osm", "osm.fetchOsmSpots", [b], () => fetchOsmSpots(b), { endpoint: "/api/interpreter", params: { bbox: osmCacheKey(b).slice("osm-spots:".length) } });
+  const offset = rotate ? endpointOffset(b) : 0;
+  const describe = { endpoint: "/api/interpreter", params: { bbox: osmCacheKey(b).slice("osm-spots:".length) } };
+  // No offset: the call (and its cache key) is the one it always was.
+  return offset === 0 ? cachedCall("osm", "osm.fetchOsmSpots", [b], () => fetchOsmSpots(b), describe) : cachedCall("osm", "osm.fetchOsmSpots", [b, offset], () => fetchOsmSpots(b, offset), describe);
 }
 
 /** The query (cached 30 days by its rounded bounding box). Throws on any failure, so a failed answer is never cached. */
-export async function fetchOsmSpots(box: BBox): Promise<PublicSpot[]> {
+export async function fetchOsmSpots(box: BBox, offset?: number): Promise<PublicSpot[]> {
   "use cache: remote";
-  return cacheBody("osm.fetchOsmSpots", [box], async () => {
+  return cacheBody("osm.fetchOsmSpots", offset === undefined ? [box] : [box, offset], async () => {
     cacheLife(OSM_CACHE_LIFE);
     cacheTag("osm");
-    const body = await queryOverpass(buildOverpassQuery(box));
+    const body = await queryOverpass(buildOverpassQuery(box), offset ? rotatedEndpoints(offset) : OVERPASS_ENDPOINTS);
     return osmSpots(body.elements, box);
   });
 }

@@ -41,7 +41,7 @@ function hatchImage(): ImageData | null {
 
 type Props = {
   /** Only what the map draws, so the landing can feed it a labelled example without a full plan. */
-  plan: Pick<Plan, "tasteCells" | "others"> & { zones?: Plan["zones"] } & { pitches: Pick<PlanPitch, "id" | "name" | "lat" | "lon" | "score" | "discovery">[] };
+  plan: Pick<Plan, "tasteCells" | "others"> & { zones?: Plan["zones"]; districts?: Plan["districts"] } & { pitches: Pick<PlanPitch, "id" | "name" | "lat" | "lon" | "score" | "discovery">[] };
   center: { lat: number; lon: number };
   selectedId: string | null;
   onSelect: (pitchId: string) => void;
@@ -243,13 +243,14 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
       markers.current.push(new Marker({ element: el }).setLngLat([p.lon, p.lat]).addTo(instance));
     });
     if (plan.pitches.length > 0) {
+      // The pitches, and a metro's districts (the area the plan searched), all in view.
       const bounds = new LngLatBounds();
-      for (const p of plan.pitches) bounds.extend([p.lon, p.lat]);
+      for (const p of [...plan.pitches, ...(plan.districts ?? [])]) bounds.extend([p.lon, p.lat]);
       frame.current = bounds;
       interacted.current = false;
       fit(instance, bounds);
     }
-  }, [plan.pitches, plan.others, fit]);
+  }, [plan.pitches, plan.others, plan.districts, fit]);
 
   // Selection: mark the pin pressed (it grows) and pan to it when it is out of view.
   useEffect(() => {
@@ -293,7 +294,7 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
 
   return (
     <div className="relative h-full min-h-80 w-full overflow-hidden bg-muted" onKeyDown={(e) => e.key === "Escape" && dotRef.current && closeSummary()}>
-      <div ref={container} className="size-full" role="region" aria-label="Map of pitches and Qloo taste affinity" data-center={`${center.lat},${center.lon}`} />
+      <div ref={container} className="size-full" role="region" aria-label="Map of pitches and Qloo taste affinity" data-center={`${center.lat},${center.lon}`} data-districts={plan.districts?.length || undefined} />
       {others.length > 0 && !dot ? (
         <Button
           ref={browseRef}

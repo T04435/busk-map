@@ -210,6 +210,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     context.ownFans(),
   ]);
   const funnel = await context.funnel();
+  const districts = context.qlooFailed() ? [] : await context.namedDistricts();
   // Artist photos already fetched with the crowd (Qloo entities), for the learn-these rows.
   const photoOf = new Map(locals.flatMap((a) => (a.image && /^https:\/\//.test(a.image) ? [[a.id, a.image] as const] : [])));
   const qlooDown = context.qlooFailed();
@@ -306,6 +307,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
         ? `Top pitch: ${pitches[0].name}.`
         : "No pitch could be recommended for this slot with the data available."),
     notes: [...context.notes, ...(options.agentNotes ?? []), ...(usedAi ? (ai?.notes ?? []).filter(traceable).slice(0, 3).map((n) => clip(plainScores(n), 240)) : [])],
+    ...(districts.length > 0 ? { districts: districts.map((d) => ({ name: d.name, lat: d.center.lat, lon: d.center.lon })) } : {}),
     weights: context.weights,
     pitches,
     others: (qlooDown ? [] : ranked)

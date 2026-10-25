@@ -6,7 +6,7 @@ import { ANY_TIME_DAY, formatHour } from "@/lib/slot";
 import { activitySentence, activityWord } from "@/lib/activity";
 import { nameKey } from "@/lib/text";
 import * as qloo from "@/server/adapters/qloo";
-import { activityEstimate, relativeActivity, candidateAt, topCells, openDuring, pickTopPitches, scoreWindows, type Candidate, type KnownPlace, type ScoredPitch } from "@/server/scoring";
+import { activityEstimate, relativeActivity, candidateAt, districtOf, MAX_PICKS_PER_DISTRICT, topCells, openDuring, scoreWindows, type Candidate, type District, type KnownPlace, type ScoredPitch } from "@/server/scoring";
 import { reasonWithoutYear, type SetlistEntry } from "@/server/scoring/setlist";
 import type { PlanContext } from "./context";
 import { NumberBag } from "./number-bag";
@@ -123,6 +123,8 @@ export class AgentState {
   unverifiedNumbers: string[] = [];
   /** Calls per tool, for the trace. */
   readonly calls: string[] = [];
+  /** A metro's districts (scoring/districts.ts), set when score_pitches runs: the final answer takes at most 2 from one. */
+  districts: District[] = [];
 }
 
 /**
@@ -183,14 +185,17 @@ export function sameCorners(ranked: ScoredPitch[]): Map<string, string> {
   return out;
 }
 
-function compactPitch(p: ScoredPitch, engineTop: Set<string>, added: Set<string>, corners: Map<string, string>) {
+function compactPitch(p: ScoredPitch, engineTop: Set<string>, added: Set<string>, corners: Map<string, string>, districts: readonly District[] = []) {
   const higher = corners.has(p.id) ? { name: corners.get(p.id)! } : null;
+  const district = districts.length > 0 ? districts.find((d) => d.id === districtOf(p, districts))?.name : undefined;
   return {
     pitchId: p.id,
     name: p.name,
     score: p.score,
     engineTop3: engineTop.has(p.id),
     sameCornerAs: higher?.name ?? null,
+    // A metro only: the district the pitch is in (at most 2 final pitches from one).
+    ...(district ? { district } : {}),
     addedByYou: added.has(p.id),
     kind: p.kind,
     discovery: p.discovery,
@@ -280,12 +285,18 @@ function buildTools(ctx: PlanContext, state: AgentState) {
 
   /** The engine's pool plus the agent's additions, scored with the same inputs and weights. */
   async function scorePool(): Promise<{ ranked: ScoredPitch[]; engineTop: ScoredPitch[] }> {
-    const [ranked, scoredAdditions] = await Promise.all([ctx.ranked(), Promise.all([...state.added].map((id) => ctx.scoreCandidate(state.checked.get(id)!)))]);
+    const [ranked, scoredAdditions, engineTop, districts] = await Promise.all([
+      ctx.ranked(),
+      Promise.all([...state.added].map((id) => ctx.scoreCandidate(state.checked.get(id)!))),
+      ctx.topPitches(),
+      ctx.namedDistricts(),
+    ]);
     const additions = scoredAdditions.filter((p): p is ScoredPitch => p !== null);
     const all = [...ranked, ...additions].sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
     for (const p of all) state.pool.set(p.id, p);
     state.scored = true;
-    return { ranked: all, engineTop: pickTopPitches(ranked, 3) };
+    state.districts = districts;
+    return { ranked: all, engineTop };
   }
 
   const tools = {
@@ -598,9 +609,11 @@ function buildTools(ctx: PlanContext, state: AgentState) {
           poolSize: ranked.length,
           ...(ctx.isAnyTime ? { windows: ctx.windows().length, note: "Any time: each pitch is scored at its own best 3-hour window that day; call best_hours for the hours." } : {}),
           added: [...state.added],
+          // A metro planned in districts: their names, and the spread rule finish_plan checks.
+          ...(state.districts.length > 1 ? { districts: state.districts.map((d) => d.name), districtRule: `At most ${MAX_PICKS_PER_DISTRICT} final pitches from one district.` } : {}),
           rankOf: Object.fromEntries([...asked].map((id) => [id, ranked.findIndex((p) => p.id === id) + 1])),
           slotWeather: weather ? weather.hours.map((h) => `${formatHour(h.hour)} ${h.temperatureC ?? "?"}°C rain ${h.precipitationProbability ?? "?"}% wind ${h.windKmh ?? "?"} km/h`).join("; ") : "no forecast",
-          pitches: shown.map((p) => compactPitch(p, engineIds, state.added, corners)),
+          pitches: shown.map((p) => compactPitch(p, engineIds, state.added, corners, state.districts)),
         });
       },
     }),
@@ -783,7 +796,7 @@ export async function outputForPage(tool: string, input: unknown, output: unknow
   return { ...(output as object), songs: songs.map((s, i) => ({ ...(s as object), year: setlist[i]?.year ?? null })) };
 }
 
-type Problem = { kind: "pool" | "count" | "spacing" | "numbers"; message: string; numbers?: string[] };
+type Problem = { kind: "pool" | "count" | "spacing" | "district" | "numbers"; message: string; numbers?: string[] };
 
 /** The guardrails on the final answer. Pure, so tests can call it directly. */
 export function checkAnswer(answer: AgentAnswer, state: AgentState): Problem[] {
@@ -808,12 +821,32 @@ export function checkAnswer(answer: AgentAnswer, state: AgentState): Problem[] {
       }
     }
   }
+  const crowded = crowdedDistrict(chosen, state.districts, [...state.pool.values()]);
+  if (crowded) {
+    problems.push({ kind: "district", message: `More than ${MAX_PICKS_PER_DISTRICT} of your pitches are in ${crowded}: pick at least one from another district (score_pitches shows each pitch's district).` });
+  }
   const text = [answer.summary, ...answer.pitches.map((p) => p.why), ...answer.notes].join(" ");
   const unknownNumbers = state.seen.unknownIn(text);
   if (unknownNumbers.length) {
     problems.push({ kind: "numbers", numbers: unknownNumbers, message: `These numbers aren't in any tool result: ${unknownNumbers.join(", ")}. Use only numbers the tools returned.` });
   }
   return problems;
+}
+
+/**
+ * The district holding more than MAX_PICKS_PER_DISTRICT of the chosen pitches, by name, when the pool has a pitch in another
+ * district the answer could take instead. Null otherwise (and always for a city planned without districts).
+ */
+export function crowdedDistrict(chosen: readonly LatLon[], districts: readonly District[], pool: readonly LatLon[]): string | null {
+  if (districts.length < 2) return null;
+  const counts = new Map<string, number>();
+  for (const p of chosen) {
+    const id = districtOf(p, districts);
+    if (id) counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  const over = [...counts].find(([, n]) => n > MAX_PICKS_PER_DISTRICT)?.[0];
+  if (!over || !pool.some((p) => districtOf(p, districts) !== over)) return null;
+  return districts.find((d) => d.id === over)!.name;
 }
 
 /** The point of a pitch, for tests. */

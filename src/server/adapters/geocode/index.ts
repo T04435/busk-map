@@ -1,5 +1,5 @@
 import "server-only";
-import { citySlug, isTimeZone, type CityOption } from "@/lib/city";
+import { citySlug, DEFAULT_CITY_ID, DEFAULT_RADIUS_KM, isTimeZone, radiusForPlace, type CityOption } from "@/lib/city";
 import { runAdapter, type AdapterContext, type AdapterResult } from "../core";
 import { searchPlaces } from "./client";
 import { syntheticGeocode } from "./fixtures/synthetic";
@@ -10,14 +10,21 @@ export const GEOCODE_ASK = 20;
 /** How many cities the picker shows. */
 export const GEOCODE_SHOWN = 8;
 
-/** A geocoder row as a city the busk form can pick: populated places with a country and a known time zone only. */
+/**
+ * A geocoder row as a city the busk form can pick: populated places with a country and a known time zone only. Its planning
+ * radius comes from its population and feature code (radiusForPlace); the default radius is left off, so a small town's
+ * request is the one it always was.
+ */
 export function cityOption(row: GeocodeResult): CityOption | null {
   if (!row.feature_code?.startsWith("PPL") || !row.country_code || !row.country || !row.timezone || !isTimeZone(row.timezone)) return null;
   const countryCode = row.country_code.toUpperCase();
   if (!/^[A-Z]{2}$/.test(countryCode)) return null;
   const place = { name: row.name.slice(0, 80), country: row.country.slice(0, 80), countryCode, lat: row.latitude, lon: row.longitude, timeZone: row.timezone };
   const region = row.admin1 ?? null;
-  return { id: citySlug(place, region), ...place, region };
+  const id = citySlug(place, region);
+  // The built-in Melbourne keeps its own area (lib/city.ts MELBOURNE): no radius.
+  const radiusKm = id === DEFAULT_CITY_ID ? DEFAULT_RADIUS_KM : radiusForPlace({ population: row.population, featureCode: row.feature_code });
+  return { id, ...place, ...(radiusKm !== DEFAULT_RADIUS_KM ? { radiusKm } : {}), region };
 }
 
 /** Cities from geocoder rows: one per slug (the first, best match), at most GEOCODE_SHOWN. */

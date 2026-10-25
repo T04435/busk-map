@@ -2,8 +2,10 @@ import { cacheLife, cacheTag } from "next/cache";
 import { describe, expect, it, vi } from "vitest";
 import { MELBOURNE } from "@/lib/city";
 import { distanceM, inBBox } from "@/lib/geo";
-import { getOsmSpots } from "@/server/adapters/osm";
-import { OSM_CACHE_LIFE, OVERPASS_DEADLINE_MS, OVERPASS_ENDPOINTS, OVERPASS_TIMEOUT_MS, OVERPASS_URL, overpassUserAgent } from "@/server/adapters/osm/client";
+import { getOsmSpots, mergeOsmResults } from "@/server/adapters/osm";
+import { endpointOffset, OSM_CACHE_LIFE, OVERPASS_DEADLINE_MS, OVERPASS_ENDPOINTS, OVERPASS_TIMEOUT_MS, OVERPASS_URL, overpassUserAgent, rotatedEndpoints } from "@/server/adapters/osm/client";
+import { boxAround } from "@/lib/city";
+import { findDistricts } from "@/server/scoring";
 import { syntheticOverpass } from "@/server/adapters/osm/fixtures/synthetic";
 import { buildOverpassQuery, elementToSpot, osmCacheKey, osmSpots, OSM_SPOT_SPACING_M, OSM_SPOTS_MAX, overpassBBox, overpassFailed, spotName } from "@/server/adapters/osm/query";
 import { TOKYO } from "@/server/offline-city";
@@ -184,5 +186,57 @@ describe("getOsmSpots", () => {
     expect((await getOsmSpots(elsewhere, OFFLINE)).data).toEqual([]);
     expect(syntheticOverpass(MELBOURNE).elements).toEqual([]);
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("a metro's districts on Overpass", () => {
+  /** Two districts of a 30 km Tokyo, 5 km apart (invented cells). */
+  const metro = boxAround(TOKYO.center, 15, 15);
+  const districts = findDistricts([{ ...at(0, 0), affinity: 1 }, { ...at(0, 0.055), affinity: 0.9 }], metro);
+  const answer = (id: number, p: { lat: number; lon: number }) => json({ elements: [node(id, p, { place: "square", name: `Square ${id}` })] });
+
+  it("asks once per district's small box, each with its own cache key, never one metro-wide query", async () => {
+    expect(districts).toHaveLength(2);
+    const keys = districts.map((d) => osmCacheKey(d.bbox));
+    expect(new Set(keys).size).toBe(2);
+    expect(keys).not.toContain(osmCacheKey(metro));
+    const { calls } = mockFetch([route(isOverpass, (_u, init) => (new URLSearchParams(String(init?.body)).get("data") === buildOverpassQuery(districts[0].bbox) ? answer(1, districts[0].center) : answer(2, districts[1].center)))]);
+    const results = await Promise.all(districts.map((d) => getOsmSpots(d, LIVE, { rotate: true })));
+    expect(calls).toHaveLength(2);
+    for (const [i, d] of districts.entries()) expect(new URLSearchParams(String(calls[i].init!.body)).get("data")).toBe(buildOverpassQuery(d.bbox));
+    const merged = mergeOsmResults(results);
+    expect(merged).toMatchObject({ adapter: "osm", mode: "live" });
+    expect(merged.data.map((s) => s.name).sort()).toEqual(["Square 1", "Square 2"]);
+  });
+
+  it("starts each district on the endpoint its box picks, the same one every time", async () => {
+    for (const d of districts) {
+      const offset = endpointOffset(d.bbox);
+      expect(offset).toBe(endpointOffset({ ...d.bbox }));
+      expect(offset).toBeGreaterThanOrEqual(0);
+      expect(offset).toBeLessThan(OVERPASS_ENDPOINTS.length);
+      expect(rotatedEndpoints(offset)[0]).toBe(OVERPASS_ENDPOINTS[offset]);
+      expect([...rotatedEndpoints(offset)].sort()).toEqual([...OVERPASS_ENDPOINTS].sort());
+      const { calls } = mockFetch([route(isOverpass, () => answer(1, d.center))]);
+      await getOsmSpots(d, LIVE, { rotate: true });
+      expect(calls[0].url.href).toBe(OVERPASS_ENDPOINTS[offset]);
+    }
+  });
+
+  it("keeps the districts that answered when one fails, and fails only when all do", () => {
+    const spot = { id: "osm:n1", name: "A", kind: "square" as const, lat: 1, lon: 1 };
+    const live = { adapter: "osm" as const, source: "osm" as const, mode: "live" as const, data: [spot] };
+    const down = { adapter: "osm" as const, source: "osm" as const, mode: "fallback" as const, reason: "timeout" as const, data: [] };
+    expect(mergeOsmResults([down, live, live])).toEqual(live);
+    expect(mergeOsmResults([down, down])).toEqual(down);
+  });
+
+  it("offline: the synthetic metro has spots in every district of Tokyo's suburbs", async () => {
+    const { OFFLINE_METRO_HUBS, fromMockFrame } = await import("@/server/offline-city");
+    for (const hub of OFFLINE_METRO_HUBS) {
+      const point = fromMockFrame({ lat: hub.lat, lon: hub.lon }, TOKYO);
+      const spots = (await getOsmSpots({ bbox: boxAround(point, 1.2, 1.2), center: point }, OFFLINE)).data;
+      expect(spots.map((s) => s.name)).toEqual(expect.arrayContaining([`Synthetic OSM ${hub.label} Square`, `Synthetic OSM ${hub.label} Park`]));
+    }
   });
 });

@@ -6,7 +6,7 @@
 // claim to be true: real Qloo heatmaps replace it the day the key arrives.
 // Offline mode's second city (Tokyo, server/offline-city.ts) reads the same field, moved onto its centre.
 import { distanceM, type LatLon } from "@/lib/geo";
-import { toMockFrame } from "@/server/offline-city";
+import { OFFLINE_METRO_HUB_SIGMA_M, OFFLINE_METRO_HUBS, offlineRegionAt, toMockFrame } from "@/server/offline-city";
 import { GENRES, unit, type Genre } from "./catalog";
 
 type Anchor = { at: LatLon; sigmaM: number; weight: number };
@@ -83,8 +83,12 @@ function field(anchors: Anchor[], point: LatLon): number {
   return Math.min(1, sum);
 }
 
+/** Offline mode's large metro (offline-city.ts OFFLINE_METRO_HUBS): taste for every genre at the hubs, in an offline region only. */
+const METRO_HUB_ANCHORS: Anchor[] = OFFLINE_METRO_HUBS.map((hub) => A(hub, hub.weight, OFFLINE_METRO_HUB_SIGMA_M));
+
 export function genreField(genre: Genre, point: LatLon): number {
-  return field(GENRE_ANCHORS[genre], point);
+  const own = field(GENRE_ANCHORS[genre], point);
+  return offlineRegionAt(point) ? Math.min(1, own + field(METRO_HUB_ANCHORS, point)) : own;
 }
 
 export function density(point: LatLon): number {

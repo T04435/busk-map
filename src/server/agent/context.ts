@@ -1,5 +1,6 @@
 import "server-only";
-import type { BBox, LatLon } from "@/lib/geo";
+import { inBBox, type BBox, type LatLon } from "@/lib/geo";
+import { boxAround, isMetro } from "@/lib/city";
 import type { TrendRow } from "@/server/adapters/qloo";
 import { ageLabel } from "@/lib/age";
 import { ANY_TIME_DAY, anyTimeWindowsLeft, DEFAULT_SLOT_HOURS, isAnyTime, slotUtcRange, weekdayOf, zonedHourToUtc, type Slot, type TimeWindow } from "@/lib/slot";
@@ -8,7 +9,7 @@ import type { PlanRequest } from "@/lib/plan-schema";
 import type { AdapterContext, AdapterName, AdapterResult } from "@/server/adapters/core";
 import { getEvents, getEventsBetween, EVENTS_LOOKBACK_HOURS } from "@/server/adapters/events";
 import { getPitches } from "@/server/adapters/pitches";
-import { getOsmSpots } from "@/server/adapters/osm";
+import { getOsmSpots, mergeOsmResults } from "@/server/adapters/osm";
 import * as qloo from "@/server/adapters/qloo";
 import { findReleaseYears } from "@/server/adapters/repertoire";
 import { getSongs } from "@/server/adapters/songs";
@@ -20,6 +21,12 @@ import {
   buildCandidatesWithFunnel,
   buildSetlist,
   DEFAULT_MAX_SONGS,
+  districtOf,
+  findDistricts,
+  MAX_PICKS_PER_DISTRICT,
+  nameDistricts,
+  type District,
+  type DistrictSpread,
   GLOBAL_POP_TAKE,
   learnThese,
   normalizeWeights,
@@ -91,6 +98,7 @@ const OPTIONAL_QLOO: [prefix: string, feature: string][] = [
   ["compare", "the contrast with the usual crowd"],
   ["scene:", "the local scene (acts local to this city)"],
   ["taste:soft", "the taste map with your own artist"],
+  ["taste:district:", "the close-up taste map of one district"],
   ["relatedArtists", "related artists for the suggested songs"],
   ["affinity:", "the suggested set order by local taste"],
   ["songArtists", "the suggested set order by local taste"],
@@ -294,12 +302,73 @@ export class PlanContext {
     });
   }
 
+  /** Whether this plan covers a metro area in districts (lib/city.ts isMetro, scoring/districts.ts). Never Melbourne. */
+  get metro(): boolean {
+    return isMetro(this.city);
+  }
+
+  /**
+   * The taste cells the plan scores with. A CBD-sized city: the heatmap over the planning area (areaCells). A metro: the
+   * close-up heatmap of each district (one Qloo call each, cached per district box), each district's cells weighted by its
+   * strength in the whole-area read; a district whose close-up read is empty keeps its cells from the whole-area read.
+   */
+  tasteCells() {
+    return this.once("tasteCells", async () => {
+      const [area, districts] = await Promise.all([this.areaCells(), this.districts()]);
+      if (districts.length === 0) return area;
+      const soft = await this.soundsLikeIds();
+      const ids = this.ownDropped ? soft : this.withOwn(soft);
+      const tags = this.ownDropped ? [] : this.signalTags();
+      const zoomed = await Promise.all(districts.map((d) => this.track(`taste:district:${d.id}`, () => qloo.tasteMap(ids, d.bbox, this.adapters, undefined, tags))));
+      const top = districts[0].affinity || 1;
+      const out = new Map<string, qloo.HeatCell>();
+      districts.forEach((d, i) => {
+        const weight = Math.min(1, d.affinity / top);
+        const cells = zoomed[i].length > 0 ? zoomed[i].map((c) => ({ ...c, affinity: Math.round(c.affinity * weight * 1e6) / 1e6 })) : area.filter((c) => inBBox(c, d.bbox));
+        for (const c of cells) {
+          const key = c.geohash ?? `${c.lat},${c.lon}`;
+          if (!out.has(key)) out.set(key, c);
+        }
+      });
+      return [...out.values()];
+    });
+  }
+
+  /**
+   * A metro's districts, strongest first, found from the whole-area heatmap (scoring/districts.ts). Empty for a CBD-sized
+   * city, and when the whole-area read has no cells inside the area. Named "Area N" here; namedDistricts() names them.
+   */
+  districts(): Promise<District[]> {
+    return this.once("districts", async () => {
+      if (!this.metro) return [];
+      const cells = (await this.areaCells()).filter((c) => inBBox(c, this.city.bbox));
+      return this.qlooFailed() ? [] : findDistricts(cells, this.city.bbox);
+    });
+  }
+
+  /** The districts named after the nearest OpenStreetMap spot or Qloo place (for the plan's copy and the agent's tools). */
+  namedDistricts(): Promise<District[]> {
+    return this.once("namedDistricts", async () => {
+      const districts = await this.districts();
+      if (districts.length === 0) return [];
+      const [spots, places] = await Promise.all([this.spots(), this.places()]);
+      return nameDistricts(districts, spots, places);
+    });
+  }
+
+  /** The 2-per-district rule for the top pitches of a metro; undefined for a CBD-sized city (no rule, as before). */
+  async spread(): Promise<DistrictSpread | undefined> {
+    const districts = await this.districts();
+    if (districts.length < 2) return undefined;
+    return { districtOf: (point) => districtOf(point, districts), maxPerDistrict: MAX_PICKS_PER_DISTRICT };
+  }
+
   /**
    * Taste heatmap over the planning area. If Qloo returns nothing, retry once
    * over a wider area and say so in the plan.
    */
-  tasteCells() {
-    return this.once("tasteCells", async () => {
+  private areaCells() {
+    return this.once("areaCells", async () => {
       const soft = await this.soundsLikeIds();
       const ids = this.withOwn(soft);
       const tags = this.signalTags();
@@ -332,11 +401,11 @@ export class PlanContext {
       const ids = await this.entityIds();
       const tags = this.signalTags();
       if (ids.length === 0 && tags.length === 0) return [];
-      const found = await this.track("places", () => qloo.busyPlaces(ids, this.city.center, PLACES_RADIUS_M, this.weekday, this.adapters, tags));
+      // A metro: one search over the whole area (per district would cost a Qloo call each).
+      const radiusM = this.metro ? this.city.radiusKm * 1000 : PLACES_RADIUS_M;
+      const found = await this.track("places", () => qloo.busyPlaces(ids, this.city.center, radiusM, this.weekday, this.adapters, tags));
       if (found.length > 0 || this.qlooFailed()) return found;
-      const wider = await this.track("places:wide", () =>
-        qloo.busyPlaces(ids, this.city.center, PLACES_RADIUS_M * WIDEN_FACTOR, this.weekday, this.adapters, tags),
-      );
+      const wider = await this.track("places:wide", () => qloo.busyPlaces(ids, this.city.center, radiusM * WIDEN_FACTOR, this.weekday, this.adapters, tags));
       this.notes.push(
         wider.length > 0
           ? "Qloo found no matching places open near the centre, so the search was widened."
@@ -415,7 +484,14 @@ export class PlanContext {
    */
   spots() {
     if (isMelbourne(this.city)) return Promise.resolve(pitchesFor(this.city));
-    return this.track("osm", () => getOsmSpots(this.city, this.adapters));
+    if (!this.metro) return this.track("osm", () => getOsmSpots(this.city, this.adapters));
+    // A metro: one Overpass query per district's small box, side by side (each within the 15 s deadline, cached per box),
+    // never one metro-wide query. No districts (no taste data to find them): the CBD-sized box at the centre.
+    return this.track("osm", async () => {
+      const districts = await this.districts();
+      const boxes = districts.length > 0 ? districts : [{ bbox: boxAround(this.city.center), center: this.city.center }];
+      return mergeOsmResults(await Promise.all(boxes.map((b) => getOsmSpots(b, this.adapters, { rotate: boxes.length > 1 }))));
+    });
   }
 
   events() {
@@ -651,8 +727,10 @@ export class PlanContext {
     return (await this.candidates()).funnel;
   }
 
+  /** The engine's top 3: spaced apart and, for a metro, at most MAX_PICKS_PER_DISTRICT from one district. */
   async topPitches(): Promise<ScoredPitch[]> {
-    return pickTopPitches(await this.ranked(), 3);
+    const [ranked, spread] = await Promise.all([this.ranked(), this.spread()]);
+    return pickTopPitches(ranked, 3, undefined, spread);
   }
 
   /**

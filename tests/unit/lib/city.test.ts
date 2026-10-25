@@ -6,10 +6,13 @@ import {
   cityLevels,
   cityOfRequest,
   citySlug,
+  DEFAULT_RADIUS_KM,
   isMelbournePlace,
+  isMetro,
   isTimeZone,
   MELBOURNE,
   placeOf,
+  radiusForPlace,
   requestCityFields,
 } from "@/lib/city";
 import { inBBox } from "@/lib/geo";
@@ -45,6 +48,19 @@ describe("City from a geocoded place", () => {
     expect(inBBox(tokyo.center, tokyo.bbox)).toBe(true);
     expect(tokyo.bbox.north - tokyo.bbox.south).toBeCloseTo(3.2 / 111.32, 3);
     expect(placeOf(tokyo)).toEqual(TOKYO_PLACE);
+  });
+
+  it("plans a metro's suburbs: a box reaching its radius from the centre each way, carried in its place", () => {
+    const tokyo = cityFromPlace("tokyo-jp", { ...TOKYO_PLACE, radiusKm: 15 });
+    expect(tokyo.radiusKm).toBe(15);
+    expect(isMetro(tokyo)).toBe(true);
+    expect(tokyo.bbox.north - tokyo.bbox.south).toBeCloseTo(30 / 111.32, 3);
+    expect(placeOf(tokyo)).toEqual({ ...TOKYO_PLACE, radiusKm: 15 });
+    // No radius (an old link or request) is the CBD-sized box it always was, with no radius in its place.
+    const old = cityFromPlace("tokyo-jp", TOKYO_PLACE);
+    expect(old).toMatchObject({ radiusKm: DEFAULT_RADIUS_KM, bbox: cityFromPlace("tokyo-jp", { ...TOKYO_PLACE, radiusKm: DEFAULT_RADIUS_KM }).bbox });
+    expect(isMetro(old)).toBe(false);
+    expect(isMetro(MELBOURNE)).toBe(false);
   });
 
   it("keeps the box sane near the poles", () => {
@@ -89,5 +105,32 @@ describe("city levels", () => {
   it("gives Melbourne its own rules, spots and hotspots, and every city the worldwide signals", () => {
     expect(cityLevels(MELBOURNE)).toEqual({ taste: "global", activity: "global", events: "global", weather: "global", rules: "local", pitches: "local", hotspots: "local" });
     expect(cityLevels({ id: "tokyo-jp" })).toMatchObject({ taste: "global", rules: "none", pitches: "none", hotspots: "none" });
+  });
+});
+
+describe("planning radius by the place's size", () => {
+  it("grows with the population: 15 km past a million, 10 km past 250k, 6 km past 50k, else 3 km", () => {
+    expect(radiusForPlace({ population: 2_700_000, featureCode: "PPL" })).toBe(15);
+    expect(radiusForPlace({ population: 1_000_000, featureCode: "PPL" })).toBe(15);
+    expect(radiusForPlace({ population: 441_000, featureCode: "PPL" })).toBe(10);
+    expect(radiusForPlace({ population: 250_000, featureCode: "PPL" })).toBe(10);
+    expect(radiusForPlace({ population: 80_000, featureCode: "PPL" })).toBe(6);
+    expect(radiusForPlace({ population: 49_999, featureCode: "PPL" })).toBe(3);
+    expect(radiusForPlace({})).toBe(DEFAULT_RADIUS_KM);
+  });
+
+  it("gives a capital at least 10 km and a region's seat at least 6 km, a neighbourhood 3 km", () => {
+    expect(radiusForPlace({ population: 30_000, featureCode: "PPLC" })).toBe(10);
+    expect(radiusForPlace({ featureCode: "PPLA" })).toBe(6);
+    expect(radiusForPlace({ population: 441_000, featureCode: "PPLA" })).toBe(10);
+    expect(radiusForPlace({ population: 3_000_000, featureCode: "PPLC" })).toBe(15);
+    expect(radiusForPlace({ population: 500_000, featureCode: "PPLX" })).toBe(3);
+  });
+
+  it("refuses a radius out of range in a request's place", () => {
+    const base = { city: "tokyo-jp", slot, performer };
+    expect(planRequestSchema.safeParse({ ...base, place: { ...TOKYO_PLACE, radiusKm: 15 } }).success).toBe(true);
+    expect(planRequestSchema.safeParse({ ...base, place: { ...TOKYO_PLACE, radiusKm: 500 } }).success).toBe(false);
+    expect(planRequestSchema.safeParse({ ...base, place: { ...TOKYO_PLACE, radiusKm: 2.5 } }).success).toBe(false);
   });
 });

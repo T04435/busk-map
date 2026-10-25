@@ -45,16 +45,8 @@ export function whenStyle(instance: MapLibreMap, fn: () => void) {
   else instance.once("style.load", fn);
 }
 
-/** A pointy-top hexagon around a cell centre, as wide as the geohash cell it replaces. */
-export function hexagon(lat: number, lon: number, halfWidthDeg: number) {
-  const r = halfWidthDeg / (Math.sqrt(3) / 2);
-  const k = Math.cos((lat * Math.PI) / 180);
-  const ring = Array.from({ length: 7 }, (_, i) => {
-    const a = (Math.PI / 180) * (60 * (i % 6) - 90);
-    return [lon + r * Math.cos(a), lat + r * Math.sin(a) * k];
-  });
-  return [ring];
-}
+/** The hexagon cell (taste-grid.ts, MapLibre-free so it can be tested). */
+export { hexagon } from "@/components/map/taste-grid";
 
 /** A pointy-top hex marker as an RGBA image for the symbol layer: the brand orange with a ring in the page colour so it reads on any land. */
 export function hexImage(size: number, fill: string, ring: string): ImageData {

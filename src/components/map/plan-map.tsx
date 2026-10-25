@@ -7,8 +7,8 @@ import { Icon } from "@/components/honeycomb/icon";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { Button } from "@/components/ui/button";
-import { geohashBounds } from "@/lib/geo";
-import { MAP_FRAME, MAP_GESTURES, orangeCells } from "@/components/map/taste-cells";
+import { MAP_FRAME, MAP_GESTURES } from "@/components/map/taste-cells";
+import { tasteLayers } from "@/components/map/taste-grid";
 import { OSM_ATTRIBUTION, STYLE_URL, baseStyle, fillExpression, hexagon, hexImage, rampColors, themeColor, whenStyle } from "@/components/map/map-shared";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
 
@@ -153,27 +153,29 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
   useEffect(() => {
     const instance = map.current;
     if (!instance) return;
-    const data = {
-      type: "FeatureCollection" as const,
-      features: orangeCells(plan.tasteCells).map((c) => {
-        const half = c.geohash ? (geohashBounds(c.geohash).east - geohashBounds(c.geohash).west) / 2 : 0.0015;
-        return { type: "Feature" as const, properties: { affinity: c.affinity }, geometry: { type: "Polygon" as const, coordinates: hexagon(c.lat, c.lon, half) } };
-      }),
-    };
+    // The close-up cells one hex per geohash cell (all of a CBD-sized city's); a metro's coarse whole-area read as one tidy,
+    // lighter lattice under them, never under a zoomed district (taste-grid.ts).
+    const { fine: data, coarse } = tasteLayers(plan.tasteCells);
     const apply = () => {
       // For tests and QA: how many orange cells the map was given (0 when no taste is drawn).
-      container.current?.setAttribute("data-taste-cells", String(data.features.length));
+      container.current?.setAttribute("data-taste-cells", String(data.features.length + coarse.features.length));
+      container.current?.setAttribute("data-taste-coarse", String(coarse.features.length));
       const colors = rampColors();
+      const card = themeColor("--card", "#fbf9f5");
       const source = instance.getSource("taste") as GeoJSONSource | undefined;
       if (source) {
         source.setData(data);
-        instance.setPaintProperty("taste", "fill-color", fillExpression(colors));
-        instance.setPaintProperty("taste-outline", "line-color", themeColor("--card", "#fbf9f5"));
+        (instance.getSource("taste-coarse") as GeoJSONSource | undefined)?.setData(coarse);
+        for (const id of ["taste", "taste-coarse"]) instance.setPaintProperty(id, "fill-color", fillExpression(colors));
+        for (const id of ["taste-outline", "taste-coarse-outline"]) instance.setPaintProperty(id, "line-color", card);
         return;
       }
+      instance.addSource("taste-coarse", { type: "geojson", data: coarse });
+      instance.addLayer({ id: "taste-coarse", type: "fill", source: "taste-coarse", paint: { "fill-color": fillExpression(colors), "fill-opacity": 0.4 } });
+      instance.addLayer({ id: "taste-coarse-outline", type: "line", source: "taste-coarse", paint: { "line-color": card, "line-width": 1 } });
       instance.addSource("taste", { type: "geojson", data });
       instance.addLayer({ id: "taste", type: "fill", source: "taste", paint: { "fill-color": fillExpression(colors), "fill-opacity": 0.85 } });
-      instance.addLayer({ id: "taste-outline", type: "line", source: "taste", paint: { "line-color": themeColor("--card", "#fbf9f5"), "line-width": 1.5 } });
+      instance.addLayer({ id: "taste-outline", type: "line", source: "taste", paint: { "line-color": card, "line-width": 1.5 } });
     };
     whenStyle(instance, apply);
   }, [plan.tasteCells, themeTick]);

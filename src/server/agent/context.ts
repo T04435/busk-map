@@ -391,7 +391,15 @@ export class PlanContext {
     return this.once("mapCells", async () => {
       const [cells, districts] = await Promise.all([this.tasteCells(), this.districts()]);
       if (districts.length === 0) return cells;
-      const coarse = (await this.areaCells()).filter((c) => inBBox(c, this.city.bbox) && !districts.some((d) => inBBox(c, d.bbox)));
+      // Each coarse cell once, and none over a close-up cell (a coarse geohash holding a close-up one's).
+      const under = new Set(cells.flatMap((c) => (c.geohash ? Array.from({ length: c.geohash.length - 1 }, (_, i) => c.geohash!.slice(0, i + 1)) : [])));
+      const seen = new Set(cells.map((c) => c.geohash ?? `${c.lat},${c.lon}`));
+      const coarse = (await this.areaCells()).filter((c) => {
+        const key = c.geohash ?? `${c.lat},${c.lon}`;
+        if (seen.has(key) || (c.geohash && under.has(c.geohash)) || !inBBox(c, this.city.bbox) || districts.some((d) => inBBox(c, d.bbox))) return false;
+        seen.add(key);
+        return true;
+      });
       return [...cells, ...coarse];
     });
   }

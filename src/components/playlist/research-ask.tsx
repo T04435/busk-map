@@ -160,7 +160,7 @@ export function ResearchAsk({ message, busy, onSubmit, suggest }: { message: str
             <ul aria-label={R.ask.genresPicked} className="m-0 flex list-none flex-wrap gap-1.5 p-0" data-testid="research-genres-picked">
               {genres.map((g) => (
                 <li key={g}>
-                  <Button type="button" variant="outline" size="sm" aria-label={`Remove ${g}`} title={hiveNames.has(genreKey(g)) ? hiveTitle : undefined} data-source={hiveNames.has(genreKey(g)) ? "hive" : undefined} disabled={busy} onClick={() => setGenres(genres.filter((x) => x !== g))}>
+                  <Button type="button" variant="outline" size="sm" aria-label={hiveNames.has(genreKey(g)) ? `Remove ${g}, ${hiveTitle}` : `Remove ${g}`} data-source={hiveNames.has(genreKey(g)) ? "hive" : undefined} disabled={busy} onClick={() => setGenres(genres.filter((x) => x !== g))}>
                     {hiveMark(g)}
                     {g}
                     <Icon name="x" size={14} />
@@ -176,10 +176,11 @@ export function ResearchAsk({ message, busy, onSubmit, suggest }: { message: str
                 {R.ask.suggested}
               </span>
               {unpicked.map((g) => (
-                <Button key={g.id} type="button" variant="outline" size="sm" title={g.from === "hive" ? hiveTitle : undefined} data-source={g.from === "hive" ? "hive" : undefined} disabled={busy || genres.length >= MAX_RESEARCH_GENRES} onClick={() => add(g.name)}>
+                <Button key={g.id} type="button" variant="outline" size="sm" data-source={g.from === "hive" ? "hive" : undefined} disabled={busy || genres.length >= MAX_RESEARCH_GENRES} onClick={() => add(g.name)}>
                   {hiveMark(g.name)}
                   <Icon name="plus" size={14} />
                   {g.name}
+                  {g.from === "hive" && <span className="sr-only">, {hiveTitle}</span>}
                 </Button>
               ))}
             </div>

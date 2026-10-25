@@ -66,11 +66,12 @@ describe("the Hive's genre suggestions in the ask", () => {
       hiveBy: "mock",
     };
     const html = renderToStaticMarkup(createElement(ResearchAsk, { message: "Ask", busy: false, onSubmit: () => undefined, suggest }));
-    expect([...html.matchAll(/aria-label="Remove ([^"]+)"/g)].map((m) => m[1])).toEqual(["Reggaeton", "Cubaton", "Tropical"]);
+    expect([...html.matchAll(/aria-label="Remove ([^",]+)/g)].map((m) => m[1])).toEqual(["Reggaeton", "Cubaton", "Tropical"]);
     const hive = [...html.matchAll(/<button[^>]*data-source="hive"[^>]*>/g)].map((m) => m[0]);
     expect(hive).toHaveLength(2);
-    expect(hive[0]).toContain('aria-label="Remove Cubaton"');
-    expect(hive.every((b) => /title="Test model(&#x27;|')s suggestion"/.test(b))).toBe(true);
+    expect(hive[0]).toMatch(/aria-label="Remove Cubaton, Test model(&#x27;|')s suggestion"/);
+    expect(html).not.toContain("title=");
+    expect(html).toMatch(/class="sr-only">, Test model(&#x27;|')s suggestion/);
     expect(html).not.toContain('data-slot="agent-tag"');
   });
 });

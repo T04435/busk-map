@@ -114,6 +114,10 @@ export function nextMove(results: ToolResult[], tools: string[], scenario: MockS
     ];
     return { text: "One more look.", calls: [looks[Math.min(results.length, looks.length - 1)]] };
   }
+  // A metro planned across its areas (compare_areas is offered only then): weigh the areas first.
+  if (tools.includes("compare_areas") && !done("compare_areas").length && !done("taste_map").length) {
+    return { text: "This city is planned across its areas, so we'll compare them before looking closer.", calls: [{ toolName: "compare_areas", input: {} }] };
+  }
   if (!done("taste_map").length) return { text: "We'll start with the taste map to see where this act's fans concentrate.", calls: [{ toolName: "taste_map", input: {} }] };
   const cells = (done("taste_map")[0]?.output.value as TasteOut | undefined)?.strongest ?? [];
   // A city where Busk Map knows no place by name (any city but Melbourne): the strongest cell by its coordinates.

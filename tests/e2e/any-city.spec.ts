@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { EXAMPLES } from "../../src/lib/examples";
 import { OFFLINE_TEST_ARTIST } from "../../src/lib/repertoire-research";
 import { serverDay } from "./clock";
-import { expect, LOCAL, openDetails, test, waitForPlan } from "./fixtures";
+import { agentSteps, expect, LOCAL, openDetails, test, waitForPlan } from "./fixtures";
 
 /**
  * V2 2.1 "Any city": the busk form's city search, a plan in another city (offline mode's second city, Tokyo), and
@@ -110,6 +110,36 @@ test.describe("any city (offline)", () => {
     expect(Number(await (await mapCentre(page)).getAttribute("data-districts"))).toBeGreaterThanOrEqual(3);
   });
 
+  test("Tokyo with its suburbs: the Hive compares the named areas, the pitches span at least two and the map labels them", async ({ page }, testInfo) => {
+    await page.goto("/busks");
+    await pickCity(page, "Tok", "Tokyo, Japan");
+    await form(page).getByLabel("Act name").fill(`Areas ${testInfo.project.name}`);
+    await form(page).getByLabel("Artists you sound like").fill("Paul Kelly");
+    await form(page).getByRole("button", { name: "Plan my busk" }).click();
+    await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
+    await waitForPlan(page);
+    // The step names the areas it looked at, never coordinates.
+    const feed = await agentSteps(page);
+    const step = feed.locator('[data-tool="compare_areas"]');
+    await expect(step).toContainText("Areas across the city");
+    await expect(step).toContainText(/Looked at .*Synthetic Shibuya/);
+    await expect(step).toContainText("Synthetic Asakusa");
+    await expect(step).toContainText("Synthetic Ueno");
+    await expect(feed).not.toContainText(/-?\d+\.\d{4}, -?\d+\.\d{4}/);
+    // Each synthetic suburb's spots carry its hub's label ("Synthetic OSM East …"): the pitches come from at least two areas.
+    const AREA: Record<string, string> = { East: "Synthetic Shibuya", South: "Synthetic Asakusa", North: "Synthetic Ueno" };
+    const names = await page
+      .getByRole("region", { name: "Pitches", exact: true })
+      .locator("button[data-pitch-name]")
+      .evaluateAll((els) => els.map((el) => el.getAttribute("data-pitch-name") ?? ""));
+    const areas = new Set(names.map((name) => AREA[/^Synthetic OSM (East|South|North) /.exec(name)?.[1] ?? ""] ?? "Tokyo"));
+    expect(areas.size, names.join(", ")).toBeGreaterThanOrEqual(2);
+    // The map labels the named areas, ranked, across the whole area.
+    const labels = (await (await mapCentre(page)).getAttribute("data-areas"))?.split("|") ?? [];
+    expect(labels).toEqual(expect.arrayContaining(["Tokyo", "Synthetic Shibuya", "Synthetic Asakusa", "Synthetic Ueno", "Synthetic Nakano"]));
+    expect(labels).not.toContain("Synthetic Ebisu");
+  });
+
   test("an old Tokyo link (no radius in its place) still plans the city centre only", async ({ page }, testInfo) => {
     const params = new URLSearchParams({ name: `Old link ${testInfo.project.name}`, artists: "Paul Kelly", date: serverDay(10), city: "tokyo-jp", place: "Tokyo~JP~35.6895~139.6917~Asia/Tokyo~Japan" });
     await page.goto(`/plan?${params}`);
@@ -122,6 +152,7 @@ test.describe("any city (offline)", () => {
     expect(names.length).toBeGreaterThan(0);
     for (const name of names) expect(name).not.toMatch(/^Synthetic OSM (East|South|North) /);
     await expect(await mapCentre(page)).not.toHaveAttribute("data-districts");
+    await expect(await mapCentre(page)).not.toHaveAttribute("data-areas");
   });
 
   test("the city search is an accessible combobox in a popover", async ({ page }) => {

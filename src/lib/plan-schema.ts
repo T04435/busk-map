@@ -257,6 +257,8 @@ export const planSchema = z.object({
   notes: z.array(z.string()),
   /** A metro planned in districts (server/scoring/districts.ts): each district's name and centre, strongest first. Absent otherwise. */
   districts: z.array(z.object({ name: z.string(), lat: z.number(), lon: z.number() })).optional(),
+  /** A metro's named areas (server/scoring/areas.ts), best for this act first; `zoomed`: searched street by street as a district. Absent otherwise. */
+  areas: z.array(z.object({ name: z.string(), lat: z.number(), lon: z.number(), zoomed: z.boolean() })).optional(),
   // Plans stored before the activity estimate carry `footfall` and `places`: together they are its weight.
   weights: z.preprocess(
     (value) => {

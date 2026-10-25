@@ -10,6 +10,7 @@ import type { AdapterContext, AdapterName, AdapterResult } from "@/server/adapte
 import { getEvents, getEventsBetween, EVENTS_LOOKBACK_HOURS } from "@/server/adapters/events";
 import { getPitches } from "@/server/adapters/pitches";
 import { getOsmSpots, mergeOsmResults } from "@/server/adapters/osm";
+import { findNamedAreas, type AreasSource } from "@/server/adapters/areas";
 import * as qloo from "@/server/adapters/qloo";
 import { findReleaseYears } from "@/server/adapters/repertoire";
 import { getSongs } from "@/server/adapters/songs";
@@ -22,7 +23,11 @@ import {
   buildSetlist,
   DEFAULT_MAX_SONGS,
   districtOf,
+  districtsFromAreas,
   findDistricts,
+  rankAreas,
+  type NamedArea,
+  type RankedArea,
   MAX_PICKS_PER_DISTRICT,
   nameDistricts,
   type District,
@@ -335,22 +340,68 @@ export class PlanContext {
   }
 
   /**
-   * A metro's districts, strongest first, found from the whole-area heatmap (scoring/districts.ts). Empty for a CBD-sized
-   * city, and when the whole-area read has no cells inside the area. Named "Area N" here; namedDistricts() names them.
+   * A metro's districts, strongest first: its best named areas (scoring/areas.ts), else the whole-area heatmap's peaks
+   * (scoring/districts.ts). Empty for a CBD-sized city, and when the whole-area read has no cells inside the area. Peaks are
+   * named "Area N" here; namedDistricts() names them.
    */
   districts(): Promise<District[]> {
     return this.once("districts", async () => {
       if (!this.metro) return [];
-      const cells = (await this.areaCells()).filter((c) => inBBox(c, this.city.bbox));
-      return this.qlooFailed() ? [] : findDistricts(cells, this.city.bbox);
+      const [all, ranked] = await Promise.all([this.areaCells(), this.rankedAreas()]);
+      if (this.qlooFailed()) return [];
+      // Seeded by the named areas (the strongest, spread apart); at the heatmap's peaks when fewer than two areas have taste.
+      const fromAreas = districtsFromAreas(ranked, this.city.bbox);
+      if (fromAreas.length >= 2) return fromAreas;
+      return findDistricts(
+        all.filter((c) => inBBox(c, this.city.bbox)),
+        this.city.bbox,
+      );
     });
   }
 
-  /** The districts named after the nearest OpenStreetMap spot or Qloo place (for the plan's copy and the agent's tools). */
+  /**
+   * A metro's named areas (adapters/areas): the city itself, then up to 9 suburbs, towns and neighbourhoods inside the planning
+   * area, from one Overpass query (else one geocoder search). None for a CBD-sized city.
+   */
+  namedAreas(): Promise<{ areas: NamedArea[]; source: AreasSource }> {
+    return this.once("namedAreas", async () => (this.metro ? findNamedAreas(this.city, this.adapters) : { areas: [], source: "none" as const }));
+  }
+
+  /**
+   * The named areas ranked by taste (and activity) sampled from the one coarse whole-area heatmap: no Qloo call of their own.
+   * Empty for a CBD-sized city, and when no area besides the city itself was found.
+   */
+  rankedAreas(): Promise<RankedArea[]> {
+    return this.once("rankedAreas", async () => {
+      if (!this.metro) return [];
+      const [{ areas }, cells] = await Promise.all([this.namedAreas(), this.areaCells()]);
+      if (areas.length < 2) return [];
+      return rankAreas(
+        areas,
+        cells.filter((c) => inBBox(c, this.city.bbox)),
+      );
+    });
+  }
+
+  /**
+   * The cells the plan's map draws: the scored cells and, for a metro, the coarse whole-area read outside the zoomed districts
+   * too, so the taste across the whole area shows (close-up cells only where the plan zoomed in).
+   */
+  mapCells(): Promise<qloo.HeatCell[]> {
+    return this.once("mapCells", async () => {
+      const [cells, districts] = await Promise.all([this.tasteCells(), this.districts()]);
+      if (districts.length === 0) return cells;
+      const coarse = (await this.areaCells()).filter((c) => inBBox(c, this.city.bbox) && !districts.some((d) => inBBox(c, d.bbox)));
+      return [...cells, ...coarse];
+    });
+  }
+
+  /** The districts named after their named area, else the nearest OpenStreetMap spot or Qloo place (for the plan's copy and the agent's tools). */
   namedDistricts(): Promise<District[]> {
     return this.once("namedDistricts", async () => {
       const districts = await this.districts();
       if (districts.length === 0) return [];
+      if (districts.every((d) => d.area)) return districts;
       const [spots, places] = await Promise.all([this.spots(), this.places()]);
       return nameDistricts(districts, spots, places);
     });

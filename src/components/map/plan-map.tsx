@@ -9,7 +9,7 @@ import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { Button } from "@/components/ui/button";
 import { geohashBounds } from "@/lib/geo";
 import { MAP_FRAME, MAP_GESTURES, orangeCells } from "@/components/map/taste-cells";
-import { OSM_ATTRIBUTION, STYLE_URL, baseStyle, fillExpression, hexagon, rampColors, themeColor, whenStyle } from "@/components/map/map-shared";
+import { OSM_ATTRIBUTION, STYLE_URL, baseStyle, fillExpression, hexagon, hexImage, rampColors, themeColor, whenStyle } from "@/components/map/map-shared";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
 
 /**
@@ -41,7 +41,7 @@ function hatchImage(): ImageData | null {
 
 type Props = {
   /** Only what the map draws, so the landing can feed it a labelled example without a full plan. */
-  plan: Pick<Plan, "tasteCells" | "others"> & { zones?: Plan["zones"]; districts?: Plan["districts"] } & { pitches: Pick<PlanPitch, "id" | "name" | "lat" | "lon" | "score" | "discovery">[] };
+  plan: Pick<Plan, "tasteCells" | "others"> & { zones?: Plan["zones"]; districts?: Plan["districts"]; areas?: Plan["areas"] } & { pitches: Pick<PlanPitch, "id" | "name" | "lat" | "lon" | "score" | "discovery">[] };
   center: { lat: number; lon: number };
   selectedId: string | null;
   onSelect: (pitchId: string) => void;
@@ -204,6 +204,53 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
     whenStyle(instance, apply);
   }, [plan.zones, themeTick]);
 
+  // A metro's named areas: a hex and the area's name, the ones searched street by street larger (the Repertoire map's city labels).
+  useEffect(() => {
+    const instance = map.current;
+    if (!instance) return;
+    const areas = plan.areas ?? [];
+    const data = {
+      type: "FeatureCollection" as const,
+      features: areas.map((a, i) => ({ type: "Feature" as const, properties: { name: a.name, big: a.zoomed, rank: i }, geometry: { type: "Point" as const, coordinates: [a.lon, a.lat] } })),
+    };
+    const apply = () => {
+      const fill = themeColor("--primary", "#ff5a1f");
+      const ring = themeColor("--background", "#f2eee6");
+      const ink = themeColor("--foreground", "#141c21");
+      for (const [id, size] of [["area-hex-lg", 18], ["area-hex-sm", 12]] as const) {
+        if (instance.hasImage(id)) instance.removeImage(id);
+        instance.addImage(id, hexImage(size, fill, ring), { pixelRatio: 2 });
+      }
+      const source = instance.getSource("areas") as GeoJSONSource | undefined;
+      if (source) {
+        source.setData(data);
+        instance.setPaintProperty("areas", "text-color", ink);
+        instance.setPaintProperty("areas", "text-halo-color", ring);
+        return;
+      }
+      instance.addSource("areas", { type: "geojson", data });
+      instance.addLayer({
+        id: "areas",
+        type: "symbol",
+        source: "areas",
+        layout: {
+          "icon-image": ["case", ["get", "big"], "area-hex-lg", "area-hex-sm"],
+          "icon-allow-overlap": true,
+          "text-field": ["get", "name"],
+          "text-font": ["Noto Sans Bold"],
+          "text-size": ["case", ["get", "big"], 13, 11],
+          "text-anchor": "left",
+          "text-offset": [0.9, 0],
+          "text-optional": true,
+          "text-max-width": 8,
+          "symbol-sort-key": ["get", "rank"],
+        },
+        paint: { "text-color": ink, "text-halo-color": ring, "text-halo-width": 1.6 },
+      });
+    };
+    whenStyle(instance, apply);
+  }, [plan.areas, themeTick]);
+
   // Pins: real buttons, so they are reachable by keyboard and screen readers. The 48px button is the hit area; the shape inside grows when selected.
   useEffect(() => {
     const instance = map.current;
@@ -243,14 +290,14 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
       markers.current.push(new Marker({ element: el }).setLngLat([p.lon, p.lat]).addTo(instance));
     });
     if (plan.pitches.length > 0) {
-      // The pitches, and a metro's districts (the area the plan searched), all in view.
+      // The pitches, and a metro's districts and named areas (the whole area the plan compared), all in view.
       const bounds = new LngLatBounds();
-      for (const p of [...plan.pitches, ...(plan.districts ?? [])]) bounds.extend([p.lon, p.lat]);
+      for (const p of [...plan.pitches, ...(plan.districts ?? []), ...(plan.areas ?? [])]) bounds.extend([p.lon, p.lat]);
       frame.current = bounds;
       interacted.current = false;
       fit(instance, bounds);
     }
-  }, [plan.pitches, plan.others, plan.districts, fit]);
+  }, [plan.pitches, plan.others, plan.districts, plan.areas, fit]);
 
   // Selection: mark the pin pressed (it grows) and pan to it when it is out of view.
   useEffect(() => {
@@ -294,7 +341,7 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
 
   return (
     <div className="relative h-full min-h-80 w-full overflow-hidden bg-muted" onKeyDown={(e) => e.key === "Escape" && dotRef.current && closeSummary()}>
-      <div ref={container} className="size-full" role="region" aria-label="Map of pitches and Qloo taste affinity" data-center={`${center.lat},${center.lon}`} data-districts={plan.districts?.length || undefined} />
+      <div ref={container} className="size-full" role="region" aria-label="Map of pitches and Qloo taste affinity" data-center={`${center.lat},${center.lon}`} data-districts={plan.districts?.length || undefined} data-areas={plan.areas?.map((a) => a.name).join("|") || undefined} />
       {others.length > 0 && !dot ? (
         <Button
           ref={browseRef}

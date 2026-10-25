@@ -262,6 +262,13 @@ const RESEARCH_UI: Record<string, ToolUi> = {
 /** Each tool as a busker sees it: what it is doing while it runs, a plain title once done, and its result drawn from the contract fields. */
 export const TOOL_UI: Record<string, ToolUi> = {
   ...RESEARCH_UI,
+  // A metro planned across its areas: the areas compared, by name, best first.
+  compare_areas: {
+    doing: () => "Comparing areas across the city",
+    title: () => "Areas across the city",
+    line: (o) => str(o.summary) ?? "",
+    render: (o) => <Foot>{str(o.summary) ?? ""}</Foot>,
+  },
   taste_map: {
     doing: () => "Mapping where your crowd gathers",
     title: () => "Where your crowd gathers",
@@ -563,6 +570,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
 
 /** The signal each plan tool reads, for its level word beside the step title (V2 2.2). */
 export const TOOL_SIGNAL: Partial<Record<string, LevelSignal>> = {
+  compare_areas: "taste",
   taste_map: "taste",
   crowd_at: "taste",
   busy_places: "taste",
@@ -575,6 +583,7 @@ export const TOOL_SIGNAL: Partial<Record<string, LevelSignal>> = {
 /** The DS icon for each tool's cell; an unknown tool gets the dots glyph. */
 /** The data sources each tool reads, drawn as their marks after the step title (U17). The Hive's own summary step has none. */
 export const TOOL_SOURCES: Record<string, MentionSource[]> = {
+  compare_areas: ["qloo"],
   taste_map: ["qloo"],
   crowd_at: ["qloo"],
   busy_places: ["qloo"],
@@ -611,6 +620,7 @@ export function stepSources(step: { tool: string | null; via?: MentionSource; ou
 }
 
 export const TOOL_ICON: Record<string, IconName> = {
+  compare_areas: "map",
   taste_map: "map",
   crowd_at: "users",
   busy_places: "store",

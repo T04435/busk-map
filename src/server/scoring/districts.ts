@@ -30,6 +30,8 @@ export type District = {
   bbox: BBox;
   /** The strongest coarse cell's affinity. */
   affinity: number;
+  /** Seeded by a named area (scoring/areas.ts districtsFromAreas): it already has its name. */
+  area?: boolean;
 };
 
 type Coarse = LatLon & { affinity: number };

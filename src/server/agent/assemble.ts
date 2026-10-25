@@ -211,6 +211,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
   ]);
   const funnel = await context.funnel();
   const districts = context.qlooFailed() ? [] : await context.namedDistricts();
+  const [areas, mapCells] = await Promise.all([context.qlooFailed() ? [] : context.rankedAreas(), context.mapCells()]);
   // Artist photos already fetched with the crowd (Qloo entities), for the learn-these rows.
   const photoOf = new Map(locals.flatMap((a) => (a.image && /^https:\/\//.test(a.image) ? [[a.id, a.image] as const] : [])));
   const qlooDown = context.qlooFailed();
@@ -261,7 +262,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
   const ownUsed = own !== null && ownIds.includes(own.qlooId);
   // "From your music": the own artist's share of the crowd's top picks (Qloo explainability), when it drove them.
   const ownShare = own === null ? null : (drivers(locals.slice(0, 10), nameOf, impact).find((d) => d.name === own.name)?.share ?? null);
-  const maxAffinity = Math.max(0, ...cells.map((c) => c.affinity));
+  const maxAffinity = Math.max(0, ...mapCells.map((c) => c.affinity));
   const usedAi = pitches.some((p) => p.whySource === "ai");
   // The engine's own order: its spaced top 3, then the rest of its pool by score (one rank per pitch).
   const engineIds = new Set(engineTop.map((p) => p.id));
@@ -308,6 +309,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
         : "No pitch could be recommended for this slot with the data available."),
     notes: [...context.notes, ...(options.agentNotes ?? []), ...(usedAi ? (ai?.notes ?? []).filter(traceable).slice(0, 3).map((n) => clip(plainScores(n), 240)) : [])],
     ...(districts.length > 0 ? { districts: districts.map((d) => ({ name: d.name, lat: d.center.lat, lon: d.center.lon })) } : {}),
+    ...(areas.length > 0 ? { areas: areas.map((a) => ({ name: a.name, lat: a.lat, lon: a.lon, zoomed: districts.some((d) => d.area && d.name === a.name) })) } : {}),
     weights: context.weights,
     pitches,
     others: (qlooDown ? [] : ranked)
@@ -318,7 +320,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
       })),
     funnel,
     zones: qlooDown ? [] : noBuskingCells(await context.pitchData(), [...pitches, ...ranked.slice(0, 40)]),
-    tasteCells: cells.map((c) => ({
+    tasteCells: mapCells.map((c) => ({
       lat: c.lat,
       lon: c.lon,
       affinity: maxAffinity > 0 ? Math.round((c.affinity / maxAffinity) * 1000) / 1000 : 0,

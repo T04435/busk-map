@@ -6,7 +6,7 @@ import { ANY_TIME_DAY, formatHour } from "@/lib/slot";
 import { activitySentence, activityWord } from "@/lib/activity";
 import { nameKey } from "@/lib/text";
 import * as qloo from "@/server/adapters/qloo";
-import { activityEstimate, relativeActivity, candidateAt, districtOf, MAX_PICKS_PER_DISTRICT, topCells, openDuring, scoreWindows, type Candidate, type District, type KnownPlace, type ScoredPitch } from "@/server/scoring";
+import { activityEstimate, relativeActivity, candidateAt, AREA_SAMPLE_KM, districtOf, MAX_PICKS_PER_DISTRICT, topCells, openDuring, scoreWindows, type Candidate, type District, type KnownPlace, type ScoredPitch } from "@/server/scoring";
 import { reasonWithoutYear, type SetlistEntry } from "@/server/scoring/setlist";
 import type { PlanContext } from "./context";
 import { NumberBag } from "./number-bag";
@@ -41,6 +41,7 @@ export const MAX_FINISH_REJECTIONS = 2;
 export const SCORE_ROWS = 8;
 
 export const TOOL_LABELS: Record<string, string> = {
+  compare_areas: "Comparing areas across the city",
   taste_map: "Where the act's taste concentrates",
   crowd_at: "Who the crowd is around a point",
   busy_places: "Busy places open near a point",
@@ -57,6 +58,7 @@ export const TOOL_LABELS: Record<string, string> = {
 
 /** The data call behind each tool, shown next to the step. */
 export const TOOL_SOURCES: Record<string, string> = {
+  compare_areas: "OpenStreetMap named places (else Open-Meteo geocoding), Qloo heatmap over the whole area (data already loaded for this plan)",
   taste_map: "Qloo /v2/insights · urn:heatmap",
   crowd_at: "Qloo /v2/insights · urn:entity:artist with signal.location and explainability, urn:tag, urn:demographics",
   busy_places: "Qloo /v2/insights · urn:entity:place with filter.location and filter.hours",
@@ -151,6 +153,7 @@ export function pointName(
   pitches: readonly { name: string; lat: number; lon: number }[],
   cells: readonly (LatLon & { rank: number })[],
   city: string,
+  areas: readonly (LatLon & { name: string })[] = [],
 ): string {
   const place = nearestName(point, known, POINT_NAME_M);
   if (place) return `near ${place}`;
@@ -160,7 +163,15 @@ export function pointName(
   if (pitch && distanceM(pitch, point) <= POINT_NAME_M) return /^Taste area /.test(pitch.name) ? pitch.name : asNear(pitch.name);
   const cell = byDistance(cells);
   if (cell && distanceM(cell, point) <= POINT_NAME_M) return `Taste area ${cell.rank}`;
+  // A metro: the named area the point is in, before a pitch further away.
+  const area = byDistance(areas);
+  if (area && distanceM(area, point) <= AREA_SAMPLE_KM * 1000) return `a spot in ${area.name}`;
   return pitch ? asNear(pitch.name) : `a spot in ${city}`;
+}
+
+/** "Looked at A, B, C…": the areas compared, best first, the first few by name. */
+export function areasLine(names: readonly string[], shown = 6): string {
+  return `Looked at ${names.slice(0, shown).join(", ")}${names.length > shown ? "…" : ""}`;
 }
 
 /** How close a taste-cell pitch must stand to a cell to lend it its name. */
@@ -212,9 +223,9 @@ function compactPitch(p: ScoredPitch, engineTop: Set<string>, added: Set<string>
 }
 
 /** Investigation looks that count towards opening score_pitches. */
-export const GATE_TOOLS = ["taste_map", "crowd_at", "events_near", "activity_at", "busy_places", "check_pitch"] as const;
+export const GATE_TOOLS = ["taste_map", "crowd_at", "events_near", "activity_at", "busy_places", "check_pitch", "compare_areas"] as const;
 /** At least one look must be about the crowd itself: its taste, who it is, or an event crowd. */
-export const CROWD_TOOLS = ["taste_map", "crowd_at", "events_near"] as const;
+export const CROWD_TOOLS = ["taste_map", "crowd_at", "events_near", "compare_areas"] as const;
 /** Looks before score_pitches opens. */
 export const MIN_LOOKS = 3;
 /** Tools closed until the pool is scored (or, for score_pitches, until the looks are in). */
@@ -258,15 +269,20 @@ function buildTools(ctx: PlanContext, state: AgentState) {
   // V2 2.4: no council rules for this city, so check_pitch looks at a spot and never calls it allowed.
   const unchecked = ctx.levels.rules === "none";
   let placesCache: Promise<KnownPlace[]> | null = null;
-  const places = () => (placesCache ??= Promise.all([ctx.pitchData(), ctx.spots()]).then(([pitchData, spots]) => knownPlaces(pitchData.sites, ctx.city, spots)));
+  // A metro's named areas are places too, so the model can point at "Miami Beach" (they come after every spot and site).
+  const places = () =>
+    (placesCache ??= Promise.all([ctx.pitchData(), ctx.spots(), ctx.rankedAreas()]).then(([pitchData, spots, areas]) => [
+      ...knownPlaces(pitchData.sites, ctx.city, spots),
+      ...areas.map((a) => ({ name: a.name, lat: a.lat, lon: a.lon })),
+    ]));
   const knownPitches = async () => [...(await ctx.ranked()), ...state.pool.values()];
   const where = async (w: Where): Promise<Resolved> => {
     const known = await places();
     const resolved = resolveWhere(w, { area, pitches: await knownPitches(), places: known });
     // Coordinates with no known place close by: named like the cells and pitches, never shown as raw numbers.
     if (resolved.via !== "coordinates" || /^near /.test(resolved.label)) return resolved;
-    const [{ candidates }, cells] = await Promise.all([ctx.candidates(), ctx.tasteCells()]);
-    return { ...resolved, label: pointName(resolved, known, [...candidates, ...state.pool.values()], topCells(cells), ctx.city.name) };
+    const [{ candidates }, cells, areas] = await Promise.all([ctx.candidates(), ctx.tasteCells(), ctx.rankedAreas()]);
+    return { ...resolved, label: pointName(resolved, known, [...candidates, ...state.pool.values()], topCells(cells), ctx.city.name, areas) };
   };
   const ids = () => ctx.entityIds();
   /** Every output is recorded for the numbers check, then returned. */
@@ -300,6 +316,31 @@ function buildTools(ctx: PlanContext, state: AgentState) {
   }
 
   const tools = {
+    compare_areas: tool({
+      description:
+        "A metro planned across its areas: the named suburbs, towns and neighbourhoods around the city, best for this act first, each with how strongly the act's taste shows there (Qloo's heatmap over the whole area, 0 to 1 against the best area), its estimated activity and the busy places near it, and which areas the plan searches street by street (the pitches come from those). Call it before picking, to weigh areas across the city and not only the centre.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const [ranked, districts, busy] = await Promise.all([ctx.rankedAreas(), ctx.namedDistricts(), ctx.places()]);
+        if (ranked.length === 0) return seen({ summary: `${ctx.city.name} is planned as one area`, areas: [], searched: [] });
+        const searched = districts.filter((d) => d.area).map((d) => d.name);
+        return seen({
+          summary: areasLine(ranked.map((a) => a.name)),
+          areas: ranked.map((a) => ({
+            rank: a.rank,
+            name: a.name,
+            kind: a.kind === "city_district" ? "district" : a.kind,
+            taste: a.share,
+            activity: a.activity,
+            busyPlaces: busy.filter((p) => distanceM(p, a) <= AREA_SAMPLE_KM * 1000).length,
+            searched: searched.includes(a.name),
+          })),
+          searched,
+          rule: `At most ${MAX_PICKS_PER_DISTRICT} final pitches from one searched area.`,
+        });
+      },
+    }),
+
     taste_map: tool({
       description:
         "Qloo heatmap: where in the city the act's taste concentrates. Optionally signal only some of the act's matched artists, or zoom into one part of the planning area. Returns the strongest cells with the nearest known place.",

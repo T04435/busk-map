@@ -26,6 +26,19 @@ export const OFFLINE_METRO_HUBS: readonly (LatLon & { label: string; weight: num
 /** How far a hub's taste reaches (the Gaussian's sigma, metres). */
 export const OFFLINE_METRO_HUB_SIGMA_M = 500;
 
+/**
+ * Offline mode's named areas around the large metro (the synthetic Overpass answer for `place=…` nodes, adapters/areas): one at
+ * each taste hub, one with no taste (west), and a neighbourhood too close to a hub to count as its own area. In Melbourne's
+ * frame like the hubs. Invented names ("Synthetic …"), no claim about any real place.
+ */
+export const OFFLINE_METRO_AREAS: readonly (LatLon & { name: string; place: string; population?: number })[] = [
+  { name: "Synthetic Shibuya", place: "suburb", population: 230_000, lat: OFFLINE_METRO_HUBS[0].lat, lon: OFFLINE_METRO_HUBS[0].lon },
+  { name: "Synthetic Asakusa", place: "suburb", population: 120_000, lat: OFFLINE_METRO_HUBS[1].lat, lon: OFFLINE_METRO_HUBS[1].lon },
+  { name: "Synthetic Ueno", place: "quarter", lat: OFFLINE_METRO_HUBS[2].lat, lon: OFFLINE_METRO_HUBS[2].lon },
+  { name: "Synthetic Nakano", place: "town", population: 330_000, lat: -37.815, lon: 144.895 },
+  { name: "Synthetic Ebisu", place: "neighbourhood", lat: OFFLINE_METRO_HUBS[0].lat + 0.004, lon: OFFLINE_METRO_HUBS[0].lon + 0.003 },
+];
+
 /** Regions the offline Qloo mock answers for besides Melbourne. */
 export const OFFLINE_REGIONS: readonly City[] = [TOKYO];
 

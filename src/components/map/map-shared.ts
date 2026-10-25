@@ -56,3 +56,24 @@ export function hexagon(lat: number, lon: number, halfWidthDeg: number) {
   return [ring];
 }
 
+/** A pointy-top hex marker as an RGBA image for the symbol layer: the brand orange with a ring in the page colour so it reads on any land. */
+export function hexImage(size: number, fill: string, ring: string): ImageData {
+  const px = Math.round(size * 2);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = px;
+  const ctx = canvas.getContext("2d")!;
+  const c = px / 2;
+  const r = c - 3;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI / 180) * (60 * i - 90);
+    ctx.lineTo(c + r * Math.cos(a), c + r * Math.sin(a));
+  }
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = ring;
+  ctx.stroke();
+  return ctx.getImageData(0, 0, px, px);
+}

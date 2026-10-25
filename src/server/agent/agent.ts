@@ -54,7 +54,15 @@ Rules:
 - Taste data is aggregate. Never describe an individual.
 - Be brief and concrete. Australian English.`;
 
-export function buildPrompt(ctx: PlanContext, matched: { query: string; match: string | null }[]): string {
+/**
+ * A metro's line in the prompt (only then, so every other prompt is unchanged): the named areas it is planned across, and to
+ * weigh them before picking.
+ */
+export function areasPrompt(city: string, areas: readonly string[], searched: readonly string[]): string {
+  return `${city} is planned across its areas: ${areas.join(", ")}. Call compare_areas first and weigh areas across the city, not only the centre, before you pick. The pitches come from the areas searched street by street (${searched.join(", ")}), at most 2 from one. Name places by area or pitch, never by coordinates.`;
+}
+
+export function buildPrompt(ctx: PlanContext, matched: { query: string; match: string | null }[], areas?: { names: string[]; searched: string[] }): string {
   const { request } = ctx;
   const songs = boundSongs(ctx.songs$, PLAN_PROMPT_SONGS).map((s) => `${s.title} (${s.artist}${s.own ? ", own song" : ""})`).join("; ");
   const box = ctx.city.bbox;
@@ -72,6 +80,7 @@ export function buildPrompt(ctx: PlanContext, matched: { query: string; match: s
     `Planning area: latitude ${box.south} to ${box.north}, longitude ${box.west} to ${box.east}.`,
     // V2 2.4: only for a city without council rules, so every Melbourne prompt is unchanged.
     ...(ctx.levels.rules === "none" ? ["This city's busking rules are not checked: never call a pitch allowed or legal."] : []),
+    ...(areas && areas.names.length > 1 ? [areasPrompt(ctx.city.name, areas.names, areas.searched)] : []),
     ctx.isAnyTime ? "Find the three best pitches for this act on this day, each at its best hours, and explain why each crowd fits." : "Find the three best pitches for this act in this slot and explain why each crowd fits.",
   ].join("\n");
 }
@@ -86,9 +95,11 @@ export const FINISH_NUDGE =
 /** Forcing a tool call is refused while Claude's thinking is on, so a forced wrap-up step turns it off. */
 const NO_THINKING = { anthropic: { thinking: { type: "disabled" } } } as const;
 /** The tools offered before score_pitches opens. */
-const INVESTIGATION_ONLY = (["taste_map", "crowd_at", "busy_places", "events_near", "activity_at", "check_pitch", "learn_these"] as ToolName[]).filter(
+const INVESTIGATION_ONLY = (["compare_areas", "taste_map", "crowd_at", "busy_places", "events_near", "activity_at", "check_pitch", "learn_these"] as ToolName[]).filter(
   (t) => !(AFTER_SCORING as readonly string[]).includes(t),
 );
+/** Tools only a metro planned across its areas is offered: every other plan sees the tools it always did. */
+const METRO_ONLY: ToolName[] = ["compare_areas"];
 
 export type AgentEvents = {
   onNote?: (event: { kind: "reasoning" | "text"; text: string }) => void;
@@ -156,9 +167,11 @@ async function runAgent(ctx: PlanContext, events: AgentEvents, abortSignal: Abor
 
   const limits: Limits = { maxSteps: LIMITS.maxSteps, tokenBudget: LIMITS.tokenBudget, timeoutMs: LIMITS.agentTimeoutMs, ...options.limits };
   const state = new AgentState();
+  const [ranked, districts] = await Promise.all([ctx.rankedAreas(), ctx.namedDistricts()]);
   const prompt = buildPrompt(
     ctx,
     artists.map((a) => ({ query: a.query, match: a.entity?.name ?? null })),
+    ranked.length > 1 ? { names: ranked.map((a) => a.name), searched: districts.filter((d) => d.area).map((d) => d.name) } : undefined,
   );
   state.seen.add(prompt);
   state.seen.add(INSTRUCTIONS);
@@ -174,6 +187,10 @@ async function runAgent(ctx: PlanContext, events: AgentEvents, abortSignal: Abor
   const signal = AbortSignal.any([timeout, ...(abortSignal ? [abortSignal] : [])]);
   const model = options.model ?? (offline ? createMockPlanner() : MODELS.planner);
   const tools = createTools(ctx, state);
+  // compare_areas only where there are areas to compare; elsewhere the offered tools are the ones they always were.
+  const hidden: ToolName[] = ranked.length > 1 ? [] : METRO_ONLY;
+  const offer = (list: ToolName[]) => list.filter((t) => !hidden.includes(t));
+  const allTools = Object.keys(tools) as ToolName[];
   // Every finished tool call, for the plan's research totals (counted now, before any pruning of stored steps).
   const toolResults: ToolResult[] = [];
   let inputTokens = 0;
@@ -207,8 +224,8 @@ async function runAgent(ctx: PlanContext, events: AgentEvents, abortSignal: Abor
           state.wrappingUp = true;
           return wrapUpStep(stepNumber < limits.maxSteps - 1, "Your research budget is used up");
         }
-        if (!state.scored && !scoringOpen(state)) return { activeTools: INVESTIGATION_ONLY };
-        return {};
+        if (!state.scored && !scoringOpen(state)) return { activeTools: offer(INVESTIGATION_ONLY) };
+        return hidden.length ? { activeTools: offer(allTools) } : {};
       },
     });
     const result = await agent.stream({ prompt, abortSignal: signal });

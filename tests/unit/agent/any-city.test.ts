@@ -114,6 +114,9 @@ describe("a plan in Tokyo (offline)", () => {
     expect(pointName(p, [], [{ name: "Far pitch", lat: 38.72, lon: -9.1276 }], [{ lat: 38.7111, lon: -9.1277, rank: 5 }], "Lisbon")).toBe("Taste area 5");
     expect(pointName(p, [], [{ name: "Far pitch", lat: 38.72, lon: -9.1276 }], [], "Lisbon")).toBe("near Far pitch");
     expect(pointName(p, [], [], [], "Lisbon")).toBe("a spot in Lisbon");
+    // A metro: the named area the point is in, before a pitch further away; an area too far is not "in".
+    expect(pointName(p, [], [{ name: "Far pitch", lat: 38.72, lon: -9.1276 }], [], "Lisbon", [{ name: "Baixa", lat: 38.712, lon: -9.137 }])).toBe("a spot in Baixa");
+    expect(pointName(p, [], [], [], "Lisbon", [{ name: "Belém", lat: 38.697, lon: -9.206 }])).toBe("a spot in Lisbon");
   });
 
   it("keeps a Melbourne plan on Melbourne's own data", async () => {

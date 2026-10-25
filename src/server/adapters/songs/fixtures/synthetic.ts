@@ -1,5 +1,5 @@
 // SYNTHETIC FIXTURE: invented songs and play counts for tests and offline mode. Not Last.fm data.
-import { OFFLINE_SIMILAR_HOPS, OFFLINE_TEST_ACTS } from "@/lib/repertoire-research";
+import { OFFLINE_ALIKE_TAGS, OFFLINE_SIMILAR_HOPS, OFFLINE_TEST_ACTS } from "@/lib/repertoire-research";
 import type { SimilarArtist, TopTag, TopTrack } from "../schema";
 
 export function syntheticTopTracks(artist: string): TopTrack[] {
@@ -34,7 +34,7 @@ export function syntheticSimilar(artist: string): SimilarArtist[] {
 export function syntheticTopTags(artist: string): TopTag[] {
   const key = artist.trim().toLowerCase();
   const act = Object.values(OFFLINE_TEST_ACTS).find((t) => t.name.toLowerCase() === key);
-  const names: readonly string[] = act && "tags" in act ? act.tags : [];
+  const names: readonly string[] = act && "tags" in act ? act.tags : (OFFLINE_ALIKE_TAGS[artist.trim()] ?? []);
   return names.map((name, i) => ({ name, count: 100 - i * 10 }));
 }
 

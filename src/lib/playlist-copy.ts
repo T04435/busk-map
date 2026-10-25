@@ -143,7 +143,8 @@ export const PLAYLIST_COPY = {
         return `Qloo doesn't know you yet. Using ${parts.join("; ")}.${unmatched.length ? ` Qloo doesn't know ${andList(unmatched)}.` : ""}`;
       },
       basedOn: "Based on the artists you sound like",
-      basedOnGenre: "Based on your genre",
+      /** A genre-based step names the genres it used: "Based on Dembow and Reggaeton". */
+      basedOnGenres: (names: readonly string[]) => (names.length ? `Based on ${andList(names)}` : "Based on your genre"),
       noTaste: "No taste data yet",
       noAlikes: "No artists like you found yet",
     },

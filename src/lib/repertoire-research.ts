@@ -93,10 +93,19 @@ export type QlooOutput = {
 };
 
 /** The signal came from "Artists you sound like", not from the act (set on the steps that used it). */
-export type BasedOn = { basedOn?: "soundsLike" | "genres" | "none" };
+export type BasedOn = { basedOn?: "soundsLike" | "genres" | "none"; /** basedOn "genres": the genres the step used, by name, for its line ("Based on Dembow and Reggaeton"). */ byGenres?: string[] };
 export type ResearchArtistOut = { name: string; qlooId: string; spotifyId?: string; image?: string; tags?: string[]; affinity: number | null; because?: string[] };
 /** What the run waits for on a paused step: how many times it has asked (at most RESEARCH_MAX_ASKS), and what Qloo didn't know. */
-export type ResearchAsk = { asks: number; tried: { artists: string[]; genres: string[] } };
+export type ResearchAsk = { asks: number; tried: { artists: string[]; genres: string[] }; suggest?: ResearchSuggest };
+/**
+ * What the ask starts from, so the performer confirms rather than starts empty: the sound-alikes the research already found (with
+ * their Spotify id and photo when known), and genres as Qloo tags: the act's own first, then its sound-alikes'. `picked` genres
+ * start selected (at most MAX_RESEARCH_GENRES). Optional: asks saved before it lack it.
+ */
+export type ResearchSuggest = {
+  artists: { name: string; spotifyId?: string; image?: string }[];
+  genres: { id: string; name: string; from: "act" | "alikes"; picked: boolean }[];
+};
 export type SoundsLikeOutput = BasedOn & {
   summary: string;
   /** qlooId is absent for a Last.fm sound-alike Qloo doesn't know (QlooOutput.similar). */
@@ -217,17 +226,19 @@ export const researchRequestSchema = z.object({
 export type ResearchRequest = z.infer<typeof researchRequestSchema>;
 
 /**
- * POST /api/playlist/research/<runId>/input: the answer to a paused run. Artists you sound like (1 to 3, from the picker, with
+ * POST /api/playlist/research/<runId>/input: the answer to a paused run. Artists you sound like (1 to 10, from the picker, with
  * their Spotify id when it has one) or a genre; at least one.
  */
 /** Genres a performer can pick while the research waits. */
 export const MAX_RESEARCH_GENRES = 3;
+/** Artists a performer can send while the research waits (the found sound-alikes come prefilled): the "Artists you sound like" cap. */
+export const MAX_RESEARCH_ARTISTS = 10;
 export const researchInputSchema = z
   .object({
     artists: z
       .array(z.object({ name: z.string().trim().min(1).max(80), spotifyId: z.string().regex(/^[A-Za-z0-9]{22}$/).optional(), image: z.string().max(500).regex(/^https:\/\//).optional() }))
       .min(1)
-      .max(3)
+      .max(MAX_RESEARCH_ARTISTS)
       .optional(),
     /** Up to three genres. The old single `genre` is still accepted and read as one more. */
     genres: z.array(z.string().trim().min(2).max(40)).min(1).max(MAX_RESEARCH_GENRES).optional(),
@@ -286,7 +297,25 @@ export const OFFLINE_TEST_ACTS = {
   nothing: { name: "Wqk Nothing", spotifyId: "MockNothingAct00000005", genres: ["synthetic noise"], similar: [] },
   /** Like Victoria Queen (live, 20 Oct): Qloo doesn't know her, Last.fm has no similar artists or tags, Spotify sends no genres. */
   silent: { name: "Vqn Silent", spotifyId: "MockVictoriaQueen00010", genres: [], similar: [], tags: [] },
+  /**
+   * Like Wow Popy (live, 25 Oct): Qloo doesn't know the act or its Last.fm sound-alikes (Spotify does, with photos), and the act has
+   * no tags; the sound-alikes are tagged with specific genres Qloo has only as its own tags (OFFLINE_ALIKE_TAGS). The run asks.
+   */
+  taggedAlikes: { name: "Wpy Popi", spotifyId: "MockTaggedAlikes000011", genres: [], similar: ["Dny Omy", "Lkm Kimi"], tags: [] },
 } as const;
+
+/**
+ * Offline test mode only: artists Spotify's search knows (id and photo) and Qloo's mock doesn't: the taggedAlikes act's sound-alikes.
+ * Their Last.fm tags (invented) are specific genres Qloo's mock has only as its own tags (urn:tag:genre:qloo:…).
+ */
+export const OFFLINE_SPOTIFY_ONLY_ARTISTS = {
+  "Dny Omy": { spotifyId: "MockSpotifyOnlyArt0001", image: "https://i.scdn.co/image/offline-dny-omy" },
+  "Lkm Kimi": { spotifyId: "MockSpotifyOnlyArt0002", image: "https://i.scdn.co/image/offline-lkm-kimi" },
+} as const;
+export const OFFLINE_ALIKE_TAGS: Record<string, readonly string[]> = {
+  "Dny Omy": ["dembow", "reggaeton", "seen live"],
+  "Lkm Kimi": ["reggaeton", "cuban urban"],
+};
 
 /** Offline: an artist name Qloo's mock doesn't know (a performer's sound-alike that resolves to nothing). */
 export const OFFLINE_UNKNOWN_ARTIST = "Qzv Nobody";

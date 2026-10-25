@@ -183,8 +183,8 @@ export function artistDetail(entityId: string, context: AdapterContext): Promise
 }
 
 /** resolve_repertoire for a genre: Qloo music-genre tags matching the text (an act's Spotify genre), best first. */
-export function searchGenreTags(text: string, take: number, context: AdapterContext): Promise<AdapterResult<TasteTag[]>> {
-  return run<TasteTag[]>(context, [], (backend) => client.searchGenreTags(backend, text, take));
+export function searchGenreTags(text: string, take: number, context: AdapterContext, types?: client.GenreTagTypes): Promise<AdapterResult<TasteTag[]>> {
+  return run<TasteTag[]>(context, [], (backend) => client.searchGenreTags(backend, text, take, types));
 }
 
 /** related_artists for an act Qloo doesn't know: artists liked by fans of these genre tags. */

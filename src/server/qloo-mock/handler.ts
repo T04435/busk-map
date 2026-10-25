@@ -43,6 +43,8 @@ import {
   SCENARIO_ARTISTS,
   fnv1a,
   genreTagId,
+  QLOO_TYPED_GENRES,
+  qlooTypedTagId,
   isMockId,
   mockId,
   normalizeName,
@@ -230,7 +232,7 @@ type Signals = {
   area: Area | null;
 };
 
-const GENRE_BY_TAG = new Map((Object.keys(GENRES) as Genre[]).map((g) => [genreTagId(g), g]));
+const GENRE_BY_TAG = new Map<string, Genre>([...(Object.keys(GENRES) as Genre[]).map((g) => [genreTagId(g), g] as const), ...Object.entries(QLOO_TYPED_GENRES).map(([slug, t]) => [qlooTypedTagId(slug), t.like] as const)]);
 
 /** Normalise each artist's genre weights to sum to 1, so no input dominates by tagging. */
 function unitMix(genres: GenreVector): GenreVector {
@@ -806,8 +808,15 @@ function tagSearch(params: Params, key: string): Response {
     .filter((g) => !q || normalizeName(GENRES[g]).includes(q) || g.includes(q.replace(/ /g, "_")))
     .map((g) => ({ id: genreTagId(g), name: NOISY_TAG_NAMES[g] ?? GENRES[g], type: "urn:tag:genre:music", popularity: r3(0.5 + 0.5 * unit(`tagpop:${g}`)), parents: [{ type: "urn:entity:artist" }] }));
   const extra = q ? NOISY_EXTRA_TAGS.filter((t) => t.words.split(" ").some((w) => q.split(" ").includes(w))).map((t) => ({ id: t.id, name: t.name, type: "urn:tag:genre:music", popularity: 0.5, parents: [{ type: "urn:entity:artist" }] })) : [];
+  // Qloo's own genre tags come back only when the search isn't limited to urn:tag:genre:music (live, 20 Oct).
+  const broad = params.get("filter.tag.types") === "urn:tag:genre";
+  const typed = broad
+    ? Object.entries(QLOO_TYPED_GENRES)
+        .filter(([slug, t]) => !q || normalizeName(t.name).includes(q) || slug.includes(q.replace(/ /g, "_")))
+        .map(([slug, t]) => ({ id: qlooTypedTagId(slug), name: t.name, type: "urn:tag:genre:qloo", popularity: 0.5, parents: [{ type: "urn:entity:artist" }] }))
+    : [];
   // The glued-name rows come first, as they did live, so the matcher must not just take the first row.
-  return ok({ tags: paginate([...extra, ...rows], params) }, key);
+  return ok({ tags: paginate([...extra, ...rows, ...typed], params) }, key);
 }
 
 // ---- /v2/trending --------------------------------------------------------------

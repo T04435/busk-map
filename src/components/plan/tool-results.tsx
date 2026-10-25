@@ -24,6 +24,7 @@ import type { ExplanationsModel } from "@/lib/sources";
 import type { LevelSignal, LevelWord } from "@/lib/signal-level";
 import { LevelBadge } from "@/components/honeycomb/level-badge";
 import { EstimateLabel } from "./estimate-label";
+import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
 type Rec = Record<string, unknown>;
 const rec = (v: unknown): Rec => (v !== null && typeof v === "object" && !Array.isArray(v) ? (v as Rec) : {});
@@ -215,9 +216,13 @@ const researchUi = (line: (o: Rec) => RichTextData | string): ToolUi => ({
 });
 const artistOf = (a: Rec) =>
   mentionArtist(str(a.name) ?? "", { image: str(a.image), href: str(a.href) ?? (str(a.spotifyId) ? SPOTIFY_ARTIST_URL(str(a.spotifyId) as string) : null) });
+/** A genre-based research step names the genres it used: "Based on Dembow and Reggaeton: your fans also love …". */
+const byGenresOf = (o: Rec) => (o.basedOn === "genres" && Array.isArray(o.byGenres) ? (o.byGenres as unknown[]).filter((g): g is string => typeof g === "string" && g.length > 0) : []);
 const artistsLine = (lead: string, none: string) => (o: Rec) => {
   const artists = arr(o.artists).filter((a) => str(a.name));
-  return artists.length ? [`${lead} `, ...listOf(artists.slice(0, 6).map(artistOf))] : none;
+  const genres = byGenresOf(o);
+  const head = genres.length ? `${PLAYLIST_COPY.research.fallback.basedOnGenres(genres)}: ${lead.charAt(0).toLowerCase()}${lead.slice(1)}` : lead;
+  return artists.length ? [`${head} `, ...listOf(artists.slice(0, 6).map(artistOf))] : none;
 };
 const RESEARCH_UI: Record<string, ToolUi> = {
   research_profile: researchUi((o) => (str(o.name) ? ["Read ", artistOf(o), " on ", mentionSource("spotify")] : (str(o.summary) ?? ""))),

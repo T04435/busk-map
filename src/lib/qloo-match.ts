@@ -235,6 +235,18 @@ export function normGenre(text: string): string {
 /** The slug of a Qloo genre tag id: urn:tag:genre:music:indie_folk is "indie folk". */
 export const tagSlug = (id: string): string => normGenre(id.replace(/^urn:tag:genre(?::[a-z]+)?:/, "").replace(/_/g, " "));
 
+/**
+ * A Qloo genre tag id fit for a taste signal: `urn:tag:genre:music:…`, or Qloo's own genre tags `urn:tag:genre:qloo:…`. Live Qloo
+ * (media/qloo-coverage, 20 Oct) has many specific genres only as the latter (urn:tag:genre:qloo:reggaeton, …:cuban_urban), which a
+ * /v2/tags search filtered to urn:tag:genre:music never returns. Plain `urn:tag:genre:<word>` ids are free-text labels (places too).
+ */
+export const isGenreTagId = (id: string) => /^urn:tag:genre:(?:music|qloo):[^\s,]+$/.test(id);
+
+/** The genre buttons' names, normalised: broad genres. A specific genre (dembow, reggaeton) leads them as a signal. */
+const COARSE_GENRES = new Set(["folk", "rock", "pop", "hip hop", "hiphop", "jazz", "electronic", "latin", "country", "blues", "soul", "reggae", "classical", "world", "dance", "rap", "indie", "alternative", "urban"]);
+/** Whether a genre text or tag name is a broad genre (one of the buttons' kind) rather than a specific one. */
+export const isCoarseGenre = (text: string) => COARSE_GENRES.has(normGenre(text));
+
 /** The button tag for a genre text, when it is one of the buttons' genres. */
 export function buttonGenreTag(genre: string): { id: string; name: string } | null {
   const key = normGenre(genre);
@@ -247,10 +259,10 @@ export function buttonGenreTag(genre: string): { id: string; name: string } | nu
  * the same with spaces removed ("singer-songwriter" and "Singersongwriter"), then a tag whose name has all the text's words (the
  * shortest). Music-genre tags only. Null when nothing fits.
  */
-export function pickGenreTag(tags: readonly { id: string; name: string }[], genre: string): { id: string; name: string } | null {
+export function pickGenreTag(tags: readonly { id: string; name: string }[], genre: string, options: { broad?: boolean } = {}): { id: string; name: string } | null {
   const want = normGenre(genre);
   if (!want) return null;
-  const music = tags.filter((t) => t.id.startsWith("urn:tag:genre:music"));
+  const music = tags.filter((t) => (options.broad ? isGenreTagId(t.id) : t.id.startsWith("urn:tag:genre:music")));
   const exact = music.find((t) => tagSlug(t.id) === want || normGenre(t.name) === want);
   if (exact) return exact;
   const squashed = want.replace(/ /g, "");

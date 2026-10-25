@@ -696,16 +696,20 @@ async function artistGenresCached(backend: QlooBackend, entityIds: string[], tak
  * `/v2/tags` search: music-genre tags whose name matches the text (an act's Spotify genre, "indie folk"), best first. Used when
  * Qloo doesn't know the act, to turn its genres into `urn:tag:genre…` ids. 404 "No results" is an empty list.
  */
-export async function searchGenreTags(backend: QlooBackend, text: string, take: number): Promise<TasteTag[]> {
-  return countLookup("searchGenreTags", [backend, text, take], () => searchGenreTagsCached(backend, text, take));
+export type GenreTagTypes = "urn:tag:genre:music" | "urn:tag:genre";
+/** `types` "urn:tag:genre" also returns Qloo's own genre tags (urn:tag:genre:qloo:reggaeton), which the music filter leaves out. */
+export async function searchGenreTags(backend: QlooBackend, text: string, take: number, types: GenreTagTypes = "urn:tag:genre:music"): Promise<TasteTag[]> {
+  const args = types === "urn:tag:genre:music" ? [backend, text, take] : [backend, text, take, types];
+  return countLookup("searchGenreTags", args, () => searchGenreTagsCached(backend, text, take, types));
 }
 
-async function searchGenreTagsCached(backend: QlooBackend, text: string, take: number): Promise<TasteTag[]> {
+async function searchGenreTagsCached(backend: QlooBackend, text: string, take: number, types: GenreTagTypes): Promise<TasteTag[]> {
   "use cache: remote";
-  return lookupScope("searchGenreTags", [backend, text, take], async () => {
+  const args = types === "urn:tag:genre:music" ? [backend, text, take] : [backend, text, take, types];
+  return lookupScope("searchGenreTags", args, async () => {
     cacheLife("days");
     cacheTag("qloo", "qloo:tags");
-    const params = { "filter.query": text, "filter.tag.types": "urn:tag:genre:music", take: Math.min(take, MAX_TAKE) };
+    const params = { "filter.query": text, "filter.tag.types": types, take: Math.min(take, MAX_TAKE) };
     const body = await orNotFound(() => qlooGet(backend, "/v2/tags", params, tagsResponseSchema), { results: { tags: [] } });
     logIfEmpty("/v2/tags", params, body.results.tags.length);
     return body.results.tags.map((tag) => ({ id: tag.tag_id ?? tag.id ?? "", name: tag.name, affinity: null })).filter((t) => t.id);

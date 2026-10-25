@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { OFFLINE_PICKED_ARTISTS, OFFLINE_TEST_ACTS, OFFLINE_TEST_ARTIST } from "../../src/lib/repertoire-research";
+import { OFFLINE_PICKED_ARTISTS, OFFLINE_SPOTIFY_ONLY_ARTISTS, OFFLINE_TEST_ACTS, OFFLINE_TEST_ARTIST } from "../../src/lib/repertoire-research";
 import { expect, LOCAL, test } from "./fixtures";
 import { WIDTHS } from "./layout-helpers";
 
@@ -419,6 +419,52 @@ test.describe("Repertoire research (offline)", () => {
     await expect(alikes.getByRole("list", { name: "Artists you picked" }).locator("li img")).toHaveCount(2);
     const saved = (await (await page.request.get("/api/playlist")).json()).playlist.soundsLike;
     expect(saved).toMatchObject([{ name: "Mariah Carey", image: OFFLINE_PICKED_ARTISTS.mariah.spotifyImage }, { name: "Celia Cruz", image: OFFLINE_PICKED_ARTISTS.celia.qlooImage }]);
+  });
+
+  test("sound-alikes Qloo doesn't know (the Wow Popy case): the ask is prefilled with them and their genres preselected, sits right under the title, and Carry on as it is goes on", async ({ page }) => {
+    test.setTimeout(120_000);
+    const inputs: string[] = [];
+    page.on("request", (r) => {
+      if (r.method() === "POST" && /\/research\/[^/]+\/input$/.test(r.url())) inputs.push(r.postData() ?? "");
+    });
+    const picture = '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#888"/></svg>';
+    await page.route(/i\.scdn\.co|images\.qloo\.test/, (route) => route.fulfill({ contentType: "image/svg+xml", body: picture }));
+    const act = OFFLINE_TEST_ACTS.taggedAlikes;
+    await research(page, linkOf(act.spotifyId));
+    const ask = page.getByTestId("research-ask");
+    await expect(ask).toBeVisible({ timeout: 20_000 });
+    // The sound-alikes the research found are there to confirm, with their Spotify photos: not an empty picker.
+    const picked = ask.getByRole("list", { name: "Artists you picked" });
+    await expect(picked.locator("li")).toHaveCount(act.similar.length);
+    for (const name of act.similar) await expect(picked).toContainText(name);
+    await expect(picked.locator("img")).toHaveCount(act.similar.length);
+    await expect(ask.getByTestId("artists-hint")).toContainText(`${act.similar.length} of 10`);
+    // Their specific genres lead the buttons, preselected; the fixed list follows.
+    const genres = page.getByTestId("research-genre-pick");
+    const buttons = genres.getByRole("button");
+    await expect(buttons.nth(0)).toHaveText("Reggaeton");
+    await expect(buttons.nth(1)).toHaveText("Dembow");
+    await expect(buttons.nth(2)).toHaveText("Cuban Urban");
+    for (const name of ["Reggaeton", "Dembow", "Cuban Urban"]) await expect(genres.getByRole("button", { name, exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(genres.getByRole("button", { name: "Reggae", exact: true })).toHaveAttribute("aria-pressed", "false");
+    // No gap: the ask starts right under the step's title row (the title and its "Your turn" tag, which wraps on a phone).
+    const step = page.locator('[data-testid="agent-step"][data-status="waiting"]');
+    const title = await step.locator("b").first().locator("..").boundingBox();
+    const line = await ask.getByTestId("research-ask-line").boundingBox();
+    expect(line!.y - (title!.y + title!.height), "space between the title and the ask").toBeLessThanOrEqual(16);
+    expect(line!.y).toBeGreaterThanOrEqual(title!.y + title!.height - 1);
+    // Carry on as it is confirms them.
+    await page.getByTestId("research-ask-carry-on").click();
+    await done(page);
+    await expect(page.getByTestId("research-end")).not.toHaveAttribute("data-code", /^needs_/);
+    expect(JSON.parse(inputs[0])).toEqual({
+      artists: act.similar.map((name) => ({ name, spotifyId: OFFLINE_SPOTIFY_ONLY_ARTISTS[name].spotifyId, image: OFFLINE_SPOTIFY_ONLY_ARTISTS[name].image })),
+      genres: ["Reggaeton", "Dembow", "Cuban Urban"],
+    });
+    const steps = page.getByTestId("research-steps");
+    await expect(steps.locator('[data-testid="agent-step"][data-tool="research_fans_love"]')).toContainText("Based on Reggaeton, Dembow and Cuban Urban: your fans also love");
+    const saved = (await (await page.request.get("/api/playlist")).json()).playlist.soundsLike;
+    expect(saved.map((a: { name: string; foundBy?: string }) => `${a.name}:${a.foundBy ?? "you"}`)).toEqual(act.similar.map((name) => `${name}:you`));
   });
 
   test("still nothing Qloo knows: it asks again in the same step, then stops after three asks in one line", async ({ page }) => {

@@ -11,6 +11,6 @@ const PLACE_TAG_MARKERS = [":location", ":place", ":country", ":city", ":region"
 export function isMusicGenreTag(tag: { id: string; name: string }): boolean {
   const id = tag.id.toLowerCase();
   if (PLACE_TAG_MARKERS.some((m) => id.includes(m))) return false;
-  if (id.startsWith("urn:tag:") && !id.startsWith("urn:tag:genre:music") && !id.startsWith("urn:tag:genre:media")) return false;
+  if (id.startsWith("urn:tag:") && !id.startsWith("urn:tag:genre:music") && !id.startsWith("urn:tag:genre:qloo") && !id.startsWith("urn:tag:genre:media")) return false;
   return !isWorldPlaceName(tag.name);
 }

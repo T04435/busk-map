@@ -253,7 +253,7 @@ describe("path 4: Qloo doesn't know the act, so the Hive finds artists like it a
     expect(s.genres!.output).toMatchObject({ basedOn: "genres" });
     expect(s.genres!.output!.tags.map((t) => t.name)).toEqual(["Indie Folk"]);
     expect(s.learn!.output!.songs.length).toBeGreaterThan(0);
-    expect(s.fans!.output).toMatchObject({ basedOn: "genres", summary: expect.stringMatching(/^Based on your genre: /) });
+    expect(s.fans!.output).toMatchObject({ basedOn: "genres", summary: expect.stringMatching(/^Based on Indie Folk: /) });
     expect(s.fansMap!.output!.summary).not.toBe(PLAYLIST_COPY.research.fallback.noTaste);
     expect(researchUsable(v.research)).toBe(true);
     const more = await go(m, { mode: "more" }, r.cookie);
@@ -299,7 +299,7 @@ describe("path 4: Qloo doesn't know the act, so the Hive finds artists like it a
   });
 
   it("only the test acts with no taste signal anywhere wait for input", async () => {
-    const waits = new Set(["otherId", "nothing", "silent"]);
+    const waits = new Set(["otherId", "nothing", "silent", "taggedAlikes"]);
     for (const key of Object.keys(OFFLINE_TEST_ACTS) as (keyof typeof OFFLINE_TEST_ACTS)[]) {
       const m = await load();
       const r = await go(m, act(key));

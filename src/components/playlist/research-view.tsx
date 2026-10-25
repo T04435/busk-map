@@ -41,7 +41,7 @@ import { ZERO_LEARN_TOTALS, type LearnListView, type LearnStreamEvent } from "@/
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import { playlistSongKey, type LearnSuggestionView, type PlaylistView } from "@/lib/playlist-schema";
 import { fansMapProps } from "@/lib/fans-map";
-import { OFFLINE_TEST_ARTIST, researchUsable, researchWaiting } from "@/lib/repertoire-research";
+import { OFFLINE_TEST_ARTIST, researchUsable, researchWaiting, type SoundsLikeOutput } from "@/lib/repertoire-research";
 import { toRepertoireView, type LearnSong, type RepertoireView } from "@/lib/repertoire-research-view";
 import { looksLikeLink, parseSpotifyArtistId, spotifyArtistUrl } from "@/lib/spotify-link";
 import { joinLearn, loadLearn, pageFaults, patchSuggestion, sendResearchInput, startResearch, type ResearchAnswer } from "./learn-api";
@@ -457,6 +457,7 @@ export function ResearchView() {
             askRun ? (
               <ResearchAsk
                 message={step.summary ?? R.ask.first}
+                suggest={(step.output as SoundsLikeOutput | null | undefined)?.waiting?.suggest ?? research?.waiting?.suggest ?? null}
                 busy={busy || running}
                 onSubmit={(body) => void answer(askRun, body)}
               />

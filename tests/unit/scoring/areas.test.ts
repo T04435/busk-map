@@ -96,4 +96,8 @@ describe("districtsFromAreas: the areas the plan zooms into", () => {
     expect(districtsFromAreas(rankAreas([area("Metro", "city", 0, 0), area("Beach", "town", 0, 6)], [cell(12, 12, 1)]), CITY.bbox)).toEqual([]);
     expect(districtsFromAreas([], CITY.bbox)).toEqual([]);
   });
+
+  it("breaks a full tie by name", () => {
+    expect(rankAreas([area("Bravo", "suburb", 0, 0), area("Alpha", "suburb", 5, 5)], []).map((a) => a.name)).toEqual(["Alpha", "Bravo"]);
+  });
 });

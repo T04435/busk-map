@@ -255,4 +255,18 @@ describe("taste spot names (tasteSpotName)", () => {
       ["cell:eycs0p3", "Belém taste spot"],
     ]);
   });
+
+  it("has no area when the city's centre is nearer and the city is unnamed", () => {
+    expect(tasteSpotName(point, { areas: [areas[1]], venues, cityCenter: { lat: 38.7105, lon: -9.141 } })).toBe("Near Café Nicola");
+  });
+
+  it("takes the alphabetically first of two venues equally near", () => {
+    const spot = { lat: 38.7101, lon: -9.14 };
+    expect(tasteSpotName(point, { venues: [{ name: "Zé Bar", ...spot }, { name: "Adega", ...spot }] })).toBe("Near Adega");
+  });
+
+  it("falls back to coordinates with nothing to anchor a compass hint", () => {
+    expect(tasteSpotName(point, {}, new Set(["Taste spot"]))).toBe("Taste spot, 38.7100, -9.1400");
+    expect(tasteSpotName(point, {}, new Set(["Taste spot", "Taste spot, 38.7100, -9.1400"]))).toBe("Taste spot, 38.71000, -9.14000");
+  });
 });

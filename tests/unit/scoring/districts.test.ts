@@ -116,3 +116,36 @@ describe("spreading the top 3 over districts", () => {
     expect(pickTopPitches(crowded, 3, undefined, spread).map((p) => p.id)).toEqual(["a", "beach"]);
   });
 });
+
+describe("ties, broken the same way every run", () => {
+  it("keeps the south-west-most of equally strong cells in one coarse square, and orders equal squares south then west", () => {
+    // The middle of a coarse square, so the nudged copies stay in it.
+    const dLat = 1.5 / 111.32;
+    const lat = (Math.floor(CENTER.lat / dLat) + 0.5) * dLat;
+    const dLon = 1.5 / (111.32 * Math.cos((lat * Math.PI) / 180));
+    const base = { lat, lon: (Math.floor(CENTER.lon / dLon) + 0.5) * dLon };
+    const same = [cell({ lat: base.lat + 0.0001, lon: base.lon }, 0.5), cell({ lat: base.lat, lon: base.lon + 0.0001 }, 0.5), cell(base, 0.5), cell({ lat: base.lat, lon: base.lon + 0.0002 }, 0.5)];
+    expect(coarseCells(same)).toEqual([{ ...base, affinity: 0.5 }]);
+    const apart = [cell(at(5, 0), 0.5), cell(at(0, 5), 0.5), cell(at(0, 0), 0.5)];
+    expect(coarseCells(apart).map((c) => ({ lat: c.lat, lon: c.lon }))).toEqual([at(0, 0), at(0, 5), at(5, 0)]);
+  });
+
+  it("names a district after the alphabetically first of two places equally near", () => {
+    const [d] = findDistricts([cell(at(0, 0), 1)], AREA);
+    const spot = at(0.2, 0);
+    expect(nameDistricts([d], [{ name: "Zeta Plaza", ...spot }, { name: "Alpha Plaza", ...spot }])[0].name).toBe("Alpha Plaza");
+  });
+});
+
+describe("spreading when pitches sit in no district, or one district has them all", () => {
+  const pitch = (id: string, p: LatLon) => ({ id, name: id, ...p, score: 1 }) as unknown as ScoredPitch;
+  const RANKED = [pitch("a", at(0, 0)), pitch("b", at(1, 0)), pitch("c", at(2, 0)), pitch("d", at(3, 0))];
+
+  it("does not cap pitches outside every district", () => {
+    expect(pickTopPitches(RANKED, 3, undefined, { districtOf: () => null, maxPerDistrict: 1 }).map((p) => p.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("stops filling once the plan has its pitches", () => {
+    expect(pickTopPitches(RANKED, 3, undefined, { districtOf: () => "d1", maxPerDistrict: 1 }).map((p) => p.id)).toEqual(["a", "b", "c"]);
+  });
+});

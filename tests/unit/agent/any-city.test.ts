@@ -89,6 +89,33 @@ describe("a plan in Tokyo (offline)", () => {
     expect(cellName(cell, 4, [], [{ name: "Far away", lat: 35.69, lon: 139.69, origin: "taste" }])).toBe("Taste area 4");
   });
 
+  it("names a point given by coordinates like the cells and pitches in step titles and summaries, never as raw numbers", async () => {
+    vi.resetModules();
+    mockFetch([]);
+    const { PlanContext } = await import("@/server/agent/context");
+    const { createTools, AgentState, pointName } = await import("@/server/agent/tools");
+    const request = planRequestSchema.parse({ ...requestFieldsOf(TOKYO), slot, performer: EXAMPLES[0].performer });
+    const ctx = new PlanContext(request, { offline: true, faults: ["osm"] }, "2026-10-15");
+    const tools = createTools(ctx, new AgentState());
+    const exec = (t: { execute?: unknown }, input: unknown) => (t.execute as (i: unknown, o: unknown) => Promise<unknown>)(input, { toolCallId: "t", messages: [] });
+    const [pitch] = (await ctx.candidates()).candidates;
+    // A point 40 m off a taste-area pitch takes that pitch's name.
+    const off = { lat: pitch.lat + 0.0003, lon: pitch.lon };
+    const crowd = (await exec(tools.crowd_at, { at: off })) as { summary: string; at: { label: string } };
+    expect(crowd.at.label).toBe(/^Near /.test(pitch.name) ? pitch.name.replace(/^Near /, "near ") : pitch.name);
+    const places = (await exec(tools.busy_places, { near: off })) as { summary: string };
+    for (const text of [crowd.summary, crowd.at.label, places.summary]) expect(text).not.toMatch(/-?\d+\.\d{4}, -?\d+\.\d{4}/);
+
+    // The rule: a known place, a pitch on the spot, the top taste cell there, the nearest pitch, the city.
+    const p = { lat: 38.711, lon: -9.1276 };
+    expect(pointName(p, [{ name: "Praça do Comércio", lat: 38.7112, lon: -9.1277 }], [], [], "Lisbon")).toBe("near Praça do Comércio");
+    expect(pointName(p, [], [{ name: "Taste area 2", lat: 38.7111, lon: -9.1276 }], [], "Lisbon")).toBe("Taste area 2");
+    expect(pointName(p, [], [{ name: "Near Rossio", lat: 38.7111, lon: -9.1276 }], [], "Lisbon")).toBe("near Rossio");
+    expect(pointName(p, [], [{ name: "Far pitch", lat: 38.72, lon: -9.1276 }], [{ lat: 38.7111, lon: -9.1277, rank: 5 }], "Lisbon")).toBe("Taste area 5");
+    expect(pointName(p, [], [{ name: "Far pitch", lat: 38.72, lon: -9.1276 }], [], "Lisbon")).toBe("near Far pitch");
+    expect(pointName(p, [], [], [], "Lisbon")).toBe("a spot in Lisbon");
+  });
+
   it("keeps a Melbourne plan on Melbourne's own data", async () => {
     const { PlanContext, runPlanAgent } = await load();
     const request = planRequestSchema.parse({ city: "melbourne", slot, performer: EXAMPLES[0].performer });

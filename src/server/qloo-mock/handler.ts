@@ -43,6 +43,8 @@ import {
   SCENARIO_ARTISTS,
   fnv1a,
   genreTagId,
+  QLOO_TYPED_GENRES,
+  qlooTypedTagId,
   isMockId,
   mockId,
   normalizeName,
@@ -51,8 +53,9 @@ import {
   type ScenarioArtist,
   type Genre,
 } from "./catalog";
-import { DAYS, MOCK_PLACES, PLACE_BY_ID, categoryTag, placeFit, type MockPlace } from "./places";
+import { DAYS, MOCK_PLACES, PLACE_BY_ID, REGION_PLACES, categoryTag, placeFit, type MockPlace } from "./places";
 import { WORLD_PLACES } from "@/lib/world-places";
+import { toMockFrame } from "@/server/offline-city";
 import { GENRE_DEMOGRAPHICS, MOCK_COVERAGE, cosine, density, liftAt, mixGenres, tasteAt, type GenreVector } from "./taste-field";
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
@@ -200,7 +203,10 @@ function samplePoints(area: Area): LatLon[] {
   return inside.length > 0 ? inside : points;
 }
 
-const covered = (point: LatLon) => inBBox(point, MOCK_COVERAGE);
+/** Where the mock has data: Melbourne's inner suburbs, and the same area moved onto offline mode's second city (Tokyo). */
+const covered = (point: LatLon) => inBBox(toMockFrame(point), MOCK_COVERAGE);
+/** Melbourne itself (local acts get a boost only there). */
+const inMelbourneCoverage = (point: LatLon) => inBBox(point, MOCK_COVERAGE);
 
 function localityPayload(locality: Locality) {
   const lat = (locality.bbox.south + locality.bbox.north) / 2;
@@ -226,7 +232,7 @@ type Signals = {
   area: Area | null;
 };
 
-const GENRE_BY_TAG = new Map((Object.keys(GENRES) as Genre[]).map((g) => [genreTagId(g), g]));
+const GENRE_BY_TAG = new Map<string, Genre>([...(Object.keys(GENRES) as Genre[]).map((g) => [genreTagId(g), g] as const), ...Object.entries(QLOO_TYPED_GENRES).map(([slug, t]) => [qlooTypedTagId(slug), t.like] as const)]);
 
 /** Normalise each artist's genre weights to sum to 1, so no input dominates by tagging. */
 function unitMix(genres: GenreVector): GenreVector {
@@ -434,6 +440,16 @@ function requireSignal(signals: Signals, params: Params) {
 
 /** Live heatmaps over a city-centre polygon come back at geohash precision 7 (about 150 m cells). */
 const HEATMAP_PRECISION = 7;
+/** ...and over a metro-sized one (wider than METRO_SPAN_KM) at precision 6 (about 1.2 by 0.6 km), as the mock models it. */
+const METRO_HEATMAP_PRECISION = 6;
+const METRO_SPAN_KM = 10;
+
+/** The precision the mock answers an area at: coarser for a whole metro (lib/city.ts isMetro) than for a city centre or a district. */
+function heatmapPrecision(box: BBox): number {
+  const midLat = ((box.north + box.south) / 2) * (Math.PI / 180);
+  const spanKm = Math.max(box.north - box.south, (box.east - box.west) * Math.cos(midLat)) * 111.32;
+  return spanKm > METRO_SPAN_KM ? METRO_HEATMAP_PRECISION : HEATMAP_PRECISION;
+}
 
 let coverageLifts: { key: string; lifts: number[] } | null = null;
 
@@ -481,7 +497,7 @@ function heatmap(params: Params, key: string): Response {
   // A world-sized area (the Repertoire's "Where your fans are") can't be walked cell by cell: the mock answers with the local
   // Melbourne field plus a few synthetic clusters in cities around the world, so the global map has somewhere to point.
   const worldwide = box.east - box.west > WORLD_SPAN_DEG || box.north - box.south > WORLD_SPAN_DEG;
-  const cells = (worldwide ? worldCells(area, box, signals.mix, mixKey) : geohashesInBBox(box, HEATMAP_PRECISION)
+  const cells = (worldwide ? worldCells(area, box, signals.mix, mixKey) : geohashesInBBox(box, heatmapPrecision(box))
     .map((geohash) => ({ geohash, center: geohashCenter(geohash) }))
     .filter((c) => contains(area, c.center) && covered(c.center))
     .map((c) => ({ ...c, lift: liftAt(signals.mix, c.center, `${c.geohash}:${mixKey}`) })))
@@ -524,7 +540,8 @@ function places(params: Params, key: string): Response {
   const exclude = new Set(params.list("filter.exclude.entities").map((s) => s.toUpperCase()));
   const center = area?.kind === "point" ? area.point : null;
 
-  const found = MOCK_PLACES.filter((p) => {
+  // Offline mode's second city has its own (moved) places; search by name stays Melbourne's.
+  const found = [...MOCK_PLACES, ...REGION_PLACES].filter((p) => {
     if (area && !contains(area, p)) return false;
     // filter.hours: invalid day names are ignored, like any invalid parameter.
     if (day && ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].includes(day) && !(p.hours[day as keyof typeof p.hours]?.length)) return false;
@@ -570,6 +587,9 @@ function artists(params: Params, key: string): Response {
   const popMin = params.number("filter.popularity.min");
   const popMax = params.number("filter.popularity.max");
   const inputIds = new Set(signals.entityIds);
+  // Live Qloo (2026-10-25): an artist request with filter.type alone, no signal and no filter, is refused.
+  const anything = signals.entityIds.length > 0 || signals.tags.length > 0 || signals.area != null || params.get("signal.interests.entities") !== null || only.size > 0 || tagFilter.length > 0 || popMin !== null || popMax !== null;
+  if (!anything) throw new BadRequest("at least one valid signal or filter is required for entity insights");
 
   // Ids outside the catalogue are unknown to the mock, as they would be to Qloo.
   const pool: CatalogArtist[] = only.size
@@ -581,7 +601,7 @@ function artists(params: Params, key: string): Response {
 
   const withMix = hasMix(signals.mix);
   const area = signals.area;
-  const inMelbourne = area ? samplePoints(area).some(covered) : false;
+  const inMelbourne = area ? samplePoints(area).some(inMelbourneCoverage) : false;
   const sample = area ? samplePoints(area).filter(covered) : [];
 
   const scored = pool
@@ -780,6 +800,9 @@ const NOISY_EXTRA_TAGS = [
   { id: "urn:tag:genre:music:indie", name: '"indie"', words: "indie" },
   { id: "urn:tag:genre:music:singersongwriter", name: "Singersongwriter", words: "singer songwriter singersongwriter" },
   { id: "urn:tag:genre:music:singer_songwritergdchill", name: "Singer-songwritergdchill", words: "singer songwriter" },
+  // Live /v2/tags has places as music "genres" too (urn:tag:genre:music:american, "Australia", and a "CUBA" tag, 25 Oct).
+  { id: "urn:tag:genre:music:cuba", name: "CUBA", words: "cuba cuban" },
+  { id: "urn:tag:genre:music:american", name: "American", words: "american" },
 ];
 
 function tagSearch(params: Params, key: string): Response {
@@ -788,8 +811,15 @@ function tagSearch(params: Params, key: string): Response {
     .filter((g) => !q || normalizeName(GENRES[g]).includes(q) || g.includes(q.replace(/ /g, "_")))
     .map((g) => ({ id: genreTagId(g), name: NOISY_TAG_NAMES[g] ?? GENRES[g], type: "urn:tag:genre:music", popularity: r3(0.5 + 0.5 * unit(`tagpop:${g}`)), parents: [{ type: "urn:entity:artist" }] }));
   const extra = q ? NOISY_EXTRA_TAGS.filter((t) => t.words.split(" ").some((w) => q.split(" ").includes(w))).map((t) => ({ id: t.id, name: t.name, type: "urn:tag:genre:music", popularity: 0.5, parents: [{ type: "urn:entity:artist" }] })) : [];
+  // Qloo's own genre tags come back only when the search isn't limited to urn:tag:genre:music (live, 20 Oct).
+  const broad = params.get("filter.tag.types") === "urn:tag:genre";
+  const typed = broad
+    ? Object.entries(QLOO_TYPED_GENRES)
+        .filter(([slug, t]) => !q || normalizeName(t.name).includes(q) || slug.includes(q.replace(/ /g, "_")))
+        .map(([slug, t]) => ({ id: qlooTypedTagId(slug), name: t.name, type: "urn:tag:genre:qloo", popularity: 0.5, parents: [{ type: "urn:entity:artist" }] }))
+    : [];
   // The glued-name rows come first, as they did live, so the matcher must not just take the first row.
-  return ok({ tags: paginate([...extra, ...rows], params) }, key);
+  return ok({ tags: paginate([...extra, ...rows, ...typed], params) }, key);
 }
 
 // ---- /v2/trending --------------------------------------------------------------

@@ -1,5 +1,7 @@
 "use client";
 
+import { DEFAULT_CITY_ID } from "@/lib/city";
+import { levelsToLabel, levelWord, liveSource, rulesChecked, RULES_NOT_CHECKED, type LevelSignal } from "@/lib/signal-level";
 import { planMentions } from "@/lib/plan-mentions";
 import { mentionsIn, SPOTIFY_ARTIST_URL } from "@/lib/mention";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
@@ -328,20 +330,28 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
                 ? "replayed"
                 : "done"
               : null;
+  // V2 2.2: outside Melbourne each signal names its level ("Live data", "Estimate", "Not checked"); Melbourne keeps today's labels.
+  const levels = levelsToLabel(request.city, plan?.cityLevels ?? null);
+  const checked = rulesChecked(levels);
   // A finished run has no "Researched by" sentence: only its usage line stays.
-  const statusLine = <AgentStatusLine state={agentState === "done" ? null : agentState} usage={usage} model={model} note={replayed ? replayNote(replay?.note ?? runNote) : null} />;
+  const statusLine = <AgentStatusLine state={agentState === "done" ? null : agentState} usage={usage} model={model} rulesChecked={checked} note={replayed ? replayNote(replay?.note ?? runNote) : null} />;
 
   const sourcesDown = plan ? plan.dataStatus.filter((s) => s.mode === "fallback" && s.source !== "qloo") : [];
   const DOWN: Record<string, { title: string; effect: string }> = {
     ticketmaster: { title: "Ticketmaster didn't answer", effect: "Event crowds are left out of the scores." },
     "open-meteo": { title: "The weather forecast didn't answer", effect: "The weather is left out of the scores." },
     lastfm: { title: "Last.fm didn't answer", effect: "Song play counts are left out; the suggested set still orders your songs." },
+    osm: { title: "OpenStreetMap didn't answer", effect: "Pitches stand at the strongest taste areas instead of named public spaces." },
   };
+
+  const levelOf = levels
+    ? (signal: LevelSignal) => levelWord(signal, levels, plan ? liveSource(signal, plan.dataStatus) : heading.qlooMode === "live")
+    : undefined;
 
   const funnel =
     noTaste || (!qlooDown && !totals && !live) ? null : (
       <div data-testid="plan-funnel">
-        <ResearchFunnel layout="landing" totals={qlooDown ? null : totals} running={running} live={live} picks={!live && !qlooDown && plan && plan.pitches.length > 0 ? plan.pitches.length : null} />
+        <ResearchFunnel layout="landing" rulesChecked={checked} totals={qlooDown ? null : totals} running={running} live={live} picks={!live && !qlooDown && plan && plan.pitches.length > 0 ? plan.pitches.length : null} />
       </div>
     );
 
@@ -358,9 +368,10 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     void runAgent();
   };
 
-  const dataSources = plan && !pending && !qlooDown ? <DataSources status={plan.dataStatus} showAi={creditsClaude(plan)} /> : null;
+  const dataSources = plan && !pending && !qlooDown ? <DataSources status={plan.dataStatus} showAi={creditsClaude(plan)} levels={plan.cityLevels} /> : null;
   const stream = hasFeed ? (
     <AgentStepStream
+      levelOf={levelOf}
       steps={steps}
       model={model}
       phase={phase ?? "done"}
@@ -376,12 +387,13 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     />
   ) : null;
 
-  const eyebrow = `${replay ? "Shared busk · " : ""}${slotEyebrow(request.slot, request.permit)}`;
+  // Any city but Melbourne (the default) is named in the eyebrow; a city whose rules aren't checked names no permit.
+  const eyebrow = `${replay ? "Shared busk · " : ""}${request.city === DEFAULT_CITY_ID ? "" : `${heading.cityName} · `}${slotEyebrow(request.slot, checked ? request.permit : null)}`;
   const tags = (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1" data-testid="plan-tags">
       <DataStatusBadge status={heading.qlooMode === "live" ? "live" : "test"} label={heading.qlooMode === "live" ? "Live Qloo data" : QLOO_TEST_LABEL} />
       {plan && !qlooDown ? (
-        <DataStatusBadge status="estimated" label={plan.pitches.some((p) => p.activityBasis !== "none") ? "Activity: est." : "Activity: no estimate"} />
+        <DataStatusBadge status="estimated" label={plan.pitches.some((p) => p.activityBasis !== "none") ? (levels ? `Activity: ${levelWord("activity", levels)}` : "Activity: est.") : "Activity: no estimate"} />
       ) : null}
       {!pending && plan && !qlooDown ? <DataStatusBadge status={plan.explanations === "ai" ? "live" : "estimated"} label={explanationsLabel(plan)} /> : null}
       {replayed ? (
@@ -487,7 +499,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
           </span>
         </p>
       )}
-      <p className="m-0 text-sm font-bold">Busk Map never confirms a pitch is legal. Check your permit conditions on the day.</p>
+      <p className="m-0 text-sm font-bold" data-testid="rules-line">{checked ? "Busk Map never confirms a pitch is legal. Check your permit conditions on the day." : RULES_NOT_CHECKED}</p>
     </section>
   ) : null;
 
@@ -531,7 +543,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
           )}
 
           {plan.pitches.length === 0 ? (
-            <NoPitchPanel permit={request.permit} when={nightWord(request.slot)} againHref={shareId ? `/busks?again=${shareId}` : "/busks"} rulesHref={plan.rulesUrl} />
+            <NoPitchPanel rulesChecked={checked} permit={request.permit} when={nightWord(request.slot)} againHref={shareId ? `/busks?again=${shareId}` : "/busks"} rulesHref={plan.rulesUrl ?? undefined} />
           ) : (
             <>
               {wide && plan.agent && !noTaste && <AgentVsEngine agent={plan.agent} model={model} level={2} />}
@@ -563,8 +575,8 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
               </section>
 
               {!exampleId && <SaveAsRepertoire performer={request.performer} />}
-              <WeatherStrip weather={plan.weather} slot={plan.slot} />
-              <ComparePanel state={baseline} pitches={plan.pitches} />
+              <WeatherStrip weather={plan.weather} slot={plan.slot} level={levelOf?.("weather")} />
+              <ComparePanel state={baseline} pitches={plan.pitches} rulesChecked={checked} />
             </>
           )}
 

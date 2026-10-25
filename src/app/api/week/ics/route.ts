@@ -4,7 +4,7 @@ import { planSearchParams } from "@/lib/plan-url";
 import { zonedHourToUtc } from "@/lib/slot";
 import { parseWeekParams } from "@/lib/week-url";
 import { buildWeekPlan, WeekQlooUnavailableError } from "@/server/agent/week";
-import { CITIES } from "@/server/cities";
+import { MELBOURNE } from "@/server/cities";
 import { adapterContextFor } from "@/server/request";
 import { serverNow, serverToday } from "@/server/clock";
 
@@ -15,7 +15,7 @@ import { serverNow, serverToday } from "@/server/clock";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const params = Object.fromEntries(url.searchParams);
-  const today = serverToday(CITIES.melbourne.timeZone);
+  const today = serverToday(MELBOURNE.timeZone);
   const parsed = parseWeekParams(params, today);
   if (!parsed.ok) return Response.json({ error: { code: "invalid_request", message: parsed.error } }, { status: 400 });
 

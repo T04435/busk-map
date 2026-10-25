@@ -18,7 +18,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { AgentStep } from "@/lib/agent-steps";
 import type { IconName } from "@/components/honeycomb/icon";
 import { modelName, type ExplanationsModel } from "@/lib/sources";
-import { stepSources, TOOL_ICON, TOOL_UI, type MiniPin } from "./tool-results";
+import type { LevelSignal, LevelWord } from "@/lib/signal-level";
+import { LevelBadge } from "@/components/honeycomb/level-badge";
+import { stepSources, TOOL_ICON, TOOL_SIGNAL, TOOL_UI, type MiniPin } from "./tool-results";
 
 /**
  * The research feed: the agent's steps as the busker sees them, in the order they ran (U23), no step numbers, each tool drawn as a plain-words
@@ -46,7 +48,7 @@ const STEP_COLS = { gridTemplateColumns: `${HIVE_SIZES.stepCell}px minmax(0,1fr)
 const HEAD = "grid min-w-auto items-start gap-3";
 const STEP_INDENT = { "--step-indent": `${HIVE_SIZES.stepCell + 12}px` } as CSSProperties;
 
-function ToolCard({ step, model, when, pins, fresh, renderWaiting }: { step: AgentStep; model: ExplanationsModel | null; when?: string; pins?: MiniPin[]; fresh: boolean; renderWaiting?: (step: AgentStep) => ReactNode }) {
+function ToolCard({ step, model, when, pins, fresh, renderWaiting, levelOf }: { step: AgentStep; model: ExplanationsModel | null; when?: string; pins?: MiniPin[]; fresh: boolean; renderWaiting?: (step: AgentStep) => ReactNode; levelOf?: (signal: LevelSignal) => LevelWord | null }) {
   const ui = step.tool ? TOOL_UI[step.tool] : undefined;
   const icon = (step.tool && TOOL_ICON[step.tool]) || "dots";
   const running = step.status === "running";
@@ -74,7 +76,8 @@ function ToolCard({ step, model, when, pins, fresh, renderWaiting }: { step: Age
   else if (bad) lead = foot("This check didn't come back, so the plan goes on without it.");
   else if (cut) lead = foot("Stopped before it finished.");
   else if (waiting) {
-    if (renderWaiting) body = renderWaiting(step);
+    // The ask starts right under the title, beside the step cell (never below the cell's height, which left a gap).
+    if (renderWaiting) lead = renderWaiting(step);
     else if (step.summary) lead = foot(step.summary);
   } else if (step.output !== undefined && ui) {
     const line = ui.line?.(out);
@@ -106,6 +109,7 @@ function ToolCard({ step, model, when, pins, fresh, renderWaiting }: { step: Age
               <SourceLogo key={s} source={s} height={14} />
             ))}
             {waiting ? <Badge variant="tag-live">Your turn</Badge> : null}
+            {step.status === "done" && step.tool && TOOL_SIGNAL[step.tool] ? <LevelBadge word={levelOf?.(TOOL_SIGNAL[step.tool]!)} /> : null}
           </div>
           {say.length ? (
             <Say model={model} testId="agent-note-text">
@@ -167,6 +171,7 @@ export function AgentStepStream({
   wording,
   upcoming,
   renderWaiting,
+  levelOf,
 }: {
   steps: AgentStep[];
   model?: ExplanationsModel | null;
@@ -193,6 +198,8 @@ export function AgentStepStream({
   upcoming?: UpcomingStep[];
   /** What a waiting step shows in its body (the input it asks for). */
   renderWaiting?: (step: AgentStep) => ReactNode;
+  /** A busk outside Melbourne: each signal's level word beside its step's title (V2 2.2). */
+  levelOf?: (signal: LevelSignal) => LevelWord | null;
 }) {
   const live = phase === "starting" || phase === "working" || phase === "thinking";
   // Once the run is over, a step still marked running was cut short.
@@ -210,7 +217,7 @@ export function AgentStepStream({
     <Trace asChild className="m-0 grid list-none divide-y divide-border p-0">
     <ol aria-live={mode === "replay" ? "off" : "polite"} aria-label="Research, in the order it ran" data-testid="agent-feed">
       {feed.map((s, i) => (
-        <ToolCard key={s.id} step={s} model={model} when={when} pins={pins} fresh={live && i === feed.length - 1 && !thinking} renderWaiting={renderWaiting} />
+        <ToolCard key={s.id} step={s} model={model} when={when} pins={pins} fresh={live && i === feed.length - 1 && !thinking} renderWaiting={renderWaiting} levelOf={levelOf} />
       ))}
       {phase === "waiting" ? (upcoming ?? []).map((u) => <UpcomingCard key={u.key} step={u} />) : null}
       {thinking ? (

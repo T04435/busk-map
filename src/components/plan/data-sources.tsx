@@ -1,5 +1,7 @@
+import type { CityLevels } from "@/lib/city";
 import { Source, Sources, SourcesContent, SourcesTrigger } from "@/components/ai-elements/sources";
 import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
+import { LevelBadge } from "@/components/honeycomb/level-badge";
 import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
 import type { DataStatus } from "@/lib/plan-schema";
@@ -43,9 +45,21 @@ export function statusText(s: DataStatus): string {
 }
 
 /** Every data source, its credit and licence (the DS SourceAttribution), on AI Elements Sources: always open, so every credit stays visible. */
-export function DataSources({ status, showAi, soFar }: { status: DataStatus[]; showAi: boolean; /** While the run is live: only the sources it has touched so far. */ soFar?: SourceId[] }) {
+export function DataSources({
+  status,
+  showAi,
+  soFar,
+  levels = null,
+}: {
+  status: DataStatus[];
+  showAi: boolean;
+  /** While the run is live: only the sources it has touched so far. */
+  soFar?: SourceId[];
+  /** The plan's city levels: a city without council rules doesn't credit Melbourne's busking layers. */
+  levels?: CityLevels | null;
+}) {
   const used = new Map(status.map((s) => [s.source, s]));
-  const ids: SourceId[] = ["qloo", "melbourne-busking", "osm", "ticketmaster", "lastfm", "open-meteo", "spotify", "openfreemap"];
+  const ids: SourceId[] = ["qloo", ...(levels?.rules === "none" ? [] : (["melbourne-busking"] as const)), "osm", "ticketmaster", "lastfm", "open-meteo", "spotify", "openfreemap"];
   if (showAi) ids.push("ai");
   const shown = soFar ? ids.filter((id) => soFar.includes(id)) : ids;
   return (
@@ -80,6 +94,17 @@ export function DataSources({ status, showAi, soFar }: { status: DataStatus[]; s
             </Item>
           );
         })}
+        {/* V2 2.2: a city without council rules says so where Melbourne credits its busking layers. */}
+        {!soFar && levels?.rules === "none" ? (
+          <Item asChild className="grid grid-cols-[1fr_auto] items-center gap-x-3 border-t border-border py-2.5 text-sm leading-5 first:border-t-0" data-testid="rules-not-checked">
+            <li>
+              <ItemContent className="block min-w-auto">
+                <ItemTitle>Local busking rules</ItemTitle>
+              </ItemContent>
+              <LevelBadge word="Not checked" />
+            </li>
+          </Item>
+        ) : null}
       </ul>
       </SourcesContent>
     </section>

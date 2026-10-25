@@ -1,10 +1,12 @@
 import "server-only";
 import { nameKey } from "@/lib/text";
+import { genreSearchTexts, isMusicGenreTag, isPlaceOrPeopleTag } from "@/lib/genre-tags";
+import { log } from "@/server/log";
 import type { SoundsLikeSuggestions, SoundsLikeStatus, SpotifyProfile } from "@/lib/playlist-schema";
 import { settleWithLimit, type AdapterContext } from "@/server/adapters/core";
-import { buttonGenreTag, decideMatch, hasMusicGenre, isOtherSpotifyArtist, MAX_EXTRA_SEARCHES, nameVariants, pickGenreTag, usableTagNames, type MatchCandidate, type MatchDecision, type QlooCandidateView } from "@/lib/qloo-match";
+import { buttonGenreTag, decideMatch, hasMusicGenre, isCoarseGenre, isGenreTagId, tagSlug, isOtherSpotifyArtist, MAX_EXTRA_SEARCHES, nameVariants, normGenre, pickGenreTag, usableTagNames, type MatchCandidate, type MatchDecision, type QlooCandidateView } from "@/lib/qloo-match";
 import { resolveSpotifyArtists, searchArtistHits, searchGenreTags, tasteArtists, type QlooEntity } from "@/server/adapters/qloo";
-import { getSimilarArtists, getTopTags } from "@/server/adapters/songs";
+import { getSimilarArtists, getSongs, getTopTags, getTrackTopTags } from "@/server/adapters/songs";
 import { getArtistProfile } from "@/server/adapters/repertoire";
 import type { PlaylistRecord } from "./store";
 
@@ -151,9 +153,9 @@ export const FOUND_ALIKES_KEPT = 5;
 /** Genre tags kept as the signal when no sound-alike resolves. */
 export const GENRE_TAGS_KEPT = 3;
 /** Genre texts looked up as Qloo tags (Spotify genres, then Last.fm tags), at most. */
-export const GENRE_LOOKUPS = 8;
+export const GENRE_LOOKUPS = 12;
 /** Last.fm tags kept per act after cleaning. */
-export const LASTFM_TAGS_KEPT = 5;
+export const LASTFM_TAGS_KEPT = 10;
 
 export type FoundAlike = { name: string; qlooId: string; spotifyId?: string; image?: string };
 export type FoundSoundAlikes =
@@ -171,10 +173,11 @@ export type FoundSoundAlikes =
  * 3. Fewer than WIDEN_BELOW resolve: the similar artists of the top WIDEN_FROM similar artists are looked up too (one more
  *    getSimilar each, better-known names), ranked after the first step's.
  * 4. None resolve: genre tags as Qloo genre tags (/v2/tags): the act's Spotify genres (and a genre the performer picked, first),
- *    then Last.fm artist.getTopTags cleaned of noise. Nothing there either: source "none".
+ *    then Last.fm artist.getTopTags cleaned of noise when those give no specific genre. Specific genres (dembow) are kept over broad
+ *    ones (reggae); broad ones only when nothing specific resolves. Nothing there either: source "none".
  * "unavailable" means Qloo stopped answering (the caller treats it as an outage). Last.fm being down only skips its steps.
  */
-export async function findSoundAlikes(act: { name: string; actName?: string | null; genres: readonly string[]; spotifyId?: string | null }, context: AdapterContext): Promise<FoundSoundAlikes> {
+export async function findSoundAlikes(act: { name: string; actName?: string | null; genres: readonly string[]; spotifyId?: string | null; /** A genre the performer picked: looked up first, kept even when broad. */ pick?: string | null; /** The act's own track titles (Last.fm track tags are read for the first few). */ tracks?: readonly string[] }, context: AdapterContext): Promise<FoundSoundAlikes> {
   const own = new Set([nameKey(act.name), nameKey(act.actName ?? "")].filter(Boolean));
   const variants = nameVariants([act.name, act.actName]).slice(0, SIMILAR_NAME_TRIES);
   let similar: string[] = [];
@@ -219,38 +222,209 @@ export async function findSoundAlikes(act: { name: string; actName?: string | nu
   if (alikes.length > 0) return { source: "lastfm", alikes, tags: [], similar };
   if (attempts > 0 && outages === attempts) return { source: "unavailable", alikes: [], tags: [], similar };
 
-  // Genre texts: the Spotify genres first (a genre the performer picked leads them); Last.fm's tags for the act when those give no tag.
-  const tags = new Map<string, string>();
+  // Genre texts: a genre the performer picked, then the Spotify genres, then Last.fm's tags for the act when those give no specific
+  // genre. A specific genre (dembow, reggaeton) is the signal over a broad one (reggae, latin): broad ones count only when there is
+  // nothing more specific, or the performer picked them.
+  const picked: { id: string; name: string }[] = [];
+  const specific: { id: string; name: string }[] = [];
+  const coarse: { id: string; name: string }[] = [];
+  const have = (id: string) => [...picked, ...specific, ...coarse].some((t) => t.id === id);
   let tagOutage = false;
   let lookedUp = 0;
-  const lookUp = async (texts: readonly string[]) => {
+  const lookUp = async (texts: readonly string[], into: "pick" | "act") => {
     for (const genre of texts) {
-      if (tags.size >= GENRE_TAGS_KEPT || tagOutage || lookedUp >= GENRE_LOOKUPS) break;
+      if (specific.length >= GENRE_TAGS_KEPT || tagOutage || lookedUp >= GENRE_LOOKUPS) break;
       lookedUp++;
       const res = await resolveGenreTag(genre, context);
       if (res === "unavailable") {
         tagOutage = true;
         break;
       }
-      if (res && !tags.has(res.id)) tags.set(res.id, res.name);
+      if (!res || have(res.id)) continue;
+      (into === "pick" ? picked : isCoarseGenre(res.name) || isCoarseGenre(genre) ? coarse : specific).push(res);
     }
   };
-  const spotifyTexts = [...new Set(act.genres.map((g) => g.trim()).filter(Boolean))].slice(0, 4);
-  await lookUp(spotifyTexts);
-  if (tags.size === 0 && !tagOutage) {
-    for (const v of variants) {
-      const res = await getTopTags(v.text, context);
-      if (res.mode === "fallback") break;
-      const names = usableTagNames(res.data.map((t) => t.name), [act.name, act.actName], LASTFM_TAGS_KEPT).filter((n) => !spotifyTexts.some((g) => g.toLowerCase() === n));
-      if (names.length > 0) {
-        await lookUp(names);
-        break;
+  const pickText = act.pick?.trim();
+  if (pickText) await lookUp([pickText], "pick");
+  const spotifyTexts = specificFirst([...new Set(act.genres.map((g) => g.trim()).filter((g) => g && g.toLowerCase() !== pickText?.toLowerCase()))].slice(0, 4));
+  await lookUp(spotifyTexts, "act");
+  if (specific.length === 0 && !tagOutage) {
+    // Last.fm's tags for the act and its top tracks, weighted; only the ones it is clearly tagged with (a single weak tag never leads).
+    const weighted = await actLastfmTags({ name: act.name, actName: act.actName, tracks: act.tracks ?? [] }, context);
+    const names = weighted.filter((t) => t.confident && !spotifyTexts.some((g) => g.toLowerCase() === t.tag)).map((t) => t.tag);
+    if (names.length > 0) await lookUp(specificFirst(names), "act");
+  }
+  const tags = [...picked, ...(specific.length ? specific : coarse)].slice(0, GENRE_TAGS_KEPT);
+  if (tags.length > 0) return { source: "genres", alikes: [], tags, similar };
+  return tagOutage && lookedUp > 0 ? { source: "unavailable", alikes: [], tags: [], similar } : { source: "none", alikes: [], tags: [], similar };
+}
+
+/** Genre texts with the specific ones first and the broad ones (isCoarseGenre) after, each group in its order. */
+const specificFirst = (texts: readonly string[]) => [...texts.filter((t) => !isCoarseGenre(t)), ...texts.filter((t) => isCoarseGenre(t))];
+
+/** Sound-alikes whose Last.fm tags are read for genre suggestions, and tags kept per sound-alike. */
+export const SUGGEST_ALIKES = 5;
+export const SUGGEST_TAGS_PER_ALIKE = 6;
+/** Genre texts looked up as Qloo tags for the suggestions, at most, and suggestions kept. */
+export const SUGGEST_LOOKUPS = 14;
+export const SUGGEST_KEPT = 8;
+
+/** The act's tracks whose Last.fm tags are read, and each sound-alike's top tracks. */
+export const ACT_TRACK_TAGS = 4;
+export const ALIKE_TRACK_TAGS = 3;
+/** A tag weighs its Last.fm count / 100, summed over its sources (the artist, each track): at least this and it is confident. */
+export const CONFIDENT_WEIGHT = 0.5;
+
+export type WeightedTag = { tag: string; weight: number; sources: number; confident: boolean };
+
+const addTags = (into: Map<string, { weight: number; sources: number }>, tags: readonly { name: string; count: number }[], usable: readonly string[]) => {
+  for (const tag of usable) {
+    const count = tags.find((t) => t.name.normalize("NFC").toLowerCase().replace(/\s+/g, " ").trim() === tag)?.count ?? 0;
+    const now = into.get(tag) ?? { weight: 0, sources: 0 };
+    into.set(tag, { weight: now.weight + Math.max(0, Math.min(100, count)) / 100, sources: now.sources + 1 });
+  }
+};
+
+/**
+ * Last.fm's tags for an act: its artist tags (the first name variant that has any) and its first ACT_TRACK_TAGS tracks' tags,
+ * cleaned (usableTagNames: no places, peoples, years or noise) and merged by weight, heaviest first. Confident: weight at least
+ * CONFIDENT_WEIGHT (a weak tag stays weak however many tracks carry it a little). Logged, so a live run shows why.
+ */
+export async function actLastfmTags(act: { name: string; actName?: string | null; tracks?: readonly string[] }, context: AdapterContext): Promise<WeightedTag[]> {
+  const actNames = [act.name, act.actName];
+  const merged = new Map<string, { weight: number; sources: number }>();
+  for (const v of nameVariants(actNames).slice(0, SIMILAR_NAME_TRIES)) {
+    const res = await getTopTags(v.text, context);
+    if (res.mode === "fallback") break;
+    const usable = usableTagNames(res.data.map((t) => t.name), actNames, LASTFM_TAGS_KEPT);
+    log.info("research lastfm tags", { for: "act", name: v.text, tags: res.data.slice(0, 15).map((t) => t.name), usable });
+    if (usable.length > 0) {
+      addTags(merged, res.data, usable);
+      break;
+    }
+  }
+  for (const title of [...new Set((act.tracks ?? []).map((t) => t.trim()).filter(Boolean))].slice(0, ACT_TRACK_TAGS)) {
+    const res = await getTrackTopTags(act.name, title, context);
+    if (res.mode === "fallback") break;
+    const usable = usableTagNames(res.data.map((t) => t.name), actNames, LASTFM_TAGS_KEPT);
+    log.info("research lastfm tags", { for: "actTrack", name: act.name, track: title, tags: res.data.slice(0, 15).map((t) => t.name), usable });
+    addTags(merged, res.data, usable);
+  }
+  return [...merged.entries()]
+    .map(([tag, v]) => ({ tag, weight: Math.round(v.weight * 100) / 100, sources: v.sources, confident: v.weight >= CONFIDENT_WEIGHT }))
+    .sort((x, y) => y.weight - x.weight || y.sources - x.sources);
+}
+
+/** A suggestion is `confident` when it may start selected: the act's own clear tags, or a tag at least two sound-alikes share. */
+export type GenreSuggestion = { id: string; name: string; from: "act" | "alikes"; confident: boolean };
+
+/**
+ * Genres to suggest when the research asks for input, each as a Qloo genre tag (resolveGenreTag: an exact name or slug, or a
+ * GENRE_SYNONYMS target, never a partial match) with Qloo's name:
+ * 1. the act's own: a genre the performer picked and its Spotify genres (confident), then its Last.fm artist and track tags
+ *    (actLastfmTags; confident when clear);
+ * 2. its sound-alikes': each one's Last.fm artist tags and its top ALIKE_TRACK_TAGS tracks' tags, most shared first; confident when at least two
+ *    sound-alikes share it.
+ * Specific genres lead broad ones within each group. A Qloo outage skips a genre; two in a row stop the lookups.
+ */
+export async function suggestGenres(act: { name: string; actName?: string | null; genres: readonly string[]; pick?: string | null; tracks?: readonly string[] }, alikes: readonly string[], context: AdapterContext): Promise<GenreSuggestion[]> {
+  const actNames = [act.name, act.actName];
+  const own: { text: string; confident: boolean }[] = [...(act.pick?.trim() ? [act.pick.trim()] : []), ...act.genres.map((g) => g.trim()).filter(Boolean)].map((text) => ({ text, confident: true }));
+  for (const t of await actLastfmTags(act, context)) own.push({ text: t.tag, confident: t.confident });
+  const shared = new Map<string, { alikes: number; weight: number; first: number }>();
+  let order = 0;
+  for (const name of alikes.slice(0, SUGGEST_ALIKES)) {
+    const res = await getTopTags(name, context);
+    if (res.mode === "fallback") break;
+    const mine = new Map<string, { weight: number; sources: number }>();
+    const usable = usableTagNames(res.data.map((t) => t.name), [name, ...actNames], SUGGEST_TAGS_PER_ALIKE);
+    log.info("research lastfm tags", { for: "soundAlike", name, tags: res.data.slice(0, 15).map((t) => t.name), usable });
+    addTags(mine, res.data, usable);
+    const top = await getSongs([name], context).catch(() => null);
+    const titles = top && top.mode !== "fallback" ? (Object.values(top.data)[0] ?? []).map((t) => t.title).filter(Boolean).slice(0, ALIKE_TRACK_TAGS) : [];
+    for (const title of titles) {
+      const tr = await getTrackTopTags(name, title, context);
+      if (tr.mode === "fallback") break;
+      const trackUsable = usableTagNames(tr.data.map((t) => t.name), [name, ...actNames], SUGGEST_TAGS_PER_ALIKE);
+      log.info("research lastfm tags", { for: "soundAlikeTrack", name, track: title, tags: tr.data.slice(0, 15).map((t) => t.name), usable: trackUsable });
+      addTags(mine, tr.data, trackUsable);
+    }
+    for (const [tag, v] of mine) {
+      const now = shared.get(tag) ?? { alikes: 0, weight: 0, first: order++ };
+      shared.set(tag, { alikes: now.alikes + 1, weight: now.weight + v.weight, first: now.first });
+    }
+  }
+  const fromAlikes = [...shared.entries()].sort((a, b) => b[1].alikes - a[1].alikes || b[1].weight - a[1].weight || a[1].first - b[1].first).map(([text, v]) => ({ text, confident: v.alikes >= 2 }));
+  const ordered = (list: { text: string; confident: boolean }[]) => [...list.filter((t) => !isCoarseGenre(t.text)), ...list.filter((t) => isCoarseGenre(t.text))];
+  const seenText = new Set<string>();
+  const texts = [...ordered(own).map((t) => ({ ...t, from: "act" as const })), ...ordered(fromAlikes).map((t) => ({ ...t, from: "alikes" as const }))].filter((t) => {
+    const k = normGenre(t.text);
+    return k && !seenText.has(k) && seenText.add(k);
+  });
+  const out: GenreSuggestion[] = [];
+  let lookedUp = 0;
+  let misses = 0;
+  for (const { text, from, confident } of texts) {
+    if (out.length >= SUGGEST_KEPT || lookedUp >= SUGGEST_LOOKUPS) break;
+    lookedUp++;
+    const tag = await resolveGenreTag(text, context);
+    // Qloo didn't answer this one (even after its retry): two in a row and the rest aren't tried.
+    if (tag === "unavailable") {
+      if (++misses >= 2) break;
+      continue;
+    }
+    misses = 0;
+    if (!tag) continue;
+    const same = out.find((t) => t.id === tag.id || normGenre(t.name) === normGenre(tag.name));
+    // Two labels for one genre (cubaton and reggaeton) make it surer.
+    if (same) same.confident = same.confident || confident;
+    else out.push({ id: tag.id, name: titleGenre(tag.name), from, confident });
+  }
+  return out;
+}
+
+/** A /v2/tags name without live Qloo's noise: stray quotes, " - " in compounds, extra spaces. */
+export const cleanTagName = (name: string) => name.replace(/["\u201c\u201d]/g, "").replace(/\s+-\s+/g, " ").replace(/\s+/g, " ").trim();
+
+/** Genres the ask's genre search offers per query. */
+export const GENRE_SEARCH_TAKE = 8;
+
+/**
+ * The ask's genre search (GET /api/genres): Qloo genre tags whose name matches the text, music genres only (urn:tag:genre:music and
+ * Qloo's own genre tags), never a place or a people, once each by name. Exact names first, then names starting with the text.
+ * The text's synonyms (GENRE_SYNONYMS) are searched too. "unavailable" when Qloo answered none of the searches.
+ */
+export async function searchGenres(text: string, context: AdapterContext): Promise<{ id: string; name: string }[] | "unavailable"> {
+  const q = text.trim();
+  if (!q || isPlaceOrPeopleTag(q)) return [];
+  const found: { id: string; name: string }[] = [];
+  let answered = 0;
+  let asked = 0;
+  for (const t of [q, ...genreSearchTexts(q).filter((x) => normGenre(x) !== normGenre(q))].slice(0, 3)) {
+    for (const types of ["urn:tag:genre:music", "urn:tag:genre"] as const) {
+      asked++;
+      const res = await searchGenreTags(t, 10, context, types);
+      if (res.mode === "fallback") continue;
+      answered++;
+      for (const tag of res.data) {
+        const name = titleGenre(cleanTagName(tag.name));
+        if (!isGenreTagId(tag.id) || !name || isPlaceOrPeopleTag(name) || isPlaceOrPeopleTag(tagSlug(tag.id)) || !isMusicGenreTag({ id: tag.id, name })) continue;
+        if (!found.some((f) => f.id === tag.id || normGenre(f.name) === normGenre(name))) found.push({ id: tag.id, name });
       }
     }
   }
-  if (tags.size > 0) return { source: "genres", alikes: [], tags: [...tags].map(([id, name]) => ({ id, name })), similar };
-  return tagOutage && lookedUp > 0 ? { source: "unavailable", alikes: [], tags: [], similar } : { source: "none", alikes: [], tags: [], similar };
+  if (asked > 0 && answered === 0) return "unavailable";
+  const want = normGenre(q);
+  const rank = (name: string) => (normGenre(name) === want ? 0 : normGenre(name).startsWith(want) ? 1 : 2);
+  return found
+    .map((f, i) => ({ f, i }))
+    .sort((a, b) => rank(a.f.name) - rank(b.f.name) || a.i - b.i)
+    .map((x) => x.f)
+    .slice(0, GENRE_SEARCH_TAKE);
 }
+
+/** A genre tag's name as the page shows it: "dembow" is "Dembow", "hip hop" is "Hip Hop". */
+export const titleGenre = (name: string) => name.trim().replace(/\b\w/g, (c) => c.toUpperCase());
 
 const SPOTIFY_ID = /^[A-Za-z0-9]{22}$/;
 const foundOf = (e: QlooEntity): FoundAlike => ({
@@ -325,10 +499,39 @@ export async function resolveSoundAlikes(
  * a /v2/tags search matched by id slug or normalised name (pickGenreTag). "unavailable" when Qloo didn't answer.
  */
 export async function resolveGenreTag(genre: string, context: AdapterContext): Promise<{ id: string; name: string } | null | "unavailable"> {
+  // A place, a people or a language is never a genre: not looked up at all.
+  if (isPlaceOrPeopleTag(genre)) {
+    log.info("genre tag lookup", { text: genre, result: null, why: "place or people" });
+    return null;
+  }
   const known = buttonGenreTag(genre);
   if (known) return known;
-  const res = await searchGenreTags(genre, 8, context);
-  if (res.mode === "fallback") return "unavailable";
-  const hit = pickGenreTag(res.data, genre);
-  return hit ? { id: hit.id, name: hit.name.replace(/["\u201c\u201d]/g, "").replace(/\s+-\s+/g, " ").replace(/\s+/g, " ").trim() } : null;
+  // The label itself, then its synonyms (GENRE_SYNONYMS: "cubaton" is also looked up as "reggaeton"), until one resolves.
+  const tried: string[] = [];
+  for (const text of genreSearchTexts(genre)) {
+    const button = buttonGenreTag(text);
+    if (button && text !== genre) {
+      log.info("genre tag lookup", { text: genre, tried: [...tried, text], result: button.id });
+      return button;
+    }
+    tried.push(text);
+    const res = await searchGenreTags(text, 8, context);
+    if (res.mode === "fallback") {
+      log.info("genre tag lookup", { text: genre, tried, result: "unavailable" });
+      return "unavailable";
+    }
+    let hit = pickGenreTag(res.data, text);
+    if (!hit) {
+      // Many specific genres are Qloo's own tags (urn:tag:genre:qloo:reggaeton), which the music-only search never returns.
+      const wide = await searchGenreTags(text, 8, context, "urn:tag:genre");
+      if (wide.mode !== "fallback") hit = pickGenreTag(wide.data, text, { broad: true });
+    }
+    if (hit) {
+      const tag = { id: hit.id, name: cleanTagName(hit.name) };
+      log.info("genre tag lookup", { text: genre, tried, result: tag.id, name: tag.name });
+      return tag;
+    }
+  }
+  log.info("genre tag lookup", { text: genre, tried, result: null });
+  return null;
 }

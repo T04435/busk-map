@@ -26,6 +26,8 @@ const badgeVariants = cva(
         weather: `[--tone:var(--weather)] ${tint}`,
         footfall: `[--tone:var(--footfall)] ${tint}`,
         estimate: `[--tone:var(--estimate)] ${tint}`,
+        // A signal Busk Map has not checked for this city (rules outside Melbourne): the quiet tone on a dashed rule.
+        unchecked: `[--tone:var(--muted-foreground)] ${tint} border-dashed`,
         destructive: `[--tone:var(--destructive)] ${tint}`,
         // shadcn names, kept for the app's existing callers.
         default: "border-(--fill-rule) bg-primary text-primary-foreground [a]:hover:bg-primary/90",

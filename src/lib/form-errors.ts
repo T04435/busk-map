@@ -15,6 +15,8 @@ const FIELD_LABELS: [prefix: string, label: string][] = [
   ["performer.fillSuggested", "Suggested songs"],
   ["performer.skipSongs", "Songs left out"],
   ["slot", "Date and times"],
+  ["city", "City"],
+  ["place", "City"],
   ["permit", "Permit"],
 ];
 

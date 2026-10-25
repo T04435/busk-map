@@ -4,7 +4,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 import { describeSlot, isAnyTime, weekdayOf } from "@/lib/slot";
 import type { PlanRequest } from "@/lib/plan-schema";
-import { CITIES } from "@/server/cities";
+import { cityOf, isMelbourne } from "@/server/cities";
 import { providerStatus } from "@/server/env";
 import { log } from "@/server/log";
 import { createMockCompare } from "./mock-model";
@@ -59,9 +59,9 @@ const capitalise = (s: string) => `${s[0].toUpperCase()}${s.slice(1)}`;
  * one: the same performer, songs, city, day and slot, and an honest ask for
  * the best answer a knowledgeable local could give without data.
  */
-export function comparePrompt(request: Pick<PlanRequest, "city" | "slot" | "performer">): string {
+export function comparePrompt(request: Pick<PlanRequest, "city" | "place" | "slot" | "performer">): string {
   const songs = request.performer.songs.map((s) => `${s.title} (${s.artist})`).slice(0, 12).join("; ");
-  const city = CITIES[request.city].name;
+  const city = cityOf(request).name;
   return [
     `You are an experienced street performer who knows ${city} well. Give a fellow busker your honest best advice.`,
     `The act: ${request.performer.name}. Their music sounds like ${request.performer.artists.join(", ")}.`,
@@ -92,11 +92,11 @@ async function cachedCompare(prompt: string, offline: boolean): Promise<z.infer<
   return output;
 }
 
-export async function plainLlmSuggestion(request: Pick<PlanRequest, "city" | "slot" | "performer">, offline: boolean): Promise<CompareResult> {
+export async function plainLlmSuggestion(request: Pick<PlanRequest, "city" | "place" | "slot" | "performer">, offline: boolean): Promise<CompareResult> {
   if (!offline && !providerStatus().aiGateway) return { text: null, reason: "unavailable" };
   try {
     const answer = await cachedCompare(comparePrompt(request), offline);
-    const spots = answer.spots.map((s) => ({ name: s.name, why: s.why.length > 300 ? `${s.why.slice(0, 297)}…` : s.why, lat: s.lat ?? null, lon: s.lon ?? null, usualSpot: usualSpotMentioned(`${s.name} ${s.why}`) }));
+    const spots = answer.spots.map((s) => ({ name: s.name, why: s.why.length > 300 ? `${s.why.slice(0, 297)}…` : s.why, lat: s.lat ?? null, lon: s.lon ?? null, usualSpot: isMelbourne(cityOf(request)) ? usualSpotMentioned(`${s.name} ${s.why}`) : null }));
     const text = [...spots.map((s, i) => `${i + 1}. ${s.name}: ${s.why}`), answer.setlist.length ? `Setlist: ${answer.setlist.join(", ")}` : ""].filter(Boolean).join("\n");
     return { text, spots, setlist: answer.setlist, model: offline ? "mock" : MODELS.cheap };
   } catch (error) {

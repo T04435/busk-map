@@ -34,8 +34,12 @@ const STEP = "inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] lea
  * Each step is a 30px cell with its count and the label beside it, joined by a signal half-hex link, adding up to the data-points
  * cell, then the pitches cell. Fills in live and stays once the busk is ready.
  */
+/** The rules stage in a city whose busking rules aren't checked (V2 2.4): spots looked at, by Busk Map, no council named. */
+const SPOTS_STAGE: Stage = { key: "rules", one: "spot checked", many: "spots checked", src: "Busk Map", tool: "check_pitch" };
+
 export function ResearchFunnel({
   totals,
+  rulesChecked = true,
   running = [],
   live,
   picks,
@@ -50,9 +54,11 @@ export function ResearchFunnel({
   /** Kept for callers; ignored. There is one layout (the DS's inline row). */
   layout?: "stacked" | "landing";
   className?: string;
+  /** False in a city without council rules: the rules stage names no council. */
+  rulesChecked?: boolean;
 }) {
   const t = totals ?? {};
-  const stages = STAGES.filter((s) => (t[s.key] ?? 0) > 0 || running.includes(s.tool));
+  const stages = (rulesChecked ? STAGES : STAGES.map((s) => (s.key === "rules" ? SPOTS_STAGE : s))).filter((s) => (t[s.key] ?? 0) > 0 || running.includes(s.tool));
   const total = STAGES.reduce((sum, s) => (s.key === "qlooCalls" ? sum : sum + (t[s.key] ?? 0)), 0);
   const done = !live && picks !== null;
   const items: React.ReactNode[] = [];

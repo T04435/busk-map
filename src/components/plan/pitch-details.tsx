@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Plan, PlanPitch } from "@/lib/plan-schema";
 import type { ExplanationsModel } from "@/lib/sources";
 import { venueDetail } from "@/lib/venue";
+import { levelsToLabel, levelWord, liveSource, rulesChecked, type LevelSignal } from "@/lib/signal-level";
 import { ActivityChart } from "./activity-chart";
 import { Cautions, Fact, QlooDetail } from "./tool-results";
 
@@ -24,6 +25,8 @@ const KIND_LABEL: Record<PlanPitch["kind"], string> = {
   "public-space": "Public space, general permit",
   footpath: "Footpath, general permit",
 };
+/** A city whose busking rules aren't checked (V2 2.4): the kind names no permit. */
+const KIND_UNCHECKED: Record<PlanPitch["kind"], string> = { designated: "Public space", "public-space": "Public space", footpath: "Footpath" };
 
 /**
  * The sheet's pitch body (boards B55 to B58): the head (rank, badges, name, kind, big score), why this crowd, estimated activity by
@@ -32,6 +35,10 @@ const KIND_LABEL: Record<PlanPitch["kind"], string> = {
  */
 export function PitchDetails({ plan, pitch, rank, model }: { plan: Plan; pitch: PlanPitch; rank: number; model: ExplanationsModel | null }) {
   const written = plan.explanations === "ai";
+  // V2 2.2: outside Melbourne each fact names its level; Melbourne's facts stay as they are.
+  const levels = levelsToLabel(plan.city, plan.cityLevels);
+  const checked = rulesChecked(levels);
+  const level = (signal: LevelSignal) => levelWord(signal, levels, liveSource(signal, plan.dataStatus));
   const inSlot = (plan.weather?.hours ?? []).filter((h) => h.hour >= plan.slot.startHour && h.hour < plan.slot.endHour);
   const temps = inSlot.map((h) => h.temperatureC).filter((t): t is number => t !== null);
   const rain = Math.max(0, ...inSlot.map((h) => h.precipitationProbability ?? 0));
@@ -56,7 +63,7 @@ export function PitchDetails({ plan, pitch, rank, model }: { plan: Plan; pitch: 
             {pitch.amplification === "unamplified-zone" && <Badge variant="neutral">Unamplified only</Badge>}
           </div>
           <h3 className="m-0 mt-1 mb-0.5 font-display text-[26px] leading-[26px] font-extrabold tracking-[0.01em] break-words uppercase">{pitch.name}</h3>
-          <p className="m-0 font-mono text-[11px] tracking-[0.04em] text-muted-foreground uppercase">{KIND_LABEL[pitch.kind]}</p>
+          <p className="m-0 font-mono text-[11px] tracking-[0.04em] text-muted-foreground uppercase">{(checked ? KIND_LABEL : KIND_UNCHECKED)[pitch.kind]}</p>
         </div>
         <HexCell size={72} label={`Score ${pitch.score} out of 100`}>
           <ScoreRing value={pitch.score} size={60} label={false} />
@@ -81,7 +88,7 @@ export function PitchDetails({ plan, pitch, rank, model }: { plan: Plan; pitch: 
 
       <div className="grid border-t-2 border-rule">
         {pitch.evidence.places.length > 0 && (
-          <Fact icon="store" tone="places" title="Busy places open in your slot">
+          <Fact icon="store" tone="places" title="Busy places open in your slot" level={level("taste")}>
             <ul className="m-0 mt-1 grid list-none gap-0.5 p-0 text-sm leading-5 font-normal">
               {pitch.evidence.places.map((place) => (
                 <li key={place.name} className="flex justify-between gap-3">
@@ -103,6 +110,7 @@ export function PitchDetails({ plan, pitch, rank, model }: { plan: Plan; pitch: 
             icon="ticket"
             tone="event"
             title={e.name}
+            level={level("events")}
             sub={
               <>
                 {e.venue} · {e.moment === "leaving" ? "lets out" : "starts"} about {e.localTime}
@@ -133,11 +141,12 @@ export function PitchDetails({ plan, pitch, rank, model }: { plan: Plan; pitch: 
           <Fact
             icon={rain >= 50 ? "rain" : rain >= 20 ? "cloud" : "sun"}
             tone="weather"
+            level={level("weather")}
             title={`${Math.round(temps.reduce((a, b) => a + b, 0) / temps.length)}°, ${rain >= 50 ? "rain in your slot" : "dry through your slot"}`}
             sub={`Rain ${rain}%${winds.length > 0 ? ` · wind ${Math.round(winds.reduce((a, b) => a + b, 0) / winds.length)} km/h` : ""}`}
           />
         )}
-        <Fact icon="legal" tone="legal" title={pitch.kind === "designated" ? "Council-designated pitch" : "General permit pitch"} sub={pitch.rules}>
+        <Fact icon="legal" tone="legal" title={!checked ? "Busking rules" : pitch.kind === "designated" ? "Council-designated pitch" : "General permit pitch"} sub={pitch.rules} level={level("rules")}>
           <section aria-label="Rules">
             <Cautions items={pitch.cautions} />
             {pitch.rulesUrl && (

@@ -214,9 +214,12 @@ export function shortHours(startHour: number, endHour: number): string {
   return as === bs ? `${an}–${bn} ${bs}` : `${a}–${b}`;
 }
 
-/** The plan page's eyebrow: "Sun 19 Oct · 12–3 pm · General permit", or "Sun 19 Oct · Any time · General permit". No city (F20). */
-export function slotEyebrow(slot: RequestSlot, permit: string): string {
-  return `${shortDay(slot.date)} · ${isAnyTime(slot) ? "Any time" : shortHours(slot.startHour, slot.endHour)} · ${permitName(permit)}`;
+/**
+ * The plan page's eyebrow: "Sun 19 Oct · 12–3 pm · General permit", or "Sun 19 Oct · Any time · General permit". No city (F20).
+ * `permit` null: a city whose busking rules aren't checked has no permit to name (V2 2.4).
+ */
+export function slotEyebrow(slot: RequestSlot, permit: string | null): string {
+  return `${shortDay(slot.date)} · ${isAnyTime(slot) ? "Any time" : shortHours(slot.startHour, slot.endHour)}${permit === null ? "" : ` · ${permitName(permit)}`}`;
 }
 
 /** "on Friday night", "on Sunday afternoon": the day and a word for the hours (the no-legal-pitch title). */

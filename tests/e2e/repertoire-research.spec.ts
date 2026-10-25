@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { OFFLINE_PICKED_ARTISTS, OFFLINE_TEST_ACTS, OFFLINE_TEST_ARTIST } from "../../src/lib/repertoire-research";
+import { OFFLINE_PICKED_ARTISTS, OFFLINE_SPOTIFY_ONLY_ARTISTS, OFFLINE_TEST_ACTS, OFFLINE_TEST_ARTIST } from "../../src/lib/repertoire-research";
 import { expect, LOCAL, test } from "./fixtures";
 import { WIDTHS } from "./layout-helpers";
 
@@ -13,7 +13,7 @@ const SHOTS = process.env.REPERTOIRE_SHOTS;
 const LINK = `https://open.spotify.com/artist/${OFFLINE_TEST_ARTIST.spotifyId}`;
 type Page = import("@playwright/test").Page;
 
-const field = (page: Page) => page.getByLabel("Your Spotify artist link");
+const field = (page: Page) => page.getByLabel("Your Spotify artist", { exact: true });
 const linkOf = (spotifyId: string) => `https://open.spotify.com/artist/${spotifyId}`;
 /** `faults=research-slow` holds each step 600 ms (offline test mode), so the running state can be looked at before the run is over. */
 async function research(page: Page, link = LINK, faults?: string) {
@@ -26,11 +26,11 @@ const done = (page: Page) => expect(page.getByTestId("research-end")).toBeVisibl
 test.describe("Repertoire research (offline)", () => {
   test.skip(!LOCAL, "Writes to the local offline server's memory store and uses the mock artist");
 
-  test("empty state: one field and its example, nothing else; browsing sets no cookie", async ({ page }) => {
+  test("empty state: one field, nothing else; browsing sets no cookie", async ({ page }) => {
     await page.goto("/repertoire");
     await expect(page.getByRole("heading", { level: 1, name: "Your Repertoire" })).toBeVisible();
     await expect(field(page)).toBeVisible();
-    await expect(page.getByText("It looks like open.spotify.com/artist/…")).toBeVisible();
+    await expect(field(page)).toHaveAttribute("placeholder", "Search Spotify or paste your artist link");
     await expect(page.getByText(/We read your Spotify profile and your songs/)).toHaveCount(0);
     await expect(page.getByTestId("research-results")).toHaveCount(0);
     await expect(page.getByRole("combobox", { name: "Search songs on Spotify" })).toHaveCount(0);
@@ -38,6 +38,49 @@ test.describe("Repertoire research (offline)", () => {
     // Offline only: the test artist fills the field.
     await page.getByTestId("research-test-artist").click();
     await expect(field(page)).toHaveValue(LINK);
+  });
+
+  test("the field looks the act up on Spotify: type the name, pick it, research it (axe clean, open and picked)", async ({ page }) => {
+    await page.goto("/repertoire");
+    await field(page).fill(OFFLINE_TEST_ARTIST.name.slice(0, 5));
+    const option = page.getByRole("option", { name: new RegExp(OFFLINE_TEST_ARTIST.name) }).first();
+    await expect(option).toBeVisible();
+    await expect(field(page)).toHaveAttribute("aria-expanded", "true");
+    // No "add as typed" row: the act must be a Spotify artist.
+    await expect(page.getByText("Not on Spotify?")).toHaveCount(0);
+    expect((await new AxeBuilder({ page }).withTags(WCAG).analyze()).violations).toEqual([]);
+    await option.click();
+    // One pick: the box gives way to the artist's chip, focus on its Remove.
+    const chip = page.getByRole("list", { name: "Your Spotify artist" });
+    await expect(chip.getByRole("link", { name: OFFLINE_TEST_ARTIST.name })).toHaveAttribute("href", LINK);
+    await expect(page.getByRole("button", { name: `Remove ${OFFLINE_TEST_ARTIST.name}` })).toBeFocused();
+    await expect(page.getByRole("combobox", { name: "Your Spotify artist" })).toHaveCount(0);
+    expect((await new AxeBuilder({ page }).withTags(WCAG).analyze()).violations).toEqual([]);
+    // Remove brings the box back, focused, for another try.
+    await page.getByRole("button", { name: `Remove ${OFFLINE_TEST_ARTIST.name}` }).click();
+    await expect(field(page)).toBeFocused();
+    await field(page).fill(OFFLINE_TEST_ARTIST.name);
+    await page.getByRole("option", { name: new RegExp(OFFLINE_TEST_ARTIST.name) }).first().click();
+    await page.getByRole("button", { name: "Research my act" }).click();
+    await done(page);
+    await expect(page.getByTestId("profile-name")).toHaveText(OFFLINE_TEST_ARTIST.name);
+  });
+
+  test("a pasted link still runs, with Enter, and is never searched for", async ({ page }) => {
+    await page.goto("/repertoire");
+    await field(page).fill(LINK);
+    await expect(page.getByRole("option")).toHaveCount(0);
+    await expect(field(page)).toHaveAttribute("aria-expanded", "false");
+    await field(page).press("Enter");
+    await done(page);
+    await expect(page.getByTestId("profile-name")).toHaveText(OFFLINE_TEST_ARTIST.name);
+  });
+
+  test("a name typed but not picked asks for a pick", async ({ page }) => {
+    await page.goto("/repertoire");
+    await field(page).fill("Nobody in particular");
+    await page.getByRole("button", { name: "Research my act" }).click();
+    await expect(page.getByTestId("research-notice")).toContainText("Pick your act from the Spotify results");
   });
 
   test("a bad link is refused in plain words, before anything runs", async ({ page }) => {
@@ -93,7 +136,7 @@ test.describe("Repertoire research (offline)", () => {
     await expect(page.getByTestId("research-summary")).toHaveCount(0);
     await expect(page.getByText("Your act, in a paragraph")).toHaveCount(0);
     await expect(page.getByTestId("research-fans-map").getByText(/Your crowd is strongest in|not head counts/)).toHaveCount(0);
-    await expect(page.getByTestId("research-fans-map").getByRole("link", { name: "Plan a busk" })).toHaveCount(0);
+    await expect(page.getByTestId("research-fans-map").getByRole("link", { name: "Plan a busk", exact: true })).toHaveCount(0);
     expect(await ids("repertoire-research")).toContain("research-steps");
     const order = await page.locator('[data-slot="repertoire-results"] > [data-slot]').evaluateAll((els) => els.map((e) => e.getAttribute("data-slot")));
     expect(order).toEqual(["repertoire-act", "repertoire-fans", "repertoire-map", "repertoire-songs", "repertoire-research"]);
@@ -376,6 +419,78 @@ test.describe("Repertoire research (offline)", () => {
     await expect(alikes.getByRole("list", { name: "Artists you picked" }).locator("li img")).toHaveCount(2);
     const saved = (await (await page.request.get("/api/playlist")).json()).playlist.soundsLike;
     expect(saved).toMatchObject([{ name: "Mariah Carey", image: OFFLINE_PICKED_ARTISTS.mariah.spotifyImage }, { name: "Celia Cruz", image: OFFLINE_PICKED_ARTISTS.celia.qlooImage }]);
+  });
+
+  test("sound-alikes Qloo doesn't know (the Wow Popy case): the ask is prefilled with them and suggested genres, sits right under the title, the Hive's and a searched genre can be picked, and Carry on goes on", async ({ page }) => {
+    test.setTimeout(120_000);
+    const inputs: string[] = [];
+    page.on("request", (r) => {
+      if (r.method() === "POST" && /\/research\/[^/]+\/input$/.test(r.url())) inputs.push(r.postData() ?? "");
+    });
+    const picture = '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#888"/></svg>';
+    await page.route(/i\.scdn\.co|images\.qloo\.test/, (route) => route.fulfill({ contentType: "image/svg+xml", body: picture }));
+    const act = OFFLINE_TEST_ACTS.taggedAlikes;
+    await research(page, linkOf(act.spotifyId));
+    const ask = page.getByTestId("research-ask");
+    await expect(ask).toBeVisible({ timeout: 20_000 });
+    // The sound-alikes the research found are there to confirm, with their Spotify photos: not an empty picker.
+    const picked = ask.getByRole("list", { name: "Artists you picked" });
+    await expect(picked.locator("li")).toHaveCount(act.similar.length);
+    for (const name of act.similar) await expect(picked).toContainText(name);
+    await expect(picked.locator("img")).toHaveCount(act.similar.length);
+    await expect(ask.getByTestId("artists-hint")).toContainText(`${act.similar.length} of 10`);
+    // Up to three suggestions start picked: the one the research and the Hive both named (Reggaeton), then the research's.
+    const chips = ask.getByTestId("research-genres-picked");
+    await expect(chips.getByRole("button")).toHaveText(["Reggaeton", "Dembow", "Cuban Urban"]);
+    // The rest are on the Suggested row, above the broad quick picks: the Hive's own (test model offline) carries its mark.
+    const suggested = ask.getByTestId("research-genre-suggested");
+    // Named as the Hive's for screen readers (sr-only text, no title= tooltip).
+    const hiveFunk = /^Funk, .+'s suggestion$/;
+    await expect(suggested.getByRole("button")).toHaveText([hiveFunk]);
+    await expect(suggested.getByRole("button", { name: "Funk" })).toHaveAttribute("data-source", "hive");
+    await expect(suggested.getByRole("button", { name: "Funk" })).toBeDisabled();
+    const genres = page.getByTestId("research-genre-pick");
+    await expect(genres.getByRole("button", { name: "Reggae", exact: true })).toHaveAttribute("aria-pressed", "false");
+    // Unpick one, and the Hive's can be picked instead; its chip keeps the mark.
+    await chips.getByRole("button", { name: "Remove Cuban Urban" }).click();
+    await expect(suggested.getByRole("button")).toHaveText(["Cuban Urban", hiveFunk]);
+    await suggested.getByRole("button", { name: "Funk" }).click();
+    await expect(chips.getByRole("button")).toHaveText(["Reggaeton", "Dembow", "Funk"]);
+    await expect(chips.getByRole("button", { name: "Remove Funk" })).toHaveAttribute("data-source", "hive");
+    // No gap: the ask starts right under the step's title row (the title and its "Your turn" tag, which wraps on a phone).
+    // Both measured in one frame: the page scrolls the ask into view smoothly, so two separate reads can disagree.
+    const { gap } = await page.evaluate(() => {
+      const step = document.querySelector('[data-testid="agent-step"][data-status="waiting"]')!;
+      const row = step.querySelector("b")!.parentElement!.getBoundingClientRect();
+      const line = step.querySelector('[data-testid="research-ask-line"]')!.getBoundingClientRect();
+      return { gap: line.top - row.bottom };
+    });
+    expect(gap, "space between the title and the ask").toBeLessThanOrEqual(16);
+    expect(gap).toBeGreaterThanOrEqual(-1);
+    // The genre search: type, pick one of Qloo's genres; it joins the picked ones (axe clean with the list open).
+    const search = ask.getByTestId("research-genre-search");
+    await expect(search).toBeDisabled();
+    await chips.getByRole("button", { name: "Remove Dembow" }).click();
+    await search.fill("dem");
+    const option = ask.getByRole("option", { name: "Dembow" });
+    await expect(option).toBeVisible({ timeout: 10_000 });
+    const axe = await new AxeBuilder({ page }).include('[data-testid="research-ask"]').withTags(WCAG).analyze();
+    expect(axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+    await option.click();
+    await expect(chips.getByRole("button")).toHaveText(["Reggaeton", "Funk", "Dembow"]);
+    await expect(search).toHaveValue("");
+    // Carry on: the found sound-alikes as they were, and the genres picked.
+    await page.getByTestId("research-ask-carry-on").click();
+    await done(page);
+    await expect(page.getByTestId("research-end")).not.toHaveAttribute("data-code", /^needs_/);
+    expect(JSON.parse(inputs[0])).toEqual({
+      artists: act.similar.map((name) => ({ name, spotifyId: OFFLINE_SPOTIFY_ONLY_ARTISTS[name].spotifyId, image: OFFLINE_SPOTIFY_ONLY_ARTISTS[name].image })),
+      genres: ["Reggaeton", "Funk", "Dembow"],
+    });
+    const steps = page.getByTestId("research-steps");
+    await expect(steps.locator('[data-testid="agent-step"][data-tool="research_fans_love"]')).toContainText("Based on Reggaeton, Funk and Dembow: your fans also love");
+    const saved = (await (await page.request.get("/api/playlist")).json()).playlist.soundsLike;
+    expect(saved.map((a: { name: string; foundBy?: string }) => `${a.name}:${a.foundBy ?? "you"}`)).toEqual(act.similar.map((name) => `${name}:you`));
   });
 
   test("still nothing Qloo knows: it asks again in the same step, then stops after three asks in one line", async ({ page }) => {

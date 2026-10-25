@@ -1,3 +1,4 @@
+import { isPlaceOrPeopleTag } from "./genre-tags";
 /**
  * Finding the act on Qloo without picking the wrong artist. Pure, client-safe, no I/O: the name variants worth searching,
  * the confidence rule, and the decision (a certain match, a short list for the user to confirm, or nothing).
@@ -190,12 +191,12 @@ const TAG_NOISE = new Set([
   "australian", "american", "british", "canadian", "irish", "scottish", "english", "melbourne", "sydney", "new york", "nyc", "brooklyn", "usa", "uk", "australia",
 ]);
 /** Last.fm tag names fit to look up as Qloo genre tags: lowercased, trimmed, no "seen live", places, years or the act's own name; once each, in order. */
-export function usableTagNames(tags: readonly string[], actNames: readonly (string | null | undefined)[] = [], max = 5): string[] {
+export function usableTagNames(tags: readonly string[], actNames: readonly (string | null | undefined)[] = [], max = 10): string[] {
   const acts = new Set(actNames.map((n) => normName(n ?? "")).filter(Boolean));
   const out: string[] = [];
   for (const raw of tags) {
     const t = raw.normalize("NFC").toLowerCase().replace(/\s+/g, " ").trim();
-    if (t.length < 3 || t.length > 30 || /\d/.test(t) || TAG_NOISE.has(t) || /\b(?:under|listeners|favou?rite|albums? i own|my )\b/.test(t) || acts.has(normName(t))) continue;
+    if (t.length < 3 || t.length > 30 || /\d/.test(t) || TAG_NOISE.has(t) || isPlaceOrPeopleTag(t) || /\b(?:under|listeners|favou?rite|albums? i own|my )\b/.test(t) || acts.has(normName(t))) continue;
     if (!out.includes(t)) out.push(t);
     if (out.length >= max) break;
   }
@@ -235,6 +236,18 @@ export function normGenre(text: string): string {
 /** The slug of a Qloo genre tag id: urn:tag:genre:music:indie_folk is "indie folk". */
 export const tagSlug = (id: string): string => normGenre(id.replace(/^urn:tag:genre(?::[a-z]+)?:/, "").replace(/_/g, " "));
 
+/**
+ * A Qloo genre tag id fit for a taste signal: `urn:tag:genre:music:…`, or Qloo's own genre tags `urn:tag:genre:qloo:…`. Live Qloo
+ * (media/qloo-coverage, 20 Oct) has many specific genres only as the latter (urn:tag:genre:qloo:reggaeton, …:cuban_urban), which a
+ * /v2/tags search filtered to urn:tag:genre:music never returns. Plain `urn:tag:genre:<word>` ids are free-text labels (places too).
+ */
+export const isGenreTagId = (id: string) => /^urn:tag:genre:(?:music|qloo):[^\s,]+$/.test(id);
+
+/** The genre buttons' names, normalised: broad genres. A specific genre (dembow, reggaeton) leads them as a signal. */
+const COARSE_GENRES = new Set(["folk", "rock", "pop", "hip hop", "hiphop", "jazz", "electronic", "latin", "country", "blues", "soul", "reggae", "classical", "world", "dance", "rap", "indie", "alternative", "urban"]);
+/** Whether a genre text or tag name is a broad genre (one of the buttons' kind) rather than a specific one. */
+export const isCoarseGenre = (text: string) => COARSE_GENRES.has(normGenre(text));
+
 /** The button tag for a genre text, when it is one of the buttons' genres. */
 export function buttonGenreTag(genre: string): { id: string; name: string } | null {
   const key = normGenre(genre);
@@ -244,23 +257,18 @@ export function buttonGenreTag(genre: string): { id: string; name: string } | nu
 
 /**
  * The tag a /v2/tags search result list gives for a genre text: an exact match on the id slug or the normalised name first, then
- * the same with spaces removed ("singer-songwriter" and "Singersongwriter"), then a tag whose name has all the text's words (the
- * shortest). Music-genre tags only. Null when nothing fits.
+ * the same with spaces removed ("singer-songwriter" and "Singersongwriter"). Never a partial match: "urban" is not "Urban Gospel"
+ * (live, 25 Oct); related labels go through GENRE_SYNONYMS instead. Music-genre tags only, never a place. Null when nothing fits.
  */
-export function pickGenreTag(tags: readonly { id: string; name: string }[], genre: string): { id: string; name: string } | null {
+export function pickGenreTag(tags: readonly { id: string; name: string }[], genre: string, options: { broad?: boolean } = {}): { id: string; name: string } | null {
   const want = normGenre(genre);
   if (!want) return null;
-  const music = tags.filter((t) => t.id.startsWith("urn:tag:genre:music"));
+  // Never a place, a people or a language (Qloo has urn:tag:genre:music:american and a "CUBA" tag): a genre only.
+  if (isPlaceOrPeopleTag(genre)) return null;
+  const music = tags.filter((t) => (options.broad ? isGenreTagId(t.id) : t.id.startsWith("urn:tag:genre:music")) && !isPlaceOrPeopleTag(t.name) && !isPlaceOrPeopleTag(tagSlug(t.id)));
   const exact = music.find((t) => tagSlug(t.id) === want || normGenre(t.name) === want);
   if (exact) return exact;
   const squashed = want.replace(/ /g, "");
   const flat = music.find((t) => tagSlug(t.id).replace(/ /g, "") === squashed || normGenre(t.name).replace(/ /g, "") === squashed);
-  if (flat) return flat;
-  const words = want.split(" ").filter((w) => w.length >= 2 && w !== "and");
-  if (words.length === 0) return null;
-  const partial = music.filter((t) => {
-    const have = new Set([...normGenre(t.name).split(" "), ...tagSlug(t.id).split(" ")]);
-    return words.every((w) => have.has(w));
-  });
-  return partial.sort((a, b) => normGenre(a.name).split(" ").length - normGenre(b.name).split(" ").length)[0] ?? null;
+  return flat ?? null;
 }

@@ -92,7 +92,7 @@ export type BaselineInputs = {
   ranked: ScoredPitch[];
   places: KnownPlace[];
   area: BBox;
-  legality: Pick<CandidateInputs, "sites" | "zones" | "hotspots" | "permit">;
+  legality: Pick<CandidateInputs, "sites" | "zones" | "hotspots" | "permit" | "generalRules">;
   /** The engine's inputs for the fixed slot. */
   scoreInputs?: ScoreInputs;
   /** Any time: scores a spot at its best window (the same function that ranks the pool). Used instead of `scoreInputs`. */

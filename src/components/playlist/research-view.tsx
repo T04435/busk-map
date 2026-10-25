@@ -41,9 +41,9 @@ import { ZERO_LEARN_TOTALS, type LearnListView, type LearnStreamEvent } from "@/
 import { PLAYLIST_COPY as COPY } from "@/lib/playlist-copy";
 import { playlistSongKey, type LearnSuggestionView, type PlaylistView } from "@/lib/playlist-schema";
 import { fansMapProps } from "@/lib/fans-map";
-import { OFFLINE_TEST_ARTIST, researchUsable, researchWaiting } from "@/lib/repertoire-research";
+import { OFFLINE_TEST_ARTIST, researchUsable, researchWaiting, type SoundsLikeOutput } from "@/lib/repertoire-research";
 import { toRepertoireView, type LearnSong, type RepertoireView } from "@/lib/repertoire-research-view";
-import { parseSpotifyArtistId, spotifyArtistUrl } from "@/lib/spotify-link";
+import { looksLikeLink, parseSpotifyArtistId, spotifyArtistUrl } from "@/lib/spotify-link";
 import { joinLearn, loadLearn, pageFaults, patchSuggestion, sendResearchInput, startResearch, type ResearchAnswer } from "./learn-api";
 import { ResearchAsk } from "./research-ask";
 import { REPERTOIRE_STEPS } from "@/components/honeycomb/repertoire/repertoire-research";
@@ -64,7 +64,7 @@ const moved = (title: string) => `${title} moved to ${COPY.canSing}.`;
 
 /** The action button inside a row (rows carry `data-focus-row`; SongActions names its buttons "Remove X" and "Move to can sing: X"). */
 function focusTarget(target: string): HTMLElement | null {
-  if (target === MAIN_FIELD) return document.querySelector<HTMLElement>("#spotify-link, [data-focus-id='add-song']");
+  if (target === MAIN_FIELD) return document.querySelector<HTMLElement>("[data-focus-id='research-link'], [data-focus-id='add-song']");
   const m = /^(remove|move)-(.+)$/.exec(target);
   if (!m) return null;
   return document.querySelector<HTMLElement>(`[data-focus-row="${CSS.escape(m[2])}"] [aria-label^="${m[1] === "remove" ? "Remove" : "Move to"}"]`);
@@ -178,7 +178,10 @@ export function ResearchView() {
   const [notice, setNotice] = useState<{ kind: "error" | "info"; text: string } | null>(null);
   const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
+  /** The act's Spotify artist: picked from the search (`me`), or a link pasted into the search box (`link`). */
   const [link, setLink] = useState("");
+  const [me, setMe] = useState<PickedArtist[]>([]);
+  const setActLink = (url: string) => (setMe([]), setLink(url));
   const [changingLink, setChangingLink] = useState(false);
   const [actName, setActName] = useState("");
   const [artists, setArtists] = useState<PickedArtist[]>([]);
@@ -330,8 +333,8 @@ export function ResearchView() {
 
   function submitLink(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const id = parseSpotifyArtistId(link.trim());
-    if (!id) return setNotice({ kind: "error", text: R.errors.badLink });
+    const id = me[0]?.spotifyId ?? parseSpotifyArtistId(link.trim());
+    if (!id) return setNotice({ kind: "error", text: looksLikeLink(link) ? R.errors.badLink : R.errors.pickArtist });
     const same = playlist?.research?.spotifyArtistId === id;
     void start({ link: id, ...(same ? { refresh: true } : {}) });
   }
@@ -374,7 +377,7 @@ export function ResearchView() {
   /** Try again after a stopped run: the same kind of run, for the same link. */
   const retryCut = () => {
     const kind = events?.find((e) => e.type === "run");
-    const id = playlist?.spotifyArtistId ?? research?.spotifyArtistId ?? parseSpotifyArtistId(link.trim());
+    const id = playlist?.spotifyArtistId ?? research?.spotifyArtistId ?? me[0]?.spotifyId ?? parseSpotifyArtistId(link.trim());
     if (kind?.type === "run" && kind.inputs.kind === "more") void start({ mode: "more" });
     else if (id) void start({ link: id, refresh: true });
   };
@@ -454,6 +457,7 @@ export function ResearchView() {
             askRun ? (
               <ResearchAsk
                 message={step.summary ?? R.ask.first}
+                suggest={(step.output as SoundsLikeOutput | null | undefined)?.waiting?.suggest ?? research?.waiting?.suggest ?? null}
                 busy={busy || running}
                 onSubmit={(body) => void answer(askRun, body)}
               />
@@ -795,23 +799,19 @@ export function ResearchView() {
         <>
           {/* Empty state: one field and its example. */}
           {showForm && (
-            // Named by its action, so the link field stays the only control called "Your Spotify artist link".
+            // Named by its action, so the search box stays the only control called "Your Spotify artist".
             <form onSubmit={submitLink} className="max-w-2xl space-y-2" aria-labelledby="research-start" data-testid="research-form">
-              <Label htmlFor="spotify-link">{R.linkLabel}</Label>
-              <div className="flex flex-wrap gap-2">
-                <Input id="spotify-link" className="min-w-0 flex-1 basis-64" value={link} onChange={(e) => setLink(e.target.value)} placeholder={R.linkPlaceholder} autoComplete="off" inputMode="url" aria-describedby="spotify-link-hint" />
-                <Button id="research-start" type="submit" disabled={running || !link.trim()}>
+              <ArtistPicker mode="single" label={R.linkLabel} placeholder={R.linkPlaceholder} focusId="research-link" value={me} onChange={setMe} query={link} onQueryChange={setLink} />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <Button id="research-start" type="submit" disabled={running || (me.length === 0 && !link.trim())}>
                   {R.start}
                 </Button>
+                {offline && (
+                  <Button type="button" variant="link" size="sm" className="h-auto px-0" data-testid="research-test-artist" onClick={() => setActLink(spotifyArtistUrl(OFFLINE_TEST_ARTIST.spotifyId))}>
+                    {R.exampleTest} ({OFFLINE_TEST_ARTIST.name})
+                  </Button>
+                )}
               </div>
-              <p id="spotify-link-hint" className="text-sm text-muted-foreground">
-                {R.example}
-              </p>
-              {offline && (
-                <Button type="button" variant="link" size="sm" className="h-auto px-0" data-testid="research-test-artist" onClick={() => setLink(spotifyArtistUrl(OFFLINE_TEST_ARTIST.spotifyId))}>
-                  {R.exampleTest} ({OFFLINE_TEST_ARTIST.name})
-                </Button>
-              )}
             </form>
           )}
 
@@ -850,12 +850,13 @@ export function ResearchView() {
               <Button type="button" variant="outline" size="sm" disabled={busy || running} onClick={() => void start({ link: research.spotifyArtistId, refresh: true })}>
                 {R.refresh}
               </Button>
-              <Button type="button" variant="ghost" size="sm" disabled={busy || running} onClick={() => (setChangingLink(true), setLink(spotifyArtistUrl(research.spotifyArtistId)))}>
+              <Button type="button" variant="ghost" size="sm" disabled={busy || running} onClick={() => (setChangingLink(true), setActLink(spotifyArtistUrl(research.spotifyArtistId)))}>
                 {R.changeLink}
               </Button>
             </div>
           )}
-          {playlist && !active && (
+          {/* Shown also while a run waits for your answer: forgetting is the way out without answering. */}
+          {playlist && !live && (
             <section className="max-w-2xl">
               <AlertDialog>
                 <AlertDialogTrigger asChild>

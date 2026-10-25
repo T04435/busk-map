@@ -67,6 +67,14 @@ describe("qloo mock: HTTP contract", () => {
     });
   });
 
+  it("rejects an artist request with no signal and no filter, and answers one with a popularity filter", async () => {
+    expect(await call("/v2/insights", { "filter.type": "urn:entity:artist", take: "20" })).toMatchObject({
+      status: 400,
+      body: { message: "at least one valid signal or filter is required for entity insights" },
+    });
+    expect((await call("/v2/insights", { "filter.type": "urn:entity:artist", "filter.popularity.min": "0.9", take: "20" })).status).toBe(200);
+  });
+
   it("is deterministic", async () => {
     expect(await heat(FOLK)).toEqual(await heat(FOLK));
   });

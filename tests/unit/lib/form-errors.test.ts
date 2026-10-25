@@ -35,7 +35,7 @@ describe("planFormError (B-003)", () => {
     expect(errorFor({ ...valid, performer: { ...valid.performer, name: "n".repeat(81) } })).toMatch(/^Act name: /);
     expect(errorFor({ ...valid, permit: "busker" as never })).toMatch(/^Permit: /);
     expect(planFormError([{ path: ["performer", "spotifyArtists", 3, "id"], message: "bad" }], valid)).toMatch(/Spotify id for an artist\./);
-    expect(planFormError([{ path: ["city"], message: "Invalid option" }], valid)).toBe("Check the form and try again (city: Invalid option).");
+    expect(planFormError([{ path: ["city"], message: "Invalid option" }], valid)).toBe("City: Invalid option");
     expect(planFormError([], valid)).toBe("Check the form and try again (request: invalid).");
   });
 

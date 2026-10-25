@@ -212,3 +212,40 @@ describe("catalogueOf: the candidate songs come from Last.fm, whatever Spotify s
     expect((await catalogueOf("Julia Jacklin", "AU", { offline: true, faults: ["songs"] })).tracks).toEqual([]);
   });
 });
+
+describe("the research ask's genre call (the Hive's suggestions): names only, nothing from Spotify", () => {
+  it("is sent the act's name and its sound-alikes' names, never their Spotify ids, photos, genres or links", async () => {
+    vi.resetModules();
+    vi.stubEnv("BUSKMAP_OFFLINE", "1");
+    vi.stubEnv("VERCEL", "");
+    const sent: string[] = [];
+    vi.doMock("@/server/research/hive-genres", async (importOriginal) => {
+      const original = await importOriginal<typeof import("@/server/research/hive-genres")>();
+      return {
+        ...original,
+        hiveGenres: (input: Parameters<typeof original.hiveGenres>[0], options: Parameters<typeof original.hiveGenres>[1]) => {
+          const rec = recording(original.createMockGenreModel());
+          return original.hiveGenres(input, { ...options, model: rec.model }).finally(() => sent.push(...rec.sent));
+        },
+      };
+    });
+    try {
+      (await import("@/server/playlist/store")).resetPlaylistStoresForTests();
+      (await import("@/server/learn/store")).resetLearnStoresForTests();
+      (await import("@/server/learn/runs")).clearLearnRunsForTests();
+      const { OFFLINE_SPOTIFY_ONLY_ARTISTS, OFFLINE_TEST_ACTS } = await import("@/lib/repertoire-research");
+      const route = await import("@/app/api/playlist/research/route");
+      const act = OFFLINE_TEST_ACTS.taggedAlikes;
+      const res = await route.POST(new Request("http://localhost:3100/api/playlist/research", { method: "POST", headers: { "content-type": "application/json", host: "localhost:3100" }, body: JSON.stringify({ link: act.spotifyId }) }));
+      expect(await res.text()).toContain("needs_sounds_like");
+      expect(sent).toHaveLength(1);
+      // The names (Last.fm's sound-alikes, the act's name) are there; their Spotify ids, photos and links are not.
+      for (const name of act.similar) expect(sent[0]).toContain(name);
+      const ids = [act.spotifyId, ...Object.values(OFFLINE_SPOTIFY_ONLY_ARTISTS).map((a) => a.spotifyId)];
+      expect(spotifyIn(sent[0], ids)).toEqual([]);
+      expect(sent[0]).not.toMatch(/offline-dny-omy|offline-lkm-kimi|followers|genres":\[/);
+    } finally {
+      vi.doUnmock("@/server/research/hive-genres");
+    }
+  });
+});

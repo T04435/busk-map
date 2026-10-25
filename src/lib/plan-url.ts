@@ -3,6 +3,7 @@
  *   /plan?example=acoustic
  *   /plan?name=…&artists=A|B~<spotify id>&songs=Title~Artist|Own Song~Me~own|Song~Artist~215s&date=2026-10-17&from=18&to=21&permit=general
  * Optional: own=<qlooId>~<name>[~<spotify id>] (the act's own artist on Qloo)
+ * Optional: city=<slug>&place=<name>~<CC>~<lat>~<lon>~<time zone>~<country> (any city but Melbourne, the default; lib/city.ts)
  * (artist ids and song lengths are optional; see lib/performer-url.ts)
  * Optional: wa=taste,activity,events,weather[,discovery]  (older links: w=taste,footfall,places,events,weather[,discovery])  pitch=<id>  run=0 (show the engine's plan only;
  * by default the agent starts on load, and the server replays a recent run of the same request)
@@ -13,6 +14,7 @@ import { parseWeightsParam, weightsParam } from "./weights-url";
 import { planRequestSchema, type PlanRequest } from "./plan-schema";
 import { boundSongs, PLAN_SONGS_CONSIDERED } from "./plan-songs-bound";
 import { isAnyTime, nextSlotDate } from "./slot";
+import { cityOfRequest, MELBOURNE, parsePlaceParam, placeParam } from "./city";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -24,6 +26,14 @@ export type ParsedPlanUrl =
 
 /** The city's current local date and hour. A default date is the next one whose slot hasn't ended by then. */
 export type LocalNow = { today: string; hour: number };
+
+/**
+ * The time zone a plan URL's default date is read in: the link's city (an example is Melbourne's, so its link names none). A
+ * city that can't be read falls back to Melbourne; the request is refused later anyway.
+ */
+export function planTimeZone(params: Params): string {
+  return cityOfRequest({ city: first(params.city), place: parsePlaceParam(first(params.place)) })?.timeZone ?? MELBOURNE.timeZone;
+}
 
 export function parsePlanParams(params: Params, now: LocalNow): ParsedPlanUrl {
   const example = findExample(first(params.example));
@@ -50,6 +60,7 @@ export function parsePlanParams(params: Params, now: LocalNow): ParsedPlanUrl {
   const anyTime = !example || name ? first(params.time) === "any" : false;
   const parsed = planRequestSchema.safeParse({
     city: first(params.city) ?? "melbourne",
+    ...(first(params.place) ? { place: parsePlaceParam(first(params.place)) } : {}),
     slot: anyTime ? { date, any: true } : { date, startHour, endHour },
     permit: first(params.permit) ?? "general",
     performer,
@@ -76,6 +87,10 @@ export function planSearchParams(request: PlanRequest, extra: Record<string, str
     date: request.slot.date,
     permit: request.permit,
   });
+  if (request.place) {
+    params.set("city", request.city);
+    params.set("place", placeParam(request.place));
+  }
   if (isAnyTime(request.slot)) params.set("time", "any");
   else {
     params.set("from", String(request.slot.startHour));

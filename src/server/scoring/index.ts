@@ -9,3 +9,5 @@ export * from "./week";
 export * from "./baseline";
 export * from "./windows";
 export * from "./local-scene";
+export * from "./districts";
+export * from "./areas";

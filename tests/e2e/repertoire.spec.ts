@@ -44,7 +44,7 @@ async function add(page: Page, text: string, accepted = true) {
 }
 
 /** The empty Repertoire page: the research link field, nothing else. */
-const emptyPage = (page: Page) => expect(page.getByLabel("Your Spotify artist link")).toBeVisible();
+const emptyPage = (page: Page) => expect(page.getByLabel("Your Spotify artist", { exact: true })).toBeVisible();
 
 test.describe("Repertoire storage (offline, memory store)", () => {
   test.skip(!LOCAL, "Writes to the local offline server's memory store");
@@ -119,12 +119,12 @@ test.describe("Repertoire storage (offline, memory store)", () => {
     await expect(page.getByRole("button", { name: /^Move to can sing: Five/ })).toBeFocused();
     await page.getByRole("button", { name: "Remove Five" }).click();
     // The Learned list is empty: the page's main field (the research link, as there is no research yet).
-    await expect(page.getByLabel("Your Spotify artist link")).toBeFocused();
+    await expect(page.getByLabel("Your Spotify artist", { exact: true })).toBeFocused();
     // The only row of Songs you can sing: also the main field.
     for (const title of ["Four", "One"]) {
       await page.getByRole("button", { name: `Remove ${title}` }).click();
     }
-    await expect(page.getByLabel("Your Spotify artist link")).toBeFocused();
+    await expect(page.getByLabel("Your Spotify artist", { exact: true })).toBeFocused();
   });
 
   test("the Spotify search adds a picked song with its length", async ({ page }) => {

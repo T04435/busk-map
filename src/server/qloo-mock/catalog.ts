@@ -30,6 +30,18 @@ export type Genre = keyof typeof GENRES;
 
 export const genreTagId = (genre: Genre) => `urn:tag:genre:music:${genre}`;
 
+/**
+ * Qloo's own genre tags (urn:tag:genre:qloo:…): live Qloo has many specific genres only under this type (reggaeton, cuban urban),
+ * and a /v2/tags search filtered to urn:tag:genre:music never returns them. The mock returns these only to an unfiltered
+ * genre search (filter.tag.types=urn:tag:genre), and reads each as one of its own genres for a taste signal.
+ */
+export const QLOO_TYPED_GENRES: Readonly<Record<string, { name: string; like: Genre }>> = {
+  dembow: { name: "Dembow", like: "electronic" },
+  reggaeton: { name: "Reggaeton", like: "hip_hop" },
+  cuban_urban: { name: "Cuban Urban", like: "funk" },
+};
+export const qlooTypedTagId = (slug: string) => `urn:tag:genre:qloo:${slug}`;
+
 export type MockArtist = {
   name: string;
   /** Genre weights, 0–1. */

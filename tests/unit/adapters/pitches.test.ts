@@ -1,3 +1,4 @@
+import { MELBOURNE } from "@/lib/city";
 import { describe, expect, it } from "vitest";
 import { getPitches, PITCHES_FALLBACK } from "@/server/adapters/pitches";
 import { SYNTHETIC_RAW } from "@/server/adapters/pitches/fixtures/synthetic";
@@ -46,7 +47,7 @@ describe("getPitches", () => {
       route((u) => u.pathname.includes("No_Busking_Permitted"), () => json(SYNTHETIC_RAW.noBusking)),
       route((u) => u.pathname.includes("Unamplified_Busking_Permitted"), () => json(SYNTHETIC_RAW.unamplified)),
     ]);
-    const result = await getPitches("melbourne", LIVE);
+    const result = await getPitches(MELBOURNE, LIVE);
     expect(result.mode).toBe("live");
     expect(result.data.sites).toHaveLength(3);
     expect(result.data.sites[0]).toMatchObject({ id: "com-0", name: "Synthetic Mall", permit: "premium", buskingAllowed: true });
@@ -64,12 +65,12 @@ describe("getPitches", () => {
       route((u) => u.host === "www.arcgis.com", () => json(SYNTHETIC_RAW.points)),
       route(() => true, () => json({ error: "nope" }, 500)),
     ]);
-    const result = await getPitches("melbourne", LIVE);
+    const result = await getPitches(MELBOURNE, LIVE);
     expect(result).toMatchObject({ mode: "fallback", reason: "http", data: PITCHES_FALLBACK });
   });
 
   it("serves synthetic data offline", async () => {
-    const result = await getPitches("melbourne", OFFLINE);
+    const result = await getPitches(MELBOURNE, OFFLINE);
     expect(result.mode).toBe("synthetic");
     expect(result.data.sites.length).toBeGreaterThan(0);
   });

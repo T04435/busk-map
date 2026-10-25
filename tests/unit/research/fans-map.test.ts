@@ -48,8 +48,8 @@ describe("naming the top places worldwide", () => {
   });
   it("names a cell inside a Busk Map city the planner's way, and offers that city to plan in", async () => {
     const { topPlaces } = await import("@/server/research/fans-map");
-    const { CITIES } = await import("@/server/cities");
-    const { areas, planCity } = topPlaces([cell(CITIES.melbourne.center, 1), cell(HAVANA, 0.5)]);
+    const { MELBOURNE } = await import("@/lib/city");
+    const { areas, planCity } = topPlaces([cell(MELBOURNE.center, 1), cell(HAVANA, 0.5)]);
     expect(planCity).toBe("melbourne");
     expect(areas[1]).toBe("Havana");
     expect(areas[0]).toBeTruthy();
@@ -155,7 +155,7 @@ describe("the heatmap call (offline Qloo mock)", () => {
     vi.resetModules();
     await setupFetch();
     const qloo = await import("@/server/adapters/qloo");
-    const { CITIES } = await import("@/server/cities");
+    const { MELBOURNE } = await import("@/lib/city");
     // The Qloo client's cache body runs once per (signal, area): the helper's map holds one entry per lookup that went to Qloo.
     const heat = () => [...cache.keys()].filter((k) => k.startsWith('["heatmap"')).length;
     const { WORLD_BBOX } = await import("@/lib/fans-map");
@@ -163,7 +163,7 @@ describe("the heatmap call (offline Qloo mock)", () => {
     expect(heat()).toBe(1);
     await qloo.tasteMap([julia.id], WORLD_BBOX, OFF);
     expect(heat()).toBe(1);
-    await qloo.tasteMap([julia.id], CITIES.melbourne.bbox, OFF);
+    await qloo.tasteMap([julia.id], MELBOURNE.bbox, OFF);
     expect(heat()).toBe(2);
   });
 });

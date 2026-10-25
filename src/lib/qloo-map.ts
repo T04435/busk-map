@@ -457,6 +457,12 @@ export const secondarySources: readonly SecondarySource[] = [
         purpose: "the tags listeners give your act, when Qloo doesn’t know it and no artists like you are found (turned into Qloo genre tags)",
       },
       {
+        method: "track.gettoptags",
+        codeRef: "songs/client.ts:fetchTrackTopTags",
+        via: ["songs/index.ts:getTrackTopTags", "own-artist.ts:actLastfmTags", "own-artist.ts:suggestGenres"],
+        purpose: "the tags listeners give your top tracks and your sound-alikes’ top track, when Qloo doesn’t know you (turned into Qloo genre tags)",
+      },
+      {
         method: "artist.getinfo",
         codeRef: "songs/client.ts:fetchArtistListeners",
         via: ["songs/index.ts:getListeners"],

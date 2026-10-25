@@ -39,9 +39,10 @@ Checked against docs.qloo.com on 2026-10-15, then **verified against live respon
 Behaviour taken from the docs:
 - `X-Api-Key` is required: 401 `{"message":"No API key found in request"}` without it. Only GET exists; anything else is 404 "No path matching request parameters".
 - Missing `filter.type` is 400; an unknown `urn:entity:*` is 403 "You do not have permission to access …"; a valid type the mock has no data for (movies, books…) is a 200 with empty `entities`.
-- Parameters that are not valid for a `filter.type` are **silently ignored**, using the Entity Type Parameter Guide (for example `filter.hours` or `filter.location` on artists). A request whose only signal is an unknown tag gets 400 "at least one valid signal or filter is required".
+- Parameters that are not valid for a `filter.type` are **silently ignored**, using the Entity Type Parameter Guide (for example `filter.hours` or `filter.location` on artists). A request whose only signal is an unknown tag gets 400 "at least one valid signal or filter is required". An artist request with no signal and no filter at all (only `filter.type`) gets 400 "at least one valid signal or filter is required for entity insights", as live Qloo does; the client never sends one (`client.ts` skips it as `no_signal`).
 - `take` defaults to 20 and is capped at 50 (400 above that).
 - Locations outside the mock's coverage (inner Melbourne), or unreadable ones, give an empty 200.
+- Offline mode's second city (Tokyo, `src/server/offline-city.ts`, V2 2.1): points within 60 km of Tokyo's centre read the Melbourne field moved onto Tokyo, and place searches there get Melbourne's places moved the same way with synthetic names ("Synthetic Bar 3", no address). Any other city has no mock data.
 - `/search` and `/entities` answer 404 "No results" when nothing matches, as their OpenAPI pages document. The client treats that as "no match", not an outage.
 
 ### Response shapes (VERIFIED against live, 2026-10-15)

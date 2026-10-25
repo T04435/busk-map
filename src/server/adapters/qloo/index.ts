@@ -30,8 +30,16 @@ function run<T>(context: AdapterContext, fallback: T, call: (backend: QlooBacken
     fallback,
     synthetic: () => fallback,
     live: () => call(backend),
-  }).then((result) => (backend === "mock" && result.mode === "live" ? { ...result, mode: "synthetic" } : result));
+  }).then((result) => {
+    // A call with nothing to signal was never sent (client.ts noSignal): empty data, not an outage. The typed reason stays, so a
+    // tool can say "nothing to signal" instead of "Qloo failed".
+    if (result.reason === "no_signal") return { ...result, mode: backend === "mock" ? "synthetic" : "live" };
+    return backend === "mock" && result.mode === "live" ? { ...result, mode: "synthetic" } : result;
+  });
 }
+
+/** Whether a Qloo result is the typed "no signal" skip: no request was sent because there was nothing valid to signal. */
+export const noSignal = (result: AdapterResult<unknown>): boolean => result.reason === "no_signal";
 
 /** Whether Qloo calls will be live or answered by the local mock. Safe to render. */
 export function qlooMode(context: AdapterContext): "live" | "synthetic" {
@@ -175,8 +183,8 @@ export function artistDetail(entityId: string, context: AdapterContext): Promise
 }
 
 /** resolve_repertoire for a genre: Qloo music-genre tags matching the text (an act's Spotify genre), best first. */
-export function searchGenreTags(text: string, take: number, context: AdapterContext): Promise<AdapterResult<TasteTag[]>> {
-  return run<TasteTag[]>(context, [], (backend) => client.searchGenreTags(backend, text, take));
+export function searchGenreTags(text: string, take: number, context: AdapterContext, types?: client.GenreTagTypes): Promise<AdapterResult<TasteTag[]>> {
+  return run<TasteTag[]>(context, [], (backend) => client.searchGenreTags(backend, text, take, types));
 }
 
 /** related_artists for an act Qloo doesn't know: artists liked by fans of these genre tags. */

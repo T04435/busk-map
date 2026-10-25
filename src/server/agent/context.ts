@@ -1,5 +1,6 @@
 import "server-only";
-import type { BBox, LatLon } from "@/lib/geo";
+import { inBBox, type BBox, type LatLon } from "@/lib/geo";
+import { boxAround, isMetro } from "@/lib/city";
 import type { TrendRow } from "@/server/adapters/qloo";
 import { ageLabel } from "@/lib/age";
 import { ANY_TIME_DAY, anyTimeWindowsLeft, DEFAULT_SLOT_HOURS, isAnyTime, slotUtcRange, weekdayOf, zonedHourToUtc, type Slot, type TimeWindow } from "@/lib/slot";
@@ -8,18 +9,29 @@ import type { PlanRequest } from "@/lib/plan-schema";
 import type { AdapterContext, AdapterName, AdapterResult } from "@/server/adapters/core";
 import { getEvents, getEventsBetween, EVENTS_LOOKBACK_HOURS } from "@/server/adapters/events";
 import { getPitches } from "@/server/adapters/pitches";
+import { getOsmSpots, mergeOsmResults, OSM_UNNAMED } from "@/server/adapters/osm";
+import { findNamedAreas, type AreasSource } from "@/server/adapters/areas";
 import * as qloo from "@/server/adapters/qloo";
 import { findReleaseYears } from "@/server/adapters/repertoire";
 import { getSongs } from "@/server/adapters/songs";
 import { boundSongs, PLAN_SONGS_CONSIDERED } from "@/lib/plan-songs-bound";
 import { getWeather } from "@/server/adapters/weather";
-import { CITIES } from "@/server/cities";
-import { PUBLIC_SPOTS, USUAL_HOTSPOTS } from "@/server/data/spots";
+import { cityLevels, cityOf, hotspotsFor, isMelbourne, pitchesFor, rulesFor, spotifyMarket, type City } from "@/server/cities";
 import {
   activityEstimate,
   buildCandidatesWithFunnel,
   buildSetlist,
   DEFAULT_MAX_SONGS,
+  districtOf,
+  districtsFromAreas,
+  findDistricts,
+  rankAreas,
+  type NamedArea,
+  type RankedArea,
+  MAX_PICKS_PER_DISTRICT,
+  nameDistricts,
+  type District,
+  type DistrictSpread,
   GLOBAL_POP_TAKE,
   learnThese,
   normalizeWeights,
@@ -44,6 +56,9 @@ import {
   type Weights,
 } from "@/server/scoring";
 import { serverLocalNow, serverToday } from "@/server/clock";
+import type { CandidateInputs } from "@/server/scoring/candidates";
+
+type ScoreLegality = Pick<CandidateInputs, "sites" | "zones" | "hotspots" | "permit" | "generalRules">;
 import { LEARN_MAX_PER_ARTIST, SUGGEST_ARTISTS_PER_PITCH, SUGGEST_CATALOGUE_LOOKUPS, SUGGEST_RELATED_TAKE } from "@/server/playlist/config";
 import { fillAsRepertoire, mergeFillArtists, pickFillSongs, rankFillArtists, type FillArtist } from "@/server/scoring/fill";
 import { catalogueOf, displayKey, spotifyDisplay, type SpotifyDisplay } from "@/server/songs/catalogue";
@@ -88,6 +103,7 @@ const OPTIONAL_QLOO: [prefix: string, feature: string][] = [
   ["compare", "the contrast with the usual crowd"],
   ["scene:", "the local scene (acts local to this city)"],
   ["taste:soft", "the taste map with your own artist"],
+  ["taste:district:", "the close-up taste map of one district"],
   ["relatedArtists", "related artists for the suggested songs"],
   ["affinity:", "the suggested set order by local taste"],
   ["songArtists", "the suggested set order by local taste"],
@@ -113,7 +129,7 @@ export class PlanContext {
   readonly songs$: PlanRequest["performer"]["songs"];
   readonly adapters: AdapterContext;
   readonly today: string;
-  readonly city;
+  readonly city: City;
   readonly weights: Weights;
   private readonly memo = new Map<string, Promise<unknown>>();
   private readonly statuses = new Map<string, Status>();
@@ -127,7 +143,7 @@ export class PlanContext {
     this.request = request;
     this.songs$ = boundSongs(request.performer.songs, PLAN_SONGS_CONSIDERED);
     this.adapters = adapters;
-    this.city = CITIES[request.city];
+    this.city = cityOf(request);
     this.today = today ?? serverToday(this.city.timeZone);
     this.nowHour = nowHour ?? serverLocalNow(this.city.timeZone).hour;
     this.weights = normalizeWeights(request.weights);
@@ -177,7 +193,8 @@ export class PlanContext {
       // Keep the worst status per adapter: fallback beats synthetic beats live.
       const rank = { live: 0, synthetic: 1, fallback: 2 } as const;
       if (!previous || rank[result.mode] > rank[previous.mode]) {
-        this.statuses.set(result.adapter, { adapter: result.adapter, source: result.source, mode: result.mode, reason: result.reason });
+        // A reason is why a source fell back; a skipped call with nothing to signal (no_signal) is not a fallback and shows none.
+        this.statuses.set(result.adapter, { adapter: result.adapter, source: result.source, mode: result.mode, ...(result.mode === "fallback" ? { reason: result.reason } : {}) });
       }
       return result.data;
     });
@@ -290,12 +307,127 @@ export class PlanContext {
     });
   }
 
+  /** Whether this plan covers a metro area in districts (lib/city.ts isMetro, scoring/districts.ts). Never Melbourne. */
+  get metro(): boolean {
+    return isMetro(this.city);
+  }
+
+  /**
+   * The taste cells the plan scores with. A CBD-sized city: the heatmap over the planning area (areaCells). A metro: the
+   * close-up heatmap of each district (one Qloo call each, cached per district box), each district's cells weighted by its
+   * strength in the whole-area read; a district whose close-up read is empty keeps its cells from the whole-area read.
+   */
+  tasteCells() {
+    return this.once("tasteCells", async () => {
+      const [area, districts] = await Promise.all([this.areaCells(), this.districts()]);
+      if (districts.length === 0) return area;
+      const soft = await this.soundsLikeIds();
+      const ids = this.ownDropped ? soft : this.withOwn(soft);
+      const tags = this.ownDropped ? [] : this.signalTags();
+      const zoomed = await Promise.all(districts.map((d) => this.track(`taste:district:${d.id}`, () => qloo.tasteMap(ids, d.bbox, this.adapters, undefined, tags))));
+      const top = districts[0].affinity || 1;
+      const out = new Map<string, qloo.HeatCell>();
+      districts.forEach((d, i) => {
+        const weight = Math.min(1, d.affinity / top);
+        const cells = zoomed[i].length > 0 ? zoomed[i].map((c) => ({ ...c, affinity: Math.round(c.affinity * weight * 1e6) / 1e6 })) : area.filter((c) => inBBox(c, d.bbox));
+        for (const c of cells) {
+          const key = c.geohash ?? `${c.lat},${c.lon}`;
+          if (!out.has(key)) out.set(key, c);
+        }
+      });
+      return [...out.values()];
+    });
+  }
+
+  /**
+   * A metro's districts, strongest first: its best named areas (scoring/areas.ts), else the whole-area heatmap's peaks
+   * (scoring/districts.ts). Empty for a CBD-sized city, and when the whole-area read has no cells inside the area. Peaks are
+   * named "Area N" here; namedDistricts() names them.
+   */
+  districts(): Promise<District[]> {
+    return this.once("districts", async () => {
+      if (!this.metro) return [];
+      const [all, ranked] = await Promise.all([this.areaCells(), this.rankedAreas()]);
+      if (this.qlooFailed()) return [];
+      // Seeded by the named areas (the strongest, spread apart); at the heatmap's peaks when fewer than two areas have taste.
+      const fromAreas = districtsFromAreas(ranked, this.city.bbox);
+      if (fromAreas.length >= 2) return fromAreas;
+      return findDistricts(
+        all.filter((c) => inBBox(c, this.city.bbox)),
+        this.city.bbox,
+      );
+    });
+  }
+
+  /**
+   * A metro's named areas (adapters/areas): the city itself, then up to 9 suburbs, towns and neighbourhoods inside the planning
+   * area, from one Overpass query (else one geocoder search). None for a CBD-sized city.
+   */
+  namedAreas(): Promise<{ areas: NamedArea[]; source: AreasSource }> {
+    return this.once("namedAreas", async () => (this.metro ? findNamedAreas(this.city, this.adapters) : { areas: [], source: "none" as const }));
+  }
+
+  /**
+   * The named areas ranked by taste (and activity) sampled from the one coarse whole-area heatmap: no Qloo call of their own.
+   * Empty for a CBD-sized city, and when no area besides the city itself was found.
+   */
+  rankedAreas(): Promise<RankedArea[]> {
+    return this.once("rankedAreas", async () => {
+      if (!this.metro) return [];
+      const [{ areas }, cells] = await Promise.all([this.namedAreas(), this.areaCells()]);
+      if (areas.length < 2) return [];
+      return rankAreas(
+        areas,
+        cells.filter((c) => inBBox(c, this.city.bbox)),
+      );
+    });
+  }
+
+  /**
+   * The cells the plan's map draws: the scored cells and, for a metro, the coarse whole-area read outside the zoomed districts
+   * too, so the taste across the whole area shows (close-up cells only where the plan zoomed in).
+   */
+  mapCells(): Promise<qloo.HeatCell[]> {
+    return this.once("mapCells", async () => {
+      const [cells, districts] = await Promise.all([this.tasteCells(), this.districts()]);
+      if (districts.length === 0) return cells;
+      // Each coarse cell once, and none over a close-up cell (a coarse geohash holding a close-up one's).
+      const under = new Set(cells.flatMap((c) => (c.geohash ? Array.from({ length: c.geohash.length - 1 }, (_, i) => c.geohash!.slice(0, i + 1)) : [])));
+      const seen = new Set(cells.map((c) => c.geohash ?? `${c.lat},${c.lon}`));
+      const coarse = (await this.areaCells()).filter((c) => {
+        const key = c.geohash ?? `${c.lat},${c.lon}`;
+        if (seen.has(key) || (c.geohash && under.has(c.geohash)) || !inBBox(c, this.city.bbox) || districts.some((d) => inBBox(c, d.bbox))) return false;
+        seen.add(key);
+        return true;
+      });
+      return [...cells, ...coarse];
+    });
+  }
+
+  /** The districts named after their named area, else the nearest OpenStreetMap spot or Qloo place (for the plan's copy and the agent's tools). */
+  namedDistricts(): Promise<District[]> {
+    return this.once("namedDistricts", async () => {
+      const districts = await this.districts();
+      if (districts.length === 0) return [];
+      if (districts.every((d) => d.area)) return districts;
+      const [spots, places] = await Promise.all([this.spots(), this.places()]);
+      return nameDistricts(districts, spots, places);
+    });
+  }
+
+  /** The 2-per-district rule for the top pitches of a metro; undefined for a CBD-sized city (no rule, as before). */
+  async spread(): Promise<DistrictSpread | undefined> {
+    const districts = await this.districts();
+    if (districts.length < 2) return undefined;
+    return { districtOf: (point) => districtOf(point, districts), maxPerDistrict: MAX_PICKS_PER_DISTRICT };
+  }
+
   /**
    * Taste heatmap over the planning area. If Qloo returns nothing, retry once
    * over a wider area and say so in the plan.
    */
-  tasteCells() {
-    return this.once("tasteCells", async () => {
+  private areaCells() {
+    return this.once("areaCells", async () => {
       const soft = await this.soundsLikeIds();
       const ids = this.withOwn(soft);
       const tags = this.signalTags();
@@ -328,11 +460,11 @@ export class PlanContext {
       const ids = await this.entityIds();
       const tags = this.signalTags();
       if (ids.length === 0 && tags.length === 0) return [];
-      const found = await this.track("places", () => qloo.busyPlaces(ids, this.city.center, PLACES_RADIUS_M, this.weekday, this.adapters, tags));
+      // A metro: one search over the whole area (per district would cost a Qloo call each).
+      const radiusM = this.metro ? this.city.radiusKm * 1000 : PLACES_RADIUS_M;
+      const found = await this.track("places", () => qloo.busyPlaces(ids, this.city.center, radiusM, this.weekday, this.adapters, tags));
       if (found.length > 0 || this.qlooFailed()) return found;
-      const wider = await this.track("places:wide", () =>
-        qloo.busyPlaces(ids, this.city.center, PLACES_RADIUS_M * WIDEN_FACTOR, this.weekday, this.adapters, tags),
-      );
+      const wider = await this.track("places:wide", () => qloo.busyPlaces(ids, this.city.center, radiusM * WIDEN_FACTOR, this.weekday, this.adapters, tags));
       this.notes.push(
         wider.length > 0
           ? "Qloo found no matching places open near the centre, so the search was widened."
@@ -385,8 +517,40 @@ export class PlanContext {
     return this.track("crowd", () => qloo.crowdProfile(ids, this.adapters, tags));
   }
 
+  /** The council's busking layers. A city with no council data gets none, and no "pitches" source at all (cityLevels().rules). */
   pitchData() {
-    return this.track("pitches", () => getPitches(this.request.city, this.adapters));
+    if (rulesFor(this.city).level !== "local") return this.once("pitches:none", async () => ({ sites: [], zones: [] }) as Awaited<ReturnType<typeof getPitches>>["data"]);
+    return this.track("pitches", () => getPitches(this.city, this.adapters));
+  }
+
+  /** What decides whether a point can be a pitch here: the council's layers (Melbourne), the hotspots, the permit, the rules line. */
+  legality(pitchData: { sites: ScoreLegality["sites"]; zones: ScoreLegality["zones"] }): ScoreLegality {
+    return { sites: pitchData.sites, zones: pitchData.zones, hotspots: hotspotsFor(this.city), permit: this.request.permit, generalRules: rulesFor(this.city).general };
+  }
+
+  /** How much each signal knows about this city (lib/city.ts). Pitches from OpenStreetMap read as worldwide data. */
+  get levels() {
+    const levels = cityLevels(this.city);
+    return this.osmPitches && levels.pitches === "none" ? { ...levels, pitches: "global" as const } : levels;
+  }
+
+  /** Whether this plan's pitches stand at OpenStreetMap spots (set once candidates() has run). */
+  private osmPitches = false;
+
+  /**
+   * Walkable public spots pitches snap to: Melbourne's curated list, else OpenStreetMap's public spaces in the planning area
+   * (V2 2.3). None when Overpass fails or finds nothing: the taste cells stand as pitches then.
+   */
+  spots() {
+    if (isMelbourne(this.city)) return Promise.resolve(pitchesFor(this.city));
+    if (!this.metro) return this.track("osm", () => getOsmSpots(this.city, this.adapters));
+    // A metro: one Overpass query per district's small box, side by side (each within the 15 s deadline, cached per box),
+    // never one metro-wide query. No districts (no taste data to find them): the CBD-sized box at the centre.
+    return this.track("osm", async () => {
+      const districts = await this.districts();
+      const boxes = districts.length > 0 ? districts : [{ bbox: boxAround(this.city.center), center: this.city.center }];
+      return mergeOsmResults(await Promise.all(boxes.map((b) => getOsmSpots(b, this.adapters, { rotate: boxes.length > 1 }))));
+    });
   }
 
   events() {
@@ -395,9 +559,9 @@ export class PlanContext {
       const { date } = this.request.slot;
       const from = zonedHourToUtc(date, ANY_TIME_DAY.startHour - EVENTS_LOOKBACK_HOURS, this.city.timeZone).toISOString();
       const to = zonedHourToUtc(date, ANY_TIME_DAY.endHour + 1, this.city.timeZone).toISOString();
-      return this.track("events", () => getEventsBetween(this.request.city, from, to, this.adapters));
+      return this.track("events", () => getEventsBetween(this.city, from, to, this.adapters));
     }
-    return this.track("events", () => getEvents(this.request.city, this.fixedSlot(), this.adapters));
+    return this.track("events", () => getEvents(this.city, this.fixedSlot(), this.adapters));
   }
 
   /**
@@ -434,7 +598,7 @@ export class PlanContext {
   weather() {
     // Any time: the day's hours, 10 am to 10 pm.
     const slot = isAnyTime(this.request.slot) ? { date: this.request.slot.date, ...ANY_TIME_DAY } : this.fixedSlot();
-    return this.track("weather", () => getWeather(this.request.city, slot, this.adapters, this.today));
+    return this.track("weather", () => getWeather(this.city, slot, this.adapters, this.today));
   }
 
   /** Last.fm top tracks for the repertoire's artists and the rising artists. */
@@ -449,20 +613,53 @@ export class PlanContext {
   /** Candidates from the data: top taste cells snapped to public spots, plus council sites, legality-filtered. */
   candidates() {
     return this.once("candidates", async () => {
-      const [pitchData, cells] = await Promise.all([this.pitchData(), this.tasteCells()]);
+      const [pitchData, cells, spots] = await Promise.all([this.pitchData(), this.tasteCells(), this.spots()]);
       if (this.statuses.get("pitches")?.mode === "fallback") {
         // Without the council's layers nothing can be checked against the rules: recommend nothing.
         this.notes.push("The council's busking rules are unavailable right now, so Busk Map can't check which spots are allowed. Try again later.");
         return { candidates: [], funnel: null };
       }
-      return buildCandidatesWithFunnel({
-        sites: pitchData.sites,
-        zones: pitchData.zones,
-        spots: PUBLIC_SPOTS,
-        cells,
-        hotspots: USUAL_HOTSPOTS,
-        permit: this.request.permit,
-      });
+      const build = async (pool: typeof spots) => {
+        // No walkable spots for this city (OpenStreetMap failed or found none): the strongest taste cells stand as pitches, named
+        // by their area and the nearest Qloo place (tasteSpotName).
+        const naming = pool.length === 0 && cells.length > 0 ? await this.tasteNaming() : { venues: [], areas: [], streets: [], city: this.city.name, cityCenter: this.city.center };
+        return buildCandidatesWithFunnel({
+          sites: pitchData.sites,
+          zones: pitchData.zones,
+          spots: pool,
+          cells,
+          hotspots: hotspotsFor(this.city),
+          permit: this.request.permit,
+          generalRules: rulesFor(this.city).general,
+          cellNames: naming.venues,
+          areas: naming.areas,
+          city: naming.city,
+          cityCenter: naming.cityCenter,
+          streets: naming.streets,
+        });
+      };
+      if (isMelbourne(this.city)) return build(spots);
+      const fromOsm = spots.length > 0 ? await build(spots) : null;
+      // OpenStreetMap spots none of the top taste cells reach: the taste cells themselves, as with no spots at all.
+      if (fromOsm && fromOsm.candidates.length > 0) {
+        this.osmPitches = true;
+        return fromOsm;
+      }
+      return build([]);
+    });
+  }
+
+  /**
+   * What names a taste spot (scoring/candidates.ts tasteSpotName): a metro's named areas, Qloo's busy places and the city. The
+   * same for the pitches and the agent's tools, so the cards, the map and the steps agree. No call of its own: the places are
+   * the scoring's, the areas a metro's (none for a CBD-sized city).
+   */
+  tasteNaming() {
+    return this.once("tasteNaming", async () => {
+      const [venues, areas, spots] = await Promise.all([this.places(), this.rankedAreas(), this.spots()]);
+      // OpenStreetMap's named streets and spaces (an unnamed one shows its kind, "Pedestrian street"), to tell spots apart.
+      const streets = isMelbourne(this.city) ? [] : spots.filter((s) => !OSM_UNNAMED.has(s.name)).map((s) => ({ name: s.name, lat: s.lat, lon: s.lon }));
+      return { venues, areas: areas.map((a) => ({ name: a.name, lat: a.lat, lon: a.lon })), streets, city: this.city.name, cityCenter: this.city.center };
     });
   }
 
@@ -479,7 +676,8 @@ export class PlanContext {
    * call: the first HOTSPOT_CROWD_TAKE are the contrast's group, all of them are the local scene's step 1 (genre over-index).
    */
   hotspotCrowd() {
-    const [hotspot] = USUAL_HOTSPOTS;
+    // A city with no known hotspots reads the crowd at its centre.
+    const hotspot = hotspotsFor(this.city)[0] ?? { name: `central ${this.city.name}`, ...this.city.center };
     const d = 0.004;
     const box = { south: hotspot.lat - d, north: hotspot.lat + d, west: hotspot.lon - d, east: hotspot.lon + d };
     return this.track("hotspotCrowd", () => qloo.localArtists([], box, USUAL_CROWD_TAKE, this.adapters)).then(({ artists }) => ({ hotspot: hotspot.name, artists }));
@@ -607,8 +805,10 @@ export class PlanContext {
     return (await this.candidates()).funnel;
   }
 
+  /** The engine's top 3: spaced apart and, for a metro, at most MAX_PICKS_PER_DISTRICT from one district. */
   async topPitches(): Promise<ScoredPitch[]> {
-    return pickTopPitches(await this.ranked(), 3);
+    const [ranked, spread] = await Promise.all([this.ranked(), this.spread()]);
+    return pickTopPitches(ranked, 3, undefined, spread);
   }
 
   /**
@@ -644,7 +844,7 @@ export class PlanContext {
   releaseYears() {
     const songs = this.songs$.filter((s) => !s.own);
     if (songs.length === 0) return Promise.resolve({} as Record<string, number>);
-    return this.track("years", () => findReleaseYears(songs, this.city.countryCode, this.adapters));
+    return this.track("years", () => findReleaseYears(songs, spotifyMarket(this.city), this.adapters));
   }
 
   /** Suggested songs asked for (docs/plan-inputs-architecture.md D4); 0 when the act asked for none. */
@@ -690,7 +890,7 @@ export class PlanContext {
       if (this.catalogueLookups >= SUGGEST_CATALOGUE_LOOKUPS) return Promise.resolve(null);
       this.catalogueLookups++;
     }
-    return this.once(key, () => catalogueOf(artist, this.city.countryCode, this.adapters));
+    return this.once(key, () => catalogueOf(artist, spotifyMarket(this.city), this.adapters));
   }
 
   /**
@@ -738,7 +938,7 @@ export class PlanContext {
       });
       // Spotify's id, link, cover, length and year join the picked songs here, for display and era fit only: build_setlist
       // shows the model the title, artist and Last.fm-based words, never these fields (tools.ts:setlistForModel).
-      const display = picks.length ? await this.once(`display:${picks.map((p) => displayKey(p.track.artist, p.track.title)).join("~")}`, () => spotifyDisplay(picks.map((p) => p.track), this.city.countryCode, this.adapters).catch(() => new Map<string, SpotifyDisplay>())) : new Map<string, SpotifyDisplay>();
+      const display = picks.length ? await this.once(`display:${picks.map((p) => displayKey(p.track.artist, p.track.title)).join("~")}`, () => spotifyDisplay(picks.map((p) => p.track), spotifyMarket(this.city), this.adapters).catch(() => new Map<string, SpotifyDisplay>())) : new Map<string, SpotifyDisplay>();
       for (const p of picks) {
         const d = display.get(displayKey(p.track.artist, p.track.title));
         if (d) Object.assign(p, { source: "spotify" as const, track: { ...p.track, spotifyTrackId: d.spotifyTrackId, url: d.url, image: d.image, year: d.year, durationMs: d.durationMs } });

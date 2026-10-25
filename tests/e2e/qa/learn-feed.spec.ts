@@ -13,7 +13,7 @@ const LINK = `https://open.spotify.com/artist/${OFFLINE_TEST_ARTIST.spotifyId}`;
 const end = (page: Page) => page.getByTestId("research-end");
 const research = async (page: Page, path = "/repertoire") => {
   await page.goto(path);
-  await page.getByLabel("Your Spotify artist link").fill(LINK);
+  await page.getByLabel("Your Spotify artist", { exact: true }).fill(LINK);
   await page.getByRole("button", { name: "Research my act" }).click();
   await expect(end(page)).toBeVisible({ timeout: 20_000 });
 };

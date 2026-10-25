@@ -5,14 +5,18 @@ import { connection } from "next/server";
 import { ExampleActCard } from "@/components/honeycomb/example-act-card";
 import { Banner } from "@/components/honeycomb/banner";
 import { PageHeader } from "@/components/honeycomb/page-header";
-import { PerformerForm } from "@/components/landing/performer-form";
+import { PerformerForm, type FormPrefill } from "@/components/landing/performer-form";
 import { Warmup } from "@/components/landing/warmup";
 import { EXAMPLES } from "@/lib/examples";
 import { PERMITS } from "@/lib/plan-schema";
-import { isAnyTime, nextAnyTimeDate, nextSlotDate, weekdayOf } from "@/lib/slot";
+import { isAnyTime, weekdayOf } from "@/lib/slot";
+import type { DefaultDateRule } from "@/lib/city-clock";
 import { loadStoredPlan } from "@/server/plans";
 import { playlistViewForCookie } from "@/server/playlist/read";
-import { serverLocalNow } from "@/server/clock";
+import { serverNow } from "@/server/clock";
+import { optionOf } from "@/lib/city";
+import { fansCityOption } from "@/server/fans-city";
+import { adapterContextFor } from "@/server/request";
 
 export const metadata: Metadata = {
   title: "Plan your busk · Busk Map",
@@ -52,10 +56,12 @@ async function OwnAct({ searchParams }: Pick<PageProps<"/busks">, "searchParams"
   const permitParam = PERMITS.find((p) => p === query.permit);
   // The default date depends on today, so render it at request time.
   await connection();
-  const { today, hour } = serverLocalNow("Australia/Melbourne");
+  const now = serverNow().toISOString();
   const stored = typeof again === "string" ? await loadStoredPlan(again).catch(() => null) : null;
   const repertoire = await playlistViewForCookie((await headers()).get("cookie"));
   if (!stored) {
+    // `?fans=<name>~<lat>~<lng>` (the Repertoire's "Plan a busk here"): the form starts on that city.
+    const fans = await fansCityOption(typeof query.fans === "string" ? query.fans : undefined, adapterContextFor(typeof query.faults === "string" ? query.faults : null));
     return (
       <>
         <section aria-labelledby="examples-h" className="flex flex-col gap-3.5">
@@ -70,16 +76,18 @@ async function OwnAct({ searchParams }: Pick<PageProps<"/busks">, "searchParams"
             ))}
           </ul>
         </section>
-        <PerformerForm key={formKey("act", repertoire)} defaultDate={nextAnyTimeDate(today, hour)} today={today} repertoire={repertoire} />
+        <PerformerForm key={formKey(`act:${fans?.id ?? ""}`, repertoire)} startCity={fans ?? undefined} now={now} dateRule={{ kind: "any" }} repertoire={repertoire} />
       </>
     );
   }
   const { performer, slot } = stored.request;
   const permit = permitParam ?? stored.request.permit;
+  // Planning again keeps the busk's city.
+  const city = optionOf(stored.request);
   // A plan made for "any time" opens the form on any time, on the next date a window can still start.
-  const when = isAnyTime(slot)
-    ? { defaultDate: nextAnyTimeDate(today, hour), prefill: { performer, permit, anyTime: true as const } }
-    : { defaultDate: nextSlotDate(weekdayOf(slot.date), slot.startHour, slot.endHour, today, hour), prefill: { performer, permit, startHour: slot.startHour, endHour: slot.endHour } };
+  const when: { dateRule: DefaultDateRule; prefill: FormPrefill } = isAnyTime(slot)
+    ? { dateRule: { kind: "any" }, prefill: { performer, permit, city, anyTime: true } }
+    : { dateRule: { kind: "weekday", weekday: weekdayOf(slot.date), startHour: slot.startHour, endHour: slot.endHour }, prefill: { performer, permit, city, startHour: slot.startHour, endHour: slot.endHour } };
   return (
     <>
       <Banner tone="info">
@@ -87,8 +95,8 @@ async function OwnAct({ searchParams }: Pick<PageProps<"/busks">, "searchParams"
       </Banner>
       <PerformerForm
         key={formKey(stored.id, repertoire)}
-        defaultDate={when.defaultDate}
-        today={today}
+        now={now}
+        dateRule={when.dateRule}
         prefill={when.prefill}
         repertoire={repertoire}
       />

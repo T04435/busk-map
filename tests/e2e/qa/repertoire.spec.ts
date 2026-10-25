@@ -141,7 +141,7 @@ test.describe("QA Repertoire: plans and examples never write one", () => {
     }
     await expect(page.getByRole("heading", { level: 1, name: "Your Repertoire" })).toBeVisible();
     // An empty Repertoire is the research link field only (docs/repertoire-research.md).
-    await expect(page.getByLabel("Your Spotify artist link")).toBeVisible();
+    await expect(page.getByLabel("Your Spotify artist", { exact: true })).toBeVisible();
     expect(writes).toEqual([]);
     expect((await page.context().cookies()).some((c) => c.name === "buskmap_playlist")).toBe(false);
     expect(await view(page.request)).toBeNull();

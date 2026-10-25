@@ -21,7 +21,10 @@ import { SongTag } from "@/components/honeycomb/song-tag";
 import type { AgentStep } from "@/lib/agent-steps";
 import { activityWord, type ActivityBasis } from "@/lib/activity";
 import type { ExplanationsModel } from "@/lib/sources";
+import type { LevelSignal, LevelWord } from "@/lib/signal-level";
+import { LevelBadge } from "@/components/honeycomb/level-badge";
 import { EstimateLabel } from "./estimate-label";
+import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
 type Rec = Record<string, unknown>;
 const rec = (v: unknown): Rec => (v !== null && typeof v === "object" && !Array.isArray(v) ? (v as Rec) : {});
@@ -39,8 +42,10 @@ export function placeOf(step: AgentStep): string {
   if (label) return label.replace(/^near /, "");
   const input = rec(step.input);
   const where = rec(input.at ?? input.near ?? input.spot ?? input.point);
-  return str(where.spot) ?? str(where.label) ?? str(where.pitchName) ?? (str(where.pitchId) ? String(where.pitchId).replace(/^[a-z]+:(osm:)?/, "").replace(/-/g, " ") : null) ?? "this spot";
+  return str(where.spot) ?? str(where.place) ?? str(where.label) ?? str(where.pitchName) ?? (str(where.pitchId) ? String(where.pitchId).replace(/^[a-z]+:(osm:)?/, "").replace(/-/g, " ") : null) ?? "this spot";
 }
+/** A check_pitch step in a city whose busking rules aren't checked (tools.ts UNCHECKED_TOOL, or its output). */
+const rulesUnchecked = (step: AgentStep) => rec(step.output).legal === "not checked" || /rules not checked/.test(step.label ?? "");
 const forPitch = (step: AgentStep) => /for (.+?)[;:]/.exec(step.summary ?? "")?.[1] ?? "this pitch";
 
 /** The DS icon tone: the colour a fact's icon takes (bm-ic-*). */
@@ -51,14 +56,17 @@ const TONE: Record<FactTone, string> = { places: "text-chart-3", event: "text-ev
  * One fact (shadcn Item): an icon in a 24px column, a bold title, an optional muted line and any extras (the DS Fact). Inside a research card it is
  * `flush` (no rule, no padding); in the pitch card's facts list it keeps its rule underneath.
  */
-export function Fact({ icon, tone, title, sub, flush = false, children }: { icon: IconName; tone?: FactTone; title: ReactNode; sub?: ReactNode; flush?: boolean; children?: ReactNode }) {
+export function Fact({ icon, tone, title, sub, level, flush = false, children }: { icon: IconName; tone?: FactTone; title: ReactNode; sub?: ReactNode; level?: LevelWord | null; flush?: boolean; children?: ReactNode }) {
   return (
     <Item className={cn("grid grid-cols-[24px_1fr] items-stretch gap-3 text-[15px] leading-[22px]", flush ? "" : "border-b border-border py-3")}>
       <ItemMedia variant="icon" className="items-start justify-start">
         <Icon name={icon} size={20} className={cn("mt-px", tone && TONE[tone])} />
       </ItemMedia>
       <ItemContent className="block">
-        <ItemTitle>{title}</ItemTitle>
+        <ItemTitle>
+          {title}
+          {level ? <LevelBadge word={level} className="ml-2 align-[1px]" /> : null}
+        </ItemTitle>
         {sub ? (
           <ItemDescription asChild>
             <div>{sub}</div>
@@ -208,9 +216,13 @@ const researchUi = (line: (o: Rec) => RichTextData | string): ToolUi => ({
 });
 const artistOf = (a: Rec) =>
   mentionArtist(str(a.name) ?? "", { image: str(a.image), href: str(a.href) ?? (str(a.spotifyId) ? SPOTIFY_ARTIST_URL(str(a.spotifyId) as string) : null) });
+/** A genre-based research step names the genres it used: "Based on Dembow and Reggaeton: your fans also love …". */
+const byGenresOf = (o: Rec) => (o.basedOn === "genres" && Array.isArray(o.byGenres) ? (o.byGenres as unknown[]).filter((g): g is string => typeof g === "string" && g.length > 0) : []);
 const artistsLine = (lead: string, none: string) => (o: Rec) => {
   const artists = arr(o.artists).filter((a) => str(a.name));
-  return artists.length ? [`${lead} `, ...listOf(artists.slice(0, 6).map(artistOf))] : none;
+  const genres = byGenresOf(o);
+  const head = genres.length ? `${PLAYLIST_COPY.research.fallback.basedOnGenres(genres)}: ${lead.charAt(0).toLowerCase()}${lead.slice(1)}` : lead;
+  return artists.length ? [`${head} `, ...listOf(artists.slice(0, 6).map(artistOf))] : none;
 };
 const RESEARCH_UI: Record<string, ToolUi> = {
   research_profile: researchUi((o) => (str(o.name) ? ["Read ", artistOf(o), " on ", mentionSource("spotify")] : (str(o.summary) ?? ""))),
@@ -255,6 +267,13 @@ const RESEARCH_UI: Record<string, ToolUi> = {
 /** Each tool as a busker sees it: what it is doing while it runs, a plain title once done, and its result drawn from the contract fields. */
 export const TOOL_UI: Record<string, ToolUi> = {
   ...RESEARCH_UI,
+  // A metro planned across its areas: the areas compared, by name, best first.
+  compare_areas: {
+    doing: () => "Comparing areas across the city",
+    title: () => "Areas across the city",
+    line: (o) => str(o.summary) ?? "",
+    render: (o) => <Foot>{str(o.summary) ?? ""}</Foot>,
+  },
   taste_map: {
     doing: () => "Mapping where your crowd gathers",
     title: () => "Where your crowd gathers",
@@ -263,7 +282,7 @@ export const TOOL_UI: Record<string, ToolUi> = {
       // Before the plan exists the strongest cells stand in as pins: the top 3 numbered, the rest small dots.
       const pins: MiniPin[] = ctx.pins?.length
         ? ctx.pins
-        : strongest.map((c, i) => ({ id: `cell-${i}`, name: str(c.near) ?? "A block without a name", lat: num(c.lat) as number, lon: num(c.lon) as number, rank: i + 1 }));
+        : strongest.map((c, i) => ({ id: `cell-${i}`, name: str(c.name) ?? str(c.near) ?? "Taste spot", lat: num(c.lat) as number, lon: num(c.lon) as number, rank: i + 1 }));
       return <MiniTasteMap cells={strongest} pins={pins} />;
     },
   },
@@ -398,12 +417,16 @@ export const TOOL_UI: Record<string, ToolUi> = {
     },
   },
   check_pitch: {
-    doing: (s) => `Checking the busking rules at ${placeOf(s)}`,
-    title: (s) => `The rules at ${str(rec(s.output).name) ?? placeOf(s)}`,
+    // V2 2.4: where the rules aren't checked the step only looks at a spot (its server label says so), so it names no rules.
+    doing: (s) => (rulesUnchecked(s) ? `Looking at ${placeOf(s)}` : `Checking the busking rules at ${placeOf(s)}`),
+    title: (s) => (rulesUnchecked(s) ? `A look at ${str(rec(s.output).name) ?? placeOf(s)}` : `The rules at ${str(rec(s.output).name) ?? placeOf(s)}`),
     render: (o) => {
       const out = o.legal === "ruled out";
-      const unknown = !out && o.legal !== "not ruled out";
+      // V2 2.4: a city with no council rules: nothing is ruled in or out.
+      const unchecked = o.legal === "not checked";
+      const unknown = !out && !unchecked && o.legal !== "not ruled out";
       const cautions = Array.isArray(o.cautions) ? (o.cautions as string[]) : [];
+      if (unchecked) return <Fact flush icon="legal" tone="legal" title="Local busking rules not checked" sub="Check with the city before you play." />;
       return (
         <Fact flush icon={out ? "restricted" : "legal"} tone="legal" title={out ? "Ruled out by the council's busking rules" : unknown ? "The rules are unavailable right now" : "Not ruled out for your permit"}>
           <Cautions items={cautions} />
@@ -550,9 +573,22 @@ export const TOOL_UI: Record<string, ToolUi> = {
   },
 };
 
+/** The signal each plan tool reads, for its level word beside the step title (V2 2.2). */
+export const TOOL_SIGNAL: Partial<Record<string, LevelSignal>> = {
+  compare_areas: "taste",
+  taste_map: "taste",
+  crowd_at: "taste",
+  busy_places: "taste",
+  compare_crowds: "taste",
+  events_near: "events",
+  activity_at: "activity",
+  check_pitch: "rules",
+};
+
 /** The DS icon for each tool's cell; an unknown tool gets the dots glyph. */
 /** The data sources each tool reads, drawn as their marks after the step title (U17). The Hive's own summary step has none. */
 export const TOOL_SOURCES: Record<string, MentionSource[]> = {
+  compare_areas: ["qloo"],
   taste_map: ["qloo"],
   crowd_at: ["qloo"],
   busy_places: ["qloo"],
@@ -589,6 +625,7 @@ export function stepSources(step: { tool: string | null; via?: MentionSource; ou
 }
 
 export const TOOL_ICON: Record<string, IconName> = {
+  compare_areas: "map",
   taste_map: "map",
   crowd_at: "users",
   busy_places: "store",

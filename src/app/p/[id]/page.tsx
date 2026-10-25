@@ -6,7 +6,8 @@ import { PageHeader } from "@/components/honeycomb/page-header";
 import { SlotPassed } from "@/components/honeycomb/slot-passed";
 import { PlanScreen, PlanSkeleton } from "@/components/plan/plan-screen";
 import { isAnyTime, shortDay, shortHours, slotEyebrow } from "@/lib/slot";
-import { CITIES } from "@/server/cities";
+import { levelsToLabel, rulesChecked } from "@/lib/signal-level";
+import { cityOf } from "@/server/cities";
 import { freshRunsAllowed, loadStoredPlan, slotPassed, snapshotEvents, snapshotFor, viewerRequest } from "@/server/plans";
 import { adapterContextFor, pageFaultsFor } from "@/server/request";
 import { serverToday } from "@/server/clock";
@@ -45,7 +46,7 @@ async function ShortPlan({ params, searchParams }: Pick<PageProps<"/p/[id]">, "p
 
   const adapters = adapterContextFor(first(query.faults));
   const testFaults = pageFaultsFor(first(query.faults));
-  const city = CITIES[request.city];
+  const city = cityOf(request);
   const fresh = first(query.fresh) === "1" && freshRunsAllowed();
   // run=0 asks for the engine's plan alone (also the fallback when the agent ends without one): no stored run then.
   const engineOnly = first(query.run) === "0";
@@ -57,7 +58,7 @@ async function ShortPlan({ params, searchParams }: Pick<PageProps<"/p/[id]">, "p
   if (passed && !snapshot) {
     return (
       <div className="space-y-6">
-        <PageHeader meta={`Shared busk · ${slotEyebrow(request.slot, request.permit)}`} title={request.performer.name} />
+        <PageHeader meta={`Shared busk · ${slotEyebrow(request.slot, rulesChecked(levelsToLabel(city.id)) ? request.permit : null)}`} title={request.performer.name} />
         <SlotPassed slotLabel={slotLabel} againHref={againHref} alone />
       </div>
     );

@@ -1,6 +1,6 @@
 import "server-only";
 import { addDays, slotHours, type Slot } from "@/lib/slot";
-import { CITIES, type CityId } from "@/server/cities";
+import type { City } from "@/server/cities";
 import { AdapterError, runAdapter, type AdapterContext, type AdapterResult } from "../core";
 import { fetchHourlyForecast, fetchHourlyForecastRange } from "./client";
 import { syntheticWeather } from "./fixtures/synthetic";
@@ -17,12 +17,11 @@ export const FORECAST_DAYS = 16;
  * ignored.
  */
 export async function getWeather(
-  cityId: CityId,
+  city: City,
   slot: Slot,
   context: AdapterContext,
-  today: string = serverToday(CITIES[cityId].timeZone),
+  today: string = serverToday(city.timeZone),
 ): Promise<AdapterResult<WeatherData>> {
-  const city = CITIES[cityId];
   const hours = slotHours(slot);
   return runAdapter<WeatherData>({
     adapter: "weather",
@@ -46,13 +45,12 @@ export async function getWeather(
  * planner). Days beyond the forecast range are simply absent. Fallback: {}.
  */
 export async function getWeatherWeek(
-  cityId: CityId,
+  city: City,
   startDate: string,
   days: number,
   context: AdapterContext,
-  today: string = serverToday(CITIES[cityId].timeZone),
+  today: string = serverToday(city.timeZone),
 ): Promise<AdapterResult<Record<string, WeatherHour[]>>> {
-  const city = CITIES[cityId];
   const last = addDays(today, FORECAST_DAYS - 1);
   const wantedEnd = addDays(startDate, days - 1);
   const endDate = wantedEnd < last ? wantedEnd : last;

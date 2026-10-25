@@ -16,7 +16,9 @@ export type AdapterName =
   | "events"
   | "songs"
   | "repertoire"
-  | "weather";
+  | "weather"
+  | "geocode"
+  | "osm";
 
 export const ADAPTER_NAMES: readonly AdapterName[] = [
   "qloo",
@@ -25,6 +27,8 @@ export const ADAPTER_NAMES: readonly AdapterName[] = [
   "songs",
   "repertoire",
   "weather",
+  "geocode",
+  "osm",
 ];
 
 export type AdapterErrorKind =
@@ -35,7 +39,9 @@ export type AdapterErrorKind =
   | "invalid_response"
   | "not_found"
   | "network"
-  | "fault_injected";
+  | "fault_injected"
+  /** Not a failure: the call was skipped before any request because it had no valid signal or filter to send (Qloo would answer 400). */
+  | "no_signal";
 
 export class AdapterError extends Error {
   readonly kind: AdapterErrorKind;
@@ -201,6 +207,10 @@ export async function runAdapter<T>({
     return { adapter, source, mode: "live", data: await live() };
   } catch (error) {
     const kind = errorKindOf(error);
+    if (kind === "no_signal") {
+      log.info("adapter call skipped: nothing to signal", { adapter, error: error instanceof Error ? error.message : "unknown error" });
+      return { adapter, source, mode: "fallback", data: fallback, reason: kind };
+    }
     log.error("adapter failed, using fallback", {
       adapter,
       kind,
@@ -216,6 +226,7 @@ export async function runAdapter<T>({
  */
 export function errorKindOf(error: unknown): AdapterErrorKind {
   if (error instanceof AdapterError) return error.kind;
+  if (/no valid signal or filter to send/.test(error instanceof Error ? error.message : typeof error === "string" ? error : "")) return "no_signal";
   const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
   const status = /returned HTTP (\d{3})/.exec(message)?.[1];
   if (status === "404") return "not_found";

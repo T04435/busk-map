@@ -7,7 +7,7 @@ import { serverNow } from "@/server/clock";
 import { anyTimeWindowsLeft, isAnyTime, localHour, localToday, slotUtcRange, type RequestSlot } from "@/lib/slot";
 import { planKey } from "@/server/agent/plan-store";
 import { withFinalTotals } from "@/server/agent/runs";
-import { CITIES } from "@/server/cities";
+import { cityOf } from "@/server/cities";
 import { testSwitches } from "@/server/env";
 import { log } from "@/server/log";
 import { planLinkLimiter } from "@/server/rate-limit";
@@ -26,7 +26,7 @@ export async function resolvePlanLink(request: PlanRequest, exampleId: string | 
   const offline = testSwitches().offline;
   const store = shortPlanStore(offline);
   if (!linksDurable(store)) return { id: null, reason: "not_durable" };
-  const day = localToday(CITIES[request.city].timeZone, now);
+  const day = localToday(cityOf(request).timeZone, now);
   try {
     const found = exampleId ? null : await findPlanId(store, request, exampleId, day);
     if (found) return { id: found };

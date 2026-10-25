@@ -63,12 +63,13 @@ const STATUS_VARIANT = { ours: "neutral", scored: "neutral", "not-legal": "restr
 type Pitch = Pick<PlanPitch, "id" | "name" | "score" | "discovery" | "factors" | "activityBasis" | "cellRank" | "evidence" | "amplification">;
 
 /** What Busk Map knows about a pitch that a plain AI can't. */
-function evidenceLines(pitch: Pitch): string[] {
+function evidenceLines(pitch: Pitch, rulesChecked: boolean): string[] {
   const lines: string[] = [];
   if (pitch.factors.taste !== null) lines.push(`Qloo taste match: ${strengthPhrase(pitch.factors.taste)}${pitch.cellRank ? ` (your no. ${pitch.cellRank} area on Qloo's heatmap)` : ""}`);
   if (pitch.evidence.activity) lines.push(`${activityWord(wordLevel(pitch.evidence.activity.level, pitch.evidence.activity.relative))} here in your slot (est.)`);
   for (const event of pitch.evidence.events.slice(0, 1)) lines.push(`${event.name}: crowd ${event.moment === "leaving" ? "leaves" : "arrives"} around ${event.localTime}`);
-  lines.push(`The council's busking layers don't rule it out${pitch.amplification === "unamplified-zone" ? " (unamplified only)" : ""}`);
+  // Outside Melbourne no council layers were read (V2 2.4): say so rather than claim a check.
+  lines.push(rulesChecked ? `The council's busking layers don't rule it out${pitch.amplification === "unamplified-zone" ? " (unamplified only)" : ""}` : "Local busking rules not checked");
   return lines;
 }
 
@@ -87,7 +88,7 @@ const Section = ({ label, title, count, children }: { label: string; title: stri
  * can't know), and only plain AI (with Busk Map's own score for the pitch where it can score it). Agreement is a badge only:
  * the baseline never changes a score.
  */
-export function ComparePanel({ state, pitches }: { state: BaselineState; pitches: Pitch[] }) {
+export function ComparePanel({ state, pitches, rulesChecked = true }: { state: BaselineState; pitches: Pitch[]; rulesChecked?: boolean }) {
   return (
     <section aria-label="Busk Map vs a plain AI" data-testid="compare-panel" className="space-y-4 border-2 border-rule bg-card p-4 md:p-6">
       <h2 className="m-0 font-display text-[32px] leading-none font-extrabold uppercase">Busk Map vs a plain AI</h2>
@@ -105,13 +106,13 @@ export function ComparePanel({ state, pitches }: { state: BaselineState; pitches
             <p className="m-0 text-muted-foreground">{state.message}</p>
           </div>
         )}
-        {state.status === "done" && <Buckets baseline={state.baseline} pitches={pitches} />}
+        {state.status === "done" && <Buckets baseline={state.baseline} pitches={pitches} rulesChecked={rulesChecked} />}
       </div>
     </section>
   );
 }
 
-function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch[] }) {
+function Buckets({ baseline, pitches, rulesChecked }: { baseline: BaselineView; pitches: Pitch[]; rulesChecked: boolean }) {
   const byId = new Map(pitches.map((p) => [p.id, p]));
   const agreed = baseline.bothAgree.flatMap((a) => {
     const pitch = byId.get(a.pitchId);
@@ -166,7 +167,7 @@ function Buckets({ baseline, pitches }: { baseline: BaselineView; pitches: Pitch
                   {pitch.discovery === "hidden-gem" && <DiscoveryBadge discovery="hidden-gem" />}
                 </span>
                 <ul className="m-0 flex list-none flex-col gap-1 p-0 text-sm text-muted-foreground">
-                  {evidenceLines(pitch).map((line) => (
+                  {evidenceLines(pitch, rulesChecked).map((line) => (
                     <li key={line} className="flex items-start gap-2">
                       <span aria-hidden="true" className="mt-1.5 size-2 shrink-0 bg-primary [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]" />
                       {line}

@@ -6,8 +6,10 @@ import { z } from "zod";
 import { requestSlotSchema, slotSchema } from "./slot";
 import { researchTotalsSchema } from "./research-totals";
 import { callRecordSchema } from "./call-record";
+import { cityLevelsSchema, cityPlaceSchema, citySlugSchema, DEFAULT_CITY_ID } from "./city";
 
 export const PERMITS = ["general", "premium", "circle-act"] as const;
+/** The built-in cities (the week planner still plans Melbourne only). Plans take any city: see lib/city.ts. */
 export const CITY_IDS = ["melbourne"] as const;
 
 const text = (max: number) => z.string().trim().min(1).max(max);
@@ -36,38 +38,47 @@ export const weightsSchema = z
   })
   .partial();
 
-export const planRequestSchema = z.object({
-  city: z.enum(CITY_IDS),
-  slot: requestSlotSchema,
-  permit: z.enum(PERMITS).default("general"),
-  performer: z.object({
-    name: text(80),
-    artists: z.array(text(80)).min(1).max(10),
-    /** Spotify ids for artists picked from search: Qloo resolves these by id before trying the name. */
-    spotifyArtists: z.array(z.object({ name: text(80), id: spotifyIdSchema })).max(10).default([]),
-    /** No product cap: the whole Repertoire is sent; the server bounds what it works on (lib/plan-songs-bound.ts). 1000 only stops abuse. */
-    songs: z.array(repertoireSongSchema).max(1000).default([]),
+export const planRequestSchema = z
+  .object({
     /**
-     * How many suggested songs to add (D4). OPTIONAL and never defaulted: a default would add a key to every
-     * parsed old request and change its requestHash, planKey and saved-run checks.
+     * The city's slug (lib/city.ts). Every stored request already says "melbourne", so the default adds no key to an old one
+     * (the golden hashes, tests/unit/server/plan-inputs-golden.test.ts).
      */
-    fillSuggested: z.number().int().min(1).max(8).optional(),
-    /** Songs removed for this busk, so the fill leaves them out (D6). Optional, never defaulted. */
-    skipSongs: z.array(z.object({ title: text(120), artist: text(80) })).max(1000).optional(),
-    /**
-     * The act's own artist on Qloo (resolved from the saved Spotify link): its entity joins the taste signal and its fans'
-     * age and gender lean is shown against the crowd. OPTIONAL and never defaulted, like fillSuggested: a default would change
-     * every old request's requestHash and planKey (tests/unit/server/plan-inputs-golden.test.ts).
-     */
-    ownArtist: z.object({ qlooId: text(64), name: text(80), spotifyId: spotifyIdSchema.optional() }).optional(),
-    /**
-     * The act's sound in Qloo music genres (Repertoire research step 8), for the local scene: the city's over-indexed genres the
-     * act shares lead the scene search and are marked. OPTIONAL and never defaulted, like ownArtist (the golden hashes).
-     */
-    genreTags: z.array(z.object({ id: text(80), name: text(60) })).min(1).max(6).optional(),
-  }),
-  weights: weightsSchema.optional(),
-});
+    city: citySlugSchema.default(DEFAULT_CITY_ID),
+    /** Any city but Melbourne: the geocoded place itself (name, country, point, time zone). OPTIONAL and never defaulted. */
+    place: cityPlaceSchema.optional(),
+    slot: requestSlotSchema,
+    permit: z.enum(PERMITS).default("general"),
+    performer: z.object({
+      name: text(80),
+      artists: z.array(text(80)).min(1).max(10),
+      /** Spotify ids for artists picked from search: Qloo resolves these by id before trying the name. */
+      spotifyArtists: z.array(z.object({ name: text(80), id: spotifyIdSchema })).max(10).default([]),
+      /** No product cap: the whole Repertoire is sent; the server bounds what it works on (lib/plan-songs-bound.ts). 1000 only stops abuse. */
+      songs: z.array(repertoireSongSchema).max(1000).default([]),
+      /**
+       * How many suggested songs to add (D4). OPTIONAL and never defaulted: a default would add a key to every
+       * parsed old request and change its requestHash, planKey and saved-run checks.
+       */
+      fillSuggested: z.number().int().min(1).max(8).optional(),
+      /** Songs removed for this busk, so the fill leaves them out (D6). Optional, never defaulted. */
+      skipSongs: z.array(z.object({ title: text(120), artist: text(80) })).max(1000).optional(),
+      /**
+       * The act's own artist on Qloo (resolved from the saved Spotify link): its entity joins the taste signal and its fans'
+       * age and gender lean is shown against the crowd. OPTIONAL and never defaulted, like fillSuggested: a default would change
+       * every old request's requestHash and planKey (tests/unit/server/plan-inputs-golden.test.ts).
+       */
+      ownArtist: z.object({ qlooId: text(64), name: text(80), spotifyId: spotifyIdSchema.optional() }).optional(),
+      /**
+       * The act's sound in Qloo music genres (Repertoire research step 8), for the local scene: the city's over-indexed genres the
+       * act shares lead the scene search and are marked. OPTIONAL and never defaulted, like ownArtist (the golden hashes).
+       */
+      genreTags: z.array(z.object({ id: text(80), name: text(60) })).min(1).max(6).optional(),
+    }),
+    weights: weightsSchema.optional(),
+  })
+  // Melbourne is built in and carries no place; any other city must say where it is.
+  .refine((r) => (r.city === DEFAULT_CITY_ID ? r.place === undefined : r.place !== undefined), { path: ["place"], message: "Pick the city from the list." });
 
 export type PlanRequest = z.infer<typeof planRequestSchema>;
 export type PlanRequestInput = z.input<typeof planRequestSchema>;
@@ -230,7 +241,7 @@ export type AgentChange = z.infer<typeof agentChangeSchema>;
 
 export const planSchema = z.object({
   version: z.literal(1),
-  city: z.enum(CITY_IDS),
+  city: citySlugSchema,
   cityName: z.string(),
   slot: slotSchema,
   slotLabel: z.string(),
@@ -244,6 +255,10 @@ export const planSchema = z.object({
   explanationsModel: z.enum(["claude", "mock"]).nullable().default(null),
   summary: z.string(),
   notes: z.array(z.string()),
+  /** A metro planned in districts (server/scoring/districts.ts): each district's name and centre, strongest first. Absent otherwise. */
+  districts: z.array(z.object({ name: z.string(), lat: z.number(), lon: z.number() })).optional(),
+  /** A metro's named areas (server/scoring/areas.ts), best for this act first; `zoomed`: searched street by street as a district. Absent otherwise. */
+  areas: z.array(z.object({ name: z.string(), lat: z.number(), lon: z.number(), zoomed: z.boolean() })).optional(),
   // Plans stored before the activity estimate carry `footfall` and `places`: together they are its weight.
   weights: z.preprocess(
     (value) => {
@@ -340,7 +355,10 @@ export const planSchema = z.object({
     .nullable(),
   resolvedArtists: z.array(z.object({ query: z.string(), matched: z.string().nullable() })),
   dataStatus: z.array(dataStatusSchema),
-  rulesUrl: z.string(),
+  /** The council's busking page; null for a city without council data (rules not checked). */
+  rulesUrl: z.string().nullable(),
+  /** How much each signal knows about the plan's city (lib/city.ts). Null for plans stored before cities. */
+  cityLevels: cityLevelsSchema.nullable().default(null),
   /** Whether Qloo (required) failed: the plan is then unusable and the UI shows an error. */
   qlooFailed: z.boolean(),
   /**

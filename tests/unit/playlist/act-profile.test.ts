@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { checksum, runMigrations, statements } from "../../../scripts/migrate-lib.mjs";
-import { parseSpotifyArtistId, spotifyArtistUrl } from "@/lib/spotify-link";
+import { looksLikeLink, parseSpotifyArtistId, spotifyArtistUrl } from "@/lib/spotify-link";
 
 const ID = "4gzpq5DPGxSnKTe4SA8HAU";
 
@@ -83,6 +83,13 @@ describe("the act profile in the Repertoire (act name, artists you sound like, S
     expect(parseSpotifyArtistId(ID)).toBe(ID);
     expect(parseSpotifyArtistId("hello")).toBeNull();
     expect(spotifyArtistUrl(ID)).toBe(`https://open.spotify.com/artist/${ID}`);
+  });
+
+  it("tells a pasted link from a name to search Spotify for (the act lookup on /repertoire)", () => {
+    for (const link of [`https://open.spotify.com/artist/${ID}?si=abc`, `open.spotify.com/artist/${ID}`, `spotify:artist:${ID}`, ID, "https://example.com/not-spotify", "spotify:track:x"]) {
+      expect(looksLikeLink(link)).toBe(true);
+    }
+    for (const name of ["Julia Jacklin", "Paul Kelly", "  sp  ", "AC/DC"]) expect(looksLikeLink(name)).toBe(false);
   });
 });
 

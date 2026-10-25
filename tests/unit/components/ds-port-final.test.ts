@@ -76,6 +76,24 @@ describe("SlotPassed and AgentStatusLine", () => {
     expect(out).toContain('data-testid="agent-status"');
     expect(out.match(/role="status"/g)).toHaveLength(1);
   });
+  it("names the council's rules only where they are checked (Melbourne), never outside it", () => {
+    const melbourne = html(createElement(AgentStatusLine, { state: "researching" }));
+    expect(melbourne).toContain("is asking Qloo and the council&#x27;s rules. Your busk replaces this in about half a minute.");
+    const elsewhere = html(createElement(AgentStatusLine, { state: "researching", rulesChecked: false }));
+    expect(elsewhere).toContain("is asking Qloo. Your busk replaces this in about half a minute.");
+    expect(elsewhere).not.toMatch(/council/i);
+  });
+});
+
+describe("check_pitch step outside Melbourne", () => {
+  it("is a look at a spot, not a rules check, when the city's rules aren't checked", async () => {
+    const { TOOL_UI } = await import("@/components/plan/tool-results");
+    const ui = TOOL_UI.check_pitch;
+    const step = (extra: object) => ({ id: "1", tool: "check_pitch", label: "Checking a spot against the busking rules", status: "done", notes: [], input: { spot: { place: "Rossio" } }, ...extra }) as never;
+    expect(ui.doing(step({ label: "Looking at a spot (local busking rules not checked)", status: "running" }))).toBe("Looking at Rossio");
+    expect(ui.title(step({ output: { name: "Shibuya · near Bar Hachi", legal: "not checked" } }))).toBe("A look at Shibuya · near Bar Hachi");
+    expect(ui.title(step({ output: { name: "Federation Square", legal: "not ruled out" } }))).toBe("The rules at Federation Square");
+  });
 });
 
 describe("SetlistPanel", () => {

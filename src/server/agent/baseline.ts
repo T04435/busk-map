@@ -2,8 +2,7 @@ import "server-only";
 import { isAnyTime } from "@/lib/slot";
 import type { BaselineView, PlanRequest } from "@/lib/plan-schema";
 import type { AdapterContext } from "@/server/adapters/core";
-import { CITIES } from "@/server/cities";
-import { USUAL_HOTSPOTS } from "@/server/data/spots";
+import { cityOf } from "@/server/cities";
 import { comparisonStore, recordComparison } from "@/server/comparisons/store";
 import { log } from "@/server/log";
 import { processMap } from "@/server/memo";
@@ -31,16 +30,16 @@ async function build(request: PlanRequest, adapters: AdapterContext, day: string
   const [plain] = await Promise.all([plainLlmSuggestion(request, adapters.offline), buildEnginePlan(request, adapters, day)]);
   if (plain.text === null) return { status: plain.reason };
   const ctx = engineContext(request, adapters, day);
-  const [top, ranked, pitchData] = await Promise.all([ctx.topPitches(), ctx.ranked(), ctx.pitchData()]);
+  const [top, ranked, pitchData, spots] = await Promise.all([ctx.topPitches(), ctx.ranked(), ctx.pitchData(), ctx.spots()]);
   // Any time: the plain AI's spots are scored at their own best window, like the pool.
   const anyTime = ctx.isAnyTime ? await ctx.anyTimeBase() : null;
   const windows = ctx.windows();
   const comparison = compareWithBaseline(plain.spots, {
     top,
     ranked,
-    places: knownPlaces(pitchData.sites),
+    places: knownPlaces(pitchData.sites, ctx.city, spots),
     area: ctx.city.bbox,
-    legality: { sites: pitchData.sites, zones: pitchData.zones, hotspots: USUAL_HOTSPOTS, permit: request.permit },
+    legality: ctx.legality(pitchData),
     ...(anyTime ? { scoreCandidate: (c: Candidate) => scorePitchAnyTime(c, anyTime, windows, ctx.weights) } : { scoreInputs: await ctx.scoreInputs() }),
     weights: ctx.weights,
   });
@@ -73,7 +72,7 @@ async function build(request: PlanRequest, adapters: AdapterContext, day: string
 }
 
 function keyFor(request: PlanRequest, adapters: AdapterContext, today?: string) {
-  const day = today ?? serverToday(CITIES[request.city].timeZone);
+  const day = today ?? serverToday(cityOf(request).timeZone);
   return { day, key: JSON.stringify([request, adapters.offline, [...adapters.faults].sort(), day]) };
 }
 

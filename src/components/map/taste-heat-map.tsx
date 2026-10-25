@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { LngLatBounds, Map as MapLibreMap, NavigationControl, type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { OSM_ATTRIBUTION, STYLE_URL, baseStyle, fillExpression, hexagon, rampColors, themeColor, whenStyle } from "@/components/map/map-shared";
+import { OSM_ATTRIBUTION, STYLE_URL, baseStyle, fillExpression, hexagon, hexImage, rampColors, themeColor, whenStyle } from "@/components/map/map-shared";
 import { MAP_FRAME, MAP_GESTURES, orangeCells } from "@/components/map/taste-cells";
 
 export type HeatCell = { lat: number; lng: number; affinity: number };
@@ -50,28 +50,6 @@ function halfWidth(cells: readonly HeatCell[]): number {
  */
 /** The whole world, for a map without a place of its own (the act's global fans map). */
 const WORLD: [number, number] = [10, 20];
-
-/** A pointy-top hex marker as an RGBA image for the symbol layer: the brand orange with a ring in the page colour so it reads on any land. */
-function hexImage(size: number, fill: string, ring: string): ImageData {
-  const px = Math.round(size * 2);
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = px;
-  const ctx = canvas.getContext("2d")!;
-  const c = px / 2;
-  const r = c - 3;
-  ctx.beginPath();
-  for (let i = 0; i < 6; i++) {
-    const a = (Math.PI / 180) * (60 * i - 90);
-    ctx.lineTo(c + r * Math.cos(a), c + r * Math.sin(a));
-  }
-  ctx.closePath();
-  ctx.fillStyle = fill;
-  ctx.fill();
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = ring;
-  ctx.stroke();
-  return ctx.getImageData(0, 0, px, px);
-}
 
 export function TasteHeatMap({ center = WORLD, zoom = 1, cells, cities, label }: { center?: [number, number]; zoom?: number; cells: readonly HeatCell[]; cities?: readonly HeatCity[]; label: string }) {
   const container = useRef<HTMLDivElement>(null);

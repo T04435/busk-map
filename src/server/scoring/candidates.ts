@@ -1,4 +1,5 @@
 import { distanceM, distanceToLineM, type LatLon } from "@/lib/geo";
+import { AREA_SAMPLE_KM } from "./areas";
 import { isFineHeatmap } from "./heatmap";
 import type { Candidate, HeatCellInput, HotspotInput, PerformerPermit, SiteInput, SpotInput, ZoneInput } from "./types";
 
@@ -32,6 +33,13 @@ export const SNAP_RADIUS_M = 550;
 export const FINE_SNAP_RADIUS_M = 250;
 export const MAX_SPOTS_PER_CELL = 3;
 export const USUAL_SPOT_RADIUS_M = 180;
+/** A cell-centre pitch takes the name of a Qloo place within this distance (tasteSpotName). */
+export const CELL_NAME_RADIUS_M = 400;
+/** Cell-centre pitches: at most this many, at least this far apart (fine heatmap cells are 150 m, so neighbours would crowd the pool). */
+export const MAX_CELL_PITCHES = 24;
+export const CELL_PITCH_SPACING_M = 250;
+/** Melbourne's general-permit rules line (the default). */
+export const GENERAL_RULES = "General busking permit: most CBD footpaths and public spaces, subject to clearances.";
 
 const RESTRICTED = new Set(["no-busking", "private", "pavement-art", "premium", "unknown"]);
 
@@ -53,12 +61,16 @@ export function siteAllowsPerformer(site: SiteInput, permit: PerformerPermit): b
   }
 }
 
-function cautionsFor(site: SiteInput | null, permit: PerformerPermit, unamplified: boolean): string[] {
+/**
+ * The cautions on a pitch. `councilRules` false: the city has no council busking layers (any city but Melbourne, V2 2.4), so
+ * there is no general permit to keep clearances under: its rules line says they aren't checked instead.
+ */
+function cautionsFor(site: SiteInput | null, permit: PerformerPermit, unamplified: boolean, councilRules = true): string[] {
   const cautions: string[] = [];
   if (site?.permit === "circle-act" && permit !== "circle-act") cautions.push("Circle act permit holders have priority here.");
   if (site?.permit === "chess-board") cautions.push("Special conditions apply; read the council's rules for this site.");
   if (site?.permit === "premium") cautions.push("Premium permit holders only.");
-  if (!site) cautions.push("General permit: keep the required clearances from doors, crossings, seating and other buskers.");
+  if (!site && councilRules) cautions.push("General permit: keep the required clearances from doors, crossings, seating and other buskers.");
   if (unamplified) cautions.push("Unamplified busking only.");
   return cautions;
 }
@@ -98,7 +110,98 @@ export type CandidateInputs = {
   cells: HeatCellInput[];
   hotspots: HotspotInput[];
   permit: PerformerPermit;
+  /** The rules line for a pitch that isn't a council site (the city's, server/cities.ts rulesFor). Melbourne's by default. */
+  generalRules?: string;
+  /**
+   * A city with no walkable spots (spots empty, no hotspots): the top taste cells themselves become the candidates, each named
+   * after the nearest of these places (Qloo's busy places). The seam OSM pitches (V2 2.3) replace by filling `spots`.
+   */
+  cellNames?: (LatLon & { name: string })[];
+  /** A metro's named areas, for those pitches' names (tasteSpotName). Empty or absent for a CBD-sized city. */
+  areas?: readonly NamingArea[];
+  /** The city's name, for a pitch with neither a named area nor a Qloo place near it. */
+  city?: string;
+  /** The city's centre and OpenStreetMap's named streets, to tell same-named cell pitches apart (tasteSpotName). */
+  cityCenter?: LatLon;
+  streets?: readonly (LatLon & { name: string })[];
 };
+
+/** A named area that lends its name to the points within its reach (AREA_SAMPLE_KM of its centre by default). */
+export type NamingArea = LatLon & { name: string; reachM?: number };
+
+export type TasteSpotNaming = {
+  /** A metro's named areas (scoring/areas.ts); none for a CBD-sized city. */
+  areas?: readonly NamingArea[];
+  /** Qloo's busy places. */
+  venues?: readonly (LatLon & { name: string })[];
+  /** OpenStreetMap's named streets and public spaces, to tell two spots apart (never a pitch's own name). */
+  streets?: readonly (LatLon & { name: string })[];
+  city?: string;
+  /** The city's centre: a spot nearer to it than to every named area takes the city's name; the compass hint's anchor. */
+  cityCenter?: LatLon;
+};
+
+/** Two spots that would share a name are told apart by a street or place within this distance (tasteSpotName). */
+export const TELL_APART_RADIUS_M = 800;
+
+const COMPASS = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"] as const;
+/** Where `point` lies from `from`, on an 8-point compass; "centre" within 25 m. */
+function compass(from: LatLon, point: LatLon): string {
+  if (distanceM(from, point) < 25) return "centre";
+  const dx = (point.lon - from.lon) * Math.cos((from.lat * Math.PI) / 180);
+  const dy = point.lat - from.lat;
+  const bearing = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360;
+  return COMPASS[Math.round(bearing / 45) % 8];
+}
+
+/**
+ * The name of a pitch (or taste cell) Busk Map stood at a taste cell's centre, shared by the pitch cards, the map, the step
+ * titles and the agent's copy:
+ * - its area: with a metro's named areas, the one whose centre is nearest within its reach, else the nearest one at all
+ *   (unless the city's centre is nearer: then the city); the city when there are no areas; none otherwise;
+ * - its venue: the nearest Qloo place within CELL_NAME_RADIUS_M;
+ * - "<Area> · near <Venue>", "Near <Venue>" (no areas), "<Area> taste spot" (no venue), "<City> taste spot" (neither).
+ * A name already `taken` tries the next-nearest venue, then the nearest Qloo place or OpenStreetMap street within
+ * TELL_APART_RADIUS_M, and only then a compass hint from its venue or its area's centre ("…, north"). Never an ordinal, never a bare number.
+ */
+export function tasteSpotName(point: LatLon, { areas = [], venues = [], streets = [], city, cityCenter }: TasteSpotNaming, taken: ReadonlySet<string> = new Set()): string {
+  const byDistance = areas.map((a) => ({ a, d: distanceM(a, point) })).sort((x, y) => x.d - y.d);
+  const inReach = byDistance.find((x) => x.d <= (x.a.reachM ?? AREA_SAMPLE_KM * 1000));
+  const nearest = byDistance[0] && (!cityCenter || byDistance[0].d < distanceM(cityCenter, point)) ? byDistance[0] : undefined;
+  const chosen = (inReach ?? nearest)?.a;
+  const area = areas.length === 0 ? null : (chosen?.name ?? city ?? null);
+  const closest = (places: readonly (LatLon & { name: string })[], radius: number) =>
+    places
+      .map((v) => ({ v, d: distanceM(v, point) }))
+      .filter((x) => x.d <= radius && x.v.name.trim())
+      .sort((x, y) => x.d - y.d || x.v.name.localeCompare(y.v.name))
+      .map((x) => x.v);
+  const within = (places: readonly (LatLon & { name: string })[], radius: number) => closest(places, radius).map((v) => v.name.trim());
+  const near = within(venues, CELL_NAME_RADIUS_M);
+  // The compass hint reads from what the name names: its venue, else its area's (or the city's) centre, else the nearest place.
+  const anchor: LatLon | undefined = closest(venues, CELL_NAME_RADIUS_M)[0] ?? chosen ?? cityCenter ?? closest([...venues, ...streets], Infinity)[0];
+  const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+  const label = (venue: string | undefined) =>
+    venue ? (area && !same(area, venue) ? `${area} · near ${venue}` : `Near ${venue}`) : area || city ? `${area ?? city} taste spot` : "Taste spot";
+  for (const venue of near) {
+    const name = label(venue);
+    if (!taken.has(name)) return name;
+  }
+  const base = label(near[0]);
+  if (!taken.has(base)) return base;
+  // Told apart by the nearest street or place a little further out.
+  for (const place of within([...venues, ...streets], TELL_APART_RADIUS_M)) {
+    const name = label(place);
+    if (!taken.has(name)) return name;
+  }
+  // Last resort: a compass hint from the area's (or city's) centre, then with the distance, then the coordinates.
+  const tries = anchor ? [compass(anchor, point), `${compass(anchor, point)}, ${(distanceM(anchor, point) / 1000).toFixed(1)} km`] : [];
+  for (const hint of [...tries, `${point.lat.toFixed(4)}, ${point.lon.toFixed(4)}`]) {
+    const name = `${base}, ${hint}`;
+    if (!taken.has(name)) return name;
+  }
+  return `${base}, ${point.lat.toFixed(5)}, ${point.lon.toFixed(5)}`;
+}
 
 /** How the data narrowed down to the candidates, for the "how this plan was found" line. */
 export type CandidateFunnel = {
@@ -131,7 +234,7 @@ export function ruledOut(point: LatLon, sites: SiteInput[], zones: ZoneInput[], 
  */
 export function candidateAt(
   point: LatLon & { id: string; name: string },
-  { sites, zones, hotspots, permit }: Pick<CandidateInputs, "sites" | "zones" | "hotspots" | "permit">,
+  { sites, zones, hotspots, permit, generalRules = GENERAL_RULES }: Pick<CandidateInputs, "sites" | "zones" | "hotspots" | "permit" | "generalRules">,
 ): Candidate | null {
   if (ruledOut(point, sites, zones, permit)) return null;
   const unamplified = nearLines(point, zones, "unamplified", UNAMPLIFIED_LINE_BUFFER_M);
@@ -144,18 +247,19 @@ export function candidateAt(
     origin: "fallback",
     cell: null,
     permit: "general",
-    rules: "General busking permit: most CBD footpaths and public spaces, subject to clearances.",
+    rules: generalRules,
     rulesUrl: null,
     amplification: unamplified ? "unamplified-zone" : "allowed",
-    cautions: cautionsFor(null, permit, unamplified),
+    cautions: cautionsFor(null, permit, unamplified, sites.length > 0 || zones.length > 0),
     usualSpot: usualSpotAt(point, hotspots),
   };
 }
 
-export function buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots, permit }: CandidateInputs): { candidates: Candidate[]; funnel: CandidateFunnel } {
+export function buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots, permit, generalRules = GENERAL_RULES, cellNames, areas, city, cityCenter, streets }: CandidateInputs): { candidates: Candidate[]; funnel: CandidateFunnel } {
   let considered = 0;
   let excluded = 0;
   const blocked = (point: LatLon) => ruledOut(point, sites, zones, permit);
+  const councilRules = sites.length > 0 || zones.length > 0;
   const candidates: Candidate[] = [];
   const add = (candidate: Omit<Candidate, "amplification" | "cautions" | "usualSpot">, site: SiteInput | null) => {
     if (candidates.some((c) => c.id === candidate.id)) return;
@@ -169,11 +273,11 @@ export function buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots
     candidates.push({
       ...candidate,
       amplification: unamplified ? "unamplified-zone" : "allowed",
-      cautions: cautionsFor(site, permit, unamplified),
+      cautions: cautionsFor(site, permit, unamplified, councilRules),
       usualSpot: usualSpotAt(candidate, hotspots),
     });
   };
-  const general = { permit: "general" as const, rules: "General busking permit: most CBD footpaths and public spaces, subject to clearances.", rulesUrl: null };
+  const general = { permit: "general" as const, rules: generalRules, rulesUrl: null };
 
   // Council-designated sites open to this permit: official, so they win spacing ties.
   for (const site of sites) {
@@ -206,6 +310,19 @@ export function buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots
   }
 
   const top = topCells(cells);
+  if (spots.length === 0 && hotspots.length === 0 && cellNames) {
+    // No walkable spots for this city: the top cells' centres are the pitches, spaced out.
+    for (const cell of top) {
+      if (candidates.length >= MAX_CELL_PITCHES) break;
+      if (candidates.some((c) => distanceM(c, cell) < CELL_PITCH_SPACING_M)) continue;
+      const ref = { lat: cell.lat, lon: cell.lon, affinity: cell.affinity, rank: cell.rank };
+      const name = tasteSpotName(cell, { areas, venues: cellNames, city, cityCenter, streets }, new Set(candidates.map((c) => c.name)));
+      // The id stays the cell's (its geohash): only the name reads like a place.
+      const id = `cell:${cell.geohash ?? `${cell.lat.toFixed(4)},${cell.lon.toFixed(4)}`}`;
+      add({ id, name, lat: cell.lat, lon: cell.lon, kind: "public-space", origin: "taste", cell: ref, ...general }, null);
+    }
+    return funnel(top.length);
+  }
   const snapRadius = isFineHeatmap(cells) ? FINE_SNAP_RADIUS_M : SNAP_RADIUS_M;
   for (const cell of top) {
     const ref = { lat: cell.lat, lon: cell.lon, affinity: cell.affinity, rank: cell.rank };

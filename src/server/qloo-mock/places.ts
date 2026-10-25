@@ -4,6 +4,7 @@
 // (ODbL). Popularity, audience taste and the remaining opening hours are
 // invented by the mock.
 import { geohashEncode, type LatLon } from "@/lib/geo";
+import { fromMockFrame, OFFLINE_REGIONS } from "@/server/offline-city";
 import { mockId, unit, type Genre } from "./catalog";
 import { OSM_PLACES } from "./data/osm-places";
 import { density, mixGenres, tasteAt, type GenreVector } from "./taste-field";
@@ -98,7 +99,26 @@ function build(): MockPlace[] {
 }
 
 export const MOCK_PLACES: MockPlace[] = build();
-export const PLACE_BY_ID = new Map(MOCK_PLACES.map((p) => [p.id, p]));
+
+/**
+ * Offline mode's second city (server/offline-city.ts): every Melbourne place moved onto its centre, with a synthetic name
+ * ("Synthetic Bar 3") and no address, so nothing in that city borrows a Melbourne venue's name.
+ */
+function regionPlaces(): MockPlace[] {
+  return OFFLINE_REGIONS.flatMap((region) => {
+    const count = new Map<string, number>();
+    return MOCK_PLACES.map((place) => {
+      const n = (count.get(place.category) ?? 0) + 1;
+      count.set(place.category, n);
+      const at = fromMockFrame({ lat: place.lat, lon: place.lon }, region);
+      const osmRef = `${region.id}:${place.osmRef}`;
+      return { ...place, ...at, id: mockId("place", osmRef), osmRef, name: `Synthetic ${place.categoryLabel} ${n}`, address: null, geohash: geohashEncode(at, 12) };
+    });
+  });
+}
+
+export const REGION_PLACES: MockPlace[] = regionPlaces();
+export const PLACE_BY_ID = new Map([...MOCK_PLACES, ...REGION_PLACES].map((p) => [p.id, p]));
 
 /** How well a place's crowd fits a genre mix, 0–1: its neighbourhood and its kind. */
 export function placeFit(place: MockPlace, mix: GenreVector): number {

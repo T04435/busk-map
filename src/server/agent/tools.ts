@@ -6,9 +6,8 @@ import { ANY_TIME_DAY, formatHour } from "@/lib/slot";
 import { activitySentence, activityWord } from "@/lib/activity";
 import { nameKey } from "@/lib/text";
 import * as qloo from "@/server/adapters/qloo";
-import { activityEstimate, relativeActivity, candidateAt, openDuring, pickTopPitches, scoreWindows, type Candidate, type KnownPlace, type ScoredPitch } from "@/server/scoring";
+import { activityEstimate, relativeActivity, candidateAt, tasteSpotName, AREA_SAMPLE_KM, districtOf, MAX_PICKS_PER_DISTRICT, topCells, openDuring, scoreWindows, type Candidate, type District, type KnownPlace, type ScoredPitch, type TasteSpotNaming } from "@/server/scoring";
 import { reasonWithoutYear, type SetlistEntry } from "@/server/scoring/setlist";
-import { USUAL_HOTSPOTS } from "@/server/data/spots";
 import type { PlanContext } from "./context";
 import { NumberBag } from "./number-bag";
 
@@ -42,6 +41,7 @@ export const MAX_FINISH_REJECTIONS = 2;
 export const SCORE_ROWS = 8;
 
 export const TOOL_LABELS: Record<string, string> = {
+  compare_areas: "Comparing areas across the city",
   taste_map: "Where the act's taste concentrates",
   crowd_at: "Who the crowd is around a point",
   busy_places: "Busy places open near a point",
@@ -58,6 +58,7 @@ export const TOOL_LABELS: Record<string, string> = {
 
 /** The data call behind each tool, shown next to the step. */
 export const TOOL_SOURCES: Record<string, string> = {
+  compare_areas: "OpenStreetMap named places (else Open-Meteo geocoding), Qloo heatmap over the whole area (data already loaded for this plan)",
   taste_map: "Qloo /v2/insights · urn:heatmap",
   crowd_at: "Qloo /v2/insights · urn:entity:artist with signal.location and explainability, urn:tag, urn:demographics",
   busy_places: "Qloo /v2/insights · urn:entity:place with filter.location and filter.hours",
@@ -71,6 +72,19 @@ export const TOOL_SOURCES: Record<string, string> = {
   learn_these: "Qloo insights and trending, Last.fm",
   finish_plan: "Checked against the engine's scored pool",
 };
+
+const NOT_CHECKED = "local busking rules not checked";
+
+/** A city whose busking rules aren't checked (V2 2.4): check_pitch only looks at a spot, and says so. */
+const UNCHECKED_TOOL: Record<string, { label: string; source: string }> = {
+  check_pitch: { label: "Looking at a spot (local busking rules not checked)", source: "Busk Map public spaces; local busking rules not checked" },
+};
+
+/** A tool's step label and data source for this plan's city: Melbourne's are TOOL_LABELS and TOOL_SOURCES. */
+export function toolStart(tool: string, levels: { rules: string }): { label: string; source?: string } {
+  const unchecked = levels.rules === "none" ? UNCHECKED_TOOL[tool] : undefined;
+  return unchecked ?? { label: TOOL_LABELS[tool] ?? tool, source: TOOL_SOURCES[tool] };
+}
 
 /** What the model contributes: words and a choice among scored pitches. */
 export type AgentAnswer = { summary: string; pitches: { pitchId: string; why: string }[]; notes: string[] };
@@ -111,7 +125,78 @@ export class AgentState {
   unverifiedNumbers: string[] = [];
   /** Calls per tool, for the trace. */
   readonly calls: string[] = [];
+  /** A metro's districts (scoring/districts.ts), set when score_pitches runs: the final answer takes at most 2 from one. */
+  districts: District[] = [];
 }
+
+type NamedPitch = { name: string; lat: number; lon: number; origin?: string };
+
+/** Whether a pitch's name is a taste spot's (tasteSpotName): by its origin, else by the name's shape. */
+const isTasteSpot = (p: NamedPitch) => (p.origin ? p.origin === "taste" : /^Near | · near |^.+ taste spot(, .+| \(\d+\))?$/.test(p.name));
+
+/**
+ * A taste cell's name for outputs: the nearest known place; else the name of the pitch the engine stood on that cell (so the
+ * step reads like the plan); else named like the pitches (tasteSpotName: its area and nearest Qloo place), never one of the
+ * `taken` names. Never a bare number.
+ */
+export function cellName(cell: LatLon, known: KnownPlace[], pitches: readonly NamedPitch[], naming: TasteSpotNaming = {}, taken: ReadonlySet<string> = new Set()): string {
+  const named = nearestName(cell, known);
+  if (named) return named;
+  const pitch = pitches.filter((p) => p.origin === "taste" && distanceM(p, cell) <= CELL_PITCH_MATCH_M).sort((a, b) => distanceM(a, cell) - distanceM(b, cell))[0];
+  return pitch?.name ?? tasteSpotName(cell, naming, taken);
+}
+
+/** Names for taste cells, in order: each by cellName, none sharing a taste pitch's name or an earlier cell's. */
+export function cellNames(cells: readonly LatLon[], known: KnownPlace[], pitches: readonly NamedPitch[], naming: TasteSpotNaming = {}): string[] {
+  const taken = new Set(pitches.filter(isTasteSpot).map((p) => p.name));
+  return cells.map((c) => {
+    const name = cellName(c, known, pitches, naming, taken);
+    taken.add(name);
+    return name;
+  });
+}
+
+/** How close a known place, a pitch or a taste cell must be to lend a point its name. */
+export const POINT_NAME_M = 250;
+
+/**
+ * A label for coordinates the model pointed at: the nearest known place ("near X"); else a pitch on that spot (a taste spot's
+ * own name, "near X" otherwise); else the top taste cell there (named as in taste_map); else the named area it is in; else the
+ * nearest pitch; else the city. Never the raw coordinates.
+ */
+export function pointName(
+  point: LatLon,
+  known: KnownPlace[],
+  pitches: readonly NamedPitch[],
+  cells: readonly (LatLon & { rank: number })[],
+  city: string,
+  areas: readonly (LatLon & { name: string })[] = [],
+  venues: readonly (LatLon & { name: string })[] = [],
+): string {
+  const place = nearestName(point, known, POINT_NAME_M);
+  if (place) return `near ${place}`;
+  const byDistance = <T extends LatLon>(list: readonly T[]) => [...list].sort((a, b) => distanceM(a, point) - distanceM(b, point))[0];
+  const label = (p: NamedPitch) => (isTasteSpot(p) ? p.name.replace(/^Near /, "near ") : `near ${p.name}`);
+  const pitch = byDistance(pitches);
+  if (pitch && distanceM(pitch, point) <= POINT_NAME_M) return label(pitch);
+  const cell = byDistance(cells);
+  if (cell && distanceM(cell, point) <= POINT_NAME_M) {
+    const ranked = [...cells].sort((a, b) => a.rank - b.rank);
+    return cellNames(ranked, known, pitches, { areas, venues, city })[ranked.indexOf(cell)].replace(/^Near /, "near ");
+  }
+  // A metro: the named area the point is in, before a pitch further away.
+  const area = byDistance(areas);
+  if (area && distanceM(area, point) <= AREA_SAMPLE_KM * 1000) return `a spot in ${area.name}`;
+  return pitch ? label(pitch) : `a spot in ${city}`;
+}
+
+/** "Looked at A, B, C…": the areas compared, best first, the first few by name. */
+export function areasLine(names: readonly string[], shown = 6): string {
+  return `Looked at ${names.slice(0, shown).join(", ")}${names.length > shown ? "…" : ""}`;
+}
+
+/** How close a taste-cell pitch must stand to a cell to lend it its name. */
+const CELL_PITCH_MATCH_M = 60;
 
 /** A point, labelled, for outputs. */
 const at = (r: Resolved) => ({ label: r.label, lat: r4(r.lat), lon: r4(r.lon), ...(r.pitchId ? { pitchId: r.pitchId } : {}) });
@@ -132,14 +217,17 @@ export function sameCorners(ranked: ScoredPitch[]): Map<string, string> {
   return out;
 }
 
-function compactPitch(p: ScoredPitch, engineTop: Set<string>, added: Set<string>, corners: Map<string, string>) {
+function compactPitch(p: ScoredPitch, engineTop: Set<string>, added: Set<string>, corners: Map<string, string>, districts: readonly District[] = []) {
   const higher = corners.has(p.id) ? { name: corners.get(p.id)! } : null;
+  const district = districts.length > 0 ? districts.find((d) => d.id === districtOf(p, districts))?.name : undefined;
   return {
     pitchId: p.id,
     name: p.name,
     score: p.score,
     engineTop3: engineTop.has(p.id),
     sameCornerAs: higher?.name ?? null,
+    // A metro only: the district the pitch is in (at most 2 final pitches from one).
+    ...(district ? { district } : {}),
     addedByYou: added.has(p.id),
     kind: p.kind,
     discovery: p.discovery,
@@ -156,9 +244,9 @@ function compactPitch(p: ScoredPitch, engineTop: Set<string>, added: Set<string>
 }
 
 /** Investigation looks that count towards opening score_pitches. */
-export const GATE_TOOLS = ["taste_map", "crowd_at", "events_near", "activity_at", "busy_places", "check_pitch"] as const;
+export const GATE_TOOLS = ["taste_map", "crowd_at", "events_near", "activity_at", "busy_places", "check_pitch", "compare_areas"] as const;
 /** At least one look must be about the crowd itself: its taste, who it is, or an event crowd. */
-export const CROWD_TOOLS = ["taste_map", "crowd_at", "events_near"] as const;
+export const CROWD_TOOLS = ["taste_map", "crowd_at", "events_near", "compare_areas"] as const;
 /** Looks before score_pitches opens. */
 export const MIN_LOOKS = 3;
 /** Tools closed until the pool is scored (or, for score_pitches, until the looks are in). */
@@ -199,10 +287,24 @@ export function createTools(ctx: PlanContext, state: AgentState) {
 
 function buildTools(ctx: PlanContext, state: AgentState) {
   const area = ctx.city.bbox;
+  // V2 2.4: no council rules for this city, so check_pitch looks at a spot and never calls it allowed.
+  const unchecked = ctx.levels.rules === "none";
   let placesCache: Promise<KnownPlace[]> | null = null;
-  const places = () => (placesCache ??= ctx.pitchData().then((pitchData) => knownPlaces(pitchData.sites)));
+  // A metro's named areas are places too, so the model can point at "Miami Beach" (they come after every spot and site).
+  const places = () =>
+    (placesCache ??= Promise.all([ctx.pitchData(), ctx.spots(), ctx.rankedAreas()]).then(([pitchData, spots, areas]) => [
+      ...knownPlaces(pitchData.sites, ctx.city, spots),
+      ...areas.map((a) => ({ name: a.name, lat: a.lat, lon: a.lon })),
+    ]));
   const knownPitches = async () => [...(await ctx.ranked()), ...state.pool.values()];
-  const where = async (w: Where): Promise<Resolved> => resolveWhere(w, { area, pitches: await knownPitches(), places: await places() });
+  const where = async (w: Where): Promise<Resolved> => {
+    const known = await places();
+    const resolved = resolveWhere(w, { area, pitches: await knownPitches(), places: known });
+    // Coordinates with no known place close by: named like the cells and pitches, never shown as raw numbers.
+    if (resolved.via !== "coordinates" || /^near /.test(resolved.label)) return resolved;
+    const [{ candidates }, cells, naming] = await Promise.all([ctx.candidates(), ctx.tasteCells(), ctx.tasteNaming()]);
+    return { ...resolved, label: pointName(resolved, known, [...candidates, ...state.pool.values()], topCells(cells), ctx.city.name, naming.areas, naming.venues) };
+  };
   const ids = () => ctx.entityIds();
   /** Every output is recorded for the numbers check, then returned. */
   const seen = <T>(output: T): T => {
@@ -220,15 +322,46 @@ function buildTools(ctx: PlanContext, state: AgentState) {
 
   /** The engine's pool plus the agent's additions, scored with the same inputs and weights. */
   async function scorePool(): Promise<{ ranked: ScoredPitch[]; engineTop: ScoredPitch[] }> {
-    const [ranked, scoredAdditions] = await Promise.all([ctx.ranked(), Promise.all([...state.added].map((id) => ctx.scoreCandidate(state.checked.get(id)!)))]);
+    const [ranked, scoredAdditions, engineTop, districts] = await Promise.all([
+      ctx.ranked(),
+      Promise.all([...state.added].map((id) => ctx.scoreCandidate(state.checked.get(id)!))),
+      ctx.topPitches(),
+      ctx.namedDistricts(),
+    ]);
     const additions = scoredAdditions.filter((p): p is ScoredPitch => p !== null);
     const all = [...ranked, ...additions].sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
     for (const p of all) state.pool.set(p.id, p);
     state.scored = true;
-    return { ranked: all, engineTop: pickTopPitches(ranked, 3) };
+    state.districts = districts;
+    return { ranked: all, engineTop };
   }
 
   const tools = {
+    compare_areas: tool({
+      description:
+        "A metro planned across its areas: the named suburbs, towns and neighbourhoods around the city, best for this act first, each with how strongly the act's taste shows there (Qloo's heatmap over the whole area, 0 to 1 against the best area), its estimated activity and the busy places near it, and which areas the plan searches street by street (the pitches come from those). Call it before picking, to weigh areas across the city and not only the centre.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const [ranked, districts, busy] = await Promise.all([ctx.rankedAreas(), ctx.namedDistricts(), ctx.places()]);
+        if (ranked.length === 0) return seen({ summary: `${ctx.city.name} is planned as one area`, areas: [], searched: [] });
+        const searched = districts.filter((d) => d.area).map((d) => d.name);
+        return seen({
+          summary: areasLine(ranked.map((a) => a.name)),
+          areas: ranked.map((a) => ({
+            rank: a.rank,
+            name: a.name,
+            kind: a.kind === "city_district" ? "district" : a.kind,
+            taste: a.share,
+            activity: a.activity,
+            busyPlaces: busy.filter((p) => distanceM(p, a) <= AREA_SAMPLE_KM * 1000).length,
+            searched: searched.includes(a.name),
+          })),
+          searched,
+          rule: `At most ${MAX_PICKS_PER_DISTRICT} final pitches from one searched area.`,
+        });
+      },
+    }),
+
     taste_map: tool({
       description:
         "Qloo heatmap: where in the city the act's taste concentrates. Optionally signal only some of the act's matched artists, or zoom into one part of the planning area. Returns the strongest cells with the nearest known place.",
@@ -245,27 +378,38 @@ function buildTools(ctx: PlanContext, state: AgentState) {
           if (chosen.length === 0) throw new WhereError(`None of ${signals.join(", ")} is a matched artist. Matched: ${artists.map((a) => a.entity!.name).join(", ")}.`);
         }
         const all = chosen.length === artists.length;
+        // The act's genres signal beside the artists when Qloo doesn't know the act (or none of the artists it sounds like).
+        const tags = all ? ctx.signalTags() : [];
         const zoom = around ? await where(around) : null;
         const box = zoom ? boxAround(snapPoint(zoom), snapRadius(radiusM, 800), area) : area;
+        const signalIds = chosen.map((a) => a.entity!.id);
+        const signalNames = [...chosen.map((a) => a.entity!.name), ...(chosen.length === 0 && tags.length ? ["your genres"] : [])];
+        if (signalIds.length === 0 && tags.length === 0) {
+          return seen({ summary: "No taste to map: Qloo matched none of your artists and has no genres for your act", signals: [], area: zoom ? { around: zoom.label, radiusM: snapRadius(radiusM, 800) } : "planning area", cells: 0, strongest: [] });
+        }
         const cells =
           all && !zoom
             ? await ctx.tasteCells()
-            : await ctx.trackQloo(`agent:taste:${chosen.map((a) => a.entity!.id).sort().join(",")}:${JSON.stringify(box)}`, () =>
-                qloo.tasteMap(chosen.map((a) => a.entity!.id), box, ctx.adapters),
+            : await ctx.trackQloo(`agent:taste:${[...signalIds].sort().join(",")}:${[...tags].sort().join(",")}:${JSON.stringify(box)}`, () =>
+                qloo.tasteMap(signalIds, box, ctx.adapters, undefined, tags),
               );
         const known = await places();
+        const [{ candidates: pitches }, naming] = await Promise.all([ctx.candidates(), ctx.tasteNaming()]);
         const max = Math.max(0, ...cells.map((c) => c.affinity));
         const top = [...cells].sort((a, b) => b.affinity - a.affinity).slice(0, 8);
+        const names = cellNames(top, known, pitches, naming);
         return seen({
           summary: cells.length
-            ? `${cells.length} cells for ${all ? "all your artists" : chosen.map((a) => a.entity!.name).join(", ")}${zoom ? ` around ${zoom.label}` : ""}; strongest near ${nearestName(top[0], known) ?? "an unnamed block"}`
+            ? `${cells.length} cells for ${all ? "all your artists" : signalNames.join(", ")}${zoom ? ` around ${zoom.label}` : ""}; strongest: ${names[0]}`
             : "No taste data for that area",
-          signals: chosen.map((a) => a.entity!.name),
+          signals: signalNames,
           area: zoom ? { around: zoom.label, radiusM: snapRadius(radiusM, 800) } : "planning area",
           cells: cells.length,
           strongest: top.map((c, i) => ({
             rank: i + 1,
             near: nearestName(c, known),
+            // Additive: what the cell is called on the page (a known place, the pitch on it, or its area and nearest venue), never "unnamed".
+            name: names[i],
             lat: r4(c.lat),
             lon: r4(c.lon),
             affinity: max > 0 ? r2(c.affinity / max) : 0,
@@ -284,10 +428,12 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         const radius = snapRadius(radiusM, 400);
         const snapped = snapPoint(point);
         const entityIds = await ids();
-        if (entityIds.length === 0) throw new WhereError("No matched artists: there is no taste to profile.");
+        // No matched artist (Qloo doesn't know the act or the artists it sounds like): the act's genres carry the taste, and the
+        // point itself is a location signal, so the crowd there is still read rather than the look failing.
+        const tags = ctx.signalTags();
         const box = boxAround(snapped, radius, area);
         const [crowd, genres, profile, resolved, scene] = await Promise.all([
-          ctx.trackQloo(`agent:crowd:${JSON.stringify(box)}`, () => qloo.localArtists(entityIds, box, 10, ctx.adapters)),
+          ctx.trackQloo(`agent:crowd:${JSON.stringify(box)}${tags.length && entityIds.length === 0 ? `:${tags.join(",")}` : ""}`, () => qloo.localArtists(entityIds, box, 10, ctx.adapters, entityIds.length ? [] : tags)),
           ctx.trackQloo(`agent:genres:${snapped.lat},${snapped.lon},${radius}`, () => qloo.crowdTags(entityIds, snapped, radius, 6, ctx.adapters)),
           ctx.crowdProfile(),
           ctx.artists(),
@@ -337,8 +483,12 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         const dayWide = ctx.isAnyTime && openAt === undefined && !best;
         const hour = openAt ?? best?.startHour ?? (ctx.isAnyTime ? ANY_TIME_DAY.startHour : ctx.slotFor({}).startHour);
         const entityIds = await ids();
+        const tags = ctx.signalTags();
+        if (entityIds.length === 0 && tags.length === 0) {
+          return seen({ summary: `No taste to rank places by near ${point.label}: Qloo matched none of your artists and has no genres for your act`, at: at(point), radiusM: radius, hour, places: [] });
+        }
         const found = await ctx.trackQloo(`agent:places:${snapped.lat},${snapped.lon},${radius}`, () =>
-          qloo.busyPlaces(entityIds, snapped, radius, ctx.weekday, ctx.adapters),
+          qloo.busyPlaces(entityIds, snapped, radius, ctx.weekday, ctx.adapters, tags),
         );
         const rows = found.slice(0, 10).map((p) => ({
           name: p.name,
@@ -451,8 +601,9 @@ function buildTools(ctx: PlanContext, state: AgentState) {
     }),
 
     check_pitch: tool({
-      description:
-        "Check a spot against the council's busking layers for the act's permit: snaps to the nearest known public space, says whether the rules rule it out, and lists cautions. A legal spot gets a pitchId you can add with score_pitches.",
+      description: unchecked
+        ? "Look at a spot: snaps to the nearest known public space and gives a pitchId you can add with score_pitches. This city's busking rules are not checked, so nothing is ruled in or out: never call a spot allowed or legal."
+        : "Check a spot against the council's busking layers for the act's permit: snaps to the nearest known public space, says whether the rules rule it out, and lists cautions. A legal spot gets a pitchId you can add with score_pitches.",
       inputSchema: z.object({ spot: whereSchema }),
       execute: async ({ spot }) => {
         const point = await where(spot);
@@ -465,10 +616,10 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         if (point.pitchId || existing) {
           const p = point.pitchId ? (await knownPitches()).find((x) => x.id === point.pitchId)! : existing!;
           return seen({
-            summary: `${p.name} is already in the engine's pool (${p.id})`,
+            summary: `${p.name} is already in the engine's pool (${p.id})${unchecked ? `; ${NOT_CHECKED}` : ""}`,
             pitchId: p.id,
             name: p.name,
-            legal: "not ruled out",
+            legal: unchecked ? "not checked" : "not ruled out",
             inPool: true,
             amplification: p.amplification,
             usualSpot: p.usualSpot,
@@ -478,7 +629,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         const id = `agent:${nameKey(point.label).replaceAll(" ", "-").slice(0, 40) || `${r4(point.lat)},${r4(point.lon)}`}`;
         const candidate = candidateAt(
           { id, name: point.label.replace(/^near /, "Near "), lat: point.lat, lon: point.lon },
-          { sites: pitchData.sites, zones: pitchData.zones, hotspots: USUAL_HOTSPOTS, permit: ctx.request.permit },
+          ctx.legality(pitchData),
         );
         if (candidate) candidate.origin = "agent";
         if (!candidate) {
@@ -486,10 +637,10 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         }
         state.checked.set(id, candidate);
         return seen({
-          summary: `${candidate.name}: not ruled out; add it with score_pitches to score it`,
+          summary: unchecked ? `${candidate.name}: ${NOT_CHECKED}; add it with score_pitches to score it` : `${candidate.name}: not ruled out; add it with score_pitches to score it`,
           pitchId: id,
           name: candidate.name,
-          legal: "not ruled out",
+          legal: unchecked ? "not checked" : "not ruled out",
           inPool: false,
           amplification: candidate.amplification,
           usualSpot: candidate.usualSpot,
@@ -520,9 +671,11 @@ function buildTools(ctx: PlanContext, state: AgentState) {
           poolSize: ranked.length,
           ...(ctx.isAnyTime ? { windows: ctx.windows().length, note: "Any time: each pitch is scored at its own best 3-hour window that day; call best_hours for the hours." } : {}),
           added: [...state.added],
+          // A metro planned in districts: their names, and the spread rule finish_plan checks.
+          ...(state.districts.length > 1 ? { districts: state.districts.map((d) => d.name), districtRule: `At most ${MAX_PICKS_PER_DISTRICT} final pitches from one district.` } : {}),
           rankOf: Object.fromEntries([...asked].map((id) => [id, ranked.findIndex((p) => p.id === id) + 1])),
           slotWeather: weather ? weather.hours.map((h) => `${formatHour(h.hour)} ${h.temperatureC ?? "?"}°C rain ${h.precipitationProbability ?? "?"}% wind ${h.windKmh ?? "?"} km/h`).join("; ") : "no forecast",
-          pitches: shown.map((p) => compactPitch(p, engineIds, state.added, corners)),
+          pitches: shown.map((p) => compactPitch(p, engineIds, state.added, corners, state.districts)),
         });
       },
     }),
@@ -705,7 +858,7 @@ export async function outputForPage(tool: string, input: unknown, output: unknow
   return { ...(output as object), songs: songs.map((s, i) => ({ ...(s as object), year: setlist[i]?.year ?? null })) };
 }
 
-type Problem = { kind: "pool" | "count" | "spacing" | "numbers"; message: string; numbers?: string[] };
+type Problem = { kind: "pool" | "count" | "spacing" | "district" | "numbers"; message: string; numbers?: string[] };
 
 /** The guardrails on the final answer. Pure, so tests can call it directly. */
 export function checkAnswer(answer: AgentAnswer, state: AgentState): Problem[] {
@@ -730,12 +883,32 @@ export function checkAnswer(answer: AgentAnswer, state: AgentState): Problem[] {
       }
     }
   }
+  const crowded = crowdedDistrict(chosen, state.districts, [...state.pool.values()]);
+  if (crowded) {
+    problems.push({ kind: "district", message: `More than ${MAX_PICKS_PER_DISTRICT} of your pitches are in ${crowded}: pick at least one from another district (score_pitches shows each pitch's district).` });
+  }
   const text = [answer.summary, ...answer.pitches.map((p) => p.why), ...answer.notes].join(" ");
   const unknownNumbers = state.seen.unknownIn(text);
   if (unknownNumbers.length) {
     problems.push({ kind: "numbers", numbers: unknownNumbers, message: `These numbers aren't in any tool result: ${unknownNumbers.join(", ")}. Use only numbers the tools returned.` });
   }
   return problems;
+}
+
+/**
+ * The district holding more than MAX_PICKS_PER_DISTRICT of the chosen pitches, by name, when the pool has a pitch in another
+ * district the answer could take instead. Null otherwise (and always for a city planned without districts).
+ */
+export function crowdedDistrict(chosen: readonly LatLon[], districts: readonly District[], pool: readonly LatLon[]): string | null {
+  if (districts.length < 2) return null;
+  const counts = new Map<string, number>();
+  for (const p of chosen) {
+    const id = districtOf(p, districts);
+    if (id) counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  const over = [...counts].find(([, n]) => n > MAX_PICKS_PER_DISTRICT)?.[0];
+  if (!over || !pool.some((p) => districtOf(p, districts) !== over)) return null;
+  return districts.find((d) => d.id === over)!.name;
 }
 
 /** The point of a pitch, for tests. */

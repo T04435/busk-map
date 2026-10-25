@@ -10,13 +10,14 @@ export type AgentState = "none" | "researching" | "engine" | "rerun" | "done" | 
  * The line under the header, in the Hive's voice (persona B, copy table "Research status line"): it names its sources, and
  * Busk Map's scores when it didn't run. Offline, the test model is named, never Claude (B-049, B-108).
  */
-const text = (state: AgentState, model: ExplanationsModel | null | undefined): string => {
+const text = (state: AgentState, model: ExplanationsModel | null | undefined, rulesChecked: boolean): string => {
   const offline = model === "mock" ? " (offline test model)" : "";
   switch (state) {
     case "none":
       return "No new plan was started.";
     case "researching":
-      return `${AGENT_NAME_START} is asking Qloo and the council's rules. Your busk replaces this in about half a minute${offline}.`;
+      // Outside Melbourne there are no council rules to ask (V2 2.4).
+      return `${AGENT_NAME_START} is asking Qloo${rulesChecked ? " and the council's rules" : ""}. Your busk replaces this in about half a minute${offline}.`;
     case "engine":
       return `Planned from Busk Map's scores. ${AGENT_NAME_START} didn't run.`;
     case "rerun":
@@ -41,11 +42,14 @@ export function AgentStatusLine({
   note,
   usage,
   model,
+  rulesChecked = true,
 }: {
   state: AgentState | null;
   note?: string | null;
   usage?: RunUsage | null;
   model?: ExplanationsModel | null;
+  /** False in a city whose busking rules aren't checked: the Hive asks no council then. */
+  rulesChecked?: boolean;
 }) {
   const live = state === "researching" || state === "rerun";
   return (
@@ -55,7 +59,7 @@ export function AgentStatusLine({
           {/* -4px top and bottom: the mark centres on the first 20px line, and wrapped lines run on under the text. */}
           <HiveMark className="-my-1" size={HIVE_SIZES.status} state={live ? "working" : "rest"} muted={state === "none" || state === "engine"} decorative />
           <span data-testid="agent-status">
-            {note && state === "replayed" ? note : text(state, model)}
+            {note && state === "replayed" ? note : text(state, model, rulesChecked)}
           </span>
         </p>
       ) : null}

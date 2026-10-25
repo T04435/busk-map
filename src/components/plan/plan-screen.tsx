@@ -8,7 +8,7 @@ import { qlooMode } from "@/server/adapters/qloo";
 import type { AdapterContext } from "@/server/adapters/core";
 import { baselineFor } from "@/server/agent/baseline";
 import { buildEnginePlan } from "@/server/agent/preload";
-import { CITIES } from "@/server/cities";
+import { cityOf } from "@/server/cities";
 
 /** The page-level placeholder while a plan page resolves. */
 export function PlanSkeleton() {
@@ -45,7 +45,7 @@ export async function PlanScreen({ request, exampleId, adapters, faults = adapte
     after(() => baselineFor(request, adapters).then(() => undefined));
     plan = await buildEnginePlan(request, adapters);
   }
-  const city = CITIES[request.city];
+  const city = cityOf(request);
   return (
     <PlanView
       // Keyed by the request (not the selected pitch): a new request remounts the view.

@@ -1,9 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { fansCityParam } from "@/lib/city";
 import { MapLegend } from "@/components/map/map-legend";
 import { orangeCells } from "@/components/map/taste-cells";
 import { Section } from "./repertoire-sections";
@@ -71,6 +74,20 @@ export function FansMap({
             <SourceLogo source="qloo" height={14} className="mr-1 align-[-2px]" />
             has no taste data for your act yet.
           </p>
+        ) : null}
+        {cities && cities.length > 0 ? (
+          <ul data-testid="fans-cities" aria-label="Cities where your fans are" className="m-0 flex list-none flex-col divide-y divide-border p-0">
+            {cities.map((city) => (
+              <li key={city.name} data-testid="fans-city" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2">
+                <span className="text-base leading-6 font-bold">{city.name}</span>
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/busks?${new URLSearchParams({ fans: fansCityParam(city) })}`}>
+                    Plan a busk here<span className="sr-only"> in {city.name}</span>
+                  </Link>
+                </Button>
+              </li>
+            ))}
+          </ul>
         ) : null}
       </div>
     </Section>

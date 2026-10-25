@@ -109,11 +109,10 @@ export const PLAYLIST_COPY = {
 
   // Repertoire research: one Spotify link, a streamed run (hackathons/qloo-2026/repertoire-research-spec.md)
   research: {
-    linkLabel: "Your Spotify artist link",
-    linkPlaceholder: "Paste your Spotify artist link",
+    linkLabel: "Your Spotify artist",
+    linkPlaceholder: "Search Spotify or paste your artist link",
     /** The page's meta description (not shown on the page). */
     metaDescription: "We read your Spotify profile and your songs, then ask Qloo who your fans are and what they love.",
-    example: "It looks like open.spotify.com/artist/…",
     /** Offline test mode only: a link the local mocks know end to end. */
     exampleTest: "Try the test artist",
     start: "Research my act",
@@ -144,7 +143,8 @@ export const PLAYLIST_COPY = {
         return `Qloo doesn't know you yet. Using ${parts.join("; ")}.${unmatched.length ? ` Qloo doesn't know ${andList(unmatched)}.` : ""}`;
       },
       basedOn: "Based on the artists you sound like",
-      basedOnGenre: "Based on your genre",
+      /** A genre-based step names the genres it used: "Based on Dembow and Reggaeton". */
+      basedOnGenres: (names: readonly string[]) => (names.length ? `Based on ${andList(names)}` : "Based on your genre"),
       noTaste: "No taste data yet",
       noAlikes: "No artists like you found yet",
     },
@@ -155,7 +155,12 @@ export const PLAYLIST_COPY = {
       untaggedGenre: (genre: string) => `Qloo has no tag for ${genre}. Pick another genre, or add artists you sound like.`,
       gaveUp: "Qloo has no taste data for your act yet, so the research stopped here.",
       artistsLabel: "Artists you sound like",
-      genreLabel: "Or pick up to 3 genres",
+      genreLabel: "Your genres, up to 3",
+      genresPicked: "Genres you picked",
+      genreSearch: "Search genres",
+      genrePlaceholder: "Search genres, e.g. reggaeton",
+      quickPicks: "Quick picks",
+      suggested: "Suggested",
       carryOn: "Carry on",
       notStarted: "Not started",
       waitingTag: "Your turn",
@@ -183,6 +188,7 @@ export const PLAYLIST_COPY = {
     done: (n: number) => (n > 0 ? `Your research is done: ${n} ${n === 1 ? "song" : "songs"} to learn.` : "Your research is done."),
     errors: {
       badLink: "That isn't a Spotify artist link. It starts with open.spotify.com/artist/.",
+      pickArtist: "Pick your act from the Spotify results, or paste your Spotify artist link.",
       upToDate: "Your research is up to date for this link. Use Refresh my research to run it again.",
       noResearch: "Research your act first, then find more songs to learn.",
       noMatch: "Qloo doesn't know this artist yet, so there are no taste results.",

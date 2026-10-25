@@ -96,7 +96,7 @@ test.describe("one Song, one Artist (unify rule)", () => {
 
   test("/repertoire: your songs, songs to learn, sound-alikes, fans and the profile use the one components", async ({ page }) => {
     await page.goto("/repertoire");
-    await page.getByLabel("Your Spotify artist link").fill(`https://open.spotify.com/artist/${OFFLINE_TEST_ARTIST.spotifyId}`);
+    await page.getByLabel("Your Spotify artist", { exact: true }).fill(`https://open.spotify.com/artist/${OFFLINE_TEST_ARTIST.spotifyId}`);
     await page.getByRole("button", { name: "Research my act" }).click();
     await expect(page.getByTestId("research-end")).toBeVisible({ timeout: 20_000 });
     const found = collect([await (await page.request.get("/api/playlist")).json(), await (await page.request.get("/api/repertoire")).json()]);

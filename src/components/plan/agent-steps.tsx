@@ -76,7 +76,8 @@ function ToolCard({ step, model, when, pins, fresh, renderWaiting, levelOf }: { 
   else if (bad) lead = foot("This check didn't come back, so the plan goes on without it.");
   else if (cut) lead = foot("Stopped before it finished.");
   else if (waiting) {
-    if (renderWaiting) body = renderWaiting(step);
+    // The ask starts right under the title, beside the step cell (never below the cell's height, which left a gap).
+    if (renderWaiting) lead = renderWaiting(step);
     else if (step.summary) lead = foot(step.summary);
   } else if (step.output !== undefined && ui) {
     const line = ui.line?.(out);

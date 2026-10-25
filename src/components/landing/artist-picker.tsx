@@ -9,6 +9,7 @@ import { Icon } from "@/components/honeycomb/icon";
 import { Spinner } from "@/components/ui/spinner";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { rankArtistResults } from "@/lib/artist-results";
 import { formatCount, MIN_QUERY_CHARS } from "@/lib/live-search";
 import { SPOTIFY_ARTIST_URL } from "@/lib/mention";
 import { looksLikeLink } from "@/lib/spotify-link";
@@ -133,7 +134,9 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
   }, [value]);
 
   const typed = single && looksLikeLink(query) ? "" : clean(query);
-  const results = state.status === "done" ? state.results : [];
+  // Ranked: 0-release namesakes of a real artist dropped, same names together with the most releases first (rankArtistResults).
+  const rows = rankArtistResults(state.status === "done" ? state.results : [], releases);
+  const results = rows.map((r) => r.artist);
   // The listbox exists only while it has options: Spotify results, or the "add as typed" row.
   const offerTyped = !single && !has(typed);
   const listed = results.length > 0 || offerTyped;
@@ -228,9 +231,9 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
               <CommandList label="Artist results">
                 {results.length > 0 && (
                   <CommandGroup heading="Spotify">
-                    {results.map((artist) => {
-                      const count = listeners[artist.name];
-                      const released = releases[artist.id] ?? artist.releases;
+                    {rows.map(({ artist, released, listeners: showListeners }) => {
+                      // Last.fm's count is by name: shown only on the row that clearly is that name's artist.
+                      const count = showListeners ? listeners[artist.name] : undefined;
                       const meta = [
                         typeof released === "number" ? `${released} release${released === 1 ? "" : "s"}` : null,
                       ].filter(Boolean);

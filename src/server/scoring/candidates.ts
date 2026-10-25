@@ -60,12 +60,16 @@ export function siteAllowsPerformer(site: SiteInput, permit: PerformerPermit): b
   }
 }
 
-function cautionsFor(site: SiteInput | null, permit: PerformerPermit, unamplified: boolean): string[] {
+/**
+ * The cautions on a pitch. `councilRules` false: the city has no council busking layers (any city but Melbourne, V2 2.4), so
+ * there is no general permit to keep clearances under: its rules line says they aren't checked instead.
+ */
+function cautionsFor(site: SiteInput | null, permit: PerformerPermit, unamplified: boolean, councilRules = true): string[] {
   const cautions: string[] = [];
   if (site?.permit === "circle-act" && permit !== "circle-act") cautions.push("Circle act permit holders have priority here.");
   if (site?.permit === "chess-board") cautions.push("Special conditions apply; read the council's rules for this site.");
   if (site?.permit === "premium") cautions.push("Premium permit holders only.");
-  if (!site) cautions.push("General permit: keep the required clearances from doors, crossings, seating and other buskers.");
+  if (!site && councilRules) cautions.push("General permit: keep the required clearances from doors, crossings, seating and other buskers.");
   if (unamplified) cautions.push("Unamplified busking only.");
   return cautions;
 }
@@ -161,7 +165,7 @@ export function candidateAt(
     rules: generalRules,
     rulesUrl: null,
     amplification: unamplified ? "unamplified-zone" : "allowed",
-    cautions: cautionsFor(null, permit, unamplified),
+    cautions: cautionsFor(null, permit, unamplified, sites.length > 0 || zones.length > 0),
     usualSpot: usualSpotAt(point, hotspots),
   };
 }
@@ -170,6 +174,7 @@ export function buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots
   let considered = 0;
   let excluded = 0;
   const blocked = (point: LatLon) => ruledOut(point, sites, zones, permit);
+  const councilRules = sites.length > 0 || zones.length > 0;
   const candidates: Candidate[] = [];
   const add = (candidate: Omit<Candidate, "amplification" | "cautions" | "usualSpot">, site: SiteInput | null) => {
     if (candidates.some((c) => c.id === candidate.id)) return;
@@ -183,7 +188,7 @@ export function buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots
     candidates.push({
       ...candidate,
       amplification: unamplified ? "unamplified-zone" : "allowed",
-      cautions: cautionsFor(site, permit, unamplified),
+      cautions: cautionsFor(site, permit, unamplified, councilRules),
       usualSpot: usualSpotAt(candidate, hotspots),
     });
   };

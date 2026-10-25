@@ -71,6 +71,19 @@ export const TOOL_SOURCES: Record<string, string> = {
   finish_plan: "Checked against the engine's scored pool",
 };
 
+const NOT_CHECKED = "local busking rules not checked";
+
+/** A city whose busking rules aren't checked (V2 2.4): check_pitch only looks at a spot, and says so. */
+const UNCHECKED_TOOL: Record<string, { label: string; source: string }> = {
+  check_pitch: { label: "Looking at a spot (local busking rules not checked)", source: "Busk Map public spaces; local busking rules not checked" },
+};
+
+/** A tool's step label and data source for this plan's city: Melbourne's are TOOL_LABELS and TOOL_SOURCES. */
+export function toolStart(tool: string, levels: { rules: string }): { label: string; source?: string } {
+  const unchecked = levels.rules === "none" ? UNCHECKED_TOOL[tool] : undefined;
+  return unchecked ?? { label: TOOL_LABELS[tool] ?? tool, source: TOOL_SOURCES[tool] };
+}
+
 /** What the model contributes: words and a choice among scored pitches. */
 export type AgentAnswer = { summary: string; pitches: { pitchId: string; why: string }[]; notes: string[] };
 
@@ -198,6 +211,8 @@ export function createTools(ctx: PlanContext, state: AgentState) {
 
 function buildTools(ctx: PlanContext, state: AgentState) {
   const area = ctx.city.bbox;
+  // V2 2.4: no council rules for this city, so check_pitch looks at a spot and never calls it allowed.
+  const unchecked = ctx.levels.rules === "none";
   let placesCache: Promise<KnownPlace[]> | null = null;
   const places = () => (placesCache ??= Promise.all([ctx.pitchData(), ctx.spots()]).then(([pitchData, spots]) => knownPlaces(pitchData.sites, ctx.city, spots)));
   const knownPitches = async () => [...(await ctx.ranked()), ...state.pool.values()];
@@ -450,8 +465,9 @@ function buildTools(ctx: PlanContext, state: AgentState) {
     }),
 
     check_pitch: tool({
-      description:
-        "Check a spot against the council's busking layers for the act's permit: snaps to the nearest known public space, says whether the rules rule it out, and lists cautions. A legal spot gets a pitchId you can add with score_pitches.",
+      description: unchecked
+        ? "Look at a spot: snaps to the nearest known public space and gives a pitchId you can add with score_pitches. This city's busking rules are not checked, so nothing is ruled in or out: never call a spot allowed or legal."
+        : "Check a spot against the council's busking layers for the act's permit: snaps to the nearest known public space, says whether the rules rule it out, and lists cautions. A legal spot gets a pitchId you can add with score_pitches.",
       inputSchema: z.object({ spot: whereSchema }),
       execute: async ({ spot }) => {
         const point = await where(spot);
@@ -464,10 +480,10 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         if (point.pitchId || existing) {
           const p = point.pitchId ? (await knownPitches()).find((x) => x.id === point.pitchId)! : existing!;
           return seen({
-            summary: `${p.name} is already in the engine's pool (${p.id})`,
+            summary: `${p.name} is already in the engine's pool (${p.id})${unchecked ? `; ${NOT_CHECKED}` : ""}`,
             pitchId: p.id,
             name: p.name,
-            legal: "not ruled out",
+            legal: unchecked ? "not checked" : "not ruled out",
             inPool: true,
             amplification: p.amplification,
             usualSpot: p.usualSpot,
@@ -485,10 +501,10 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         }
         state.checked.set(id, candidate);
         return seen({
-          summary: `${candidate.name}: not ruled out; add it with score_pitches to score it`,
+          summary: unchecked ? `${candidate.name}: ${NOT_CHECKED}; add it with score_pitches to score it` : `${candidate.name}: not ruled out; add it with score_pitches to score it`,
           pitchId: id,
           name: candidate.name,
-          legal: "not ruled out",
+          legal: unchecked ? "not checked" : "not ruled out",
           inPool: false,
           amplification: candidate.amplification,
           usualSpot: candidate.usualSpot,

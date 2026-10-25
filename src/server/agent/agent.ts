@@ -13,7 +13,7 @@ import type { PlanContext } from "./context";
 import { boundSongs, PLAN_PROMPT_SONGS } from "@/lib/plan-songs-bound";
 import { createMockPlanner } from "./mock-model";
 import { LIMITS, MODELS, PLANNER_PROVIDER_OPTIONS } from "./models";
-import { AFTER_SCORING, AgentState, createTools, finishSchema, outputForPage, scoringOpen, TOOL_LABELS, TOOL_SOURCES } from "./tools";
+import { AFTER_SCORING, AgentState, createTools, finishSchema, outputForPage, scoringOpen, toolStart } from "./tools";
 
 export { finishSchema as aiTextSchema };
 
@@ -69,6 +69,8 @@ export function buildPrompt(ctx: PlanContext, matched: { query: string; match: s
       ? `City: ${ctx.city.name}. Date: ${ctx.weekday} ${request.slot.date}. No fixed time: the engine scores each pitch at its best 3-hour window that day, 10 am to 10 pm. Call best_hours and say each pitch's hours in its why. Permit: ${request.permit}.`
       : `City: ${ctx.city.name}. Slot: ${describeSlot(request.slot)} (${ctx.weekday}, hours ${ctx.slotFor({}).startHour} to ${ctx.slotFor({}).endHour}). Permit: ${request.permit}.`,
     `Planning area: latitude ${box.south} to ${box.north}, longitude ${box.west} to ${box.east}.`,
+    // V2 2.4: only for a city without council rules, so every Melbourne prompt is unchanged.
+    ...(ctx.levels.rules === "none" ? ["This city's busking rules are not checked: never call a pitch allowed or legal."] : []),
     ctx.isAnyTime ? "Find the three best pitches for this act on this day, each at its best hours, and explain why each crowd fits." : "Find the three best pitches for this act in this slot and explain why each crowd fits.",
   ].join("\n");
 }
@@ -236,7 +238,7 @@ async function runAgent(ctx: PlanContext, events: AgentEvents, abortSignal: Abor
             break;
           }
           for (const key of [...buffers.keys()]) flush(key);
-          events.onToolStart?.({ id: part.toolCallId, tool: part.toolName, label: TOOL_LABELS[part.toolName] ?? part.toolName, source: TOOL_SOURCES[part.toolName], input: part.input });
+          events.onToolStart?.({ id: part.toolCallId, tool: part.toolName, ...toolStart(part.toolName, ctx.levels), input: part.input });
           break;
         case "tool-result": {
           const output = part.output as { summary?: unknown; accepted?: boolean } | undefined;

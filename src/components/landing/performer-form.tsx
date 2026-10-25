@@ -253,7 +253,8 @@ export function PerformerForm({ now, dateRule, prefill, startCity, repertoire = 
       // Melbourne adds nothing to the request (old hashes); any other city carries its geocoded place.
       ...requestFieldsOf(city),
       slot: hours ? { date, ...hours } : { date, any: true },
-      permit: permit as PlanRequestInput["permit"],
+      // V2 2.4: Melbourne's permits only mean something in Melbourne; elsewhere the busk asks for nothing more than general.
+      permit: (city.id === MELBOURNE_OPTION.id ? permit : "general") as PlanRequestInput["permit"],
       performer: {
         name: clean(name) || "My act",
         artists: artistList,
@@ -363,6 +364,7 @@ export function PerformerForm({ now, dateRule, prefill, startCity, repertoire = 
             if (next) setTime(next);
           }}
         />
+        {city.id === MELBOURNE_OPTION.id ? (
         <div className="flex flex-col gap-1.5" data-field="permit">
           <PermitPicker value={permit} onValueChange={setPermit} />
           {hasError("permit") && (
@@ -371,6 +373,7 @@ export function PerformerForm({ now, dateRule, prefill, startCity, repertoire = 
             </FormMessage>
           )}
         </div>
+        ) : null}
       </fieldset>
 
       {error && (

@@ -444,14 +444,16 @@ test.describe("Repertoire research (offline)", () => {
     await expect(chips.getByRole("button")).toHaveText(["Reggaeton", "Dembow", "Cuban Urban"]);
     // The rest are on the Suggested row, above the broad quick picks: the Hive's own (test model offline) carries its mark.
     const suggested = ask.getByTestId("research-genre-suggested");
-    await expect(suggested.getByRole("button")).toHaveText(["Funk"]);
+    // Named as the Hive's for screen readers (sr-only text, no title= tooltip).
+    const hiveFunk = /^Funk, .+'s suggestion$/;
+    await expect(suggested.getByRole("button")).toHaveText([hiveFunk]);
     await expect(suggested.getByRole("button", { name: "Funk" })).toHaveAttribute("data-source", "hive");
     await expect(suggested.getByRole("button", { name: "Funk" })).toBeDisabled();
     const genres = page.getByTestId("research-genre-pick");
     await expect(genres.getByRole("button", { name: "Reggae", exact: true })).toHaveAttribute("aria-pressed", "false");
     // Unpick one, and the Hive's can be picked instead; its chip keeps the mark.
     await chips.getByRole("button", { name: "Remove Cuban Urban" }).click();
-    await expect(suggested.getByRole("button")).toHaveText(["Cuban Urban", "Funk"]);
+    await expect(suggested.getByRole("button")).toHaveText(["Cuban Urban", hiveFunk]);
     await suggested.getByRole("button", { name: "Funk" }).click();
     await expect(chips.getByRole("button")).toHaveText(["Reggaeton", "Dembow", "Funk"]);
     await expect(chips.getByRole("button", { name: "Remove Funk" })).toHaveAttribute("data-source", "hive");

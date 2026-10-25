@@ -130,3 +130,56 @@ test.describe("any city (offline)", () => {
     await expect(cityField(page)).not.toContainText("Melbourne");
   });
 });
+
+/**
+ * V2 2.2 and 2.4: outside Melbourne each signal names its level in plain words, and the rules are "not checked", never
+ * "allowed". Melbourne keeps today's labels. Offline, so no source answers live: only "Estimate" and "Not checked" show.
+ */
+test.describe("signal levels and rules not checked (offline)", () => {
+  test.skip(!LOCAL, "Local offline server only");
+
+  test("Tokyo: Estimate activity, rules Not checked, no permit anywhere", async ({ page }) => {
+    await page.goto("/busks");
+    await pickCity(page, "Tok", "Tokyo, Japan");
+    // Melbourne's permits mean nothing in Tokyo: the picker goes, and the busk asks for a general permit.
+    await expect(form(page).getByRole("radio", { name: "Premium permit" })).toHaveCount(0);
+    await form(page).getByLabel("Artists you sound like").fill("Paul Kelly");
+    const posted = postedPlan(page);
+    await form(page).getByRole("button", { name: "Plan my busk" }).click();
+    expect((await posted).postDataJSON().permit).toBe("general");
+    await waitForPlan(page);
+
+    await expect(page.getByTestId("plan-tags")).toContainText("Activity: Estimate");
+    await expect(page.getByText(/^(Shared busk · )?Tokyo · /).first()).not.toContainText("permit");
+    await expect(page.getByTestId("rules-line")).toHaveText("Local busking rules not checked: check with the city before you play.");
+    await expect(page.getByText("Busk Map never confirms a pitch is legal")).toHaveCount(0);
+    const rules = page.getByTestId("rules-not-checked");
+    await expect(rules).toContainText("Local busking rules");
+    await expect(rules.getByTestId("level-badge")).toHaveText("Not checked");
+    // Test data is never called live.
+    await expect(page.locator('[data-level="Live data"]')).toHaveCount(0);
+
+    const sheet = await openDetails(page);
+    const legal = sheet.getByRole("region", { name: "Rules" }).locator("xpath=ancestor::*[@data-slot='item'][1]");
+    await expect(legal).toContainText("Busking rules");
+    await expect(legal).toContainText("Local busking rules not checked: check with the city before you play.");
+    await expect(legal.getByTestId("level-badge")).toHaveText("Not checked");
+    await expect(sheet).not.toContainText("General permit");
+    await expect(sheet).not.toContainText("City of Melbourne");
+  });
+
+  test("Melbourne keeps today's labels: Activity: est., the council's rules, no level words", async ({ page }) => {
+    await page.goto("/busks");
+    await expect(form(page).getByRole("radio", { name: "Premium permit" })).toBeVisible();
+    await page.goto(`/plan?example=${EXAMPLES[0].id}`);
+    await waitForPlan(page);
+    await expect(page.getByTestId("plan-tags")).toContainText("Activity: est.");
+    await expect(page.getByTestId("rules-line")).toHaveText("Busk Map never confirms a pitch is legal. Check your permit conditions on the day.");
+    await expect(page.getByText(/ · (General permit|Premium permit|Circle act)$/).first()).toBeVisible();
+    await expect(page.getByTestId("rules-not-checked")).toHaveCount(0);
+    await expect(page.getByTestId("level-badge")).toHaveCount(0);
+    const sheet = await openDetails(page);
+    await expect(sheet.getByText(/^(General permit|Council-designated) pitch$/)).toBeVisible();
+    await expect(sheet.getByTestId("level-badge")).toHaveCount(0);
+  });
+});

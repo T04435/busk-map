@@ -21,6 +21,8 @@ import { SongTag } from "@/components/honeycomb/song-tag";
 import type { AgentStep } from "@/lib/agent-steps";
 import { activityWord, type ActivityBasis } from "@/lib/activity";
 import type { ExplanationsModel } from "@/lib/sources";
+import type { LevelSignal, LevelWord } from "@/lib/signal-level";
+import { LevelBadge } from "@/components/honeycomb/level-badge";
 import { EstimateLabel } from "./estimate-label";
 
 type Rec = Record<string, unknown>;
@@ -51,14 +53,17 @@ const TONE: Record<FactTone, string> = { places: "text-chart-3", event: "text-ev
  * One fact (shadcn Item): an icon in a 24px column, a bold title, an optional muted line and any extras (the DS Fact). Inside a research card it is
  * `flush` (no rule, no padding); in the pitch card's facts list it keeps its rule underneath.
  */
-export function Fact({ icon, tone, title, sub, flush = false, children }: { icon: IconName; tone?: FactTone; title: ReactNode; sub?: ReactNode; flush?: boolean; children?: ReactNode }) {
+export function Fact({ icon, tone, title, sub, level, flush = false, children }: { icon: IconName; tone?: FactTone; title: ReactNode; sub?: ReactNode; level?: LevelWord | null; flush?: boolean; children?: ReactNode }) {
   return (
     <Item className={cn("grid grid-cols-[24px_1fr] items-stretch gap-3 text-[15px] leading-[22px]", flush ? "" : "border-b border-border py-3")}>
       <ItemMedia variant="icon" className="items-start justify-start">
         <Icon name={icon} size={20} className={cn("mt-px", tone && TONE[tone])} />
       </ItemMedia>
       <ItemContent className="block">
-        <ItemTitle>{title}</ItemTitle>
+        <ItemTitle>
+          {title}
+          {level ? <LevelBadge word={level} className="ml-2 align-[1px]" /> : null}
+        </ItemTitle>
         {sub ? (
           <ItemDescription asChild>
             <div>{sub}</div>
@@ -402,8 +407,11 @@ export const TOOL_UI: Record<string, ToolUi> = {
     title: (s) => `The rules at ${str(rec(s.output).name) ?? placeOf(s)}`,
     render: (o) => {
       const out = o.legal === "ruled out";
-      const unknown = !out && o.legal !== "not ruled out";
+      // V2 2.4: a city with no council rules: nothing is ruled in or out.
+      const unchecked = o.legal === "not checked";
+      const unknown = !out && !unchecked && o.legal !== "not ruled out";
       const cautions = Array.isArray(o.cautions) ? (o.cautions as string[]) : [];
+      if (unchecked) return <Fact flush icon="legal" tone="legal" title="Local busking rules not checked" sub="Check with the city before you play." />;
       return (
         <Fact flush icon={out ? "restricted" : "legal"} tone="legal" title={out ? "Ruled out by the council's busking rules" : unknown ? "The rules are unavailable right now" : "Not ruled out for your permit"}>
           <Cautions items={cautions} />
@@ -548,6 +556,17 @@ export const TOOL_UI: Record<string, ToolUi> = {
     render: (_o, s, ctx) =>
       s.status === "failed" ? <Foot>Busk Map asked {ctx.model === "mock" ? "the test model" : "the Hive"} to look closer before answering.</Foot> : null,
   },
+};
+
+/** The signal each plan tool reads, for its level word beside the step title (V2 2.2). */
+export const TOOL_SIGNAL: Partial<Record<string, LevelSignal>> = {
+  taste_map: "taste",
+  crowd_at: "taste",
+  busy_places: "taste",
+  compare_crowds: "taste",
+  events_near: "events",
+  activity_at: "activity",
+  check_pitch: "rules",
 };
 
 /** The DS icon for each tool's cell; an unknown tool gets the dots glyph. */

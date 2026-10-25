@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { formatHour } from "@/lib/slot";
 import type { Plan } from "@/lib/plan-schema";
+import type { LevelWord } from "@/lib/signal-level";
+import { LevelBadge } from "@/components/honeycomb/level-badge";
 
 /**
  * One line per hour: time in mono, an icon, the temperature in condensed numerals, the chance of rain and the wind. The slot is
@@ -14,11 +16,14 @@ export function WeatherStrip({
   weather,
   slot,
   titleAs: Title = "h2",
+  level = null,
 }: {
   weather: Plan["weather"];
   slot: { startHour: number; endHour: number };
   /** The title element: an h2 in the plan's outline; a `p` where the strip is a specimen (the /brand page, B-210). */
   titleAs?: "h2" | "h3" | "p";
+  /** The forecast's level word outside Melbourne (V2 2.2). */
+  level?: LevelWord | null;
 }) {
   if (!weather)
     return (
@@ -69,6 +74,7 @@ export function WeatherStrip({
       <div className="flex flex-wrap items-baseline gap-3">
         <span className="font-mono text-[11px] leading-4 font-medium tracking-[0.06em] text-muted-foreground uppercase">Weather</span>
         <Title className="m-0 font-display text-lg leading-5 font-extrabold tracking-[0.01em] uppercase">{wet ? "Rain in your slot" : "Dry through your slot"}</Title>
+        <LevelBadge word={level} className="self-center" />
         <span className="ml-auto font-mono text-[10px] leading-[14px] tracking-[0.04em] text-muted-foreground">°C · rain · wind km/h</span>
       </div>
       <div role="list" aria-label="Forecast around the slot" tabIndex={0} className="flex items-stretch overflow-x-auto pt-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">

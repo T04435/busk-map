@@ -1,6 +1,7 @@
 import type { CityLevels } from "@/lib/city";
 import { Source, Sources, SourcesContent, SourcesTrigger } from "@/components/ai-elements/sources";
 import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
+import { LevelBadge } from "@/components/honeycomb/level-badge";
 import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
 import type { DataStatus } from "@/lib/plan-schema";
@@ -93,6 +94,17 @@ export function DataSources({
             </Item>
           );
         })}
+        {/* V2 2.2: a city without council rules says so where Melbourne credits its busking layers. */}
+        {!soFar && levels?.rules === "none" ? (
+          <Item asChild className="grid grid-cols-[1fr_auto] items-center gap-x-3 border-t border-border py-2.5 text-sm leading-5 first:border-t-0" data-testid="rules-not-checked">
+            <li>
+              <ItemContent className="block min-w-auto">
+                <ItemTitle>Local busking rules</ItemTitle>
+              </ItemContent>
+              <LevelBadge word="Not checked" />
+            </li>
+          </Item>
+        ) : null}
       </ul>
       </SourcesContent>
     </section>

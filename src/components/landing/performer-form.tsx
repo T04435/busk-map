@@ -26,6 +26,7 @@ import { type PlaylistView, type SpotifyProfile } from "@/lib/playlist-schema";
 import { choiceForHours, hoursOf, type TimeChoice } from "@/lib/time-slots";
 import { ArtistPicker, MAX_PICKED_ARTISTS, typedArtists, type PickedArtist } from "./artist-picker";
 import { MELBOURNE_OPTION, requestFieldsOf, type CityOption } from "@/lib/city";
+import { cityNow, defaultDateIn, type DefaultDateRule } from "@/lib/city-clock";
 
 // "|" and "~" separate values in the plan URL.
 const clean = (s: string) => s.replace(/[|~]/g, " ").trim();
@@ -134,11 +135,12 @@ function errorFor(issues: { path: PropertyKey[]; message: string }[], input: Pla
 }
 
 /**
- * `today` is the city's local date: a plan is for today or later. `repertoire` is this device's Repertoire (read on the
+ * `now` is the server's clock (an ISO instant) and `dateRule` how the default date is picked: both are read in the picked city's
+ * time zone (it starts on `startCity`, e.g. a Repertoire's fans city, else Melbourne), so "today" (a plan is for today or later) and the default date follow the city. `repertoire` is this device's Repertoire (read on the
  * server from its cookie), or null. The Repertoire is READ-ONLY here (a summary and a link to /repertoire); the act name and
  * artists are plain fields for this busk, prefilled from it and never saved back.
  */
-export function PerformerForm({ defaultDate, today, prefill, repertoire = null }: { defaultDate: string; today: string; prefill?: FormPrefill; repertoire?: PlaylistView | null }) {
+export function PerformerForm({ now, dateRule, prefill, startCity, repertoire = null }: { now: string; dateRule: DefaultDateRule; prefill?: FormPrefill; startCity?: CityOption; repertoire?: PlaylistView | null }) {
   const router = useRouter();
   // The Repertoire is the starting point when there is one; ?again (a plan's act) still wins for the name, artists and songs.
   const rep = repertoire;
@@ -149,7 +151,11 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
   const [artistQuery, setArtistQuery] = useState("");
   // The songs the busk carries: the Repertoire's (or, planning again, the last busk's).
   const songs = useMemo<PickedSong[]>(() => (prefill ? prefillSongs(prefill) : rep ? repertoireFields(rep).picked : []), [prefill, rep]);
-  const [date, setDate] = useState(defaultDate);
+  const [city, setCity] = useState<CityOption>(prefill?.city ?? startCity ?? MELBOURNE_OPTION);
+  const [date, setDate] = useState(() => defaultDateIn(dateRule, (prefill?.city ?? startCity ?? MELBOURNE_OPTION).timeZone, now));
+  /** Whether the date was picked by hand: until then, it follows the city's default. */
+  const [dateChosen, setDateChosen] = useState(false);
+  const today = cityNow(city.timeZone, now).today;
   const [time, setTime] = useState<TimeChoice>(() => initialTime(prefill));
   // Hours from an old link that match no named slot stay on offer as a "From your link" choice, so nothing is lost.
   const [customHours] = useState(() => {
@@ -157,7 +163,6 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
     return choice.kind === "custom" ? { startHour: choice.startHour, endHour: choice.endHour } : null;
   });
   const [permit, setPermit] = useState<string>(prefill?.permit ?? "general");
-  const [city, setCity] = useState<CityOption>(prefill?.city ?? MELBOURNE_OPTION);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<FormError | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -324,14 +329,25 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
 
       <fieldset className="m-0 flex min-w-0 flex-col gap-5 border-0 p-0">
         <legend className="mb-1 p-0 font-display text-[26px] leading-none font-extrabold uppercase">When and where</legend>
-        <CityPicker value={city} onChange={setCity} />
+        <CityPicker
+          value={city}
+          onChange={(next) => {
+            setCity(next);
+            if (!dateChosen) setDate(defaultDateIn(dateRule, next.timeZone, now));
+          }}
+        />
         {hasError("city") && (
           <FormMessage tone="error" id="err-city" alert={false}>
             {error!.message}
           </FormMessage>
         )}
         <div className="flex max-w-80 flex-col gap-1.5" data-field="slot">
-          <DatePicker id="date" label="Date" value={date} onChange={setDate} min={today} invalid={hasError("slot")} aria-describedby={errorId("slot")} />
+          <DatePicker id="date" label="Date" value={date}
+            onChange={(next) => {
+              setDateChosen(true);
+              setDate(next);
+            }}
+            min={today} invalid={hasError("slot")} aria-describedby={errorId("slot")} />
           {hasError("slot") && (
             <FormMessage tone="error" id="err-slot" alert={false}>
               {error!.message}

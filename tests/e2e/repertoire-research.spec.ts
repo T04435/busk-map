@@ -93,7 +93,7 @@ test.describe("Repertoire research (offline)", () => {
     await expect(page.getByTestId("research-summary")).toHaveCount(0);
     await expect(page.getByText("Your act, in a paragraph")).toHaveCount(0);
     await expect(page.getByTestId("research-fans-map").getByText(/Your crowd is strongest in|not head counts/)).toHaveCount(0);
-    await expect(page.getByTestId("research-fans-map").getByRole("link", { name: "Plan a busk" })).toHaveCount(0);
+    await expect(page.getByTestId("research-fans-map").getByRole("link", { name: "Plan a busk", exact: true })).toHaveCount(0);
     expect(await ids("repertoire-research")).toContain("research-steps");
     const order = await page.locator('[data-slot="repertoire-results"] > [data-slot]').evaluateAll((els) => els.map((e) => e.getAttribute("data-slot")));
     expect(order).toEqual(["repertoire-act", "repertoire-fans", "repertoire-map", "repertoire-songs", "repertoire-research"]);

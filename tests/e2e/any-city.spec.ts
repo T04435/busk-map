@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { EXAMPLES } from "../../src/lib/examples";
+import { OFFLINE_TEST_ARTIST } from "../../src/lib/repertoire-research";
 import { expect, LOCAL, test, waitForPlan } from "./fixtures";
 
 /**
@@ -99,5 +100,23 @@ test.describe("any city (offline)", () => {
     await expect(await mapCentre(page)).toHaveAttribute("data-center", "-37.8136,144.9631", { timeout: 15_000 });
     await expect(page.getByTestId("data-used")).toContainText("City of Melbourne");
     await expect(page.getByText(/^(Shared busk · )?Melbourne · /)).toHaveCount(0);
+  });
+
+  test("Repertoire: a fans city's \"Plan a busk here\" opens /busks with that city selected", async ({ page }) => {
+    await page.goto("/repertoire");
+    await page.getByLabel("Your Spotify artist link").fill(`https://open.spotify.com/artist/${OFFLINE_TEST_ARTIST.spotifyId}`);
+    await page.getByRole("button", { name: "Research my act" }).click();
+    await expect(page.getByTestId("research-end")).toBeVisible({ timeout: 20_000 });
+    const cities = page.getByTestId("fans-cities").getByTestId("fans-city");
+    await expect(cities.first()).toBeVisible();
+    // The first city that isn't the built-in Melbourne: its link opens the form on that city, with its time zone's clock.
+    const names = await cities.locator("span.font-bold").allTextContents();
+    const at = names.findIndex((n) => !n.startsWith("Melbourne"));
+    expect(at, `fans cities: ${names.join(", ")}`).toBeGreaterThanOrEqual(0);
+    const name = names[at].split(",")[0];
+    await cities.nth(at).getByRole("link", { name: new RegExp(`^Plan a busk here in ${name}`) }).click();
+    await expect(page).toHaveURL(/\/busks\?fans=/);
+    await expect(cityField(page)).toContainText(name);
+    await expect(cityField(page)).not.toContainText("Melbourne");
   });
 });

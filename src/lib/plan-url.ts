@@ -14,7 +14,7 @@ import { parseWeightsParam, weightsParam } from "./weights-url";
 import { planRequestSchema, type PlanRequest } from "./plan-schema";
 import { boundSongs, PLAN_SONGS_CONSIDERED } from "./plan-songs-bound";
 import { isAnyTime, nextSlotDate } from "./slot";
-import { parsePlaceParam, placeParam } from "./city";
+import { cityOfRequest, MELBOURNE, parsePlaceParam, placeParam } from "./city";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -26,6 +26,14 @@ export type ParsedPlanUrl =
 
 /** The city's current local date and hour. A default date is the next one whose slot hasn't ended by then. */
 export type LocalNow = { today: string; hour: number };
+
+/**
+ * The time zone a plan URL's default date is read in: the link's city (an example is Melbourne's, so its link names none). A
+ * city that can't be read falls back to Melbourne; the request is refused later anyway.
+ */
+export function planTimeZone(params: Params): string {
+  return cityOfRequest({ city: first(params.city), place: parsePlaceParam(first(params.place)) })?.timeZone ?? MELBOURNE.timeZone;
+}
 
 export function parsePlanParams(params: Params, now: LocalNow): ParsedPlanUrl {
   const example = findExample(first(params.example));

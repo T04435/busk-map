@@ -233,3 +233,36 @@ export function requestFieldsOf(option: CityOption): { city: string; place?: Cit
   const { name, country, countryCode, lat, lon, timeZone } = option;
   return { city: option.id, place: { name, country, countryCode, lat, lon, timeZone } };
 }
+
+/**
+ * A fans city in a /busks link: `fans=Bogota~4.711~-74.0721` (name, then the map marker's latitude and longitude). The page
+ * resolves it to a City through the geocoder; the marker's point tells the Bogota in Colombia from any other.
+ */
+export function fansCityParam(city: { name: string; lat: number; lng: number }): string {
+  return [city.name.replace(/~/g, " "), city.lat, city.lng].join("~");
+}
+
+/** The fans city in a /busks link, or undefined when absent or unreadable. */
+export function parseFansCityParam(value: string | undefined): { name: string; lat: number; lon: number } | undefined {
+  if (!value) return undefined;
+  const [name, lat, lon] = value.split("~");
+  const point = z.object({ name: label(80), lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180) }).safeParse({ name, lat: lat === undefined || lat === "" ? NaN : Number(lat), lon: lon === undefined || lon === "" ? NaN : Number(lon) });
+  return point.success ? point.data : undefined;
+}
+
+/** How far from a fans marker a geocoded city may be and still be that city (km). */
+export const FANS_CITY_MATCH_KM = 100;
+
+/** The geocoder's option nearest to a point, within FANS_CITY_MATCH_KM, or null. Melbourne, Victoria resolves to the built-in Melbourne. */
+export function nearestCityOption(options: CityOption[], point: LatLon): CityOption | null {
+  let best: { option: CityOption; m: number } | null = null;
+  for (const option of options) {
+    const m = distanceM(option, point);
+    if (!best || m < best.m) best = { option, m };
+  }
+  if (!best || best.m > FANS_CITY_MATCH_KM * 1000) return null;
+  return best.option.id === DEFAULT_CITY_ID ? MELBOURNE_OPTION : best.option;
+}
+
+/** The name a geocoder is asked for: a label like "Havana, Cuba" is searched as "Havana". */
+export const fansCityQuery = (name: string): string => name.split(",")[0].trim();

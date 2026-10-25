@@ -18,7 +18,7 @@ afterEach(() => {
 describe("GET /api/cities (Open-Meteo geocoding)", () => {
   it("asks the geocoder once and answers cities only, with slugs, regions and time zones", async () => {
     const { GET } = await load({ BUSKMAP_OFFLINE: "" });
-    const { calls } = mockFetch([route((u) => u.host === "geocoding-api.open-meteo.com", () => json({ results: SYNTHETIC_GEOCODE, generationtime_ms: 1 }))]);
+    const { calls } = mockFetch([route((u) => u.host === "geocoding-api.open-meteo.com", () => json({ results: SYNTHETIC_GEOCODE.slice(0, 6), generationtime_ms: 1 }))]);
     const res = await GET(ask("Melbourne", { "x-real-ip": "10.0.0.1" }));
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("no-store");

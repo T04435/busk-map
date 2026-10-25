@@ -1,6 +1,7 @@
 import "server-only";
 import { PERSONA_PROMPT } from "@/lib/agent-persona";
 import { NO_SCORES_RULE } from "@/lib/plain-scores";
+import { NO_TOOL_NAMES_RULE, plainTools } from "@/lib/plain-tools";
 import { ToolLoopAgent, type LanguageModel, type ModelMessage, type StopCondition } from "ai";
 import { describeSlot } from "@/lib/slot";
 import type { Plan } from "@/lib/plan-schema";
@@ -49,6 +50,7 @@ Before each tool call, write one short sentence saying what you will check next 
 Rules:
 - Never invent a number, a place, an event or a song. Every number you write must come from a tool result.
 - ${NO_SCORES_RULE}
+- ${NO_TOOL_NAMES_RULE}
 - Activity is a relative estimate from Qloo (popular places open nearby and where activity concentrates), never a count of people; event end times are estimates too: say so.
 - Busk Map never claims a pitch is legal. Mention cautions when a tool lists them.
 - Taste data is aggregate. Never describe an individual.
@@ -234,7 +236,8 @@ async function runAgent(ctx: PlanContext, events: AgentEvents, abortSignal: Abor
     const flush = (key: string) => {
       const b = buffers.get(key);
       buffers.delete(key);
-      const text = b?.text.trim();
+      // The Hive's own words reach the page: never a tool name (plainTools backs up NO_TOOL_NAMES_RULE).
+      const text = b ? plainTools(b.text.trim()) : "";
       if (b && text) events.onNote?.({ kind: b.kind, text });
     };
     const unshown = new Set<string>();

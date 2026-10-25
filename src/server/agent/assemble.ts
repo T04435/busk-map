@@ -2,6 +2,7 @@ import "server-only";
 import { formatHour, describeSlot, DEFAULT_SLOT_HOURS } from "@/lib/slot";
 import { activityPhrase, activitySentence } from "@/lib/activity";
 import { plainScores, strengthPhrase, strengthWord } from "@/lib/plain-scores";
+import { plainTools } from "@/lib/plain-tools";
 import { noBuskingCells } from "./zone-cells";
 import { titleCase } from "@/lib/text";
 import { venueDetail } from "@/lib/venue";
@@ -235,7 +236,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
   const spacing = skippedForSpacing(ranked, top);
   const genres = top[0] ? await context.crowdGenres(top[0]) : [];
 
-  const aiWhy = new Map(valid ? aiPicks.filter((p) => traceable(p.why)).map((p) => [p.pitchId, clip(plainScores(p.why.trim()), 500)]) : []);
+  const aiWhy = new Map(valid ? aiPicks.filter((p) => traceable(p.why)).map((p) => [p.pitchId, clip(plainTools(plainScores(p.why.trim())), 500)]) : []);
   const poolLevels = ranked.filter((p) => p.activityBasis !== "none").map((p) => p.evidence.activity.level);
   const pitches = await Promise.all(
     (qlooDown ? [] : top).map(async (pitch) => {
@@ -301,13 +302,13 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     explanations: usedAi ? "ai" : "template",
     explanationsModel: usedAi ? (options.model ?? "claude") : null,
     summary:
-      (usedAi && ai?.summary.trim() && traceable(ai.summary) && clip(plainScores(ai.summary.trim()), 600)) ||
+      (usedAi && ai?.summary.trim() && traceable(ai.summary) && clip(plainTools(plainScores(ai.summary.trim())), 600)) ||
       (qlooDown
         ? "Without Qloo's taste data Busk Map can't tell where your crowd is, so nothing is recommended."
         : pitches.length > 0
         ? `Top pitch: ${pitches[0].name}.`
         : "No pitch could be recommended for this slot with the data available."),
-    notes: [...context.notes, ...(options.agentNotes ?? []), ...(usedAi ? (ai?.notes ?? []).filter(traceable).slice(0, 3).map((n) => clip(plainScores(n), 240)) : [])],
+    notes: [...context.notes, ...(options.agentNotes ?? []), ...(usedAi ? (ai?.notes ?? []).filter(traceable).slice(0, 3).map((n) => clip(plainTools(plainScores(n)), 240)) : [])],
     ...(districts.length > 0 ? { districts: districts.map((d) => ({ name: d.name, lat: d.center.lat, lon: d.center.lon })) } : {}),
     ...(areas.length > 0 ? { areas: areas.map((a) => ({ name: a.name, lat: a.lat, lon: a.lon, zoomed: districts.some((d) => d.area && d.name === a.name) })) } : {}),
     weights: context.weights,

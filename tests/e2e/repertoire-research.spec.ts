@@ -421,7 +421,7 @@ test.describe("Repertoire research (offline)", () => {
     expect(saved).toMatchObject([{ name: "Mariah Carey", image: OFFLINE_PICKED_ARTISTS.mariah.spotifyImage }, { name: "Celia Cruz", image: OFFLINE_PICKED_ARTISTS.celia.qlooImage }]);
   });
 
-  test("sound-alikes Qloo doesn't know (the Wow Popy case): the ask is prefilled with them and the genre they share, sits right under the title, a genre search adds one, and Carry on goes on", async ({ page }) => {
+  test("sound-alikes Qloo doesn't know (the Wow Popy case): the ask is prefilled with them and suggested genres, sits right under the title, the Hive's and a searched genre can be picked, and Carry on goes on", async ({ page }) => {
     test.setTimeout(120_000);
     const inputs: string[] = [];
     page.on("request", (r) => {
@@ -439,18 +439,22 @@ test.describe("Repertoire research (offline)", () => {
     for (const name of act.similar) await expect(picked).toContainText(name);
     await expect(picked.locator("img")).toHaveCount(act.similar.length);
     await expect(ask.getByTestId("artists-hint")).toContainText(`${act.similar.length} of 10`);
-    // The genre both sound-alikes share starts picked; ones from a single sound-alike lead the quick picks, not picked; the broad ones follow.
+    // Up to three suggestions start picked: the one the research and the Hive both named (Reggaeton), then the research's.
     const chips = ask.getByTestId("research-genres-picked");
-    await expect(chips.getByRole("button")).toHaveText(["Reggaeton"]);
+    await expect(chips.getByRole("button")).toHaveText(["Reggaeton", "Dembow", "Cuban Urban"]);
+    // The rest are on the Suggested row, above the broad quick picks: the Hive's own (test model offline) carries its mark.
+    const suggested = ask.getByTestId("research-genre-suggested");
+    await expect(suggested.getByRole("button")).toHaveText(["Funk"]);
+    await expect(suggested.getByRole("button", { name: "Funk" })).toHaveAttribute("data-source", "hive");
+    await expect(suggested.getByRole("button", { name: "Funk" })).toBeDisabled();
     const genres = page.getByTestId("research-genre-pick");
-    const buttons = genres.getByRole("button");
-    await expect(buttons.nth(0)).toHaveText("Dembow");
-    await expect(buttons.nth(1)).toHaveText("Cuban Urban");
-    // Then the Hive's own suggestion (one small model call; the test model offline), after its tag, never selected to start with.
-    await expect(buttons.nth(2)).toHaveText("Funk");
-    await expect(buttons.nth(2)).toHaveAttribute("data-source", "hive");
-    await expect(genres.locator('[data-slot="agent-tag"]')).toHaveText("Test model");
-    for (const name of ["Dembow", "Cuban Urban", "Funk", "Reggae"]) await expect(genres.getByRole("button", { name, exact: true })).toHaveAttribute("aria-pressed", "false");
+    await expect(genres.getByRole("button", { name: "Reggae", exact: true })).toHaveAttribute("aria-pressed", "false");
+    // Unpick one, and the Hive's can be picked instead; its chip keeps the mark.
+    await chips.getByRole("button", { name: "Remove Cuban Urban" }).click();
+    await expect(suggested.getByRole("button")).toHaveText(["Cuban Urban", "Funk"]);
+    await suggested.getByRole("button", { name: "Funk" }).click();
+    await expect(chips.getByRole("button")).toHaveText(["Reggaeton", "Dembow", "Funk"]);
+    await expect(chips.getByRole("button", { name: "Remove Funk" })).toHaveAttribute("data-source", "hive");
     // No gap: the ask starts right under the step's title row (the title and its "Your turn" tag, which wraps on a phone).
     // Both measured in one frame: the page scrolls the ask into view smoothly, so two separate reads can disagree.
     const { gap } = await page.evaluate(() => {
@@ -463,28 +467,26 @@ test.describe("Repertoire research (offline)", () => {
     expect(gap).toBeGreaterThanOrEqual(-1);
     // The genre search: type, pick one of Qloo's genres; it joins the picked ones (axe clean with the list open).
     const search = ask.getByTestId("research-genre-search");
+    await expect(search).toBeDisabled();
+    await chips.getByRole("button", { name: "Remove Dembow" }).click();
     await search.fill("dem");
     const option = ask.getByRole("option", { name: "Dembow" });
     await expect(option).toBeVisible({ timeout: 10_000 });
     const axe = await new AxeBuilder({ page }).include('[data-testid="research-ask"]').withTags(WCAG).analyze();
     expect(axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
     await option.click();
-    await expect(chips.getByRole("button")).toHaveText(["Reggaeton", "Dembow"]);
+    await expect(chips.getByRole("button")).toHaveText(["Reggaeton", "Funk", "Dembow"]);
     await expect(search).toHaveValue("");
-    await chips.getByRole("button", { name: "Remove Dembow" }).click();
-    await expect(chips.getByRole("button")).toHaveText(["Reggaeton"]);
-    await search.fill("dem");
-    await ask.getByRole("option", { name: "Dembow" }).click();
     // Carry on: the found sound-alikes as they were, and the genres picked.
     await page.getByTestId("research-ask-carry-on").click();
     await done(page);
     await expect(page.getByTestId("research-end")).not.toHaveAttribute("data-code", /^needs_/);
     expect(JSON.parse(inputs[0])).toEqual({
       artists: act.similar.map((name) => ({ name, spotifyId: OFFLINE_SPOTIFY_ONLY_ARTISTS[name].spotifyId, image: OFFLINE_SPOTIFY_ONLY_ARTISTS[name].image })),
-      genres: ["Reggaeton", "Dembow"],
+      genres: ["Reggaeton", "Funk", "Dembow"],
     });
     const steps = page.getByTestId("research-steps");
-    await expect(steps.locator('[data-testid="agent-step"][data-tool="research_fans_love"]')).toContainText("Based on Reggaeton and Dembow: your fans also love");
+    await expect(steps.locator('[data-testid="agent-step"][data-tool="research_fans_love"]')).toContainText("Based on Reggaeton, Funk and Dembow: your fans also love");
     const saved = (await (await page.request.get("/api/playlist")).json()).playlist.soundsLike;
     expect(saved.map((a: { name: string; foundBy?: string }) => `${a.name}:${a.foundBy ?? "you"}`)).toEqual(act.similar.map((name) => `${name}:you`));
   });

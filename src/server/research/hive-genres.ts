@@ -2,6 +2,7 @@ import "server-only";
 import { generateText, Output, type LanguageModel } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import { z } from "zod";
+import { OFFLINE_HIVE_GENRES } from "@/lib/repertoire-research";
 import { MODELS } from "@/server/agent/models";
 import { providerStatus } from "@/server/env";
 import type { RunUsage } from "@/server/learn/types";
@@ -27,17 +28,24 @@ export function hiveGenrePrompt(input: HiveGenreInput): string {
   return [`ACT: ${input.act.slice(0, 80)}`, `SOUNDS_LIKE_JSON: ${JSON.stringify(input.soundsLike.slice(0, 10).map((n) => n.slice(0, 80)))}`, "", "Name up to 3 music genres."].join("\n");
 }
 
-const answerSchema = z.object({ genres: z.array(z.string().trim().min(2).max(40)).max(HIVE_GENRE_LIMITS.max) });
+// A longer list is cut to the first three, not refused.
+const answerSchema = z.object({ genres: z.array(z.string().trim().min(1).max(60)).max(10) });
 
-/** Offline and tests: fixed genres, one of them a place (dropped later) and one Qloo's mock has no tag for. */
-export const MOCK_HIVE_GENRES = ["funk", "Cuba", "polka"] as const;
+/**
+ * Offline and tests: fixed genres for the acts in OFFLINE_HIVE_GENRES (read from the prompt's ACT line), none for any other act, so
+ * the other offline flows are unchanged.
+ */
+export const MOCK_HIVE_GENRES = OFFLINE_HIVE_GENRES;
 export function createMockGenreModel(scenario: "ok" | "fail" = "ok") {
   const usage = { inputTokens: { total: 40, noCache: 40, cacheRead: undefined, cacheWrite: undefined }, outputTokens: { total: 12, text: 12, reasoning: undefined } };
   return new MockLanguageModelV4({
     modelId: "mock-hive-genres",
-    doGenerate: async () => {
+    doGenerate: async (options) => {
       if (scenario === "fail") throw new Error("mock model failure");
-      return { content: [{ type: "text", text: JSON.stringify({ genres: [...MOCK_HIVE_GENRES] }) }], finishReason: { unified: "stop", raw: undefined }, usage, warnings: [] };
+      const user = (options.prompt as { role: string; content: unknown }[]).find((m) => m.role === "user");
+      const text = Array.isArray(user?.content) ? (user.content as { text?: string }[]).map((p) => p.text ?? "").join("\n") : String(user?.content ?? "");
+      const act = /^ACT: (.*)$/m.exec(text)?.[1]?.trim() ?? "";
+      return { content: [{ type: "text", text: JSON.stringify({ genres: [...(OFFLINE_HIVE_GENRES[act] ?? [])] }) }], finishReason: { unified: "stop", raw: undefined }, usage, warnings: [] };
     },
   });
 }

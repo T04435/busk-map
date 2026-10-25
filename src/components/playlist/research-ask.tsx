@@ -1,7 +1,7 @@
 "use client";
 
-import { Fragment, useId, useState } from "react";
-import { AgentTag } from "@/components/honeycomb/agent-tag";
+import { useId, useState } from "react";
+import { HIVE_SIZES, HiveMark } from "@/components/honeycomb/hive-mark";
 import { modelName } from "@/lib/sources";
 import { useLiveSearch } from "@/components/forms/use-live-search";
 import { Icon } from "@/components/honeycomb/icon";
@@ -22,16 +22,10 @@ const genreKey = (name: string) => name.trim().toLowerCase();
 // A status line beside the list (DS bm-results-line), never inside it: a listbox holds only options.
 const LINE = "m-0 flex items-center gap-2 p-3 text-sm leading-5 text-muted-foreground";
 
-/**
- * The quick picks under the genre search, once each by name: the research's suggestions not selected to start with, then the
- * Hive's (named by one model call; never selected to start with), then the broad genres.
- */
+/** The broad quick picks: the fixed genres, less any the research or the Hive suggested (those are on the Suggested row). */
 export function genreOptions(suggest: ResearchSuggest | null | undefined): string[] {
-  const out: string[] = [];
-  const found = (suggest?.genres ?? []).filter((g) => !g.picked && g.from !== "hive").map((g) => g.name);
-  const hive = (suggest?.genres ?? []).filter((g) => !g.picked && g.from === "hive").map((g) => g.name);
-  for (const name of [...found, ...hive, ...R.genrePick.options]) if (!out.some((o) => genreKey(o) === genreKey(name))) out.push(name);
-  return out;
+  const suggested = new Set((suggest?.genres ?? []).map((g) => genreKey(g.name)));
+  return R.genrePick.options.filter((o) => !suggested.has(genreKey(o)));
 }
 
 /** Genre search (GET /api/genres, Qloo /v2/tags). Module-level: useLiveSearch reads it once. */
@@ -126,9 +120,14 @@ export function ResearchAsk({ message, busy, onSubmit, suggest }: { message: str
   const [query, setQuery] = useState("");
   const [genres, setGenres] = useState<string[]>(() => (suggest?.genres ?? []).filter((g) => g.picked).slice(0, MAX_RESEARCH_GENRES).map((g) => g.name));
   const options = genreOptions(suggest);
+  // The Hive's own suggestions (not found by the research) carry its mark.
   const hiveNames = new Set((suggest?.genres ?? []).filter((g) => g.from === "hive").map((g) => genreKey(g.name)));
-  const firstHive = options.find((o) => hiveNames.has(genreKey(o)));
+  const hiveTitle = `${modelName(suggest?.hiveBy, "label")}'s suggestion`;
+  const hiveMark = (name: string) => (hiveNames.has(genreKey(name)) ? <HiveMark size={HIVE_SIZES.tag} decorative /> : null);
+  const unpicked = (suggest?.genres ?? []).filter((g) => !genres.some((x) => genreKey(x) === genreKey(g.name)));
+  const add = (name: string) => setGenres((now) => (now.some((x) => genreKey(x) === genreKey(name)) || now.length >= MAX_RESEARCH_GENRES ? now : [...now, name]));
   const genreLabelId = useId();
+  const suggestedId = useId();
   const chosen = () => {
     const list = [...artists];
     for (const typed of typedArtists(query)) if (!list.some((a) => a.name.toLowerCase() === typed.toLowerCase())) list.push({ name: typed, spotifyId: null, image: null });
@@ -161,7 +160,8 @@ export function ResearchAsk({ message, busy, onSubmit, suggest }: { message: str
             <ul aria-label={R.ask.genresPicked} className="m-0 flex list-none flex-wrap gap-1.5 p-0" data-testid="research-genres-picked">
               {genres.map((g) => (
                 <li key={g}>
-                  <Button type="button" variant="outline" size="sm" aria-label={`Remove ${g}`} disabled={busy} onClick={() => setGenres(genres.filter((x) => x !== g))}>
+                  <Button type="button" variant="outline" size="sm" aria-label={`Remove ${g}`} title={hiveNames.has(genreKey(g)) ? hiveTitle : undefined} data-source={hiveNames.has(genreKey(g)) ? "hive" : undefined} disabled={busy} onClick={() => setGenres(genres.filter((x) => x !== g))}>
+                    {hiveMark(g)}
                     {g}
                     <Icon name="x" size={14} />
                   </Button>
@@ -169,11 +169,25 @@ export function ResearchAsk({ message, busy, onSubmit, suggest }: { message: str
               ))}
             </ul>
           )}
-          <GenreSearch picked={genres} disabled={busy || genres.length >= MAX_RESEARCH_GENRES} onPick={(name) => setGenres((now) => (now.some((x) => genreKey(x) === genreKey(name)) || now.length >= MAX_RESEARCH_GENRES ? now : [...now, name]))} />
+          <GenreSearch picked={genres} disabled={busy || genres.length >= MAX_RESEARCH_GENRES} onPick={add} />
+          {unpicked.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-labelledby={suggestedId} data-testid="research-genre-suggested">
+              <span id={suggestedId} className="mr-1 text-sm font-bold">
+                {R.ask.suggested}
+              </span>
+              {unpicked.map((g) => (
+                <Button key={g.id} type="button" variant="outline" size="sm" title={g.from === "hive" ? hiveTitle : undefined} data-source={g.from === "hive" ? "hive" : undefined} disabled={busy || genres.length >= MAX_RESEARCH_GENRES} onClick={() => add(g.name)}>
+                  {hiveMark(g.name)}
+                  <Icon name="plus" size={14} />
+                  {g.name}
+                </Button>
+              ))}
+            </div>
+          )}
           <ToggleGroup
             type="multiple"
-            value={genres}
-            onValueChange={setGenres}
+            value={genres.filter((g) => options.includes(g))}
+            onValueChange={(broad) => setGenres([...genres.filter((g) => !options.includes(g) || broad.includes(g)), ...broad.filter((g) => !genres.includes(g))])}
             rovingFocus={false}
             variant="button"
             size="button-sm"
@@ -184,15 +198,10 @@ export function ResearchAsk({ message, busy, onSubmit, suggest }: { message: str
           >
             {options.map((option) => {
               const on = genres.includes(option);
-              const hive = hiveNames.has(genreKey(option));
               return (
-                <Fragment key={option}>
-                  {/* The Hive's suggestions follow its tag, as its notes on a step do. */}
-                  {option === firstHive ? <AgentTag name={modelName(suggest?.hiveBy, "label")} className="mr-0 self-center" /> : null}
-                  <ToggleGroupItem value={option} data-source={hive ? "hive" : undefined} disabled={busy || (!on && genres.length >= MAX_RESEARCH_GENRES)}>
-                    {option}
-                  </ToggleGroupItem>
-                </Fragment>
+                <ToggleGroupItem key={option} value={option} disabled={busy || (!on && genres.length >= MAX_RESEARCH_GENRES)}>
+                  {option}
+                </ToggleGroupItem>
               );
             })}
           </ToggleGroup>

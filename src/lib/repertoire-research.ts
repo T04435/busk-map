@@ -99,12 +99,12 @@ export type ResearchArtistOut = { name: string; qlooId: string; spotifyId?: stri
 export type ResearchAsk = { asks: number; tried: { artists: string[]; genres: string[] }; suggest?: ResearchSuggest };
 /**
  * What the ask starts from, so the performer confirms rather than starts empty: the sound-alikes the research already found (with
- * their Spotify id and photo when known), and genres as Qloo tags: the act's own first, then its sound-alikes'. `picked` genres
- * start selected (at most MAX_RESEARCH_GENRES). Optional: asks saved before it lack it.
+ * their Spotify id and photo when known), and genres as Qloo tags: the ones both the research and the Hive suggested, the
+ * research's, then the Hive's. `picked` genres start selected (at most MAX_RESEARCH_GENRES). Optional: asks saved before it lack it.
  */
 export type ResearchSuggest = {
   artists: { name: string; spotifyId?: string; image?: string }[];
-  genres: { id: string; name: string; from: "act" | "alikes" | "hive"; picked: boolean }[];
+  genres: { id: string; name: string; from: "act" | "alikes" | "hive"; picked: boolean; /** The Hive suggested it too. */ agreed?: boolean }[];
   /** Who named the "hive" genres (one small model call): Claude, or the test model offline. */
   hiveBy?: "claude" | "mock";
 };
@@ -237,6 +237,15 @@ export type ResearchRequest = z.infer<typeof researchRequestSchema>;
  * POST /api/playlist/research/<runId>/input: the answer to a paused run. Artists you sound like (1 to 10, from the picker, with
  * their Spotify id when it has one) or a genre; at least one.
  */
+/**
+ * The ask's genres in order, up to MAX_RESEARCH_GENRES of them picked (the performer can unpick any): the ones both the research
+ * and the Hive suggested, then the research's (in its order, by weight), then the Hive's own.
+ */
+export function preselectGenres(genres: readonly ResearchSuggest["genres"][number][]): ResearchSuggest["genres"] {
+  const order = [...genres.filter((g) => g.agreed), ...genres.filter((g) => !g.agreed && g.from !== "hive"), ...genres.filter((g) => g.from === "hive")];
+  return order.map((g, i) => ({ ...g, picked: i < MAX_RESEARCH_GENRES }));
+}
+
 /** Genres a performer can pick while the research waits. */
 export const MAX_RESEARCH_GENRES = 3;
 /** Artists a performer can send while the research waits (the found sound-alikes come prefilled): the "Artists you sound like" cap. */
@@ -323,6 +332,14 @@ export const OFFLINE_SPOTIFY_ONLY_ARTISTS = {
 export const OFFLINE_ALIKE_TAGS: Record<string, readonly string[]> = {
   "Dny Omy": ["dembow", "reggaeton", "seen live"],
   "Lkm Kimi": ["reggaeton", "cuban urban"],
+};
+
+/**
+ * Offline test mode only: what the test model answers for the Hive's genre suggestions, per act name: an agreed genre (Reggaeton),
+ * one of its own (Funk), a place (dropped) and one Qloo's mock has no tag for (dropped). Any other act: none.
+ */
+export const OFFLINE_HIVE_GENRES: Record<string, readonly string[]> = {
+  "Wpy Popi": ["reggaeton", "funk", "Cuba", "polka"],
 };
 
 /** Offline: an artist name Qloo's mock doesn't know (a performer's sound-alike that resolves to nothing). */

@@ -160,6 +160,7 @@ export const PLAYLIST_COPY = {
       genreSearch: "Search genres",
       genrePlaceholder: "Search genres, e.g. reggaeton",
       quickPicks: "Quick picks",
+      suggested: "Suggested",
       carryOn: "Carry on",
       notStarted: "Not started",
       waitingTag: "Your turn",

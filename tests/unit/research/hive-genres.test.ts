@@ -10,9 +10,11 @@ describe("the Hive's genre suggestions", () => {
   });
 
   it("answers up to three genres with its usage; the test model offline", async () => {
-    const { hiveGenres, MOCK_HIVE_GENRES } = await import("@/server/research/hive-genres");
+    const { hiveGenres } = await import("@/server/research/hive-genres");
     const out = await hiveGenres({ act: "Wpy Popi", soundsLike: ["Dny Omy"] }, { offline: true });
-    expect(out).toMatchObject({ genres: [...MOCK_HIVE_GENRES], by: "mock", usage: { inputTokens: 40, outputTokens: 12, steps: 1 } });
+    // At most three, as answered (OFFLINE_HIVE_GENRES); the test model knows no other act.
+    expect(out).toMatchObject({ genres: ["reggaeton", "funk", "Cuba"], by: "mock", usage: { inputTokens: 40, outputTokens: 12, steps: 1 } });
+    expect((await hiveGenres({ act: "Someone Else", soundsLike: [] }, { offline: true })).genres).toEqual([]);
   });
 
   it("a failing model, no act name, or no AI gateway: no suggestions and nothing counted", async () => {
@@ -36,5 +38,15 @@ describe("the Hive's genre suggestions", () => {
     expect(await resolveGenreTag("Cuba", OFF)).toBeNull();
     expect(await resolveGenreTag("polka", OFF)).toBeNull();
     vi.unstubAllEnvs();
+  });
+});
+
+describe("which suggested genres start picked", () => {
+  it("the live example: research Tropical and Reggaeton, the Hive Reggaeton, Tropical and Cubaton: all three, agreed first", async () => {
+    const { preselectGenres } = await import("@/lib/repertoire-research");
+    const g = (name: string, from: "act" | "alikes" | "hive", agreed = false) => ({ id: `urn:tag:genre:qloo:${name.toLowerCase()}`, name, from, picked: false, ...(agreed ? { agreed } : {}) });
+    expect(preselectGenres([g("Tropical", "alikes", true), g("Reggaeton", "alikes", true), g("Cubaton", "hive")]).map((x) => `${x.name}:${x.picked}`)).toEqual(["Tropical:true", "Reggaeton:true", "Cubaton:true"]);
+    // More than three: agreed, then the research's, then the Hive's; the rest are offered, not picked.
+    expect(preselectGenres([g("Salsa", "act"), g("Tropical", "alikes"), g("Funk", "hive"), g("Reggaeton", "alikes", true)]).map((x) => `${x.name}:${x.picked}`)).toEqual(["Reggaeton:true", "Salsa:true", "Tropical:true", "Funk:false"]);
   });
 });

@@ -15,33 +15,29 @@ const SUGGEST: ResearchSuggest = {
 };
 
 describe("the research ask starts from what the research found", () => {
-  it("quick picks: the suggestions not selected to start with, then the broad genres, once each", () => {
+  it("broad quick picks: the fixed genres less the suggested ones", () => {
     const options = genreOptions(SUGGEST);
-    expect(options[0]).toBe("Reggaeton");
-    expect(options).not.toContain("Dembow");
-    expect(options.filter((o) => o.toLowerCase() === "reggae")).toHaveLength(1);
-    expect(options).toEqual(expect.arrayContaining([...PLAYLIST_COPY.research.genrePick.options]));
+    expect(options).not.toContain("Reggae");
+    expect(options).toEqual(PLAYLIST_COPY.research.genrePick.options.filter((o) => o !== "Reggae"));
     expect(genreOptions(null)).toEqual([...PLAYLIST_COPY.research.genrePick.options]);
   });
 
-  it("the found sound-alikes are prefilled chips and the confident genres are picked chips, so Carry on is ready", () => {
+  it("the found sound-alikes are prefilled chips and the preselected genres are picked chips; the rest are on the Suggested row", () => {
     const html = renderToStaticMarkup(createElement(ResearchAsk, { message: "Ask", busy: false, onSubmit: () => undefined, suggest: SUGGEST }));
-    expect(html).toContain("Dny Omy");
-    expect(html).toContain("Lkm Kimi");
     expect(html).toContain("2 of 10");
     const chips = [...html.matchAll(/aria-label="Remove ([^"]+)"/g)].map((m) => m[1]);
     expect(chips).toEqual(["Dny Omy", "Lkm Kimi", "Dembow", "Reggae"]);
-    // Reggae, picked, is also pressed among the quick picks; the search box is there.
-    const pressed = [...html.matchAll(/<button[^>]*aria-pressed="true"[^>]*>([^<]*)</g)].map((m) => m[1]);
-    expect(pressed).toEqual(["Reggae"]);
+    expect(html).toMatch(/data-testid="research-genre-suggested"[\s\S]*Suggested[\s\S]*Reggaeton/);
+    expect(html).not.toContain('aria-pressed="true"');
     expect(html).toContain('data-testid="research-genre-search"');
     expect(html).toMatch(/data-testid="research-ask-carry-on"(?![^>]*disabled)/);
   });
 
-  it("nothing found: empty picker, no genre pressed, Carry on waits", () => {
+  it("nothing found: empty picker, no genre picked, Carry on waits", () => {
     const html = renderToStaticMarkup(createElement(ResearchAsk, { message: "Ask", busy: false, onSubmit: () => undefined }));
     expect(html).not.toContain('aria-pressed="true"');
     expect(html).not.toContain('data-testid="research-genres-picked"');
+    expect(html).not.toContain('data-testid="research-genre-suggested"');
     expect(html).toMatch(/<button[^>]*disabled[^>]*data-testid="research-ask-carry-on"|data-testid="research-ask-carry-on"[^>]*disabled/);
   });
 });
@@ -58,20 +54,23 @@ describe("a genre-based research step names its genres", () => {
 });
 
 describe("the Hive's genre suggestions in the ask", () => {
-  it("follow the agent's tag among the quick picks, after the research's own, and are never selected", () => {
+  it("carry the Hive's mark on the Hive-only ones, picked or not; agreed ones don't need it", () => {
     const suggest: ResearchSuggest = {
       artists: [],
       genres: [
-        { id: "urn:tag:genre:qloo:reggaeton", name: "Reggaeton", from: "alikes", picked: true },
-        { id: "urn:tag:genre:qloo:dembow", name: "Dembow", from: "alikes", picked: false },
+        { id: "urn:tag:genre:qloo:reggaeton", name: "Reggaeton", from: "alikes", picked: true, agreed: true },
+        { id: "urn:tag:genre:qloo:cubaton", name: "Cubaton", from: "hive", picked: true },
+        { id: "urn:tag:genre:music:tropical", name: "Tropical", from: "alikes", picked: true },
         { id: "urn:tag:genre:music:funk", name: "Funk", from: "hive", picked: false },
       ],
       hiveBy: "mock",
     };
-    expect(genreOptions(suggest).slice(0, 2)).toEqual(["Dembow", "Funk"]);
     const html = renderToStaticMarkup(createElement(ResearchAsk, { message: "Ask", busy: false, onSubmit: () => undefined, suggest }));
-    expect(html).toMatch(/data-slot="agent-tag"[\s\S]*Test model[\s\S]*data-source="hive"[^>]*>Funk</);
-    expect(html).not.toMatch(/aria-pressed="true"[^>]*data-source="hive"|data-source="hive"[^>]*aria-pressed="true"/);
-    expect([...html.matchAll(/aria-label="Remove ([^"]+)"/g)].map((m) => m[1])).toEqual(["Reggaeton"]);
+    expect([...html.matchAll(/aria-label="Remove ([^"]+)"/g)].map((m) => m[1])).toEqual(["Reggaeton", "Cubaton", "Tropical"]);
+    const hive = [...html.matchAll(/<button[^>]*data-source="hive"[^>]*>/g)].map((m) => m[0]);
+    expect(hive).toHaveLength(2);
+    expect(hive[0]).toContain('aria-label="Remove Cubaton"');
+    expect(hive.every((b) => /title="Test model(&#x27;|')s suggestion"/.test(b))).toBe(true);
+    expect(html).not.toContain('data-slot="agent-tag"');
   });
 });

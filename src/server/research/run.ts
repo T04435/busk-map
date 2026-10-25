@@ -29,6 +29,7 @@ import {
   type ResearchSnapshot,
   type ResearchStepKey,
   type ResearchSuggest,
+  preselectGenres,
   type SongsOutput,
   type SoundsLikeOutput,
   type StepOutputs,
@@ -762,22 +763,25 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           const saved = playlist.soundsLike.map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.image ? { image: a.image } : {}) }));
           const artists = (saved.length ? saved : (found.similar ?? [])).slice(0, MAX_RESEARCH_ARTISTS);
           const genres = await suggestGenres({ name: profile.name, actName: actLabel, genres: profile.genres, pick: found.genrePick ?? null, tracks: ownTracks() }, artists.map((a) => a.name), adapters).catch(() => []);
-          // Only confident ones start selected: the act's own clear genres, else ones at least two sound-alikes share. Never a single weak tag.
-          const sure = genres.filter((g) => g.confident);
-          const own = sure.filter((g) => g.from === "act");
-          const picked = new Set((own.length ? own : sure).slice(0, MAX_RESEARCH_GENRES).map((g) => g.id));
-          const out: ResearchSuggest["genres"] = genres.map((g) => ({ id: g.id, name: g.name, from: g.from, picked: picked.has(g.id) }));
-          if (picked.size >= MAX_RESEARCH_GENRES) return { artists, genres: out };
+          const suggestBy: { hiveBy?: "claude" | "mock" } = {};
+          // Research order "by weight": its confident genres first (the act's own, then shared by sound-alikes), then the others.
+          const research = [...genres.filter((g) => g.confident), ...genres.filter((g) => !g.confident)];
+          const out: ResearchSuggest["genres"] = research.map((g) => ({ id: g.id, name: g.name, from: g.from, picked: false }));
           // Fewer than three sure genres: the Hive names up to three from the act's name and its sound-alikes' names (never a Spotify
-          // field), each kept only when it resolves to a Qloo genre tag exactly or by a synonym. Never preselected.
-          const hive = await hiveGenres({ act: playlist.actName ?? actLabel ?? "", soundsLike: artists.map((a) => a.name) }, { offline: adapters.offline, model: args.genreModel, signal: args.signal });
-          hiveUsage = hive.usage;
-          for (const text of hive.genres) {
-            const tag = await resolveGenreTag(text, adapters).catch(() => null);
-            if (!tag || tag === "unavailable" || out.some((g) => g.id === tag.id || normGenre(g.name) === normGenre(tag.name))) continue;
-            out.push({ id: tag.id, name: titleGenre(tag.name), from: "hive", picked: false });
+          // field), each kept only when it resolves to a Qloo genre tag exactly or by a synonym. One the research found too is agreed.
+          if (genres.filter((g) => g.confident).length < MAX_RESEARCH_GENRES) {
+            const hive = await hiveGenres({ act: playlist.actName ?? actLabel ?? "", soundsLike: artists.map((a) => a.name) }, { offline: adapters.offline, model: args.genreModel, signal: args.signal });
+            hiveUsage = hive.usage;
+            for (const text of hive.genres) {
+              const tag = await resolveGenreTag(text, adapters).catch(() => null);
+              if (!tag || tag === "unavailable") continue;
+              const same = out.find((g) => g.id === tag.id || normGenre(g.name) === normGenre(tag.name));
+              if (same) same.agreed = true;
+              else out.push({ id: tag.id, name: titleGenre(tag.name), from: "hive", picked: false });
+            }
+            if (hive.by && out.some((g) => g.from === "hive" || g.agreed)) Object.assign(suggestBy, { hiveBy: hive.by });
           }
-          return { artists, genres: out, ...(hive.by && out.some((g) => g.from === "hive") ? { hiveBy: hive.by } : {}) };
+          return { artists, genres: preselectGenres(out), ...suggestBy };
         };
 
         // 4. Who you sound like (editable: saved as "Artists you sound like" only when that list is empty). With no taste signal at

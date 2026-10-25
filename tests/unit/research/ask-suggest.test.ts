@@ -49,14 +49,12 @@ describe("the ask is prefilled with what the research found", () => {
     const v = await view(m, cookie);
     const suggest = v.research.waiting!.suggest!;
     expect(suggest.artists).toEqual(ACT.similar.map((name) => ({ name, spotifyId: OFFLINE_SPOTIFY_ONLY_ARTISTS[name].spotifyId, image: OFFLINE_SPOTIFY_ONLY_ARTISTS[name].image })));
-    // Shared by both sound-alikes first (Reggaeton), then the rest; Qloo's own genre tags, Qloo's names; "seen live" is noise.
-    // Only a genre two sound-alikes share starts selected: never one from a single sound-alike's tag.
+    // Up to three start selected: the one both the research and the Hive named (Reggaeton), then the research's (Dembow, Cuban
+    // Urban), then the Hive's own (Funk; the test model's Cuba is a place and polka has no tag, so they are dropped).
     expect(suggest.genres).toEqual([
-      { id: "urn:tag:genre:qloo:reggaeton", name: "Reggaeton", from: "alikes", picked: true },
-      { id: "urn:tag:genre:qloo:dembow", name: "Dembow", from: "alikes", picked: false },
-      { id: "urn:tag:genre:qloo:cuban_urban", name: "Cuban Urban", from: "alikes", picked: false },
-      // Fewer than three sure genres: the Hive's one small call (the test model offline answers funk, Cuba and polka). Cuba is a
-      // place and polka has no Qloo tag, so only Funk is offered, never selected.
+      { id: "urn:tag:genre:qloo:reggaeton", name: "Reggaeton", from: "alikes", picked: true, agreed: true },
+      { id: "urn:tag:genre:qloo:dembow", name: "Dembow", from: "alikes", picked: true },
+      { id: "urn:tag:genre:qloo:cuban_urban", name: "Cuban Urban", from: "alikes", picked: true },
       { id: "urn:tag:genre:music:funk", name: "Funk", from: "hive", picked: false },
     ]);
     expect(suggest.hiveBy).toBe("mock");
@@ -79,14 +77,15 @@ describe("the ask is prefilled with what the research found", () => {
     expect(used!.steps).toBe(2);
     const after = await view(m, cookie);
     const s = after.research.steps;
-    expect(s.qloo!.output).toMatchObject({ fallback: "genres", genreTags: [{ id: "urn:tag:genre:qloo:reggaeton", name: "Reggaeton" }] });
+    expect(s.qloo!.output).toMatchObject({ fallback: "genres", genreTags: suggest.genres.filter((g) => g.picked).map((g) => ({ id: g.id, name: g.name })) });
     // Confirmed: the found sound-alikes are now the performer's own, with their Spotify id and photo.
     expect(after.soundsLike).toEqual(suggest.artists);
     // The fans steps use those specific genres and say which, in a short line.
-    expect(s.fans!.output!.summary).toMatch(/^Based on Reggaeton: your fans lean /);
-    expect(s.fansLove!.output).toMatchObject({ basedOn: "genres", signalledBy: ["Reggaeton"], byGenres: ["Reggaeton"] });
-    expect(s.fans!.output).toMatchObject({ basedOn: "genres", byGenres: ["Reggaeton"] });
-    expect(s.fansLove!.output!.summary).toMatch(/^Based on Reggaeton: your fans also love /);
+    const named = ["Reggaeton", "Dembow", "Cuban Urban"];
+    expect(s.fans!.output!.summary).toMatch(/^Based on Reggaeton, Dembow and Cuban Urban: your fans lean /);
+    expect(s.fansLove!.output).toMatchObject({ basedOn: "genres", signalledBy: named, byGenres: named });
+    expect(s.fans!.output).toMatchObject({ basedOn: "genres", byGenres: named });
+    expect(s.fansLove!.output!.summary).toMatch(/^Based on Reggaeton, Dembow and Cuban Urban: your fans also love /);
     expect(s.fansLove!.output!.artists.length).toBeGreaterThan(0);
   }, 30_000);
 

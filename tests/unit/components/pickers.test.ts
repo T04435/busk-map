@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { CityPicker } from "@/components/forms/city-picker";
+import { MELBOURNE_OPTION } from "@/lib/city";
 import { PermitPicker } from "@/components/forms/permit-picker";
 import { ArtistPicker } from "@/components/landing/artist-picker";
 import { PicksList, type PickedSong } from "@/components/landing/repertoire-picker";
@@ -20,11 +21,20 @@ describe("PermitPicker counts (B-178)", () => {
   });
 });
 
-describe("CityPicker (B-181)", () => {
-  it("puts the footfall icon in the Live data badge", () => {
-    const out = html(createElement(CityPicker, { cities: [{ id: "mel", name: "Melbourne", level: "live", note: "All sources" }], value: "mel", onValueChange: () => {} }));
-    expect(out).toContain("Live data");
-    expect(out).toContain("M3 20h18");
+describe("CityPicker (any city)", () => {
+  it("is a field button naming the picked city, labelled, with the search in a popover", () => {
+    const tokyo = { id: "tokyo-jp", name: "Tokyo", country: "Japan", countryCode: "JP", lat: 35.6895, lon: 139.6917, timeZone: "Asia/Tokyo", region: "Tokyo" };
+    const out = html(createElement(CityPicker, { value: tokyo, onChange: () => {} }));
+    expect(out).toContain(">City<");
+    expect(out).toContain("Tokyo, Japan");
+    expect(out).toContain('aria-haspopup="dialog"');
+    expect(out).toContain('data-city="tokyo-jp"');
+    // No listbox until the popover opens.
+    expect(out).not.toContain('role="listbox"');
+  });
+
+  it("starts on Melbourne", () => {
+    expect(html(createElement(CityPicker, { value: MELBOURNE_OPTION, onChange: () => {} }))).toContain("Melbourne, Victoria, Australia");
   });
 });
 

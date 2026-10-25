@@ -85,7 +85,7 @@ const THIRD_PARTIES: { name: string; body: string }[] = [
   },
   {
     name: "Open-Meteo, Ticketmaster, City of Melbourne",
-    body: "Weather, events and the busking rules (the council's published zones and sites). Busk Map asks for a city or an area, never for anything about you.",
+    body: "City search, weather, events and the busking rules (the council's published zones and sites). Busk Map asks for a city or an area, never for anything about you.",
   },
   {
     name: "OpenFreeMap",

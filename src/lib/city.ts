@@ -203,3 +203,33 @@ export function cityLevels(city: Pick<City, "id">): CityLevels {
   const local: SignalLevel = isMelbourne(city) ? "local" : "none";
   return { taste: "global", activity: "global", events: "global", weather: "global", rules: local, pitches: local, hotspots: local };
 }
+
+/**
+ * A place in a plan URL: `place=Tokyo~JP~35.6895~139.6917~Asia/Tokyo~Japan` beside `city=tokyo-jp`. Melbourne links carry
+ * neither, as before.
+ */
+export function placeParam(place: CityPlace): string {
+  const clean = (s: string) => s.replace(/~/g, " ");
+  return [clean(place.name), place.countryCode, place.lat, place.lon, place.timeZone, clean(place.country)].join("~");
+}
+
+/** The place in a plan URL, or undefined when absent or unreadable (the request schema then refuses a non-Melbourne city). */
+export function parsePlaceParam(value: string | undefined): CityPlace | undefined {
+  if (!value) return undefined;
+  const [name, countryCode, lat, lon, timeZone, country] = value.split("~");
+  const parsed = cityPlaceSchema.safeParse({ name, countryCode, lat: Number(lat), lon: Number(lon), timeZone, country });
+  return parsed.success ? parsed.data : undefined;
+}
+
+/** The busk form's option for a request's city (planning again). */
+export function optionOf(request: { city?: string; place?: CityPlace }): CityOption {
+  const city = cityOfRequest(request);
+  return !city || isMelbourne(city) ? MELBOURNE_OPTION : { id: city.id, ...placeOf(city), region: null };
+}
+
+/** The request fields for a picked city: nothing extra for Melbourne, slug and place for any other. */
+export function requestFieldsOf(option: CityOption): { city: string; place?: CityPlace } {
+  if (option.id === DEFAULT_CITY_ID) return { city: DEFAULT_CITY_ID };
+  const { name, country, countryCode, lat, lon, timeZone } = option;
+  return { city: option.id, place: { name, country, countryCode, lat, lon, timeZone } };
+}

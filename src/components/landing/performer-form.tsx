@@ -25,6 +25,7 @@ import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import { type PlaylistView, type SpotifyProfile } from "@/lib/playlist-schema";
 import { choiceForHours, hoursOf, type TimeChoice } from "@/lib/time-slots";
 import { ArtistPicker, MAX_PICKED_ARTISTS, typedArtists, type PickedArtist } from "./artist-picker";
+import { MELBOURNE_OPTION, requestFieldsOf, type CityOption } from "@/lib/city";
 
 // "|" and "~" separate values in the plan URL.
 const clean = (s: string) => s.replace(/[|~]/g, " ").trim();
@@ -53,7 +54,7 @@ export function parseSongLines(text: string) {
 type PickedSong = { key: string; title: string; artist: string; durationMs: number | null; own: boolean };
 
 /** A stored plan's act, to plan again ("Plan again for a new date"): everything but the date. */
-export type FormPrefill = Pick<PlanRequest, "performer" | "permit"> & ({ startHour: number; endHour: number; anyTime?: false } | { anyTime: true });
+export type FormPrefill = Pick<PlanRequest, "performer" | "permit"> & { city?: CityOption } & ({ startHour: number; endHour: number; anyTime?: false } | { anyTime: true });
 
 const prefillArtists = (prefill: FormPrefill | undefined): PickedArtist[] =>
   (prefill?.performer.artists ?? []).map((name) => ({ name, spotifyId: prefill?.performer.spotifyArtists.find((a) => a.name === name)?.id ?? null, image: null }));
@@ -100,13 +101,14 @@ const profileOf = (profile: SpotifyProfile) => ({ name: profile.name, image: pro
 const initialTime = (prefill: FormPrefill | undefined): TimeChoice => (prefill && !prefill.anyTime ? choiceForHours(prefill.startHour, prefill.endHour) : { kind: "any" });
 
 /** The form fields an error can belong to (B-003: every error names its field). */
-type Field = "name" | "artists" | "songs" | "slot" | "permit";
+type Field = "name" | "artists" | "songs" | "slot" | "city" | "permit";
 type FormError = { field: Field; /** The field's name as the form labels it. */ label: string; /** The whole sentence, naming the field. */ message: string; /** The sentence without the field's name in front, for the alert body. */ detail: string };
 
 function fieldOf(path: string): Field {
   if (path.startsWith("performer.name")) return "name";
   if (path.startsWith("performer.songs") || path.startsWith("performer.fillSuggested") || path.startsWith("performer.skipSongs")) return "songs";
   if (path.startsWith("slot")) return "slot";
+  if (path === "city" || path.startsWith("place")) return "city";
   if (path === "permit") return "permit";
   return "artists";
 }
@@ -117,10 +119,11 @@ const FOCUS_TARGET: Record<Field, string> = {
   artists: "[data-field=artists] input",
   songs: "[data-field=songs] a",
   slot: "#date",
+  city: "[data-field=city] button",
   permit: "[data-field=permit] [role=radio][tabindex='0']",
 };
 
-const FIELD_LABEL: Record<Field, string> = { name: "Act name", artists: "Artists you sound like", songs: "Songs you can play", slot: "Date and times", permit: "Permit" };
+const FIELD_LABEL: Record<Field, string> = { name: "Act name", artists: "Artists you sound like", songs: "Songs you can play", slot: "Date and times", city: "City", permit: "Permit" };
 
 function errorFor(issues: { path: PropertyKey[]; message: string }[], input: PlanRequestInput): FormError {
   const path = (issues[0]?.path ?? []).map(String).join(".");
@@ -154,6 +157,7 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
     return choice.kind === "custom" ? { startHour: choice.startHour, endHour: choice.endHour } : null;
   });
   const [permit, setPermit] = useState<string>(prefill?.permit ?? "general");
+  const [city, setCity] = useState<CityOption>(prefill?.city ?? MELBOURNE_OPTION);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<FormError | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -241,7 +245,8 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
     // With no songs the busk plans with suggested songs only; with a Repertoire it asks for no fill.
     const fill = fillCount(parsedSongs.length);
     const input: PlanRequestInput = {
-      city: "melbourne",
+      // Melbourne adds nothing to the request (old hashes); any other city carries its geocoded place.
+      ...requestFieldsOf(city),
       slot: hours ? { date, ...hours } : { date, any: true },
       permit: permit as PlanRequestInput["permit"],
       performer: {
@@ -319,7 +324,12 @@ export function PerformerForm({ defaultDate, today, prefill, repertoire = null }
 
       <fieldset className="m-0 flex min-w-0 flex-col gap-5 border-0 p-0">
         <legend className="mb-1 p-0 font-display text-[26px] leading-none font-extrabold uppercase">When and where</legend>
-        <CityPicker cities={[{ id: "melbourne", name: "Melbourne", level: "live", note: "Taste, estimated activity, busking rules, events and weather" }]} value="melbourne" onValueChange={() => {}} />
+        <CityPicker value={city} onChange={setCity} />
+        {hasError("city") && (
+          <FormMessage tone="error" id="err-city" alert={false}>
+            {error!.message}
+          </FormMessage>
+        )}
         <div className="flex max-w-80 flex-col gap-1.5" data-field="slot">
           <DatePicker id="date" label="Date" value={date} onChange={setDate} min={today} invalid={hasError("slot")} aria-describedby={errorId("slot")} />
           {hasError("slot") && (

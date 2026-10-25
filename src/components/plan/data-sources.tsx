@@ -1,3 +1,4 @@
+import type { CityLevels } from "@/lib/city";
 import { Source, Sources, SourcesContent, SourcesTrigger } from "@/components/ai-elements/sources";
 import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
 import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
@@ -43,9 +44,21 @@ export function statusText(s: DataStatus): string {
 }
 
 /** Every data source, its credit and licence (the DS SourceAttribution), on AI Elements Sources: always open, so every credit stays visible. */
-export function DataSources({ status, showAi, soFar }: { status: DataStatus[]; showAi: boolean; /** While the run is live: only the sources it has touched so far. */ soFar?: SourceId[] }) {
+export function DataSources({
+  status,
+  showAi,
+  soFar,
+  levels = null,
+}: {
+  status: DataStatus[];
+  showAi: boolean;
+  /** While the run is live: only the sources it has touched so far. */
+  soFar?: SourceId[];
+  /** The plan's city levels: a city without council rules doesn't credit Melbourne's busking layers. */
+  levels?: CityLevels | null;
+}) {
   const used = new Map(status.map((s) => [s.source, s]));
-  const ids: SourceId[] = ["qloo", "melbourne-busking", "osm", "ticketmaster", "lastfm", "open-meteo", "spotify", "openfreemap"];
+  const ids: SourceId[] = ["qloo", ...(levels?.rules === "none" ? [] : (["melbourne-busking"] as const)), "osm", "ticketmaster", "lastfm", "open-meteo", "spotify", "openfreemap"];
   if (showAi) ids.push("ai");
   const shown = soFar ? ids.filter((id) => soFar.includes(id)) : ids;
   return (

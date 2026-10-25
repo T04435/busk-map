@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_CITY_ID } from "@/lib/city";
 import { planMentions } from "@/lib/plan-mentions";
 import { mentionsIn, SPOTIFY_ARTIST_URL } from "@/lib/mention";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
@@ -358,7 +359,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     void runAgent();
   };
 
-  const dataSources = plan && !pending && !qlooDown ? <DataSources status={plan.dataStatus} showAi={creditsClaude(plan)} /> : null;
+  const dataSources = plan && !pending && !qlooDown ? <DataSources status={plan.dataStatus} showAi={creditsClaude(plan)} levels={plan.cityLevels} /> : null;
   const stream = hasFeed ? (
     <AgentStepStream
       steps={steps}
@@ -376,7 +377,8 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     />
   ) : null;
 
-  const eyebrow = `${replay ? "Shared busk · " : ""}${slotEyebrow(request.slot, request.permit)}`;
+  // Any city but Melbourne (the default) is named in the eyebrow.
+  const eyebrow = `${replay ? "Shared busk · " : ""}${request.city === DEFAULT_CITY_ID ? "" : `${heading.cityName} · `}${slotEyebrow(request.slot, request.permit)}`;
   const tags = (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1" data-testid="plan-tags">
       <DataStatusBadge status={heading.qlooMode === "live" ? "live" : "test"} label={heading.qlooMode === "live" ? "Live Qloo data" : QLOO_TEST_LABEL} />

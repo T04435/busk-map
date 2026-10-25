@@ -13,6 +13,7 @@ import { isAnyTime, nextAnyTimeDate, nextSlotDate, weekdayOf } from "@/lib/slot"
 import { loadStoredPlan } from "@/server/plans";
 import { playlistViewForCookie } from "@/server/playlist/read";
 import { serverLocalNow } from "@/server/clock";
+import { optionOf } from "@/lib/city";
 
 export const metadata: Metadata = {
   title: "Plan your busk · Busk Map",
@@ -76,10 +77,12 @@ async function OwnAct({ searchParams }: Pick<PageProps<"/busks">, "searchParams"
   }
   const { performer, slot } = stored.request;
   const permit = permitParam ?? stored.request.permit;
+  // Planning again keeps the busk's city.
+  const city = optionOf(stored.request);
   // A plan made for "any time" opens the form on any time, on the next date a window can still start.
   const when = isAnyTime(slot)
-    ? { defaultDate: nextAnyTimeDate(today, hour), prefill: { performer, permit, anyTime: true as const } }
-    : { defaultDate: nextSlotDate(weekdayOf(slot.date), slot.startHour, slot.endHour, today, hour), prefill: { performer, permit, startHour: slot.startHour, endHour: slot.endHour } };
+    ? { defaultDate: nextAnyTimeDate(today, hour), prefill: { performer, permit, city, anyTime: true as const } }
+    : { defaultDate: nextSlotDate(weekdayOf(slot.date), slot.startHour, slot.endHour, today, hour), prefill: { performer, permit, city, startHour: slot.startHour, endHour: slot.endHour } };
   return (
     <>
       <Banner tone="info">

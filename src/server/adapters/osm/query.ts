@@ -25,7 +25,7 @@ export const OSM_SPOT_SPACING_M = CELL_PITCH_SPACING_M;
 /** Two pieces of one named street or park (OSM splits long ways) closer than this are the same place. */
 export const OSM_SAME_NAME_M = 600;
 /** Overpass's own time limit for the query (seconds), under the client's timeout. */
-export const OVERPASS_QUERY_TIMEOUT_S = 8;
+export const OVERPASS_QUERY_TIMEOUT_S = 5;
 /** Elements Overpass may return before we pick: generous, since unnamed ones are dropped first. */
 export const OVERPASS_OUT_MAX = 600;
 

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { MELBOURNE } from "@/lib/city";
 import { distanceM, inBBox } from "@/lib/geo";
 import { getOsmSpots } from "@/server/adapters/osm";
-import { OSM_CACHE_LIFE, OVERPASS_TIMEOUT_MS, OVERPASS_URL, overpassUserAgent } from "@/server/adapters/osm/client";
+import { OSM_CACHE_LIFE, OVERPASS_DEADLINE_MS, OVERPASS_ENDPOINTS, OVERPASS_TIMEOUT_MS, OVERPASS_URL, overpassUserAgent } from "@/server/adapters/osm/client";
 import { syntheticOverpass } from "@/server/adapters/osm/fixtures/synthetic";
 import { buildOverpassQuery, elementToSpot, osmCacheKey, osmSpots, OSM_SPOT_SPACING_M, OSM_SPOTS_MAX, overpassBBox, overpassFailed, spotName } from "@/server/adapters/osm/query";
 import { TOKYO } from "@/server/offline-city";
@@ -14,12 +14,13 @@ const BOX = TOKYO.bbox;
 const at = (dLat: number, dLon: number) => ({ lat: TOKYO.center.lat + dLat, lon: TOKYO.center.lon + dLon });
 const node = (id: number, p: { lat: number; lon: number }, tags?: Record<string, string>) => ({ type: "node", id, lat: p.lat, lon: p.lon, tags });
 const way = (id: number, p: { lat: number; lon: number }, tags?: Record<string, string>) => ({ type: "way", id, center: p, tags });
-const isOverpass = (u: URL) => u.href === OVERPASS_URL;
+const isOverpass = (u: URL) => (OVERPASS_ENDPOINTS as readonly string[]).includes(u.href);
+const isFirst = (u: URL) => u.href === OVERPASS_URL;
 
 describe("Overpass query", () => {
   it("asks for squares, pedestrian streets and areas, markets, promenades, stations and parks in the rounded bbox", () => {
     const q = buildOverpassQuery({ south: 35.67511, west: 139.66841, north: 35.70389, east: 139.71499 });
-    expect(q).toMatch(/^\[out:json\]\[timeout:8\]\[bbox:35\.675,139\.668,35\.704,139\.715\];/);
+    expect(q).toMatch(/^\[out:json\]\[timeout:5\]\[bbox:35\.675,139\.668,35\.704,139\.715\];/);
     expect(q).toContain('nwr["place"="square"]');
     expect(q).toContain('way["highway"="pedestrian"]');
     expect(q).toContain('relation["highway"="pedestrian"]');
@@ -87,7 +88,7 @@ describe("Overpass answer to spots", () => {
 
 describe("getOsmSpots", () => {
   it("POSTs the query to Overpass with a User-Agent and a timeout, cached 30 days", async () => {
-    const { calls } = mockFetch([route(isOverpass, () => json({ elements: [node(1, at(0, 0), { place: "square", name: "Alpha Square" })] }))]);
+    const { calls } = mockFetch([route(isFirst, () => json({ elements: [node(1, at(0, 0), { place: "square", name: "Alpha Square" })] }))]);
     const result = await getOsmSpots(TOKYO, LIVE);
     expect(result).toMatchObject({ adapter: "osm", source: "osm", mode: "live" });
     expect(result.data).toEqual([{ id: "osm:n1", name: "Alpha Square", kind: "square", lat: at(0, 0).lat, lon: at(0, 0).lon }]);
@@ -98,21 +99,65 @@ describe("getOsmSpots", () => {
     expect(overpassUserAgent()).toMatch(/^BuskMap\/\S+ \(busking planner/);
     expect(new URLSearchParams(String(init.body)).get("data")).toBe(buildOverpassQuery(TOKYO.bbox));
     expect(init.signal).toBeInstanceOf(AbortSignal);
-    expect(OVERPASS_TIMEOUT_MS).toBe(10_000);
+    expect(OVERPASS_TIMEOUT_MS).toBe(6_000);
+    expect(OVERPASS_DEADLINE_MS).toBe(15_000);
     expect(vi.mocked(cacheLife)).toHaveBeenCalledWith(OSM_CACHE_LIFE);
     expect(OSM_CACHE_LIFE.revalidate).toBe(30 * 86_400);
     expect(vi.mocked(cacheTag)).toHaveBeenCalledWith("osm");
   });
 
-  it("falls back to no spots on an HTTP error, a timeout, a bad answer or a stopped query", async () => {
-    mockFetch([route(isOverpass, () => json({ error: "busy" }, 429))]);
-    expect(await getOsmSpots(TOKYO, LIVE)).toMatchObject({ mode: "fallback", reason: "rate_limited", data: [] });
-    mockFetch([route(isOverpass, () => Promise.reject(timeoutError()))]);
+  it("moves to the next endpoint on a 5xx, a 429, a timeout or a stopped query", async () => {
+    const answer = json({ elements: [node(1, at(0, 0), { place: "square", name: "Alpha Square" })] });
+    const failures = [
+      () => json({ error: "bad gateway" }, 502),
+      () => json({ error: "busy" }, 429),
+      () => Promise.reject(timeoutError()),
+      () => json({ elements: [], remark: "runtime error: Query timed out" }),
+    ];
+    for (const fail of failures) {
+      const { calls } = mockFetch([route(isFirst, fail), route((u) => u.href === OVERPASS_ENDPOINTS[1], () => answer.clone())]);
+      const result = await getOsmSpots(TOKYO, LIVE);
+      expect(result).toMatchObject({ mode: "live", data: [{ name: "Alpha Square" }] });
+      expect(calls.map((c) => c.url.href)).toEqual(OVERPASS_ENDPOINTS.slice(0, 2));
+    }
+  });
+
+  it("falls back to no spots when every endpoint fails, keeping the last reason", async () => {
+    let { calls } = mockFetch([route(isOverpass, () => json({ error: "busy" }, 502))]);
+    expect(await getOsmSpots(TOKYO, LIVE)).toMatchObject({ mode: "fallback", reason: "http", data: [] });
+    expect(calls.map((c) => c.url.href)).toEqual([...OVERPASS_ENDPOINTS]);
+    ({ calls } = mockFetch([route(isOverpass, () => Promise.reject(timeoutError()))]));
     expect(await getOsmSpots(TOKYO, LIVE)).toMatchObject({ mode: "fallback", reason: "timeout", data: [] });
-    mockFetch([route(isOverpass, () => json({ nope: 1 }))]);
+    expect(calls).toHaveLength(OVERPASS_ENDPOINTS.length);
+    mockFetch([route(isOverpass, () => json({ elements: [], remark: "runtime error: Query timed out" }))]);
+    expect(await getOsmSpots(TOKYO, LIVE)).toMatchObject({ mode: "fallback", reason: "timeout", data: [] });
+  });
+
+  it("does not rotate on a bad answer or a refused query", async () => {
+    let { calls } = mockFetch([route(isOverpass, () => json({ nope: 1 }))]);
     expect(await getOsmSpots(TOKYO, LIVE)).toMatchObject({ mode: "fallback", reason: "invalid_response", data: [] });
-    mockFetch([route(isOverpass, () => json({ elements: [node(1, at(0, 0), { place: "square", name: "A" })], remark: "runtime error: Query timed out" }))]);
-    expect(await getOsmSpots(TOKYO, LIVE)).toMatchObject({ mode: "fallback", reason: "timeout", data: [] });
+    expect(calls).toHaveLength(1);
+    ({ calls } = mockFetch([route(isOverpass, () => json({ error: "bad query" }, 400))]));
+    expect(await getOsmSpots(TOKYO, LIVE)).toMatchObject({ mode: "fallback", reason: "http", data: [] });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("stops trying within the overall deadline, each endpoint getting at most the time left", async () => {
+    let clock = 1_000_000;
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock);
+    try {
+      const { calls } = mockFetch([
+        route(isOverpass, () => {
+          clock += OVERPASS_TIMEOUT_MS; // each endpoint hangs for its whole timeout
+          return Promise.reject(timeoutError());
+        }),
+      ]);
+      expect(await getOsmSpots(TOKYO, LIVE)).toMatchObject({ mode: "fallback", reason: "timeout", data: [] });
+      // 6 s + 6 s, then 3 s left: a third try, then the deadline. Never the fourth endpoint.
+      expect(calls.map((c) => c.url.href)).toEqual(OVERPASS_ENDPOINTS.slice(0, 3));
+    } finally {
+      now.mockRestore();
+    }
   });
 
   it("an empty answer is no spots (live)", async () => {

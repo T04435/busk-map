@@ -71,7 +71,8 @@ test.describe("QA judge paths", () => {
     await expect(page.getByRole("region", { name: "Pitches", exact: true })).toBeVisible();
     await expect(page.getByText("Busk Map vs a plain AI")).toBeVisible();
     for (const credit of ["Taste data by Qloo", "© OpenStreetMap contributors", "Ticketmaster", "Open-Meteo", "Last.fm"]) {
-      await expect(page.getByText(credit).first()).toBeVisible();
+      // The visible credit: on a phone the map's compact attribution and sr-only labels carry the same words, hidden.
+      await expect(page.getByText(credit).filter({ visible: true }).first()).toBeVisible();
     }
     // In the plan's pitch list, not just the site footer (which carries the same caution).
     await expect(page.getByRole("region", { name: "Pitches", exact: true }).getByText(/^Busk Map never confirms a pitch is legal/)).toBeVisible();

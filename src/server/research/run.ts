@@ -400,6 +400,11 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
       const basedOn = (text: string) => `${PLAYLIST_COPY.research.fallback.basedOn}: ${text}`;
       /** The genre path's stand-ins: Qloo's artists for the genre tag (step 4), the signal for who and where the fans are. */
       let genreAlikes: { qlooId: string; name: string }[] = [];
+      /** The act's own track titles from step 2 (for Last.fm track tags: a lookup, never a model input). */
+      const ownTracks = () => {
+        const me = nameKey(steps.profile?.output?.name ?? "");
+        return (steps.songs?.output?.songs ?? []).filter((t) => !me || nameKey(t.artist) === me).map((t) => t.title);
+      };
       /** The genre tags join the signal: Qloo's artists for them, after the sound-alikes already in it (never the act itself). */
       const addTagArtists = async (tags: readonly { id: string; name: string }[]) => {
         genreSignal.tags = [...tags];
@@ -580,7 +585,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           if (mine.length > 0) return { ...empty, summary: R.fallback.label(mine.slice(0, 3).map((a) => a.name)), fallback: "soundsLike", ...declinedMark };
           const genrePick = (args.genre ?? (before?.genrePick && !before.matched ? before.genrePick : undefined))?.trim().slice(0, 40) || undefined;
           const genreMark = genrePick ? { genrePick } : {};
-          const hive = await findSoundAlikes({ name: profile.name, actName: actLabel, genres: profile.genres, pick: genrePick ?? null, spotifyId: args.spotifyId }, adapters);
+          const hive = await findSoundAlikes({ name: profile.name, actName: actLabel, genres: profile.genres, pick: genrePick ?? null, tracks: ownTracks(), spotifyId: args.spotifyId }, adapters);
           if (hive.source === "unavailable") throw new QlooDown("Qloo didn't answer, so artists like you couldn't be found.");
           if (hive.source === "lastfm") {
             const found = hive.alikes.map((a): SoundsLike & { qlooId: string } => ({ name: a.name, qlooId: a.qlooId, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.image ? { image: a.image } : {}), foundBy: "hive" }));
@@ -752,10 +757,12 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           playlist = (await playlists.get(playlist.id)) ?? playlist;
           const saved = playlist.soundsLike.map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.image ? { image: a.image } : {}) }));
           const artists = (saved.length ? saved : (found.similar ?? [])).slice(0, MAX_RESEARCH_ARTISTS);
-          const genres = await suggestGenres({ name: profile.name, actName: actLabel, genres: profile.genres, pick: found.genrePick ?? null }, artists.map((a) => a.name), adapters).catch(() => []);
-          const own = genres.filter((g) => g.from === "act");
-          const picked = new Set((own.length ? own : genres).slice(0, MAX_RESEARCH_GENRES).map((g) => g.id));
-          return { artists, genres: genres.map((g) => ({ ...g, picked: picked.has(g.id) })) };
+          const genres = await suggestGenres({ name: profile.name, actName: actLabel, genres: profile.genres, pick: found.genrePick ?? null, tracks: ownTracks() }, artists.map((a) => a.name), adapters).catch(() => []);
+          // Only confident ones start selected: the act's own clear genres, else ones at least two sound-alikes share. Never a single weak tag.
+          const sure = genres.filter((g) => g.confident);
+          const own = sure.filter((g) => g.from === "act");
+          const picked = new Set((own.length ? own : sure).slice(0, MAX_RESEARCH_GENRES).map((g) => g.id));
+          return { artists, genres: genres.map((g) => ({ id: g.id, name: g.name, from: g.from, picked: picked.has(g.id) })) };
         };
 
         // 4. Who you sound like (editable: saved as "Artists you sound like" only when that list is empty). With no taste signal at

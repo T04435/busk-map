@@ -72,6 +72,8 @@ export const GENRE_SYNONYMS: Readonly<Record<string, readonly string[]>> = {
   "latin urban": ["urbano latino", "reggaeton"],
   "urban latin": ["urbano latino", "reggaeton"],
   "urbano latino": ["latin urban", "reggaeton"],
+  "urban latino": ["urbano latino", "reggaeton"],
+  urban: ["urbano latino", "reggaeton"],
   urbano: ["urbano latino", "reggaeton"],
   "musica urbana": ["urbano latino", "reggaeton"],
   "latin trap": ["trap latino", "trap"],
@@ -83,10 +85,13 @@ export const GENRE_SYNONYMS: Readonly<Record<string, readonly string[]>> = {
   "rap cubano": ["latin hip hop", "hip hop"],
 };
 
-/** The texts to look up for a genre label: itself, then its synonyms (GENRE_SYNONYMS), once each. */
+/** Labels too vague to look up as themselves ("urban" matched "Urban Gospel"): only their synonyms are. */
+const VAGUE_LABELS = new Set(["urban", "urbano"]);
+
+/** The texts to look up for a genre label: itself (unless it is vague), then its synonyms (GENRE_SYNONYMS), once each. */
 export function genreSearchTexts(text: string): string[] {
   const key = plainWords(text);
-  const out = [text.trim()];
+  const out = VAGUE_LABELS.has(key) ? [] : [text.trim()];
   for (const s of GENRE_SYNONYMS[key] ?? GENRE_SYNONYMS[text.trim().toLowerCase()] ?? []) if (!out.some((o) => plainWords(o) === plainWords(s))) out.push(s);
   return out.filter(Boolean);
 }

@@ -257,8 +257,8 @@ export function buttonGenreTag(genre: string): { id: string; name: string } | nu
 
 /**
  * The tag a /v2/tags search result list gives for a genre text: an exact match on the id slug or the normalised name first, then
- * the same with spaces removed ("singer-songwriter" and "Singersongwriter"), then a tag whose name has all the text's words (the
- * shortest). Music-genre tags only. Null when nothing fits.
+ * the same with spaces removed ("singer-songwriter" and "Singersongwriter"). Never a partial match: "urban" is not "Urban Gospel"
+ * (live, 25 Oct); related labels go through GENRE_SYNONYMS instead. Music-genre tags only, never a place. Null when nothing fits.
  */
 export function pickGenreTag(tags: readonly { id: string; name: string }[], genre: string, options: { broad?: boolean } = {}): { id: string; name: string } | null {
   const want = normGenre(genre);
@@ -270,12 +270,5 @@ export function pickGenreTag(tags: readonly { id: string; name: string }[], genr
   if (exact) return exact;
   const squashed = want.replace(/ /g, "");
   const flat = music.find((t) => tagSlug(t.id).replace(/ /g, "") === squashed || normGenre(t.name).replace(/ /g, "") === squashed);
-  if (flat) return flat;
-  const words = want.split(" ").filter((w) => w.length >= 2 && w !== "and");
-  if (words.length === 0) return null;
-  const partial = music.filter((t) => {
-    const have = new Set([...normGenre(t.name).split(" "), ...tagSlug(t.id).split(" ")]);
-    return words.every((w) => have.has(w));
-  });
-  return partial.sort((a, b) => normGenre(a.name).split(" ").length - normGenre(b.name).split(" ").length)[0] ?? null;
+  return flat ?? null;
 }

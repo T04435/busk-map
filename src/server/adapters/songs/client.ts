@@ -130,6 +130,33 @@ export async function fetchTopTagsRecorded(artist: string): Promise<TopTag[]> {
   return cachedCall("lastfm", "lastfm.fetchTopTags", [artist], () => fetchTopTags(artist), { endpoint: "artist.gettoptags", params: safeParams([["artist", artist]]) });
 }
 
+/**
+ * Last.fm track.getTopTags: the tags listeners gave one track, most used first; [] when Last.fm doesn't know it (error 6). An act
+ * with no artist tags often has tagged tracks. Cached for weeks, per artist and title.
+ */
+export async function fetchTrackTopTagsRecorded(artist: string, track: string): Promise<TopTag[]> {
+  return cachedCall("lastfm", "lastfm.fetchTrackTopTags", [artist, track], () => fetchTrackTopTags(artist, track), { endpoint: "track.gettoptags", params: safeParams([["artist", artist], ["track", track]]) });
+}
+
+export async function fetchTrackTopTags(artist: string, track: string): Promise<TopTag[]> {
+  "use cache: remote";
+  return cacheBody("lastfm.fetchTrackTopTags", [artist, track], async () => {
+    cacheLife("weeks");
+    cacheTag("songs");
+    const params = new URLSearchParams({ method: "track.gettoptags", artist, track, autocorrect: "1", api_key: apiKey(), format: "json" });
+    await pace();
+    const body = await fetchJson(`${BASE}?${params}`, { adapter: "songs", schema: topTagsSchema, timeoutMs: TIMEOUT_MS });
+    if ("error" in body) {
+      if (body.error === ARTIST_NOT_FOUND) return [];
+      throw new AdapterError("songs", "http", `Last.fm error ${body.error}`);
+    }
+    return body.toptags.tag.flatMap((raw) => {
+      const t = topTagSchema.safeParse(raw);
+      return t.success ? [{ name: t.data.name, count: t.data.count ?? 0 }] : [];
+    });
+  });
+}
+
 /** The request (cached for weeks); callers use fetchTopTagsRecorded, which records it on the research step. */
 export async function fetchTopTags(artist: string): Promise<TopTag[]> {
   "use cache: remote";

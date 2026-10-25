@@ -6,6 +6,14 @@ import { pickGenreTag, usableTagNames } from "@/lib/qloo-match";
 const TAGS: Record<string, string[]> = {
   "Yml Cuba": ["cuba", "cuban", "spanish", "seen live", "2010s", "latin america", "cubaton", "latin urban"],
   "Alike Cu": ["reparto", "cuban"],
+  // The live Yomil rerun (25 Oct): no artist tags for the act; sound-alikes with few tags.
+  "Yml Live": [],
+  "Wow Pp": ["cuba"],
+  Bebe: ["urban", "cuba", "tropical", "cubano"],
+};
+/** Last.fm track tags, per artist (every track gets them). */
+const TRACK_TAGS: Record<string, { name: string; count: number }[]> = {
+  "Yml Live": [{ name: "cubaton", count: 100 }, { name: "tropical", count: 5 }],
 };
 vi.mock("@/server/adapters/songs", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/server/adapters/songs")>();
@@ -13,6 +21,8 @@ vi.mock("@/server/adapters/songs", async (importOriginal) => {
     ...original,
     getSimilarArtists: async () => ({ mode: "live" as const, data: [] }),
     getTopTags: async (name: string) => ({ mode: "live" as const, data: (TAGS[name] ?? []).map((n, i) => ({ name: n, count: 100 - i })) }),
+    getTrackTopTags: async (artist: string) => ({ mode: "live" as const, data: TRACK_TAGS[artist] ?? [] }),
+    getSongs: async (names: string[]) => ({ mode: "live" as const, data: Object.fromEntries(names.map((n) => [n, [{ title: `${n} hit`, playcount: 1, listeners: 1 }]])) }),
   };
 });
 const OFF = { offline: true, faults: [] } as const;
@@ -79,5 +89,45 @@ describe("/v2/tags retries once on a server error", () => {
     let twice = 0;
     await expect(retryOnceOnServerError(async () => { twice++; throw new AdapterError("qloo", "http", "returned HTTP 503", 503); }, "/v2/tags", 0)).rejects.toThrow("503");
     expect(twice).toBe(2);
+  });
+});
+
+describe("no partial genre matches; 'urban' goes through the synonyms", () => {
+  it("'urban' is never Urban Gospel", () => {
+    const tags = [{ id: "urn:tag:genre:music:urban_gospel", name: "Urban Gospel" }];
+    expect(pickGenreTag(tags, "urban")).toBeNull();
+    expect(genreSearchTexts("urban")).toEqual(["urbano latino", "reggaeton"]);
+    expect(genreSearchTexts("Urban Latino")).toEqual(["Urban Latino", "urbano latino", "reggaeton"]);
+  });
+});
+
+describe("GET /api/genres (the ask's genre search)", () => {
+  it("Qloo genre tags matching the text, music genres only, never a place, best match first", async () => {
+    vi.resetModules();
+    vi.stubEnv("BUSKMAP_OFFLINE", "1");
+    const { GET } = await import("@/app/api/genres/route");
+    const ask = async (q: string) => (await GET(new Request(`http://localhost/api/genres?q=${encodeURIComponent(q)}`))).json();
+    expect(await ask("regg")).toEqual({ mode: "live", genres: [{ id: "urn:tag:genre:qloo:reggaeton", name: "Reggaeton" }] });
+    expect((await ask("folk")).genres[0]).toEqual({ id: "urn:tag:genre:music:folk", name: "Folk" });
+    expect((await ask("cuba")).genres).toEqual([]);
+    expect((await ask("american")).genres).toEqual([]);
+    expect((await GET(new Request("http://localhost/api/genres?q=r"))).status).toBe(400);
+  });
+});
+
+describe("Last.fm track tags and confidence", () => {
+  it("the act's track tags count when its artist has none; a tag from one weak source is never confident", async () => {
+    vi.stubEnv("BUSKMAP_OFFLINE", "1");
+    const { actLastfmTags, suggestGenres } = await import("@/server/playlist/own-artist");
+    const tags = await actLastfmTags({ name: "Yml Live", tracks: ["One", "Two"] }, OFF);
+    expect(tags).toEqual([
+      { tag: "cubaton", weight: 2, sources: 2, confident: true },
+      { tag: "tropical", weight: 0.1, sources: 2, confident: false },
+    ]);
+    // Sound-alikes: "cuba" and "cubano" are dropped; "urban" goes to Reggaeton through the synonyms; one sound-alike's tag isn't confident.
+    const out = await suggestGenres({ name: "Yml Live", genres: [], tracks: ["One"] }, ["Wow Pp", "Bebe"], OFF);
+    expect(out.map((g) => `${g.name}:${g.from}:${g.confident}`)).toEqual(["Reggaeton:act:true"]);
+    const noTracks = await suggestGenres({ name: "Yml Live", genres: [] }, ["Wow Pp", "Bebe"], OFF);
+    expect(noTracks.map((g) => `${g.name}:${g.from}:${g.confident}`)).toEqual(["Reggaeton:alikes:false"]);
   });
 });

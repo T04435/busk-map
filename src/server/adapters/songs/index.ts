@@ -2,8 +2,8 @@ import "server-only";
 import { providerStatus } from "@/server/env";
 import { log } from "@/server/log";
 import { runAdapter, settleWithLimit, type AdapterContext, type AdapterResult } from "../core";
-import { fetchArtistListenersRecorded, fetchSimilarArtistsRecorded, fetchTopTagsRecorded, fetchTopTracksRecorded } from "./client";
-import { syntheticListeners, syntheticSimilar, syntheticTopTags, syntheticTopTracks } from "./fixtures/synthetic";
+import { fetchArtistListenersRecorded, fetchSimilarArtistsRecorded, fetchTopTagsRecorded, fetchTopTracksRecorded, fetchTrackTopTagsRecorded } from "./client";
+import { syntheticListeners, syntheticSimilar, syntheticTopTags, syntheticTopTracks, syntheticTrackTopTags } from "./fixtures/synthetic";
 import type { ListenersData, SimilarArtist, SongsData, TopTag } from "./schema";
 
 export type { ListenersData, SimilarArtist, SongsData, TopTag, TopTrack } from "./schema";
@@ -100,5 +100,24 @@ export async function getTopTags(artist: string, context: AdapterContext): Promi
     synthetic: () => syntheticTopTags(name),
     call: { endpoint: "artist.gettoptags", params: { artist: name } },
     live: () => fetchTopTagsRecorded(name),
+  });
+}
+
+/**
+ * Last.fm track.getTopTags for one of an act's tracks (cached for weeks). An empty list means Last.fm doesn't know the track or it
+ * has no tags; an outage falls back to [] with mode "fallback".
+ */
+export async function getTrackTopTags(artist: string, track: string, context: AdapterContext): Promise<AdapterResult<TopTag[]>> {
+  const name = artist.trim();
+  const title = track.trim();
+  return runAdapter({
+    adapter: "songs",
+    source: "lastfm",
+    context,
+    configured: providerStatus().lastfm,
+    fallback: [],
+    synthetic: () => syntheticTrackTopTags(name, title),
+    call: { endpoint: "track.gettoptags", params: { artist: name, track: title } },
+    live: () => fetchTrackTopTagsRecorded(name, title),
   });
 }

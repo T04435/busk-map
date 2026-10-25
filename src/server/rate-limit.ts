@@ -106,6 +106,8 @@ export const compareLimiter = createRateLimiter(12, 10 * 60_000);
 export const repertoireLimiter = createRateLimiter(120, 60_000);
 /** City search (geocoding, cached): 60 per minute per IP; the picker debounces typing. */
 export const citySearchLimiter = createRateLimiter(60, 60_000);
+/** Genre search in the research ask (Qloo /v2/tags, cached): 60 per minute per IP; the search debounces typing. */
+export const genreSearchLimiter = createRateLimiter(60, 60_000);
 /** New short plan links: 30 per 10 minutes per IP (reused links aren't counted). */
 export const planLinkLimiter = createRateLimiter(30, 10 * 60_000);
 

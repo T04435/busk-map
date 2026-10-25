@@ -11,6 +11,8 @@ export const BOTID_PROTECTED_ROUTES = [
   { path: "/api/repertoire", method: "GET" },
   // City search for the busk form (Open-Meteo geocoding, cached).
   { path: "/api/cities", method: "GET" },
+  // Genre search in the research ask (Qloo /v2/tags, cached).
+  { path: "/api/genres", method: "GET" },
   // The Repertoire's writes (docs/playlist-architecture.md §1.1). Reads are cheap and aren't challenged.
   { path: "/api/playlist", method: "POST" },
   { path: "/api/playlist", method: "PATCH" },

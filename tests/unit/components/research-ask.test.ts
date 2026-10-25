@@ -15,27 +15,33 @@ const SUGGEST: ResearchSuggest = {
 };
 
 describe("the research ask starts from what the research found", () => {
-  it("genre buttons: suggestions first, then the fixed list, once each", () => {
+  it("quick picks: the suggestions not selected to start with, then the broad genres, once each", () => {
     const options = genreOptions(SUGGEST);
-    expect(options.slice(0, 3)).toEqual(["Dembow", "Reggae", "Reggaeton"]);
+    expect(options[0]).toBe("Reggaeton");
+    expect(options).not.toContain("Dembow");
     expect(options.filter((o) => o.toLowerCase() === "reggae")).toHaveLength(1);
     expect(options).toEqual(expect.arrayContaining([...PLAYLIST_COPY.research.genrePick.options]));
     expect(genreOptions(null)).toEqual([...PLAYLIST_COPY.research.genrePick.options]);
   });
 
-  it("the found sound-alikes are prefilled chips and the act's genres are pressed, so Carry on is ready", () => {
+  it("the found sound-alikes are prefilled chips and the confident genres are picked chips, so Carry on is ready", () => {
     const html = renderToStaticMarkup(createElement(ResearchAsk, { message: "Ask", busy: false, onSubmit: () => undefined, suggest: SUGGEST }));
     expect(html).toContain("Dny Omy");
     expect(html).toContain("Lkm Kimi");
     expect(html).toContain("2 of 10");
+    const chips = [...html.matchAll(/aria-label="Remove ([^"]+)"/g)].map((m) => m[1]);
+    expect(chips).toEqual(["Dny Omy", "Lkm Kimi", "Dembow", "Reggae"]);
+    // Reggae, picked, is also pressed among the quick picks; the search box is there.
     const pressed = [...html.matchAll(/<button[^>]*aria-pressed="true"[^>]*>([^<]*)</g)].map((m) => m[1]);
-    expect(pressed).toEqual(["Dembow", "Reggae"]);
+    expect(pressed).toEqual(["Reggae"]);
+    expect(html).toContain('data-testid="research-genre-search"');
     expect(html).toMatch(/data-testid="research-ask-carry-on"(?![^>]*disabled)/);
   });
 
   it("nothing found: empty picker, no genre pressed, Carry on waits", () => {
     const html = renderToStaticMarkup(createElement(ResearchAsk, { message: "Ask", busy: false, onSubmit: () => undefined }));
     expect(html).not.toContain('aria-pressed="true"');
+    expect(html).not.toContain('data-testid="research-genres-picked"');
     expect(html).toMatch(/<button[^>]*disabled[^>]*data-testid="research-ask-carry-on"|data-testid="research-ask-carry-on"[^>]*disabled/);
   });
 });

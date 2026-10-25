@@ -49,11 +49,12 @@ describe("the ask is prefilled with what the research found", () => {
     const v = await view(m, cookie);
     const suggest = v.research.waiting!.suggest!;
     expect(suggest.artists).toEqual(ACT.similar.map((name) => ({ name, spotifyId: OFFLINE_SPOTIFY_ONLY_ARTISTS[name].spotifyId, image: OFFLINE_SPOTIFY_ONLY_ARTISTS[name].image })));
-    // Shared by both sound-alikes first (Reggaeton), then the rest in order; Qloo's own genre tags, Qloo's names; "seen live" is noise.
+    // Shared by both sound-alikes first (Reggaeton), then the rest; Qloo's own genre tags, Qloo's names; "seen live" is noise.
+    // Only a genre two sound-alikes share starts selected: never one from a single sound-alike's tag.
     expect(suggest.genres).toEqual([
       { id: "urn:tag:genre:qloo:reggaeton", name: "Reggaeton", from: "alikes", picked: true },
-      { id: "urn:tag:genre:qloo:dembow", name: "Dembow", from: "alikes", picked: true },
-      { id: "urn:tag:genre:qloo:cuban_urban", name: "Cuban Urban", from: "alikes", picked: true },
+      { id: "urn:tag:genre:qloo:dembow", name: "Dembow", from: "alikes", picked: false },
+      { id: "urn:tag:genre:qloo:cuban_urban", name: "Cuban Urban", from: "alikes", picked: false },
     ]);
     expect(OFFLINE_ALIKE_TAGS["Dny Omy"]).toContain("seen live");
     // The waiting step's own output carries it too (the live page reads it from the stream).
@@ -68,14 +69,14 @@ describe("the ask is prefilled with what the research found", () => {
     expect(String(end(more).code)).not.toMatch(/^needs_/);
     const after = await view(m, cookie);
     const s = after.research.steps;
-    expect(s.qloo!.output).toMatchObject({ fallback: "genres", genreTags: suggest.genres.map((g) => ({ id: g.id, name: g.name })) });
+    expect(s.qloo!.output).toMatchObject({ fallback: "genres", genreTags: [{ id: "urn:tag:genre:qloo:reggaeton", name: "Reggaeton" }] });
     // Confirmed: the found sound-alikes are now the performer's own, with their Spotify id and photo.
     expect(after.soundsLike).toEqual(suggest.artists);
     // The fans steps use those specific genres and say which, in a short line.
-    expect(s.fans!.output!.summary).toMatch(/^Based on Reggaeton, Dembow and Cuban Urban: your fans lean /);
-    expect(s.fansLove!.output).toMatchObject({ basedOn: "genres", signalledBy: ["Reggaeton", "Dembow", "Cuban Urban"], byGenres: ["Reggaeton", "Dembow", "Cuban Urban"] });
-    expect(s.fans!.output).toMatchObject({ basedOn: "genres", byGenres: ["Reggaeton", "Dembow", "Cuban Urban"] });
-    expect(s.fansLove!.output!.summary).toMatch(/^Based on Reggaeton, Dembow and Cuban Urban: your fans also love /);
+    expect(s.fans!.output!.summary).toMatch(/^Based on Reggaeton: your fans lean /);
+    expect(s.fansLove!.output).toMatchObject({ basedOn: "genres", signalledBy: ["Reggaeton"], byGenres: ["Reggaeton"] });
+    expect(s.fans!.output).toMatchObject({ basedOn: "genres", byGenres: ["Reggaeton"] });
+    expect(s.fansLove!.output!.summary).toMatch(/^Based on Reggaeton: your fans also love /);
     expect(s.fansLove!.output!.artists.length).toBeGreaterThan(0);
   }, 30_000);
 

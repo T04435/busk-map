@@ -38,6 +38,13 @@ export function syntheticTopTags(artist: string): TopTag[] {
   return names.map((name, i) => ({ name, count: 100 - i * 10 }));
 }
 
+/** Offline, tracks have no Last.fm tags (the test acts' tags are their artist tags). Not Last.fm data. */
+export function syntheticTrackTopTags(artist: string, track: string): TopTag[] {
+  void artist;
+  void track;
+  return [];
+}
+
 export const SYNTHETIC_RAW = {
   ok: {
     toptracks: {

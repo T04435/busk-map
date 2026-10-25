@@ -41,7 +41,8 @@ describe("pickGenreTag", () => {
   });
   it("accepts Pop (the old overlap rule rejected it) and never a non-music tag", () => {
     expect(pickGenreTag(GLIM, "example pop")?.id).toBe("urn:tag:genre:music:example_pop");
-    expect(pickGenreTag(GLIM, "glim")?.id).toBe("urn:tag:genre:music:glim_pop");
+    // Never a partial match: "glim" is not "Glim Pop" (live, 25 Oct: "urban" became "Urban Gospel").
+    expect(pickGenreTag(GLIM, "glim")).toBeNull();
     expect(pickGenreTag([{ id: "urn:tag:genre:media:glim_american", name: "Glim american" }], "glim american")).toBeNull();
   });
   it("finds nothing for a text no tag has", () => {

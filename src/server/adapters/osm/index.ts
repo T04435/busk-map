@@ -6,7 +6,7 @@ import { fetchOsmSpotsRecorded } from "./client";
 import { syntheticOverpass } from "./fixtures/synthetic";
 import { osmCacheKey, osmSpots } from "./query";
 
-export { buildOverpassQuery, osmCacheKey, osmSpots, OSM_SPOTS_MAX } from "./query";
+export { buildOverpassQuery, osmCacheKey, osmSpots, OSM_SPOTS_MAX, OSM_UNNAMED } from "./query";
 
 /**
  * Walkable public spots from OpenStreetMap for a city with no curated list (every city but Melbourne, V2 2.3), or for one

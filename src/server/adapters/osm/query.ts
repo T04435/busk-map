@@ -85,6 +85,9 @@ const UNNAMED: Record<SpotKind, string> = {
   "park-edge": "Park",
 };
 
+/** The names unnamed features show (a kind, not a place). */
+export const OSM_UNNAMED: ReadonlySet<string> = new Set(Object.values(UNNAMED));
+
 const clean = (s: string | undefined) => s?.replace(/\s+/g, " ").trim().slice(0, 80) || null;
 
 /** The name a feature shows: English where OSM has it, else the local name; a station's says it is one. */

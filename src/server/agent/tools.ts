@@ -132,7 +132,7 @@ export class AgentState {
 type NamedPitch = { name: string; lat: number; lon: number; origin?: string };
 
 /** Whether a pitch's name is a taste spot's (tasteSpotName): by its origin, else by the name's shape. */
-const isTasteSpot = (p: NamedPitch) => (p.origin ? p.origin === "taste" : /^Near | · near |^.+ taste spot( \(\d+\))?$/.test(p.name));
+const isTasteSpot = (p: NamedPitch) => (p.origin ? p.origin === "taste" : /^Near | · near |^.+ taste spot(, .+| \(\d+\))?$/.test(p.name));
 
 /**
  * A taste cell's name for outputs: the nearest known place; else the name of the pitch the engine stood on that cell (so the

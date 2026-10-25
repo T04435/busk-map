@@ -8,8 +8,8 @@ import { mockFetch, OFFLINE } from "../../helpers";
 /** V2 2.1: an offline plan in offline mode's second city (Tokyo), end to end with the mock model and the Qloo mock. */
 const TOKYO = { id: "tokyo-jp", name: "Tokyo", country: "Japan", countryCode: "JP", lat: 35.6895, lon: 139.6917, timeZone: "Asia/Tokyo", region: "Tokyo" };
 const slot = { date: "2026-10-17", startHour: 18, endHour: 21 };
-/** A taste spot's name (scoring/candidates.ts tasteSpotName): area and venue, venue, or area alone, never a bare number. */
-const TASTE_SPOT = /^(Near .+|.+ · near .+|.+ taste spot)( \(\d+\))?$/;
+/** A taste spot's name (scoring/candidates.ts tasteSpotName): area and venue, venue, or area alone, never a bare number or an ordinal. */
+const TASTE_SPOT = /^(Near .+|.+ · near .+|.+ taste spot)(, [^()]+)?$/;
 
 async function load() {
   vi.resetModules();
@@ -96,7 +96,7 @@ describe("a plan in Tokyo (offline)", () => {
     expect(cellName(cell, [], [{ name: "Far away", lat: 35.69, lon: 139.69, origin: "taste" }], naming)).toBe("Near Bar Hachi");
     expect(cellName(cell, [], [], { city: "Tokyo" })).toBe("Tokyo taste spot");
     // Two cells by the same place: the second never repeats the first's name.
-    expect(cellNames([cell, { lat: 35.6805, lon: 139.6905 }], [], [], naming)).toEqual(["Near Bar Hachi", "Near Bar Hachi (2)"]);
+    expect(cellNames([cell, { lat: 35.6805, lon: 139.6905 }], [], [], naming)).toEqual(["Near Bar Hachi", "Near Bar Hachi, south-east"]);
   });
 
   it("names a point given by coordinates like the cells and pitches in step titles and summaries, never as raw numbers", async () => {

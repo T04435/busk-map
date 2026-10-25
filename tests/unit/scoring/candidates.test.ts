@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCandidates, buildCandidatesWithFunnel, nearLines, siteAllowsPerformer, topCells, usualSpotAt } from "@/server/scoring";
+import { buildCandidates, buildCandidatesWithFunnel, CELL_NAME_RADIUS_M, tasteSpotName, nearLines, siteAllowsPerformer, topCells, usualSpotAt } from "@/server/scoring";
 import type { HeatCellInput, HotspotInput, SiteInput, SpotInput, ZoneInput } from "@/server/scoring";
 import { USUAL_HOTSPOTS } from "@/server/data/spots";
 
@@ -170,5 +170,68 @@ describe("topCells and usualSpotAt", () => {
     expect(usualSpotAt({ lat: -37.8101, lon: 144.9601 }, hotspots)).toBe("Corner");
     expect(usualSpotAt({ lat: -37.82, lon: 144.96 }, hotspots)).toBeNull();
     expect(usualSpotAt({ lat: -37.8125, lon: 144.96 }, [{ name: "Market", lat: -37.81, lon: 144.96, radiusM: 300 }])).toBe("Market");
+  });
+});
+
+describe("taste spot names (tasteSpotName)", () => {
+  // A Lisbon-like layout: two named areas 2 km apart, a venue 10 m and one 300 m from the point, one 600 m away.
+  const point = { lat: 38.71, lon: -9.14 };
+  const areas = [
+    { name: "Baixa", lat: 38.711, lon: -9.139 },
+    { name: "Belém", lat: 38.697, lon: -9.206 },
+  ];
+  const venues = [
+    { name: "Café Nicola", lat: 38.7109, lon: -9.14 },
+    { name: "Bar Rossio", lat: 38.7127, lon: -9.14 },
+    { name: "Too Far Club", lat: 38.7154, lon: -9.14 },
+  ];
+
+  it("names a spot by its area and the nearest venue", () => {
+    expect(tasteSpotName(point, { areas, venues, city: "Lisbon" })).toBe("Baixa · near Café Nicola");
+  });
+
+  it("takes the city as the area when no named area reaches the spot", () => {
+    expect(tasteSpotName(point, { areas: [areas[1]], venues, city: "Lisbon" })).toBe("Lisbon · near Café Nicola");
+  });
+
+  it("names a spot by its venue alone in a city with no named areas", () => {
+    expect(tasteSpotName(point, { areas: [], venues, city: "Lisbon" })).toBe("Near Café Nicola");
+  });
+
+  it("reaches a venue up to CELL_NAME_RADIUS_M away, not further", () => {
+    expect(CELL_NAME_RADIUS_M).toBeGreaterThanOrEqual(400);
+    expect(tasteSpotName(point, { venues: [venues[1]] })).toBe("Near Bar Rossio");
+    expect(tasteSpotName(point, { venues: [venues[2]], city: "Lisbon" })).toBe("Lisbon taste spot");
+  });
+
+  it("names a spot by its area alone when no venue is near", () => {
+    expect(tasteSpotName(point, { areas, venues: [], city: "Lisbon" })).toBe("Baixa taste spot");
+  });
+
+  it("falls back to the city, then to a plain taste spot, never a number", () => {
+    expect(tasteSpotName(point, { city: "Lisbon" })).toBe("Lisbon taste spot");
+    expect(tasteSpotName(point, {})).toBe("Taste spot");
+  });
+
+  it("tells two spots apart by the next-nearest venue, else by an ordinal", () => {
+    const taken = new Set(["Baixa · near Café Nicola"]);
+    expect(tasteSpotName(point, { areas, venues, city: "Lisbon" }, taken)).toBe("Baixa · near Bar Rossio");
+    taken.add("Baixa · near Bar Rossio");
+    expect(tasteSpotName(point, { areas, venues, city: "Lisbon" }, taken)).toBe("Baixa · near Café Nicola (2)");
+    expect(tasteSpotName(point, { city: "Lisbon" }, new Set(["Lisbon taste spot", "Lisbon taste spot (2)"]))).toBe("Lisbon taste spot (3)");
+  });
+
+  it("names the cell pitches of a city with no spots, ids staying the cells' geohashes", () => {
+    const cells = [
+      { lat: 38.71, lon: -9.14, affinity: 1, geohash: "eycs0p1" },
+      { lat: 38.7125, lon: -9.1415, affinity: 0.9, geohash: "eycs0p2" },
+      { lat: 38.6975, lon: -9.205, affinity: 0.8, geohash: "eycs0p3" },
+    ];
+    const { candidates } = buildCandidatesWithFunnel({ sites: [], zones: [], spots: [], hotspots: [], cells, permit: "general", cellNames: venues, areas, city: "Lisbon" });
+    expect(candidates.map((c) => [c.id, c.name])).toEqual([
+      ["cell:eycs0p1", "Baixa · near Café Nicola"],
+      ["cell:eycs0p2", "Baixa · near Bar Rossio"],
+      ["cell:eycs0p3", "Belém taste spot"],
+    ]);
   });
 });

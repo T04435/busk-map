@@ -6,7 +6,7 @@ import { ANY_TIME_DAY, formatHour } from "@/lib/slot";
 import { activitySentence, activityWord } from "@/lib/activity";
 import { nameKey } from "@/lib/text";
 import * as qloo from "@/server/adapters/qloo";
-import { activityEstimate, relativeActivity, candidateAt, AREA_SAMPLE_KM, districtOf, MAX_PICKS_PER_DISTRICT, topCells, openDuring, scoreWindows, type Candidate, type District, type KnownPlace, type ScoredPitch } from "@/server/scoring";
+import { activityEstimate, relativeActivity, candidateAt, tasteSpotName, AREA_SAMPLE_KM, districtOf, MAX_PICKS_PER_DISTRICT, topCells, openDuring, scoreWindows, type Candidate, type District, type KnownPlace, type ScoredPitch, type TasteSpotNaming } from "@/server/scoring";
 import { reasonWithoutYear, type SetlistEntry } from "@/server/scoring/setlist";
 import type { PlanContext } from "./context";
 import { NumberBag } from "./number-bag";
@@ -129,44 +129,65 @@ export class AgentState {
   districts: District[] = [];
 }
 
+type NamedPitch = { name: string; lat: number; lon: number; origin?: string };
+
+/** Whether a pitch's name is a taste spot's (tasteSpotName): by its origin, else by the name's shape. */
+const isTasteSpot = (p: NamedPitch) => (p.origin ? p.origin === "taste" : /^Near | · near |^.+ taste spot( \(\d+\))?$/.test(p.name));
+
 /**
- * A taste cell's name for outputs: the nearest known place; else the name of the pitch the engine stood on that cell (its
- * "Near …" or "Taste area N", so the step reads like the plan); else "Taste area N" by its rank in this result.
+ * A taste cell's name for outputs: the nearest known place; else the name of the pitch the engine stood on that cell (so the
+ * step reads like the plan); else named like the pitches (tasteSpotName: its area and nearest Qloo place), never one of the
+ * `taken` names. Never a bare number.
  */
-export function cellName(cell: LatLon, rank: number, known: KnownPlace[], pitches: readonly { name: string; lat: number; lon: number; origin?: string }[]): string {
+export function cellName(cell: LatLon, known: KnownPlace[], pitches: readonly NamedPitch[], naming: TasteSpotNaming = {}, taken: ReadonlySet<string> = new Set()): string {
   const named = nearestName(cell, known);
   if (named) return named;
   const pitch = pitches.filter((p) => p.origin === "taste" && distanceM(p, cell) <= CELL_PITCH_MATCH_M).sort((a, b) => distanceM(a, cell) - distanceM(b, cell))[0];
-  return pitch?.name ?? `Taste area ${rank}`;
+  return pitch?.name ?? tasteSpotName(cell, naming, taken);
 }
+
+/** Names for taste cells, in order: each by cellName, none sharing a taste pitch's name or an earlier cell's. */
+export function cellNames(cells: readonly LatLon[], known: KnownPlace[], pitches: readonly NamedPitch[], naming: TasteSpotNaming = {}): string[] {
+  const taken = new Set(pitches.filter(isTasteSpot).map((p) => p.name));
+  return cells.map((c) => {
+    const name = cellName(c, known, pitches, naming, taken);
+    taken.add(name);
+    return name;
+  });
+}
+
 /** How close a known place, a pitch or a taste cell must be to lend a point its name. */
 export const POINT_NAME_M = 250;
 
 /**
- * A label for coordinates the model pointed at: the nearest known place ("near X"); else a pitch on that spot (its own
- * "Near …" or "Taste area N" name, else "near X"); else the top taste cell there ("Taste area N", the pitches' numbering); else
- * the nearest pitch; else the city. Never the raw coordinates.
+ * A label for coordinates the model pointed at: the nearest known place ("near X"); else a pitch on that spot (a taste spot's
+ * own name, "near X" otherwise); else the top taste cell there (named as in taste_map); else the named area it is in; else the
+ * nearest pitch; else the city. Never the raw coordinates.
  */
 export function pointName(
   point: LatLon,
   known: KnownPlace[],
-  pitches: readonly { name: string; lat: number; lon: number }[],
+  pitches: readonly NamedPitch[],
   cells: readonly (LatLon & { rank: number })[],
   city: string,
   areas: readonly (LatLon & { name: string })[] = [],
+  venues: readonly (LatLon & { name: string })[] = [],
 ): string {
   const place = nearestName(point, known, POINT_NAME_M);
   if (place) return `near ${place}`;
   const byDistance = <T extends LatLon>(list: readonly T[]) => [...list].sort((a, b) => distanceM(a, point) - distanceM(b, point))[0];
-  const asNear = (name: string) => (/^(near|taste area) /i.test(name) ? name.replace(/^Near /, "near ") : `near ${name}`);
+  const label = (p: NamedPitch) => (isTasteSpot(p) ? p.name.replace(/^Near /, "near ") : `near ${p.name}`);
   const pitch = byDistance(pitches);
-  if (pitch && distanceM(pitch, point) <= POINT_NAME_M) return /^Taste area /.test(pitch.name) ? pitch.name : asNear(pitch.name);
+  if (pitch && distanceM(pitch, point) <= POINT_NAME_M) return label(pitch);
   const cell = byDistance(cells);
-  if (cell && distanceM(cell, point) <= POINT_NAME_M) return `Taste area ${cell.rank}`;
+  if (cell && distanceM(cell, point) <= POINT_NAME_M) {
+    const ranked = [...cells].sort((a, b) => a.rank - b.rank);
+    return cellNames(ranked, known, pitches, { areas, venues, city })[ranked.indexOf(cell)].replace(/^Near /, "near ");
+  }
   // A metro: the named area the point is in, before a pitch further away.
   const area = byDistance(areas);
   if (area && distanceM(area, point) <= AREA_SAMPLE_KM * 1000) return `a spot in ${area.name}`;
-  return pitch ? asNear(pitch.name) : `a spot in ${city}`;
+  return pitch ? label(pitch) : `a spot in ${city}`;
 }
 
 /** "Looked at A, B, C…": the areas compared, best first, the first few by name. */
@@ -281,8 +302,8 @@ function buildTools(ctx: PlanContext, state: AgentState) {
     const resolved = resolveWhere(w, { area, pitches: await knownPitches(), places: known });
     // Coordinates with no known place close by: named like the cells and pitches, never shown as raw numbers.
     if (resolved.via !== "coordinates" || /^near /.test(resolved.label)) return resolved;
-    const [{ candidates }, cells, areas] = await Promise.all([ctx.candidates(), ctx.tasteCells(), ctx.rankedAreas()]);
-    return { ...resolved, label: pointName(resolved, known, [...candidates, ...state.pool.values()], topCells(cells), ctx.city.name, areas) };
+    const [{ candidates }, cells, naming] = await Promise.all([ctx.candidates(), ctx.tasteCells(), ctx.tasteNaming()]);
+    return { ...resolved, label: pointName(resolved, known, [...candidates, ...state.pool.values()], topCells(cells), ctx.city.name, naming.areas, naming.venues) };
   };
   const ids = () => ctx.entityIds();
   /** Every output is recorded for the numbers check, then returned. */
@@ -373,10 +394,10 @@ function buildTools(ctx: PlanContext, state: AgentState) {
                 qloo.tasteMap(signalIds, box, ctx.adapters, undefined, tags),
               );
         const known = await places();
-        const pitches = (await ctx.candidates()).candidates;
+        const [{ candidates: pitches }, naming] = await Promise.all([ctx.candidates(), ctx.tasteNaming()]);
         const max = Math.max(0, ...cells.map((c) => c.affinity));
         const top = [...cells].sort((a, b) => b.affinity - a.affinity).slice(0, 8);
-        const names = top.map((c, i) => cellName(c, i + 1, known, pitches));
+        const names = cellNames(top, known, pitches, naming);
         return seen({
           summary: cells.length
             ? `${cells.length} cells for ${all ? "all your artists" : signalNames.join(", ")}${zoom ? ` around ${zoom.label}` : ""}; strongest: ${names[0]}`
@@ -387,7 +408,7 @@ function buildTools(ctx: PlanContext, state: AgentState) {
           strongest: top.map((c, i) => ({
             rank: i + 1,
             near: nearestName(c, known),
-            // Additive: what the cell is called on the page (a known place, the pitch on it, or "Taste area N"), never "unnamed".
+            // Additive: what the cell is called on the page (a known place, the pitch on it, or its area and nearest venue), never "unnamed".
             name: names[i],
             lat: r4(c.lat),
             lon: r4(c.lon),

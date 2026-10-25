@@ -612,8 +612,9 @@ export class PlanContext {
         return { candidates: [], funnel: null };
       }
       const build = async (pool: typeof spots) => {
-        // No walkable spots for this city (OpenStreetMap failed or found none): the strongest taste cells stand as pitches, named after a Qloo place.
-        const places = pool.length === 0 && cells.length > 0 ? await this.places() : [];
+        // No walkable spots for this city (OpenStreetMap failed or found none): the strongest taste cells stand as pitches, named
+        // by their area and the nearest Qloo place (tasteSpotName).
+        const naming = pool.length === 0 && cells.length > 0 ? await this.tasteNaming() : { venues: [], areas: [], city: this.city.name };
         return buildCandidatesWithFunnel({
           sites: pitchData.sites,
           zones: pitchData.zones,
@@ -622,7 +623,9 @@ export class PlanContext {
           hotspots: hotspotsFor(this.city),
           permit: this.request.permit,
           generalRules: rulesFor(this.city).general,
-          cellNames: places,
+          cellNames: naming.venues,
+          areas: naming.areas,
+          city: naming.city,
         });
       };
       if (isMelbourne(this.city)) return build(spots);
@@ -633,6 +636,18 @@ export class PlanContext {
         return fromOsm;
       }
       return build([]);
+    });
+  }
+
+  /**
+   * What names a taste spot (scoring/candidates.ts tasteSpotName): a metro's named areas, Qloo's busy places and the city. The
+   * same for the pitches and the agent's tools, so the cards, the map and the steps agree. No call of its own: the places are
+   * the scoring's, the areas a metro's (none for a CBD-sized city).
+   */
+  tasteNaming() {
+    return this.once("tasteNaming", async () => {
+      const [venues, areas] = await Promise.all([this.places(), this.rankedAreas()]);
+      return { venues, areas: areas.map((a) => ({ name: a.name, lat: a.lat, lon: a.lon })), city: this.city.name };
     });
   }
 

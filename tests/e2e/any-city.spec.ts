@@ -68,7 +68,7 @@ test.describe("any city (offline)", () => {
     await expect(pitches).toHaveCount(3);
     for (const name of await pitches.evaluateAll((els) => els.map((el) => el.getAttribute("data-pitch-name") ?? ""))) {
       expect(name).not.toMatch(/Federation|Bourke|Flinders|Degraves/);
-      // OpenStreetMap public spaces, not taste-cell names ("Near …", "Taste area …").
+      // OpenStreetMap public spaces, not taste-spot names ("… · near …", "… taste spot").
       expect(name).toMatch(/^Synthetic OSM |^Pedestrian street$/);
     }
     await expect(await mapCentre(page)).toHaveAttribute("data-center", "35.6895,139.6917", { timeout: 15_000 });

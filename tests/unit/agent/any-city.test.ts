@@ -8,6 +8,8 @@ import { mockFetch, OFFLINE } from "../../helpers";
 /** V2 2.1: an offline plan in offline mode's second city (Tokyo), end to end with the mock model and the Qloo mock. */
 const TOKYO = { id: "tokyo-jp", name: "Tokyo", country: "Japan", countryCode: "JP", lat: 35.6895, lon: 139.6917, timeZone: "Asia/Tokyo", region: "Tokyo" };
 const slot = { date: "2026-10-17", startHour: 18, endHour: 21 };
+/** A taste spot's name (scoring/candidates.ts tasteSpotName): area and venue, venue, or area alone, never a bare number. */
+const TASTE_SPOT = /^(Near .+|.+ · near .+|.+ taste spot)( \(\d+\))?$/;
 
 async function load() {
   vi.resetModules();
@@ -54,7 +56,10 @@ describe("a plan in Tokyo (offline)", () => {
     const { plan } = await runPlanAgent(ctx);
     expect(planSchema.safeParse(plan).success).toBe(true);
     expect(plan.pitches.length).toBeGreaterThan(0);
-    for (const p of plan.pitches) expect(p.name).toMatch(/^(Near |Taste area )/);
+    for (const p of plan.pitches) {
+      expect(p.name).toMatch(TASTE_SPOT);
+      expect(p.name).not.toMatch(/Taste area \d/);
+    }
     expect(plan.cityLevels).toMatchObject({ pitches: "none" });
     expect(plan.dataStatus).toContainEqual({ adapter: "osm", source: "osm", mode: "fallback", reason: "fault_injected" });
   });
@@ -63,7 +68,7 @@ describe("a plan in Tokyo (offline)", () => {
     vi.resetModules();
     mockFetch([]);
     const { PlanContext } = await import("@/server/agent/context");
-    const { createTools, AgentState, cellName } = await import("@/server/agent/tools");
+    const { createTools, AgentState, cellName, cellNames } = await import("@/server/agent/tools");
     const request = planRequestSchema.parse({ ...requestFieldsOf(TOKYO), slot, performer: EXAMPLES[0].performer });
     const ctx = new PlanContext(request, { offline: true, faults: ["osm"] }, "2026-10-15");
     const tools = createTools(ctx, new AgentState());
@@ -74,19 +79,24 @@ describe("a plan in Tokyo (offline)", () => {
     expect(out.strongest.length).toBeGreaterThan(0);
     const pitchNames = new Set((await ctx.candidates()).candidates.map((c) => c.name));
     for (const cell of out.strongest) {
-      expect(cell.name).toMatch(/^(Near |Taste area )/);
-      // A cell the engine stood a pitch on carries that pitch's name; any other is "Taste area N" by its rank here.
-      if (!pitchNames.has(cell.name)) expect(cell.name).toBe(`Taste area ${cell.rank}`);
+      expect(cell.name).toMatch(TASTE_SPOT);
+      expect(cell.name).not.toMatch(/Taste area \d/);
     }
+    // A cell the engine stood a pitch on carries that pitch's name; no two cells share one.
+    expect(new Set(out.strongest.map((c) => c.name)).size).toBe(out.strongest.length);
     expect(out.strongest.some((c) => pitchNames.has(c.name))).toBe(true);
     expect(out.summary).toContain(`strongest: ${out.strongest[0].name}`);
     expect(JSON.stringify(out)).not.toMatch(/unnamed|without a name/i);
 
-    // The rule itself: a known place first, then the pitch on the cell, then the rank.
+    // The rule itself: a known place first, then the pitch on the cell, then its area and nearest Qloo place.
     const cell = { lat: 35.68, lon: 139.69 };
-    expect(cellName(cell, 4, [{ name: "Shibuya Crossing", lat: 35.6801, lon: 139.6901 }], [])).toBe("Shibuya Crossing");
-    expect(cellName(cell, 4, [], [{ name: "Near Hachiko", lat: 35.6802, lon: 139.69, origin: "taste" }])).toBe("Near Hachiko");
-    expect(cellName(cell, 4, [], [{ name: "Far away", lat: 35.69, lon: 139.69, origin: "taste" }])).toBe("Taste area 4");
+    expect(cellName(cell, [{ name: "Shibuya Crossing", lat: 35.6801, lon: 139.6901 }], [])).toBe("Shibuya Crossing");
+    expect(cellName(cell, [], [{ name: "Near Hachiko", lat: 35.6802, lon: 139.69, origin: "taste" }])).toBe("Near Hachiko");
+    const naming = { venues: [{ name: "Bar Hachi", lat: 35.681, lon: 139.69 }], city: "Tokyo" };
+    expect(cellName(cell, [], [{ name: "Far away", lat: 35.69, lon: 139.69, origin: "taste" }], naming)).toBe("Near Bar Hachi");
+    expect(cellName(cell, [], [], { city: "Tokyo" })).toBe("Tokyo taste spot");
+    // Two cells by the same place: the second never repeats the first's name.
+    expect(cellNames([cell, { lat: 35.6805, lon: 139.6905 }], [], [], naming)).toEqual(["Near Bar Hachi", "Near Bar Hachi (2)"]);
   });
 
   it("names a point given by coordinates like the cells and pitches in step titles and summaries, never as raw numbers", async () => {
@@ -109,9 +119,11 @@ describe("a plan in Tokyo (offline)", () => {
     // The rule: a known place, a pitch on the spot, the top taste cell there, the nearest pitch, the city.
     const p = { lat: 38.711, lon: -9.1276 };
     expect(pointName(p, [{ name: "Praça do Comércio", lat: 38.7112, lon: -9.1277 }], [], [], "Lisbon")).toBe("near Praça do Comércio");
-    expect(pointName(p, [], [{ name: "Taste area 2", lat: 38.7111, lon: -9.1276 }], [], "Lisbon")).toBe("Taste area 2");
+    expect(pointName(p, [], [{ name: "Baixa · near Rossio", lat: 38.7111, lon: -9.1276, origin: "taste" }], [], "Lisbon")).toBe("Baixa · near Rossio");
+    expect(pointName(p, [], [{ name: "Lisbon taste spot", lat: 38.7111, lon: -9.1276 }], [], "Lisbon")).toBe("Lisbon taste spot");
     expect(pointName(p, [], [{ name: "Near Rossio", lat: 38.7111, lon: -9.1276 }], [], "Lisbon")).toBe("near Rossio");
-    expect(pointName(p, [], [{ name: "Far pitch", lat: 38.72, lon: -9.1276 }], [{ lat: 38.7111, lon: -9.1277, rank: 5 }], "Lisbon")).toBe("Taste area 5");
+    expect(pointName(p, [], [{ name: "Far pitch", lat: 38.72, lon: -9.1276 }], [{ lat: 38.7111, lon: -9.1277, rank: 5 }], "Lisbon")).toBe("Lisbon taste spot");
+    expect(pointName(p, [], [], [{ lat: 38.7111, lon: -9.1277, rank: 5 }], "Lisbon", [], [{ name: "Café Nicola", lat: 38.7125, lon: -9.1277 }])).toBe("near Café Nicola");
     expect(pointName(p, [], [{ name: "Far pitch", lat: 38.72, lon: -9.1276 }], [], "Lisbon")).toBe("near Far pitch");
     expect(pointName(p, [], [], [], "Lisbon")).toBe("a spot in Lisbon");
     // A metro: the named area the point is in, before a pitch further away; an area too far is not "in".

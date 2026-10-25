@@ -91,7 +91,7 @@ describe("check_pitch step outside Melbourne", () => {
     const ui = TOOL_UI.check_pitch;
     const step = (extra: object) => ({ id: "1", tool: "check_pitch", label: "Checking a spot against the busking rules", status: "done", notes: [], input: { spot: { place: "Rossio" } }, ...extra }) as never;
     expect(ui.doing(step({ label: "Looking at a spot (local busking rules not checked)", status: "running" }))).toBe("Looking at Rossio");
-    expect(ui.title(step({ output: { name: "Taste area 2", legal: "not checked" } }))).toBe("A look at Taste area 2");
+    expect(ui.title(step({ output: { name: "Shibuya · near Bar Hachi", legal: "not checked" } }))).toBe("A look at Shibuya · near Bar Hachi");
     expect(ui.title(step({ output: { name: "Federation Square", legal: "not ruled out" } }))).toBe("The rules at Federation Square");
   });
 });

@@ -1,4 +1,5 @@
 import { distanceM, distanceToLineM, type LatLon } from "@/lib/geo";
+import { AREA_SAMPLE_KM } from "./areas";
 import { isFineHeatmap } from "./heatmap";
 import type { Candidate, HeatCellInput, HotspotInput, PerformerPermit, SiteInput, SpotInput, ZoneInput } from "./types";
 
@@ -32,7 +33,7 @@ export const SNAP_RADIUS_M = 550;
 export const FINE_SNAP_RADIUS_M = 250;
 export const MAX_SPOTS_PER_CELL = 3;
 export const USUAL_SPOT_RADIUS_M = 180;
-/** A cell-centre pitch takes the name of a Qloo place within this distance. */
+/** A cell-centre pitch takes the name of a Qloo place within this distance (tasteSpotName). */
 export const CELL_NAME_RADIUS_M = 400;
 /** Cell-centre pitches: at most this many, at least this far apart (fine heatmap cells are 150 m, so neighbours would crowd the pool). */
 export const MAX_CELL_PITCHES = 24;
@@ -116,7 +117,55 @@ export type CandidateInputs = {
    * after the nearest of these places (Qloo's busy places). The seam OSM pitches (V2 2.3) replace by filling `spots`.
    */
   cellNames?: (LatLon & { name: string })[];
+  /** A metro's named areas, for those pitches' names (tasteSpotName). Empty or absent for a CBD-sized city. */
+  areas?: readonly NamingArea[];
+  /** The city's name, for a pitch with neither a named area nor a Qloo place near it. */
+  city?: string;
 };
+
+/** A named area that lends its name to the points within its reach (AREA_SAMPLE_KM of its centre by default). */
+export type NamingArea = LatLon & { name: string; reachM?: number };
+
+export type TasteSpotNaming = {
+  /** A metro's named areas (scoring/areas.ts); none for a CBD-sized city. */
+  areas?: readonly NamingArea[];
+  /** Qloo's busy places. */
+  venues?: readonly (LatLon & { name: string })[];
+  city?: string;
+};
+
+/**
+ * The name of a pitch (or taste cell) Busk Map stood at a taste cell's centre, shared by the pitch cards, the map, the step
+ * titles and the agent's copy:
+ * - its area: with a metro's named areas, the one whose centre is nearest within its reach, else the city; none otherwise;
+ * - its venue: the nearest Qloo place within CELL_NAME_RADIUS_M;
+ * - "<Area> · near <Venue>", "Near <Venue>" (no areas), "<Area> taste spot" (no venue), "<City> taste spot" (neither).
+ * A name already `taken` tries the next-nearest venue, then gets an ordinal: "… (2)". Never a bare number.
+ */
+export function tasteSpotName(point: LatLon, { areas = [], venues = [], city }: TasteSpotNaming, taken: ReadonlySet<string> = new Set()): string {
+  const area =
+    areas.length === 0
+      ? null
+      : (areas
+          .map((a) => ({ a, d: distanceM(a, point) }))
+          .filter((x) => x.d <= (x.a.reachM ?? AREA_SAMPLE_KM * 1000))
+          .sort((x, y) => x.d - y.d)[0]?.a.name ?? city ?? null);
+  const near = venues
+    .map((v) => ({ v, d: distanceM(v, point) }))
+    .filter((x) => x.d <= CELL_NAME_RADIUS_M && x.v.name.trim())
+    .sort((x, y) => x.d - y.d || x.v.name.localeCompare(y.v.name))
+    .map((x) => x.v.name.trim());
+  const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+  const label = (venue: string | undefined) =>
+    venue ? (area && !same(area, venue) ? `${area} · near ${venue}` : `Near ${venue}`) : area || city ? `${area ?? city} taste spot` : "Taste spot";
+  for (const venue of near) {
+    const name = label(venue);
+    if (!taken.has(name)) return name;
+  }
+  const base = label(near[0]);
+  if (!taken.has(base)) return base;
+  for (let n = 2; ; n++) if (!taken.has(`${base} (${n})`)) return `${base} (${n})`;
+}
 
 /** How the data narrowed down to the candidates, for the "how this plan was found" line. */
 export type CandidateFunnel = {
@@ -170,7 +219,7 @@ export function candidateAt(
   };
 }
 
-export function buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots, permit, generalRules = GENERAL_RULES, cellNames }: CandidateInputs): { candidates: Candidate[]; funnel: CandidateFunnel } {
+export function buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots, permit, generalRules = GENERAL_RULES, cellNames, areas, city }: CandidateInputs): { candidates: Candidate[]; funnel: CandidateFunnel } {
   let considered = 0;
   let excluded = 0;
   const blocked = (point: LatLon) => ruledOut(point, sites, zones, permit);
@@ -231,12 +280,10 @@ export function buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots
       if (candidates.length >= MAX_CELL_PITCHES) break;
       if (candidates.some((c) => distanceM(c, cell) < CELL_PITCH_SPACING_M)) continue;
       const ref = { lat: cell.lat, lon: cell.lon, affinity: cell.affinity, rank: cell.rank };
-      const near = cellNames
-        .map((place) => ({ place, d: distanceM(cell, place) }))
-        .filter((x) => x.d <= CELL_NAME_RADIUS_M)
-        .sort((a, b) => a.d - b.d)[0]?.place;
+      const name = tasteSpotName(cell, { areas, venues: cellNames, city }, new Set(candidates.map((c) => c.name)));
+      // The id stays the cell's (its geohash): only the name reads like a place.
       const id = `cell:${cell.geohash ?? `${cell.lat.toFixed(4)},${cell.lon.toFixed(4)}`}`;
-      add({ id, name: near ? `Near ${near.name}` : `Taste area ${cell.rank}`, lat: cell.lat, lon: cell.lon, kind: "public-space", origin: "taste", cell: ref, ...general }, null);
+      add({ id, name, lat: cell.lat, lon: cell.lon, kind: "public-space", origin: "taste", cell: ref, ...general }, null);
     }
     return funnel(top.length);
   }

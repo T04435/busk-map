@@ -214,6 +214,66 @@ describe("Agent v2 runs (mock model)", () => {
     ]);
   });
 
+  it("when looks fail and the model ends with text alone, a forced final round still finishes with finish_plan", async () => {
+    const { ctx, runPlanAgent, FINISH_NUDGE } = await load();
+    const { convertArrayToReadableStream } = await import("ai/test");
+    type Part = { type: string; toolName?: string; output?: { type: string; value: unknown }; text?: string };
+    const calls: { tools: string[]; toolChoice: unknown; providerOptions: unknown; lastUser: string }[] = [];
+    const usage = { inputTokens: { total: 100, noCache: 100, cacheRead: undefined, cacheWrite: undefined }, outputTokens: { total: 50, text: 50, reasoning: undefined } };
+    const reply = (text: string, toolCalls: { toolName: string; input: unknown }[]) => {
+      const id = String(calls.length);
+      const parts: unknown[] = [{ type: "stream-start", warnings: [] }, { type: "text-start", id }, { type: "text-delta", id, delta: text }, { type: "text-end", id }];
+      toolCalls.forEach((c, i) => parts.push({ type: "tool-call", toolCallId: `c${id}-${i}`, toolName: c.toolName, input: JSON.stringify(c.input) }));
+      parts.push({ type: "finish", usage, finishReason: { unified: toolCalls.length ? "tool-calls" : "stop", raw: undefined } });
+      return { stream: convertArrayToReadableStream(parts as never[]) };
+    };
+    const model = new MockLanguageModelV4({
+      doStream: async (options) => {
+        const prompt = options.prompt as { role: string; content: Part[] | string }[];
+        const users = prompt.filter((m) => m.role === "user");
+        const lastUser = users.at(-1)!.content;
+        const tools = (options.tools ?? []).map((t) => t.name);
+        calls.push({ tools, toolChoice: options.toolChoice, providerOptions: options.providerOptions, lastUser: typeof lastUser === "string" ? lastUser : JSON.stringify(lastUser) });
+        const results = prompt.filter((m) => m.role === "tool").flatMap((m) => m.content as Part[]).filter((p) => p.type === "tool-result");
+        if (calls.length === 1) {
+          // Two looks at a place Busk Map doesn't know: both tools fail.
+          return reply("Checking the crowd and the places there.", [
+            { toolName: "crowd_at", input: { at: { place: "Nowhere Real" } } },
+            { toolName: "busy_places", input: { near: { place: "Nowhere Real" } } },
+          ]);
+        }
+        // The live failure: a closing line and no finish_plan, so the loop stops with no answer.
+        if (tools.includes("taste_map")) return reply("The tools failed, so we can't recommend pitches.", []);
+        if (!results.some((r) => r.toolName === "score_pitches")) return reply("Scoring the pool.", [{ toolName: "score_pitches", input: {} }]);
+        const scored = (results.filter((r) => r.toolName === "score_pitches").at(-1)!.output!.value as { pitches: { pitchId: string; name: string; engineTop3: boolean }[] }).pitches;
+        const picks = scored.filter((p) => p.engineTop3).slice(0, 3);
+        return reply("Finishing with the engine's top pitches.", [
+          { toolName: "finish_plan", input: { summary: "Play the engine's top pitches; the crowd looks failed.", pitches: picks.map((p) => ({ pitchId: p.pitchId, why: `${p.name} scored well with the engine.` })), notes: ["The crowd and places looks failed."] } },
+        ]);
+      },
+    });
+    const ends: { tool: string; ok: boolean }[] = [];
+    const { plan, usage: run, agentTop } = await runPlanAgent(ctx, { onToolEnd: (e) => ends.push(e) }, undefined, { model });
+    expect(ends).toEqual([
+      expect.objectContaining({ tool: "crowd_at", ok: false }),
+      expect.objectContaining({ tool: "busy_places", ok: false }),
+      expect.objectContaining({ tool: "score_pitches", ok: true }),
+      expect.objectContaining({ tool: "finish_plan", ok: true }),
+    ]);
+    expect(run!.stoppedBy).toBe("finished");
+    expect(run!.steps).toBe(4);
+    expect(plan.explanations).toBe("ai");
+    expect(agentTop).toHaveLength(3);
+    // The final round: told why, offered only the wrap-up tools, made to call one, with thinking off for those steps.
+    const [, , scoring, finishing] = calls;
+    expect(scoring.lastUser).toContain(FINISH_NUDGE);
+    expect(scoring.tools.sort()).toEqual(["finish_plan", "score_pitches"]);
+    expect(scoring.toolChoice).toEqual({ type: "required" });
+    expect(finishing.tools).toEqual(["finish_plan"]);
+    expect(finishing.toolChoice).toEqual({ type: "tool", toolName: "finish_plan" });
+    expect(finishing.providerOptions).toMatchObject({ anthropic: { thinking: { type: "disabled" } } });
+  });
+
   it("stops at the step cap and shows the engine's plan with a note", async () => {
     const { ctx, runPlanAgent, createMockPlanner } = await load();
     const { plan, usage, agentTop } = await runPlanAgent(ctx, {}, undefined, { model: createMockPlanner("never-finish"), limits: { maxSteps: 5 } });

@@ -1,7 +1,7 @@
 import "server-only";
 import { PERSONA_PROMPT } from "@/lib/agent-persona";
 import { NO_SCORES_RULE } from "@/lib/plain-scores";
-import { ToolLoopAgent, type LanguageModel, type StopCondition } from "ai";
+import { ToolLoopAgent, type LanguageModel, type ModelMessage, type StopCondition } from "ai";
 import { describeSlot } from "@/lib/slot";
 import type { Plan } from "@/lib/plan-schema";
 import { fromToolOutputs, type ResearchTotals, type ToolResult } from "@/lib/research-totals";
@@ -40,6 +40,7 @@ How to work:
 3. Then call score_pitches and add the spots you checked. The engine scores its own pool and your additions with the same weights, and marks its own top 3.
 4. Choose. Set the engine's ranking against your shortlist, and look closer where they disagree or scores are close (compare_crowds, or another look).
 5. Finish with finish_plan: three pitchIds from score_pitches, best first and at least 250 m apart (score_pitches flags sameCornerAs), a why for each, a two-sentence summary and any data caveats. If finish_plan rejects your answer, fix what it says and call it again.
+6. Always end the run by calling finish_plan, never with text alone. When looks fail or come back thin (a tool error, no crowd data, no events, busking rules not checked), say so in notes and still choose from score_pitches: the engine has scored every pitch. Pitches named "Taste area N" or "Near …" are real scored pitches at the act's strongest taste areas, and you may choose them.
 
 Ranking against the engine: keep the engine's order unless the data shows something its score can't see, such as an event crowd leaving next to a pitch in the slot, a crowd that fits this act better, or the places nearby being closed. Rank a pitch above one the engine scored higher, or pick one outside the engine's top 3, only for a reason you found in a tool result, and make that reason the first sentence of that pitch's why. Never re-rank on a hunch.
 
@@ -76,6 +77,14 @@ export function buildPrompt(ctx: PlanContext, matched: { query: string; match: s
 }
 
 type ToolName = keyof ReturnType<typeof createTools>;
+
+/** Steps the forced final round may take: score_pitches, finish_plan, and one retry of a rejected finish_plan. */
+export const FINAL_ROUND_STEPS = 3;
+/** What the model is told when it stopped without an answer. */
+export const FINISH_NUDGE =
+  "You stopped without calling finish_plan, so the performer has no plan yet. Call finish_plan now: choose three pitches from score_pitches (call it first if nothing is scored yet), and put anything that failed or was missing in notes.";
+/** Forcing a tool call is refused while Claude's thinking is on, so a forced wrap-up step turns it off. */
+const NO_THINKING = { anthropic: { thinking: { type: "disabled" } } } as const;
 /** The tools offered before score_pitches opens. */
 const INVESTIGATION_ONLY = (["taste_map", "crowd_at", "busy_places", "events_near", "activity_at", "check_pitch", "learn_these"] as ToolName[]).filter(
   (t) => !(AFTER_SCORING as readonly string[]).includes(t),
@@ -162,13 +171,30 @@ async function runAgent(ctx: PlanContext, events: AgentEvents, abortSignal: Abor
 
   let usage: Usage | null = null;
   const timeout = AbortSignal.timeout(limits.timeoutMs);
+  const signal = AbortSignal.any([timeout, ...(abortSignal ? [abortSignal] : [])]);
+  const model = options.model ?? (offline ? createMockPlanner() : MODELS.planner);
+  const tools = createTools(ctx, state);
   // Every finished tool call, for the plan's research totals (counted now, before any pruning of stored steps).
   const toolResults: ToolResult[] = [];
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let reasoningTokens = 0;
+  let steps = 0;
+  /**
+   * A wrap-up step: only score_pitches (when nothing is scored and a step is left after it) and finish_plan are offered, and the
+   * model must call one. Claude's adaptive thinking can't be on while a tool is forced, so it is off for this step only.
+   */
+  const wrapUpStep = (canScore: boolean, why: string) => {
+    if (!state.scored && canScore) {
+      return { activeTools: ["score_pitches", "finish_plan"] as ToolName[], toolChoice: "required" as const, providerOptions: NO_THINKING, instructions: `${INSTRUCTIONS}\n\n${why}: call score_pitches now (add any spots you checked), then finish_plan.` };
+    }
+    return { activeTools: ["finish_plan"] as ToolName[], toolChoice: { type: "tool" as const, toolName: "finish_plan" as const }, providerOptions: NO_THINKING, instructions: `${INSTRUCTIONS}\n\n${why}: call finish_plan now with what you have.` };
+  };
   try {
     const agent = new ToolLoopAgent({
-      model: options.model ?? (offline ? createMockPlanner() : MODELS.planner),
+      model,
       instructions: INSTRUCTIONS,
-      tools: createTools(ctx, state),
+      tools,
       stopWhen: [finished, overBudget, outOfSteps],
       maxOutputTokens: LIMITS.maxOutputTokensPerStep,
       providerOptions: PLANNER_PROVIDER_OPTIONS,
@@ -179,19 +205,13 @@ async function runAgent(ctx: PlanContext, events: AgentEvents, abortSignal: Abor
         const wrap = stepNumber >= limits.maxSteps - 2 || tokens >= limits.tokenBudget * (state.scored ? 0.75 : 0.6);
         if (wrap) {
           state.wrappingUp = true;
-          if (!state.scored && stepNumber < limits.maxSteps - 1) {
-            return { activeTools: ["score_pitches", "finish_plan"], instructions: `${INSTRUCTIONS}\n\nYour research budget is used up: call score_pitches now (add any spots you checked), then finish_plan.` };
-          }
-          return { activeTools: ["finish_plan"], instructions: `${INSTRUCTIONS}\n\nYour research budget is used up: call finish_plan now with what you have.` };
+          return wrapUpStep(stepNumber < limits.maxSteps - 1, "Your research budget is used up");
         }
         if (!state.scored && !scoringOpen(state)) return { activeTools: INVESTIGATION_ONLY };
         return {};
       },
     });
-    const result = await agent.stream({
-      prompt,
-      abortSignal: AbortSignal.any([timeout, ...(abortSignal ? [abortSignal] : [])]),
-    });
+    const result = await agent.stream({ prompt, abortSignal: signal });
     // Notes stream as whole blocks: Claude's reasoning summary and the sentence it writes before a call.
     const buffers = new Map<string, { kind: "reasoning" | "text"; text: string }>();
     const flush = (key: string) => {
@@ -201,79 +221,104 @@ async function runAgent(ctx: PlanContext, events: AgentEvents, abortSignal: Abor
       if (b && text) events.onNote?.({ kind: b.kind, text });
     };
     const unshown = new Set<string>();
-    let inputTokens = 0;
-    let outputTokens = 0;
-    let reasoningTokens = 0;
-    let steps = 0;
-    for await (const part of result.fullStream) {
-      switch (part.type) {
-        case "reasoning-start":
-          buffers.set(`r:${part.id}`, { kind: "reasoning", text: "" });
-          break;
-        case "text-start":
-          buffers.set(`t:${part.id}`, { kind: "text", text: "" });
-          break;
-        case "reasoning-delta": {
-          const b = buffers.get(`r:${part.id}`);
-          if (b) b.text += part.text;
-          break;
-        }
-        case "text-delta": {
-          const b = buffers.get(`t:${part.id}`);
-          if (b) b.text += part.text;
-          break;
-        }
-        case "reasoning-end":
-          flush(`r:${part.id}`);
-          break;
-        case "text-end":
-          flush(`t:${part.id}`);
-          break;
-        case "tool-call":
-          // A call whose input the model garbled (live: events_near sent with an empty input) is not a look the performer
-          // should see as "failed": the model gets the error back and retries, so the step is not shown.
-          if (part.invalid) {
-            unshown.add(part.toolCallId);
-            log.warn("agent sent a tool call with unusable input; the model is told and retries", { tool: part.toolName });
+    const consume = async (run: typeof result) => {
+      for await (const part of run.fullStream) {
+        switch (part.type) {
+          case "reasoning-start":
+            buffers.set(`r:${part.id}`, { kind: "reasoning", text: "" });
+            break;
+          case "text-start":
+            buffers.set(`t:${part.id}`, { kind: "text", text: "" });
+            break;
+          case "reasoning-delta": {
+            const b = buffers.get(`r:${part.id}`);
+            if (b) b.text += part.text;
             break;
           }
-          for (const key of [...buffers.keys()]) flush(key);
-          events.onToolStart?.({ id: part.toolCallId, tool: part.toolName, ...toolStart(part.toolName, ctx.levels), input: part.input });
-          break;
-        case "tool-result": {
-          const output = part.output as { summary?: unknown; accepted?: boolean } | undefined;
-          const ok = part.toolName !== "finish_plan" || output?.accepted === true;
-          // The page's copy may carry display-only fields (a song's Spotify year) the model never read.
-          const shown = await outputForPage(part.toolName, part.input, part.output, ctx, state);
-          toolResults.push({ tool: part.toolName, ok, output: shown });
-          events.onToolEnd?.({ id: part.toolCallId, tool: part.toolName, ok, summary: typeof output?.summary === "string" ? output.summary : "Done", output: shown });
-          events.onTotals?.(fromToolOutputs(toolResults));
-          break;
+          case "text-delta": {
+            const b = buffers.get(`t:${part.id}`);
+            if (b) b.text += part.text;
+            break;
+          }
+          case "reasoning-end":
+            flush(`r:${part.id}`);
+            break;
+          case "text-end":
+            flush(`t:${part.id}`);
+            break;
+          case "tool-call":
+            // A call whose input the model garbled (live: events_near sent with an empty input) is not a look the performer
+            // should see as "failed": the model gets the error back and retries, so the step is not shown.
+            if (part.invalid) {
+              unshown.add(part.toolCallId);
+              log.warn("agent sent a tool call with unusable input; the model is told and retries", { tool: part.toolName });
+              break;
+            }
+            for (const key of [...buffers.keys()]) flush(key);
+            events.onToolStart?.({ id: part.toolCallId, tool: part.toolName, ...toolStart(part.toolName, ctx.levels), input: part.input });
+            break;
+          case "tool-result": {
+            const output = part.output as { summary?: unknown; accepted?: boolean } | undefined;
+            const ok = part.toolName !== "finish_plan" || output?.accepted === true;
+            // The page's copy may carry display-only fields (a song's Spotify year) the model never read.
+            const shown = await outputForPage(part.toolName, part.input, part.output, ctx, state);
+            toolResults.push({ tool: part.toolName, ok, output: shown });
+            events.onToolEnd?.({ id: part.toolCallId, tool: part.toolName, ok, summary: typeof output?.summary === "string" ? output.summary : "Done", output: shown });
+            events.onTotals?.(fromToolOutputs(toolResults));
+            break;
+          }
+          case "tool-error": {
+            if (unshown.has(part.toolCallId)) break;
+            const message = part.error instanceof Error ? part.error.message : String(part.error);
+            toolResults.push({ tool: part.toolName, ok: false });
+            events.onToolEnd?.({ id: part.toolCallId, tool: part.toolName, ok: false, summary: message.slice(0, 300), output: { error: message.slice(0, 600) } });
+            events.onTotals?.(fromToolOutputs(toolResults));
+            break;
+          }
+          case "finish-step":
+            steps++;
+            inputTokens += part.usage.inputTokens ?? 0;
+            outputTokens += part.usage.outputTokens ?? 0;
+            reasoningTokens += part.usage.outputTokenDetails?.reasoningTokens ?? 0;
+            tokens = inputTokens + outputTokens;
+            break;
+          case "error":
+            // A forced wrap-up step the model answered without a tool call: no answer from it, not a model failure.
+            if (part.error instanceof Error && part.error.name === "AI_ToolChoiceViolationError") {
+              log.warn("agent ignored a forced tool call", { steps });
+              return;
+            }
+            throw part.error instanceof Error ? part.error : new Error(String(part.error));
+          case "abort":
+            throw Object.assign(new Error(timeout.aborted ? "agent timeout" : "agent aborted"), { name: timeout.aborted ? "TimeoutError" : "AbortError" });
+          default:
+            break;
         }
-        case "tool-error": {
-          if (unshown.has(part.toolCallId)) break;
-          const message = part.error instanceof Error ? part.error.message : String(part.error);
-          toolResults.push({ tool: part.toolName, ok: false });
-          events.onToolEnd?.({ id: part.toolCallId, tool: part.toolName, ok: false, summary: message.slice(0, 300), output: { error: message.slice(0, 600) } });
-          events.onTotals?.(fromToolOutputs(toolResults));
-          break;
-        }
-        case "finish-step":
-          steps++;
-          inputTokens += part.usage.inputTokens ?? 0;
-          outputTokens += part.usage.outputTokens ?? 0;
-          reasoningTokens += part.usage.outputTokenDetails?.reasoningTokens ?? 0;
-          tokens = inputTokens + outputTokens;
-          break;
-        case "error":
-          throw part.error instanceof Error ? part.error : new Error(String(part.error));
-        case "abort":
-          throw Object.assign(new Error(timeout.aborted ? "agent timeout" : "agent aborted"), { name: timeout.aborted ? "TimeoutError" : "AbortError" });
-        default:
-          break;
       }
+      for (const key of [...buffers.keys()]) flush(key);
+    };
+    await consume(result);
+
+    // The model may end a step with text alone (live, Lisbon: tools failed, it wrote a closing line), and the loop stops there
+    // with no answer. Then one short final round, with the same tools, forces the answer: score_pitches if nothing is scored
+    // yet, then finish_plan, inside what is left of the step cap.
+    const left = limits.maxSteps - steps;
+    if (!state.answer && left > 0 && tokens < limits.tokenBudget && !signal.aborted) {
+      log.warn("agent stopped without finish_plan; forcing a final answer", { steps });
+      state.wrappingUp = true;
+      const { messages } = await result.response;
+      const finalRound = new ToolLoopAgent({
+        model,
+        instructions: INSTRUCTIONS,
+        tools,
+        stopWhen: [finished, overBudget, ({ steps: done }) => done.length >= Math.min(left, FINAL_ROUND_STEPS)],
+        maxOutputTokens: LIMITS.maxOutputTokensPerStep,
+        providerOptions: PLANNER_PROVIDER_OPTIONS,
+        prepareStep: ({ stepNumber }) => wrapUpStep(stepNumber < Math.min(left, FINAL_ROUND_STEPS) - 1, "You stopped without calling finish_plan"),
+      });
+      const nudge: ModelMessage = { role: "user", content: FINISH_NUDGE };
+      await consume(await finalRound.stream({ messages: [{ role: "user", content: prompt }, ...messages, nudge], abortSignal: signal }));
     }
-    for (const key of [...buffers.keys()]) flush(key);
     const stoppedBy: Usage["stoppedBy"] = state.answer ? "finished" : tokens >= limits.tokenBudget ? "tokens" : steps >= limits.maxSteps ? "steps" : "no-answer";
     usage = { inputTokens, outputTokens, reasoningTokens, steps, ms: Date.now() - started, stoppedBy };
     log.info("agent finished", { ...usage, model: options.model ? "custom" : offline ? "mock" : MODELS.planner });

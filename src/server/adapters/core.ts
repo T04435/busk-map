@@ -16,7 +16,8 @@ export type AdapterName =
   | "events"
   | "songs"
   | "repertoire"
-  | "weather";
+  | "weather"
+  | "geocode";
 
 export const ADAPTER_NAMES: readonly AdapterName[] = [
   "qloo",
@@ -25,6 +26,7 @@ export const ADAPTER_NAMES: readonly AdapterName[] = [
   "songs",
   "repertoire",
   "weather",
+  "geocode",
 ];
 
 export type AdapterErrorKind =

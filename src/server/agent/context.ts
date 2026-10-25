@@ -8,12 +8,13 @@ import type { PlanRequest } from "@/lib/plan-schema";
 import type { AdapterContext, AdapterName, AdapterResult } from "@/server/adapters/core";
 import { getEvents, getEventsBetween, EVENTS_LOOKBACK_HOURS } from "@/server/adapters/events";
 import { getPitches } from "@/server/adapters/pitches";
+import { getOsmSpots } from "@/server/adapters/osm";
 import * as qloo from "@/server/adapters/qloo";
 import { findReleaseYears } from "@/server/adapters/repertoire";
 import { getSongs } from "@/server/adapters/songs";
 import { boundSongs, PLAN_SONGS_CONSIDERED } from "@/lib/plan-songs-bound";
 import { getWeather } from "@/server/adapters/weather";
-import { cityLevels, cityOf, hotspotsFor, pitchesFor, rulesFor, spotifyMarket, type City } from "@/server/cities";
+import { cityLevels, cityOf, hotspotsFor, isMelbourne, pitchesFor, rulesFor, spotifyMarket, type City } from "@/server/cities";
 import {
   activityEstimate,
   buildCandidatesWithFunnel,
@@ -398,9 +399,22 @@ export class PlanContext {
     return { sites: pitchData.sites, zones: pitchData.zones, hotspots: hotspotsFor(this.city), permit: this.request.permit, generalRules: rulesFor(this.city).general };
   }
 
-  /** How much each signal knows about this city (lib/city.ts). */
+  /** How much each signal knows about this city (lib/city.ts). Pitches from OpenStreetMap read as worldwide data. */
   get levels() {
-    return cityLevels(this.city);
+    const levels = cityLevels(this.city);
+    return this.osmPitches && levels.pitches === "none" ? { ...levels, pitches: "global" as const } : levels;
+  }
+
+  /** Whether this plan's pitches stand at OpenStreetMap spots (set once candidates() has run). */
+  private osmPitches = false;
+
+  /**
+   * Walkable public spots pitches snap to: Melbourne's curated list, else OpenStreetMap's public spaces in the planning area
+   * (V2 2.3). None when Overpass fails or finds nothing: the taste cells stand as pitches then.
+   */
+  spots() {
+    if (isMelbourne(this.city)) return Promise.resolve(pitchesFor(this.city));
+    return this.track("osm", () => getOsmSpots(this.city, this.adapters));
   }
 
   events() {
@@ -463,25 +477,34 @@ export class PlanContext {
   /** Candidates from the data: top taste cells snapped to public spots, plus council sites, legality-filtered. */
   candidates() {
     return this.once("candidates", async () => {
-      const [pitchData, cells] = await Promise.all([this.pitchData(), this.tasteCells()]);
-      const spots = pitchesFor(this.city);
+      const [pitchData, cells, spots] = await Promise.all([this.pitchData(), this.tasteCells(), this.spots()]);
       if (this.statuses.get("pitches")?.mode === "fallback") {
         // Without the council's layers nothing can be checked against the rules: recommend nothing.
         this.notes.push("The council's busking rules are unavailable right now, so Busk Map can't check which spots are allowed. Try again later.");
         return { candidates: [], funnel: null };
       }
-      // No walkable spots for this city (yet: OSM pitches, V2 2.3): the strongest taste cells stand as pitches, named after a Qloo place.
-      const places = spots.length === 0 && cells.length > 0 ? await this.places() : [];
-      return buildCandidatesWithFunnel({
-        sites: pitchData.sites,
-        zones: pitchData.zones,
-        spots,
-        cells,
-        hotspots: hotspotsFor(this.city),
-        permit: this.request.permit,
-        generalRules: rulesFor(this.city).general,
-        cellNames: places,
-      });
+      const build = async (pool: typeof spots) => {
+        // No walkable spots for this city (OpenStreetMap failed or found none): the strongest taste cells stand as pitches, named after a Qloo place.
+        const places = pool.length === 0 && cells.length > 0 ? await this.places() : [];
+        return buildCandidatesWithFunnel({
+          sites: pitchData.sites,
+          zones: pitchData.zones,
+          spots: pool,
+          cells,
+          hotspots: hotspotsFor(this.city),
+          permit: this.request.permit,
+          generalRules: rulesFor(this.city).general,
+          cellNames: places,
+        });
+      };
+      if (isMelbourne(this.city)) return build(spots);
+      const fromOsm = spots.length > 0 ? await build(spots) : null;
+      // OpenStreetMap spots none of the top taste cells reach: the taste cells themselves, as with no spots at all.
+      if (fromOsm && fromOsm.candidates.length > 0) {
+        this.osmPitches = true;
+        return fromOsm;
+      }
+      return build([]);
     });
   }
 

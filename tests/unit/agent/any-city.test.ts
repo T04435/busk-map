@@ -25,7 +25,7 @@ describe("a plan in Tokyo (offline)", () => {
     expect(ctx.city).toMatchObject({ id: "tokyo-jp", timeZone: "Asia/Tokyo" });
     const { plan } = await runPlanAgent(ctx);
     expect(planSchema.safeParse(plan).success).toBe(true);
-    expect(plan).toMatchObject({ city: "tokyo-jp", cityName: "Tokyo", rulesUrl: null, cityLevels: { rules: "none", pitches: "none", hotspots: "none", taste: "global" } });
+    expect(plan).toMatchObject({ city: "tokyo-jp", cityName: "Tokyo", rulesUrl: null, cityLevels: { rules: "none", pitches: "global", hotspots: "none", taste: "global" } });
     // Taste cells and pitches are in Tokyo, not Melbourne.
     expect(plan.tasteCells.length).toBeGreaterThan(0);
     expect(plan.tasteCells.every((c) => Math.abs(c.lat - TOKYO.lat) < 0.2 && Math.abs(c.lon - TOKYO.lon) < 0.2)).toBe(true);
@@ -39,6 +39,24 @@ describe("a plan in Tokyo (offline)", () => {
     // No City of Melbourne layers were asked for.
     expect(plan.dataStatus.map((s) => s.adapter)).not.toContain("pitches");
     expect(JSON.stringify(plan.pitches)).not.toMatch(/Federation|Bourke|Flinders|Melbourne/);
+    // V2 2.3: the pitches stand at OpenStreetMap public spaces (offline: the synthetic Overpass answer), credited as OSM.
+    expect(plan.dataStatus).toContainEqual({ adapter: "osm", source: "osm", mode: "synthetic" });
+    for (const p of plan.pitches) {
+      expect(p.name).toMatch(/^Synthetic OSM |^Pedestrian street$/);
+      expect(p.kind).toBe("public-space");
+    }
+  });
+
+  it("falls back to the taste-cell pitches when OpenStreetMap is down", async () => {
+    const { PlanContext, runPlanAgent } = await load();
+    const request = planRequestSchema.parse({ ...requestFieldsOf(TOKYO), slot, performer: EXAMPLES[0].performer });
+    const ctx = new PlanContext(request, { offline: true, faults: ["osm"] }, "2026-10-15");
+    const { plan } = await runPlanAgent(ctx);
+    expect(planSchema.safeParse(plan).success).toBe(true);
+    expect(plan.pitches.length).toBeGreaterThan(0);
+    for (const p of plan.pitches) expect(p.name).toMatch(/^(Near |Taste area )/);
+    expect(plan.cityLevels).toMatchObject({ pitches: "none" });
+    expect(plan.dataStatus).toContainEqual({ adapter: "osm", source: "osm", mode: "fallback", reason: "fault_injected" });
   });
 
   it("keeps a Melbourne plan on Melbourne's own data", async () => {
@@ -49,5 +67,8 @@ describe("a plan in Tokyo (offline)", () => {
     expect(plan).toMatchObject({ city: "melbourne", cityName: "Melbourne", rulesUrl: "https://www.melbourne.vic.gov.au/busking", cityLevels: { rules: "local" } });
     expect(plan.pitches.every((p) => inBBox(p, MELBOURNE.bbox) || Math.abs(p.lat - MELBOURNE.center.lat) < 0.05)).toBe(true);
     expect(plan.dataStatus.map((s) => s.adapter)).toContain("pitches");
+    // Melbourne keeps its curated spots: no Overpass call, no OSM status.
+    expect(plan.dataStatus.map((s) => s.adapter)).not.toContain("osm");
+    expect(plan.cityLevels).toMatchObject({ pitches: "local" });
   });
 });

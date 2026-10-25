@@ -11,7 +11,7 @@ import * as qloo from "@/server/adapters/qloo";
 import { agentChanges } from "@/lib/agent-vs-engine";
 import { fromEngine, fromToolOutputs, type ToolResult } from "@/lib/research-totals";
 import type { PlanContext } from "./context";
-import { cityLevels, MELBOURNE, rulesFor } from "@/server/cities";
+import { MELBOURNE, rulesFor } from "@/server/cities";
 
 /** What the model contributes: words only. Numbers and places come from the engine. */
 export type AiText = {
@@ -373,7 +373,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     resolvedArtists: artists.map((a) => ({ query: a.query, matched: a.entity?.name ?? null })),
     dataStatus: context.dataStatus(),
     rulesUrl: rulesFor(city).url,
-    cityLevels: cityLevels(city),
+    cityLevels: context.levels,
     qlooFailed: context.qlooFailed(),
     agent:
       usedAi && valid

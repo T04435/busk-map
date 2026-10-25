@@ -7,7 +7,7 @@ import { PUBLIC_SPOTS, USUAL_HOTSPOTS, type PublicSpot } from "@/server/data/spo
  * Busk Map's own city data: the council's busking layers (adapters/pitches), the curated public spots and the usual
  * hotspots (data/spots.ts). Other cities get empty providers here, and `cityLevels` says so for the UI.
  *
- * Seams for the next items: `pitchesFor` is where OpenStreetMap pitches plug in (2.3), `rulesFor` is the rules wording a
+ * Other cities' pitches come from OpenStreetMap (adapters/osm, V2 2.3). Seams for the next items: `rulesFor` is the rules wording a
  * city without council data shows (2.4), `cityLevels` drives the per-signal labels (2.2).
  */
 export type { City, CityLevels } from "@/lib/city";
@@ -30,7 +30,7 @@ export { cityLevels, isMelbourne };
 
 export type Hotspot = LatLon & { name: string; radiusM?: number };
 
-/** Walkable public spots pitches snap to. Melbourne's curated list; none elsewhere yet (OSM pitches, V2 2.3). */
+/** Melbourne's curated walkable spots pitches snap to; none for other cities, whose spots come from OpenStreetMap (adapters/osm, PlanContext.spots). */
 export function pitchesFor(city: Pick<City, "id">): PublicSpot[] {
   return isMelbourne(city) ? PUBLIC_SPOTS : [];
 }

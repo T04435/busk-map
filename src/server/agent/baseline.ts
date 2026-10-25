@@ -30,14 +30,14 @@ async function build(request: PlanRequest, adapters: AdapterContext, day: string
   const [plain] = await Promise.all([plainLlmSuggestion(request, adapters.offline), buildEnginePlan(request, adapters, day)]);
   if (plain.text === null) return { status: plain.reason };
   const ctx = engineContext(request, adapters, day);
-  const [top, ranked, pitchData] = await Promise.all([ctx.topPitches(), ctx.ranked(), ctx.pitchData()]);
+  const [top, ranked, pitchData, spots] = await Promise.all([ctx.topPitches(), ctx.ranked(), ctx.pitchData(), ctx.spots()]);
   // Any time: the plain AI's spots are scored at their own best window, like the pool.
   const anyTime = ctx.isAnyTime ? await ctx.anyTimeBase() : null;
   const windows = ctx.windows();
   const comparison = compareWithBaseline(plain.spots, {
     top,
     ranked,
-    places: knownPlaces(pitchData.sites, ctx.city),
+    places: knownPlaces(pitchData.sites, ctx.city, spots),
     area: ctx.city.bbox,
     legality: ctx.legality(pitchData),
     ...(anyTime ? { scoreCandidate: (c: Candidate) => scorePitchAnyTime(c, anyTime, windows, ctx.weights) } : { scoreInputs: await ctx.scoreInputs() }),

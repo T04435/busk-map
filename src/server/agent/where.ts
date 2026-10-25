@@ -23,12 +23,15 @@ export type Where = z.infer<typeof whereSchema>;
 
 export type Resolved = LatLon & { label: string; via: "pitch" | "place" | "coordinates"; pitchId: string | null };
 
-/** Places Busk Map knows by name in a city: hotspots (with common names), public spots, council sites. */
-export function knownPlaces(sites: { name: string; lat: number; lon: number }[], city: Pick<City, "id"> = MELBOURNE): KnownPlace[] {
+/**
+ * Places Busk Map knows by name in a city: hotspots (with common names), public spots, council sites. `spots` replaces the
+ * city's curated list (a city's OpenStreetMap spots, PlanContext.spots).
+ */
+export function knownPlaces(sites: { name: string; lat: number; lon: number }[], city: Pick<City, "id"> = MELBOURNE, spots: { name: string; lat: number; lon: number }[] = pitchesFor(city)): KnownPlace[] {
   const aliases = (name: string) => HOTSPOT_ALIASES.filter(([, target]) => target === name).map(([pattern]) => pattern);
   return [
     ...hotspotsFor(city).map((h) => ({ name: h.name, lat: h.lat, lon: h.lon, aliases: aliases(h.name) })),
-    ...pitchesFor(city).map((s) => ({ name: s.name, lat: s.lat, lon: s.lon })),
+    ...spots.map((s) => ({ name: s.name, lat: s.lat, lon: s.lon })),
     ...sites.map((s) => ({ name: s.name, lat: s.lat, lon: s.lon })),
   ];
 }

@@ -199,7 +199,7 @@ export function createTools(ctx: PlanContext, state: AgentState) {
 function buildTools(ctx: PlanContext, state: AgentState) {
   const area = ctx.city.bbox;
   let placesCache: Promise<KnownPlace[]> | null = null;
-  const places = () => (placesCache ??= ctx.pitchData().then((pitchData) => knownPlaces(pitchData.sites, ctx.city)));
+  const places = () => (placesCache ??= Promise.all([ctx.pitchData(), ctx.spots()]).then(([pitchData, spots]) => knownPlaces(pitchData.sites, ctx.city, spots)));
   const knownPitches = async () => [...(await ctx.ranked()), ...state.pool.values()];
   const where = async (w: Where): Promise<Resolved> => resolveWhere(w, { area, pitches: await knownPitches(), places: await places() });
   const ids = () => ctx.entityIds();

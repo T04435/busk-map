@@ -337,6 +337,7 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
     ticketmaster: { title: "Ticketmaster didn't answer", effect: "Event crowds are left out of the scores." },
     "open-meteo": { title: "The weather forecast didn't answer", effect: "The weather is left out of the scores." },
     lastfm: { title: "Last.fm didn't answer", effect: "Song play counts are left out; the suggested set still orders your songs." },
+    osm: { title: "OpenStreetMap didn't answer", effect: "Pitches stand at the strongest taste areas instead of named public spaces." },
   };
 
   const funnel =

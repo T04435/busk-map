@@ -293,7 +293,7 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
 
   return (
     <div className="relative h-full min-h-80 w-full overflow-hidden bg-muted" onKeyDown={(e) => e.key === "Escape" && dotRef.current && closeSummary()}>
-      <div ref={container} className="size-full" role="region" aria-label="Map of pitches and Qloo taste affinity" />
+      <div ref={container} className="size-full" role="region" aria-label="Map of pitches and Qloo taste affinity" data-center={`${center.lat},${center.lon}`} />
       {others.length > 0 && !dot ? (
         <Button
           ref={browseRef}

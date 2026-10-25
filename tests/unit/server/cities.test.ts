@@ -48,6 +48,11 @@ describe("candidates in a city with no walkable spots", () => {
     expect(funnel).toMatchObject({ cells: 3, topCells: 3, candidates: 3 });
   });
 
+  it("ids a taste-cell pitch by its position when the cell has no geohash", () => {
+    const { candidates } = buildCandidatesWithFunnel({ sites: [], zones: [], spots: [], hotspots: [], cells: [{ lat: 35.69, lon: 139.69, affinity: 1 }], permit: "general", cellNames: [] });
+    expect(candidates[0]).toMatchObject({ id: "cell:35.6900,139.6900", name: "Taste area 1" });
+  });
+
   it("changes nothing for a city with spots (Melbourne)", () => {
     const melbourneCells = [{ lat: -37.8137, lon: 144.9645, affinity: 1 }];
     const { candidates } = buildCandidatesWithFunnel({ sites: [], zones: [], spots: PUBLIC_SPOTS, hotspots: USUAL_HOTSPOTS, cells: melbourneCells, permit: "general", cellNames: [] });

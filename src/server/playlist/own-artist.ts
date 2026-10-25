@@ -269,8 +269,9 @@ export const SUGGEST_TAGS_PER_ALIKE = 6;
 export const SUGGEST_LOOKUPS = 14;
 export const SUGGEST_KEPT = 8;
 
-/** The act's tracks whose Last.fm tags are read. */
+/** The act's tracks whose Last.fm tags are read, and each sound-alike's top tracks. */
 export const ACT_TRACK_TAGS = 4;
+export const ALIKE_TRACK_TAGS = 3;
 /** A tag weighs its Last.fm count / 100, summed over its sources (the artist, each track): at least this and it is confident. */
 export const CONFIDENT_WEIGHT = 0.5;
 
@@ -322,7 +323,7 @@ export type GenreSuggestion = { id: string; name: string; from: "act" | "alikes"
  * GENRE_SYNONYMS target, never a partial match) with Qloo's name:
  * 1. the act's own: a genre the performer picked and its Spotify genres (confident), then its Last.fm artist and track tags
  *    (actLastfmTags; confident when clear);
- * 2. its sound-alikes': each one's Last.fm artist tags and its top track's tags, most shared first; confident when at least two
+ * 2. its sound-alikes': each one's Last.fm artist tags and its top ALIKE_TRACK_TAGS tracks' tags, most shared first; confident when at least two
  *    sound-alikes share it.
  * Specific genres lead broad ones within each group. A Qloo outage skips a genre; two in a row stop the lookups.
  */
@@ -340,14 +341,13 @@ export async function suggestGenres(act: { name: string; actName?: string | null
     log.info("research lastfm tags", { for: "soundAlike", name, tags: res.data.slice(0, 15).map((t) => t.name), usable });
     addTags(mine, res.data, usable);
     const top = await getSongs([name], context).catch(() => null);
-    const title = top && top.mode !== "fallback" ? Object.values(top.data)[0]?.[0]?.title : undefined;
-    if (title) {
+    const titles = top && top.mode !== "fallback" ? (Object.values(top.data)[0] ?? []).map((t) => t.title).filter(Boolean).slice(0, ALIKE_TRACK_TAGS) : [];
+    for (const title of titles) {
       const tr = await getTrackTopTags(name, title, context);
-      if (tr.mode !== "fallback") {
-        const trackUsable = usableTagNames(tr.data.map((t) => t.name), [name, ...actNames], SUGGEST_TAGS_PER_ALIKE);
-        log.info("research lastfm tags", { for: "soundAlikeTrack", name, track: title, tags: tr.data.slice(0, 15).map((t) => t.name), usable: trackUsable });
-        addTags(mine, tr.data, trackUsable);
-      }
+      if (tr.mode === "fallback") break;
+      const trackUsable = usableTagNames(tr.data.map((t) => t.name), [name, ...actNames], SUGGEST_TAGS_PER_ALIKE);
+      log.info("research lastfm tags", { for: "soundAlikeTrack", name, track: title, tags: tr.data.slice(0, 15).map((t) => t.name), usable: trackUsable });
+      addTags(mine, tr.data, trackUsable);
     }
     for (const [tag, v] of mine) {
       const now = shared.get(tag) ?? { alikes: 0, weight: 0, first: order++ };

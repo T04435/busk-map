@@ -76,6 +76,7 @@ export const isGenreTag = (type?: string | null) => Boolean(type && (type.starts
 /** Live Qloo /entities: the audience character tags (Loyal, Passionate, Youthful…) have types ending ":qloo". */
 export const isAudienceTag = (type?: string | null) => Boolean(type && type.endsWith(":qloo") && !isGenreTag(type));
 import { summarise, type SummaryFacts } from "./summary";
+import { addUsage, hiveGenres } from "./hive-genres";
 
 /**
  * One Repertoire research run (hackathons/qloo-2026/repertoire-research-spec.md): ten server steps streamed as tool calls on
@@ -98,6 +99,8 @@ export type ResearchRunArgs = {
   signal?: AbortSignal;
   /** Tests swap the step-9 model. */
   model?: LanguageModel;
+  /** Tests swap the model of the Hive's genre suggestions in the ask (hive-genres.ts). */
+  genreModel?: LanguageModel;
   /** Test fault `qloo-budget`: the first step ends the run as if today's Qloo budget were spent. */
   budgetFault?: boolean;
   /** Test fault `research-slow`: wait this long at the start of every step. */
@@ -753,6 +756,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         };
 
         /** What the ask starts from: the sound-alikes found so far (saved, else Last.fm's), and genres as Qloo tags, the act's own picked. */
+        let hiveUsage: RunRecord["usage"] = null;
         const suggestNow = async (): Promise<ResearchSuggest> => {
           playlist = (await playlists.get(playlist.id)) ?? playlist;
           const saved = playlist.soundsLike.map((a) => ({ name: a.name, ...(a.spotifyId ? { spotifyId: a.spotifyId } : {}), ...(a.image ? { image: a.image } : {}) }));
@@ -762,7 +766,18 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           const sure = genres.filter((g) => g.confident);
           const own = sure.filter((g) => g.from === "act");
           const picked = new Set((own.length ? own : sure).slice(0, MAX_RESEARCH_GENRES).map((g) => g.id));
-          return { artists, genres: genres.map((g) => ({ id: g.id, name: g.name, from: g.from, picked: picked.has(g.id) })) };
+          const out: ResearchSuggest["genres"] = genres.map((g) => ({ id: g.id, name: g.name, from: g.from, picked: picked.has(g.id) }));
+          if (picked.size >= MAX_RESEARCH_GENRES) return { artists, genres: out };
+          // Fewer than three sure genres: the Hive names up to three from the act's name and its sound-alikes' names (never a Spotify
+          // field), each kept only when it resolves to a Qloo genre tag exactly or by a synonym. Never preselected.
+          const hive = await hiveGenres({ act: playlist.actName ?? actLabel ?? "", soundsLike: artists.map((a) => a.name) }, { offline: adapters.offline, model: args.genreModel, signal: args.signal });
+          hiveUsage = hive.usage;
+          for (const text of hive.genres) {
+            const tag = await resolveGenreTag(text, adapters).catch(() => null);
+            if (!tag || tag === "unavailable" || out.some((g) => g.id === tag.id || normGenre(g.name) === normGenre(tag.name))) continue;
+            out.push({ id: tag.id, name: titleGenre(tag.name), from: "hive", picked: false });
+          }
+          return { artists, genres: out, ...(hive.by && out.some((g) => g.from === "hive") ? { hiveBy: hive.by } : {}) };
         };
 
         // 4. Who you sound like (editable: saved as "Artists you sound like" only when that list is empty). With no taste signal at
@@ -830,7 +845,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
         if (steps.qloo) (steps.qloo as StoredStep<"qloo">).output = found;
         const four = steps.soundsLike?.output;
         if (four?.waiting) {
-          await finish({ status: "done", endCode: "needs_sounds_like", saved: [], usage: null, waiting: { step: "soundsLike", stepId: lastStepId, message: four.summary, asks: four.waiting.asks, tried: four.waiting.tried, ...(four.waiting.suggest ? { suggest: four.waiting.suggest } : {}) } });
+          await finish({ status: "done", endCode: "needs_sounds_like", saved: [], usage: addUsage(waitingBefore?.hiveUsage, hiveUsage), waiting: { hiveUsage: addUsage(waitingBefore?.hiveUsage, hiveUsage), step: "soundsLike", stepId: lastStepId, message: four.summary, asks: four.waiting.asks, tried: four.waiting.tried, ...(four.waiting.suggest ? { suggest: four.waiting.suggest } : {}) } });
           return;
         }
         if (four?.gaveUp) {
@@ -990,7 +1005,8 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
       const saved = nine.picks.length ? await learn.insertSuggestions(playlist.id, record.id, nine.picks) : [];
       const status = saved.length === 0 ? "done" : nine.by === "template" ? "fallback" : "done";
       const endCode = saved.length === 0 ? "nothing_new" : nine.by === "template" ? "model_unavailable" : null;
-      await finish({ status, endCode, saved, usage: nine.usage });
+      // A run that paused and carried on also made the Hive's genre call while it waited.
+      await finish({ status, endCode, saved, usage: addUsage(waitingBefore?.hiveUsage, nine.usage) });
     });
   } catch (error) {
     const down = error instanceof QlooDown;

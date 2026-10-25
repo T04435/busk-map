@@ -1,6 +1,8 @@
 "use client";
 
-import { useId, useState } from "react";
+import { Fragment, useId, useState } from "react";
+import { AgentTag } from "@/components/honeycomb/agent-tag";
+import { modelName } from "@/lib/sources";
 import { useLiveSearch } from "@/components/forms/use-live-search";
 import { Icon } from "@/components/honeycomb/icon";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -20,10 +22,15 @@ const genreKey = (name: string) => name.trim().toLowerCase();
 // A status line beside the list (DS bm-results-line), never inside it: a listbox holds only options.
 const LINE = "m-0 flex items-center gap-2 p-3 text-sm leading-5 text-muted-foreground";
 
-/** The quick picks under the genre search: the suggestions not selected to start with, then the broad genres, once each by name. */
+/**
+ * The quick picks under the genre search, once each by name: the research's suggestions not selected to start with, then the
+ * Hive's (named by one model call; never selected to start with), then the broad genres.
+ */
 export function genreOptions(suggest: ResearchSuggest | null | undefined): string[] {
   const out: string[] = [];
-  for (const name of [...(suggest?.genres ?? []).filter((g) => !g.picked).map((g) => g.name), ...R.genrePick.options]) if (!out.some((o) => genreKey(o) === genreKey(name))) out.push(name);
+  const found = (suggest?.genres ?? []).filter((g) => !g.picked && g.from !== "hive").map((g) => g.name);
+  const hive = (suggest?.genres ?? []).filter((g) => !g.picked && g.from === "hive").map((g) => g.name);
+  for (const name of [...found, ...hive, ...R.genrePick.options]) if (!out.some((o) => genreKey(o) === genreKey(name))) out.push(name);
   return out;
 }
 
@@ -119,6 +126,8 @@ export function ResearchAsk({ message, busy, onSubmit, suggest }: { message: str
   const [query, setQuery] = useState("");
   const [genres, setGenres] = useState<string[]>(() => (suggest?.genres ?? []).filter((g) => g.picked).slice(0, MAX_RESEARCH_GENRES).map((g) => g.name));
   const options = genreOptions(suggest);
+  const hiveNames = new Set((suggest?.genres ?? []).filter((g) => g.from === "hive").map((g) => genreKey(g.name)));
+  const firstHive = options.find((o) => hiveNames.has(genreKey(o)));
   const genreLabelId = useId();
   const chosen = () => {
     const list = [...artists];
@@ -175,10 +184,15 @@ export function ResearchAsk({ message, busy, onSubmit, suggest }: { message: str
           >
             {options.map((option) => {
               const on = genres.includes(option);
+              const hive = hiveNames.has(genreKey(option));
               return (
-                <ToggleGroupItem key={option} value={option} disabled={busy || (!on && genres.length >= MAX_RESEARCH_GENRES)}>
-                  {option}
-                </ToggleGroupItem>
+                <Fragment key={option}>
+                  {/* The Hive's suggestions follow its tag, as its notes on a step do. */}
+                  {option === firstHive ? <AgentTag name={modelName(suggest?.hiveBy, "label")} className="mr-0 self-center" /> : null}
+                  <ToggleGroupItem value={option} data-source={hive ? "hive" : undefined} disabled={busy || (!on && genres.length >= MAX_RESEARCH_GENRES)}>
+                    {option}
+                  </ToggleGroupItem>
+                </Fragment>
               );
             })}
           </ToggleGroup>

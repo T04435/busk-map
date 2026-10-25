@@ -55,7 +55,14 @@ describe("the ask is prefilled with what the research found", () => {
       { id: "urn:tag:genre:qloo:reggaeton", name: "Reggaeton", from: "alikes", picked: true },
       { id: "urn:tag:genre:qloo:dembow", name: "Dembow", from: "alikes", picked: false },
       { id: "urn:tag:genre:qloo:cuban_urban", name: "Cuban Urban", from: "alikes", picked: false },
+      // Fewer than three sure genres: the Hive's one small call (the test model offline answers funk, Cuba and polka). Cuba is a
+      // place and polka has no Qloo tag, so only Funk is offered, never selected.
+      { id: "urn:tag:genre:music:funk", name: "Funk", from: "hive", picked: false },
     ]);
+    expect(suggest.hiveBy).toBe("mock");
+    // The call is counted on the run, and again once it carries on.
+    expect(v.research.waiting!.hiveUsage).toMatchObject({ inputTokens: 40, outputTokens: 12, steps: 1 });
+    expect(events.find((e) => e.type === "usage")).toMatchObject({ inputTokens: 40, outputTokens: 12 });
     expect(OFFLINE_ALIKE_TAGS["Dny Omy"]).toContain("seen live");
     // The waiting step's own output carries it too (the live page reads it from the stream).
     const waitingEnd = events.findLast((e) => e.type === "tool-end" && e.tool === "research_sounds_like") as Extract<LearnStreamEvent, { type: "tool-end" }>;
@@ -67,6 +74,9 @@ describe("the ask is prefilled with what the research found", () => {
     expect(answer.status).toBe(200);
     const more = await read(answer);
     expect(String(end(more).code)).not.toMatch(/^needs_/);
+    const used = more.find((e) => e.type === "usage") as { inputTokens: number; steps: number } | undefined;
+    expect(used!.inputTokens).toBeGreaterThan(40);
+    expect(used!.steps).toBe(2);
     const after = await view(m, cookie);
     const s = after.research.steps;
     expect(s.qloo!.output).toMatchObject({ fallback: "genres", genreTags: [{ id: "urn:tag:genre:qloo:reggaeton", name: "Reggaeton" }] });

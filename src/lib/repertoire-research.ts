@@ -104,7 +104,9 @@ export type ResearchAsk = { asks: number; tried: { artists: string[]; genres: st
  */
 export type ResearchSuggest = {
   artists: { name: string; spotifyId?: string; image?: string }[];
-  genres: { id: string; name: string; from: "act" | "alikes"; picked: boolean }[];
+  genres: { id: string; name: string; from: "act" | "alikes" | "hive"; picked: boolean }[];
+  /** Who named the "hive" genres (one small model call): Claude, or the test model offline. */
+  hiveBy?: "claude" | "mock";
 };
 export type SoundsLikeOutput = BasedOn & {
   summary: string;
@@ -167,7 +169,13 @@ export const RESEARCH_MAX_ASKS = 3;
  * A run paused for input (end code needs_sounds_like): the step it waits on, that step's stream id, the ask, and what was tried.
  * POST /api/playlist/research/<runId>/input carries on from here, in the same run.
  */
-export type ResearchWaiting = ResearchAsk & { step: ResearchStepKey; stepId: string; message: string };
+export type ResearchWaiting = ResearchAsk & {
+  step: ResearchStepKey;
+  stepId: string;
+  message: string;
+  /** The Hive's genre call made while asking: its usage is added to the run's when it carries on. */
+  hiveUsage?: { inputTokens: number; outputTokens: number; reasoningTokens: number; steps: number; ms: number; stoppedBy: string } | null;
+};
 
 /**
  * The research snapshot saved on the Repertoire (playlists.research, migration 009). It keeps each step's last output, so

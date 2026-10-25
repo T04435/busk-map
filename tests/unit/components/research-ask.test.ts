@@ -56,3 +56,22 @@ describe("a genre-based research step names its genres", () => {
     expect(text({ artists, basedOn: "soundsLike" })).toContain('"Your fans also love "');
   });
 });
+
+describe("the Hive's genre suggestions in the ask", () => {
+  it("follow the agent's tag among the quick picks, after the research's own, and are never selected", () => {
+    const suggest: ResearchSuggest = {
+      artists: [],
+      genres: [
+        { id: "urn:tag:genre:qloo:reggaeton", name: "Reggaeton", from: "alikes", picked: true },
+        { id: "urn:tag:genre:qloo:dembow", name: "Dembow", from: "alikes", picked: false },
+        { id: "urn:tag:genre:music:funk", name: "Funk", from: "hive", picked: false },
+      ],
+      hiveBy: "mock",
+    };
+    expect(genreOptions(suggest).slice(0, 2)).toEqual(["Dembow", "Funk"]);
+    const html = renderToStaticMarkup(createElement(ResearchAsk, { message: "Ask", busy: false, onSubmit: () => undefined, suggest }));
+    expect(html).toMatch(/data-slot="agent-tag"[\s\S]*Test model[\s\S]*data-source="hive"[^>]*>Funk</);
+    expect(html).not.toMatch(/aria-pressed="true"[^>]*data-source="hive"|data-source="hive"[^>]*aria-pressed="true"/);
+    expect([...html.matchAll(/aria-label="Remove ([^"]+)"/g)].map((m) => m[1])).toEqual(["Reggaeton"]);
+  });
+});

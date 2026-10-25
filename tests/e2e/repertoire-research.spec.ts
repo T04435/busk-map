@@ -446,7 +446,11 @@ test.describe("Repertoire research (offline)", () => {
     const buttons = genres.getByRole("button");
     await expect(buttons.nth(0)).toHaveText("Dembow");
     await expect(buttons.nth(1)).toHaveText("Cuban Urban");
-    for (const name of ["Dembow", "Cuban Urban", "Reggae"]) await expect(genres.getByRole("button", { name, exact: true })).toHaveAttribute("aria-pressed", "false");
+    // Then the Hive's own suggestion (one small model call; the test model offline), after its tag, never selected to start with.
+    await expect(buttons.nth(2)).toHaveText("Funk");
+    await expect(buttons.nth(2)).toHaveAttribute("data-source", "hive");
+    await expect(genres.locator('[data-slot="agent-tag"]')).toHaveText("Test model");
+    for (const name of ["Dembow", "Cuban Urban", "Funk", "Reggae"]) await expect(genres.getByRole("button", { name, exact: true })).toHaveAttribute("aria-pressed", "false");
     // No gap: the ask starts right under the step's title row (the title and its "Your turn" tag, which wraps on a phone).
     // Both measured in one frame: the page scrolls the ask into view smoothly, so two separate reads can disagree.
     const { gap } = await page.evaluate(() => {

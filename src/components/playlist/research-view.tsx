@@ -855,7 +855,8 @@ export function ResearchView() {
               </Button>
             </div>
           )}
-          {playlist && !active && (
+          {/* Shown also while a run waits for your answer: forgetting is the way out without answering. */}
+          {playlist && !live && (
             <section className="max-w-2xl">
               <AlertDialog>
                 <AlertDialogTrigger asChild>

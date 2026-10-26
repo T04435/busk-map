@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BrainMap } from "@/components/brain/brain-map";
-import { QlooWordmark } from "@/components/honeycomb/logo";
 import { Icon } from "@/components/honeycomb/icon";
 import { MeetTheHive } from "@/components/honeycomb/meet-the-hive";
 import { NoteCard } from "@/components/honeycomb/note-card";
 import { StatStrip } from "@/components/honeycomb/stat-strip";
-import { callKinds, facts, next, QUOTA } from "@/lib/qloo-map";
+import { callKinds, facts, next, quotaNote } from "@/lib/qloo-map";
 
 export const metadata: Metadata = {
   title: "The brain of Busk Map",
@@ -27,13 +26,10 @@ export default function BrainPage() {
     <main id="main" data-theme="dark" className="bm-grain flex-1 bg-background text-foreground" style={{ backgroundImage: `${LATTICE}, radial-gradient(color-mix(in oklab, var(--foreground) 9%, transparent) 0.8px, transparent 1.2px)`, backgroundSize: "56px 100px, 4px 4px" }}>
       <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-8 px-4 pt-8 pb-16 md:px-6 md:pt-16">
         <header className="flex max-w-[900px] flex-col gap-[18px]">
-          <span className="inline-flex flex-wrap items-center gap-3.5 font-display text-[clamp(24px,4vw,36px)] leading-none font-extrabold text-qloo uppercase">
-            Powered by
-            <QlooWordmark width={200} className="w-[clamp(120px,26vw,200px)]" wordmarkClassName="h-auto w-full text-foreground" />
-          </span>
+          <span className="font-display text-[clamp(24px,4vw,36px)] leading-none font-extrabold text-slate uppercase">Taste data from the Qloo API</span>
           <h1 className="m-0 font-display text-[clamp(56px,9vw,128px)] leading-[0.86] font-extrabold uppercase">
-            <span className="sr-only">Powered by Qloo: </span>
-            The <span className="text-qloo">brain</span>
+            <span className="sr-only">Taste data from the Qloo API: </span>
+            The <span className="text-slate">brain</span>
             <br />
             of Busk Map
           </h1>
@@ -61,7 +57,7 @@ export default function BrainPage() {
           </NoteCard>
           <NoteCard title="Light on the quota">
             <p className="m-0" data-testid="quota-note">
-              {`Answers are cached for ${QUOTA.cacheHours} hours. Qloo allows ${QUOTA.requestsPerSecond} calls a second; Busk Map paces itself to ${QUOTA.pacedPerSecond}, because bursts of 4 drew rate-limit errors. One key's ${QUOTA.requestsPerMonth.toLocaleString("en-AU")} calls a month cover roughly 270–360 new busks, and reruns are free.`}
+              {quotaNote}
             </p>
           </NoteCard>
           <NoteCard variant="next">

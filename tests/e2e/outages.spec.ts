@@ -12,7 +12,9 @@ test.describe("API-down states", () => {
     await retry.click();
     await expect(page.getByRole("heading", { name: "No plan without taste data" })).toBeVisible();
     await expect(page.getByTestId("qloo-down")).toContainText(/Unavailable\s*·\s*not responding/);
-    await expect(page.getByTestId("qloo-down").getByRole("link", { name: /^Qloo/ })).toHaveAttribute("href", "https://qloo.com");
+    // Qloo in words beside the neutral glyph: no logo, no link (v1.2.1).
+    await expect(page.getByTestId("qloo-down").locator('[data-slot="source-logo"][data-source="qloo"]')).toHaveText("Qloo");
+    await expect(page.getByTestId("qloo-down").getByRole("link")).toHaveCount(0);
   });
 
   test("Qloo down during an agent run: the stream ends with the Qloo error", async ({ page }) => {

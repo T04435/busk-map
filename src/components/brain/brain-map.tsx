@@ -150,7 +150,7 @@ export function BrainMap() {
           data-trace={state}
           onClick={() => pick(id)}
           className={cn(
-            "box-border flex h-[52px] w-full min-w-0 cursor-pointer scroll-mt-24 items-center gap-2.5 border-[1.5px] border-border bg-card px-3 text-left text-foreground transition-[border-color] duration-(--duration-fast) ease-(--ease-out) outline-2 outline-transparent outline-offset-2 hover:border-qloo focus-visible:outline-ring focus-visible:ring-0 motion-reduce:transition-none",
+            "box-border flex h-[52px] w-full min-w-0 cursor-pointer scroll-mt-24 items-center gap-2.5 border-[1.5px] border-border bg-card px-3 text-left text-foreground transition-[border-color] duration-(--duration-fast) ease-(--ease-out) outline-2 outline-transparent outline-offset-2 hover:border-slate focus-visible:outline-ring focus-visible:ring-0 motion-reduce:transition-none",
             other && "border-dashed bg-transparent",
             state === "path" && "border-2 border-primary",
             state === "selected" && "border-2 border-primary bg-[#26323a] shadow-[4px_4px_0_var(--primary)] outline-primary",
@@ -160,7 +160,7 @@ export function BrainMap() {
           {num && (
             <span
               aria-hidden="true"
-              className={cn("grid h-[34px] w-[30px] shrink-0 place-items-center font-mono text-xs leading-none font-bold", HEX, dim ? "bg-border text-muted-foreground" : "bg-qloo text-card")}
+              className={cn("grid h-[34px] w-[30px] shrink-0 place-items-center font-mono text-xs leading-none font-bold", HEX, dim ? "bg-border text-muted-foreground" : "bg-slate text-card")}
             >
               {num}
             </span>
@@ -170,7 +170,7 @@ export function BrainMap() {
               {num && <span className="sr-only">{num}. </span>}
               {label}
             </b>
-            <span className={cn("truncate font-mono text-[11px] leading-[15px] font-medium", num && !dim ? (state === "selected" ? "text-foreground" : "text-qloo") : "text-muted-foreground")}>{sub}</span>
+            <span className={cn("truncate font-mono text-[11px] leading-[15px] font-medium", num && !dim ? (state === "selected" ? "text-foreground" : "text-slate") : "text-muted-foreground")}>{sub}</span>
           </span>
         </button>
       </li>
@@ -189,7 +189,7 @@ export function BrainMap() {
     return (
       <div aria-hidden="true" className="max-lg:hidden">
         <svg viewBox={`0 0 ${GUTTER_W} ${COL_H}`} width={GUTTER_W} height={COL_H} className="block">
-          <path d={q.join("") || "M0 0"} className={cn(fade, "stroke-qloo")} />
+          <path d={q.join("") || "M0 0"} className={cn(fade, "stroke-slate")} />
           <path d={o.join("") || "M0 0"} strokeDasharray="4 3" className={cn(fade, "stroke-muted-foreground")} />
           <path d={on.join("") || "M0 0"} className="fill-none stroke-primary stroke-[2.5]" />
         </svg>
@@ -210,7 +210,7 @@ export function BrainMap() {
         </h2>
         <ul aria-label="Legend" className="m-0 flex list-none flex-wrap items-center gap-x-4 gap-y-2 p-0 font-mono text-xs leading-4 font-medium text-muted-foreground">
           <li className="inline-flex items-center gap-1.5">
-            <i aria-hidden="true" className="h-[3px] w-[22px] bg-qloo" />
+            <i aria-hidden="true" className="h-[3px] w-[22px] bg-slate" />
             Qloo
           </li>
           <li className="inline-flex items-center gap-1.5">
@@ -225,7 +225,7 @@ export function BrainMap() {
       </div>
 
       <div data-testid="brain-grid" className="grid items-start max-lg:gap-7 lg:grid-cols-[minmax(0,1fr)_72px_minmax(0,1fr)_72px_minmax(0,1fr)]">
-        <Column title="Qloo calls" note={`${callKinds} kinds`} mark="bg-qloo">
+        <Column title="Qloo calls" note={`${callKinds} kinds`} mark="bg-slate">
           <ul className={listClass} aria-label="Qloo calls">
             {calls.map((c) => node(c.id, c.label, CALL_SUB[c.id] ?? `${c.endpoint}${c.urnType ? ` · ${c.urnType}` : ""}`, c.num))}
           </ul>
@@ -277,7 +277,7 @@ function Column({ title, note, mark, children }: { title: string; note: string; 
   );
 }
 
-const PANEL = "flex flex-col gap-2 border-2 border-qloo bg-background px-4 py-3.5";
+const PANEL = "flex flex-col gap-2 border-2 border-slate bg-background px-4 py-3.5";
 
 function TracePanel({ selected, onClear }: { selected: NodeId | null; onClear: () => void }) {
   return selected ? <TracedPanel selected={selected} onClear={onClear} /> : <IdlePanel />;
@@ -286,7 +286,7 @@ function TracePanel({ selected, onClear }: { selected: NodeId | null; onClear: (
 function IdlePanel() {
   return (
     <div className={PANEL} data-testid="trace-panel">
-      <p className="m-0 font-display text-[22px] leading-[1.1] font-extrabold text-qloo uppercase">Pick any piece</p>
+      <p className="m-0 font-display text-[22px] leading-[1.1] font-extrabold text-slate uppercase">Pick any piece</p>
       <ul className="m-0 flex list-none flex-col gap-1.5 p-0 text-sm leading-5">
         {[
           [nodeLabel("f_setlist"), "four Qloo calls, Spotify and Last.fm meet in your suggested set"],
@@ -333,7 +333,7 @@ function TracedPanel({ selected, onClear }: { selected: NodeId; onClear: () => v
         <p className="m-0 font-mono text-[13px] text-muted-foreground">{lightsUp(selected)}</p>
         {reach.length > 0 && (
           <p className="m-0">
-            <b className="text-qloo">{isFeature ? "Comes from: " : "Decides: "}</b>
+            <b className="text-slate">{isFeature ? "Comes from: " : "Decides: "}</b>
             {reach.map((n) => n.label).join(" · ")}
           </p>
         )}

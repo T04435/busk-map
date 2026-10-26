@@ -9,7 +9,7 @@ import { PhoneFold } from "@/components/brand/phone-fold";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
 import { Spinner } from "@/components/ui/spinner";
-import { Logo, QlooWordmark } from "@/components/honeycomb/logo";
+import { Logo } from "@/components/honeycomb/logo";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { RankTile } from "@/components/honeycomb/rank-tile";
 import { DURATIONS, EASINGS, RADII, SHADOWS, SIZES, SPACE, STROKES, TOKENS, WORDS, type ScaleRow } from "@/lib/brand-data";
@@ -82,7 +82,7 @@ const PRINCIPLES = [
   ["Bluestone and paper", "Bluestone is the ink and the night ground; warm paper is the day ground. Both themes pass AA everywhere."],
   ["Condensed caps", "Big Shoulders shouts the headings. Sentences stay in Atkinson Hyperlegible Next; data and numbers in JetBrains Mono."],
   ["Print texture", "2px rules instead of soft shadows, hard offsets on things that float, a halftone grain on night grounds, a stencil wordmark."],
-  ["Qloo, our partner", "Qloo is credited with its own wordmark wherever its data changes the answer, and has its own purple (`qloo`) only for Qloo facts and the Brain."],
+  ["Credit in words", "Qloo's taste data is credited in plain text wherever it changes the answer: the word Qloo, never a logo, in the neutral `slate`."],
   ["Honest numbers", "Every number names its source. Estimates are labelled; planned work is labelled \"Next · not built yet\"; nothing is invented."],
 ] as const;
 
@@ -90,7 +90,7 @@ const VOICE = [
   ["Pitch, busk", "A pitch is one place to play. A busk is the whole outing: three pitches, their suggested sets, one link."],
   ["Plain words", "Say what the research found, never the tool behind it."],
   ["Honest numbers", "Every number names its source. Estimates are labelled, and nothing is invented."],
-  ["Qloo first", "Taste data is the heart of every busk. Credit Qloo wherever its data changed the answer."],
+  ["Name the data", "Taste data is the heart of every busk. Name Qloo, in plain text, wherever its data changed the answer."],
 ] as const;
 
 const COLOURS = [
@@ -99,7 +99,7 @@ const COLOURS = [
   ["Paper", "--card", "cards, panels"],
   ["Ground", "--background", "the page"],
   ["Honey", "--honey", "hidden gems"],
-  ["Qloo", "--qloo", "Qloo, our partner"],
+  ["Slate", "--slate", "data from a named source"],
   ["Event blue", "--event", "events"],
   ["Zone pink", "--zone-pink", "no-busking zones"],
   ["Footfall", "--footfall", "activity estimate"],
@@ -159,7 +159,6 @@ export default function BrandPage() {
                   <span>
                     <Rich>{body}</Rich>
                   </span>
-                  {title === "Qloo, our partner" ? <QlooWordmark width={96} className="self-start" /> : null}
                 </li>
               ))}
             </ul>
@@ -402,14 +401,8 @@ export default function BrandPage() {
               </ul>
             </PhoneFold>
           ))}
-          <PhoneFold heading="Qloo's logo" headingClassName="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
-            <div className="flex flex-wrap items-center gap-4 border-2 border-rule bg-card p-5">
-              <QlooWordmark width={160} />
-              <span className="max-w-md text-sm text-muted-foreground">Qloo&apos;s own logo, shown wherever Busk Map names Qloo as its partner. It always links to qloo.com in a new tab.</span>
-            </div>
-          </PhoneFold>
           <PhoneFold heading="Submission and video kit" count={KIT.length} headingClassName="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
-            <p className="m-0 max-w-3xl">The pictures for the repository, the Devpost page and the video. Each uses the logo and Qloo&apos;s logo as drawn here; the screenshots are real captures of the app at 1440 and 390.</p>
+            <p className="m-0 max-w-3xl">The pictures for the repository, the Devpost page and the video. Each uses the logo as drawn here and names Qloo in plain text only; the screenshots are real captures of the app at 1440 and 390.</p>
             <TableFrame label="Submission and video kit" min={640}>
               <thead>
                 <tr>

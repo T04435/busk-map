@@ -1,6 +1,4 @@
 import { cn } from "cn";
-import { InView } from "@/components/honeycomb/in-view";
-import { QlooWordmark } from "@/components/honeycomb/logo";
 
 /** A logo file, or a light and a dark one swapped by the theme (the app's own theme mechanism: the dark variant). */
 type Logo = string | { light: string; dark: string };
@@ -71,20 +69,17 @@ function LogoSlot({ partner: p }: { partner: Partner }) {
   );
 }
 
-/** Thanks to (L21b): Qloo as the only sponsor, then the stack and data Busk Map is built with. */
+/** Thanks to (L21b): the Qloo taste data credit in plain text, then the stack and data Busk Map is built with. */
 export function PartnersSection({ partners = BUILT_WITH }: { partners?: Partner[] }) {
   return (
     <section aria-labelledby="thanks-h" data-testid="partners" className="flex flex-col gap-10">
       <h2 id="thanks-h" className="m-0 text-center font-display text-[clamp(44px,5vw,72px)] leading-[0.92] font-extrabold uppercase">
         Thanks to
       </h2>
-      {/* The sponsor, first and largest (user, live session 17 Oct): a centred "Sponsored by" card with the Qloo wordmark. */}
-      <div data-testid="sponsor" className="mx-auto flex w-full max-w-3xl flex-col items-center gap-5 border-[3px] border-rule bg-card px-6 py-10 text-center shadow-[8px_8px_0_var(--qloo)] md:px-12 md:py-12">
-        <span className="font-mono text-xs leading-4 font-bold tracking-[0.12em] text-qloo uppercase">Sponsored by</span>
-        {/* The wordmark assembles when it scrolls into view: letters rise in turn, then the purple bar stretches in (hc-qloo-rise in globals.css; still under reduced motion). */}
-        <InView>
-          <QlooWordmark width={300} className="w-[clamp(180px,40vw,300px)]" wordmarkClassName="hc-qloo-rise h-auto w-full text-foreground" />
-        </InView>
+      {/* The taste data, first, in plain text only (no Qloo logo, no sponsor or partner wording). */}
+      <div data-testid="qloo-credit" className="mx-auto flex w-full max-w-3xl flex-col items-center gap-3 border-[3px] border-rule bg-card px-6 py-8 text-center shadow-[8px_8px_0_var(--foreground)] md:px-12 md:py-10">
+        <span className="font-mono text-xs leading-4 font-bold tracking-[0.12em] text-muted-foreground uppercase">Built for the Qloo Agentic Hackathon</span>
+        <p className="m-0 font-display text-[clamp(28px,4vw,44px)] leading-none font-extrabold uppercase">Taste data from the Qloo API</p>
       </div>
 
       {/* Built with: a logo wall; each cell names the partner and its role for screen readers. */}

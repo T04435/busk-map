@@ -46,7 +46,7 @@ export function RepertoireFunnel({ totals, live, className }: { totals: Partial<
     const name = n === 1 ? s.one : s.many;
     items.push(
       <li key={s.key} className={STEP}>
-        <HexCell size={30} fontSize={text.length > 3 ? 10 : 12} className={cn(CELL, s.qloo && "text-qloo")} label={`${n} ${name} (${s.src})`}>
+        <HexCell size={30} fontSize={text.length > 3 ? 10 : 12} className={cn(CELL, s.qloo && "text-slate")} label={`${n} ${name} (${s.src})`}>
           {text}
         </HexCell>
         <span>{name}</span>

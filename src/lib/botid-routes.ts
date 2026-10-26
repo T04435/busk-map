@@ -8,6 +8,8 @@ export const BOTID_PROTECTED_ROUTES = [
   { path: "/api/plans", method: "POST" },
   { path: "/api/compare", method: "POST" },
   { path: "/api/week", method: "POST" },
+  // The week's calendar export: a read of stored plans, still challenged (it is linked from the page only).
+  { path: "/api/week/ics", method: "GET" },
   { path: "/api/repertoire", method: "GET" },
   // City search for the busk form (Open-Meteo geocoding, cached).
   { path: "/api/cities", method: "GET" },

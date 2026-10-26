@@ -199,6 +199,30 @@ describe("the busk agent (/busks Hive ToolLoopAgent): no tool result carries Spo
   });
 });
 
+describe("the week agent (/week Hive ToolLoopAgent): nothing from Spotify in its prompt or tool results", () => {
+  it("a whole week's prompt and every tool result it reads carry no Spotify id, link, cover, year or length", async () => {
+    vi.resetModules();
+    mockFetch([]);
+    const { weekRequestSchema, defaultDays } = await import("@/lib/week-schema");
+    const { runWeekAgent } = await import("@/server/agent/week");
+    const { createMockWeekPlanner } = await import("@/server/agent/mock-model");
+    // The act carries Spotify ids for its artists and Spotify lengths for its songs (picked from search): none may reach the model.
+    const base = planRequestSchema.parse({ city: "melbourne", slot: { date: "2026-10-17", startHour: 18, endHour: 21 }, performer: EXAMPLES[0].performer }).performer;
+    const spotifyArtists = [{ name: base.artists[0], id: "4Z8W4fKeB5YxbusRsdQVPb" }];
+    const performer = { ...base, spotifyArtists, fillSuggested: 4, songs: base.songs.map((s) => ({ ...s, durationMs: 201_234 })) };
+    const week = weekRequestSchema.parse({ performer, startDate: "2026-10-17", days: defaultDays("2026-10-17") });
+    const rec = recording(createMockWeekPlanner());
+    const run = await runWeekAgent(week, OFFLINE, "2026-10-15", {}, undefined, { model: rec.model, now: new Date("2026-10-15T12:00:00+11:00") });
+    expect(run.week.days.some((d) => d.status === "ready")).toBe(true);
+    expect(rec.sent.length).toBeGreaterThan(3);
+    expect(rec.sent.some((s) => s.includes("score_pitches") && s.includes("tool-result"))).toBe(true);
+    for (const sent of rec.sent) {
+      expect(spotifyIn(sent, [...spotifyArtists.map((a) => a.id), ...CATALOG_SPOTIFY_IDS])).toEqual([]);
+      expect(sent).not.toMatch(/201234/);
+    }
+  });
+});
+
 describe("catalogueOf: the candidate songs come from Last.fm, whatever Spotify says", () => {
   it("returns Last.fm's songs with every Spotify field empty, Spotify up or down", async () => {
     vi.resetModules();

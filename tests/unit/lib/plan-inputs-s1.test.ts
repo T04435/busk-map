@@ -3,8 +3,6 @@ import { planFormError } from "@/lib/form-errors";
 import { planRequestSchema, type PlanRequestInput } from "@/lib/plan-schema";
 import { parsePlanParams, planSearchParams } from "@/lib/plan-url";
 import { describeSlot, isAnyTime, requestSlotSchema } from "@/lib/slot";
-import { parseWeekParams, weekSearchParams } from "@/lib/week-url";
-import { weekRequestSchema } from "@/lib/week-schema";
 
 const now = { today: "2026-10-15", hour: 12 };
 const performer = { name: "Jess", artists: ["Paul Kelly"], spotifyArtists: [], songs: [{ title: "Dumb Things", artist: "Paul Kelly", own: false }] };
@@ -102,26 +100,6 @@ describe("plan URL: time=any, fill and skip", () => {
     const parsed = parsePlanParams({ ...act, fill: "6" }, now);
     expect(parsed.ok && parsed.request.performer.songs).toEqual([]);
     expect(parsed.ok && planSearchParams(parsed.request).get("fill")).toBe("6");
-  });
-});
-
-describe("week URL: fill and skip ride in the performer; no time=any (D9)", () => {
-  it("round-trips fill and skip", () => {
-    const parsed = parseWeekParams({ name: "Jess", artists: "Paul Kelly", fill: "5", skip: "A~B" }, "2026-10-15");
-    expect(parsed.ok).toBe(true);
-    if (!parsed.ok) return;
-    expect(parsed.request.performer.fillSuggested).toBe(5);
-    const qs = weekSearchParams(parsed.request, null);
-    expect(qs.get("fill")).toBe("5");
-    expect(qs.get("skip")).toBe("A~B");
-    expect(qs.has("time")).toBe(false);
-    const again = parseWeekParams(Object.fromEntries(qs), "2026-10-15");
-    expect(again.ok && again.request).toEqual(parsed.request);
-  });
-  it("an old week link has no fill keys", () => {
-    const parsed = parseWeekParams({ name: "Jess", artists: "Paul Kelly" }, "2026-10-15");
-    expect(parsed.ok && "fillSuggested" in parsed.request.performer).toBe(false);
-    expect(weekRequestSchema.safeParse(parsed.ok && parsed.request).success).toBe(true);
   });
 });
 

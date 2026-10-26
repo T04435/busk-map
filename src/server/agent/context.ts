@@ -123,6 +123,14 @@ type Status = { adapter: AdapterName; source: string; mode: AdapterResult<unknow
  * Tools call into this; so does the final assembly, which means a plan is
  * complete even if the model skipped a tool.
  */
+/**
+ * Adapter loads that depend on the day or the slot (the weekday's open places, the slot's events and their artists, the
+ * weather): never shared between the days of a week (PlanContext `shared`). Every other tracked load depends only on the act,
+ * the city and today, so a week's seven day contexts make it once.
+ */
+const DAY_KEYS = ["places", "places:wide", "events", "eventArtists", "eventTaste", "weather", "agent:places:"];
+export const sharedAcrossDays = (key: string) => !DAY_KEYS.some((k) => (k.endsWith(":") ? key.startsWith(k) : key === k));
+
 export class PlanContext {
   readonly request: PlanRequest;
   /** The Repertoire the engine works on: the request's songs, bounded (lib/plan-songs-bound.ts). The request itself keeps every song. */
@@ -139,8 +147,12 @@ export class PlanContext {
   /** The city's current hour, for dropping any-time windows that have started (only matters on today's date). */
   private readonly nowHour: number;
 
-  constructor(request: PlanRequest, adapters: AdapterContext, today?: string, nowHour?: number) {
+  /** A week's loads shared by its day contexts (adapter results by key, sharedAcrossDays only); null for a single busk. */
+  private readonly shared: Map<string, Promise<unknown>> | null;
+
+  constructor(request: PlanRequest, adapters: AdapterContext, today?: string, nowHour?: number, shared?: Map<string, Promise<unknown>>) {
     this.request = request;
+    this.shared = shared ?? null;
     this.songs$ = boundSongs(request.performer.songs, PLAN_SONGS_CONSIDERED);
     this.adapters = adapters;
     this.city = cityOf(request);
@@ -180,7 +192,7 @@ export class PlanContext {
   /** Run an adapter call once and record how its data was produced. */
   private track<T>(key: string, load: () => Promise<AdapterResult<T>>): Promise<T> {
     return this.once(key, async () => {
-      const result = await load();
+      const result = await this.sharedLoad(key, load);
       const extra = optionalQlooFeature(key);
       if (result.adapter === "qloo" && result.mode === "fallback" && extra && !this.qlooFailed()) {
         // A Qloo extra that failed (often a slow call timing out) leaves the rest of the plan intact: say so, don't call Qloo down.
@@ -198,6 +210,13 @@ export class PlanContext {
       }
       return result.data;
     });
+  }
+
+  /** A load the week's other days may already have made (same act, city and today): made once, each day records its status. */
+  private sharedLoad<T>(key: string, load: () => Promise<AdapterResult<T>>): Promise<AdapterResult<T>> {
+    if (!this.shared || !sharedAcrossDays(key)) return load();
+    if (!this.shared.has(key)) this.shared.set(key, load());
+    return this.shared.get(key) as Promise<AdapterResult<T>>;
   }
 
   /** An extra Qloo call (the agent's own looks), tracked and memoised like the engine's. Keys start with "agent:". */

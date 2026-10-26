@@ -1,166 +1,247 @@
-import { MELBOURNE } from "@/lib/city";
 import { describe, expect, it, vi } from "vitest";
-import { weekPlanSchema, weekRequestSchema } from "@/lib/week-schema";
+import { requestFieldsOf } from "@/lib/city";
 import { EXAMPLES } from "@/lib/examples";
-import { LIVE, mockFetch, OFFLINE } from "../../helpers";
+import { addDays } from "@/lib/slot";
+import { defaultDays, weekRequestSchema, weekResultSchema, type WeekRequestInput } from "@/lib/week-schema";
+import { mockFetch, OFFLINE } from "../../helpers";
 
-const request = weekRequestSchema.parse({ city: "melbourne", performer: EXAMPLES[1].performer, startDate: "2026-10-15" });
-// 01:00 on the 15th in Melbourne: every slot of the week is still ahead.
-const now = new Date("2026-10-14T14:00:00Z");
+const START = "2026-10-17";
+const TODAY = "2026-10-15";
+/** Wednesday noon in Melbourne, before the week starts (the e2e clock). */
+const NOW = new Date("2026-10-15T12:00:00+11:00");
+const TOKYO = { id: "tokyo-jp", name: "Tokyo", country: "Japan", countryCode: "JP", lat: 35.6895, lon: 139.6917, timeZone: "Asia/Tokyo", region: "Tokyo" };
+
+function week(days?: WeekRequestInput["days"], extra: Partial<WeekRequestInput> = {}) {
+  return weekRequestSchema.parse({
+    city: "melbourne",
+    performer: EXAMPLES[0].performer,
+    startDate: START,
+    days: days ?? Array.from({ length: 7 }, (_, i) => ({ date: addDays(START, i), startHour: 18, endHour: 21 })),
+    ...extra,
+  });
+}
 
 async function load() {
   vi.resetModules();
-  return import("@/server/agent/week");
+  const weekAgent = await import("@/server/agent/week");
+  const mock = await import("@/server/agent/mock-model");
+  const { QlooUnavailableError } = await import("@/server/agent/agent");
+  const runWeekAgent: typeof weekAgent.runWeekAgent = (r, a, t, e, s, o = {}) => weekAgent.runWeekAgent(r, a, t, e, s, { now: NOW, ...o });
+  return { ...weekAgent, ...mock, QlooUnavailableError, runWeekAgent };
 }
 
-describe("week planner (offline)", () => {
-  it("scores 7 days × 4 slots and picks up to five sessions, one per day", async () => {
+describe("week agent (offline, mock model)", () => {
+  it("runs ONE agent loop over the playable days and returns one Hive-picked pitch per day, inside the caps", async () => {
     mockFetch([]);
-    const { buildWeekPlan } = await load();
-    const plan = await buildWeekPlan(request, OFFLINE, "2026-10-15", false, now);
-    expect(() => weekPlanSchema.parse(plan)).not.toThrow();
-    expect(plan.days).toHaveLength(7);
-    expect(plan.grid).toHaveLength(28);
-    expect(plan.sessions).toHaveLength(5);
-    expect(new Set(plan.sessions.map((s) => s.date)).size).toBe(5);
-    expect(plan.sessions[0].score).toBeGreaterThanOrEqual(plan.sessions[4].score);
-    expect(plan.explanations).toBe("template");
-    expect(plan.grid.filter((c) => c.chosen)).toHaveLength(5);
-    expect(plan.grid.every((c) => !c.past)).toBe(true);
+    const { runWeekAgent, WEEK_LIMITS } = await load();
+    const started: { tool: string; input: unknown }[] = [];
+    const statuses: string[] = [];
+    const days = week().days.map((d, i) => (i === 2 ? { date: d.date, off: true as const } : d));
+    const run = await runWeekAgent(week(days), OFFLINE, TODAY, { onToolStart: (e) => started.push(e), onStatus: (m) => statuses.push(m) });
+
+    expect(() => weekResultSchema.parse(run.week)).not.toThrow();
+    expect(run.usage.stoppedBy).toBe("finished");
+    expect(run.usage.steps).toBeLessThanOrEqual(WEEK_LIMITS.maxSteps);
+    expect(run.costUsd).toBeLessThanOrEqual(WEEK_LIMITS.costCapUsd);
+    expect(run.qlooCalls).toBeLessThanOrEqual(WEEK_LIMITS.qlooCap);
+    expect(started.filter((s) => s.tool !== "finish_week").every((s) => typeof (s.input as { day?: string }).day === "string")).toBe(true);
+    expect(started.filter((s) => s.tool === "taste_map")).toHaveLength(1);
+    expect(started.findIndex((s) => s.tool === "score_pitches")).toBeGreaterThanOrEqual(3);
+    const scoredDays = started.filter((s) => s.tool === "score_pitches").map((s) => (s.input as { day: string }).day);
+    expect(new Set(scoredDays).size).toBe(6);
+    expect(scoredDays).not.toContain(days[2].date);
+
+    expect(run.week.days.map((d) => d.status)).toEqual(["ready", "ready", "cant-play", "ready", "ready", "ready", "ready"]);
+    expect(run.plans).toHaveLength(6);
+    for (const day of run.week.days.filter((d) => d.status === "ready")) {
+      expect(day.pitch!.why).toMatch(/^Mock explanation/);
+      expect(day.window).toBe("6 pm–9 pm");
+    }
+    expect(run.week).toMatchObject({ status: "done", id: null, error: null, cityName: "Melbourne", rulesChecked: true, timeZone: "Australia/Melbourne" });
+    for (const { plan } of run.plans) {
+      expect(plan.pitches).toHaveLength(1);
+      expect(plan.agent).toBeNull();
+      expect(plan.explanations).toBe("ai");
+      expect(plan.explanationsModel).toBe("mock");
+    }
+    expect(run.week.researchTotals!.scored).toBeGreaterThan(0);
+    expect(run.week.researchTotals!.qlooCalls).toBe(run.qlooCalls);
+    expect(statuses).toContain("Planning 6 days");
   });
 
-  it("shows what makes each day different: estimated activity, events and weather", async () => {
-    const { buildWeekPlan, dayDrivers } = await load();
-    const plan = await buildWeekPlan(request, OFFLINE, "2026-10-15", false, now);
-    const shares = plan.days.map((d) => d.busyness);
-    expect(new Set(shares).size).toBeGreaterThan(3);
-    expect(shares).toContain(1);
-    expect(plan.days.every((d) => d.drivers.length >= 2)).toBe(true);
-    expect(plan.days.some((d) => d.drivers.some((line) => /^Busiest day/.test(line)))).toBe(true);
-    expect(plan.days.some((d) => d.drivers.some((line) => /ticketed event/.test(line)))).toBe(true);
-    expect(plan.grid.some((c) => c.flags.length > 0)).toBe(true);
-    // Different days pick different best slots, not one slot repeated all week.
-    expect(new Set(plan.sessions.map((s) => s.startHour)).size).toBeGreaterThan(1);
-
-    expect(
-      dayDrivers(
-        { date: "2026-10-17", weekday: "saturday" },
-        { busyness: null, busiestHour: null, events: [], forecast: [{ hour: 12, precipitationProbability: 60, temperatureC: null }], timeZone: "Australia/Melbourne" },
-      ),
-    ).toEqual(["Rain likely (up to 60%)"]);
-    const run = (date: string) => ({ name: "Long exhibition", venue: { name: "Museum" }, start: `${date}T00:00:00Z` });
-    expect(
-      dayDrivers(
-        { date: "2026-10-17", weekday: "saturday" },
-        { busyness: 0.96, busiestHour: null, events: ["2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18"].map(run), forecast: [], timeZone: "Australia/Melbourne" },
-      ),
-    ).toEqual(["About as busy as the busiest day (96%, estimate from Qloo: popular places open)"]);
-    expect(
-      dayDrivers(
-        { date: "2026-10-17", weekday: "saturday" },
-        { busyness: 0.5, busiestHour: 13, events: [], forecast: [{ hour: 12, precipitationProbability: 30, temperatureC: 21.4 }], timeZone: "Australia/Melbourne" },
-      ),
-    ).toEqual(["Activity about 50% of the week's busiest day (estimate from Qloo: popular places open)", "Some rain risk (up to 30%), up to 21°C"]);
+  it("plans any-time days at the window the Hive's pitch scored best in", async () => {
+    mockFetch([]);
+    const { runWeekAgent } = await load();
+    const days = defaultDays(START).map((d, i) => (i === 1 ? { date: d.date, startHour: 12, endHour: 15 } : d));
+    const run = await runWeekAgent(week(days), OFFLINE, TODAY);
+    expect(run.week.days.every((d) => d.status === "ready")).toBe(true);
+    expect(run.week.days[1]).toMatchObject({ anyTime: false, slot: { startHour: 12, endHour: 15 }, window: "12 pm–3 pm" });
+    for (const day of run.week.days.filter((_, i) => i !== 1)) {
+      expect(day.anyTime).toBe(true);
+      expect(day.slot!.endHour - day.slot!.startHour).toBe(3);
+      expect(day.slot!.startHour).toBeGreaterThanOrEqual(10);
+      expect(day.slot!.endHour).toBeLessThanOrEqual(22);
+    }
+    expect(run.plans.filter((p) => p.plan.anyTime)).toHaveLength(6);
+    expect(run.plans.every((p) => p.plan.pitches[0].id === run.week.days.find((d) => d.date === p.date)!.pitch!.id)).toBe(true);
   });
 
-  it("explains only the chosen sessions with the model", async () => {
-    const { buildWeekPlan } = await load();
-    const plan = await buildWeekPlan(request, OFFLINE, "2026-10-15", true, now);
-    expect(plan.explanations).toBe("ai");
-    expect(plan.explanationsModel).toBe("mock");
-    expect(plan.sessions.every((s) => s.whySource === "ai" && s.why === `Mock explanation for ${s.key}.`)).toBe(true);
-    expect(plan.summary).toBe("Mock week summary (offline test mode).");
+  it("plans a week in any city (Tokyo): its time zone, no permit, rules not checked, nothing from Melbourne", async () => {
+    mockFetch([]);
+    const { runWeekAgent } = await load();
+    const run = await runWeekAgent(week(defaultDays(START), { ...requestFieldsOf(TOKYO), permit: "premium" }), OFFLINE, TODAY);
+    expect(run.week).toMatchObject({ city: "tokyo-jp", cityName: "Tokyo", timeZone: "Asia/Tokyo", rulesChecked: false, permit: "general" });
+    expect(run.week.days.filter((d) => d.status === "ready").length).toBeGreaterThan(0);
+    for (const { plan, request } of run.plans) {
+      expect(request).toMatchObject({ city: "tokyo-jp", permit: "general" });
+      expect(plan.cityName).toBe("Tokyo");
+      expect(plan.pitches[0].rules).toMatch(/not checked/);
+    }
+    expect(JSON.stringify(run.week.days)).not.toMatch(/Federation|Bourke|Flinders/);
+    expect(run.qlooCalls).toBeLessThanOrEqual(150);
   });
 
-  it("respects unavailable times and skips slots that have started", async () => {
-    const { buildWeekPlan } = await load();
-    const first = await buildWeekPlan(request, OFFLINE, "2026-10-15", false, now);
-    const blocked = first.sessions[0];
-    const limited = weekRequestSchema.parse({
-      ...request,
-      limits: { maxSessions: 2, maxPerDay: 1, unavailable: [{ date: blocked.date, startHour: blocked.startHour, endHour: blocked.endHour }] },
-    });
-    const plan = await buildWeekPlan(limited, OFFLINE, "2026-10-15", false, now);
-    expect(plan.sessions).toHaveLength(2);
-    expect(plan.sessions.some((s) => s.key === blocked.key)).toBe(false);
-    expect(plan.grid.find((c) => c.date === blocked.date && c.startHour === blocked.startHour)?.unavailable).toBe(true);
+  it("a week started late in the day: today's passed hours aren't researched (city time)", async () => {
+    mockFetch([]);
+    const { runWeekAgent, daysPassed, PASSED_REASON, WeekNoDaysLeftError } = await load();
+    const late = new Date("2026-10-17T21:30:00+11:00");
+    const anyWeek = week(defaultDays(START));
+    expect([...daysPassed(anyWeek, late.getTime())]).toEqual([START]);
+    const mixed = week(anyWeek.days.map((d, i) => (i === 0 ? { date: d.date, startHour: 19, endHour: 22 } : d)));
+    expect(daysPassed(mixed, late.getTime()).size).toBe(0);
+    expect(daysPassed(mixed, new Date("2026-10-17T22:00:00+11:00").getTime()).has(START)).toBe(true);
 
-    const evening = await buildWeekPlan(request, OFFLINE, "2026-10-15", false, new Date("2026-10-15T09:30:00Z"));
-    expect(evening.grid.filter((c) => c.past).map((c) => c.startHour)).toEqual([10, 13, 16, 19]);
-    expect(evening.sessions.every((s) => s.date !== "2026-10-15")).toBe(true);
-  }, 20_000);
-
-  it("stops before spending anything when Qloo is down", async () => {
-    const { buildWeekPlan, WeekQlooUnavailableError } = await load();
-    await expect(buildWeekPlan(request, { offline: true, faults: ["qloo"] }, "2026-10-15", true, now)).rejects.toBeInstanceOf(WeekQlooUnavailableError);
+    const started: { tool: string; input: unknown }[] = [];
+    const run = await runWeekAgent(anyWeek, OFFLINE, START, { onToolStart: (e) => started.push(e) }, undefined, { now: late });
+    expect(run.week.days[0]).toMatchObject({ status: "cant-play", reason: PASSED_REASON });
+    expect(run.week.days.slice(1).every((d) => d.status === "ready")).toBe(true);
+    expect(started.some((s) => (s.input as { day?: string }).day === START)).toBe(false);
+    const lastDay = week(anyWeek.days.map((d, i) => (i === 0 ? d : { date: d.date, off: true as const })));
+    await expect(runWeekAgent(lastDay, OFFLINE, START, {}, undefined, { now: late })).rejects.toBeInstanceOf(WeekNoDaysLeftError);
   });
 
-  it("still plans with less data, and uses template reasons without a gateway", async () => {
-    vi.stubEnv("AI_GATEWAY_API_KEY", "");
-    vi.stubEnv("VERCEL_OIDC_TOKEN", "");
-    vi.stubEnv("VERCEL", "");
-    vi.stubEnv("QLOO_API_KEY", "");
-    const { buildWeekPlan } = await load();
-    const { json, route } = await import("../../helpers");
-    // One general-permit music site from the (mocked) council layers.
-    mockFetch([
-      route((u) => u.host === "www.arcgis.com", () =>
-        json({ layers: [{ featureSet: { features: [{ geometry: { x: 16137000, y: -4553500 }, attributes: { FID: 1, Location: "Synthetic lawn", Permit_Typ: " ", Descriptio: "", Busking_Al: "Y", Music_Allo: "Y", Circle_Act: " " } }] } }] }),
-      ),
-      route((u) => u.host.startsWith("services1"), () => json({ type: "FeatureCollection", features: [] })),
-    ]);
-    const plan = await buildWeekPlan(request, { offline: false, faults: ["events", "weather"] }, "2026-10-15", true, now);
-    expect(plan.days.every((d) => !d.hasForecast)).toBe(true);
-    expect(plan.explanations).toBe("template");
-    expect(plan.notes.join(" ")).toMatch(/not configured/);
-    // The activity estimate needs no source but Qloo, so sessions are still found.
-    expect(plan.sessions.length).toBeGreaterThan(0);
+  it("lets the Hive skip a day it finds weak, with its reason", async () => {
+    mockFetch([]);
+    const { runWeekAgent, createMockWeekPlanner } = await load();
+    const run = await runWeekAgent(week(), OFFLINE, TODAY, {}, undefined, { model: createMockWeekPlanner("skip-last") });
+    expect(run.week.days.at(-1)).toMatchObject({ status: "not-worth", reason: expect.stringMatching(/weaker day/), pitch: null });
+    expect(run.plans).toHaveLength(6);
   });
 
-  it("returns no sessions when the rules are unavailable", async () => {
-    const { buildWeekPlan } = await load();
-    const plan = await buildWeekPlan(request, { offline: true, faults: ["pitches"] }, "2026-10-15", false, now);
-    expect(plan.sessions).toEqual([]);
-    expect(plan.summary).toMatch(/No session/);
-    expect(plan.notes.join(" ")).toMatch(/busking rules are unavailable/);
+  it("rejects a pitch outside that day's scored pool, then accepts the fix", async () => {
+    mockFetch([]);
+    const { runWeekAgent, createMockWeekPlanner } = await load();
+    const ended: { tool: string; ok: boolean; summary: string }[] = [];
+    const run = await runWeekAgent(week(), OFFLINE, TODAY, { onToolEnd: (e) => ended.push(e) }, undefined, { model: createMockWeekPlanner("bad-finish") });
+    const finishes = ended.filter((e) => e.tool === "finish_week");
+    expect(finishes[0]).toMatchObject({ ok: false });
+    expect(finishes[0].summary).toMatch(/made-up isn't in .* scored pool/);
+    expect(finishes.at(-1)).toMatchObject({ ok: true });
+    expect(run.week.days.every((d) => d.status === "ready")).toBe(true);
+  });
+
+  it("a model that stops with words alone is forced to finish in a final round", async () => {
+    mockFetch([]);
+    const { runWeekAgent, createMockWeekPlanner } = await load();
+    const run = await runWeekAgent(week(), OFFLINE, TODAY, {}, undefined, { model: createMockWeekPlanner("text-only") });
+    expect(run.usage.stoppedBy).toBe("finished");
+    expect(run.week.days.every((d) => d.status === "ready")).toBe(true);
+  });
+
+  it("wraps up at the step cap: scores what's unscored and finishes", async () => {
+    mockFetch([]);
+    const { runWeekAgent } = await load();
+    const started: string[] = [];
+    const run = await runWeekAgent(week(), OFFLINE, TODAY, { onToolStart: (e) => started.push(e.tool) }, undefined, { limits: { maxSteps: 5 } });
+    expect(run.usage.stoppedBy).toBe("finished");
+    expect(started.at(-1)).toBe("finish_week");
+    expect(run.week.days.filter((d) => d.status === "ready").length).toBeGreaterThan(0);
+  });
+
+  it("wraps up at the cost cap", async () => {
+    mockFetch([]);
+    const { runWeekAgent } = await load();
+    const started: string[] = [];
+    // The mock costs US$0.0007 a step: at a US$0.003 cap the run wraps up after three steps and still finishes.
+    const run = await runWeekAgent(week(), OFFLINE, TODAY, { onToolStart: (e) => started.push(e.tool) }, undefined, { limits: { costCapUsd: 0.003 } });
+    expect(started.at(-1)).toBe("finish_week");
+    expect(run.costUsd).toBeLessThan(0.01);
+  });
+
+  it("never finishing fails the week: no engine fallback", async () => {
+    mockFetch([]);
+    const { runWeekAgent, createMockWeekPlanner, WeekPlannerUnavailableError } = await load();
+    await expect(runWeekAgent(week(), OFFLINE, TODAY, {}, undefined, { model: createMockWeekPlanner("never-finish"), limits: { maxSteps: 6 } })).rejects.toBeInstanceOf(WeekPlannerUnavailableError);
+  });
+
+  it("fails the week when the model fails, and on its own timeout", async () => {
+    mockFetch([]);
+    const { runWeekAgent, createMockWeekPlanner, WeekPlannerUnavailableError } = await load();
+    const error = await runWeekAgent(week(), OFFLINE, TODAY, {}, undefined, { model: createMockWeekPlanner("fail") }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(WeekPlannerUnavailableError);
+    expect((error as InstanceType<typeof WeekPlannerUnavailableError>).reason).toBe("failed");
+    const timedOut = await runWeekAgent(week(), OFFLINE, TODAY, {}, undefined, { limits: { timeoutMs: 1 } }).catch((e: unknown) => e);
+    expect(timedOut).toBeInstanceOf(WeekPlannerUnavailableError);
+    expect((timedOut as InstanceType<typeof WeekPlannerUnavailableError>).reason).toBe("timeout");
+  });
+
+  it("stops before any model call when Qloo is down", async () => {
+    mockFetch([]);
+    const { runWeekAgent, createMockWeekPlanner, QlooUnavailableError } = await load();
+    const model = createMockWeekPlanner();
+    const spy = vi.spyOn(model, "doStream");
+    await expect(runWeekAgent(week(), { ...OFFLINE, faults: ["qloo"] }, TODAY, {}, undefined, { model })).rejects.toBeInstanceOf(QlooUnavailableError);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("stops Qloo looks at the week's Qloo cap", async () => {
+    mockFetch([]);
+    const { runWeekAgent } = await load();
+    const ended: { tool: string; ok: boolean }[] = [];
+    const run = await runWeekAgent(week(), OFFLINE, TODAY, { onToolEnd: (e) => ended.push(e) }, undefined, { limits: { qlooCap: 0 } });
+    expect(run.usage.stoppedBy).toBe("finished");
+    expect(ended.filter((e) => e.tool === "taste_map")).toHaveLength(0);
+  });
+
+  it("costs tokens at Sonnet list price", async () => {
+    const { costUsd } = await load();
+    expect(costUsd(1_000_000, 0)).toBe(2);
+    expect(costUsd(0, 100_000)).toBe(1);
   });
 });
 
-describe("week adapters (live, mocked fetch)", () => {
-  it("reads a week of weather keyed by date, clipped to the forecast range", async () => {
+describe("checkWeekAnswer", () => {
+  it("needs every playable day once and at least one pitch when pools exist", async () => {
     vi.resetModules();
-    const { getWeatherWeek } = await import("@/server/adapters/weather");
-    const { json, route } = await import("../../helpers");
-    const hours = Array.from({ length: 48 }, (_, i) => `2026-10-${i < 24 ? "29" : "30"}T${String(i % 24).padStart(2, "0")}:00`);
-    const { calls } = mockFetch([
-      route(() => true, () =>
-        json({ hourly: { time: hours, temperature_2m: hours.map(() => 20), precipitation_probability: hours.map(() => 0), precipitation: hours.map(() => 0), wind_speed_10m: hours.map(() => 5), weather_code: hours.map(() => 1) } }),
-      ),
+    const { checkWeekAnswer } = await import("@/server/agent/week");
+    const { AgentState, NumberBag } = await import("@/server/agent/tools");
+    const state = new AgentState();
+    state.pool.set("p1", { id: "p1", name: "Pitch One", score: 70 } as never);
+    const days = new Map([
+      ["2026-10-17", { date: "2026-10-17", state } as never],
+      ["2026-10-18", { date: "2026-10-18", state: new AgentState() } as never],
     ]);
-    const result = await getWeatherWeek(MELBOURNE, "2026-10-24", 7, LIVE, "2026-10-15");
-    expect(calls[0].url.searchParams.get("end_date")).toBe("2026-10-30");
-    expect(Object.keys(result.data)).toEqual(["2026-10-29", "2026-10-30"]);
-    expect(result.data["2026-10-30"]).toHaveLength(24);
-
-    const beyond = await getWeatherWeek(MELBOURNE, "2026-11-20", 7, LIVE, "2026-10-15");
-    expect(beyond).toMatchObject({ mode: "fallback", reason: "not_found", data: {} });
-    expect(Object.keys((await getWeatherWeek(MELBOURNE, "2026-10-15", 7, OFFLINE, "2026-10-15")).data)).toHaveLength(7);
+    const seen = new NumberBag();
+    const problems = checkWeekAnswer({ summary: "s", days: [{ day: "2026-10-17", pitchId: null, why: "weak" }, { day: "2026-10-17", pitchId: null, why: "weak" }], notes: [] }, days, seen);
+    const text = problems.map((p) => p.message).join(" ");
+    expect(text).toMatch(/missing 2026-10-18/);
+    expect(text).toMatch(/Each day only once/);
+    expect(text).toMatch(/at least one day/);
+    const unscored = checkWeekAnswer({ summary: "s", days: [{ day: "2026-10-17", pitchId: "p1", why: "ok" }, { day: "2026-10-18", pitchId: "p1", why: "ok" }], notes: [] }, days, seen);
+    expect(unscored.map((p) => p.message)).toEqual(["Call score_pitches for 2026-10-18 before choosing a pitch for it."]);
+    const wrong = checkWeekAnswer({ summary: "s", days: [{ day: "2026-10-17", pitchId: "nope", why: "ok" }, { day: "2026-10-18", pitchId: null, why: "weak" }], notes: [] }, days, seen);
+    expect(wrong[0].message).toMatch(/nope isn't in 2026-10-17's scored pool. Best scored that day: p1 \(Pitch One\)/);
+    const invented = checkWeekAnswer({ summary: "About 4321 people.", days: [{ day: "2026-10-17", pitchId: "p1", why: "ok" }, { day: "2026-10-18", pitchId: null, why: "weak" }], notes: [] }, days, seen);
+    expect(invented).toEqual([expect.objectContaining({ kind: "numbers", numbers: ["4321"] })]);
   });
+});
 
-  it("searches events across the whole week with the city's single daily request", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-10-14T13:00:00Z"));
-    vi.stubEnv("TICKETMASTER_API_KEY", "synthetic-test-key");
-    vi.resetModules();
-    const { getEventsBetween } = await import("@/server/adapters/events");
-    const { json, route } = await import("../../helpers");
-    const { calls } = mockFetch([route(() => true, () => json({ page: { totalElements: 0 } }))]);
-    const result = await getEventsBetween(MELBOURNE, "2026-10-14T13:00:00.000Z", "2026-10-21T13:00:00.000Z", LIVE);
-    expect(result).toMatchObject({ mode: "live", data: [] });
-    expect(calls).toHaveLength(1);
-    // Yesterday (UTC) through the next 8 days covers the whole week being planned.
-    expect(calls[0].url.searchParams.get("startDateTime")).toBe("2026-10-13T00:00:00Z");
-    expect(calls[0].url.searchParams.get("endDateTime")).toBe("2026-10-22T00:00:00Z");
-    vi.useRealTimers();
+describe("week request", () => {
+  it("takes Melbourne without a place and any other city only with one; seven days in order; one playable", () => {
+    expect(weekRequestSchema.safeParse({ performer: EXAMPLES[0].performer, startDate: START, days: defaultDays(START) }).success).toBe(true);
+    expect(weekRequestSchema.safeParse({ city: "tokyo-jp", performer: EXAMPLES[0].performer, startDate: START, days: defaultDays(START) }).success).toBe(false);
+    expect(weekRequestSchema.safeParse({ ...requestFieldsOf(TOKYO), performer: EXAMPLES[0].performer, startDate: START, days: defaultDays(START) }).success).toBe(true);
+    expect(weekRequestSchema.safeParse({ performer: EXAMPLES[0].performer, startDate: START, days: defaultDays("2026-10-18") }).success).toBe(false);
+    expect(weekRequestSchema.safeParse({ performer: EXAMPLES[0].performer, startDate: START, days: defaultDays(START).map((d) => ({ date: d.date, off: true })) }).success).toBe(false);
   });
 });

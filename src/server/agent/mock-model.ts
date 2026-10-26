@@ -211,33 +211,92 @@ export function createMockCompare() {
   });
 }
 
-/** Offline stand-in for the week explainer: echoes the session keys it was given. */
-export function createMockWeekExplainer() {
+export type MockWeekScenario = "investigate" | "skip-last" | "bad-finish" | "never-finish" | "text-only" | "fail";
+
+/** The playable days, from the week prompt's "Playable days:" line. */
+function playableDays(prompt: PromptMessage[]): string[] {
+  const user = prompt.find((m) => m.role === "user");
+  const text = Array.isArray(user?.content) ? (user.content as { type: string; text?: string }[]).map((p) => p.text ?? "").join("") : String(user?.content ?? "");
+  const line = text.split("\n").find((l) => l.startsWith("Playable days:")) ?? "";
+  return [...line.matchAll(/\d{4}-\d{2}-\d{2}/g)].map((m) => m[0]);
+}
+
+/**
+ * The week planner's next move: like Claude, one taste look and one crowd look (taste doesn't change by day), activity and
+ * events for every day, then score_pitches for every day, then finish_week with each day's best engine-top-3 pitch.
+ * "skip-last" says the last day isn't worth it; "bad-finish" first names a made-up pitch; "text-only" stops with words alone
+ * once (the forced final round then finishes).
+ */
+export function nextWeekMove(results: ToolResult[], tools: string[], days: string[], scenario: MockWeekScenario): Move | null {
+  const done = (name: string) => results.filter((r) => r.toolName === name);
+  const ok = (r: ToolResult) => r.output.type !== "error-text" && r.output.type !== "error-json";
+  const offered = (name: string) => tools.length === 0 || tools.includes(name);
+  const dayOf = (r: ToolResult) => (r.output.value as { day?: string } | undefined)?.day;
+  const scoredDays = new Set(done("score_pitches").filter(ok).map(dayOf));
+  const rejections = done("finish_week").filter((r) => (r.output.value as { accepted?: boolean })?.accepted === false).length;
+  const finishWeek = (): Move => ({
+    text: "We have enough to plan the week.",
+    calls: [
+      {
+        toolName: "finish_week",
+        input: {
+          summary: "Mock week summary (offline test mode).",
+          days: days.map((day, i) => {
+            const rows = (done("score_pitches").filter((r) => dayOf(r) === day).at(-1)?.output.value as { pitches?: ScoreRow[] } | undefined)?.pitches ?? [];
+            const best = rows.find((r) => r.engineTop3) ?? rows[0];
+            if (scenario === "bad-finish" && rejections === 0 && i === 0) return { day, pitchId: "made-up", why: "Trust me." };
+            if ((scenario === "skip-last" && i === days.length - 1 && days.length > 1) || !best) return { day, pitchId: null, why: "Mock explanation: a weaker day for this act on the data gathered." };
+            return { day, pitchId: best.pitchId, why: `Mock explanation: ${best.name} fits this crowd on this day.` };
+          }),
+          notes: ["Offline test mode: explanations come from a mock model."],
+        },
+      },
+    ],
+  });
+  // Wrapping up (only score_pitches and finish_week offered, or finish_week alone).
+  if (!offered("taste_map")) {
+    if (scenario === "never-finish") return null;
+    const unscored = days.filter((d) => !scoredDays.has(d));
+    if (unscored.length && offered("score_pitches") && done("finish_week").length === 0) return { text: "Out of research budget: scoring the days we have.", calls: unscored.map((day) => ({ toolName: "score_pitches", input: { day } })) };
+    return finishWeek();
+  }
+  if (scenario === "never-finish") return { text: "Looking at the taste map again.", calls: [{ toolName: "taste_map", input: { day: days[0], radiusM: 200 + 100 * results.length } }] };
+  if (done("finish_week").length > 0) return finishWeek();
+  if (tools.includes("compare_areas") && !done("compare_areas").length && !done("taste_map").length) {
+    return { text: "This city is planned across its areas, so we'll compare them first.", calls: [{ toolName: "compare_areas", input: { day: days[0] } }] };
+  }
+  if (!done("taste_map").length) return { text: "We'll start with the taste map: taste doesn't change by day, so once is enough.", calls: [{ toolName: "taste_map", input: { day: days[0] } }] };
+  const cells = (done("taste_map")[0]?.output.value as TasteOut | undefined)?.strongest ?? [];
+  const unnamed = cells.length > 0 && cells.every((c) => !c.near) && typeof cells[0].lat === "number" && typeof cells[0].lon === "number";
+  const strongest = unnamed ? "the strongest taste cell" : (cells.find((c) => c.near)?.near ?? "Federation Square");
+  const at = unnamed ? { lat: cells[0].lat, lon: cells[0].lon } : { place: strongest };
+  if (!done("crowd_at").length) {
+    return {
+      reasoning: `The strongest taste area is near ${strongest}; who is there decides whether it suits this act any day of the week.`,
+      text: `Checking who the crowd is near ${strongest}.`,
+      calls: [{ toolName: "crowd_at", input: { day: days[0], at, radiusM: 400 } }],
+    };
+  }
+  if (!done("activity_at").length) {
+    return { text: `Comparing the estimated activity near ${strongest} across the days.`, calls: days.map((day) => ({ toolName: "activity_at", input: { day, at } })) };
+  }
+  if (!done("events_near").length) {
+    return { text: "Checking which days have an event crowd nearby.", calls: days.map((day) => ({ toolName: "events_near", input: { day, near: at } })) };
+  }
+  const unscored = days.filter((d) => !scoredDays.has(d));
+  if (unscored.length && offered("score_pitches")) return { text: "Letting the engine score each day's pitches.", calls: unscored.map((day) => ({ toolName: "score_pitches", input: { day } })) };
+  if (scenario === "text-only") return { text: "That is everything we need for the week.", calls: [] };
+  return finishWeek();
+}
+
+export function createMockWeekPlanner(scenario: MockWeekScenario = "investigate") {
   return new MockLanguageModelV4({
-    modelId: "mock-week",
-    doGenerate: async (options) => {
-      const user = (options.prompt as PromptMessage[]).find((m) => m.role === "user");
-      const text = Array.isArray(user?.content) ? (user.content as { type: string; text?: string }[]).map((p) => p.text ?? "").join("") : "";
-      let keys: string[] = [];
-      try {
-        keys = (JSON.parse(text) as { sessions: { key: string }[] }).sessions.map((s) => s.key);
-      } catch {
-        keys = [];
-      }
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              summary: "Mock week summary (offline test mode).",
-              sessions: keys.map((key) => ({ key, why: `Mock explanation for ${key}.` })),
-            }),
-          },
-        ],
-        finishReason: { unified: "stop", raw: undefined },
-        usage,
-        warnings: [],
-      };
+    modelId: "mock-week-planner",
+    doStream: async (options) => {
+      if (scenario === "fail") throw new Error("mock model failure");
+      const prompt = options.prompt as PromptMessage[];
+      const tools = (options.tools ?? []).map((t) => t.name);
+      return streamOf(nextWeekMove(toolResults(prompt), tools, playableDays(prompt), scenario));
     },
   });
 }

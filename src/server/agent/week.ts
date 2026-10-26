@@ -2,14 +2,16 @@ import "server-only";
 import { tool, ToolLoopAgent, type LanguageModel, type ModelMessage, type StopCondition, type ToolSet } from "ai";
 import { z } from "zod";
 import { PERSONA_PROMPT } from "@/lib/agent-persona";
-import { isMelbourne } from "@/lib/city";
 import type { Plan, PlanRequest } from "@/lib/plan-schema";
 import { NO_SCORES_RULE, plainScores } from "@/lib/plain-scores";
 import { NO_TOOL_NAMES_RULE, plainTools } from "@/lib/plain-tools";
 import { boundSongs, PLAN_PROMPT_SONGS } from "@/lib/plan-songs-bound";
 import { fromToolOutputs, ZERO_TOTALS, type ResearchTotals, type ToolResult } from "@/lib/research-totals";
-import { formatHour, isAnyTime, localHour, weekdayOf } from "@/lib/slot";
-import { isAnyTimeDay, isOffDay, weekDayLabel, weekResultSchema, type WeekDayInput, type WeekDayResult, type WeekRequest, type WeekResult } from "@/lib/week-schema";
+import { isAnyTime, localHour, weekdayOf } from "@/lib/slot";
+import { isAnyTimeDay, isOffDay, weekResultSchema, type WeekDayInput, type WeekDayResult, type WeekRequest, type WeekResult } from "@/lib/week-schema";
+import { PASSED_REASON, weekShellFor, windowOf, type ShellDay } from "@/lib/week-shell";
+
+export { PASSED_REASON, windowOf };
 import type { AdapterContext } from "@/server/adapters/core";
 import * as qloo from "@/server/adapters/qloo";
 import { withQlooUsage, type QlooUsage } from "@/server/adapters/qloo/usage";
@@ -133,8 +135,6 @@ export function dayRequest(week: WeekRequest, day: Exclude<WeekDayInput, { off: 
 /** The city a week is planned in. */
 export const weekCity = (week: Pick<WeekRequest, "city" | "place">) => cityOf(week);
 
-/** What a playable day whose hours are over says. */
-export const PASSED_REASON = "Its hours have already passed.";
 
 /** Playable days whose hours are over at `now` (city time): not researched, shown as can't play with PASSED_REASON. */
 export function daysPassed(request: WeekRequest, now = serverNow().getTime()): Set<string> {
@@ -142,7 +142,6 @@ export function daysPassed(request: WeekRequest, now = serverNow().getTime()): S
   return new Set(request.days.flatMap((d) => (!isOffDay(d) && slotPassed(dayRequest(request, d).slot, timeZone, now) ? [d.date] : [])));
 }
 
-export const windowOf = (s: { startHour: number; endHour: number }) => `${formatHour(s.startHour)}–${formatHour(s.endHour)}`;
 
 export function buildWeekPrompt(week: WeekRequest, days: WeekDay[], matched: { query: string; match: string | null }[], areas: string[] = []): string {
   const first = days[0];
@@ -280,37 +279,8 @@ const FINAL_ROUND_STEPS = 3;
 const FINISH_NUDGE = "You stopped without calling finish_week, so the performer has no week yet. Call finish_week now with every playable day (score_pitches first for a day you haven't scored), and put anything that failed or was missing in notes.";
 
 /** The week's shell before or without a run: the days from the request (pending, or can't play). */
-export function weekShell(id: string | null, request: WeekRequest, days: { status: WeekDayResult["status"]; planId: string | null; reason: string | null }[] | null, adapters: Pick<AdapterContext, "offline">, passed: Set<string> = new Set()): WeekResult {
-  const city = weekCity(request);
-  return weekResultSchema.parse({
-    version: 3,
-    id,
-    status: "running",
-    city: request.city,
-    cityName: city.name,
-    timeZone: city.timeZone,
-    rulesChecked: isMelbourne(city),
-    permit: isMelbourne(city) ? request.permit : "general",
-    performerName: request.performer.name,
-    artists: request.performer.artists,
-    startDate: request.startDate,
-    summary: null,
-    days: request.days.map((d, i): WeekDayResult => {
-      const stored = days?.[i];
-      const base = { date: d.date, weekday: weekdayOf(d.date), label: weekDayLabel(d.date), pitch: null, planId: stored?.planId ?? null };
-      if (isOffDay(d)) return { ...base, status: "cant-play", slot: null, window: null, anyTime: false, reason: null };
-      const anyTime = isAnyTimeDay(d);
-      const status = stored?.status ?? (passed.has(d.date) ? "cant-play" : "pending");
-      return { ...base, status, slot: anyTime ? null : { startHour: d.startHour, endHour: d.endHour }, window: anyTime ? "Any time" : windowOf(d), anyTime, reason: stored?.reason ?? (passed.has(d.date) ? PASSED_REASON : null) };
-    }),
-    notes: [],
-    qlooMode: qloo.qlooMode({ offline: adapters.offline, faults: [] }),
-    explanationsModel: null,
-    researchTotals: null,
-    usage: null,
-    dataStatus: [],
-    error: null,
-  });
+export function weekShell(id: string | null, request: WeekRequest, days: readonly ShellDay[] | null, adapters: Pick<AdapterContext, "offline">, passed: Set<string> = new Set()): WeekResult {
+  return weekShellFor(request, { id, days, passed, qlooMode: qloo.qlooMode({ offline: adapters.offline, faults: [] }) });
 }
 
 /** One ready day, from its plan. */

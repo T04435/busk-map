@@ -121,10 +121,11 @@ describe("RankTile and LeanBar", () => {
 });
 
 describe("navigation", () => {
-  it("holds features only: Repertoire then Busks (Week removed, Brain lives in the footer)", () => {
+  it("holds features only: Repertoire, Busks, then Week (Brain lives in the footer)", () => {
     expect(NAV_ITEMS.map((i) => [i.label, i.href])).toEqual([
       ["Repertoire", "/repertoire"],
       ["Busks", "/busks"],
+      ["Week", "/week"],
     ]);
   });
 
@@ -135,7 +136,9 @@ describe("navigation", () => {
     expect(activeNavId("/plan")).toBe("busks");
     expect(activeNavId("/p/abc123")).toBe("busks");
     expect(activeNavId("/repertoire")).toBe("repertoire");
-    expect(activeNavId("/week")).toBeNull();
+    expect(activeNavId("/week")).toBe("week");
+    expect(activeNavId("/w/abc123def")).toBe("week");
+    expect(activeNavId("/weeks")).toBeNull();
     expect(activeNavId("/brain/")).toBeNull();
     expect(activeNavId("/tips")).toBeNull();
     expect(activeNavId("/pitchfork")).toBeNull();
@@ -147,7 +150,8 @@ describe("navigation", () => {
     expect(out).toMatch(/aria-current="page"[^>]*>(?:(?!<\/a>).)*Busks/);
     expect(out).toContain('aria-label="Main"');
     expect(out).toContain('href="/busks"');
-    for (const href of ["/week", "/brain"]) expect(out).not.toContain(`href="${href}"`);
+    expect(out).toContain('href="/week"');
+    expect(out).not.toContain('href="/brain"');
     expect(html(createElement(AppHeaderView, { pathname: "/brain" }))).not.toContain("aria-current");
     expect(html(createElement(AppHeaderView, { pathname: "/" }))).not.toContain("aria-current");
   });

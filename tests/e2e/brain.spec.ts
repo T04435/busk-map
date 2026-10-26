@@ -71,7 +71,7 @@ test.describe("the brain of Busk Map at three widths", () => {
       test("renders, traces a call to its features, and clears", async ({ page }) => {
         await openBrain(page);
         await expect(page.getByText("kinds of Qloo call")).toBeVisible();
-        await expect(page.getByTestId("quota-note")).toContainText("One key's 10,000 calls a month cover roughly 270–360 new busks");
+        await expect(page.getByTestId("quota-note")).toHaveText("Answers are cached for 24 hours, and Busk Map paces its own calls to 3 a second, so a rerun makes no new calls.");
         await expect(page.getByRole("heading", { name: "Next · not built yet" })).toBeVisible();
         await expect(page.locator("[data-node-id]")).toHaveCount(NODE_COUNT);
         await expectNoSidewaysScroll(page);

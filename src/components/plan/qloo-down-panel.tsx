@@ -1,7 +1,7 @@
 import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
-import { QlooWordmark } from "@/components/honeycomb/logo";
+import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
@@ -22,7 +22,7 @@ export function QlooDownPanel({ onRetry, busy = false }: { onRetry: () => void; 
       </EmptyTitle>
       <EmptyDescription>Everything you entered is kept: try again in a minute.</EmptyDescription>
       <span className="inline-flex flex-wrap items-center justify-center gap-2">
-        <QlooWordmark width={52} />
+        <SourceLogo source="qloo" height={16} />
         <DataStatusBadge status="unavailable" label="Unavailable" reason="not responding" />
       </span>
       <EmptyContent>

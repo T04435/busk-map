@@ -16,7 +16,7 @@ const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500", "700"],
 
 const TITLE = "Busk Map";
 const DESCRIPTION =
-  "Know where to play, and what to play there. A taste-aware pitch planner for street performers, powered by Qloo.";
+  "Know where to play, and what to play there. A taste-aware pitch planner for street performers, with taste data from the Qloo API.";
 
 /** Absolute URLs for the social images: the production domain on Vercel, localhost elsewhere. */
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000");

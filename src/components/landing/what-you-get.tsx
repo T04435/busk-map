@@ -11,11 +11,11 @@ const SETLIST = [
   { songId: "ex1", title: "Fast Car", artist: "Tracy Chapman", year: 1988, durationMs: 296_000, score: 92, own: false, reason: "Opens the set: the best known of the top three, and a good era fit for a crowd leaning 25–34." },
   { songId: "ex2", title: "Laneway Light", artist: "The Larkspur Two", year: null, durationMs: null, score: 88, own: true, reason: "Your song." },
   { songId: "ex3", title: "Big Jet Plane", artist: "Angus & Julia Stone", year: 2010, durationMs: 238_000, score: 86, own: false, reason: "This crowd’s favourite artist on Qloo." },
-  { songId: "ex4", title: "Harbour Lights", artist: "The Paper Kites", year: 2021, durationMs: 251_000, score: 79, own: false, reason: "Folk fans here know it well (Qloo)." },
+  { songId: "ex4", title: "Harbour Lights", artist: "The Paper Kites", year: 2021, durationMs: 251_000, score: 79, own: false, reason: "Folk fans here know it well." },
 ];
 const LEARN = [
-  { artist: "Middle Kids", title: "Edge of Town", reason: "Audience up 38% here this quarter (Qloo)" },
-  { artist: "Ruby Fields", title: "Dinosaurs", reason: "Strong with the afternoon crowd (Qloo)" },
+  { artist: "Middle Kids", title: "Edge of Town", reason: "Rising with this crowd" },
+  { artist: "Ruby Fields", title: "Dinosaurs", reason: "Strong with the afternoon crowd" },
 ];
 
 /**

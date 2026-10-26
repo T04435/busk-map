@@ -15,8 +15,8 @@ colors:
   night-card: "#182025"
   night-ink: "#f2ede4"
   honey: "#ffcf3a"
-  qloo-purple: "#8C8CC8"
-  qloo-ink: "#5b5ba3"
+  slate: "#45596b"
+  slate-night: "#a9bccb"
   zone-pink: "#e0337a"
   destructive: "#b0152f"
   taste-3: "#f28644"
@@ -89,7 +89,7 @@ components:
 - **Signal orange** (#ff5a1f by day, #ff6a2b at night): the one accent. It's for the primary action, the selected or top item, the pitch ring, and the taste cells. It is never used for body text; text in the accent tone uses **signal text** (#b13a00) for contrast.
 
 ### Secondary
-- **Qloo purple** (#8C8CC8 brand bar, #5b5ba3 for text): only where Qloo is named or its data shows (the Brain page, Qloo calls, the Qloo wordmark).
+- **Slate** (#45596b day, #a9bccb night): neutral ink for data from a named source (the Brain page, Qloo calls, Qloo-sourced chips), always beside the word "Qloo". No Qloo colour or logo anywhere.
 
 ### Neutral
 - **Paper** (#f2eee6) ground with **paper card** (#fbf9f5) surfaces; **bluestone** (#141c21) ink, rules and the night header; **muted ink** (#56606a) for secondary text; a **hairline** (#cfc7b8) for quiet dividers.

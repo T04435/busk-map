@@ -48,6 +48,7 @@ export type SourceInfo = {
   name: string;
   credit: string;
   url: string;
+  /** Empty when the credit line already says it (Qloo). */
   licence: string;
 };
 
@@ -55,9 +56,10 @@ export const SOURCES: Record<SourceId, SourceInfo> = {
   qloo: {
     id: "qloo",
     name: "Qloo",
-    credit: "Taste data by Qloo",
+    // The whole credit line in one (no separate licence): plain text, no logo, no partner wording.
+    credit: "Taste data from the Qloo API, used under Qloo's Terms of Use.",
     url: "https://www.qloo.com",
-    licence: "Qloo hackathon API terms",
+    licence: "",
   },
   "melbourne-busking": {
     id: "melbourne-busking",

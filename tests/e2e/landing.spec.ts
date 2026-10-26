@@ -124,7 +124,7 @@ test.describe("landing, as the deck draws it", () => {
     await expect(teaser.getByRole("list", { name: "The brand in numbers" })).toContainText(`${ASSET_COUNT}assets`);
   });
 
-  test("the footer (F07-F11) is wordmark + Qloo, Privacy/Terms/Brain/Brand, GitHub icon + Built by, and continues the closing band's dark ground (B-023)", async ({ page }) => {
+  test("the footer (F07-F11) is wordmark + map credit, the Qloo credit and disclaimer in plain text, Privacy/Terms/Brain/Brand, GitHub icon + Built by, and continues the closing band's dark ground (B-023)", async ({ page }) => {
     await page.goto("/");
     const footer = page.locator('[data-slot="site-footer"]');
     await expect(footer).toHaveCount(1); // the Suspense fallback is gone once the real footer has rendered
@@ -134,10 +134,11 @@ test.describe("landing, as the deck draws it", () => {
     await expect(footer.getByRole("link", { name: "T04435", exact: true })).toHaveAttribute("href", "https://github.com/T04435");
     await expect(footer.getByRole("link", { name: "Busk Map home" })).toHaveAttribute("href", "/");
     await expect(footer.getByRole("navigation", { name: "Site" })).toContainText("·");
-    // Same tab everywhere except Qloo (B-159).
+    // Same tab everywhere (B-159).
     for (const name of ["Privacy", "Terms", "Brain", "Brand", "Busk Map home", "Busk Map on GitHub", "T04435"]) await expect(footer.getByRole("link", { name, exact: true })).not.toHaveAttribute("target", "_blank");
-    await expect(footer.getByRole("link", { name: /^Qloo/ })).toHaveAttribute("href", "https://qloo.com");
-    await expect(footer.getByRole("link", { name: /^Qloo/ })).toHaveAttribute("target", "_blank");
+    // Qloo in plain text only (v1.2.1): no Qloo link or logo, and the not-affiliated line.
+    await expect(footer.getByRole("link", { name: /Qloo/ })).toHaveCount(0);
+    await expect(footer.getByTestId("qloo-disclaimer")).toHaveText("Taste data from the Qloo API. Busk Map is not affiliated with or endorsed by Qloo.");
     await expect(footer).not.toContainText("never confirms a pitch is legal");
     await expect(footer).not.toContainText("github.com/");
     await expect(page.getByTestId("brand-teaser").getByRole("link", { name: /See the brand/ })).toHaveAttribute("href", "/brand");
@@ -220,7 +221,7 @@ test.describe("landing: Thanks to (L21b)", () => {
     ["OpenStreetMap", "https://www.openstreetmap.org"],
   ];
 
-  test("it sits before the Brain teaser, with Qloo as the only sponsor", async ({ page }) => {
+  test("it sits before the Brain teaser, with the Qloo taste data credit in plain text (no sponsor, no logo)", async ({ page }) => {
     await page.goto("/");
     const partners = page.getByTestId("partners");
     await expect(partners.getByRole("heading", { level: 2, name: "Thanks to" })).toBeVisible();
@@ -230,12 +231,12 @@ test.describe("landing: Thanks to (L21b)", () => {
       return !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
     });
     expect(before).toBe(true);
-    const sponsor = partners.getByTestId("sponsor");
-    await expect(sponsor.getByRole("link")).toHaveCount(1);
-    const qloo = sponsor.getByRole("link", { name: /^Qloo/ });
-    await expect(qloo).toHaveAttribute("href", "https://qloo.com");
-    await expect(qloo).toHaveAttribute("target", "_blank");
-    await expect(qloo).toHaveAttribute("rel", "noopener noreferrer");
+    await expect(partners.getByTestId("sponsor")).toHaveCount(0);
+    await expect(partners).not.toContainText(/sponsored by/i);
+    const credit = partners.getByTestId("qloo-credit");
+    await expect(credit).toHaveText(/Built for the Qloo Agentic Hackathon\s*Taste data from the Qloo API/i);
+    await expect(credit.getByRole("link")).toHaveCount(0);
+    await expect(credit.locator("svg, img")).toHaveCount(0);
   });
 
   test("it lists the 8 Built with names, each linked to its site in the same tab", async ({ page }) => {
@@ -269,35 +270,14 @@ test.describe("landing: Thanks to (L21b)", () => {
   });
 });
 
-test.describe("the sponsor wordmark (RC3.1)", () => {
-  test("is visible with JavaScript off, as crawlers and prerender see it", async ({ browser }) => {
-    const ctx = await browser.newContext({ javaScriptEnabled: false });
-    const page = await ctx.newPage();
-    await page.goto("/");
-    const mark = page.locator(".hc-qloo-rise").first();
-    await mark.scrollIntoViewIfNeeded();
-    expect(await mark.evaluate((el) => el.closest("[data-inview]")?.getAttribute("data-inview") ?? null)).toBeNull();
-    expect(await mark.locator("path").first().evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
-    await ctx.close();
-  });
-
-  test("rises when scrolled into view and settles fully visible", async ({ page }) => {
-    await page.goto("/");
-    const mark = page.locator(".hc-qloo-rise").first();
-    await mark.scrollIntoViewIfNeeded();
-    await expect.poll(() => mark.evaluate((el) => el.closest("[data-inview]")?.getAttribute("data-inview") ?? "static")).toMatch(/^(true|static)$/);
-    await expect.poll(() => mark.locator("path").first().evaluate((el) => getComputedStyle(el).opacity), { timeout: 5000 }).toBe("1");
-  });
-
-  test("with reduced motion, every part of it is still, the purple bar included (QA blocker)", async ({ browser }) => {
-    const ctx = await browser.newContext({ reducedMotion: "reduce" });
-    const page = await ctx.newPage();
-    await page.goto("/");
-    const mark = page.locator(".hc-qloo-rise").first();
-    await mark.scrollIntoViewIfNeeded();
-    const names = await mark.locator("path").evaluateAll((els) => els.map((el) => getComputedStyle(el).animationName));
-    expect(names.length).toBeGreaterThan(0);
-    for (const n of names) expect(n).toBe("none");
-    await ctx.close();
-  });
+test.describe("Qloo in plain text only (v1.2.1)", () => {
+  for (const path of ["/", "/brain", "/brand", "/terms", "/privacy"]) {
+    test(`${path}: no element renders a Qloo logo, and the footer carries the disclaimer`, async ({ page }) => {
+      await page.goto(path);
+      await expect(page.locator('[data-slot="site-footer"]')).toHaveCount(1);
+      await expect(page.locator('[data-slot="qloo-wordmark"], .hc-qloo-rise, img[src*="qloo"], svg[aria-label="Qloo"], [aria-label^="Qloo (opens"], a[href*="qloo.com"]:has(svg, img)')).toHaveCount(0);
+      await expect(page.locator("body")).not.toContainText(/sponsored by|powered by qloo|built with qloo|our partner/i);
+      await expect(page.locator('[data-slot="site-footer"]').getByTestId("qloo-disclaimer")).toContainText("Busk Map is not affiliated with or endorsed by Qloo.");
+    });
+  }
 });

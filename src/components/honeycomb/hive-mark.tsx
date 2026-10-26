@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import { cn } from "cn";
+import { DATA_GLYPH } from "@/components/honeycomb/source-logo";
 
 /**
  * The Hive's mark: seven pointy-top cells in one comb. Ported 1:1 from the design project's HiveMark (Hive Identity): the
@@ -10,7 +11,7 @@ import { cn } from "cn";
  *
  * - `state="rest"`: all seven cells full (done, replayed, standing). `state="working"`: the centre is full and the outer cells
  *   move per `anim`. Reduced motion (checked live) and `motion={false}` hold the anim's fixed working frame.
- * - `source`: the centre cell takes the source's colour (tokens `--source-*`) and, from 20px up, its logo (larger below 40px: logoWidth). Outer cells keep
+ * - `source`: the centre cell takes the source's colour (tokens `--source-*`) and, from 20px up, its logo (Qloo: the neutral data glyph) (larger below 40px: logoWidth). Outer cells keep
  *   animating in Hive orange. Mixed-source steps omit it.
  * - `muted`: the dashed plain hex used when the Hive didn't run (the design's engine-only state does not use the mark).
  */
@@ -67,17 +68,12 @@ const DIRS = [-60, 0, 60, 120, 180, 240];
 
 type Cell = { points: string; fill: string; stroke: string; sw: number; op: number };
 
-/** The centre cell's logo per source, drawn in a nested viewBox: Qloo's ring and tail (the design's), Spotify's symbol (the official full logo's first path), Last.fm's "as". */
+/** The centre cell's logo per source, drawn in a nested viewBox: for Qloo the neutral data glyph (never Qloo's mark), Spotify's symbol (the official full logo's first path), Last.fm's "as". */
 const LOGOS: Record<HiveSource, { viewBox: string; ink: string; body: React.ReactNode }> = {
   qloo: {
     viewBox: "0 0 24 24",
     ink: "var(--source-qloo-ink)",
-    body: (
-      <>
-        <circle cx="11" cy="11" r="7.5" fill="none" stroke="var(--source-qloo-ink)" strokeWidth="3.4" />
-        <path d="M14.5 14.5 L20.5 20.5" stroke="var(--source-qloo-ink)" strokeWidth="3.6" strokeLinecap="round" />
-      </>
-    ),
+    body: <g style={{ color: "var(--source-qloo-ink)" }}>{DATA_GLYPH}</g>,
   },
   spotify: {
     viewBox: "11.8 3.2 218.8 218.8",

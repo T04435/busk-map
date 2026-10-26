@@ -2,7 +2,9 @@
 
 Know where to play, and what to play there.
 
-Busk Map is an agent for street performers. Pick a city and a time slot, and it finds the pitches whose crowd matches your music, near busy places that are open at that hour. It then builds a setlist for each pitch from the songs you can play. It is built with [Qloo](https://qloo.com) for the [Qloo Agentic Hackathon](https://qloo.devpost.com/). Live at https://buskmap.app.
+Busk Map is an agent for street performers. Pick a city and a time slot, and it finds the pitches whose crowd matches your music, near busy places that are open at that hour. It then builds a setlist for each pitch from the songs you can play. Taste data from the Qloo API. Built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/). Live at https://buskmap.app.
+
+Busk Map is not affiliated with or endorsed by Qloo.
 
 ## Hive, the agent
 
@@ -46,7 +48,7 @@ pnpm test:e2e          # builds and starts an offline server, then runs the judg
 `pnpm purge:spotify` deletes or nulls the Spotify data stored in Postgres (cover images, Spotify years and durations, artist profile snapshots, research snapshots, learn-run steps, cached runs, Spotify pacer rows). It keeps the Spotify IDs and our own data, and it is safe to run twice. Run it once on 10 Nov 2026 against production (Spotify Developer Terms IV.3). Before that date it refuses unless you pass `--force`. It uses the same main-database guard as the other scripts.
 
 ## Data
-- [Qloo](https://qloo.com) taste API (16 kinds of call, see the /brain page; a local mock without a key)
+- Taste data from the Qloo API, used under Qloo's Terms of Use (18 kinds of call, see the /brain page; a local mock without a key)
 - OpenStreetMap public spaces and venue names (© OpenStreetMap contributors, ODbL)
 - City of Melbourne busking locations (CC BY)
 - Ticketmaster Discovery API, Last.fm, Open-Meteo

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ExampleActCard } from "@/components/honeycomb/example-act-card";
-import { QlooLink } from "@/components/honeycomb/logo";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { Button } from "@/components/ui/button";
 import { HexCell } from "@/components/honeycomb/hex-cell";
@@ -77,12 +76,11 @@ export default function Home() {
               </Link>
             </Button>
           </div>
-          <div className="flex basis-full flex-wrap items-center justify-center gap-x-7 gap-y-4 pt-4 text-qloo">
-            {/* The halo keeps the purple legible when a glowing cell pulses behind it. */}
-            <span className="font-display text-[clamp(26px,5vw,44px)] leading-none font-extrabold tracking-[0.02em] whitespace-nowrap uppercase [text-shadow:0_0_3px_var(--background),0_0_8px_var(--background),0_0_14px_var(--background)]">
-              Built with
+          <div className="flex basis-full flex-wrap items-center justify-center pt-4">
+            {/* Plain text only: no Qloo logo, no partner wording. The halo keeps it legible when a glowing cell pulses behind it. */}
+            <span data-testid="hero-credit" className="text-center font-display text-[clamp(22px,3.4vw,32px)] leading-none font-extrabold tracking-[0.02em] uppercase [text-shadow:0_0_3px_var(--background),0_0_8px_var(--background),0_0_14px_var(--background)]">
+              Taste data from the Qloo API
             </span>
-            <QlooLink width={160} className="w-[clamp(96px,22vw,160px)]" wordmarkClassName="h-auto w-full text-foreground" />
           </div>
         </div>
       </section>
@@ -185,14 +183,14 @@ export default function Home() {
           data-theme="dark"
           aria-labelledby="brain"
           data-testid="brain-teaser"
-          className="bm-grain flex flex-wrap items-center justify-between gap-8 border-[3px] border-qloo bg-background p-5 text-foreground shadow-[8px_8px_0_var(--qloo)] md:p-10"
+          className="bm-grain flex flex-wrap items-center justify-between gap-8 border-[3px] border-slate bg-background p-5 text-foreground shadow-[8px_8px_0_var(--slate)] md:p-10"
         >
           <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-4">
             <span className="inline-flex items-center gap-2.5 font-mono text-xs leading-4 font-bold tracking-[0.08em] text-muted-foreground uppercase">
-              Powered by <QlooLink width={72} />
+              Taste data from the Qloo API
             </span>
             <h2 id="brain" className="m-0 font-display text-[clamp(44px,6vw,80px)] leading-[0.9] font-extrabold uppercase">
-              The <span className="text-qloo">brain</span> of <br />
+              The <span className="text-slate">brain</span> of <br />
               Busk Map
             </h2>
             <StatStrip
@@ -204,7 +202,7 @@ export default function Home() {
                 { n: CALLS_ON_RERUN, label: "on a rerun" },
               ]}
             />
-            <Button asChild variant="poster" size="default" className="h-auto min-h-[52px] self-start gap-2.5 border-foreground bg-qloo px-6 text-lg font-sans font-bold normal-case tracking-normal text-bluestone hover:bg-[color-mix(in_oklab,var(--qloo)_88%,var(--foreground))] shadow-[4px_4px_0_var(--foreground)] hover:shadow-[5px_5px_0_var(--foreground)]">
+            <Button asChild variant="poster" size="default" className="h-auto min-h-[52px] self-start gap-2.5 border-foreground bg-slate px-6 text-lg font-sans font-bold normal-case tracking-normal text-bluestone hover:bg-[color-mix(in_oklab,var(--slate)_88%,var(--foreground))] shadow-[4px_4px_0_var(--foreground)] hover:shadow-[5px_5px_0_var(--foreground)]">
               <Link href="/brain">
               Open the brain <Icon name="arrow-right" size={20} />
             </Link>

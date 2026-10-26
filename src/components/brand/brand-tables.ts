@@ -2,7 +2,7 @@
 
 export type ScreenRow = { name: string; route: string; shows: string; /** Drawn in the deck at 390, 768 and 1440; false until it is. Default true. */ drawn?: boolean };
 export const SCREENS: ScreenRow[] = [
-  { name: "Landing", route: "/", shows: "Main explains the product: hero, try an act, guesswork, what you get back, beyond buskers, Thanks to (Qloo as sponsor, then built with), the Brain and Honeycomb teasers, closing call." },
+  { name: "Landing", route: "/", shows: "Main explains the product: hero, try an act, guesswork, what you get back, beyond buskers, Thanks to (the Qloo taste data credit in plain text, then built with), the Brain and Honeycomb teasers, closing call." },
   { name: "Busks: plan your busk", route: "/busks", shows: "The form for your own act" },
   { name: "Repertoire", route: "/repertoire", shows: "Your songs: search, pick and suggested fill", drawn: true },
   { name: "Busks: plan again", route: "/busks?again=<id>", shows: "Pre-filled from an earlier busk, date and hours left" },

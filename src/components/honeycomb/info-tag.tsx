@@ -7,8 +7,8 @@ import { Badge } from "@/components/ui/badge";
 
 const tones = {
   neutral: "border-input text-foreground",
-  // Qloo purple only where Qloo is named ("Qloo", "Crowd by Qloo").
-  qloo: "border-qloo text-qloo",
+  // Neutral slate for Qloo-sourced data, always with "Qloo" in the words ("Crowd by Qloo"); never a Qloo colour or logo.
+  qloo: "border-slate text-slate",
   signal: "border-primary text-signal-text",
 } as const;
 
@@ -26,7 +26,7 @@ export function InfoTag({
   children?: ReactNode;
   icon?: IconName;
   tone?: keyof typeof tones;
-  /** A data source: the tag is its logo only (Spotify, Last.fm, Qloo), the name in the accessible label. Replaces the words. */
+  /** A data source: Spotify and Last.fm as their icon, the name in the accessible label; Qloo as the neutral glyph plus the word "Qloo". Replaces the words. */
   source?: MentionSource;
   className?: string;
 }) {

@@ -49,18 +49,14 @@ test.describe("brand page", () => {
     await expect(logos.getByText(/mark|wordmark/)).toHaveCount(0);
   });
 
-  test("assets download, and Qloo's logo links to qloo.com (B-077, F18)", async ({ page }) => {
+  test("assets download, and Qloo is named in plain text only, with no logo or qloo.com logo link (B-077, F18, v1.2.1)", async ({ page }) => {
     await page.goto("/brand");
     await openAll(page);
     const dl = page.getByRole("link", { name: "Download og-image-1200x630.png" });
     await expect(dl).toHaveAttribute("download", "og-image-1200x630.png");
-    const q = page.getByRole("link", { name: /Qloo \(opens qloo.com/ });
-    expect(await q.count()).toBeGreaterThanOrEqual(3);
-    for (const l of await q.all()) {
-      await expect(l).toHaveAttribute("href", "https://qloo.com");
-      await expect(l).toHaveAttribute("target", "_blank");
-      await expect(l).toHaveAttribute("rel", /noopener/);
-    }
+    await expect(page.getByRole("link", { name: /Qloo \(opens qloo.com/ })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Qloo's logo" })).toHaveCount(0);
+    await expect(page.locator('a[href*="qloo.com"], img[src*="qloo"], svg[aria-label="Qloo"]')).toHaveCount(0);
   });
 
   test("the stat strip fills its rows and token cells don't overflow (B-075, BD21)", async ({ page }) => {

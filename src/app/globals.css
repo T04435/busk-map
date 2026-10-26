@@ -51,8 +51,8 @@
   --bluestone: #141c21;
   --honey: #ffcf3a;
   --honey-deep: #d99a00;
-  --qloo: #5b5ba3;
-  --qloo-brand: #8C8CC8;
+  /* Slate: the neutral ink for data from a named source (a Qloo-sourced chip, tag or stat), always with the source's name in words. */
+  --slate: #45596b;
   --signal-text: #b13a00;
   /* The Hive mark (Hive Identity): signal-text by day, signal at night. The day and night values and the board's day paper are
      the same in both themes, so a specimen can show the day mark inside a night panel. */
@@ -60,7 +60,7 @@
   --hive-night: #ff6a2b;
   --hive-paper: #f7f3ec;
   --hive: var(--hive-day);
-  /* Source colours for the Hive mark's centre cell (single-source steps): Qloo's bluestone with a white mark, Spotify's green with a black mark, Last.fm's red with a white mark. Brand colours, the same in both themes. */
+  /* Source colours for the Hive mark's centre cell (single-source steps): Qloo steps on Busk Map's own bluestone with the white neutral data glyph (no Qloo mark), Spotify's green with a black mark, Last.fm's red with a white mark. Brand colours, the same in both themes. */
   --source-qloo: #141c21;
   --source-qloo-ink: #ffffff;
   --source-spotify: #1ed760;
@@ -122,8 +122,7 @@
   --bluestone: #141c21;
   --honey: #ffcf3a;
   --honey-deep: #d99a00;
-  --qloo: #8C8CC8;
-  --qloo-brand: #8C8CC8;
+  --slate: #a9bccb;
   --signal-text: #ff7f45;
   --hive: var(--hive-night);
   --zone-pink: #ff5c9d;
@@ -180,8 +179,7 @@
     --bluestone: #141c21;
     --honey: #ffcf3a;
     --honey-deep: #d99a00;
-    --qloo: #8C8CC8;
-    --qloo-brand: #8C8CC8;
+    --slate: #a9bccb;
     --signal-text: #ff7f45;
     --hive: var(--hive-night);
     --zone-pink: #ff5c9d;
@@ -292,8 +290,7 @@
   --color-bluestone: var(--bluestone);
   --color-honey: var(--honey);
   --color-honey-deep: var(--honey-deep);
-  --color-qloo: var(--qloo);
-  --color-qloo-brand: var(--qloo-brand);
+  --color-slate: var(--slate);
   --color-signal-text: var(--signal-text);
   --color-hive: var(--hive);
   --color-hive-paper: var(--hive-paper);
@@ -440,20 +437,6 @@ html { scroll-padding-bottom: var(--bottom-nav); }
 @media (prefers-reduced-motion: reduce) { .hc-flow-cell, .hc-flow-link { animation: none; } }
 /* The landing's one pause control (MotionPause) holds every loop where it is (WCAG 2.2.2): the ticker, the hero glow, the brain pulse. */
 :root[data-motion="paused"] :is(.hc-ticker, .hc-glow, .hc-flow-cell, .hc-flow-link) { animation-play-state: paused; }
-/* The sponsor's Qloo wordmark assembles once, when it scrolls into view (impeccable live, 17 Oct; progressive). Paths: 1 l, 2 Q, 3 and 4 the o's, 5 the purple bar. */
-@keyframes hc-qloo-rise { 0% { opacity: 0; transform: translateY(60%) scaleY(0.6); } 100% { opacity: 1; transform: none; } }
-@keyframes hc-qloo-bar { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
-/* Progressive: with no JS (or before it runs) there is no data-inview and no animation, so the logo is always visible. InView marks an
-   off-screen wordmark "ready" (held at its first frame) and then "true" when it scrolls into view (it plays). */
-[data-inview] .hc-qloo-rise path { transform-box: fill-box; transform-origin: 50% 100%; animation: hc-qloo-rise 0.6s cubic-bezier(.2,.8,.2,1) both; }
-[data-inview] .hc-qloo-rise path:nth-child(2) { animation-delay: 0.05s; }
-[data-inview] .hc-qloo-rise path:nth-child(1) { animation-delay: 0.17s; }
-[data-inview] .hc-qloo-rise path:nth-child(4) { animation-delay: 0.29s; }
-[data-inview] .hc-qloo-rise path:nth-child(3) { animation-delay: 0.41s; }
-[data-inview] .hc-qloo-rise path:nth-child(5) { transform-origin: 0 50%; animation: hc-qloo-bar 0.5s cubic-bezier(.2,.8,.2,1) 0.75s both; }
-[data-inview="ready"] .hc-qloo-rise path { animation-play-state: paused; }
-/* Reduced motion: no rise, no bar; the nth-child(5) rule is named too, or its higher specificity would keep the bar animating. */
-@media (prefers-reduced-motion: reduce) { [data-inview] .hc-qloo-rise path, [data-inview] .hc-qloo-rise path:nth-child(5) { animation: none; } }
 
 .hc-cell { transform-box: fill-box; transform-origin: center; animation: hc-cell-in 520ms var(--ease-out, ease) backwards; animation-delay: var(--d, 0ms); }
 .hc-cell-hot { animation: hc-cell-in 520ms var(--ease-out, ease) backwards, hc-breathe 3.6s ease-in-out infinite; animation-delay: var(--d, 0ms), calc(var(--d, 0ms) + 2400ms); }

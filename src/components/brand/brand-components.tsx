@@ -15,7 +15,7 @@ import { FormMessage } from "@/components/honeycomb/form-message";
 import { HexCell } from "@/components/honeycomb/hex-cell";
 import { LeanBar } from "@/components/honeycomb/lean-bar";
 import { Spinner } from "@/components/ui/spinner";
-import { QlooWordmark } from "@/components/honeycomb/logo";
+import { CALLS_ON_RERUN, CALLS_PER_NEW_BUSK, callKinds } from "@/lib/qloo-map";
 import { NoteCard } from "@/components/honeycomb/note-card";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { PitchRow } from "@/components/honeycomb/pitch-row";
@@ -177,7 +177,7 @@ export function PlanStates() {
         </div>
         <div className={`${SPEC} sm:col-span-full`}>
           <h4 className={SPEC_H}>StatStrip · Qloo</h4>
-          <StatStrip className="max-sm:[&>li:last-child:nth-child(odd)]:col-span-full" tone="qloo" label="Qloo in numbers" items={[{ n: 11, label: "kinds of Qloo call" }, { n: "24–33", label: "Qloo calls for a new busk" }, { n: "0", label: "on a rerun" }]} />
+          <StatStrip className="max-sm:[&>li:last-child:nth-child(odd)]:col-span-full" tone="qloo" label="Qloo in numbers" items={[{ n: callKinds, label: "kinds of Qloo call" }, { n: CALLS_PER_NEW_BUSK, label: "Qloo calls for a new busk" }, { n: CALLS_ON_RERUN, label: "on a rerun" }]} />
         </div>
         <div className={SPEC}>
           <h4 className={SPEC_H}>ExampleActCard · NoteCard next</h4>
@@ -192,11 +192,6 @@ export function PlanStates() {
             <ScoreCell value={64} size="md" label="Taste match" />
             <ScoreCell value={null} size="md" label="Score" />
           </div>
-        </div>
-        <div className={SPEC}>
-          <h4 className={SPEC_H}>QlooWordmark</h4>
-          <QlooWordmark width={160} />
-          <span className="text-sm text-muted-foreground">Every Qloo logo links to qloo.com in a new tab.</span>
         </div>
       </div>
       <p className="m-0 text-sm text-muted-foreground">BrainMap, StatusCard, PageHeader and SiteFooter render full size on their own pages. Every state of every component is in the design system: Busk Map · Honeycomb.</p>

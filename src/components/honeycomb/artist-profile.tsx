@@ -17,7 +17,7 @@ export function formatFollowers(n: number): string {
   return String(n);
 }
 
-const qlooChip = "border-qloo text-qloo";
+const qlooChip = "border-slate text-slate";
 
 /** "Your audience": the Qloo audience tags with the Qloo mark. One markup for the profile's inline use and the layout's `audience` slot. */
 export function AudienceTags({ profile, className }: { profile: Pick<Profile, "audience"> | null; className?: string }) {

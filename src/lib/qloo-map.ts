@@ -808,9 +808,8 @@ export const CALLS_ON_RERUN = 0;
 /** A learn run's hard cap (config.ts:LEARN_QLOO_BUDGET): typically 8–9 requests, 25 at worst (docs/playlist-architecture.md §2.9). A research run shares the cap: 7 requests cold on the mock, fewer once cached (docs/repertoire-research.md). */
 export const CALLS_PER_LEARN_RUN = "≤ 25";
 
+/** Busk Map's own settings only: no Qloo rate limit or plan quota is stated here (those are Qloo's to publish). */
 export const QUOTA = {
-  requestsPerMonth: 10_000,
-  requestsPerSecond: 5,
   pacedPerSecond: 3,
   cacheHours: 24,
 } as const;
@@ -824,9 +823,8 @@ export const facts: readonly { value: string; label: string }[] = [
 ];
 
 export const quotaNote =
-  `Qloo allows ${QUOTA.requestsPerMonth.toLocaleString("en-AU")} requests a month per key, at ${QUOTA.requestsPerSecond} a second. ` +
-  `Busk Map paces its calls to ${QUOTA.pacedPerSecond} a second and caches every answer for ${QUOTA.cacheHours} h, ` +
-  `so a key covers roughly 270–360 new busks a month, and reruns are free.`;
+  `Answers are cached for ${QUOTA.cacheHours} hours, and Busk Map paces its own calls to ${QUOTA.pacedPerSecond} a second, ` +
+  `so a rerun makes no new calls.`;
 
 // ---- The graph -----------------------------------------------------------
 

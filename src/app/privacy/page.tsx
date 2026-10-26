@@ -61,7 +61,7 @@ const ITEMS: Item[] = [
 const THIRD_PARTIES: { name: string; body: string }[] = [
   {
     name: "Qloo",
-    body: "Taste data. Receives artist names or ids, the city area and the genres or crowds being asked about. It does not receive your cookie, your IP address or your act name.",
+    body: "Taste data. Receives artist names or ids, the city area and the genres or crowds being asked about. It does not receive your cookie, your IP address or your act name. Busk Map is not affiliated with or endorsed by Qloo.",
   },
   {
     name: "Spotify",

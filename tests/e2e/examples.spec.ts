@@ -50,7 +50,7 @@ for (const example of EXAMPLES) {
         await expect(page.locator("main:visible").getByText(/Claude/)).toHaveCount(0);
       }
       // Every data source is credited.
-      for (const credit of ["Taste data by Qloo", "Busking locations and zones: City of Melbourne", "Weather data by Open-Meteo.com"]) {
+      for (const credit of ["Taste data from the Qloo API, used under Qloo's Terms of Use.", "Busking locations and zones: City of Melbourne", "Weather data by Open-Meteo.com"]) {
         await expect(page.getByRole("link", { name: credit })).toBeVisible();
       }
       // Offline runs use the Qloo mock and say so; a deploy with the key says Live, never "test data".

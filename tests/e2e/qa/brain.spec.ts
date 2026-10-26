@@ -22,7 +22,7 @@ test.describe("QA /brain", () => {
     const facts = page.getByRole("region", { name: "Qloo calls per busk" }).getByRole("listitem");
     // 18 kinds (the local scene, then the profile and fans calls), 10 parts (the Repertoire research joined), the learn-run cap (R4).
     await expect(facts).toHaveText([/^18\s*kinds of Qloo call$/, /^28–37\s*Qloo calls for a new busk$/, /^0\s*on a rerun: answers cached for 24 h$/, /^10\s*parts of your busk it decides$/, /^≤ 25\s*Qloo calls per learn run$/]);
-    await expect(page.getByTestId("quota-note")).toContainText("One key's 10,000 calls a month cover roughly 270–360 new busks");
+    await expect(page.getByTestId("quota-note")).toHaveText("Answers are cached for 24 hours, and Busk Map paces its own calls to 3 a second, so a rerun makes no new calls.");
   });
 
   test("keyboard trace: Enter traces and announces; Escape clears, announces, and returns focus to the node", async ({ page }) => {

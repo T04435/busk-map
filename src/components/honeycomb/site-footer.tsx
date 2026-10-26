@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "cn";
 import { HexCell } from "@/components/honeycomb/hex-cell";
-import { Logo, QlooWordmark } from "@/components/honeycomb/logo";
+import { Logo } from "@/components/honeycomb/logo";
 import { OsmCredit } from "@/components/honeycomb/osm-credit";
 import { VersionBadge } from "@/components/honeycomb/version-badge";
 
@@ -30,8 +30,8 @@ const SITE_LINKS = [
 const LINK = "inline-flex min-h-tap items-center font-bold text-foreground underline underline-offset-3 hover:decoration-2";
 
 /**
- * The footer on every page, in three parts: on the left the wordmark and the Qloo credit, in the centre Privacy, Brain and Brand,
- * on the right GitHub (an icon in a cell) and "Built by T04435" with the pixel critter, and on a line of its own at the bottom, centred, the running version (VersionBadge). At 390px the parts stack. The legal line
+ * The footer on every page, in three parts: on the left the wordmark and the map credit, in the centre Privacy, Brain and Brand,
+ * on the right GitHub (an icon in a cell) and "Built by T04435" with the pixel critter, and on a line of its own at the bottom, centred, the running version (VersionBadge), above it the Qloo taste-data credit and disclaimer in plain text. At 390px the parts stack. The legal line
  * lives on /terms, which the footer links to. On the landing (`dark`) it continues the closing call to action's dark band, as in
  * the deck; on every other page it sits on paper.
  */
@@ -48,9 +48,6 @@ export function SiteFooterView({ repo = REPO, dark = false, night = false }: { r
           <Link href="/" aria-label="Busk Map home" className="inline-flex h-tap items-center">
             <Logo size={34} />
           </Link>
-          <span className="inline-flex items-center gap-2">
-            with <QlooWordmark width={44} />
-          </span>
           <OsmCredit />
         </div>
         <nav aria-label="Site" className="flex flex-wrap items-center gap-x-2 md:justify-center">
@@ -76,6 +73,10 @@ export function SiteFooterView({ repo = REPO, dark = false, night = false }: { r
             </a>
           </span>
         </div>
+        {/* The Qloo credit and disclaimer, in plain text only (no Qloo logo, no partner wording): once, here, on every page. */}
+        <p data-testid="qloo-disclaimer" className="m-0 text-center md:col-span-3">
+          Taste data from the Qloo API. Busk Map is not affiliated with or endorsed by Qloo.
+        </p>
         <div className="flex justify-center md:col-span-3">
           <VersionBadge />
         </div>

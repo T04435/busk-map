@@ -296,22 +296,13 @@ export const TOKENS: TokenRow[] = [
     "use": "Brand constant: the honey dot of the mark wherever it sits on paper without its tile."
   },
   {
-    "name": "qloo",
+    "name": "slate",
     "kind": "Honeycomb",
-    "light": "#5b5ba3",
-    "dark": "#8C8CC8",
-    "lightSw": "#5b5ba3",
-    "darkSw": "#8C8CC8",
-    "use": "Qloo, our partner: the Qloo wordmark's bar, the Brain page's calls and wires, and Qloo facts. Text-safe in both themes (5.2:1 on the day ground, 5.9:1 on the night ground). Never a Busk Map action colour."
-  },
-  {
-    "name": "qloo-brand",
-    "kind": "Honeycomb",
-    "light": "#8C8CC8",
-    "dark": "#8C8CC8",
-    "lightSw": "#8C8CC8",
-    "darkSw": "#8C8CC8",
-    "use": "Qloo's own logo purple, exactly. Only inside the Qloo wordmark and on night grounds; on paper it is 2.7:1, so never as text there."
+    "light": "#45596b",
+    "dark": "#a9bccb",
+    "lightSw": "#45596b",
+    "darkSw": "#a9bccb",
+    "use": "Neutral ink for data from a named source: Qloo-sourced chips, tags and stats, the Brain page's calls and wires. Always beside the source's name in words, never a partner's colour or logo. Text-safe in both themes (6.3:1 on the day ground, 9.5:1 on the night ground). Never a Busk Map action colour."
   },
   {
     "name": "signal-text",

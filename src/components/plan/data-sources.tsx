@@ -80,14 +80,16 @@ export function DataSources({
               <li>
                 <ItemContent className="block min-w-auto">
                   <ItemTitle className="flex flex-wrap items-center gap-x-2">
-                    {id === "qloo" || id === "spotify" || id === "lastfm" ? <SourceLogo source={id} height={14} /> : null}
+                    {id === "spotify" || id === "lastfm" ? <SourceLogo source={id} height={14} /> : null}
                     <Source className="inline underline decoration-[1.5px] underline-offset-3 hover:decoration-[2.5px]" href={source.url}>
                       {source.credit}
                     </Source>
                   </ItemTitle>
-                  <ItemDescription asChild className="text-[13px] leading-[inherit]">
-                    <div>{source.licence}</div>
-                  </ItemDescription>
+                  {source.licence ? (
+                    <ItemDescription asChild className="text-[13px] leading-[inherit]">
+                      <div>{source.licence}</div>
+                    </ItemDescription>
+                  ) : null}
                 </ItemContent>
                 {(s || soFar) && <DataStatusBadge status={s ? s.mode : "live"} label={s ? statusText(s) : "Live"} />}
               </li>

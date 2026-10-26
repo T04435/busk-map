@@ -2,7 +2,7 @@
 
 Run on 2026-10-17 against the live Qloo hackathon API (`https://hackathon.api.qloo.com`). Qloo only, no model calls.
 Script: `scripts/probe-qloo-cities.mjs` (re-run with `node --env-file=.env.local scripts/probe-qloo-cities.mjs`).
-It prints aggregates only. Qloo responses are cached privately server-side (Qloo Support confirmed this is allowed). No Qloo response data is kept in this repo: no locality ids, counts or artist names from live responses.
+It prints aggregates only. Qloo responses are cached privately server-side. No Qloo response data is kept in this repo: no locality ids, counts or artist names from live responses.
 
 ## Method
 

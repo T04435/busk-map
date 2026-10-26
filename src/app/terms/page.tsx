@@ -35,19 +35,20 @@ export default function TermsPage() {
                 <a className="font-bold underline underline-offset-3 hover:decoration-2" href={source.url} target="_blank" rel="noopener noreferrer">
                   {source.credit}
                   <span className="sr-only"> (opens in a new tab)</span>
-                </a>{" "}
-                <span className="text-muted-foreground">({source.licence})</span>
+                </a>
+                {source.licence ? <span className="text-muted-foreground"> ({source.licence})</span> : null}
               </li>
             );
           })}
         </ul>
+        <p data-testid="qloo-disclaimer" className="m-0 text-sm text-muted-foreground">Busk Map is not affiliated with or endorsed by Qloo.</p>
       </section>
       <section aria-labelledby="licence-h" className="flex flex-col gap-3">
         <h2 id="licence-h" className="m-0 font-display text-[28px] leading-none font-extrabold uppercase">
           The code
         </h2>
         <p className="m-0 text-base leading-6">
-          Busk Map is open source under the MIT licence. Built solo by T04435 during the Qloo Agentic Hackathon.
+          Busk Map is open source under the MIT licence. Built solo by T04435 for the Qloo Agentic Hackathon.
         </p>
       </section>
     </main>

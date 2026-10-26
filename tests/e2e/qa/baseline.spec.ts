@@ -70,7 +70,7 @@ test.describe("QA judge paths", () => {
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}$/);
     await expect(page.getByRole("region", { name: "Pitches", exact: true })).toBeVisible();
     await expect(page.getByText("Busk Map vs a plain AI")).toBeVisible();
-    for (const credit of ["Taste data by Qloo", "© OpenStreetMap contributors", "Ticketmaster", "Open-Meteo", "Last.fm"]) {
+    for (const credit of ["Taste data from the Qloo API, used under Qloo's Terms of Use.", "© OpenStreetMap contributors", "Ticketmaster", "Open-Meteo", "Last.fm"]) {
       // The visible credit: on a phone the map's compact attribution and sr-only labels carry the same words, hidden.
       await expect(page.getByText(credit).filter({ visible: true }).first()).toBeVisible();
     }

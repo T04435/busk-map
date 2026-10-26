@@ -20,7 +20,7 @@ Taste-matched pitches: who is actually out there at that hour, and what they lik
 
 ## Operating Context
 
-Built for the Qloo Agentic Hackathon 2026; submission is due 30 Oct. The live judge path is landing → plan a busk → the plan page → Repertoire → Brain (how Qloo powers it).
+Built for the Qloo Agentic Hackathon 2026; submission is due 30 Oct. The live judge path is landing → plan a busk → the plan page → Repertoire → Brain (how Qloo taste data feeds it).
 
 ## Capabilities and Constraints
 
@@ -34,7 +34,7 @@ Built for the Qloo Agentic Hackathon 2026; submission is due 30 Oct. The live ju
 
 - The name is Busk Map, and the visual identity is Honeycomb (the published design system is the reference; the app is the source of truth for component code).
 - The logo is the lockup: the hex mark beside the wordmark.
-- Every Qloo logo links to qloo.com.
+- Qloo is named in plain text only: no Qloo logo, no partner or sponsor wording. Busk Map is not affiliated with or endorsed by Qloo.
 - Busk Map never confirms a pitch is legal: it tells buskers to check their permit conditions.
 - No text glyphs as icons (arrows, chevrons, checks); icons are the design system's Icon set.
 - One keyboard focus ring, never two.

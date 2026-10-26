@@ -321,8 +321,9 @@ describe("qloo map: facts and trace", () => {
   it("derives the counts and states the quota", () => {
     expect(facts.map((f) => f.value)).toEqual(["18", "28–37", "0", "10", "≤ 25"]);
     expect(CALLS_PER_LEARN_RUN).toBe("≤ 25");
-    expect(quotaNote).toContain("10,000 requests a month per key, at 5 a second");
-    expect(quotaNote).toContain("24 h");
+    // Busk Map's own pacing and cache only: never a Qloo rate limit or plan quota.
+    expect(quotaNote).toBe("Answers are cached for 24 hours, and Busk Map paces its own calls to 3 a second, so a rerun makes no new calls.");
+    expect(quotaNote).not.toMatch(/10,000|a month|Qloo allows|5 a second/);
   });
 
   it("a call lights its data points and the features downstream, nothing upstream of those", () => {

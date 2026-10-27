@@ -13,12 +13,22 @@ export function Disclosure({
   label,
   count,
   open,
+  expanded,
   children,
   className,
   ...props
-}: { label: ReactNode; count?: number; /** Starts open. */ open?: boolean; children: ReactNode; className?: string } & Omit<React.ComponentProps<typeof Collapsible>, "children" | "open" | "defaultOpen">) {
+}: {
+  label: ReactNode;
+  count?: number;
+  /** Starts open. */
+  open?: boolean;
+  /** Open or closed from outside (with onOpenChange): a week's day kept in step with its map. */
+  expanded?: boolean;
+  children: ReactNode;
+  className?: string;
+} & Omit<React.ComponentProps<typeof Collapsible>, "children" | "open" | "defaultOpen">) {
   return (
-    <Collapsible data-slot="disclosure" defaultOpen={open} className={cn("group/disclosure border-2 border-rule bg-card", className)} {...props}>
+    <Collapsible data-slot="disclosure" defaultOpen={open} {...(expanded !== undefined ? { open: expanded } : {})} className={cn("group/disclosure border-2 border-rule bg-card", className)} {...props}>
       <CollapsibleTrigger className="flex min-h-tap w-full cursor-pointer items-center justify-between gap-3 px-4 text-left font-bold select-none">
         <span>
           {label}
@@ -27,7 +37,7 @@ export function Disclosure({
         <Icon name="chevron-down" size={20} className="transition-transform group-data-[state=open]/disclosure:rotate-180" />
       </CollapsibleTrigger>
       {/* forceMount: closed content stays in the page (hidden), as a <details> keeps it, so find-in-page and links into it still work. */}
-      <CollapsibleContent forceMount className="border-t border-border p-4">{children}</CollapsibleContent>
+      <CollapsibleContent forceMount className="border-t border-border p-4 data-[state=closed]:hidden">{children}</CollapsibleContent>
     </Collapsible>
   );
 }

@@ -40,6 +40,7 @@ describe("rejectBots", () => {
       { path: "/api/plans", method: "POST" },
       { path: "/api/compare", method: "POST" },
       { path: "/api/week", method: "POST" },
+      { path: "/api/week/ics", method: "GET" },
       { path: "/api/repertoire", method: "GET" },
       { path: "/api/cities", method: "GET" },
       { path: "/api/genres", method: "GET" },

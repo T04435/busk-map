@@ -157,9 +157,21 @@ describe("a metro planned in districts (offline Tokyo with its suburbs)", () => 
     expect(map.some((c) => !districts.some((d) => inBBox(c, d.bbox)))).toBe(true);
   });
 
+  it("with OpenStreetMap down, names the areas after the suburbs in Qloo's place addresses", async () => {
+    const { PlanContext } = await load();
+    const ctx = new PlanContext(requestFor(METRO), { offline: true, faults: ["osm"] }, "2026-10-15");
+    const { areas, source } = await ctx.namedAreas();
+    expect(source).toBe("qloo");
+    expect(areas.map((a) => a.name)).toEqual(expect.arrayContaining(["Tokyo", "Synthetic Shibuya", "Synthetic Asakusa"]));
+    const districts = await ctx.districts();
+    expect(districts.some((d) => d.area)).toBe(true);
+  });
+
   it("falls back to the heatmap's peaks when no named area comes back", async () => {
     const { PlanContext } = await load();
     const ctx = new PlanContext(requestFor(METRO), { offline: true, faults: ["osm"] }, "2026-10-15");
+    // No suburb in Qloo's addresses either.
+    vi.spyOn(ctx, "namingPlaces").mockResolvedValue([]);
     expect(await ctx.rankedAreas()).toEqual([]);
     const districts = await ctx.districts();
     expect(districts.length).toBeGreaterThanOrEqual(2);

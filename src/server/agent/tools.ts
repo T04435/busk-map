@@ -139,19 +139,19 @@ const isTasteSpot = (p: NamedPitch) => (p.origin ? p.origin === "taste" : /^Near
  * step reads like the plan); else named like the pitches (tasteSpotName: its area and nearest Qloo place), never one of the
  * `taken` names. Never a bare number.
  */
-export function cellName(cell: LatLon, known: KnownPlace[], pitches: readonly NamedPitch[], naming: TasteSpotNaming = {}, taken: ReadonlySet<string> = new Set()): string {
+export function cellName(cell: LatLon, known: KnownPlace[], pitches: readonly NamedPitch[], naming: TasteSpotNaming = {}, taken: ReadonlySet<string> = new Set()): string | null {
   const named = nearestName(cell, known);
   if (named) return named;
   const pitch = pitches.filter((p) => p.origin === "taste" && distanceM(p, cell) <= CELL_PITCH_MATCH_M).sort((a, b) => distanceM(a, cell) - distanceM(b, cell))[0];
   return pitch?.name ?? tasteSpotName(cell, naming, taken);
 }
 
-/** Names for taste cells, in order: each by cellName, none sharing a taste pitch's name or an earlier cell's. */
-export function cellNames(cells: readonly LatLon[], known: KnownPlace[], pitches: readonly NamedPitch[], naming: TasteSpotNaming = {}): string[] {
+/** Names for taste cells, in order: each by cellName, none sharing a taste pitch's name or an earlier cell's; null for a cell no real name tells apart. */
+export function cellNames(cells: readonly LatLon[], known: KnownPlace[], pitches: readonly NamedPitch[], naming: TasteSpotNaming = {}): (string | null)[] {
   const taken = new Set(pitches.filter(isTasteSpot).map((p) => p.name));
   return cells.map((c) => {
     const name = cellName(c, known, pitches, naming, taken);
-    taken.add(name);
+    if (name) taken.add(name);
     return name;
   });
 }
@@ -182,7 +182,8 @@ export function pointName(
   const cell = byDistance(cells);
   if (cell && distanceM(cell, point) <= POINT_NAME_M) {
     const ranked = [...cells].sort((a, b) => a.rank - b.rank);
-    return cellNames(ranked, known, pitches, { areas, venues, city })[ranked.indexOf(cell)].replace(/^Near /, "near ");
+    const name = cellNames(ranked, known, pitches, { areas, venues, city })[ranked.indexOf(cell)];
+    if (name) return name.replace(/^Near /, "near ");
   }
   // A metro: the named area the point is in, before a pitch further away.
   const area = byDistance(areas);
@@ -396,11 +397,14 @@ function buildTools(ctx: PlanContext, state: AgentState) {
         const known = await places();
         const [{ candidates: pitches }, naming] = await Promise.all([ctx.candidates(), ctx.tasteNaming()]);
         const max = Math.max(0, ...cells.map((c) => c.affinity));
-        const top = [...cells].sort((a, b) => b.affinity - a.affinity).slice(0, 8);
-        const names = cellNames(top, known, pitches, naming);
+        // The strongest cells a real name tells apart (a cell none does is left out, never named with numbers).
+        const sorted = [...cells].sort((a, b) => b.affinity - a.affinity).slice(0, 8);
+        const allNames = cellNames(sorted, known, pitches, naming);
+        const top = sorted.filter((_, i) => allNames[i] !== null);
+        const names = allNames.filter((n): n is string => n !== null);
         return seen({
           summary: cells.length
-            ? `${cells.length} cells for ${all ? "all your artists" : signalNames.join(", ")}${zoom ? ` around ${zoom.label}` : ""}; strongest: ${names[0]}`
+            ? `${cells.length} cells for ${all ? "all your artists" : signalNames.join(", ")}${zoom ? ` around ${zoom.label}` : ""}; strongest: ${names[0] ?? "the planning area"}`
             : "No taste data for that area",
           signals: signalNames,
           area: zoom ? { around: zoom.label, radiusM: snapRadius(radiusM, 800) } : "planning area",

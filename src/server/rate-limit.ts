@@ -21,22 +21,22 @@ export function createRateLimiter(limit: number, windowMs: number) {
       const recent = hits.get(key);
       if (recent?.length) recent.pop();
     },
-    check(key: string, now = Date.now()): { ok: boolean; retryAfterS: number } {
+    /** Record a hit (`weight` hits: a week run counts as several plans) if the key has room for it. */
+    check(key: string, now = Date.now(), weight = 1): { ok: boolean; retryAfterS: number } {
       const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
-      if (recent.length >= limit) {
+      if (recent.length + weight > limit) {
         hits.set(key, recent);
-        return { ok: false, retryAfterS: Math.ceil((windowMs - (now - recent[0])) / 1000) };
+        // The wait until enough of the oldest hits leave the window.
+        const freeing = recent[Math.max(0, Math.min(recent.length - 1, recent.length + weight - limit - 1))] ?? now;
+        return { ok: false, retryAfterS: Math.max(1, Math.ceil((windowMs - (now - freeing)) / 1000)) };
       }
-      recent.push(now);
+      for (let i = 0; i < weight; i++) recent.push(now);
       hits.set(key, recent);
       if (hits.size > 5000) hits.clear(); // bound memory
       return { ok: true, retryAfterS: 0 };
     },
   };
 }
-
-/** Week plans (POST /api/week): 6 per 10 minutes per IP. */
-export const planLimiter = createRateLimiter(6, 10 * 60_000);
 
 export type RateLimiter = ReturnType<typeof createRateLimiter>;
 
@@ -100,6 +100,32 @@ export function refundPlanRun(code: string | null, ip: string, limiter: RateLimi
   limiter.release(ip);
   return true;
 }
+/** A week run (POST /api/week, one run of the Hive over 7 days) counts as this many fresh plans against FRESH_RUNS_PER_HOUR. */
+export const WEEK_RUN_WEIGHT = 4;
+
+/** The week-run refusal text (relative, like the busk limit's). */
+export function weekLimitMessage(retryAfterS: number): string {
+  const minutes = Math.max(1, Math.ceil(retryAfterS / 60));
+  return `A week counts as ${WEEK_RUN_WEIGHT} plans, and this hour's plans are used up. Try again in about ${minutes} minute${minutes === 1 ? "" : "s"}.`;
+}
+
+/**
+ * Whether a new week run may start: it takes WEEK_RUN_WEIGHT hits of the fresh-run limit (the busks' own limiter). Offline test
+ * mode is exempt (the e2e tests share one IP); `forced` is the test fault `fresh-limit`.
+ */
+export function weekRunGate({ offline, ip, forced = false }: { offline: boolean; ip: string; forced?: boolean }, limiter: RateLimiter = freshRunLimiter, now = Date.now()): FreshRunGate {
+  const result = forced ? { ok: false, retryAfterS: FORCED_LIMIT_RETRY_S } : offline ? { ok: true, retryAfterS: 0 } : limiter.check(ip, now, WEEK_RUN_WEIGHT);
+  if (result.ok) return { ok: true };
+  return { ok: false, retryAfterS: result.retryAfterS, retryAt: new Date(now + result.retryAfterS * 1000).toISOString(), message: weekLimitMessage(result.retryAfterS) };
+}
+
+/** A week run that ended with Qloo down gives its hits back. Only for a run whose own request was counted. */
+export function refundWeekRun(ip: string, limiter: RateLimiter = freshRunLimiter): void {
+  for (let i = 0; i < WEEK_RUN_WEIGHT; i++) limiter.release(ip);
+}
+
+/** Calendar exports of a stored week (GET /api/week/ics): 30 per 10 minutes per IP (no Qloo or model call; a read of stored plans). */
+export const weekIcsLimiter = createRateLimiter(30, 10 * 60_000);
 /** Plain-LLM comparisons: 12 per 10 minutes per IP (cached, cheap model). */
 export const compareLimiter = createRateLimiter(12, 10 * 60_000);
 /** Live search (Spotify, Last.fm): 120 per minute per IP; the picker debounces typing. */

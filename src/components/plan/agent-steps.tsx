@@ -16,6 +16,7 @@ import { Trace, TraceIcon, TraceLine, TraceTitle } from "@/components/ui/trace";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AgentStep } from "@/lib/agent-steps";
+import { shortDay } from "@/lib/slot";
 import type { IconName } from "@/components/honeycomb/icon";
 import { modelName, type ExplanationsModel } from "@/lib/sources";
 import type { LevelSignal, LevelWord } from "@/lib/signal-level";
@@ -53,7 +54,11 @@ function ToolCard({ step, model, when, pins, fresh, renderWaiting, levelOf }: { 
   const icon = (step.tool && TOOL_ICON[step.tool]) || "dots";
   const running = step.status === "running";
   const failed = step.status === "failed";
-  const rejected = failed && step.tool === "finish_plan";
+  // A final answer the guardrails sent back (a busk's finish_plan, a week's finish_week).
+  const rejected = failed && (step.tool === "finish_plan" || step.tool === "finish_week");
+  // A week's steps each say the day they are for.
+  const day = (step.input as { day?: unknown } | undefined)?.day;
+  const dayTag = typeof day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(day) ? shortDay(day) : null;
   const bad = failed && !rejected;
   const cut = step.status === "cut";
   const waiting = step.status === "waiting";
@@ -108,6 +113,11 @@ function ToolCard({ step, model, when, pins, fresh, renderWaiting, levelOf }: { 
             {sources.map((s) => (
               <SourceLogo key={s} source={s} height={14} />
             ))}
+            {dayTag ? (
+              <Badge variant="tag-quiet" data-testid="agent-step-day">
+                {dayTag}
+              </Badge>
+            ) : null}
             {waiting ? <Badge variant="tag-live">Your turn</Badge> : null}
             {step.status === "done" && step.tool && TOOL_SIGNAL[step.tool] ? <LevelBadge word={levelOf?.(TOOL_SIGNAL[step.tool]!)} /> : null}
           </div>

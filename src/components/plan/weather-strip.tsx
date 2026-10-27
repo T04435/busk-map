@@ -17,6 +17,7 @@ export function WeatherStrip({
   slot,
   titleAs: Title = "h2",
   level = null,
+  label = "Weather",
 }: {
   weather: Plan["weather"];
   slot: { startHour: number; endHour: number };
@@ -24,6 +25,8 @@ export function WeatherStrip({
   titleAs?: "h2" | "h3" | "p";
   /** The forecast's level word outside Melbourne (V2 2.2). */
   level?: LevelWord | null;
+  /** The strip's accessible name: "Weather" on a plan; a week's strips each name their day. */
+  label?: string;
 }) {
   if (!weather)
     return (
@@ -70,7 +73,7 @@ export function WeatherStrip({
     );
   };
   return (
-    <section aria-label="Weather" className="grid min-w-0 gap-1 border-2 border-rule bg-card px-4 py-3">
+    <section aria-label={label} className="grid min-w-0 gap-1 border-2 border-rule bg-card px-4 py-3">
       <div className="flex flex-wrap items-baseline gap-3">
         <span className="font-mono text-[11px] leading-4 font-medium tracking-[0.06em] text-muted-foreground uppercase">Weather</span>
         <Title className="m-0 font-display text-lg leading-5 font-extrabold tracking-[0.01em] uppercase">{wet ? "Rain in your slot" : "Dry through your slot"}</Title>

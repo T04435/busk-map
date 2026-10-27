@@ -4,7 +4,8 @@
 // (ODbL). Popularity, audience taste and the remaining opening hours are
 // invented by the mock.
 import { geohashEncode, type LatLon } from "@/lib/geo";
-import { fromMockFrame, OFFLINE_REGIONS } from "@/server/offline-city";
+import { fromMockFrame, OFFLINE_METRO_AREAS, OFFLINE_METRO_HUBS, OFFLINE_REGIONS } from "@/server/offline-city";
+import { MELBOURNE } from "@/lib/city";
 import { mockId, unit, type Genre } from "./catalog";
 import { OSM_PLACES } from "./data/osm-places";
 import { density, mixGenres, tasteAt, type GenreVector } from "./taste-field";
@@ -107,13 +108,24 @@ export const MOCK_PLACES: MockPlace[] = build();
 function regionPlaces(): MockPlace[] {
   return OFFLINE_REGIONS.flatMap((region) => {
     const count = new Map<string, number>();
-    return MOCK_PLACES.map((place) => {
+    const moved = MOCK_PLACES.map((place) => {
       const n = (count.get(place.category) ?? 0) + 1;
       count.set(place.category, n);
       const at = fromMockFrame({ lat: place.lat, lon: place.lon }, region);
       const osmRef = `${region.id}:${place.osmRef}`;
       return { ...place, ...at, id: mockId("place", osmRef), osmRef, name: `Synthetic ${place.categoryLabel} ${n}`, address: null, geohash: geohashEncode(at, 12) };
     });
+    // The metro's taste hubs have places too (a dozen of the centre's, moved onto each hub), with an address naming the hub's
+    // area, so an offline metro with no OpenStreetMap still has Qloo venues and suburbs to name its spots by.
+    const hubs = OFFLINE_METRO_HUBS.flatMap((hub, h) => {
+      const area = OFFLINE_METRO_AREAS.find((a) => a.lat === hub.lat && a.lon === hub.lon)?.name ?? `Synthetic ${hub.label}`;
+      return MOCK_PLACES.slice(0, 12).map((place, i) => {
+        const at = fromMockFrame({ lat: place.lat - MELBOURNE.center.lat + hub.lat, lon: place.lon - MELBOURNE.center.lon + hub.lon }, region);
+        const osmRef = `${region.id}:hub${h}:${place.osmRef}`;
+        return { ...place, ...at, id: mockId("place", osmRef), osmRef, name: `${area} ${place.categoryLabel} ${i + 1}`, address: `${i + 1} Synthetic Lane, ${area} 100-000${h}, Japan`, geohash: geohashEncode(at, 12) };
+      });
+    });
+    return [...moved, ...hubs];
   });
 }
 

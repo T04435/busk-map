@@ -1,61 +1,34 @@
-import { QLOO_BUDGET_MESSAGE, qlooBudgetSpent } from "@/server/adapters/qloo/budget";
-import { buildIcs } from "@/lib/ics";
-import { planSearchParams } from "@/lib/plan-url";
-import { zonedHourToUtc } from "@/lib/slot";
-import { parseWeekParams } from "@/lib/week-url";
-import { buildWeekPlan, WeekQlooUnavailableError } from "@/server/agent/week";
-import { MELBOURNE } from "@/server/cities";
-import { adapterContextFor } from "@/server/request";
-import { serverNow, serverToday } from "@/server/clock";
+import { isPlanId } from "@/lib/plan-id";
+import { rejectBots } from "@/server/bot";
+import { serverNow } from "@/server/clock";
+import { testSwitches } from "@/server/env";
+import { weekIcsLimiter } from "@/server/rate-limit";
+import { clientIp } from "@/server/request";
+import { loadWeek, weekIcs } from "@/server/week";
 
 /**
- * GET /api/week/ics?<same params as /week>: the chosen sessions as an .ics
- * file. Uses the engine only (no model call), so it is free and repeatable.
+ * GET /api/week/ics?id=<week id>: the week's ready days as an .ics file for Google or Apple Calendar, built from the stored
+ * day plans only (no Qloo or model call). Behind BotID and a per-IP limit.
  */
 export async function GET(request: Request) {
+  const blocked = await rejectBots("/api/week/ics");
+  if (blocked) return blocked;
   const url = new URL(request.url);
-  const params = Object.fromEntries(url.searchParams);
-  const today = serverToday(MELBOURNE.timeZone);
-  const parsed = parseWeekParams(params, today);
-  if (!parsed.ok) return Response.json({ error: { code: "invalid_request", message: parsed.error } }, { status: 400 });
-
-  try {
-    const plan = await buildWeekPlan(parsed.request, adapterContextFor(url.searchParams.get("faults")), today, false, serverNow());
-    const req = parsed.request;
-    const ics = buildIcs(
-      plan.sessions.map((s) => {
-        const planLink = `${url.origin}/plan?${planSearchParams({
-          city: req.city,
-          permit: req.permit,
-          performer: req.performer,
-          slot: { date: s.date, startHour: s.startHour, endHour: s.endHour },
-        })}`;
-        return {
-          uid: `${s.key}-${s.pitch.id}@busk-map`,
-          start: zonedHourToUtc(s.date, s.startHour, plan.timeZone),
-          end: zonedHourToUtc(s.date, s.endHour, plan.timeZone),
-          summary: `Busk: ${s.pitch.name}`,
-          location: `${s.pitch.name}, ${plan.cityName}`,
-          description: [`Score ${s.score}/100.`, s.why, ...s.pitch.cautions, "Busk Map never confirms a pitch is legal; check your permit.", planLink].join("\n"),
-          geo: { lat: s.pitch.lat, lon: s.pitch.lon },
-          url: planLink,
-        };
-      }),
-      serverNow(),
-      `Busk Map: ${plan.performerName}`,
-    );
-    return new Response(ics, {
-      headers: {
-        "Content-Type": "text/calendar; charset=utf-8",
-        "Content-Disposition": `attachment; filename="busk-map-week-${plan.startDate}.ics"`,
-        "Cache-Control": "no-store",
-      },
-    });
-  } catch (error) {
-    if (error instanceof WeekQlooUnavailableError) {
-      if (qlooBudgetSpent()) return Response.json({ error: { code: "qloo_budget_spent", message: QLOO_BUDGET_MESSAGE } }, { status: 503 });
-      return Response.json({ error: { code: "qloo_unavailable", message: "Qloo is not responding. Please try again shortly." } }, { status: 503 });
-    }
-    throw error;
+  const id = url.searchParams.get("id");
+  if (!isPlanId(id)) return Response.json({ error: { code: "invalid_request", message: "Which week? The link is missing its id." } }, { status: 400 });
+  if (!testSwitches().offline) {
+    const limit = weekIcsLimiter.check(clientIp(request.headers));
+    if (!limit.ok) return Response.json({ error: { code: "rate_limited", message: "Too many calendar downloads in a short time. Try again in a few minutes." } }, { status: 429, headers: { "Retry-After": String(limit.retryAfterS) } });
   }
+  const loaded = await loadWeek(id, testSwitches().offline).catch(() => undefined);
+  if (loaded === undefined) return Response.json({ error: { code: "internal", message: "The week couldn't be read. Please try again." } }, { status: 500 });
+  if (!loaded) return Response.json({ error: { code: "not_found", message: "There's no week at this link." } }, { status: 404 });
+  if (!loaded.week.days.some((d) => d.status === "ready" && d.planId)) return Response.json({ error: { code: "no_days", message: "This week has no day to add to a calendar yet." } }, { status: 409 });
+  return new Response(weekIcs(loaded, url.origin, serverNow()), {
+    headers: {
+      "Content-Type": "text/calendar; charset=utf-8",
+      "Content-Disposition": `attachment; filename="busk-map-week-${loaded.week.startDate}.ics"`,
+      "Cache-Control": "no-store",
+    },
+  });
 }

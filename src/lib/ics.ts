@@ -15,7 +15,7 @@ export type IcsEvent = {
 
 /** Escape TEXT values (RFC 5545 §3.3.11). */
 export function escapeText(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
 }
 
 const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
@@ -46,7 +46,7 @@ export function buildIcs(events: IcsEvent[], now: Date, calendarName = "Busk Map
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Busk Map//Week planner//EN",
+    "PRODID:-//Busk Map//Plan my week//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeText(calendarName)}`,

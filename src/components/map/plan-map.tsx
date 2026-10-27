@@ -41,7 +41,7 @@ function hatchImage(): ImageData | null {
 
 type Props = {
   /** Only what the map draws, so the landing can feed it a labelled example without a full plan. */
-  plan: Pick<Plan, "tasteCells" | "others"> & { zones?: Plan["zones"]; districts?: Plan["districts"]; areas?: Plan["areas"] } & { pitches: Pick<PlanPitch, "id" | "name" | "lat" | "lon" | "score" | "discovery">[] };
+  plan: Pick<Plan, "tasteCells" | "others"> & { zones?: Plan["zones"]; districts?: Plan["districts"]; areas?: Plan["areas"] } & { pitches: (Pick<PlanPitch, "id" | "name" | "lat" | "lon" | "score" | "discovery"> & { /** The pin's badge instead of its rank (a week's day number). */ badge?: string; /** The pin's accessible name instead of "Pitch N: …". */ ariaLabel?: string })[] };
   center: { lat: number; lon: number };
   selectedId: string | null;
   onSelect: (pitchId: string) => void;
@@ -60,7 +60,7 @@ const hexSvg = (cls: string, svgCls = "absolute inset-0 size-full overflow-visib
 const RING = `<svg class="relative text-primary" width="28" height="28" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M38.554 20.371A15 15 0 1 1 27.629 9.446" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round"/><polygon points="24.00,17.40 29.72,20.70 29.72,27.30 24.00,30.60 18.28,27.30 18.28,20.70" fill="#fbf9f5"/></svg>`;
 
 /** DS PitchPin kind="top": a bluestone hex puck edged in card (primary when selected), the ring, and the hex rank badge. Ranks 2 and 3 are quieter (is-minor). */
-function topPin(rank: number): string {
+function topPin(rank: number | string): string {
   const puck = hexSvg(
     "fill-bluestone stroke-card [stroke-width:4px] dark:stroke-foreground group-aria-pressed:stroke-primary group-aria-pressed:[stroke-width:7px] dark:group-aria-pressed:stroke-primary",
   );
@@ -279,12 +279,12 @@ export function PlanMap({ plan, center, selectedId, onSelect, frame: framing }: 
       el.type = "button";
       el.dataset.pitchId = p.id;
       const tag = p.discovery === "hidden-gem" ? ", hidden gem" : p.discovery === "usual" ? ", usual pitch" : "";
-      el.setAttribute("aria-label", `Pitch ${rank}: ${p.name}, score ${p.score}${tag}`);
+      el.setAttribute("aria-label", p.ariaLabel ?? `Pitch ${rank}: ${p.name}, score ${p.score}${tag}`);
       el.className = "group relative z-10 block size-12 cursor-pointer";
       // DS PitchPin: 40px wide hex (ratio 1.1547), pitch 1 the largest, 2 and 3 quieter (is-minor); selected grows and shows its caption.
-      const minor = rank > 1 ? "scale-[.82] opacity-90 group-aria-pressed:opacity-100" : "";
+      const minor = rank > 1 && !p.badge ? "scale-[.82] opacity-90 group-aria-pressed:opacity-100" : "";
       const label = p.name.replace(/&/g, "&amp;").replace(/</g, "&lt;");
-      el.innerHTML = `<span data-shape class="absolute top-1/2 left-1/2 block h-[46.2px] w-10 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_2px_0_color-mix(in_oklab,var(--bluestone)_35%,transparent)] transition-transform duration-200 group-aria-pressed:scale-[1.18] ${minor}">${topPin(rank)}</span><span data-caption aria-hidden="true" class="pointer-events-none absolute top-[calc(50%+33px)] left-1/2 hidden -translate-x-1/2 bg-card px-1.5 py-0.5 font-mono text-[11px] leading-4 tracking-[0.04em] whitespace-nowrap text-foreground uppercase shadow-[0_0_0_1.5px_var(--rule)] group-aria-pressed:block">${label}</span>`;
+      el.innerHTML = `<span data-shape class="absolute top-1/2 left-1/2 block h-[46.2px] w-10 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_2px_0_color-mix(in_oklab,var(--bluestone)_35%,transparent)] transition-transform duration-200 group-aria-pressed:scale-[1.18] ${minor}">${topPin(p.badge ?? rank)}</span><span data-caption aria-hidden="true" class="pointer-events-none absolute top-[calc(50%+33px)] left-1/2 hidden -translate-x-1/2 bg-card px-1.5 py-0.5 font-mono text-[11px] leading-4 tracking-[0.04em] whitespace-nowrap text-foreground uppercase shadow-[0_0_0_1.5px_var(--rule)] group-aria-pressed:block">${label}</span>`;
       el.addEventListener("click", () => {
         setDotId(null);
         onSelectRef.current(p.id);

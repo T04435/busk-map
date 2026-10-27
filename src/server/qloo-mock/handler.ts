@@ -369,7 +369,7 @@ function placePayload(place: MockPlace, query?: Record<string, unknown>) {
     subtype: "urn:entity:place",
     location: { lat: place.lat, lon: place.lon, geohash: place.geohash },
     properties: {
-      ...(place.address ? { address: `${place.address}, Melbourne VIC` } : {}),
+      ...(place.address ? { address: place.osmRef.includes(":") ? place.address : `${place.address}, Melbourne VIC` } : {}),
       geocode: { name: "Melbourne", admin1_region: "Victoria", admin2_region: "Melbourne City", country_code: "AU" },
       hours: liveHours(place.hours),
       // Live shape (2026-10-16): live_music, good_for [{id, name, type, weight}], keywords [{name, count}]. Invented here.

@@ -183,6 +183,8 @@ export type AssembleOptions = {
   toolResults?: ToolResult[];
   /** Which model wrote `ai`'s text: the offline mock model or Claude (the default). */
   model?: "claude" | "mock";
+  /** A week's day plan: only the Hive's pick (no top-up from the engine's), and no agent-vs-engine view. Without a valid answer the plan has no pitches. */
+  agentOnly?: boolean;
 };
 
 /**
@@ -224,11 +226,11 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
   const poolById = new Map<string, ScoredPitch>([...engineRanked, ...(options.pool ?? [])].map((p) => [p.id, p]));
   const aiPicks = (ai?.pitches ?? []).filter((p, i, all) => poolById.has(p.pitchId) && all.findIndex((q) => q.pitchId === p.pitchId) === i);
   const valid = ai !== null && aiPicks.length > 0 && aiPicks.length === ai.pitches.length;
-  let top = engineTop;
+  let top = options.agentOnly ? [] : engineTop;
   if (valid) {
     // Claude's choice, best first; topped up from the engine's picks if it named fewer than three.
     const chosen = aiPicks.map((p) => poolById.get(p.pitchId)!);
-    for (const p of engineTop) if (chosen.length < 3 && !chosen.some((c) => c.id === p.id)) chosen.push(p);
+    if (!options.agentOnly) for (const p of engineTop) if (chosen.length < 3 && !chosen.some((c) => c.id === p.id)) chosen.push(p);
     top = chosen.slice(0, 3);
   }
   const ranked = [...poolById.values()].sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
@@ -381,7 +383,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     cityLevels: context.levels,
     qlooFailed: context.qlooFailed(),
     agent:
-      usedAi && valid
+      usedAi && valid && !options.agentOnly
         ? {
             engineTop: engineTop.map((p) => ({ id: p.id, name: p.name, score: p.score })),
             differs: changes.length > 0 || top.length !== engineTop.length,

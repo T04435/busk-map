@@ -84,33 +84,59 @@ export function PitchSheet({
                 Pitch {rank} · {pitch.window ? `Best ${shortHours(pitch.window.startHour, pitch.window.endHour)}` : shortHours(plan.slot.startHour, plan.slot.endHour)}
               </SheetDescription>
             </SheetHeader>
-            <div className="flex flex-col gap-5 p-4 md:p-6">
-              {pitch.window && (
-                <p className="m-0 text-sm leading-5 text-muted-foreground" data-testid="pitch-window">
-                  {pitch.window.why}
-                  {pitch.window.runnersUp.length > 0 && ` (next best: ${pitch.window.runnersUp.map((w) => shortHours(w.startHour, w.endHour)).join(", ")})`}.
-                </p>
-              )}
-              <PitchDetails plan={plan} pitch={pitch} rank={rank} model={model} />
-              <SetlistPanel
-                pitch={pitch}
-                when={`${shortDay(plan.slot.date)} ${pitch.window ? shortHours(pitch.window.startHour, pitch.window.endHour) : shortHours(plan.slot.startHour, plan.slot.endHour)}`}
-                learnThese={plan.learnThese}
-                canAddToRepertoire={canAddToRepertoire}
-                repertoireTotal={repertoireTotal}
-              />
-              <CrowdPanel crowd={plan.crowd} resolved={plan.resolvedArtists} topPitch={plan.pitches[0]?.name ?? null} qlooMode={plan.qlooMode} ownArtist={plan.ownArtist} />
-              <Disclosure label="How this score adds up" data-testid="score-details">
-                <div className="space-y-5">
-                  <ScoreBreakdown pitch={pitch} weights={plan.weights} />
-                  <WeightsPanel weights={plan.weights} />
-                </div>
-              </Disclosure>
-              {pitch.kind !== "designated" && <OsmCredit className="self-start" />}
+            <div className="p-4 md:p-6">
+              <PitchDetailsBody plan={plan} pitch={pitch} model={model} canAddToRepertoire={canAddToRepertoire} repertoireTotal={repertoireTotal} />
             </div>
           </>
         ) : null}
       </SheetContent>
     </Sheet>
+  );
+}
+
+/**
+ * Everything a pitch's details show: its best hours, the details (crowd at the pitch, busy places, activity by hour, events, the
+ * rules line), the suggested set, the city's crowd and how the score adds up. The busk plan's sheet shows it; a week shows each
+ * day's inline.
+ */
+export function PitchDetailsBody({
+  plan,
+  pitch,
+  model,
+  canAddToRepertoire = false,
+  repertoireTotal,
+}: {
+  plan: Plan;
+  pitch: PlanPitch;
+  model: ExplanationsModel | null;
+  canAddToRepertoire?: boolean;
+  repertoireTotal?: number;
+}) {
+  const rank = plan.pitches.indexOf(pitch) + 1;
+  return (
+    <div className="flex flex-col gap-5">
+      {pitch.window && (
+        <p className="m-0 text-sm leading-5 text-muted-foreground" data-testid="pitch-window">
+          {pitch.window.why}
+          {pitch.window.runnersUp.length > 0 && ` (next best: ${pitch.window.runnersUp.map((w) => shortHours(w.startHour, w.endHour)).join(", ")})`}.
+        </p>
+      )}
+      <PitchDetails plan={plan} pitch={pitch} rank={rank} model={model} />
+      <SetlistPanel
+        pitch={pitch}
+        when={`${shortDay(plan.slot.date)} ${pitch.window ? shortHours(pitch.window.startHour, pitch.window.endHour) : shortHours(plan.slot.startHour, plan.slot.endHour)}`}
+        learnThese={plan.learnThese}
+        canAddToRepertoire={canAddToRepertoire}
+        repertoireTotal={repertoireTotal}
+      />
+      <CrowdPanel crowd={plan.crowd} resolved={plan.resolvedArtists} topPitch={plan.pitches[0]?.name ?? null} qlooMode={plan.qlooMode} ownArtist={plan.ownArtist} />
+      <Disclosure label="How this score adds up" data-testid="score-details">
+        <div className="space-y-5">
+          <ScoreBreakdown pitch={pitch} weights={plan.weights} />
+          <WeightsPanel weights={plan.weights} />
+        </div>
+      </Disclosure>
+      {pitch.kind !== "designated" && <OsmCredit className="self-start" />}
+    </div>
   );
 }

@@ -1,10 +1,11 @@
 import "server-only";
-import { inBBox, type BBox, type LatLon } from "@/lib/geo";
+import { distanceM, inBBox, type BBox, type LatLon } from "@/lib/geo";
 import { boxAround, isMetro } from "@/lib/city";
 import type { TrendRow } from "@/server/adapters/qloo";
 import { ageLabel } from "@/lib/age";
 import { ANY_TIME_DAY, anyTimeWindowsLeft, DEFAULT_SLOT_HOURS, isAnyTime, slotUtcRange, weekdayOf, zonedHourToUtc, type Slot, type TimeWindow } from "@/lib/slot";
 import { nameKey, trackKey } from "@/lib/text";
+import { suburbsOfPlaces } from "@/lib/venue";
 import type { PlanRequest } from "@/lib/plan-schema";
 import type { AdapterContext, AdapterName, AdapterResult } from "@/server/adapters/core";
 import { getEvents, getEventsBetween, EVENTS_LOOKBACK_HOURS } from "@/server/adapters/events";
@@ -26,6 +27,10 @@ import {
   districtsFromAreas,
   findDistricts,
   rankAreas,
+  pickAreas,
+  topCells,
+  CELL_NAME_RADIUS_M,
+  TELL_APART_RADIUS_M,
   type NamedArea,
   type RankedArea,
   MAX_PICKS_PER_DISTRICT,
@@ -130,6 +135,9 @@ type Status = { adapter: AdapterName; source: string; mode: AdapterResult<unknow
  */
 const DAY_KEYS = ["places", "places:wide", "events", "eventArtists", "eventTaste", "weather", "agent:places:"];
 export const sharedAcrossDays = (key: string) => !DAY_KEYS.some((k) => (k.endsWith(":") ? key.startsWith(k) : key === k));
+
+/** Qloo place lookups around unnamed strong taste cells, per plan (or week): each names the spots near it. */
+export const NAMING_LOOKUPS = 10;
 
 export class PlanContext {
   readonly request: PlanRequest;
@@ -382,8 +390,34 @@ export class PlanContext {
    * A metro's named areas (adapters/areas): the city itself, then up to 9 suburbs, towns and neighbourhoods inside the planning
    * area, from one Overpass query (else one geocoder search). None for a CBD-sized city.
    */
-  namedAreas(): Promise<{ areas: NamedArea[]; source: AreasSource }> {
-    return this.once("namedAreas", async () => (this.metro ? findNamedAreas(this.city, this.adapters) : { areas: [], source: "none" as const }));
+  namedAreas(): Promise<{ areas: NamedArea[]; source: AreasSource | "qloo" }> {
+    return this.once("namedAreas", async () => {
+      if (!this.metro) return { areas: [], source: "none" as const };
+      const found = await findNamedAreas(this.city, this.adapters);
+      if (found.areas.length > 1) return found;
+      // Overpass and the geocoder found no suburbs (Overpass is often down; the geocoder only searches the city's name): the
+      // suburbs in the addresses of Qloo's places across the area.
+      const areas = pickAreas(
+        suburbsOfPlaces(await this.namingPlaces()).map((s) => ({ name: s.name, lat: s.lat, lon: s.lon, kind: "suburb" as const, population: null })),
+        this.city,
+      );
+      return areas.length > 1 ? { areas, source: "qloo" as const } : found;
+    });
+  }
+
+  /**
+   * Qloo's places for naming, any day (no opening-hours filter, so a week's days share them): across a metro's whole area, else
+   * the centre. Only outside Melbourne, whose spots are named already.
+   */
+  namingPlaces(): Promise<qloo.QlooPlace[]> {
+    return this.once("namingPlaces", async () => {
+      if (isMelbourne(this.city)) return [];
+      const ids = await this.entityIds();
+      const tags = this.signalTags();
+      if (ids.length === 0 && tags.length === 0) return [];
+      const radiusM = this.metro ? this.city.radiusKm * 1000 : PLACES_RADIUS_M;
+      return this.track("naming:places", () => qloo.busyPlaces(ids, this.city.center, radiusM, null, this.adapters, tags));
+    });
   }
 
   /**
@@ -675,11 +709,35 @@ export class PlanContext {
    */
   tasteNaming() {
     return this.once("tasteNaming", async () => {
-      const [venues, areas, spots] = await Promise.all([this.places(), this.rankedAreas(), this.spots()]);
+      const [dayVenues, areas, spots, named] = await Promise.all([this.places(), this.rankedAreas(), this.spots(), this.namingPlaces()]);
+      const venues = [...dayVenues, ...named, ...(await this.venuesNearTopCells([...dayVenues, ...named]))];
       // OpenStreetMap's named streets and spaces (an unnamed one shows its kind, "Pedestrian street"), to tell spots apart.
       const streets = isMelbourne(this.city) ? [] : spots.filter((s) => !OSM_UNNAMED.has(s.name)).map((s) => ({ name: s.name, lat: s.lat, lon: s.lon }));
       return { venues, areas: areas.map((a) => ({ name: a.name, lat: a.lat, lon: a.lon })), streets, city: this.city.name, cityCenter: this.city.center };
     });
+  }
+
+  /**
+   * Outside Melbourne: Qloo's places around the strongest taste cells that no known place names (NAMING_LOOKUPS at most, one
+   * Qloo call each, shared by a week's days), so a taste spot is "Near <venue>", never just "<City> taste spot".
+   */
+  private async venuesNearTopCells(known: readonly LatLon[]): Promise<qloo.QlooPlace[]> {
+    if (isMelbourne(this.city)) return [];
+    const ids = await this.entityIds();
+    const tags = this.signalTags();
+    if (ids.length === 0 && tags.length === 0) return [];
+    // The cells that stand as pitches (scoring/candidates.ts topCells), strongest first.
+    const cells = topCells(await this.tasteCells());
+    const lonely: LatLon[] = [];
+    for (const c of cells) {
+      if (lonely.length >= NAMING_LOOKUPS) break;
+      if (known.some((v) => distanceM(v, c) <= CELL_NAME_RADIUS_M) || lonely.some((l) => distanceM(l, c) <= TELL_APART_RADIUS_M)) continue;
+      lonely.push(c);
+    }
+    const found = await Promise.all(
+      lonely.map((c) => this.track(`naming:near:${c.lat.toFixed(3)},${c.lon.toFixed(3)}`, () => qloo.busyPlaces(ids, { lat: c.lat, lon: c.lon }, TELL_APART_RADIUS_M, null, this.adapters, tags))),
+    );
+    return found.flat();
   }
 
   /** Genres that characterise the crowd around a point (Qloo urn:tag). */

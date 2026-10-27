@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCandidates, buildCandidatesWithFunnel, CELL_NAME_RADIUS_M,
+import { buildCandidates, buildCandidatesWithFunnel, CELL_NAME_RADIUS_M, NEAR_FALLBACK_RADIUS_M,
   TELL_APART_RADIUS_M, tasteSpotName, nearLines, siteAllowsPerformer, topCells, usualSpotAt } from "@/server/scoring";
 import type { HeatCellInput, HotspotInput, SiteInput, SpotInput, ZoneInput } from "@/server/scoring";
 import { USUAL_HOTSPOTS } from "@/server/data/spots";
@@ -201,10 +201,15 @@ describe("taste spot names (tasteSpotName)", () => {
     expect(tasteSpotName(point, { areas: [], venues, city: "Lisbon" })).toBe("Near Café Nicola");
   });
 
-  it("reaches a venue up to CELL_NAME_RADIUS_M away, not further", () => {
+  it("names by the nearest venue within CELL_NAME_RADIUS_M, else the nearest real place within NEAR_FALLBACK_RADIUS_M, before a taste spot", () => {
     expect(CELL_NAME_RADIUS_M).toBeGreaterThanOrEqual(400);
+    expect(NEAR_FALLBACK_RADIUS_M).toBe(1500);
     expect(tasteSpotName(point, { venues: [venues[1]] })).toBe("Near Bar Rossio");
-    expect(tasteSpotName(point, { venues: [venues[2]], city: "Lisbon" })).toBe("Lisbon taste spot");
+    // 600 m off: still a real name, never "Lisbon taste spot".
+    expect(tasteSpotName(point, { venues: [venues[2]], city: "Lisbon" })).toBe("Near Too Far Club");
+    expect(tasteSpotName(point, { streets: [{ name: "Rua Augusta", lat: 38.7195, lon: -9.14 }], city: "Lisbon" })).toBe("Near Rua Augusta");
+    // Beyond 1.5 km nothing names it.
+    expect(tasteSpotName(point, { venues: [{ name: "Way Off", lat: 38.73, lon: -9.14 }], city: "Lisbon" })).toBe("Lisbon taste spot");
   });
 
   it("names a spot by its area alone when no venue is near", () => {
@@ -216,30 +221,27 @@ describe("taste spot names (tasteSpotName)", () => {
     expect(tasteSpotName(point, {})).toBe("Taste spot");
   });
 
-  it("tells two spots apart by the next-nearest venue, then a street or place within 800 m, then a compass hint, never an ordinal", () => {
+  it("tells two spots apart by the next-nearest venue, then a street or place within 1.5 km, then coordinates; never a compass hint, a distance or an ordinal", () => {
     const taken = new Set(["Baixa · near Café Nicola"]);
     expect(tasteSpotName(point, { areas, venues, city: "Lisbon" }, taken)).toBe("Baixa · near Bar Rossio");
     taken.add("Baixa · near Bar Rossio");
-    // Too Far Club is 600 m away: too far to name a spot, near enough to tell two apart.
     expect(TELL_APART_RADIUS_M).toBe(800);
     expect(tasteSpotName(point, { areas, venues, city: "Lisbon" }, taken)).toBe("Baixa · near Too Far Club");
     taken.add("Baixa · near Too Far Club");
-    const streets = [{ name: "Rua Augusta", lat: 38.7095, lon: -9.1395 }, { name: "Rua Longe", lat: 38.72, lon: -9.14 }];
+    const streets = [{ name: "Rua Augusta", lat: 38.7095, lon: -9.1395 }, { name: "Rua Longe", lat: 38.72, lon: -9.14 }, { name: "Rua Distante", lat: 38.73, lon: -9.14 }];
     expect(tasteSpotName(point, { areas, venues, streets, city: "Lisbon" }, taken)).toBe("Baixa · near Rua Augusta");
     taken.add("Baixa · near Rua Augusta");
-    // Rua Longe is 1.1 km off: a compass hint from the venue the name gives (the point is 100 m south of Café Nicola), never "(2)".
-    expect(tasteSpotName(point, { areas, venues, streets, city: "Lisbon" }, taken)).toBe("Baixa · near Café Nicola, south");
-    expect(tasteSpotName({ lat: 38.7109, lon: -9.139 }, { areas, venues: [venues[0]], city: "Lisbon" }, new Set(["Baixa · near Café Nicola"]))).toBe("Baixa · near Café Nicola, east");
+    // Rua Longe is 1.1 km off: still a real name.
+    expect(tasteSpotName(point, { areas, venues, streets, city: "Lisbon" }, taken)).toBe("Baixa · near Rua Longe");
+    taken.add("Baixa · near Rua Longe");
+    // Rua Distante is 2.2 km off: too far; the coordinates.
+    expect(tasteSpotName(point, { areas, venues, streets, city: "Lisbon" }, taken)).toBe("Baixa · near Café Nicola, 38.7100, -9.1400");
     const far = { lat: 38.73, lon: -9.14 };
     const city = { city: "Santo Domingo", cityCenter: { lat: 38.71, lon: -9.14 } };
-    expect(tasteSpotName(far, city, new Set(["Santo Domingo taste spot"]))).toBe("Santo Domingo taste spot, north");
-    expect(tasteSpotName(far, city, new Set(["Santo Domingo taste spot", "Santo Domingo taste spot, north"]))).toBe("Santo Domingo taste spot, north, 2.2 km");
-    for (let i = 0; i < 6; i++) {
-      const names = new Set<string>();
-      for (const p of [far, point, { lat: 38.7, lon: -9.12 }, { lat: 38.73, lon: -9.141 }]) names.add(tasteSpotName(p, city, names));
-      for (const n of names) expect(n).not.toMatch(/\(\d+\)/);
-      expect(names.size).toBe(4);
-    }
+    const names = new Set<string>();
+    for (const p of [far, point, { lat: 38.7, lon: -9.12 }, { lat: 38.73, lon: -9.141 }]) names.add(tasteSpotName(p, city, names));
+    expect(names.size).toBe(4);
+    for (const n of names) expect(n).not.toMatch(/\(\d+\)|north|south|east|west| km/);
   });
 
   it("names the cell pitches of a city with no spots, ids staying the cells' geohashes", () => {

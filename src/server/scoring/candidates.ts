@@ -137,32 +137,28 @@ export type TasteSpotNaming = {
   /** OpenStreetMap's named streets and public spaces, to tell two spots apart (never a pitch's own name). */
   streets?: readonly (LatLon & { name: string })[];
   city?: string;
-  /** The city's centre: a spot nearer to it than to every named area takes the city's name; the compass hint's anchor. */
+  /** The city's centre: a spot nearer to it than to every named area takes the city's name. */
   cityCenter?: LatLon;
 };
 
 /** Two spots that would share a name are told apart by a street or place within this distance (tasteSpotName). */
 export const TELL_APART_RADIUS_M = 800;
 
-const COMPASS = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"] as const;
-/** Where `point` lies from `from`, on an 8-point compass; "centre" within 25 m. */
-function compass(from: LatLon, point: LatLon): string {
-  if (distanceM(from, point) < 25) return "centre";
-  const dx = (point.lon - from.lon) * Math.cos((from.lat * Math.PI) / 180);
-  const dy = point.lat - from.lat;
-  const bearing = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360;
-  return COMPASS[Math.round(bearing / 45) % 8];
-}
+/**
+ * With no Qloo place within CELL_NAME_RADIUS_M, the nearest one (or OpenStreetMap street) within this distance still names the
+ * spot ("Near <venue>"), before the area's or city's "taste spot"; it also tells same-named spots apart.
+ */
+export const NEAR_FALLBACK_RADIUS_M = 1500;
 
 /**
  * The name of a pitch (or taste cell) Busk Map stood at a taste cell's centre, shared by the pitch cards, the map, the step
  * titles and the agent's copy:
  * - its area: with a metro's named areas, the one whose centre is nearest within its reach, else the nearest one at all
  *   (unless the city's centre is nearer: then the city); the city when there are no areas; none otherwise;
- * - its venue: the nearest Qloo place within CELL_NAME_RADIUS_M;
+ * - its venue: the nearest Qloo place within CELL_NAME_RADIUS_M, else the nearest place or street within NEAR_FALLBACK_RADIUS_M;
  * - "<Area> · near <Venue>", "Near <Venue>" (no areas), "<Area> taste spot" (no venue), "<City> taste spot" (neither).
  * A name already `taken` tries the next-nearest venue, then the nearest Qloo place or OpenStreetMap street within
- * TELL_APART_RADIUS_M, and only then a compass hint from its venue or its area's centre ("…, north"). Never an ordinal, never a bare number.
+ * NEAR_FALLBACK_RADIUS_M, and only then the coordinates. Never a compass hint or a distance, never an ordinal.
  */
 export function tasteSpotName(point: LatLon, { areas = [], venues = [], streets = [], city, cityCenter }: TasteSpotNaming, taken: ReadonlySet<string> = new Set()): string {
   const byDistance = areas.map((a) => ({ a, d: distanceM(a, point) })).sort((x, y) => x.d - y.d);
@@ -177,9 +173,9 @@ export function tasteSpotName(point: LatLon, { areas = [], venues = [], streets 
       .sort((x, y) => x.d - y.d || x.v.name.localeCompare(y.v.name))
       .map((x) => x.v);
   const within = (places: readonly (LatLon & { name: string })[], radius: number) => closest(places, radius).map((v) => v.name.trim());
-  const near = within(venues, CELL_NAME_RADIUS_M);
-  // The compass hint reads from what the name names: its venue, else its area's (or the city's) centre, else the nearest place.
-  const anchor: LatLon | undefined = closest(venues, CELL_NAME_RADIUS_M)[0] ?? chosen ?? cityCenter ?? closest([...venues, ...streets], Infinity)[0];
+  const close = within(venues, CELL_NAME_RADIUS_M);
+  // No venue that close: the nearest real place a little further out, before ever a "taste spot".
+  const near = close.length > 0 ? close : within([...venues, ...streets], NEAR_FALLBACK_RADIUS_M).slice(0, 1);
   const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
   const label = (venue: string | undefined) =>
     venue ? (area && !same(area, venue) ? `${area} · near ${venue}` : `Near ${venue}`) : area || city ? `${area ?? city} taste spot` : "Taste spot";
@@ -190,17 +186,13 @@ export function tasteSpotName(point: LatLon, { areas = [], venues = [], streets 
   const base = label(near[0]);
   if (!taken.has(base)) return base;
   // Told apart by the nearest street or place a little further out.
-  for (const place of within([...venues, ...streets], TELL_APART_RADIUS_M)) {
+  for (const place of within([...venues, ...streets], NEAR_FALLBACK_RADIUS_M)) {
     const name = label(place);
     if (!taken.has(name)) return name;
   }
-  // Last resort: a compass hint from the area's (or city's) centre, then with the distance, then the coordinates.
-  const tries = anchor ? [compass(anchor, point), `${compass(anchor, point)}, ${(distanceM(anchor, point) / 1000).toFixed(1)} km`] : [];
-  for (const hint of [...tries, `${point.lat.toFixed(4)}, ${point.lon.toFixed(4)}`]) {
-    const name = `${base}, ${hint}`;
-    if (!taken.has(name)) return name;
-  }
-  return `${base}, ${point.lat.toFixed(5)}, ${point.lon.toFixed(5)}`;
+  // Last resort (nothing real left to name it by): the coordinates.
+  const coords = `${base}, ${point.lat.toFixed(4)}, ${point.lon.toFixed(4)}`;
+  return taken.has(coords) ? `${base}, ${point.lat.toFixed(5)}, ${point.lon.toFixed(5)}` : coords;
 }
 
 /** How the data narrowed down to the candidates, for the "how this plan was found" line. */

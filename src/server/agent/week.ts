@@ -2,7 +2,7 @@ import "server-only";
 import { tool, ToolLoopAgent, type LanguageModel, type ModelMessage, type StopCondition, type ToolSet } from "ai";
 import { z } from "zod";
 import { PERSONA_PROMPT } from "@/lib/agent-persona";
-import type { Plan, PlanRequest } from "@/lib/plan-schema";
+import { planRequestSchema, type Plan, type PlanRequest } from "@/lib/plan-schema";
 import { NO_SCORES_RULE, plainScores } from "@/lib/plain-scores";
 import { NO_TOOL_NAMES_RULE, plainTools } from "@/lib/plain-tools";
 import { boundSongs, PLAN_PROMPT_SONGS } from "@/lib/plan-songs-bound";
@@ -72,6 +72,12 @@ export class WeekPlannerUnavailableError extends Error {
   }
 }
 
+/**
+ * Spread the week: a pitch picked again on another day is sent back when that day has a pitch picked on no other day scoring
+ * within this many points of it. Repeats stay when the pitch is clearly the day's best.
+ */
+export const VARIETY_POINTS = 5;
+
 export const WEEK_INSTRUCTIONS = `${PERSONA_PROMPT}
 
 Your job here: a street performer wants the best pitch for each day they can play in the next 7 days, and to know which of those days are worth going out at all. You investigate with tools; every tool takes the day it is for. Busk Map's scoring engine is a calculator you call per day: score_pitches scores that day's pitches, and you choose among the pitches it scored.
@@ -81,7 +87,8 @@ How to work:
 2. Run check_pitch on promising spots the data points to, for the days you'd play them, so the engine can score them.
 3. Call score_pitches for each day you might recommend (add the spots you checked for that day).
 4. Choose. For each day, the single best pitch, or no pitch when the day is clearly weak for this act (quiet at those hours, rain, nothing for this crowd). Compare the days with each other: say what makes the strong days strong.
-5. Finish with finish_week: every playable day once, with a pitchId from that day's score_pitches and a why, or pitchId null and the reason the day isn't worth it; a two-sentence summary of the week; data caveats. If finish_week rejects your answer, fix what it says and call it again. Always end the run with finish_week.
+5. Spread the week. When a pitch you haven't picked for another day scores within ${VARIETY_POINTS} points of a day's best, pick it (another area if you can): the same pitch on several days only when it is clearly better. finish_week sends a repeat back when a close alternative exists.
+6. Finish with finish_week: every playable day once, with a pitchId from that day's score_pitches and a why, or pitchId null and the reason the day isn't worth it; a two-sentence summary of the week; data caveats. If finish_week rejects your answer, fix what it says and call it again. Always end the run with finish_week.
 
 Before each tool call, write one short sentence saying what you will check next and why. You may call several tools at once. Look only inside the planning area. Point at places by pitchId, by name, or with coordinates from a tool result. You have about 25 tool calls for the whole week. Don't repeat a call with the same inputs.
 
@@ -122,14 +129,16 @@ export type WeekDay = { date: string; request: PlanRequest; ctx: PlanContext; st
 /** The busk request for one day of the week: a normal plan request with that day's hours. Outside Melbourne no permit is asked. */
 export function dayRequest(week: WeekRequest, day: Exclude<WeekDayInput, { off: true }>): PlanRequest {
   const melbourne = week.city === "melbourne";
-  return {
+  // Parsed, so its keys are in the schema's order: the stored plan's run key (planKey hashes the JSON) then matches the
+  // request /p/<id> reads back, and the day's link replays its stored run instead of running again.
+  return planRequestSchema.parse({
     city: week.city,
     ...(week.place ? { place: week.place } : {}),
     permit: melbourne ? week.permit : "general",
     performer: week.performer,
     slot: isAnyTimeDay(day) ? { date: day.date, any: true } : { date: day.date, startHour: day.startHour, endHour: day.endHour },
     ...(week.weights ? { weights: week.weights } : {}),
-  };
+  });
 }
 
 /** The city a week is planned in. */
@@ -166,7 +175,8 @@ export function buildWeekPrompt(week: WeekRequest, days: WeekDay[], matched: { q
     .join("\n");
 }
 
-type Problem = { kind: "pool" | "days" | "numbers"; message: string; numbers?: string[] };
+type Problem = { kind: "pool" | "days" | "numbers" | "variety"; message: string; numbers?: string[] };
+
 
 /** The guardrails on the week's answer. Pure, so tests can call it directly. */
 export function checkWeekAnswer(answer: WeekAnswer, days: Map<string, WeekDay>, seen: NumberBag): Problem[] {
@@ -185,6 +195,23 @@ export function checkWeekAnswer(answer: WeekAnswer, days: Map<string, WeekDay>, 
       const best = [...day.state.pool.values()].sort((a, b) => b.score - a.score || a.id.localeCompare(b.id)).slice(0, 5);
       const listing = best.map((p) => `${p.id} (${p.name})`).join("; ");
       problems.push({ kind: "pool", message: `${entry.pitchId} isn't in ${entry.day}'s scored pool. Best scored that day: ${listing}.` });
+    }
+  }
+  // Variety: the same pitch on several days only when nothing unused that day comes close.
+  const picks = answer.days.filter((d) => d.pitchId !== null && days.get(d.day)?.state.pool.has(d.pitchId));
+  const used = new Set(picks.map((d) => d.pitchId!));
+  const seenPick = new Set<string>();
+  for (const entry of picks) {
+    const id = entry.pitchId!;
+    if (!seenPick.has(id)) {
+      seenPick.add(id);
+      continue;
+    }
+    const pool = days.get(entry.day)!.state.pool;
+    const chosen = pool.get(id)!;
+    const alternative = [...pool.values()].filter((p) => !used.has(p.id) && p.score >= chosen.score - VARIETY_POINTS).sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))[0];
+    if (alternative) {
+      problems.push({ kind: "variety", message: `${id} is already picked for another day, and ${entry.day} has ${alternative.id} (${alternative.name}) scoring close to it: spread the week across pitches when scores are close.` });
     }
   }
   const anyPool = [...days.values()].some((d) => d.state.pool.size > 0);
@@ -245,7 +272,7 @@ export function createWeekTools(days: Map<string, WeekDay>, week: WeekState, qlo
       // A run cut short still finishes against scored pools: score each unscored day now (scoring is open when wrapping up).
       if (week.wrappingUp) for (const d of days.values()) if (!d.state.scored) await run("score_pitches", d.date, {}, options).catch(() => null);
       const problems = checkWeekAnswer(answer, days, week.seen);
-      if (problems.length > 0 && !(problems.every((p) => p.kind === "numbers") && week.rejections >= MAX_FINISH_REJECTIONS)) {
+      if (problems.length > 0 && !(problems.every((p) => p.kind === "numbers" || p.kind === "variety") && week.rejections >= MAX_FINISH_REJECTIONS)) {
         week.rejections++;
         return { accepted: false, summary: `Rejected: ${problems.map((p) => p.message).join(" ")}`, problems: problems.map((p) => p.message) };
       }
@@ -295,6 +322,7 @@ export function dayFromPlan(day: WeekDayResult, planId: string | null, plan: Pla
     window: windowOf(plan.slot),
     pitch: { id: top.id, name: top.name, lat: top.lat, lon: top.lon, score: top.score, discovery: top.discovery, why: top.why },
     reason: null,
+    weather: plan.weather,
   };
 }
 
@@ -543,6 +571,7 @@ async function runWeek(request: WeekRequest, adapters: AdapterContext, today: st
     days: shell.days.map((d) => (d.status === "pending" ? (results.get(d.date) ?? { ...d, status: "failed", reason: "The Hive gave no answer for this day." }) : d)),
     notes: [...new Set([...[...days.values()].flatMap((d) => d.ctx.notes), ...answer.notes.filter(traceable).map((n) => plainTools(plainScores(n))).slice(0, 3)])],
     qlooMode: qloo.qlooMode(adapters),
+    tasteCells: outcomes[0]?.plan.tasteCells ?? [],
     explanationsModel: modelName,
     researchTotals: totals(),
     usage: { steps: usage.steps, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, reasoningTokens: usage.reasoningTokens, ms: usage.ms },

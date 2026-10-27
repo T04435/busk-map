@@ -58,6 +58,8 @@ describe("week agent (offline, mock model)", () => {
       expect(day.window).toBe("6 pm–9 pm");
     }
     expect(run.week).toMatchObject({ status: "done", id: null, error: null, cityName: "Melbourne", rulesChecked: true, timeZone: "Australia/Melbourne" });
+    expect(run.week.tasteCells.length).toBeGreaterThan(0);
+    expect(run.week.days.filter((d) => d.status === "ready").every((d) => d.weather !== null)).toBe(true);
     for (const { plan } of run.plans) {
       expect(plan.pitches).toHaveLength(1);
       expect(plan.agent).toBeNull();
@@ -138,6 +140,17 @@ describe("week agent (offline, mock model)", () => {
     expect(finishes[0].summary).toMatch(/made-up isn't in .* scored pool/);
     expect(finishes.at(-1)).toMatchObject({ ok: true });
     expect(run.week.days.every((d) => d.status === "ready")).toBe(true);
+  });
+
+  it("names every picked pitch by a real place when Overpass is down (Tokyo, Qloo venues only): never a taste spot, compass or km", async () => {
+    mockFetch([]);
+    const { runWeekAgent } = await load();
+    const run = await runWeekAgent(week(defaultDays(START), requestFieldsOf({ ...TOKYO, radiusKm: 15 })), { ...OFFLINE, faults: ["osm"] }, TODAY);
+    const names = run.week.days.flatMap((d) => (d.pitch ? [d.pitch.name] : []));
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) expect(name).not.toMatch(/taste spot|\b(north|south|east|west)\b|\d km|-?\d+\.\d{3,}/);
+    for (const { plan } of run.plans) for (const p of [...plan.pitches, ...plan.others]) expect(p.name).not.toMatch(/taste spot|\d km/);
+    expect(run.qlooCalls).toBeLessThanOrEqual(150);
   });
 
   it("a model that stops with words alone is forced to finish in a final round", async () => {
@@ -231,6 +244,21 @@ describe("checkWeekAnswer", () => {
     expect(unscored.map((p) => p.message)).toEqual(["Call score_pitches for 2026-10-18 before choosing a pitch for it."]);
     const wrong = checkWeekAnswer({ summary: "s", days: [{ day: "2026-10-17", pitchId: "nope", why: "ok" }, { day: "2026-10-18", pitchId: null, why: "weak" }], notes: [] }, days, seen);
     expect(wrong[0].message).toMatch(/nope isn't in 2026-10-17's scored pool. Best scored that day: p1 \(Pitch One\)/);
+    // Variety: the same pitch again when an unused one scores within 5 points that day is sent back; a clear best may repeat.
+    const a = new AgentState();
+    const b = new AgentState();
+    for (const st of [a, b]) {
+      st.pool.set("p1", { id: "p1", name: "Pitch One", score: 80 } as never);
+      st.pool.set("p2", { id: "p2", name: "Pitch Two", score: 77 } as never);
+    }
+    const two = new Map([
+      ["2026-10-17", { date: "2026-10-17", state: a } as never],
+      ["2026-10-18", { date: "2026-10-18", state: b } as never],
+    ]);
+    const same = checkWeekAnswer({ summary: "s", days: [{ day: "2026-10-17", pitchId: "p1", why: "ok" }, { day: "2026-10-18", pitchId: "p1", why: "ok" }], notes: [] }, two, seen);
+    expect(same).toEqual([expect.objectContaining({ kind: "variety", message: expect.stringMatching(/2026-10-18 has p2 \(Pitch Two\).*spread the week/) })]);
+    b.pool.set("p2", { id: "p2", name: "Pitch Two", score: 70 } as never);
+    expect(checkWeekAnswer({ summary: "s", days: [{ day: "2026-10-17", pitchId: "p1", why: "ok" }, { day: "2026-10-18", pitchId: "p1", why: "ok" }], notes: [] }, two, seen)).toEqual([]);
     const invented = checkWeekAnswer({ summary: "About 4321 people.", days: [{ day: "2026-10-17", pitchId: "p1", why: "ok" }, { day: "2026-10-18", pitchId: null, why: "weak" }], notes: [] }, days, seen);
     expect(invented).toEqual([expect.objectContaining({ kind: "numbers", numbers: ["4321"] })]);
   });

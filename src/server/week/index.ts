@@ -1,6 +1,6 @@
 import "server-only";
 import { isPlanId, newPlanId, planPath } from "@/lib/plan-id";
-import type { Plan, PlanStreamEvent } from "@/lib/plan-schema";
+import type { Plan, PlanRequest, PlanStreamEvent } from "@/lib/plan-schema";
 import { buildIcs, type IcsEvent } from "@/lib/ics";
 import { zonedHourToUtc } from "@/lib/slot";
 import { weekRequestSchema, weekResultSchema, type WeekRequest, type WeekResult, type WeekStepEvent } from "@/lib/week-schema";
@@ -8,7 +8,7 @@ import { planKey } from "@/server/agent/plan-store";
 import { dayFromPlan, weekShell, type DayOutcome } from "@/server/agent/week";
 import { rulesFor } from "@/server/cities";
 import { log } from "@/server/log";
-import { createPlanId, findPlanId, linksDurable, shortPlanStore } from "@/server/plans/store";
+import { linksDurable, requestHash, shortPlanStore, storedRequestOf, type ShortPlanStore } from "@/server/plans/store";
 import { weekStore, type WeekFinish, type WeekRecordDay } from "./store";
 
 /**
@@ -34,9 +34,22 @@ export function dayEvents(events: readonly PlanStreamEvent[], toolCallIds: Set<s
 }
 
 /**
- * Store each planned day as a plan with its own short id, and its run as the plan's snapshot, so /p/<id> opens at once as a
- * replay. A day already planned today with the same request keeps its id; the week's run replaces its snapshot. Returns the id
- * per date; a day that couldn't be stored has none.
+ * A new short id for a week's day plan. Its row's hash carries the id, so it never dedupes with a busk of the same request
+ * (that busk keeps its own three-pitch plan, and a busk planned later never opens the week's one-pitch day plan).
+ */
+async function dayPlanId(store: ShortPlanStore, request: PlanRequest, day: string): Promise<string | null> {
+  const stored = storedRequestOf(request);
+  const hash = requestHash(stored, null);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const id = newPlanId();
+    if ((await store.insert({ id, request: stored, requestHash: `${hash}:week:${id}`, exampleId: null, day })) === "ok") return id;
+  }
+  return null;
+}
+
+/**
+ * Store each planned day as a plan with its own new short id, and its run as the plan's snapshot, so /p/<id> opens at once as
+ * a replay. Returns the id per date; a day that couldn't be stored has none.
  */
 export async function saveDayPlans(outcomes: DayOutcome[], events: readonly PlanStreamEvent[], run: { startedAt: number; finishedAt: number; today: string; offline: boolean }): Promise<Map<string, string>> {
   const store = shortPlanStore(run.offline);
@@ -44,7 +57,8 @@ export async function saveDayPlans(outcomes: DayOutcome[], events: readonly Plan
   if (!linksDurable(store)) return ids;
   for (const day of outcomes) {
     try {
-      const id = (await findPlanId(store, day.request, null, run.today)) ?? (await createPlanId(store, day.request, null, run.today));
+      const id = await dayPlanId(store, day.request, run.today);
+      if (!id) continue;
       const own = dayEvents(events, day.toolCallIds);
       const saved = await store.saveSnapshot(
         id,
@@ -140,6 +154,7 @@ export async function loadWeek(id: string, offline: boolean, now = Date.now()): 
     days,
     notes: record.notes,
     qlooMode: firstPlan?.qlooMode ?? shell.qlooMode,
+    tasteCells: firstPlan?.tasteCells ?? [],
     explanationsModel: firstPlan?.explanationsModel ?? null,
     researchTotals: record.totals,
     usage: record.usage,

@@ -211,7 +211,7 @@ export function createMockCompare() {
   });
 }
 
-export type MockWeekScenario = "investigate" | "skip-last" | "bad-finish" | "never-finish" | "text-only" | "fail";
+export type MockWeekScenario = "investigate" | "skip-last" | "bad-finish" | "never-finish" | "text-only" | "same-spot" | "fail";
 
 /** The playable days, from the week prompt's "Playable days:" line. */
 function playableDays(prompt: PromptMessage[]): string[] {
@@ -234,6 +234,7 @@ export function nextWeekMove(results: ToolResult[], tools: string[], days: strin
   const dayOf = (r: ToolResult) => (r.output.value as { day?: string } | undefined)?.day;
   const scoredDays = new Set(done("score_pitches").filter(ok).map(dayOf));
   const rejections = done("finish_week").filter((r) => (r.output.value as { accepted?: boolean })?.accepted === false).length;
+  const picked = new Set<string>();
   const finishWeek = (): Move => ({
     text: "We have enough to plan the week.",
     calls: [
@@ -243,7 +244,11 @@ export function nextWeekMove(results: ToolResult[], tools: string[], days: strin
           summary: "Mock week summary (offline test mode).",
           days: days.map((day, i) => {
             const rows = (done("score_pitches").filter((r) => dayOf(r) === day).at(-1)?.output.value as { pitches?: ScoreRow[] } | undefined)?.pitches ?? [];
-            const best = rows.find((r) => r.engineTop3) ?? rows[0];
+            const top = rows.find((r) => r.engineTop3) ?? rows[0];
+            // Like Claude told to spread the week: a pitch not picked yet when it scores within 5 points ("same-spot" repeats the best until sent back).
+            const spread = scenario !== "same-spot" || rejections > 0;
+            const best = (spread && top ? rows.find((r) => !picked.has(r.pitchId) && r.score >= top.score - 5) : undefined) ?? top;
+            if (best) picked.add(best.pitchId);
             if (scenario === "bad-finish" && rejections === 0 && i === 0) return { day, pitchId: "made-up", why: "Trust me." };
             if ((scenario === "skip-last" && i === days.length - 1 && days.length > 1) || !best) return { day, pitchId: null, why: "Mock explanation: a weaker day for this act on the data gathered." };
             return { day, pitchId: best.pitchId, why: `Mock explanation: ${best.name} fits this crowd on this day.` };

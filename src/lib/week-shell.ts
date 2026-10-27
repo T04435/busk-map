@@ -26,6 +26,8 @@ export function weekShellFor(
     city: request.city,
     cityName: city.name,
     timeZone: city.timeZone,
+    center: city.center,
+    tasteCells: [],
     rulesChecked: melbourne,
     permit: melbourne ? request.permit : "general",
     performerName: request.performer.name,
@@ -34,7 +36,7 @@ export function weekShellFor(
     summary: null,
     days: request.days.map((d, i): WeekDayResult => {
       const stored = days?.[i];
-      const base = { date: d.date, weekday: weekdayOf(d.date), label: weekDayLabel(d.date), pitch: null, planId: stored?.planId ?? null };
+      const base = { date: d.date, weekday: weekdayOf(d.date), label: weekDayLabel(d.date), pitch: null, planId: stored?.planId ?? null, weather: null };
       if (isOffDay(d)) return { ...base, status: "cant-play", slot: null, window: null, anyTime: false, reason: null };
       const anyTime = isAnyTimeDay(d);
       const status = stored?.status ?? (passed.has(d.date) ? "cant-play" : "pending");

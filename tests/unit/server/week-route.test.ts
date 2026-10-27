@@ -57,6 +57,11 @@ describe("POST /api/week (offline)", () => {
       expect(stored?.request.slot.date).toBe(day.date);
       expect(stored?.snapshot?.plan.pitches[0].id).toBe(day.pitch!.id);
       expect(stored?.snapshot?.events.some((e) => e.type === "tool-end")).toBe(true);
+      // /p/<id> replays it: the stored run's key matches the request the page reads back (no new run).
+      const { snapshotFor, viewerRequest } = await import("@/server/plans");
+      expect(snapshotFor(stored!, viewerRequest(stored!)!, true)).not.toBeNull();
+      // Its own row: a busk of the same request never opens (or overwrites) the week's one-pitch day plan.
+      expect(await plans.findPlanId(plans.shortPlanStore(true), viewerRequest(stored!)!, null, stored!.day)).toBeNull();
     }
 
     // The record replays: the same days, and the run's steps.

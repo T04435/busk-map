@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 import { cityPlaceSchema, citySlugSchema, DEFAULT_CITY_ID } from "./city";
-import { dataStatusSchema, PERMITS, planRequestSchema, streamNoteSchema, streamStatusSchema, streamToolEndSchema, streamToolStartSchema, streamUsageSchema, weightsSchema } from "./plan-schema";
+import { dataStatusSchema, PERMITS, planRequestSchema, planSchema, streamNoteSchema, streamStatusSchema, streamToolEndSchema, streamToolStartSchema, streamUsageSchema, weightsSchema } from "./plan-schema";
 import { researchTotalsSchema } from "./research-totals";
 import { addDays, anyTimeSlotSchema, anyTimeWindowsLeft, slotSchema } from "./slot";
 
@@ -76,6 +76,8 @@ export const weekDayResultSchema = z.object({
     .nullable(),
   /** not-worth: the Hive's reason; cant-play: why (hours passed), else null; failed: what went wrong. */
   reason: z.string().nullable(),
+  /** A playing day's forecast, from its plan (the strip around its hours). */
+  weather: planSchema.shape.weather.default(null),
 });
 export type WeekDayResult = z.infer<typeof weekDayResultSchema>;
 
@@ -97,6 +99,10 @@ export const weekResultSchema = z.object({
   city: z.string(),
   cityName: z.string(),
   timeZone: z.string(),
+  /** The city's centre, for the week's map. */
+  center: z.object({ lat: z.number(), lon: z.number() }),
+  /** The act's taste over the city, from the day plans (taste doesn't change by day), for the week's map. */
+  tasteCells: planSchema.shape.tasteCells.default([]),
   /** Whether the city's busking rules are checked (Melbourne): elsewhere no permit is named. */
   rulesChecked: z.boolean(),
   permit: z.enum(PERMITS),

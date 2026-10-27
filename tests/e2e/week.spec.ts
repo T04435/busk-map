@@ -52,9 +52,32 @@ test.describe("plan my week (offline)", () => {
     await expect(page.getByTestId("data-used")).toContainText("Qloo");
     await expect(page.locator("main")).not.toContainText(/partner/i);
 
+    // Each day opens its STORED plan: a replay, no new run (no POST /api/plan).
+    let planPosts = 0;
+    page.on("request", (r) => {
+      if (r.url().endsWith("/api/plan") && r.method() === "POST") planPosts++;
+    });
     await playing.first().getByTestId("week-day-plan").click();
     await expect(page).toHaveURL(/\/p\/[0-9A-Za-z]{9}/);
     await waitForPlan(page);
+    await expect(page.getByTestId("replay-label")).toBeVisible();
+    expect(planPosts).toBe(0);
+  });
+
+  test("the week's map pins every day you play, numbered by day, and each playing day has its forecast", async ({ page }) => {
+    await planWeek(page);
+    const playing = await page.getByTestId("week-day-plan").count();
+    await expect(page.getByTestId("week-day-weather")).toHaveCount(playing);
+    const map = page.getByTestId("week-map");
+    await map.scrollIntoViewIfNeeded();
+    const show = map.getByRole("button", { name: "Show the map" });
+    // The map loads itself once in view; the button only if it hasn't yet.
+    await show.click({ timeout: 2000 }).catch(() => undefined);
+    const pins = map.getByRole("button", { name: /^Day \d, / });
+    await expect(pins.first()).toBeVisible({ timeout: 20_000 });
+    const labels = await pins.evaluateAll((els) => els.map((e) => e.getAttribute("aria-label") ?? ""));
+    const days = labels.flatMap((l) => l.split(":")[0].split("; "));
+    expect(days).toHaveLength(playing);
   });
 
   test("the calendar downloads as a valid VCALENDAR with one event per day you play", async ({ page }) => {
@@ -70,6 +93,18 @@ test.describe("plan my week (offline)", () => {
     expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(playing);
     expect(ics).toMatch(/DTSTART:\d{8}T\d{6}Z/);
     expect(ics.replace(/\r\n /g, "")).toMatch(/URL:http:\/\/localhost:\d+\/p\/[0-9A-Za-z]{9}/);
+  });
+
+  test("a reload mid-run follows the run on /w/<id> until its days are in", async ({ page }) => {
+    await page.goto("/week");
+    await form(page).getByLabel("Artists you sound like").fill("Paul Kelly");
+    await form(page).getByRole("button", { name: "Plan my week" }).click();
+    await expect(page).toHaveURL(/\/w\/[0-9A-Za-z]{9}$/);
+    const url = page.url();
+    await page.reload();
+    expect(page.url()).toBe(url);
+    await expect(page.getByTestId("week-view")).toHaveAttribute("data-status", /done|failed/, { timeout: 90_000 });
+    await expect(days(page)).toHaveCount(7);
   });
 
   test("a reload replays the week from its record: no new run", async ({ page }) => {
@@ -102,6 +137,19 @@ test.describe("plan my week (offline)", () => {
     await expect(page.getByText(/^Tokyo · /)).toBeVisible();
     await expect(days(page)).toHaveCount(7);
     await expect(page.getByTestId("rules-not-checked")).toBeVisible();
+  });
+
+  test("with OpenStreetMap down, Tokyo's pitches are named by Qloo's places, never a taste spot or a compass hint", async ({ page }) => {
+    await page.goto("/week?faults=osm");
+    await form(page).getByRole("button", { name: /^City / }).click();
+    await page.getByPlaceholder("Search a city, e.g. Tokyo").fill("Tok");
+    await page.getByRole("option", { name: "Tokyo, Japan" }).click();
+    await form(page).getByLabel("Artists you sound like").fill("Paul Kelly");
+    await form(page).getByRole("button", { name: "Plan my week" }).click();
+    await expect(page.getByTestId("week-view")).toHaveAttribute("data-status", "done", { timeout: 90_000 });
+    const names = await page.getByTestId("week-day-pitch").allTextContents();
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) expect(name).not.toMatch(/taste spot|\b(north|south|east|west)\b|\d km/i);
   });
 
   for (const width of [390, 768, 1440]) {

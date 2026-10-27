@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { planPath } from "@/lib/plan-id";
 import type { WeekDayResult, WeekDayStatus } from "@/lib/week-schema";
+import type { LevelWord } from "@/lib/signal-level";
+import { WeatherStrip } from "@/components/plan/weather-strip";
 
 type BadgeTone = React.ComponentProps<typeof Badge>["variant"];
 
@@ -20,10 +22,10 @@ export const DAY_STATUS: Record<WeekDayStatus, { word: string; tone: BadgeTone }
 };
 
 /** The seven days of a week: each one's status, and for a day you play, its best pitch, hours and a link to its own busk plan. */
-export function WeekDays({ days }: { days: readonly WeekDayResult[] }) {
+export function WeekDays({ days, weatherLevel = null }: { days: readonly WeekDayResult[]; /** The forecast's level word outside Melbourne. */ weatherLevel?: LevelWord | null }) {
   return (
     <ol className="m-0 grid list-none divide-y-2 divide-rule border-2 border-rule bg-card p-0" aria-label="Your seven days" data-testid="week-days">
-      {days.map((day) => {
+      {days.map((day, i) => {
         const status = DAY_STATUS[day.status];
         const playing = day.status === "ready" && day.pitch;
         return (
@@ -35,6 +37,9 @@ export function WeekDays({ days }: { days: readonly WeekDayResult[] }) {
             className={cn("grid min-w-0 grid-cols-1 gap-3 p-4 sm:grid-cols-[9rem_minmax(0,1fr)_auto] sm:items-center md:px-6", !playing && "text-muted-foreground")}
           >
             <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-start">
+              <span className="font-mono text-xs font-bold tracking-[0.06em] text-muted-foreground uppercase" data-testid="week-day-number">
+                Day {i + 1}
+              </span>
               <span className="font-display text-xl leading-6 font-extrabold text-foreground uppercase">{day.label}</span>
               <Badge variant={status.tone} data-testid="week-day-status">
                 {status.word}
@@ -82,6 +87,11 @@ export function WeekDays({ days }: { days: readonly WeekDayResult[] }) {
                     </Link>
                   </Button>
                 ) : null}
+              </div>
+            ) : null}
+            {playing && day.slot ? (
+              <div className="min-w-0 sm:col-span-3" data-testid="week-day-weather">
+                <WeatherStrip weather={day.weather} slot={day.slot} titleAs="h3" level={weatherLevel} label={`Weather, ${day.label}`} />
               </div>
             ) : null}
           </li>

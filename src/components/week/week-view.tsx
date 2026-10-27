@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LazyPlanMap } from "@/components/map/lazy-plan-map";
 import { AgentTag } from "@/components/honeycomb/agent-tag";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
 import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
@@ -45,6 +46,7 @@ export function WeekView({ initial, events = [], live = null, onChangeWeek }: { 
   const [attempt, setAttempt] = useState(0);
   const [calendar, setCalendar] = useState<"idle" | "busy" | "failed">("idle");
   const started = useRef(-1);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!live || started.current === attempt) return;
@@ -104,6 +106,8 @@ export function WeekView({ initial, events = [], live = null, onChangeWeek }: { 
               finished = true;
               setWeek(event.week);
               setStreaming(false);
+              // The address is the week's own page (set at week-started): a refresh replays the stored week.
+              if (event.week.id && window.location.pathname !== weekPath(event.week.id)) window.history.replaceState(null, "", weekPath(event.week.id));
               break;
             case "error":
               fail({ code: event.code, message: event.message });
@@ -198,6 +202,26 @@ export function WeekView({ initial, events = [], live = null, onChangeWeek }: { 
   const meta = `${week.cityName} · ${first.label} – ${last.label}${week.rulesChecked ? ` · ${permitName(week.permit)}` : ""}`;
   const levels = week.rulesChecked ? null : cityLevels({ id: week.city });
   const limited = error?.code === "rate_limited" || error?.code === "qloo_budget_spent";
+  // The week's map: one pin per picked pitch, badged with its day's number (1 to 7, as in the rows).
+  const pins = useMemo(() => {
+    const byPitch = new Map<string, { pitch: NonNullable<WeekResult["days"][number]["pitch"]>; days: { n: number; label: string }[] }>();
+    week.days.forEach((d, i) => {
+      if (d.status !== "ready" || !d.pitch) return;
+      const at = byPitch.get(d.pitch.id) ?? { pitch: d.pitch, days: [] };
+      at.days.push({ n: i + 1, label: d.label });
+      byPitch.set(d.pitch.id, at);
+    });
+    return [...byPitch.values()].map(({ pitch, days }) => ({
+      id: pitch.id,
+      name: `${days.map((d) => d.label).join(", ")} · ${pitch.name}`,
+      lat: pitch.lat,
+      lon: pitch.lon,
+      score: pitch.score,
+      discovery: pitch.discovery,
+      badge: String(days[0].n),
+      ariaLabel: `${days.map((d) => `Day ${d.n}, ${d.label}`).join("; ")}: ${pitch.name}`,
+    }));
+  }, [week.days]);
 
   return (
     <div className="flex flex-col gap-8" data-testid="week-view" data-status={week.status}>
@@ -224,6 +248,13 @@ export function WeekView({ initial, events = [], live = null, onChangeWeek }: { 
           </div>
         }
       />
+
+      {!running && !error && week.id === null ? (
+        <Alert variant="warning" data-testid="week-unsaved">
+          <AlertTitle>This week has no link</AlertTitle>
+          <AlertDescription>It couldn&apos;t be saved, so it can&apos;t be opened again. Each day&apos;s plan link still works.</AlertDescription>
+        </Alert>
+      ) : null}
 
       {error ? (
         <Alert variant={limited ? "warning" : "error"} data-testid="week-error">
@@ -286,6 +317,17 @@ export function WeekView({ initial, events = [], live = null, onChangeWeek }: { 
         ) : null}
         <WeekDays days={week.days} />
       </section>
+
+      {pins.length > 0 ? (
+        <section aria-labelledby="week-map-h" className="flex flex-col gap-3.5" data-testid="week-map" data-pins={pins.length}>
+          <h2 id="week-map-h" className="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
+            Where you play
+          </h2>
+          <div className="border-2 border-rule bg-card">
+            <LazyPlanMap plan={{ pitches: pins, tasteCells: week.tasteCells, others: [] }} center={week.center} selectedId={selectedId} onSelect={setSelectedId} />
+          </div>
+        </section>
+      ) : null}
 
       {steps.length > 0 || running ? (
         <AgentStepStream

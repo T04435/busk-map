@@ -82,8 +82,8 @@ test.describe("QA judge paths", () => {
     const response = await page.goto("/qa-no-such-page");
     expect(response?.status()).toBe(404);
     await expect(page.getByRole("link", { name: /home/i }).first()).toBeVisible();
-    // Week was removed by the user (17 Oct): its route is a 404 too.
-    expect((await page.goto("/week?example=sax"))?.status()).toBe(404);
+    // Week is back in 1.3.0 (Plan my week): /week renders.
+    expect((await page.goto("/week"))?.status()).toBe(200);
   });
 
   test("no page needs a login: no sign-in control on the judge paths", async ({ page }) => {

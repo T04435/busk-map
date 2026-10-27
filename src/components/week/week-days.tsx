@@ -1,14 +1,21 @@
+"use client";
+
 import Link from "next/link";
-import { cn } from "cn";
-import { Icon } from "@/components/honeycomb/icon";
-import { ScoreRing } from "@/components/honeycomb/score-ring";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { planPath } from "@/lib/plan-id";
-import type { WeekDayResult, WeekDayStatus } from "@/lib/week-schema";
-import type { LevelWord } from "@/lib/signal-level";
+import { Disclosure } from "@/components/honeycomb/disclosure";
+import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
+import { FoundByBadge } from "@/components/honeycomb/found-by-badge";
+import { Reason } from "@/components/honeycomb/reason";
+import { BuskPitches } from "@/components/plan/busk-pitches";
+import { PitchDetailsBody } from "@/components/plan/pitch-sheet";
 import { WeatherStrip } from "@/components/plan/weather-strip";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { mentionsIn } from "@/lib/mention";
+import { planPath } from "@/lib/plan-id";
+import { planMentions } from "@/lib/plan-mentions";
+import type { Plan } from "@/lib/plan-schema";
+import type { ExplanationsModel } from "@/lib/sources";
+import type { WeekDayResult, WeekDayStatus } from "@/lib/week-schema";
 
 type BadgeTone = React.ComponentProps<typeof Badge>["variant"];
 
@@ -21,79 +28,106 @@ export const DAY_STATUS: Record<WeekDayStatus, { word: string; tone: BadgeTone }
   failed: { word: "Didn't finish", tone: "tag-failed" },
 };
 
-/** The seven days of a week: each one's status, and for a day you play, its best pitch, hours and a link to its own busk plan. */
-export function WeekDays({ days, weatherLevel = null }: { days: readonly WeekDayResult[]; /** The forecast's level word outside Melbourne. */ weatherLevel?: LevelWord | null }) {
+/**
+ * The seven days, each in full on the page (no other page to open): a day you play shows what its busk plan shows (its pitch
+ * with score, badges and hours, the why, the pitch's details, the suggested set and the day's weather); any other day its
+ * status and reason. Each day folds; `open` is the day shown (kept in step with the week's map).
+ */
+export function WeekDays({
+  days,
+  plans,
+  open,
+  onOpen,
+  selectedPitch,
+  onSelectPitch,
+  model,
+  rulesChecked,
+  showWeather,
+}: {
+  days: readonly WeekDayResult[];
+  /** Each playing day's stored plan, by date (empty while the run goes). */
+  plans: Readonly<Record<string, Plan>>;
+  /** The open days. */
+  open: ReadonlySet<string>;
+  onOpen: (date: string, open: boolean) => void;
+  selectedPitch: string | null;
+  onSelectPitch: (date: string, pitchId: string) => void;
+  model: ExplanationsModel | null;
+  rulesChecked: boolean;
+  /** False when no day has a forecast (the week says so once, at the top). */
+  showWeather: boolean;
+}) {
   return (
-    <ol className="m-0 grid list-none divide-y-2 divide-rule border-2 border-rule bg-card p-0" aria-label="Your seven days" data-testid="week-days">
+    <ol className="m-0 flex list-none flex-col gap-3 p-0" aria-label="Your seven days" data-testid="week-days">
       {days.map((day, i) => {
         const status = DAY_STATUS[day.status];
-        const playing = day.status === "ready" && day.pitch;
+        const plan = plans[day.date];
+        const pitch = day.status === "ready" ? day.pitch : null;
+        const label = (
+          <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="font-mono text-xs font-bold tracking-[0.06em] text-muted-foreground uppercase" data-testid="week-day-number">
+              Day {i + 1}
+            </span>
+            <span className="font-display text-xl leading-6 font-extrabold uppercase">{day.label}</span>
+            <Badge variant={status.tone} data-testid="week-day-status">
+              {status.word}
+            </Badge>
+            {pitch ? (
+              <>
+                <b className="leading-6 [overflow-wrap:anywhere]" data-testid="week-day-pitch">
+                  {pitch.name}
+                </b>
+                <span className="font-mono text-sm font-normal text-muted-foreground tabular-nums" data-testid="week-day-hours">
+                  {day.window}
+                </span>
+              </>
+            ) : day.window && day.status !== "failed" ? (
+              <span className="font-mono text-sm font-normal text-muted-foreground tabular-nums">{day.window}</span>
+            ) : null}
+          </span>
+        );
         return (
-          <li
-            key={day.date}
-            data-testid="week-day"
-            data-status={day.status}
-            data-date={day.date}
-            className={cn("grid min-w-0 grid-cols-1 gap-3 p-4 sm:grid-cols-[9rem_minmax(0,1fr)_auto] sm:items-center md:px-6", !playing && "text-muted-foreground")}
-          >
-            <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-start">
-              <span className="font-mono text-xs font-bold tracking-[0.06em] text-muted-foreground uppercase" data-testid="week-day-number">
-                Day {i + 1}
-              </span>
-              <span className="font-display text-xl leading-6 font-extrabold text-foreground uppercase">{day.label}</span>
-              <Badge variant={status.tone} data-testid="week-day-status">
-                {status.word}
-              </Badge>
-            </div>
-            <div className="grid min-w-0 gap-1">
-              {playing ? (
-                <>
-                  <p className="m-0 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                    <b className="text-lg leading-6 text-foreground [overflow-wrap:anywhere]" data-testid="week-day-pitch">
-                      {day.pitch!.name}
-                    </b>
-                    <span className="font-mono text-sm text-muted-foreground tabular-nums" data-testid="week-day-hours">
-                      {day.window}
-                    </span>
-                    {day.anyTime ? <Badge variant="tag-quiet">Any time</Badge> : null}
-                  </p>
-                  <p className="m-0 line-clamp-3 text-sm leading-5 text-muted-foreground">{day.pitch!.why}</p>
-                </>
-              ) : day.status === "pending" ? (
-                <div className="grid gap-2" aria-hidden="true">
+          <li key={day.date} data-testid="week-day" data-status={day.status} data-date={day.date} data-open={open.has(day.date) || undefined} className="min-w-0">
+            <Disclosure label={label} expanded={open.has(day.date)} onOpenChange={(o) => onOpen(day.date, o)}>
+              {pitch && plan ? (
+                <div className="flex min-w-0 flex-col gap-5" data-testid="week-day-plan-inline">
+                  <BuskPitches
+                    plan={plan}
+                    selectedId={selectedPitch}
+                    onSelect={(id) => onSelectPitch(day.date, id)}
+                    rulesChecked={rulesChecked}
+                    className="space-y-3"
+                    badges={(p) => (
+                      <>
+                        <DiscoveryBadge discovery={p.discovery} />
+                        <FoundByBadge origin={p.origin} written={plan.explanations === "ai"} model={plan.explanationsModel ?? model} />
+                      </>
+                    )}
+                  />
+                  <Reason text={mentionsIn(pitch.why, planMentions(plan))} />
+                  {showWeather && day.slot ? (
+                    <div data-testid="week-day-weather">
+                      <WeatherStrip weather={plan.weather} slot={plan.slot} titleAs="h3" label={`Weather, ${day.label}`} />
+                    </div>
+                  ) : null}
+                  {plan.pitches[0] ? <PitchDetailsBody plan={plan} pitch={plan.pitches[0]} model={plan.explanationsModel ?? model} /> : null}
+                  {day.planId ? (
+                    <Link href={planPath(day.planId)} className="self-start text-sm underline underline-offset-3" data-testid="week-day-plan">
+                      This day as its own plan
+                    </Link>
+                  ) : null}
+                </div>
+              ) : day.status === "pending" || (pitch && !plan) ? (
+                <div className="grid gap-2" role="status" aria-label={`Planning ${day.label}`}>
                   <Skeleton className="h-4 w-[55%]" />
                   <Skeleton className="h-3 w-[80%]" />
                 </div>
               ) : (
-                <>
-                  {day.window && day.status !== "failed" ? <span className="font-mono text-sm tabular-nums">{day.window}</span> : null}
-                  {day.reason ? (
-                    <p className="m-0 text-sm leading-5" data-testid="week-day-reason">
-                      {day.reason}
-                    </p>
-                  ) : null}
-                </>
+                <p className="m-0 text-sm leading-5" data-testid="week-day-reason">
+                  {day.reason ?? (day.status === "cant-play" ? "You can't play this day." : "")}
+                </p>
               )}
-              {day.status === "pending" ? <span className="sr-only">Planning this day</span> : null}
-            </div>
-            {playing ? (
-              <div className="flex items-center gap-3 sm:justify-end">
-                <ScoreRing value={day.pitch!.score} size={48} />
-                {day.planId ? (
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={planPath(day.planId)} data-testid="week-day-plan" aria-label={`Open the plan for ${day.label}`}>
-                      Open plan
-                      <Icon name="arrow-right" size={16} />
-                    </Link>
-                  </Button>
-                ) : null}
-              </div>
-            ) : null}
-            {playing && day.slot ? (
-              <div className="min-w-0 sm:col-span-3" data-testid="week-day-weather">
-                <WeatherStrip weather={day.weather} slot={day.slot} titleAs="h3" level={weatherLevel} label={`Weather, ${day.label}`} />
-              </div>
-            ) : null}
+            </Disclosure>
           </li>
         );
       })}

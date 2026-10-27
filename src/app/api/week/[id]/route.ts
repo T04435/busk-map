@@ -10,5 +10,6 @@ export async function GET(_request: Request, { params }: RouteContext<"/api/week
   const loaded = await loadWeek(id, testSwitches().offline).catch(() => undefined);
   if (loaded === undefined) return Response.json({ error: { code: "internal", message: "The week couldn't be read. Please try again." } }, { status: 500 });
   if (!loaded) return Response.json({ error: { code: "not_found", message: "There's no week at this link." } }, { status: 404, headers: { "Cache-Control": "no-store" } });
-  return Response.json({ week: loaded.week, events: loaded.events }, { headers: { "Cache-Control": "no-store" } });
+  // The day plans too: the week page shows every day in full.
+  return Response.json({ week: loaded.week, events: loaded.events, plans: Object.fromEntries(loaded.plans) }, { headers: { "Cache-Control": "no-store" } });
 }

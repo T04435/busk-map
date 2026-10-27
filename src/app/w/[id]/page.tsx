@@ -36,5 +36,5 @@ async function StoredWeek({ params }: Pick<PageProps<"/w/[id]">, "params">) {
   await connection();
   const loaded = await loadWeek(id, testSwitches().offline);
   if (!loaded) notFound();
-  return <WeekView initial={loaded.week} events={loaded.events} />;
+  return <WeekView initial={loaded.week} events={loaded.events} plans={Object.fromEntries(loaded.plans)} />;
 }

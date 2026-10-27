@@ -21,6 +21,9 @@ import { modelName, QLOO_TEST_LABEL } from "@/lib/sources";
 import { permitName } from "@/lib/slot";
 import { weekPath, weekResultSchema, weekStepEventSchema, weekStreamEventSchema, type WeekRequest, type WeekResult, type WeekStepEvent } from "@/lib/week-schema";
 import { WeekDays } from "./week-days";
+import { Banner } from "@/components/honeycomb/banner";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { planSchema, type Plan } from "@/lib/plan-schema";
 
 /** How often a week still running elsewhere (a reload, another device) is read again. */
 const POLL_MS = 3000;
@@ -33,11 +36,39 @@ const failPending = (week: WeekResult, message: string): WeekResult => ({ ...wee
 
 type RunError = { code: string; message: string };
 
+/** The stored week (GET /api/week/<id>): its days, its steps and each playing day's plan. */
+async function loadRecord(id: string): Promise<{ week: WeekResult; events: WeekStepEvent[]; plans: Record<string, Plan> } | null> {
+  const res = await fetch(`/api/week/${id}`, { cache: "no-store" }).catch(() => null);
+  const body = res?.ok ? await res.json().catch(() => null) : null;
+  const week = weekResultSchema.safeParse(body?.week);
+  if (!week.success) return null;
+  const events = Array.isArray(body.events) ? body.events.flatMap((e: unknown) => { const p = weekStepEventSchema.safeParse(e); return p.success ? [p.data] : []; }) : [];
+  const plans: Record<string, Plan> = {};
+  for (const [date, raw] of Object.entries((body.plans ?? {}) as Record<string, unknown>)) {
+    const p = planSchema.safeParse(raw);
+    if (p.success) plans[date] = p.data;
+  }
+  return { week: week.data, events, plans };
+}
+
 /**
  * A week: its seven days and the Hive's steps. `live` starts the run here (POST /api/week, streamed); without it the week is
  * a stored one (/w/<id>), replayed from its record, and read again while it is still running elsewhere.
  */
-export function WeekView({ initial, events = [], live = null, onChangeWeek }: { initial: WeekResult; events?: WeekStepEvent[]; live?: { request: WeekRequest; faults: string | null } | null; onChangeWeek?: () => void }) {
+export function WeekView({
+  initial,
+  events = [],
+  plans: initialPlans = {},
+  live = null,
+  onChangeWeek,
+}: {
+  initial: WeekResult;
+  events?: WeekStepEvent[];
+  /** Each playing day's stored plan, by date: the page shows every day in full. */
+  plans?: Record<string, Plan>;
+  live?: { request: WeekRequest; faults: string | null } | null;
+  onChangeWeek?: () => void;
+}) {
   const [week, setWeek] = useState(initial);
   const [steps, setSteps] = useState<Step[]>(() => stepsOf(events));
   const [usage, setUsage] = useState<RunUsage | null>(() => usageOf(events));
@@ -47,6 +78,11 @@ export function WeekView({ initial, events = [], live = null, onChangeWeek }: { 
   const [calendar, setCalendar] = useState<"idle" | "busy" | "failed">("idle");
   const started = useRef(-1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [plans, setPlans] = useState<Record<string, Plan>>(initialPlans);
+  /** The map's day: "all" (each day's pick, badged by day) or a date (that day's busk map). */
+  const [mapDay, setMapDay] = useState<string>("all");
+  /** The open days: the first playing day to start with. */
+  const [openDays, setOpenDays] = useState<Set<string>>(() => new Set(initial.days.filter((d) => d.status === "ready").slice(0, 1).map((d) => d.date)));
 
   useEffect(() => {
     if (!live || started.current === attempt) return;
@@ -106,6 +142,9 @@ export function WeekView({ initial, events = [], live = null, onChangeWeek }: { 
               finished = true;
               setWeek(event.week);
               setStreaming(false);
+              setOpenDays(new Set(event.week.days.filter((d) => d.status === "ready").slice(0, 1).map((d) => d.date)));
+              // The day plans, stored now: read once, so every day shows in full here.
+              if (event.week.id) void loadRecord(event.week.id).then((r) => r && setPlans(r.plans));
               // The address is the week's own page (set at week-started): a refresh replays the stored week.
               if (event.week.id && window.location.pathname !== weekPath(event.week.id)) window.history.replaceState(null, "", weekPath(event.week.id));
               break;
@@ -148,17 +187,16 @@ export function WeekView({ initial, events = [], live = null, onChangeWeek }: { 
     if (!following || !week.id) return;
     const id = week.id;
     const timer = setInterval(async () => {
-      const res = await fetch(`/api/week/${id}`, { cache: "no-store" }).catch(() => null);
-      const body = res?.ok ? await res.json().catch(() => null) : null;
-      const next = weekResultSchema.safeParse(body?.week);
-      if (!next.success) return;
-      const evs = Array.isArray(body.events) ? body.events.flatMap((e: unknown) => { const p = weekStepEventSchema.safeParse(e); return p.success ? [p.data] : []; }) : [];
-      setWeek(next.data);
-      if (evs.length) {
-        setSteps(stepsOf(evs));
-        setUsage(usageOf(evs));
+      const record = await loadRecord(id);
+      if (!record) return;
+      setWeek(record.week);
+      setPlans(record.plans);
+      if (record.events.length) {
+        setSteps(stepsOf(record.events));
+        setUsage(usageOf(record.events));
       }
-      if (next.data.error) setError(next.data.error);
+      if (record.week.error) setError(record.week.error);
+      if (record.week.status !== "running") setOpenDays(new Set(record.week.days.filter((d) => d.status === "ready").slice(0, 1).map((d) => d.date)));
     }, POLL_MS);
     return () => clearInterval(timer);
   }, [following, week.id]);
@@ -222,6 +260,29 @@ export function WeekView({ initial, events = [], live = null, onChangeWeek }: { 
       ariaLabel: `${days.map((d) => `Day ${d.n}, ${d.label}`).join("; ")}: ${pitch.name}`,
     }));
   }, [week.days]);
+  const dayPlan = mapDay === "all" ? null : (plans[mapDay] ?? null);
+  // A day: that day's busk map exactly (its pitches, the others, the rules zones, its cells). All week: each day's pick.
+  const mapPlan = dayPlan ?? { pitches: pins, tasteCells: week.tasteCells, others: [] };
+  const readyPlans = week.days.flatMap((d) => (d.status === "ready" && plans[d.date] ? [plans[d.date]] : []));
+  const noForecast = readyPlans.length > 0 && readyPlans.every((p) => p.weather === null);
+  /** Show a day on the map, and open its section. */
+  function showDay(day: string) {
+    setMapDay(day);
+    setSelectedId(null);
+    if (day !== "all") setOpenDays((cur) => new Set([...cur, day]));
+  }
+  /** A pin on "All week" is a day's pick: that day opens on the map and below. */
+  function selectPin(id: string) {
+    if (mapDay !== "all") {
+      setSelectedId(id);
+      return;
+    }
+    const day = week.days.find((d) => d.status === "ready" && d.pitch?.id === id);
+    if (day && plans[day.date]) {
+      showDay(day.date);
+      setSelectedId(id);
+    } else setSelectedId(id);
+  }
 
   return (
     <div className="flex flex-col gap-8" data-testid="week-view" data-status={week.status}>
@@ -315,19 +376,57 @@ export function WeekView({ initial, events = [], live = null, onChangeWeek }: { 
             {week.summary}
           </p>
         ) : null}
-        <WeekDays days={week.days} />
       </section>
 
+      {noForecast ? (
+        <Banner testId="week-no-forecast">No forecast yet for these dates, so the weather is left out of the scores.</Banner>
+      ) : null}
+
       {pins.length > 0 ? (
-        <section aria-labelledby="week-map-h" className="flex flex-col gap-3.5" data-testid="week-map" data-pins={pins.length}>
-          <h2 id="week-map-h" className="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
-            Where you play
-          </h2>
+        <section aria-labelledby="week-map-h" className="flex flex-col gap-3.5" data-testid="week-map" data-pins={pins.length} data-day={mapDay}>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <h2 id="week-map-h" className="m-0 font-display text-[26px] leading-none font-extrabold uppercase">
+              Where you play
+            </h2>
+            <ToggleGroup type="single" value={mapDay} onValueChange={(v) => v && showDay(v)} aria-label="Day on the map" spacing={1} data-testid="week-map-days">
+              <ToggleGroupItem value="all" variant="outline" size="sm">
+                All week
+              </ToggleGroupItem>
+              {week.days.map((d, i) => (
+                <ToggleGroupItem key={d.date} value={d.date} variant="outline" size="sm" disabled={!plans[d.date]} aria-label={`Day ${i + 1}, ${d.label}`}>
+                  Day {i + 1}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
           <div className="border-2 border-rule bg-card">
-            <LazyPlanMap plan={{ pitches: pins, tasteCells: week.tasteCells, others: [] }} center={week.center} selectedId={selectedId} onSelect={setSelectedId} />
+            <LazyPlanMap plan={mapPlan} center={week.center} selectedId={selectedId} onSelect={selectPin} />
           </div>
         </section>
       ) : null}
+
+      <WeekDays
+        days={week.days}
+        plans={plans}
+        open={openDays}
+        onOpen={(date, o) => {
+          setOpenDays((cur) => {
+            const next = new Set(cur);
+            if (o) next.add(date);
+            else next.delete(date);
+            return next;
+          });
+          if (o && plans[date]) setMapDay(date);
+        }}
+        selectedPitch={selectedId}
+        onSelectPitch={(date, id) => {
+          setMapDay(date);
+          setSelectedId(id);
+        }}
+        model={model}
+        rulesChecked={week.rulesChecked}
+        showWeather={!noForecast}
+      />
 
       {steps.length > 0 || running ? (
         <AgentStepStream

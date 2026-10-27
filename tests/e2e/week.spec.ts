@@ -1,5 +1,7 @@
 import { readFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
+import { EXAMPLES } from "../../src/lib/examples";
+import { serverDay } from "./clock";
 import { expect, LOCAL, test, waitForPlan } from "./fixtures";
 
 /**
@@ -66,23 +68,70 @@ test.describe("plan my week (offline)", () => {
 
   test("the week's map pins every day you play, numbered by day, and each playing day has its forecast", async ({ page }) => {
     await planWeek(page);
-    const playing = await page.getByTestId("week-day-plan").count();
+    const playing = await page.getByTestId("week-day-status").filter({ hasText: "Playing" }).count();
+    await expect(page.getByTestId("week-day-plan")).toHaveCount(playing);
     await expect(page.getByTestId("week-day-weather")).toHaveCount(playing);
+    await expect(page.getByTestId("week-no-forecast")).toHaveCount(0);
     const map = page.getByTestId("week-map");
     await map.scrollIntoViewIfNeeded();
-    const show = map.getByRole("button", { name: "Show the map" });
     // The map loads itself once in view; the button only if it hasn't yet.
-    await show.click({ timeout: 2000 }).catch(() => undefined);
+    await map.getByRole("button", { name: "Show the map" }).click({ timeout: 2000 }).catch(() => undefined);
     const pins = map.getByRole("button", { name: /^Day \d, / });
     await expect(pins.first()).toBeVisible({ timeout: 20_000 });
     const labels = await pins.evaluateAll((els) => els.map((e) => e.getAttribute("aria-label") ?? ""));
-    const days = labels.flatMap((l) => l.split(":")[0].split("; "));
-    expect(days).toHaveLength(playing);
+    expect(labels.flatMap((l) => l.split(":")[0].split("; "))).toHaveLength(playing);
+  });
+
+  test("every day shows in full on the week page; the day selector switches the map and opens that day", async ({ page }) => {
+    await planWeek(page);
+    const url = page.url();
+    const ready = days(page).filter({ has: page.getByTestId("week-day-status").filter({ hasText: "Playing" }) });
+    expect(await ready.count()).toBeGreaterThan(1);
+    // The first playing day is open, with its plan inline: pitch row, the details, the suggested set, the score.
+    const first = ready.first();
+    await expect(first).toHaveAttribute("data-open", "true");
+    const inline = first.getByTestId("week-day-plan-inline");
+    await expect(inline.getByRole("region", { name: "Pitches", exact: true })).toBeVisible();
+    await expect(inline.getByTestId("score-details")).toBeVisible();
+    await expect(inline.getByTestId("rules-line")).toBeVisible();
+    // Another day from the selector: the map shows that day, and its section opens below. No navigation.
+    const second = ready.nth(1);
+    const date = await second.getAttribute("data-date");
+    const n = (await second.getByTestId("week-day-number").textContent())!.trim();
+    await page.getByTestId("week-map-days").getByRole("radio", { name: new RegExp(`^${n},`) }).click();
+    await expect(page.getByTestId("week-map")).toHaveAttribute("data-day", date!);
+    await expect(second).toHaveAttribute("data-open", "true");
+    await expect(second.getByTestId("week-day-plan-inline").getByRole("region", { name: "Pitches", exact: true })).toBeVisible();
+    // Opening a day below moves the map to it too.
+    const trigger = first.locator('[data-slot="collapsible-trigger"]').first();
+    await trigger.click();
+    await expect(first).not.toHaveAttribute("data-open", "true");
+    await trigger.click();
+    await expect(page.getByTestId("week-map")).toHaveAttribute("data-day", (await first.getAttribute("data-date"))!);
+    await page.getByTestId("week-map-days").getByRole("radio", { name: "All week" }).click();
+    await expect(page.getByTestId("week-map")).toHaveAttribute("data-day", "all");
+    expect(page.url()).toBe(url);
+  });
+
+  test("a week with no forecast says so once, not a box per day", async ({ page }) => {
+    // Offline weather is synthetic for any date: the weather fault stands in for dates beyond the forecast.
+    const start = serverDay(1);
+    const daysIn = Array.from({ length: 7 }, (_, i) => ({ date: new Date(Date.parse(`${start}T00:00:00Z`) + i * 86_400_000).toISOString().slice(0, 10), any: true }));
+    const res = await page.request.post("/api/week", { data: { performer: EXAMPLES[0].performer, startDate: start, days: daysIn }, headers: { "x-buskmap-faults": "weather" } });
+    expect(res.ok()).toBe(true);
+    const id = res.headers()["x-week-id"];
+    expect(await res.text()).toContain('"type":"week"');
+    await page.goto(`/w/${id}`);
+    await expect(page.getByTestId("week-view")).toHaveAttribute("data-status", "done");
+    await expect(page.getByTestId("week-no-forecast")).toHaveCount(1);
+    await expect(page.getByTestId("week-day-weather")).toHaveCount(0);
+    await expect(page.getByTestId("weather-unavailable")).toHaveCount(0);
   });
 
   test("the calendar downloads as a valid VCALENDAR with one event per day you play", async ({ page }) => {
     await planWeek(page);
-    const playing = await page.getByTestId("week-day-plan").count();
+    const playing = await page.getByTestId("week-day-status").filter({ hasText: "Playing" }).count();
+    await expect(page.getByTestId("week-day-plan")).toHaveCount(playing);
     const download = page.waitForEvent("download");
     await page.getByTestId("week-calendar").click();
     const file = await download;

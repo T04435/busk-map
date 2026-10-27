@@ -262,7 +262,8 @@ export function WeekView({
   }, [week.days]);
   const dayPlan = mapDay === "all" ? null : (plans[mapDay] ?? null);
   // A day: that day's busk map exactly (its pitches, the others, the rules zones, its cells). All week: each day's pick.
-  const mapPlan = dayPlan ?? { pitches: pins, tasteCells: week.tasteCells, others: [] };
+  const allWeek = useMemo(() => ({ pitches: pins, tasteCells: week.tasteCells, others: [] }), [pins, week.tasteCells]);
+  const mapPlan = dayPlan ?? allWeek;
   const readyPlans = week.days.flatMap((d) => (d.status === "ready" && plans[d.date] ? [plans[d.date]] : []));
   const noForecast = readyPlans.length > 0 && readyPlans.every((p) => p.weather === null);
   /** Show a day on the map, and open its section. */
@@ -399,7 +400,9 @@ export function WeekView({
               ))}
             </ToggleGroup>
           </div>
-          <div className="border-2 border-rule bg-card">
+          {/* A definite height, as the busk plan's grid cell gives its map: the map's canvas fills its frame by percentage, so an
+              auto-height frame left it 0 px tall (blank, no tiles, cells or pins). */}
+          <div className="flex h-[30rem] flex-col border-2 border-rule bg-card md:h-[36rem]" data-testid="week-map-frame">
             <LazyPlanMap plan={mapPlan} center={week.center} selectedId={selectedId} onSelect={selectPin} />
           </div>
         </section>

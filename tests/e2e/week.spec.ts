@@ -113,6 +113,23 @@ test.describe("plan my week (offline)", () => {
     expect(page.url()).toBe(url);
   });
 
+  test("the week map draws: a canvas with height and pins, for All week and for a day", async ({ page }) => {
+    await planWeek(page);
+    const map = page.getByTestId("week-map");
+    await map.scrollIntoViewIfNeeded();
+    await map.getByRole("button", { name: "Show the map" }).click({ timeout: 2000 }).catch(() => undefined);
+    const canvas = map.locator("canvas.maplibregl-canvas");
+    await expect(canvas).toHaveCount(1, { timeout: 20_000 });
+    await expect.poll(async () => (await canvas.boundingBox())?.height ?? 0, { timeout: 10_000 }).toBeGreaterThan(200);
+    const region = map.getByRole("region", { name: "Map of pitches and Qloo taste affinity" });
+    expect((await region.boundingBox())?.height ?? 0).toBeGreaterThan(200);
+    await expect(map.getByRole("button", { name: /^Day \d, / }).first()).toBeVisible();
+    // A day: that day's busk map, its pitches pinned like a busk's.
+    await page.getByTestId("week-map-days").getByRole("radio", { name: /^Day 1,/ }).click();
+    await expect(map.getByRole("button", { name: /^Pitch 1: / })).toBeVisible();
+    expect((await canvas.boundingBox())?.height ?? 0).toBeGreaterThan(200);
+  });
+
   test("a week with no forecast says so once, not a box per day", async ({ page }) => {
     // Offline weather is synthetic for any date: the weather fault stands in for dates beyond the forecast.
     const start = serverDay(1);

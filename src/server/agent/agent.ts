@@ -326,7 +326,8 @@ async function runAgent(ctx: PlanContext, events: AgentEvents, abortSignal: Abor
     if (!state.answer && left > 0 && tokens < limits.tokenBudget && !signal.aborted) {
       log.warn("agent stopped without finish_plan; forcing a final answer", { steps });
       state.wrappingUp = true;
-      const { messages } = await result.response;
+      // Every step's messages (result.response holds the last step's only), so the model keeps what it found.
+      const messages = await result.responseMessages;
       const finalRound = new ToolLoopAgent({
         model,
         instructions: INSTRUCTIONS,

@@ -47,6 +47,9 @@ test.describe("plan my week (offline)", () => {
     expect(await playing.count()).toBeGreaterThan(0);
     await expect(playing.first().getByTestId("week-day-pitch")).not.toBeEmpty();
     await expect(playing.first().getByTestId("week-day-hours")).toHaveText(/\d (am|pm)–\d+ (am|pm)/);
+    // The week never repeats a spot: seven distinct picks.
+    const picked = await page.getByTestId("week-day-pitch").allTextContents();
+    expect(new Set(picked).size).toBe(picked.length);
     // The Hive's steps, each for a day.
     await expect(page.getByRole("list", { name: "Research, in the order it ran" }).getByTestId("agent-step").first()).toBeVisible();
     await expect(page.getByTestId("agent-step-day").first()).toBeVisible();
@@ -124,6 +127,8 @@ test.describe("plan my week (offline)", () => {
     const region = map.getByRole("region", { name: "Map of pitches and Qloo taste affinity" });
     expect((await region.boundingBox())?.height ?? 0).toBeGreaterThan(200);
     await expect(map.getByRole("button", { name: /^Day \d, / }).first()).toBeVisible();
+    // All week: one pin per day, seven distinct spots.
+    await expect(map.getByRole("button", { name: /^Day \d, / })).toHaveCount(await page.getByTestId("week-day-pitch").count());
     // A day: that day's busk map, its pitches pinned like a busk's.
     await page.getByTestId("week-map-days").getByRole("radio", { name: /^Day 1,/ }).click();
     await expect(map.getByRole("button", { name: /^Pitch 1: / })).toBeVisible();

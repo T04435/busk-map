@@ -27,7 +27,7 @@ function toolResults(prompt: PromptMessage[]): ToolResult[] {
     .flatMap((m) => (m.content as ToolResult[]).filter((part) => part.type === "tool-result"));
 }
 
-type ScoreRow = { pitchId: string; name: string; score: number; engineTop3: boolean };
+type ScoreRow = { pitchId: string; name: string; score: number; engineTop3: boolean; district?: string };
 
 function lastScores(results: ToolResult[]): ScoreRow[] {
   const scored = results.filter((r) => r.toolName === "score_pitches").at(-1)?.output.value as { pitches?: ScoreRow[] } | undefined;
@@ -211,7 +211,7 @@ export function createMockCompare() {
   });
 }
 
-export type MockWeekScenario = "investigate" | "skip-last" | "bad-finish" | "never-finish" | "text-only" | "same-spot" | "fail";
+export type MockWeekScenario = "investigate" | "skip-last" | "bad-finish" | "never-finish" | "text-only" | "same-spot" | "insist" | "fail";
 
 /** The playable days, from the week prompt's "Playable days:" line. */
 function playableDays(prompt: PromptMessage[]): string[] {
@@ -235,6 +235,10 @@ export function nextWeekMove(results: ToolResult[], tools: string[], days: strin
   const scoredDays = new Set(done("score_pitches").filter(ok).map(dayOf));
   const rejections = done("finish_week").filter((r) => (r.output.value as { accepted?: boolean })?.accepted === false).length;
   const picked = new Set<string>();
+  const districts = new Set<string>();
+  // The last rejection's suggestions per day.
+  const lastReject = done("finish_week").filter((r) => (r.output.value as { accepted?: boolean })?.accepted === false).at(-1)?.output.value as { summary?: string } | undefined;
+  const suggested = new Map([...(lastReject?.summary ?? "").matchAll(/Try (\d{4}-\d{2}-\d{2}): ([^,.\s]+)/g)].map((m) => [m[1], m[2]]));
   const finishWeek = (): Move => ({
     text: "We have enough to plan the week.",
     calls: [
@@ -245,9 +249,12 @@ export function nextWeekMove(results: ToolResult[], tools: string[], days: strin
           days: days.map((day, i) => {
             const rows = (done("score_pitches").filter((r) => dayOf(r) === day).at(-1)?.output.value as { pitches?: ScoreRow[] } | undefined)?.pitches ?? [];
             const top = rows.find((r) => r.engineTop3) ?? rows[0];
-            // Like Claude told to spread the week: a pitch not picked yet when it scores within 5 points ("same-spot" repeats the best until sent back).
-            const spread = scenario !== "same-spot" || rejections > 0;
-            const best = (spread && top ? rows.find((r) => !picked.has(r.pitchId) && r.score >= top.score - 5) : undefined) ?? top;
+            // Like Claude told to spread the week: a pitch (and a district) no earlier day took, else what finish_week suggested
+            // ("Try <day>: id, …"); "same-spot" repeats the best until sent back, "insist" never stops repeating it.
+            const tried = suggested.get(day);
+            const spread = scenario === "insist" ? false : scenario !== "same-spot" || rejections > 0;
+            const best = (spread ? (tried ? (rows.find((r) => r.pitchId === tried) ?? { pitchId: tried, name: tried, score: 0, engineTop3: false }) : undefined) ?? rows.find((r) => !picked.has(r.pitchId) && !(r.district && districts.has(r.district))) ?? rows.find((r) => !picked.has(r.pitchId)) : undefined) ?? top;
+            if (best?.district) districts.add(best.district);
             if (best) picked.add(best.pitchId);
             if (scenario === "bad-finish" && rejections === 0 && i === 0) return { day, pitchId: "made-up", why: "Trust me." };
             if ((scenario === "skip-last" && i === days.length - 1 && days.length > 1) || !best) return { day, pitchId: null, why: "Mock explanation: a weaker day for this act on the data gathered." };

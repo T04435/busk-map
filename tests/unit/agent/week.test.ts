@@ -53,10 +53,8 @@ describe("week agent (offline, mock model)", () => {
 
     expect(run.week.days.map((d) => d.status)).toEqual(["ready", "ready", "cant-play", "ready", "ready", "ready", "ready"]);
     expect(run.plans).toHaveLength(6);
-    for (const day of run.week.days.filter((d) => d.status === "ready")) {
-      expect(day.pitch!.why).toMatch(/^Mock explanation/);
-      expect(day.window).toBe("6 pm–9 pm");
-    }
+    for (const day of run.week.days.filter((d) => d.status === "ready")) expect(day.window).toBe("6 pm–9 pm");
+    expect(run.week.days.some((d) => d.pitch?.why.startsWith("Mock explanation"))).toBe(true);
     expect(run.week).toMatchObject({ status: "done", id: null, error: null, cityName: "Melbourne", rulesChecked: true, timeZone: "Australia/Melbourne" });
     expect(run.week.tasteCells.length).toBeGreaterThan(0);
     expect(run.week.days.filter((d) => d.status === "ready").every((d) => d.weather !== null)).toBe(true);
@@ -140,6 +138,35 @@ describe("week agent (offline, mock model)", () => {
     expect(finishes[0].summary).toMatch(/made-up isn't in .* scored pool/);
     expect(finishes.at(-1)).toMatchObject({ ok: true });
     expect(run.week.days.every((d) => d.status === "ready")).toBe(true);
+  });
+
+  it("Melbourne: never the same pitch twice, and each pick 400 m from every other while the pools allow", async () => {
+    mockFetch([]);
+    const { runWeekAgent, createMockWeekPlanner } = await load();
+    const { WEEK_MIN_SPACING_M } = await import("@/server/agent/week-spread");
+    const { distanceM } = await import("@/lib/geo");
+    for (const model of [undefined, createMockWeekPlanner("same-spot"), createMockWeekPlanner("insist")]) {
+      const run = await runWeekAgent(week(defaultDays(START)), OFFLINE, TODAY, {}, undefined, model ? { model } : {});
+      const picks = run.week.days.flatMap((d) => (d.pitch ? [d.pitch] : []));
+      expect(picks).toHaveLength(7);
+      expect(new Set(picks.map((p) => p.id)).size).toBe(7);
+      for (const [i, a] of picks.entries()) for (const b of picks.slice(i + 1)) expect(distanceM(a, b)).toBeGreaterThanOrEqual(WEEK_MIN_SPACING_M);
+    }
+  });
+
+  it("a metro (Tokyo with its districts): each day's pick from a district no other day uses while one is left", async () => {
+    mockFetch([]);
+    const { runWeekAgent, createMockWeekPlanner } = await load();
+    const ended: { tool: string; output: unknown }[] = [];
+    const run = await runWeekAgent(week(defaultDays(START), requestFieldsOf({ ...TOKYO, radiusKm: 15 })), OFFLINE, TODAY, { onToolEnd: (e) => ended.push(e) }, undefined, { model: createMockWeekPlanner("insist") });
+    const districts = (ended.find((e) => e.tool === "score_pitches")?.output as { districts?: string[] } | undefined)?.districts ?? [];
+    expect(districts.length).toBeGreaterThan(1);
+    // The model insisted on one pitch: the engine moved the days across the districts, never the same pitch two days running.
+    const ids = run.plans.map((p) => p.plan.pitches[0].id);
+    expect(new Set(ids).size).toBeGreaterThanOrEqual(Math.min(ids.length, districts.length));
+    for (let i = 1; i < ids.length; i++) expect(ids[i]).not.toBe(ids[i - 1]);
+    const finishes = ended.filter((e) => e.tool === "finish_week");
+    expect(JSON.stringify(finishes[0].output)).toMatch(/already used on|Areas used so far/);
   });
 
   it("names every picked pitch by a real place when Overpass is down (Tokyo, Qloo venues only): never a taste spot, compass or km", async () => {
@@ -244,21 +271,6 @@ describe("checkWeekAnswer", () => {
     expect(unscored.map((p) => p.message)).toEqual(["Call score_pitches for 2026-10-18 before choosing a pitch for it."]);
     const wrong = checkWeekAnswer({ summary: "s", days: [{ day: "2026-10-17", pitchId: "nope", why: "ok" }, { day: "2026-10-18", pitchId: null, why: "weak" }], notes: [] }, days, seen);
     expect(wrong[0].message).toMatch(/nope isn't in 2026-10-17's scored pool. Best scored that day: p1 \(Pitch One\)/);
-    // Variety: the same pitch again when an unused one scores within 5 points that day is sent back; a clear best may repeat.
-    const a = new AgentState();
-    const b = new AgentState();
-    for (const st of [a, b]) {
-      st.pool.set("p1", { id: "p1", name: "Pitch One", score: 80 } as never);
-      st.pool.set("p2", { id: "p2", name: "Pitch Two", score: 77 } as never);
-    }
-    const two = new Map([
-      ["2026-10-17", { date: "2026-10-17", state: a } as never],
-      ["2026-10-18", { date: "2026-10-18", state: b } as never],
-    ]);
-    const same = checkWeekAnswer({ summary: "s", days: [{ day: "2026-10-17", pitchId: "p1", why: "ok" }, { day: "2026-10-18", pitchId: "p1", why: "ok" }], notes: [] }, two, seen);
-    expect(same).toEqual([expect.objectContaining({ kind: "variety", message: expect.stringMatching(/2026-10-18 has p2 \(Pitch Two\).*spread the week/) })]);
-    b.pool.set("p2", { id: "p2", name: "Pitch Two", score: 70 } as never);
-    expect(checkWeekAnswer({ summary: "s", days: [{ day: "2026-10-17", pitchId: "p1", why: "ok" }, { day: "2026-10-18", pitchId: "p1", why: "ok" }], notes: [] }, two, seen)).toEqual([]);
     const invented = checkWeekAnswer({ summary: "About 4321 people.", days: [{ day: "2026-10-17", pitchId: "p1", why: "ok" }, { day: "2026-10-18", pitchId: null, why: "weak" }], notes: [] }, days, seen);
     expect(invented).toEqual([expect.objectContaining({ kind: "numbers", numbers: ["4321"] })]);
   });

@@ -122,7 +122,7 @@ function regionPlaces(): MockPlace[] {
       return MOCK_PLACES.slice(0, 12).map((place, i) => {
         const at = fromMockFrame({ lat: place.lat - MELBOURNE.center.lat + hub.lat, lon: place.lon - MELBOURNE.center.lon + hub.lon }, region);
         const osmRef = `${region.id}:hub${h}:${place.osmRef}`;
-        return { ...place, ...at, id: mockId("place", osmRef), osmRef, name: `Synthetic ${hub.label} ${place.categoryLabel} ${i + 1}`, address: `${i + 1} Synthetic Lane, ${area} 100-000${h}, Japan`, geohash: geohashEncode(at, 12) };
+        return { ...place, ...at, id: mockId("place", osmRef), osmRef, name: `${area} ${place.categoryLabel} ${i + 1}`, address: `${i + 1} Synthetic Lane, ${area} 100-000${h}, Japan`, geohash: geohashEncode(at, 12) };
       });
     });
     return [...moved, ...hubs];

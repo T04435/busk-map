@@ -27,6 +27,8 @@ import { createMockWeekPlanner } from "./mock-model";
 import { MODELS, PLANNER_PROVIDER_OPTIONS } from "./models";
 import { AgentState, CROWD_TOOLS, createTools, GATE_TOOLS, MAX_FINISH_REJECTIONS, MIN_LOOKS, NumberBag, outputForPage, toolStart } from "./tools";
 import { WhereError } from "./where";
+import { enforceSpread, spreadProblems, WEEK_MIN_SPACING_M, type SpreadDay } from "./week-spread";
+import { districtOf } from "@/server/scoring";
 
 /**
  * "Plan my week" (V2 plan phase 4): ONE run of the Hive over the next 7 days. The model gets the busk agent's tools, each
@@ -72,12 +74,6 @@ export class WeekPlannerUnavailableError extends Error {
   }
 }
 
-/**
- * Spread the week: a pitch picked again on another day is sent back when that day has a pitch picked on no other day scoring
- * within this many points of it. Repeats stay when the pitch is clearly the day's best.
- */
-export const VARIETY_POINTS = 5;
-
 export const WEEK_INSTRUCTIONS = `${PERSONA_PROMPT}
 
 Your job here: a street performer wants the best pitch for each day they can play in the next 7 days, and to know which of those days are worth going out at all. You investigate with tools; every tool takes the day it is for. Busk Map's scoring engine is a calculator you call per day: score_pitches scores that day's pitches, and you choose among the pitches it scored.
@@ -87,7 +83,7 @@ How to work:
 2. Run check_pitch on promising spots the data points to, for the days you'd play them, so the engine can score them.
 3. Call score_pitches for each day you might recommend (add the spots you checked for that day).
 4. Choose. For each day, the single best pitch, or no pitch when the day is clearly weak for this act (quiet at those hours, rain, nothing for this crowd). Compare the days with each other: say what makes the strong days strong.
-5. Spread the week. When a pitch you haven't picked for another day scores within ${VARIETY_POINTS} points of a day's best, pick it (another area if you can): the same pitch on several days only when it is clearly better. finish_week sends a repeat back when a close alternative exists.
+5. Spread the week, a hard rule. In a city planned in areas (score_pitches shows each pitch's district), each day's pick comes from an area no other day uses, while that day has a scored pitch in an unused area; only when every area is used may one repeat (the least-used, never the day before's). Elsewhere, never the same pitch twice, and each day's pick at least ${WEEK_MIN_SPACING_M} m from every other day's. finish_week sends back a pick that breaks it and names the areas used; if you insist, Busk Map swaps in that day's best allowed pitch.
 6. Finish with finish_week: every playable day once, with a pitchId from that day's score_pitches and a why, or pitchId null and the reason the day isn't worth it; a two-sentence summary of the week; data caveats. If finish_week rejects your answer, fix what it says and call it again. Always end the run with finish_week.
 
 Before each tool call, write one short sentence saying what you will check next and why. You may call several tools at once. Look only inside the planning area. Point at places by pitchId, by name, or with coordinates from a tool result. You have about 25 tool calls for the whole week. Don't repeat a call with the same inputs.
@@ -175,7 +171,18 @@ export function buildWeekPrompt(week: WeekRequest, days: WeekDay[], matched: { q
     .join("\n");
 }
 
-type Problem = { kind: "pool" | "days" | "numbers" | "variety"; message: string; numbers?: string[] };
+type Problem = { kind: "pool" | "days" | "numbers" | "spread"; message: string; numbers?: string[] };
+
+/** Each playable day's scored pool and (a metro planned in districts) the area a pitch is in, for the spread rule. */
+export function spreadDays(days: ReadonlyMap<string, WeekDay>): Map<string, SpreadDay> {
+  return new Map(
+    [...days.values()].map((d) => {
+      const districts = d.state.districts;
+      const areaOf = districts.length > 1 ? (p: { lat: number; lon: number }) => districts.find((x) => x.id === districtOf(p, districts))?.name ?? null : null;
+      return [d.date, { pool: [...d.state.pool.values()], areaOf }];
+    }),
+  );
+}
 
 
 /** The guardrails on the week's answer. Pure, so tests can call it directly. */
@@ -197,23 +204,8 @@ export function checkWeekAnswer(answer: WeekAnswer, days: Map<string, WeekDay>, 
       problems.push({ kind: "pool", message: `${entry.pitchId} isn't in ${entry.day}'s scored pool. Best scored that day: ${listing}.` });
     }
   }
-  // Variety: the same pitch on several days only when nothing unused that day comes close.
-  const picks = answer.days.filter((d) => d.pitchId !== null && days.get(d.day)?.state.pool.has(d.pitchId));
-  const used = new Set(picks.map((d) => d.pitchId!));
-  const seenPick = new Set<string>();
-  for (const entry of picks) {
-    const id = entry.pitchId!;
-    if (!seenPick.has(id)) {
-      seenPick.add(id);
-      continue;
-    }
-    const pool = days.get(entry.day)!.state.pool;
-    const chosen = pool.get(id)!;
-    const alternative = [...pool.values()].filter((p) => !used.has(p.id) && p.score >= chosen.score - VARIETY_POINTS).sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))[0];
-    if (alternative) {
-      problems.push({ kind: "variety", message: `${id} is already picked for another day, and ${entry.day} has ${alternative.id} (${alternative.name}) scoring close to it: spread the week across pitches when scores are close.` });
-    }
-  }
+  // Spread: no area (a metro) or pitch and 400 m (elsewhere) twice in the week while the pools allow it.
+  for (const message of spreadProblems(answer.days, spreadDays(days))) problems.push({ kind: "spread", message });
   const anyPool = [...days.values()].some((d) => d.state.pool.size > 0);
   if (anyPool && answer.days.length > 0 && answer.days.every((d) => d.pitchId === null)) problems.push({ kind: "days", message: "Recommend a pitch for at least one day." });
   const text = [answer.summary, ...answer.days.map((d) => d.why), ...answer.notes].join(" ");
@@ -272,12 +264,17 @@ export function createWeekTools(days: Map<string, WeekDay>, week: WeekState, qlo
       // A run cut short still finishes against scored pools: score each unscored day now (scoring is open when wrapping up).
       if (week.wrappingUp) for (const d of days.values()) if (!d.state.scored) await run("score_pitches", d.date, {}, options).catch(() => null);
       const problems = checkWeekAnswer(answer, days, week.seen);
-      if (problems.length > 0 && !(problems.every((p) => p.kind === "numbers" || p.kind === "variety") && week.rejections >= MAX_FINISH_REJECTIONS)) {
+      // Spread and numbers problems stop blocking after MAX_FINISH_REJECTIONS, or at once when the run is wrapping up: the engine
+      // then enforces the spread rule itself (below).
+      if (problems.length > 0 && !(problems.every((p) => p.kind === "numbers" || p.kind === "spread") && (week.rejections >= MAX_FINISH_REJECTIONS || week.wrappingUp))) {
         week.rejections++;
         return { accepted: false, summary: `Rejected: ${problems.map((p) => p.message).join(" ")}`, problems: problems.map((p) => p.message) };
       }
       if (problems.length > 0) week.unverifiedNumbers = problems.flatMap((p) => p.numbers ?? []);
-      week.answer = answer;
+      // The engine holds the spread rule even when the model insists: a pick that breaks it becomes the day's best allowed one.
+      const { picks, changed } = enforceSpread(answer.days, spreadDays(days));
+      if (changed.length) log.warn("week spread enforced by the engine", { days: changed });
+      week.answer = { ...answer, days: picks };
       const picked = answer.days.filter((d) => d.pitchId !== null);
       return { accepted: true, summary: `Accepted: ${picked.length} day${picked.length === 1 ? "" : "s"} planned` };
     },

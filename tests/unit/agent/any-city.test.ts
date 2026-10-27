@@ -95,8 +95,8 @@ describe("a plan in Tokyo (offline)", () => {
     const naming = { venues: [{ name: "Bar Hachi", lat: 35.681, lon: 139.69 }], city: "Tokyo" };
     expect(cellName(cell, [], [{ name: "Far away", lat: 35.69, lon: 139.69, origin: "taste" }], naming)).toBe("Near Bar Hachi");
     expect(cellName(cell, [], [], { city: "Tokyo" })).toBe("Tokyo taste spot");
-    // Two cells by the same place: the second never repeats the first's name.
-    expect(cellNames([cell, { lat: 35.6805, lon: 139.6905 }], [], [], naming)).toEqual(["Near Bar Hachi", "Near Bar Hachi, 35.6805, 139.6905"]);
+    // Two cells by the same place: the second never repeats the first's name, and is never named with numbers (no name: left out).
+    expect(cellNames([cell, { lat: 35.6805, lon: 139.6905 }], [], [], naming)).toEqual(["Near Bar Hachi", null]);
   });
 
   it("names a point given by coordinates like the cells and pitches in step titles and summaries, never as raw numbers", async () => {

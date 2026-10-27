@@ -149,7 +149,7 @@ test.describe("plan my week (offline)", () => {
     await expect(page.getByTestId("week-view")).toHaveAttribute("data-status", "done", { timeout: 90_000 });
     const names = await page.getByTestId("week-day-pitch").allTextContents();
     expect(names.length).toBeGreaterThan(0);
-    for (const name of names) expect(name).not.toMatch(/taste spot|\b(north|south|east|west)\b|\d km/i);
+    for (const name of names) expect(name).not.toMatch(/taste spot|\b(north|south|east|west)\b|\d km|\d+\.\d{3,}/i);
   });
 
   for (const width of [390, 768, 1440]) {

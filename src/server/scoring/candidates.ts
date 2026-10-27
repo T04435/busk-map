@@ -158,9 +158,10 @@ export const NEAR_FALLBACK_RADIUS_M = 1500;
  * - its venue: the nearest Qloo place within CELL_NAME_RADIUS_M, else the nearest place or street within NEAR_FALLBACK_RADIUS_M;
  * - "<Area> · near <Venue>", "Near <Venue>" (no areas), "<Area> taste spot" (no venue), "<City> taste spot" (neither).
  * A name already `taken` tries the next-nearest venue, then the nearest Qloo place or OpenStreetMap street within
- * NEAR_FALLBACK_RADIUS_M, and only then the coordinates. Never a compass hint or a distance, never an ordinal.
+ * NEAR_FALLBACK_RADIUS_M, then those places paired with the other named areas around. With no real name left it returns null:
+ * the caller drops that spot. Never coordinates, a compass hint, a distance or an ordinal.
  */
-export function tasteSpotName(point: LatLon, { areas = [], venues = [], streets = [], city, cityCenter }: TasteSpotNaming, taken: ReadonlySet<string> = new Set()): string {
+export function tasteSpotName(point: LatLon, { areas = [], venues = [], streets = [], city, cityCenter }: TasteSpotNaming, taken: ReadonlySet<string> = new Set()): string | null {
   const byDistance = areas.map((a) => ({ a, d: distanceM(a, point) })).sort((x, y) => x.d - y.d);
   const inReach = byDistance.find((x) => x.d <= (x.a.reachM ?? AREA_SAMPLE_KM * 1000));
   const nearest = byDistance[0] && (!cityCenter || byDistance[0].d < distanceM(cityCenter, point)) ? byDistance[0] : undefined;
@@ -190,9 +191,17 @@ export function tasteSpotName(point: LatLon, { areas = [], venues = [], streets 
     const name = label(place);
     if (!taken.has(name)) return name;
   }
-  // Last resort (nothing real left to name it by): the coordinates.
-  const coords = `${base}, ${point.lat.toFixed(4)}, ${point.lon.toFixed(4)}`;
-  return taken.has(coords) ? `${base}, ${point.lat.toFixed(5)}, ${point.lon.toFixed(5)}` : coords;
+  // The other named areas around (nearest first), each with the real places near the spot.
+  const places = within([...venues, ...streets], NEAR_FALLBACK_RADIUS_M);
+  for (const { a } of byDistance) {
+    if (a.name === area) continue;
+    for (const place of places) {
+      const name = same(a.name, place) ? `Near ${place}` : `${a.name} · near ${place}`;
+      if (!taken.has(name)) return name;
+    }
+  }
+  // No real name left: the spot is dropped rather than named with numbers.
+  return null;
 }
 
 /** How the data narrowed down to the candidates, for the "how this plan was found" line. */
@@ -309,6 +318,8 @@ export function buildCandidatesWithFunnel({ sites, zones, spots, cells, hotspots
       if (candidates.some((c) => distanceM(c, cell) < CELL_PITCH_SPACING_M)) continue;
       const ref = { lat: cell.lat, lon: cell.lon, affinity: cell.affinity, rank: cell.rank };
       const name = tasteSpotName(cell, { areas, venues: cellNames, city, cityCenter, streets }, new Set(candidates.map((c) => c.name)));
+      // A spot no real name tells apart from another is left out of the pool.
+      if (name === null) continue;
       // The id stays the cell's (its geohash): only the name reads like a place.
       const id = `cell:${cell.geohash ?? `${cell.lat.toFixed(4)},${cell.lon.toFixed(4)}`}`;
       add({ id, name, lat: cell.lat, lon: cell.lon, kind: "public-space", origin: "taste", cell: ref, ...general }, null);

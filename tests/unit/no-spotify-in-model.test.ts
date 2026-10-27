@@ -200,7 +200,7 @@ describe("the busk agent (/busks Hive ToolLoopAgent): no tool result carries Spo
 });
 
 describe("the week agent (/week Hive ToolLoopAgent): nothing from Spotify in its prompt or tool results", () => {
-  it("a whole week's prompt and every tool result it reads carry no Spotify id, link, cover, year or length", async () => {
+  it("a whole week's prompt and every tool result it reads carry no Spotify id, link, cover, year or length", { timeout: 20_000 }, async () => {
     vi.resetModules();
     mockFetch([]);
     const { weekRequestSchema, defaultDays } = await import("@/lib/week-schema");

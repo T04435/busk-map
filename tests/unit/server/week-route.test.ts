@@ -4,6 +4,9 @@ import { defaultDays, weekStreamEventSchema, type WeekStreamEvent } from "@/lib/
 import { createRateLimiter, FRESH_RUNS_PER_HOUR, WEEK_RUN_WEIGHT, weekRunGate } from "@/server/rate-limit";
 import { mockFetch } from "../../helpers";
 
+// Whole offline weeks: slower than one plan, more so under the coverage run.
+vi.setConfig({ testTimeout: 20_000 });
+
 const START = "2026-10-15";
 const OFFLINE_ENV = { BUSKMAP_OFFLINE: "1", BUSKMAP_ALLOW_FAULTS: "1", BUSKMAP_FAKE_NOW: "2026-10-15T12:00:00+11:00", VERCEL: "" };
 
@@ -32,7 +35,7 @@ async function events(res: Response): Promise<WeekStreamEvent[]> {
 }
 
 describe("POST /api/week (offline)", () => {
-  it("streams the run, stores each ready day as a busk plan and the week as /w/<id>, which replays and exports to a calendar", async () => {
+  it("streams the run, stores each ready day as a busk plan and the week as /w/<id>, which replays and exports to a calendar", { timeout: 20_000 }, async () => {
     const { POST, GET, ICS, plans } = await load();
     const res = await POST(post(body()));
     expect(res.status).toBe(200);

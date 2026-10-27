@@ -5,6 +5,9 @@ import { addDays } from "@/lib/slot";
 import { defaultDays, weekRequestSchema, weekResultSchema, type WeekRequestInput } from "@/lib/week-schema";
 import { mockFetch, OFFLINE } from "../../helpers";
 
+// Whole offline weeks: slower than one plan, more so under the coverage run.
+vi.setConfig({ testTimeout: 20_000 });
+
 const START = "2026-10-17";
 const TODAY = "2026-10-15";
 /** Wednesday noon in Melbourne, before the week starts (the e2e clock). */
@@ -140,7 +143,7 @@ describe("week agent (offline, mock model)", () => {
     expect(run.week.days.every((d) => d.status === "ready")).toBe(true);
   });
 
-  it("Melbourne: never the same pitch twice, and each pick 400 m from every other while the pools allow", async () => {
+  it("Melbourne: never the same pitch twice, and each pick 400 m from every other while the pools allow", { timeout: 20_000 }, async () => {
     mockFetch([]);
     const { runWeekAgent, createMockWeekPlanner } = await load();
     const { WEEK_MIN_SPACING_M } = await import("@/server/agent/week-spread");

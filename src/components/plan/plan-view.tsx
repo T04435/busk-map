@@ -1,7 +1,7 @@
 "use client";
 
 import { DEFAULT_CITY_ID } from "@/lib/city";
-import { levelsToLabel, levelWord, liveSource, rulesChecked, RULES_NOT_CHECKED, type LevelSignal } from "@/lib/signal-level";
+import { levelsToLabel, levelWord, liveSource, rulesChecked, type LevelSignal } from "@/lib/signal-level";
 import { planMentions } from "@/lib/plan-mentions";
 import { mentionsIn, SPOTIFY_ARTIST_URL } from "@/lib/mention";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
@@ -16,7 +16,6 @@ import { BothAgreeBadge } from "@/components/honeycomb/both-agree-badge";
 import { DataStatusBadge } from "@/components/honeycomb/data-status-badge";
 import { DiscoveryBadge } from "@/components/honeycomb/discovery-badge";
 import { PageHeader } from "@/components/honeycomb/page-header";
-import { PitchRow } from "@/components/honeycomb/pitch-row";
 import { PlanAlert } from "@/components/honeycomb/plan-alert";
 import { ResearchFunnel } from "@/components/honeycomb/research-funnel";
 import { UnmatchedAlert } from "@/components/honeycomb/unmatched-alert";
@@ -25,7 +24,7 @@ import { LazyPlanMap } from "@/components/map/lazy-plan-map";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { creditsClaude, explanationsLabel, modelName, QLOO_TEST_LABEL, type ExplanationsModel } from "@/lib/sources";
-import { ArrowDown, Clock, MapPin, Search } from "lucide-react";
+import { ArrowDown, Clock, Search } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FRESH_HEADER, PLAN_ID_HEADER } from "@/lib/plan-id";
@@ -39,6 +38,7 @@ import { DataSources, sourcesTouched, statusText } from "./data-sources";
 import { NoPitchPanel } from "./no-pitch-panel";
 import { QlooDownPanel } from "./qloo-down-panel";
 import { PitchSheet } from "./pitch-sheet";
+import { BuskPitches } from "./busk-pitches";
 import { SaveAsRepertoire } from "@/components/playlist/save-as-repertoire";
 import { WeatherStrip } from "./weather-strip";
 
@@ -467,40 +467,21 @@ export function PlanView({ initialPlan, heading, request, center, autoRun, examp
   );
 
   const pitchesList = plan ? (
-    <section aria-label="Pitches" className="space-y-3 p-4 md:p-6 lg:pt-0 lg:col-start-1 lg:row-start-2">
-      <h3 className="sr-only">Top pitches</h3>
-      <ol className="m-0 flex list-none flex-col gap-3 p-0">
-        {plan.pitches.map((pitch, i) => (
-          <PitchRow
-            key={pitch.id}
-            pitchId={pitch.id}
-            rank={i + 1}
-            name={pitch.name}
-            window={pitch.window ? `Best ${pitch.window.label}` : undefined}
-            score={pitch.score}
-            selected={pitch.id === selectedId}
-            onSelect={() => setPickedId(pitch.id)}
-            onDetails={() => openDetails(pitch.id)}
-            badges={
-              <>
-                <DiscoveryBadge discovery={pitch.discovery} />
-                <FoundByBadge origin={pitch.origin} written={written} model={model} />
-                {agreedWith.has(pitch.id) && <BothAgreeBadge />}
-              </>
-            }
-          />
-        ))}
-      </ol>
-      {plan.others.length > 0 && (
-        <p className="m-0 flex items-start gap-2 text-sm text-muted-foreground" data-testid="others-note">
-          <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-          <span>
-            {plan.others.length} more pitches scored. The top 3 are kept 250 m apart.
-          </span>
-        </p>
+    <BuskPitches
+      plan={plan}
+      selectedId={selectedId}
+      onSelect={setPickedId}
+      onDetails={openDetails}
+      rulesChecked={checked}
+      className="space-y-3 p-4 md:p-6 lg:pt-0 lg:col-start-1 lg:row-start-2"
+      badges={(pitch) => (
+        <>
+          <DiscoveryBadge discovery={pitch.discovery} />
+          <FoundByBadge origin={pitch.origin} written={written} model={model} />
+          {agreedWith.has(pitch.id) && <BothAgreeBadge />}
+        </>
       )}
-      <p className="m-0 text-sm font-bold" data-testid="rules-line">{checked ? "Busk Map never confirms a pitch is legal. Check your permit conditions on the day." : RULES_NOT_CHECKED}</p>
-    </section>
+    />
   ) : null;
 
   return (

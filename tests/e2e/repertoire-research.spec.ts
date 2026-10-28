@@ -528,7 +528,8 @@ test.describe("Repertoire research (offline)", () => {
     await expect(page.getByTestId("research-profile").getByTestId("notonq-filled")).toHaveText("Filled by NotOnQ");
     const via = `Via NotOnQ stand-ins: ${OFFLINE_TEST_ACTS.notonq.standIns.join(", ")}`;
     for (const id of ["research-fans", "research-fans-love", "research-fans-map"]) await expect(page.getByTestId(id).getByTestId("notonq-via")).toHaveText(via);
-    await expect(page.getByTestId("research-steps")).toContainText(`NotOnQ filled in ${OFFLINE_TEST_ACTS.notonq.name}`);
+    await expect(page.getByTestId("research-steps")).toContainText(/NotOnQ filled in\s*\S*Nqo Filled/);
+    await expect(page.getByTestId("research-steps")).not.toContainText(/Found\s*\S*Nqo Filled on/);
     // Qloo's own artists (the stand-ins' answers) are not relabelled.
     await expect(page.getByTestId("research-fans-love").getByTestId("notonq-filled")).toHaveCount(0);
   });

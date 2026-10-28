@@ -10,6 +10,7 @@ import { takeQlooCall } from "./budget";
 import { countLookup, lookupScope, noteQlooRequest } from "./usage";
 import { AdapterError, errorKindOf, fetchJson } from "../core";
 import { parseEntities, toDetail, toEntity, toImpact, toPlace } from "./normalize";
+import { tagVia, untagVia, type MaybeVia } from "./via";
 import {
   compareResponseSchema,
   demographicsResponseSchema,
@@ -49,9 +50,22 @@ import {
  * argument, so cache entries from the local mock (src/server/qloo-mock) can
  * never be served as live data once the key arrives. In mock mode the same
  * code runs against an in-process fetch that implements Qloo's HTTP contract.
+ *
+ * NotOnQ (lib/notonq.ts): with QLOO_PROXY_BASE_URL set, every live request goes to that drop-in proxy first (same path, query
+ * and key, plus `X-NotOnQ-App`), and straight to QLOO_API_BASE_URL when the proxy times out, can't be reached, answers 5xx or
+ * 429, or sends something that isn't Qloo's shape (`proxyFallback`). Qloo's own 400 and 404, which the proxy passes through, are
+ * answers, not failures. The response shape is Qloo's either way, so cache keys don't change; NotOnQ's provenance rides in the
+ * response (its `notonq` block, "Not in Qloo" entities), which a direct answer never has, so a fallback is never labelled NotOnQ.
  */
 /** Live calls take 1–7 s (urn:tag and large place lists are the slowest), so allow 15 s. */
 const TIMEOUT_MS = 15_000;
+/**
+ * The proxy's own, shorter limit: it fills artists from open sources on a first request, so it may be slower than Qloo, but a
+ * hung proxy must leave time for the direct call. 12 s, then Qloo direct gets its full 15 s.
+ */
+export const PROXY_TIMEOUT_MS = 12_000;
+/** The app label NotOnQ's Ledger records the calls under (its docs: `X-NotOnQ-App`). */
+export const NOTONQ_APP = "busk-map";
 export const MAX_TAKE = 50;
 
 type Params = Record<string, string | number | boolean | undefined>;
@@ -65,9 +79,20 @@ function toSearch(params: Params): URLSearchParams {
 }
 
 function target(backend: QlooBackend) {
-  if (backend === "mock") return { base: QLOO_MOCK_BASE_URL, apiKey: "mock-key", fetcher: qlooMockFetch };
-  const { QLOO_API_KEY: apiKey, QLOO_API_BASE_URL: base } = env();
-  return { base, apiKey, fetcher: undefined };
+  if (backend === "mock") return { base: QLOO_MOCK_BASE_URL, apiKey: "mock-key", fetcher: qlooMockFetch, proxy: null };
+  const { QLOO_API_KEY: apiKey, QLOO_API_BASE_URL: base, QLOO_PROXY_BASE_URL: proxy } = env();
+  return { base, apiKey, fetcher: undefined, proxy: proxy ?? null };
+}
+
+/**
+ * Whether a failed proxy request is retried straight against Qloo: a timeout, a dropped connection, a 5xx (NotOnQ's 502 "Qloo
+ * didn't answer" included), a 429 (NotOnQ's daily budget for this key, or Qloo's limit) or a response that isn't Qloo's shape.
+ * Not Qloo's own 400 or 404 passed through (Qloo direct would say the same), nor a 401.
+ */
+export function proxyFallback(error: unknown): boolean {
+  const kind = errorKindOf(error);
+  if (kind === "timeout" || kind === "network" || kind === "rate_limited" || kind === "invalid_response") return true;
+  return kind === "http" && isServerError(error);
 }
 
 /** Live requests started per rolling second. Qloo allows 5, but bursts of 4 still drew 429s when checked, and the key is shared by every instance. */
@@ -97,19 +122,28 @@ export function pace(perSecond = LIVE_REQUESTS_PER_SECOND): Promise<void> {
 }
 
 export async function qlooGet<S extends z.ZodType>(backend: QlooBackend, path: string, params: Params, schema: S): Promise<z.infer<S>> {
-  const { base, apiKey, fetcher } = target(backend);
+  const { base, apiKey, fetcher, proxy } = target(backend);
   if (!apiKey) throw new AdapterError("qloo", "missing_key", "Qloo key is not configured");
   const query = toSearch(params);
-  const once = () => {
+  const headers = { "X-Api-Key": apiKey, Accept: "application/json" };
+  const direct = () => {
     noteQlooRequest();
-    return fetchJson(`${base}${path}?${query}`, {
-      adapter: "qloo",
-      schema,
-      timeoutMs: TIMEOUT_MS,
-      fetcher,
-      init: { headers: { "X-Api-Key": apiKey, Accept: "application/json" } },
-    });
+    return fetchJson(`${base}${path}?${query}`, { adapter: "qloo", schema, timeoutMs: TIMEOUT_MS, fetcher, init: { headers } });
   };
+  // Through NotOnQ first when it is configured (live only), then Qloo direct. The daily budget and the pace are taken once per
+  // logical call (below), so a fallback doesn't charge the budget twice; both HTTP requests count as requests sent (usage.ts).
+  const once = !proxy
+    ? direct
+    : async () => {
+        noteQlooRequest();
+        try {
+          return await fetchJson(`${proxy}${path}?${query}`, { adapter: "qloo", schema, timeoutMs: PROXY_TIMEOUT_MS, fetcher, init: { headers: { ...headers, "X-NotOnQ-App": NOTONQ_APP } } });
+        } catch (error) {
+          if (!proxyFallback(error)) throw error;
+          log.warn("notonq proxy failed; asking Qloo directly", { path, kind: errorKindOf(error), status: error instanceof AdapterError ? (error.status ?? null) : null });
+          return direct();
+        }
+      };
   if (backend === "mock") return once();
   for (let attempt = 0; ; attempt++) {
     await takeQlooCall();
@@ -267,10 +301,10 @@ export async function heatmap(backend: QlooBackend, rawIds: string[], area: BBox
   if (entityIds.length === 0 && tags.length === 0) noSignal("heatmap");
   return countLookup("heatmap", [backend, entityIds, area, boundary ?? null, ...withTags(tags)], () =>
     tags.length ? heatmapCached(backend, entityIds, area, boundary, tags) : heatmapCached(backend, entityIds, area, boundary),
-  );
+  ).then(untagVia);
 }
 
-async function heatmapCached(backend: QlooBackend, entityIds: string[], area: BBox, boundary?: HeatmapBoundary, tagIds?: string[]): Promise<HeatCell[]> {
+async function heatmapCached(backend: QlooBackend, entityIds: string[], area: BBox, boundary?: HeatmapBoundary, tagIds?: string[]): Promise<MaybeVia<HeatCell[]>> {
   "use cache: remote";
   return lookupScope("heatmap", [backend, entityIds, area, boundary ?? null, ...withTags(tagIds)], async () => {
     // A world-sized area is the Repertoire's "Where your fans are": fresh for 24 h. City-sized areas (the planner) keep "days".
@@ -286,7 +320,7 @@ async function heatmapCached(backend: QlooBackend, entityIds: string[], area: BB
     };
     const body = await qlooGet(backend, "/v2/insights", params, heatmapResponseSchema);
     logIfEmpty("/v2/insights", params, body.results.heatmap.length);
-    return body.results.heatmap.map((cell) => ({
+    const cells = body.results.heatmap.map((cell) => ({
       lat: cell.location.latitude,
       lon: cell.location.longitude,
       geohash: cell.location.geohash ?? null,
@@ -294,6 +328,7 @@ async function heatmapCached(backend: QlooBackend, entityIds: string[], area: BB
       affinityRank: cell.query.affinity_rank ?? null,
       popularity: cell.query.popularity ?? null,
     }));
+    return tagVia(cells, body.notonq);
   });
 }
 
@@ -316,7 +351,7 @@ export async function places(
   if (entityIds.length === 0 && tags.length === 0) noSignal("places");
   return countLookup("places", [backend, entityIds, center, radiusM, weekday, ...withTags(tags)], () =>
     tags.length ? placesCached(backend, entityIds, center, radiusM, weekday, tags) : placesCached(backend, entityIds, center, radiusM, weekday),
-  );
+  ).then(untagVia);
 }
 
 async function placesCached(
@@ -326,7 +361,7 @@ async function placesCached(
   radiusM: number,
   weekday: string | null,
   tagIds?: string[],
-): Promise<QlooPlace[]> {
+): Promise<MaybeVia<QlooPlace[]>> {
   "use cache: remote";
   return lookupScope("places", [backend, entityIds, center, radiusM, weekday, ...withTags(tagIds)], async () => {
     cacheLife("days");
@@ -341,9 +376,10 @@ async function placesCached(
       take: MAX_TAKE,
     };
     const body = await qlooGet(backend, "/v2/insights", params, entitiesResponseSchema);
-    return listEntities("/v2/insights", params, body.results)
+    const found = listEntities("/v2/insights", params, body.results)
       .map(toPlace)
       .filter((p): p is QlooPlace => p !== null);
+    return tagVia(found, body.notonq);
   });
 }
 
@@ -358,10 +394,10 @@ export async function localArtists(backend: QlooBackend, rawIds: string[], area:
   const entityIds = entitySignal(rawIds);
   return countLookup("localArtists", [backend, entityIds, area, take, ...withTags(tags)], () =>
     tags.length ? localArtistsCached(backend, entityIds, area, take, tags) : localArtistsCached(backend, entityIds, area, take),
-  );
+  ).then(untagVia);
 }
 
-async function localArtistsCached(backend: QlooBackend, entityIds: string[], area: BBox, take: number, tagIds?: string[]): Promise<LocalArtists> {
+async function localArtistsCached(backend: QlooBackend, entityIds: string[], area: BBox, take: number, tagIds?: string[]): Promise<MaybeVia<LocalArtists>> {
   "use cache: remote";
   return lookupScope("localArtists", [backend, entityIds, area, take, ...withTags(tagIds)], async () => {
     cacheLife("days");
@@ -375,10 +411,7 @@ async function localArtistsCached(backend: QlooBackend, entityIds: string[], are
       take: Math.min(take, MAX_TAKE),
     };
     const body = await qlooGet(backend, "/v2/insights", params, insightsEntitiesResponseSchema);
-    return {
-      artists: listEntities("/v2/insights", params, body.results.entities).map(toEntity),
-      impact: toImpact(body.query?.explainability),
-    };
+    return tagVia({ artists: listEntities("/v2/insights", params, body.results.entities).map(toEntity), impact: toImpact(body.query?.explainability) }, body.notonq);
   });
 }
 
@@ -389,10 +422,10 @@ async function localArtistsCached(backend: QlooBackend, entityIds: string[], are
 export async function tasteArtists(backend: QlooBackend, rawIds: string[], take: number): Promise<LocalArtists> {
   const entityIds = entitySignal(rawIds);
   if (entityIds.length === 0) noSignal("taste artists");
-  return countLookup("tasteArtists", [backend, entityIds, take], () => tasteArtistsCached(backend, entityIds, take));
+  return countLookup("tasteArtists", [backend, entityIds, take], () => tasteArtistsCached(backend, entityIds, take)).then(untagVia);
 }
 
-async function tasteArtistsCached(backend: QlooBackend, entityIds: string[], take: number): Promise<LocalArtists> {
+async function tasteArtistsCached(backend: QlooBackend, entityIds: string[], take: number): Promise<MaybeVia<LocalArtists>> {
   "use cache: remote";
   return lookupScope("tasteArtists", [backend, entityIds, take], async () => {
     cacheLife("days");
@@ -404,10 +437,7 @@ async function tasteArtistsCached(backend: QlooBackend, entityIds: string[], tak
       take: Math.min(take, MAX_TAKE),
     };
     const body = await qlooGet(backend, "/v2/insights", params, insightsEntitiesResponseSchema);
-    return {
-      artists: listEntities("/v2/insights", params, body.results.entities).map(toEntity),
-      impact: toImpact(body.query?.explainability),
-    };
+    return tagVia({ artists: listEntities("/v2/insights", params, body.results.entities).map(toEntity), impact: toImpact(body.query?.explainability) }, body.notonq);
   });
 }
 
@@ -493,10 +523,10 @@ async function sceneArtistsCached(backend: QlooBackend, tagIds: string[], area: 
 export async function affinityAt(backend: QlooBackend, rawIds: string[], point: LatLon, radiusM: number): Promise<Record<string, number>> {
   const entityIds = entitySignal(rawIds);
   if (entityIds.length === 0) noSignal("affinity at a point");
-  return countLookup("affinityAt", [backend, entityIds, point, radiusM], () => affinityAtCached(backend, entityIds, point, radiusM));
+  return countLookup("affinityAt", [backend, entityIds, point, radiusM], () => affinityAtCached(backend, entityIds, point, radiusM)).then(untagVia);
 }
 
-async function affinityAtCached(backend: QlooBackend, entityIds: string[], point: LatLon, radiusM: number): Promise<Record<string, number>> {
+async function affinityAtCached(backend: QlooBackend, entityIds: string[], point: LatLon, radiusM: number): Promise<MaybeVia<Record<string, number>>> {
   "use cache: remote";
   return lookupScope("affinityAt", [backend, entityIds, point, radiusM], async () => {
     cacheLife("days");
@@ -510,9 +540,7 @@ async function affinityAtCached(backend: QlooBackend, entityIds: string[], point
     };
     const body = await qlooGet(backend, "/v2/insights", params, entitiesResponseSchema);
     const entities = listEntities("/v2/insights", params, body.results);
-    return Object.fromEntries(
-      entities.filter((e) => e.query?.affinity !== undefined).map((e) => [e.entity_id, e.query!.affinity as number]),
-    );
+    return tagVia(Object.fromEntries(entities.filter((e) => e.query?.affinity !== undefined).map((e) => [e.entity_id, e.query!.affinity as number])), body.notonq);
   });
 }
 
@@ -525,10 +553,10 @@ export async function affinityFor(backend: QlooBackend, rawResults: string[], ra
   const resultIds = entitySignal(rawResults);
   const signalIds = entitySignal(rawSignal);
   if (resultIds.length === 0 || signalIds.length === 0) noSignal("taste match");
-  return countLookup("affinityFor", [backend, resultIds, signalIds], () => affinityForCached(backend, resultIds, signalIds));
+  return countLookup("affinityFor", [backend, resultIds, signalIds], () => affinityForCached(backend, resultIds, signalIds)).then(untagVia);
 }
 
-async function affinityForCached(backend: QlooBackend, resultIds: string[], signalIds: string[]): Promise<Record<string, number>> {
+async function affinityForCached(backend: QlooBackend, resultIds: string[], signalIds: string[]): Promise<MaybeVia<Record<string, number>>> {
   "use cache: remote";
   return lookupScope("affinityFor", [backend, resultIds, signalIds], async () => {
     cacheLife("days");
@@ -541,7 +569,7 @@ async function affinityForCached(backend: QlooBackend, resultIds: string[], sign
     };
     const body = await qlooGet(backend, "/v2/insights", params, entitiesResponseSchema);
     const entities = listEntities("/v2/insights", params, body.results);
-    return Object.fromEntries(entities.filter((e) => e.query?.affinity !== undefined).map((e) => [e.entity_id, e.query!.affinity as number]));
+    return tagVia(Object.fromEntries(entities.filter((e) => e.query?.affinity !== undefined).map((e) => [e.entity_id, e.query!.affinity as number])), body.notonq);
   });
 }
 
@@ -633,10 +661,10 @@ export async function demographics(backend: QlooBackend, rawIds: string[], tagId
   const tags = sceneTags(tagIds);
   const entityIds = entitySignal(rawIds);
   if (entityIds.length === 0 && tags.length === 0) noSignal("demographics");
-  return countLookup("demographics", [backend, entityIds, ...withTags(tags)], () => (tags.length ? demographicsCached(backend, entityIds, tags) : demographicsCached(backend, entityIds)));
+  return countLookup("demographics", [backend, entityIds, ...withTags(tags)], () => (tags.length ? demographicsCached(backend, entityIds, tags) : demographicsCached(backend, entityIds))).then(untagVia);
 }
 
-async function demographicsCached(backend: QlooBackend, entityIds: string[], tagIds?: string[]): Promise<CrowdProfile | null> {
+async function demographicsCached(backend: QlooBackend, entityIds: string[], tagIds?: string[]): Promise<MaybeVia<CrowdProfile | null>> {
   "use cache: remote";
   return lookupScope("demographics", [backend, entityIds, ...withTags(tagIds)], async () => {
     cacheLife("days");
@@ -651,7 +679,7 @@ async function demographicsCached(backend: QlooBackend, entityIds: string[], tag
       for (const row of rows) for (const [band, value] of Object.entries(row.query[key] ?? {})) totals[band] = (totals[band] ?? 0) + value / rows.length;
       return totals;
     };
-    return { age: average("age"), gender: average("gender") };
+    return tagVia({ age: average("age"), gender: average("gender") }, body.notonq);
   });
 }
 
@@ -662,10 +690,10 @@ async function demographicsCached(backend: QlooBackend, entityIds: string[], tag
 export async function crowdTags(backend: QlooBackend, rawIds: string[], point: LatLon, radiusM: number, take: number): Promise<TasteTag[]> {
   // The point is the location signal, so this call always has one; the act's artists sharpen it when present.
   const entityIds = entitySignal(rawIds);
-  return countLookup("crowdTags", [backend, entityIds, point, radiusM, take], () => crowdTagsCached(backend, entityIds, point, radiusM, take));
+  return countLookup("crowdTags", [backend, entityIds, point, radiusM, take], () => crowdTagsCached(backend, entityIds, point, radiusM, take)).then(untagVia);
 }
 
-async function crowdTagsCached(backend: QlooBackend, entityIds: string[], point: LatLon, radiusM: number, take: number): Promise<TasteTag[]> {
+async function crowdTagsCached(backend: QlooBackend, entityIds: string[], point: LatLon, radiusM: number, take: number): Promise<MaybeVia<TasteTag[]>> {
   "use cache: remote";
   return lookupScope("crowdTags", [backend, entityIds, point, radiusM, take], async () => {
     cacheLife("days");
@@ -681,7 +709,7 @@ async function crowdTagsCached(backend: QlooBackend, entityIds: string[], point:
     };
     const body = await qlooGet(backend, "/v2/insights", params, tagsResponseSchema);
     logIfEmpty("/v2/insights", params, body.results.tags.length);
-    return body.results.tags.map((tag) => ({ id: tag.tag_id ?? tag.id ?? "", name: tag.name, affinity: tag.query?.affinity ?? null })).filter((t) => t.id);
+    return tagVia(body.results.tags.map((tag) => ({ id: tag.tag_id ?? tag.id ?? "", name: tag.name, affinity: tag.query?.affinity ?? null })).filter((t) => t.id), body.notonq);
   });
 }
 
@@ -692,10 +720,10 @@ async function crowdTagsCached(backend: QlooBackend, entityIds: string[], point:
 export async function artistGenres(backend: QlooBackend, rawIds: string[], take: number): Promise<TasteTag[]> {
   const entityIds = entitySignal(rawIds);
   if (entityIds.length === 0) noSignal("act genres");
-  return countLookup("artistGenres", [backend, entityIds, take], () => artistGenresCached(backend, entityIds, take));
+  return countLookup("artistGenres", [backend, entityIds, take], () => artistGenresCached(backend, entityIds, take)).then(untagVia);
 }
 
-async function artistGenresCached(backend: QlooBackend, entityIds: string[], take: number): Promise<TasteTag[]> {
+async function artistGenresCached(backend: QlooBackend, entityIds: string[], take: number): Promise<MaybeVia<TasteTag[]>> {
   "use cache: remote";
   return lookupScope("artistGenres", [backend, entityIds, take], async () => {
     cacheLife("days");
@@ -709,7 +737,7 @@ async function artistGenresCached(backend: QlooBackend, entityIds: string[], tak
     };
     const body = await qlooGet(backend, "/v2/insights", params, tagsResponseSchema);
     logIfEmpty("/v2/insights", params, body.results.tags.length);
-    return body.results.tags.map((tag) => ({ id: tag.tag_id ?? tag.id ?? "", name: tag.name, affinity: tag.query?.affinity ?? null })).filter((t) => t.id);
+    return tagVia(body.results.tags.map((tag) => ({ id: tag.tag_id ?? tag.id ?? "", name: tag.name, affinity: tag.query?.affinity ?? null })).filter((t) => t.id), body.notonq);
   });
 }
 
@@ -778,10 +806,10 @@ export async function compareGenres(backend: QlooBackend, rawA: string[], rawB: 
   const groupA = entitySignal(rawA);
   const groupB = entitySignal(rawB);
   if (groupA.length === 0 || groupB.length === 0) noSignal("compare");
-  return countLookup("compareGenres", [backend, groupA, groupB], () => compareGenresCached(backend, groupA, groupB));
+  return countLookup("compareGenres", [backend, groupA, groupB], () => compareGenresCached(backend, groupA, groupB)).then(untagVia);
 }
 
-async function compareGenresCached(backend: QlooBackend, groupA: string[], groupB: string[]): Promise<GenreContrast[]> {
+async function compareGenresCached(backend: QlooBackend, groupA: string[], groupB: string[]): Promise<MaybeVia<GenreContrast[]>> {
   "use cache: remote";
   return lookupScope("compareGenres", [backend, groupA, groupB], async () => {
     cacheLife("days");
@@ -804,11 +832,12 @@ async function compareGenresCached(backend: QlooBackend, groupA: string[], group
     const a = share(body.results.a, groupA.length);
     const b = share(body.results.b, groupB.length);
     logIfEmpty("/v2/analysis/compare", params, a.size + b.size);
-    return [...new Set([...a.keys(), ...b.keys()])].map((id) => ({
+    const rows = [...new Set([...a.keys(), ...b.keys()])].map((id) => ({
       id,
       name: (a.get(id) ?? b.get(id))!.name,
       a: Math.round((a.get(id)?.value ?? 0) * 1000) / 1000,
       b: Math.round((b.get(id)?.value ?? 0) * 1000) / 1000,
     }));
+    return tagVia(rows, body.notonq);
   });
 }

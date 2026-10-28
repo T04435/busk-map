@@ -1,4 +1,5 @@
 import "server-only";
+import type { NotOnQVia } from "@/lib/notonq";
 import type { z } from "zod";
 import type { SourceId } from "@/lib/sources";
 import { log, redactUrl } from "@/server/log";
@@ -75,6 +76,8 @@ export type AdapterResult<T> = {
   data: T;
   /** Why we fell back. Safe to show in the UI. */
   reason?: AdapterErrorKind;
+  /** Qloo only: NotOnQ answered (part of) this call through stand-ins for an artist Qloo lacks (lib/notonq.ts). Absent otherwise. */
+  via?: NotOnQVia;
 };
 
 /** Per-request switches. Plain data so it can cross into cached scopes. */

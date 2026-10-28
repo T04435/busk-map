@@ -160,7 +160,9 @@ export function noteFetch(adapter: string, url: string, status: number | null, b
     const u = new URL(url);
     const method = u.searchParams.get("method");
     // Last.fm names its endpoints in `method` (artist.getsimilar); the path is the same for all of them.
-    endpoint = method ? method : u.pathname.replace(/^\/v1(?=\/)/, "");
+    // NotOnQ's drop-in proxy serves Qloo's paths under /q (or /q/app/<label>): recorded as the Qloo endpoint they stand for.
+    const path = u.pathname.replace(/^\/v1(?=\/)/, "");
+    endpoint = method ? method : adapter === "qloo" ? path.replace(/^\/q(?:\/app\/[^/]+)?(?=\/)/, "") : path;
     params = safeParams([...u.searchParams.entries()].filter(([k]) => k !== "method" && k !== "format"));
   } catch {
     // not a URL: keep it as it is

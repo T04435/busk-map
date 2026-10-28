@@ -245,6 +245,8 @@ const RESEARCH_UI: Record<string, ToolUi> = {
   }),
   research_qloo: researchUi((o) => {
     if (!o.matched || !str(o.name)) return str(o.summary) ?? "";
+    // NotOnQ filled the act in (lib/notonq.ts): never "found on Qloo".
+    if (o.filledBy === "notonq") return [PLAYLIST_COPY.research.filledByNotOnQLead, mentionArtist(str(o.name) as string, { image: str(o.image) })];
     const audience = Array.isArray(o.audience) ? (o.audience as string[]) : [];
     return ["Found ", mentionArtist(str(o.name) as string, { image: str(o.image) }), " on ", mentionSource("qloo"), ...(audience.length ? [`: ${audience.slice(0, 4).join(", ")}`] : [])];
   }),

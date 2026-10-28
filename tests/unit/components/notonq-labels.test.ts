@@ -100,3 +100,13 @@ describe("the research view model", () => {
     expect(p.standIns).toEqual({});
   });
 });
+
+describe("the research step line for the act", () => {
+  it("says NotOnQ filled the act in, never that it was found on Qloo", async () => {
+    const { TOOL_UI } = await import("@/components/plan/tool-results");
+    const line = TOOL_UI.research_qloo.line!({ matched: true, name: "Nqo Filled", filledBy: "notonq" });
+    expect(JSON.stringify(line)).toContain("NotOnQ filled in");
+    expect(JSON.stringify(line)).not.toContain(" on ");
+    expect(JSON.stringify(TOOL_UI.research_qloo.line!({ matched: true, name: "Zelia Marquez" }))).toContain("Found ");
+  });
+});

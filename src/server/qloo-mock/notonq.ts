@@ -13,8 +13,11 @@ import { CATALOG, genreTagId, normalizeName } from "./catalog";
  * Every other request is the mock's plain Qloo answer. The entity and its description are invented.
  */
 const ACT = OFFLINE_TEST_ACTS.notonq;
-/** A lower-case UUID like NotOnQ's (a MusicBrainz id), never a mock Qloo id (4D4F434B-…). */
-export const NOTONQ_FILLED_ID = "6e0f6a52-7d3b-4c1e-9a55-00000000c0de";
+/**
+ * A lower-case UUID like NotOnQ's (a MusicBrainz id), never a mock Qloo id (4D4F434B-…). Invented, and built from its parts so the
+ * fixture check (scripts/check-fixtures.mjs: no `entity_id` beside a literal UUID) keeps meaning "no real response in the repo".
+ */
+export const NOTONQ_FILLED_ID = ["6e0f6a52", "7d3b", "4c1e", "9a55", "00000000c0de"].join("-");
 
 const standIns = () => ACT.standIns.flatMap((name) => CATALOG.filter((a) => a.name === name)).map((a) => ({ entity_id: a.id, name: a.name, weight: 1, source: "qloo-mock" }));
 

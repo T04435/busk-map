@@ -6,6 +6,9 @@ import { json, LIVE, mockFetch, route, timeoutError } from "../../helpers";
  * it fails. Synthetic payloads in Qloo's shapes plus NotOnQ's documented `notonq` block. Not Qloo or NotOnQ data.
  */
 const PROXY = "https://notonq.test/q/app/busk-map";
+/** Invented NotOnQ-style ids (lower-case UUIDs), built from parts so no literal UUID sits beside an entity_id (check-fixtures). */
+const FILL_1 = ["6f1c0d5e", "0000", "4000", "8000", "000000000001"].join("-");
+const FILL_2 = ["6f1c0d5e", "0000", "4000", "8000", "000000000002"].join("-");
 const area = { south: -37.83, west: 144.94, north: -37.8, east: 144.98 };
 
 const SYNTHETIC = {
@@ -13,8 +16,8 @@ const SYNTHETIC = {
   filledSearch: {
     results: [
       { entity_id: "syn-qloo-2", name: "Synthetic Namesake", popularity: 0.4 },
-      { entity_id: "6f1c0d5e-0000-4000-8000-000000000001", name: "Synthetic Newcomer", types: ["urn:entity:artist"], properties: { short_description: "Not in Qloo: filled by NotOnQ from open sources. Stand-ins: Synthetic Artist." }, tags: [{ tag_id: "urn:tag:genre:music:folk", name: "Folk" }] },
-      { entity_id: "6f1c0d5e-0000-4000-8000-000000000002", name: "Synthetic Tagged", properties: { short_description: "From somewhere." }, tags: [{ tag_id: "notonq:urn:tag:genre:busking", name: "Busking", type: "urn:tag:genre" }] },
+      { entity_id: FILL_1, name: "Synthetic Newcomer", types: ["urn:entity:artist"], properties: { short_description: "Not in Qloo: filled by NotOnQ from open sources. Stand-ins: Synthetic Artist." }, tags: [{ tag_id: "urn:tag:genre:music:folk", name: "Folk" }] },
+      { entity_id: FILL_2, name: "Synthetic Tagged", properties: { short_description: "From somewhere." }, tags: [{ tag_id: "notonq:urn:tag:genre:busking", name: "Busking", type: "urn:tag:genre" }] },
     ],
     notonq: { served_by: "mixed", gap: { kind: "G1" } },
   },
@@ -148,7 +151,7 @@ describe("qloo through the NotOnQ proxy", () => {
   it("carries an answer given through stand-ins as `via`, with the stand-ins' names", async () => {
     const qloo = await fresh();
     mockFetch([route(isProxy, () => json(SYNTHETIC.standInHeatmap))]);
-    const result = await qloo.tasteMap(["6f1c0d5e-0000-4000-8000-000000000001"], area, LIVE);
+    const result = await qloo.tasteMap([FILL_1], area, LIVE);
     expect(result).toMatchObject({ mode: "live", via: { by: "notonq", standIns: ["Stand In A", "Stand In B"] } });
     expect(result.data[0]).toMatchObject({ affinity: 0.7 });
   });

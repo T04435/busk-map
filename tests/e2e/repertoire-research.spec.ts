@@ -520,6 +520,26 @@ test.describe("Repertoire research (offline)", () => {
     await expect(page.getByTestId("research-steps")).toContainText(/Found\s*\S*Zelia Marquez on/);
   });
 
+  test("an act Qloo lacks that NotOnQ fills in: the act is labelled, and the results answered through stand-ins name them", async ({ page }) => {
+    test.setTimeout(90_000);
+    await research(page, linkOf(OFFLINE_TEST_ACTS.notonq.spotifyId));
+    await done(page);
+    await expect(page.getByTestId("research-end")).not.toHaveAttribute("data-code", /^needs_/);
+    await expect(page.getByTestId("research-profile").getByTestId("notonq-filled")).toHaveText("Filled by NotOnQ");
+    const via = `Via NotOnQ stand-ins: ${OFFLINE_TEST_ACTS.notonq.standIns.join(", ")}`;
+    for (const id of ["research-fans", "research-fans-love", "research-fans-map"]) await expect(page.getByTestId(id).getByTestId("notonq-via")).toHaveText(via);
+    await expect(page.getByTestId("research-steps")).toContainText(`NotOnQ filled in ${OFFLINE_TEST_ACTS.notonq.name}`);
+    // Qloo's own artists (the stand-ins' answers) are not relabelled.
+    await expect(page.getByTestId("research-fans-love").getByTestId("notonq-filled")).toHaveCount(0);
+  });
+
+  test("a Qloo act shows no NotOnQ label", async ({ page }) => {
+    await research(page, linkOf(OFFLINE_TEST_ACTS.variant.spotifyId));
+    await done(page);
+    await expect(page.getByTestId("notonq-filled")).toHaveCount(0);
+    await expect(page.getByTestId("notonq-via")).toHaveCount(0);
+  });
+
   test("Spotify down: says so in plain words and saves no research (faults=repertoire)", async ({ page }) => {
     await page.goto("/repertoire?faults=repertoire");
     await field(page).fill(LINK);

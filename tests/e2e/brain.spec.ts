@@ -223,6 +223,12 @@ test.describe("the brain of Busk Map at three widths", () => {
 });
 
 test.describe("the brain of Busk Map", () => {
+  test("states how Qloo is reached in one line, and keeps the Qloo credit", async ({ page }) => {
+    await openBrain(page);
+    await expect(page.getByTestId("qloo-routing")).toHaveText("Qloo calls go through NotOnQ when configured, Qloo direct otherwise.");
+    await expect(page.getByText("Taste data from the Qloo API", { exact: true }).first()).toBeVisible();
+  });
+
   test("traces from the keyboard: Enter or Space picks, Enter again or Escape clears", async ({ page }) => {
     await openBrain(page);
     const feature = nodeOf(page, "f_fans");

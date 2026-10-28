@@ -31,6 +31,14 @@ export const envSchema = z.object({
   QLOO_API_KEY: optionalSecret,
   QLOO_API_BASE_URL: z.url().default("https://hackathon.api.qloo.com"),
   /**
+   * Optional: a drop-in proxy for Qloo's API (NotOnQ, e.g. https://notonq.vercel.app/q/app/busk-map). When set, live Qloo calls
+   * go to it first and straight to QLOO_API_BASE_URL when it fails (adapters/qloo/client.ts). Unset or blank: Qloo direct only.
+   */
+  QLOO_PROXY_BASE_URL: z.preprocess((value) => {
+    const trimmed = typeof value === "string" ? value.trim() : undefined;
+    return trimmed && !PLACEHOLDERS.has(trimmed.toUpperCase()) ? trimmed.replace(/\/+$/, "") : undefined;
+  }, z.url().optional()),
+  /**
    * Serve Qloo from the local mock (src/server/qloo-mock) even when a key is
    * set. The mock is also used whenever QLOO_API_KEY is missing.
    */

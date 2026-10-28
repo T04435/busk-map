@@ -24,6 +24,14 @@ describe("parseEnv", () => {
     expect(parseEnv({}).QLOO_API_BASE_URL).toBe("https://hackathon.api.qloo.com");
   });
 
+  it("reads the optional Qloo proxy (NotOnQ): unset, blank or SET_ME is off, a URL is kept without its trailing slash, junk is refused", () => {
+    expect(parseEnv({}).QLOO_PROXY_BASE_URL).toBeUndefined();
+    expect(parseEnv({ QLOO_PROXY_BASE_URL: "  " }).QLOO_PROXY_BASE_URL).toBeUndefined();
+    expect(parseEnv({ QLOO_PROXY_BASE_URL: "SET_ME" }).QLOO_PROXY_BASE_URL).toBeUndefined();
+    expect(parseEnv({ QLOO_PROXY_BASE_URL: "https://notonq.vercel.app/q/app/busk-map/" }).QLOO_PROXY_BASE_URL).toBe("https://notonq.vercel.app/q/app/busk-map");
+    expect(() => parseEnv({ QLOO_PROXY_BASE_URL: "not a url" })).toThrowError(/QLOO_PROXY_BASE_URL/);
+  });
+
   it("names the bad variable without echoing its value", () => {
     expect(() => parseEnv({ QLOO_API_BASE_URL: "not a url secret-ish" })).toThrowError(
       /QLOO_API_BASE_URL/,

@@ -27,8 +27,9 @@ export const FANS_MAP_MAX_CITIES = 3;
 const SPACING_SAMPLE = 1500;
 
 /**
- * U40: Qloo's `output.heatmap.boundary` ("city" | "neighborhood"; geohash squares by default). OFF until a live probe confirms the
- * response shape (cells with latitude/longitude) for a world-sized area; set to "city" to ask Qloo for city-level cells.
+ * U40: Qloo's `output.heatmap.boundary` ("urn:geohash" squares by default, or "urn:entity:locality"; "city" is refused with a 400).
+ * OFF until a live probe confirms the response shape (cells with latitude/longitude) for a world-sized area; set to
+ * "urn:entity:locality" to ask Qloo for locality-level cells.
  */
 export const FANS_MAP_BOUNDARY: qloo.HeatmapBoundary | undefined = undefined;
 

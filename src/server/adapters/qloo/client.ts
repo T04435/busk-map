@@ -52,18 +52,22 @@ import {
  * code runs against an in-process fetch that implements Qloo's HTTP contract.
  *
  * NotOnQ (lib/notonq.ts): with QLOO_PROXY_BASE_URL set, every live request goes to that drop-in proxy first (same path, query
- * and key, plus `X-NotOnQ-App`), and straight to QLOO_API_BASE_URL when the proxy times out, can't be reached, answers 5xx or
- * 429, or sends something that isn't Qloo's shape (`proxyFallback`). Qloo's own 400 and 404, which the proxy passes through, are
+ * and key, plus `X-NotOnQ-App`); a quick 5xx is tried once more there, and the request goes straight to QLOO_API_BASE_URL when
+ * the proxy still times out, can't be reached, answers 5xx or 429, or sends something that isn't Qloo's shape (`proxyFallback`). Qloo's own 400 and 404, which the proxy passes through, are
  * answers, not failures. The response shape is Qloo's either way, so cache keys don't change; NotOnQ's provenance rides in the
  * response (its `notonq` block, "Not in Qloo" entities), which a direct answer never has, so a fallback is never labelled NotOnQ.
  */
 /** Live calls take 1–7 s (urn:tag and large place lists are the slowest), so allow 15 s. */
 const TIMEOUT_MS = 15_000;
 /**
- * The proxy's own, shorter limit: it fills artists from open sources on a first request, so it may be slower than Qloo, but a
- * hung proxy must leave time for the direct call. 12 s, then Qloo direct gets its full 15 s.
+ * The proxy attempt's own limit. NotOnQ waits up to 28 s for Qloo before answering 502, but a research step has 50 s
+ * (RESEARCH_TIMEOUTS.stepMs) and often more than one call: 16 s, then Qloo direct gets its full 15 s. The worst path (a quick 5xx,
+ * its one retry timing out, then Qloo direct) is 8 + 0.4 + 16 + 15 s, under 40 s.
  */
-export const PROXY_TIMEOUT_MS = 12_000;
+export const PROXY_TIMEOUT_MS = 16_000;
+/** A proxy 5xx is retried once on the proxy (as retryOnceOnServerError does) only when it came back within this long. */
+export const PROXY_RETRY_WITHIN_MS = 8_000;
+const PROXY_RETRY_PAUSE_MS = 400;
 /** The app label NotOnQ's Ledger records the calls under (its docs: `X-NotOnQ-App`). */
 export const NOTONQ_APP = "busk-map";
 export const MAX_TAKE = 50;
@@ -135,10 +139,25 @@ export async function qlooGet<S extends z.ZodType>(backend: QlooBackend, path: s
   const once = !proxy
     ? direct
     : async () => {
-        noteQlooRequest();
+        const viaProxy = () => {
+          noteQlooRequest();
+          return fetchJson(`${proxy}${path}?${query}`, { adapter: "qloo", schema, timeoutMs: PROXY_TIMEOUT_MS, fetcher, init: { headers: { ...headers, "X-NotOnQ-App": NOTONQ_APP } } });
+        };
+        const started = Date.now();
         try {
-          return await fetchJson(`${proxy}${path}?${query}`, { adapter: "qloo", schema, timeoutMs: PROXY_TIMEOUT_MS, fetcher, init: { headers: { ...headers, "X-NotOnQ-App": NOTONQ_APP } } });
-        } catch (error) {
+          return await viaProxy();
+        } catch (first) {
+          let error = first;
+          // The single 5xx retry, on the proxy, for a quick 5xx (a slow one has already spent the step's time).
+          if (errorKindOf(first) === "http" && isServerError(first) && Date.now() - started < PROXY_RETRY_WITHIN_MS) {
+            log.warn("notonq proxy server error; retrying once", { path, status: first instanceof AdapterError ? (first.status ?? null) : null });
+            await sleep(PROXY_RETRY_PAUSE_MS);
+            try {
+              return await viaProxy();
+            } catch (second) {
+              error = second;
+            }
+          }
           if (!proxyFallback(error)) throw error;
           log.warn("notonq proxy failed; asking Qloo directly", { path, kind: errorKindOf(error), status: error instanceof AdapterError ? (error.status ?? null) : null });
           return direct();
@@ -291,11 +310,18 @@ async function entityDetailCached(backend: QlooBackend, entityId: string): Promi
   });
 }
 
-export type HeatmapBoundary = "city" | "neighborhood";
+/**
+ * Qloo's `output.heatmap.boundary` values: "urn:geohash" (the default squares) and "urn:entity:locality". Qloo answers 400 to
+ * anything else ("city" and "neighborhood" included, checked by NotOnQ's parity run), so only these two are ever sent.
+ */
+export const HEATMAP_BOUNDARIES = ["urn:geohash", "urn:entity:locality"] as const;
+export type HeatmapBoundary = (typeof HEATMAP_BOUNDARIES)[number];
+const validBoundary = (boundary: unknown): HeatmapBoundary | undefined => (HEATMAP_BOUNDARIES as readonly unknown[]).includes(boundary) ? (boundary as HeatmapBoundary) : undefined;
 
 /** `urn:heatmap`: where in the area this taste concentrates. */
-/** `boundary` (U40): Qloo's `output.heatmap.boundary` (documented values "city" and "neighborhood"); omitted, cells are geohash squares. */
-export async function heatmap(backend: QlooBackend, rawIds: string[], area: BBox, boundary?: HeatmapBoundary, tagIds: readonly string[] = []): Promise<HeatCell[]> {
+/** `boundary` (U40): Qloo's `output.heatmap.boundary` (HEATMAP_BOUNDARIES; any other value is dropped, never sent); omitted, cells are geohash squares. */
+export async function heatmap(backend: QlooBackend, rawIds: string[], area: BBox, requested?: HeatmapBoundary, tagIds: readonly string[] = []): Promise<HeatCell[]> {
+  const boundary = validBoundary(requested);
   const tags = sceneTags(tagIds);
   const entityIds = entitySignal(rawIds);
   if (entityIds.length === 0 && tags.length === 0) noSignal("heatmap");

@@ -70,14 +70,45 @@ describe("qloo through the NotOnQ proxy", () => {
       expect(result.mode).toBe("live");
       expect(result.data).toHaveLength(1);
       expect(result.via).toBeUndefined();
-      expect(calls.map((c) => (isProxy(c.url) ? "proxy" : "direct"))).toEqual(["proxy", "direct"]);
+      // A 5xx is tried once more on the proxy first (the single 5xx retry), then Qloo direct.
+      const fiveXx = what.startsWith("5");
+      expect(calls.map((c) => (isProxy(c.url) ? "proxy" : "direct"))).toEqual(fiveXx ? ["proxy", "proxy", "direct"] : ["proxy", "direct"]);
       // The same request: path and query unchanged, the key sent, no NotOnQ header to Qloo.
-      expect(calls[1].url.pathname).toBe("/v2/insights");
-      expect(calls[1].url.search).toBe(calls[0].url.search);
-      expect(headerOf(calls[1].init, "X-Api-Key")).toBe("synthetic-test-key");
-      expect(headerOf(calls[1].init, "X-NotOnQ-App")).toBeUndefined();
+      const direct = calls.at(-1)!;
+      expect(direct.url.pathname).toBe("/v2/insights");
+      expect(direct.url.search).toBe(calls[0].url.search);
+      expect(headerOf(direct.init, "X-Api-Key")).toBe("synthetic-test-key");
+      expect(headerOf(direct.init, "X-NotOnQ-App")).toBeUndefined();
     });
   }
+
+  it("retries a quick proxy 5xx once on the proxy, and takes its answer when the retry works", async () => {
+    const qloo = await fresh();
+    let n = 0;
+    const { calls } = mockFetch([route(isProxy, () => (n++ === 0 ? json({}, 502) : json(SYNTHETIC.heatmap))), route(isDirect, () => json(SYNTHETIC.heatmap))]);
+    expect((await qloo.tasteMap(["syn-qloo-1"], area, LIVE)).mode).toBe("live");
+    expect(calls.map((c) => (isProxy(c.url) ? "proxy" : "direct"))).toEqual(["proxy", "proxy"]);
+  });
+
+  it("does not retry a slow proxy 5xx (NotOnQ's 28 s wait for Qloo): straight to Qloo direct, within the step's time", async () => {
+    const { PROXY_TIMEOUT_MS, PROXY_RETRY_WITHIN_MS } = await import("@/server/adapters/qloo/client");
+    const { RESEARCH_TIMEOUTS } = await import("@/server/playlist/config");
+    // Worst path: a quick 5xx, its retry timing out, then Qloo direct's 15 s, inside one research step.
+    expect(PROXY_RETRY_WITHIN_MS + 400 + PROXY_TIMEOUT_MS + 15_000).toBeLessThan(RESEARCH_TIMEOUTS.stepMs);
+    const qloo = await fresh();
+    const realNow = Date.now.bind(Date);
+    let skew = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => realNow() + skew);
+    const { calls } = mockFetch([
+      route(isProxy, () => {
+        skew += PROXY_RETRY_WITHIN_MS + 1_000;
+        return json({}, 502);
+      }),
+      route(isDirect, () => json(SYNTHETIC.heatmap)),
+    ]);
+    expect((await qloo.tasteMap(["syn-qloo-1"], area, LIVE)).mode).toBe("live");
+    expect(calls.map((c) => (isProxy(c.url) ? "proxy" : "direct"))).toEqual(["proxy", "direct"]);
+  });
 
   it("passes Qloo's own 400 through: no direct retry, the call falls back as Qloo refused it", async () => {
     const qloo = await fresh();
@@ -105,7 +136,8 @@ describe("qloo through the NotOnQ proxy", () => {
   it("charges the daily budget once per logical call, so a fallback still goes through at the last unit of budget", async () => {
     const qloo = await fresh();
     (await import("@/server/adapters/qloo/budget")).resetQlooBudgetForTests({ max: 1 });
-    const { calls } = mockFetch([route(isProxy, () => json({}, 502)), route(isDirect, () => json(SYNTHETIC.heatmap))]);
+    // The proxy's 429 (its own daily budget for this key) falls back at once; the 5xx retry is on the proxy too: neither charges twice.
+    const { calls } = mockFetch([route(isProxy, () => json({}, 429)), route(isDirect, () => json(SYNTHETIC.heatmap))]);
     expect((await qloo.tasteMap(["syn-qloo-1"], area, LIVE)).mode).toBe("live");
     expect(calls).toHaveLength(2);
     // The next logical call is over the budget: refused before any request.
@@ -132,6 +164,19 @@ describe("qloo through the NotOnQ proxy", () => {
     ]);
     // A /search answer is not a stand-in answer.
     expect(result.via).toBeUndefined();
+  });
+});
+
+describe("the heatmap boundary", () => {
+  beforeEach(() => vi.stubEnv("QLOO_API_KEY", "synthetic-test-key"));
+
+  it("sends only Qloo's valid output.heatmap.boundary values, never 'city' or 'neighborhood'", async () => {
+    const qloo = await fresh();
+    const { calls } = mockFetch([route(isDirect, () => json(SYNTHETIC.heatmap))]);
+    await qloo.tasteMap(["syn-qloo-1"], area, LIVE, "urn:entity:locality");
+    await qloo.tasteMap(["syn-qloo-2"], area, LIVE, "urn:geohash");
+    for (const bad of ["city", "neighborhood"]) await qloo.tasteMap(["syn-qloo-3"], area, LIVE, bad as never);
+    expect(calls.map((c) => c.url.searchParams.get("output.heatmap.boundary"))).toEqual(["urn:entity:locality", "urn:geohash", null, null]);
   });
 });
 

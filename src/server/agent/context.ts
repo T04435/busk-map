@@ -151,6 +151,8 @@ export class PlanContext {
   private readonly statuses = new Map<string, Status>();
   /** Things the plan should tell the performer, e.g. that a search was widened. */
   readonly notes: string[] = [];
+  /** NotOnQ (lib/notonq.ts): the stand-ins any Qloo answer of this plan came through, and the artists it filled in (name keys). */
+  private readonly notOnQ = { standIns: new Set<string>(), filled: new Set<string>() };
 
   /** The city's current hour, for dropping any-time windows that have started (only matters on today's date). */
   private readonly nowHour: number;
@@ -197,10 +199,22 @@ export class PlanContext {
     return this.memo.get(key) as Promise<T>;
   }
 
+  /** The stand-ins NotOnQ answered this plan's Qloo calls through (lib/notonq.ts), in the order met; empty when Qloo answered alone. */
+  notOnQStandIns(): string[] {
+    return [...this.notOnQ.standIns];
+  }
+
+  /** Whether NotOnQ filled in an artist of this name in any Qloo answer this plan used. */
+  filledByNotOnQ(name: string): boolean {
+    return this.notOnQ.filled.has(nameKey(name));
+  }
+
   /** Run an adapter call once and record how its data was produced. */
   private track<T>(key: string, load: () => Promise<AdapterResult<T>>): Promise<T> {
     return this.once(key, async () => {
       const result = await this.sharedLoad(key, load);
+      if (result.via) for (const name of result.via.standIns) this.notOnQ.standIns.add(name);
+      for (const name of filledNames(result.data)) this.notOnQ.filled.add(nameKey(name));
       const extra = optionalQlooFeature(key);
       if (result.adapter === "qloo" && result.mode === "fallback" && extra && !this.qlooFailed()) {
         // A Qloo extra that failed (often a slow call timing out) leaves the rest of the plan intact: say so, don't call Qloo down.
@@ -1049,4 +1063,13 @@ export class PlanContext {
       repertoire,
     );
   }
+}
+
+/** The names of the artists NotOnQ filled in (`filledBy: "notonq"`) anywhere in an adapter's data: a list, an object's lists, or one level deeper. */
+export function filledNames(data: unknown, depth = 0): string[] {
+  if (depth > 3 || data === null || typeof data !== "object") return [];
+  if (Array.isArray(data)) return data.flatMap((item) => filledNames(item, depth + 1));
+  const record = data as Record<string, unknown>;
+  if (record.filledBy === "notonq" && typeof record.name === "string") return [record.name];
+  return Object.values(record).flatMap((value) => filledNames(value, depth + 1));
 }

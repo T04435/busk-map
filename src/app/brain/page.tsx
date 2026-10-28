@@ -5,7 +5,7 @@ import { Icon } from "@/components/honeycomb/icon";
 import { MeetTheHive } from "@/components/honeycomb/meet-the-hive";
 import { NoteCard } from "@/components/honeycomb/note-card";
 import { StatStrip } from "@/components/honeycomb/stat-strip";
-import { callKinds, facts, next, quotaNote } from "@/lib/qloo-map";
+import { callKinds, facts, next, quotaNote, routingNote } from "@/lib/qloo-map";
 
 export const metadata: Metadata = {
   title: "The brain of Busk Map",
@@ -35,6 +35,9 @@ export default function BrainPage() {
           </h1>
           <p className="m-0 max-w-[640px] text-[19px] leading-[29px]">
             Qloo knows who likes what, and where. Busk Map asks it {callKinds} kinds of question, and every answer lands somewhere in your busk.
+          </p>
+          <p className="m-0 max-w-[640px] font-mono text-sm leading-6 text-muted-foreground" data-testid="qloo-routing">
+            {routingNote}
           </p>
         </header>
 

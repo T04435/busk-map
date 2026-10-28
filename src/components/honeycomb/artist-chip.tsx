@@ -4,6 +4,8 @@ import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
 import { IconAction } from "@/components/honeycomb/icon-action";
 import { Icon } from "@/components/honeycomb/icon";
 import { SongTag } from "@/components/honeycomb/song-tag";
+import { NotOnQTag } from "@/components/honeycomb/info-tag";
+import type { FilledBy } from "@/lib/notonq";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 
 const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:shadow-none";
@@ -33,6 +35,7 @@ export function ArtistChip({
   score,
   info,
   href,
+  filledBy,
   children,
   className,
 }: {
@@ -53,6 +56,8 @@ export function ArtistChip({
   info?: ReactNode;
   /** The artist's Spotify page: the name becomes a plain link (new tab, no icon). Never wraps the action buttons. Ignored when not interactive. */
   href?: string | null;
+  /** "notonq": NotOnQ filled this artist in (Qloo lacks it): labelled "Filled by NotOnQ" at every size. */
+  filledBy?: FilledBy;
   /** Body under the name (a Reason). */
   children?: ReactNode;
   className?: string;
@@ -64,6 +69,7 @@ export function ArtistChip({
   const cellTone = suggested ? "dashed" : "media";
   const nameCls = cn("font-bold [overflow-wrap:anywhere]", suggested && "text-muted-foreground");
   const link = interactive && href ? href : null;
+  const filled = filledBy === "notonq" ? <NotOnQTag /> : null;
   const nameEl = (cls: string) =>
     link ? (
       <a
@@ -85,6 +91,7 @@ export function ArtistChip({
           {initialsOf(name)}
         </HexCell>
         {nameEl(cn("min-w-0 text-sm leading-5", nameCls))}
+        {filled}
         {score ? <span className="flex flex-none items-center self-stretch pl-0.5">{score}</span> : null}
       </span>
     );
@@ -108,7 +115,12 @@ export function ArtistChip({
               <ItemDescription className="font-mono text-[11px] leading-4 [overflow-wrap:anywhere]">{meta}</ItemDescription>
             ) : null}
           </div>
-          {info ? <div className="flex flex-wrap gap-1.5">{info}</div> : null}
+          {info || filled ? (
+            <div className="flex flex-wrap gap-1.5">
+              {filled}
+              {info}
+            </div>
+          ) : null}
           {children}
         </ItemContent>
         {score ? <div className="flex flex-none items-center self-center">{score}</div> : null}

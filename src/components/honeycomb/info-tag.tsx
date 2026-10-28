@@ -4,6 +4,7 @@ import { Icon, type IconName } from "@/components/honeycomb/icon";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
 import type { MentionSource } from "@/lib/mention";
 import { Badge } from "@/components/ui/badge";
+import { FILLED_BY_NOTONQ, viaStandInsLabel } from "@/lib/notonq";
 
 const tones = {
   neutral: "border-input text-foreground",
@@ -22,6 +23,7 @@ export function InfoTag({
   tone = "neutral",
   source,
   className,
+  testId,
 }: {
   children?: ReactNode;
   icon?: IconName;
@@ -29,12 +31,26 @@ export function InfoTag({
   /** A data source: Spotify and Last.fm as their icon, the name in the accessible label; Qloo as the neutral glyph plus the word "Qloo". Replaces the words. */
   source?: MentionSource;
   className?: string;
+  testId?: string;
 }) {
   if (source) return <SourceLogo source={source} height={14} className={cn("py-0.5", className)} />;
   return (
-    <Badge variant="data" data-slot="info-tag" data-tone={tone} className={cn(tones[tone], className)}>
+    <Badge variant="data" data-slot="info-tag" data-tone={tone} data-testid={testId} className={cn(tones[tone], className)}>
       {icon ? <Icon name={icon} size={12} className="mt-0.5 flex-none" /> : null}
       <span>{children}</span>
     </Badge>
+  );
+}
+
+/**
+ * THE NotOnQ label (lib/notonq.ts), on anything NotOnQ supplied rather than Qloo: "Filled by NotOnQ" on an artist it filled in, or,
+ * with `standIns`, "Via NotOnQ stand-ins: A, B" on a result Qloo answered for similar artists it knows. A neutral data tag: NotOnQ's
+ * fills are not Qloo data, so never the Qloo tone.
+ */
+export function NotOnQTag({ standIns, className }: { standIns?: readonly string[]; className?: string }) {
+  return (
+    <InfoTag className={className} testId={standIns ? "notonq-via" : "notonq-filled"}>
+      {standIns ? viaStandInsLabel(standIns) : FILLED_BY_NOTONQ}
+    </InfoTag>
   );
 }

@@ -822,6 +822,9 @@ export const facts: readonly { value: string; label: string }[] = [
   { value: CALLS_PER_LEARN_RUN, label: "Qloo calls per learn run" },
 ];
 
+/** How Busk Map reaches Qloo (adapters/qloo/client.ts): through the NotOnQ proxy when QLOO_PROXY_BASE_URL is set (lib/notonq.ts). */
+export const routingNote = "Qloo calls go through NotOnQ when configured, Qloo direct otherwise.";
+
 export const quotaNote =
   `Answers are cached for ${QUOTA.cacheHours} hours, and Busk Map paces its own calls to ${QUOTA.pacedPerSecond} a second, ` +
   `so a rerun makes no new calls.`;

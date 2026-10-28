@@ -10,6 +10,7 @@ import type { LearnStreamEvent, LearnSuggestionEvent, LearnTotals } from "./lear
 import { SPOTIFY_ARTIST_URL, SPOTIFY_TRACK_URL, spotifyHref, type MentionSource } from "./mention";
 import { profilePhoto } from "./spotify-profile";
 import { nameKey } from "./text";
+import { filledMark, type FilledBy } from "./notonq";
 import { playlistSongKey, type LearnSuggestionView, type PlaylistSongView, type PlaylistView } from "./playlist-schema";
 import type { FansMapOutput } from "./repertoire-research";
 import { MORE_STEPS, RESEARCH_STEP_OF, RESEARCH_STEPS, type ResearchSnapshot, type ResearchStepKey, type StepOutputs } from "./repertoire-research";
@@ -17,7 +18,9 @@ import { MORE_STEPS, RESEARCH_STEP_OF, RESEARCH_STEPS, type ResearchSnapshot, ty
 export type RepertoireStepStatus = "pending" | "running" | "done" | "failed" | "skipped";
 export type RepertoireStep = { key: ResearchStepKey; status: RepertoireStepStatus; /** One plain-words line. */ found?: string; /** At most 6. */ cells?: { name: string; image?: string }[]; note?: string; /** The one source a step with a backup ran on, once known (songs: Spotify, or Last.fm when Spotify gave none). */ source?: MentionSource };
 export type RepertoireTotals = { qlooCalls: number; songs: number; soundsLike: number; fanArtists: number; songsChecked: number; toLearn: number | null };
-export type ResearchArtist = { name: string; image?: string; /** open.spotify.com/artist/<id> when the Spotify id is known; otherwise no link (U06). */ href?: string; source?: "spotify" | "qloo" | "typed"; tags?: string[] };
+export type ResearchArtist = { name: string; image?: string; /** open.spotify.com/artist/<id> when the Spotify id is known; otherwise no link (U06). */ href?: string; source?: "spotify" | "qloo" | "typed"; tags?: string[]; /** "notonq": NotOnQ filled this artist in (lib/notonq.ts). */ filledBy?: FilledBy };
+/** The results NotOnQ answered through stand-ins (lib/notonq.ts): the section shows "Via NotOnQ stand-ins: …". */
+export type StandInKey = "soundsLike" | "fans" | "fansMap" | "fansLove" | "genres";
 /**
  * `image` is the track's own image or its album art; `artistImage` the artist's photo (SongRow falls back image, then artistImage, then
  * the icon: U03). `href` is a Spotify track URL only (U06). `source` is where the song came from, for the logo.
@@ -26,7 +29,9 @@ export type ResearchSong = { id: string; title: string; artist: string; year?: n
 export type LearnSong = ResearchSong & { reason: string; because?: ResearchArtist[]; status: "pending" | "learned" | "dismissed"; fresh?: boolean };
 export type Lean = { label: string; lean: number };
 export type RepertoireResults = {
-  profile: { name: string; image?: string; genres: string[]; audience: string[]; followers?: number; href?: string } | null;
+  profile: { name: string; image?: string; genres: string[]; audience: string[]; followers?: number; href?: string; /** "notonq": Qloo lacks the act and NotOnQ filled it in. */ filledBy?: FilledBy } | null;
+  /** Per result, the stand-ins NotOnQ answered it through (absent when Qloo answered alone). */
+  standIns: Partial<Record<StandInKey, string[]>>;
   summary: string | null;
   fans: { age: Lean[]; gender: Lean[] } | null;
   /** "Where your fans are" (U24): the step's output, as BRAND's FansMap takes it (lib/fans-map.ts: fansMapProps). Null until the step lands, and for research saved before it. */
@@ -227,9 +232,9 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
     ? playlist
       ? playlist.soundsLike.map((a) => {
           const q = tagsByName.get(a.name.toLowerCase());
-          return { name: a.name, source: a.spotifyId ? "spotify" : a.qlooId ? "qloo" : "typed", ...img(a.image ?? q?.image), ...(a.spotifyId ? { href: SPOTIFY_ARTIST_URL(a.spotifyId) } : {}), ...(q?.tags ? { tags: q.tags } : {}) };
+          return { name: a.name, source: a.spotifyId ? "spotify" : a.qlooId ? "qloo" : "typed", ...img(a.image ?? q?.image), ...(a.spotifyId ? { href: SPOTIFY_ARTIST_URL(a.spotifyId) } : {}), ...(q?.tags ? { tags: q.tags } : {}), ...filledMark(q?.filledBy) };
         })
-      : (o.soundsLike?.artists ?? []).map((a) => ({ name: a.name, source: "qloo" as const, ...img(a.image), ...(a.spotifyId ? { href: SPOTIFY_ARTIST_URL(a.spotifyId) } : {}), ...(a.tags ? { tags: a.tags } : {}) }))
+      : (o.soundsLike?.artists ?? []).map((a) => ({ name: a.name, source: "qloo" as const, ...img(a.image), ...(a.spotifyId ? { href: SPOTIFY_ARTIST_URL(a.spotifyId) } : {}), ...(a.tags ? { tags: a.tags } : {}), ...filledMark(a.filledBy) }))
     : null;
   const songsLanded = done("songs") || (!run && !!playlist) || (liveMode === "more" && !!playlist);
   const canSing = songsLanded
@@ -249,14 +254,16 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
           audience: o.qloo?.audience ?? [],
           ...((o.profile.followers ?? 0) > 0 ? { followers: o.profile.followers! } : {}),
           href: o.profile.href,
+          ...filledMark(o.qloo?.filledBy),
         }
       : null,
+    standIns: Object.fromEntries((["soundsLike", "fans", "fansMap", "fansLove", "genres"] as const).flatMap((k) => (o[k]?.via ? [[k, o[k]!.via!.standIns]] : []))),
     // The paragraph about the act is retired (the page has no such section); old snapshots' text is ignored.
     summary: null,
     fans: o.fans ? { age: o.fans.age.map(({ label, lean }) => ({ label, lean })), gender: o.fans.gender.map(({ label, lean }) => ({ label, lean })) } : null,
     fansMap: o.fansMap ?? null,
     soundsLike,
-    fansLove: o.fansLove ? o.fansLove.artists.map((a) => ({ name: a.name, source: "qloo" as const, ...img(a.image), ...(a.spotifyId ? { href: SPOTIFY_ARTIST_URL(a.spotifyId) } : {}), ...(a.tags ? { tags: a.tags } : {}) })) : null,
+    fansLove: o.fansLove ? o.fansLove.artists.map((a) => ({ name: a.name, source: "qloo" as const, ...img(a.image), ...(a.spotifyId ? { href: SPOTIFY_ARTIST_URL(a.spotifyId) } : {}), ...(a.tags ? { tags: a.tags } : {}), ...filledMark(a.filledBy) })) : null,
     canSing,
     toLearn,
     learned: playlist ? playlist.songs.filter((s) => s.state === "learned").map((s) => songOf(s, media, ownPhoto)) : null,

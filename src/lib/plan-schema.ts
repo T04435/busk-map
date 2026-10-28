@@ -8,6 +8,9 @@ import { researchTotalsSchema } from "./research-totals";
 import { callRecordSchema } from "./call-record";
 import { cityLevelsSchema, cityPlaceSchema, citySlugSchema, DEFAULT_CITY_ID } from "./city";
 
+/** "notonq": NotOnQ filled this artist in (lib/notonq.ts). Optional and absent for Qloo's own artists and older plans (missing = null). */
+const filledBy = z.literal("notonq").nullable().optional();
+
 export const PERMITS = ["general", "premium", "circle-act"] as const;
 /** The built-in cities (the week planner still plans Melbourne only). Plans take any city: see lib/city.ts. */
 export const CITY_IDS = ["melbourne"] as const;
@@ -221,6 +224,7 @@ export const planPitchSchema = z.object({
         .default(null),
       /** The song's artist's photo (Qloo or Spotify), when one of the entities already fetched carries it. Optional: older plans have none. */
       artistImage: z.string().nullable().optional(),
+      filledBy,
     }),
   ),
 });
@@ -304,6 +308,7 @@ export const planSchema = z.object({
         /** The artist's photo and Spotify id from Qloo's entity, when it sent them. Optional: older plans have none. */
         image: z.string().nullable().optional(),
         spotifyId: z.string().nullable().optional(),
+        filledBy,
       }),
     ),
     /** What the crowd at the busiest busking hotspot likes with no performer signal (Qloo insights): "the usual crowd". */
@@ -316,7 +321,7 @@ export const planSchema = z.object({
       .object({
         /** `yours`: a genre the act's own sound shares (Repertoire research), absent otherwise. */
         genres: z.array(z.object({ name: z.string(), over: z.number(), yours: z.boolean().optional() })),
-        acts: z.array(z.object({ name: z.string(), affinity: z.number().nullable(), image: z.string().optional() })),
+        acts: z.array(z.object({ name: z.string(), affinity: z.number().nullable(), image: z.string().optional(), filledBy })),
       })
       .nullable()
       .default(null),
@@ -331,6 +336,11 @@ export const planSchema = z.object({
       .default(null),
     /** Which of the performer's artists drove the crowd's picks most (aggregate of explainability). */
     drivers: z.array(z.object({ name: z.string(), share: z.number() })).default([]),
+    /**
+     * NotOnQ (lib/notonq.ts) answered some of this plan's Qloo calls through stand-ins for an act Qloo lacks: their names. Optional and
+     * absent otherwise, so plans Qloo answered alone keep their shape (and their golden hashes).
+     */
+    via: z.object({ by: z.literal("notonq"), standIns: z.array(z.string()) }).optional(),
   }),
   learnThese: z.array(
     z.object({
@@ -342,6 +352,7 @@ export const planSchema = z.object({
       audienceGrowth: z.number().nullable().default(null),
       /** The artist's photo from Qloo's entity, when it sent one. Optional: older plans have none. */
       artistImage: z.string().nullable().optional(),
+      filledBy,
     }),
   ),
   /** The crowd's most over-represented age band (Qloo demographics), used for era matching. */

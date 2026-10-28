@@ -8,7 +8,7 @@ import { HexCell } from "@/components/honeycomb/hex-cell";
 import { Icon } from "@/components/honeycomb/icon";
 import { LeanBar } from "@/components/honeycomb/lean-bar";
 import { MeterBar } from "@/components/honeycomb/score-cell";
-import { InfoTag } from "@/components/honeycomb/info-tag";
+import { InfoTag, NotOnQTag } from "@/components/honeycomb/info-tag";
 import { Reason } from "@/components/honeycomb/reason";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
 import { ageLabel } from "@/lib/age";
@@ -76,6 +76,7 @@ export function CrowdPanel({
           <DataStatusBadge status={qlooMode === "live" ? "live" : "test"} />
         </span>
       </header>
+      {crowd.via ? <NotOnQTag standIns={crowd.via.standIns} className="mb-4" /> : null}
       {empty && (
         <Empty role="status" data-testid="crowd-empty">
           <EmptyMedia>
@@ -122,6 +123,7 @@ export function CrowdPanel({
                   name={a.name}
                   image={a.image ?? undefined}
                   href={a.spotifyId ? SPOTIFY_ARTIST_URL(a.spotifyId) : undefined}
+                  filledBy={a.filledBy}
                   score={a.affinity !== null ? <ScoreCell value={a.affinity * 100} size="sm" label="Affinity" /> : undefined}
                   info={
                     (a.trend !== null && a.trend >= 1) || usualNames.has(a.name) ? (
@@ -156,7 +158,7 @@ export function CrowdPanel({
           <ul className="m-0 grid list-none gap-2 p-0">
             {crowd.localScene.acts.map((a) => (
               <li key={a.name}>
-                <ArtistChip name={a.name} image={a.image} score={a.affinity !== null ? <ScoreCell value={a.affinity * 100} size="sm" label="Affinity" /> : undefined} />
+                <ArtistChip name={a.name} image={a.image} filledBy={a.filledBy} score={a.affinity !== null ? <ScoreCell value={a.affinity * 100} size="sm" label="Affinity" /> : undefined} />
               </li>
             ))}
           </ul>

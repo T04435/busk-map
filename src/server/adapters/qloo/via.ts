@@ -50,9 +50,15 @@ export function untagVia<T>(value: MaybeVia<T>): T {
   return value.value;
 }
 
-/** Run one adapter call and collect the stand-ins any of its lookups were answered through (null: none). */
+/**
+ * Run `fn` and collect the stand-ins any lookup inside it was answered through (null: none). Scopes nest: what an inner scope
+ * collected (one adapter call) is also noted in the enclosing one (the research step that made it).
+ */
 export async function collectVia<T>(fn: () => Promise<T>): Promise<{ value: T; via: NotOnQVia | null }> {
+  const parent = scope.getStore();
   const list: NotOnQVia[] = [];
   const value = await scope.run(list, fn);
-  return { value, via: mergeVia(list) };
+  const via = mergeVia(list);
+  if (via) parent?.push(via);
+  return { value, via };
 }

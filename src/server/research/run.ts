@@ -42,6 +42,8 @@ import { recordCalls } from "@/server/adapters/call-log";
 import type { AdapterContext } from "@/server/adapters/core";
 import * as qloo from "@/server/adapters/qloo";
 import { withQlooUsage, type QlooUsage } from "@/server/adapters/qloo/usage";
+import { collectVia } from "@/server/adapters/qloo/via";
+import { filledMark, viaMark } from "@/lib/notonq";
 import { findArtists, getArtistCatalogue, getArtistProfile } from "@/server/adapters/repertoire";
 import { qlooBudgetSpent } from "@/server/adapters/qloo/budget";
 import { spotifyLimitedUntil } from "@/server/adapters/repertoire/pacer";
@@ -139,6 +141,9 @@ class QlooDown extends Error {
     super(message);
   }
 }
+/** The steps whose results are Qloo taste answers: when NotOnQ gave one through stand-ins, the step's output carries `via`. */
+const VIA_STEPS: ReadonlySet<ResearchStepKey> = new Set(["soundsLike", "fans", "fansMap", "fansLove", "genres"]);
+
 /** Test fault `research-cut`: the run is dropped as a stopped function would drop it. */
 class RunCut extends Error {}
 /** A step ran past RESEARCH_TIMEOUTS.stepMs: the step fails and the run ends (end code "timeout"). */
@@ -303,7 +308,9 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
       const late = new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(new StepTimeout(RESEARCH_LABELS[key])), timeouts.stepMs);
       });
-      const output = await Promise.race([recordCalls(calls, () => work(via)), late]);
+      // NotOnQ (lib/notonq.ts): a step whose Qloo answers came through stand-ins for an act Qloo lacks says so (`via`).
+      const collected = await Promise.race([recordCalls(calls, () => collectVia(() => work(via))), late]);
+      const output = VIA_STEPS.has(key) && collected.via ? ({ ...collected.value, ...viaMark(collected.via) } as StepOutputs[K]) : collected.value;
       const waits = Boolean((output as { waiting?: unknown }).waiting);
       (steps as Record<string, StoredStep>)[key] = { status: waits ? "waiting" : "done", output };
       push({ type: "tool-end", id, tool, ok: true, summary: output.summary, output, ...withCalls() });
@@ -534,9 +541,9 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             if (res.mode === "fallback") throw new QlooDown("Qloo didn't answer, so your artist couldn't be found.");
             return res.data;
           };
-          let entity: { id: string; name: string; popularity: number | null; genres: string[] } | null = null;
+          let entity: { id: string; name: string; popularity: number | null; genres: string[]; filledBy?: qloo.QlooEntity["filledBy"] } | null = null;
           // A name Qloo has but with no music-genre tag: not the taste signal alone, so the Hive's sound-alikes are tried first.
-          let weak: { id: string; name: string; popularity: number | null; genres: string[]; by: "id" | "name" } | null = null;
+          let weak: { id: string; name: string; popularity: number | null; genres: string[]; by: "id" | "name"; filledBy?: qloo.QlooEntity["filledBy"] } | null = null;
           let detail: qloo.EntityDetail | null = null;
           let by: QlooOutput["by"];
           let candidates: QlooCandidateView[] = [];
@@ -546,16 +553,16 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             detail = await detailOf(known);
             if (detail) {
               by = chosenId ? "chosen" : "saved";
-              entity = { id: detail.id, name: detail.name, popularity: detail.popularity, genres: [] };
+              entity = { id: detail.id, name: detail.name, popularity: detail.popularity, genres: [], ...filledMark(detail.filledBy) };
             }
           }
           if (!entity && !declined) {
             const hit = await findOwnOnQloo(args.spotifyId, profile.name, adapters, { actName: actLabel, genres: profile.genres });
             if (hit.qloo === "unavailable") throw new QlooDown("Qloo didn't answer, so your artist couldn't be found.");
-            if (hit.entity && hit.weak) weak = { id: hit.entity.id, name: hit.entity.name, popularity: hit.entity.popularity, genres: [], by: hit.by ?? "name" };
+            if (hit.entity && hit.weak) weak = { id: hit.entity.id, name: hit.entity.name, popularity: hit.entity.popularity, genres: [], by: hit.by ?? "name", ...filledMark(hit.entity.filledBy) };
             else if (hit.entity) {
               by = hit.by ?? "name";
-              entity = { id: hit.entity.id, name: hit.entity.name, popularity: hit.entity.popularity, genres: hit.entity.tags.map((t) => t.name) };
+              entity = { id: hit.entity.id, name: hit.entity.name, popularity: hit.entity.popularity, genres: hit.entity.tags.map((t) => t.name), ...filledMark(hit.entity.filledBy) };
             } else candidates = hit.candidates;
           }
           const matchedOut = async (e: NonNullable<typeof entity>): Promise<QlooOutput> => {
@@ -566,8 +573,10 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             }
             const genres = [...new Set((detail?.tags ?? e.genres.map((name) => ({ name, type: "urn:tag:genre:music" }))).filter((t) => isGenreTag(t.type)).map((t) => t.name))].slice(0, 8);
             const audience = [...new Set((detail?.tags ?? []).filter((t) => isAudienceTag(t.type)).map((t) => t.name))].slice(0, 6);
+            // NotOnQ filled the act in (Qloo lacks it): labelled, never called a Qloo find.
+            const filledBy = e.filledBy ?? detail?.filledBy ?? null;
             return {
-              summary: `Found ${e.name} on Qloo${audience.length ? `: ${audience.slice(0, 3).join(", ")}` : ""}`,
+              summary: filledBy === "notonq" ? PLAYLIST_COPY.research.filledByNotOnQ(e.name) : `Found ${e.name} on Qloo${audience.length ? `: ${audience.slice(0, 3).join(", ")}` : ""}`,
               matched: true,
               qlooId: e.id,
               name: e.name,
@@ -577,6 +586,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
               popularity: r2(detail?.popularity ?? e.popularity),
               ...(by ? { by } : {}),
               ...(profile.image ? { image: profile.image } : {}),
+              ...filledMark(filledBy),
             };
           };
           if (entity) return matchedOut(entity);
@@ -814,7 +824,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             const artists = res
               .filter((e) => nameKey(e.name) !== actKey && nameKey(e.name) !== nameKey(profile.name))
               .slice(0, RESEARCH_SOUNDS_LIKE_SAVED)
-              .map((e) => ({ name: e.name, qlooId: e.id, ...(e.spotifyId && SPOTIFY_ID.test(e.spotifyId) ? { spotifyId: e.spotifyId } : {}), ...(e.image && /^https:\/\//.test(e.image) ? { image: e.image } : {}), ...(e.tags.length ? { tags: e.tags.slice(0, 3).map((t) => t.name) } : {}), affinity: r2(e.affinity) }));
+              .map((e) => ({ name: e.name, qlooId: e.id, ...(e.spotifyId && SPOTIFY_ID.test(e.spotifyId) ? { spotifyId: e.spotifyId } : {}), ...(e.image && /^https:\/\//.test(e.image) ? { image: e.image } : {}), ...(e.tags.length ? { tags: e.tags.slice(0, 3).map((t) => t.name) } : {}), affinity: r2(e.affinity), ...filledMark(e.filledBy) }));
             genreAlikes = artists.slice(0, RESEARCH_SIGNAL_SOUND_ALIKES).map((a) => ({ qlooId: a.qlooId, name: a.name }));
             // The Hive's Last.fm sound-alikes, when it found some, are who the act sounds like; the genre's artists only stand in as the signal.
             if (found.similar?.length) {
@@ -927,6 +937,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             ...(e.tags.length ? { tags: e.tags.slice(0, 3).map((t) => t.name) } : {}),
             affinity: r2(e.affinity),
             because,
+            ...filledMark(e.filledBy),
           };
         });
         const line = artists.length ? `Your fans also love ${artists.slice(0, 3).map((a) => a.name).join(", ")}` : "Qloo found no other artists your fans love";

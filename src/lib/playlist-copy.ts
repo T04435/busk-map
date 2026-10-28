@@ -121,6 +121,8 @@ export const PLAYLIST_COPY = {
     running: "Researching your act…",
     heading: "Researching your act",
     howBuilt: "How we built your Repertoire",
+    /** Step 3 when Qloo lacks the act and NotOnQ filled it in (lib/notonq.ts): never called a Qloo find. */
+    filledByNotOnQ: (name: string) => `Qloo doesn't know you yet; NotOnQ filled in ${name}`,
     findMore: "Find more songs to learn",
     /** Qloo may not know the act by this name: the Hive asks, then (if still unknown) goes on from the artists the performer sounds like. */
     candidates: {

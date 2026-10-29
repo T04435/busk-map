@@ -337,10 +337,11 @@ export const planSchema = z.object({
     /** Which of the performer's artists drove the crowd's picks most (aggregate of explainability). */
     drivers: z.array(z.object({ name: z.string(), share: z.number() })).default([]),
     /**
-     * NotOnQ (lib/notonq.ts) answered some of this plan's Qloo calls through stand-ins for an act Qloo lacks: their names. Optional and
+     * NotOnQ (lib/notonq.ts) answered some of this plan's Qloo calls through stand-ins for an act Qloo lacks, or through the act's
+     * own genres when Qloo has no audience data for it: their names. Optional and
      * absent otherwise, so plans Qloo answered alone keep their shape (and their golden hashes).
      */
-    via: z.object({ by: z.literal("notonq"), standIns: z.array(z.string()) }).optional(),
+    via: z.object({ by: z.literal("notonq"), standIns: z.array(z.string()), genres: z.array(z.string()).optional() }).optional(),
   }),
   learnThese: z.array(
     z.object({

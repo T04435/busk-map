@@ -43,9 +43,9 @@ describe("toRepertoireView", () => {
     expect(v.phase).toBe("empty");
     expect(v.steps.map((s) => s.key)).toEqual([...RESEARCH_STEPS]);
     expect(v.steps.every((s) => s.status === "pending")).toBe(true);
-    const { standIns, ...results } = v.results;
+    const { via, ...results } = v.results;
     expect(Object.values(results).every((r) => r === null)).toBe(true);
-    expect(standIns).toEqual({});
+    expect(via).toEqual({});
     expect(v.totals).toEqual({ qlooCalls: 0, songs: 0, soundsLike: 0, fanArtists: 0, songsChecked: 0, toLearn: null });
   });
 

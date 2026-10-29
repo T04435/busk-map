@@ -18,11 +18,15 @@ const KEY = "__notonqVia";
 type Tagged<T> = { [KEY]: NotOnQVia; value: T };
 export type MaybeVia<T> = T | Tagged<T>;
 
-/** Whether NotOnQ's block says the answer was given for stand-ins (served_by mixed or fallback, with stand-ins or a G2 gap). */
+/**
+ * Whether NotOnQ's block says the answer was given for stand-ins or genres: served_by mixed or fallback, with stand-ins, genres,
+ * or a G2 (stand-ins) or G5 (the artist's own genres) gap.
+ */
 export function viaOf(block: NotOnQBlock | undefined): NotOnQVia | null {
   if (!block || (block.servedBy !== "mixed" && block.servedBy !== "fallback")) return null;
-  if (block.standIns.length === 0 && block.gapKind !== "G2") return null;
-  return { by: "notonq", standIns: block.standIns };
+  const genres = block.genres ?? [];
+  if (block.standIns.length === 0 && genres.length === 0 && block.gapKind !== "G2" && block.gapKind !== "G5") return null;
+  return { by: "notonq", standIns: block.standIns, ...(genres.length ? { genres } : {}) };
 }
 
 /** A cache body's value, wrapped with NotOnQ's stand-ins when it answered for them (otherwise the value as it is). */

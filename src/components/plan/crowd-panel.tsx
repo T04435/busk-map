@@ -76,7 +76,7 @@ export function CrowdPanel({
           <DataStatusBadge status={qlooMode === "live" ? "live" : "test"} />
         </span>
       </header>
-      {crowd.via ? <NotOnQTag standIns={crowd.via.standIns} className="mb-4" /> : null}
+      {crowd.via ? <NotOnQTag via={crowd.via} className="mb-4" /> : null}
       {empty && (
         <Empty role="status" data-testid="crowd-empty">
           <EmptyMedia>

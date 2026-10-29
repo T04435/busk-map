@@ -26,6 +26,11 @@ const SYNTHETIC = {
     results: { heatmap: [{ location: { latitude: -37.81, longitude: 144.96, geohash: "r1r0fs1" }, query: { affinity: 0.7 } }] },
     notonq: { served_by: "mixed", gap: { kind: "G2" }, proxy: { replaced: ["6f1c0d5e"], stand_ins: [{ entity_id: "syn-a", name: "Stand In A", weight: 1 }, { entity_id: "syn-b", name: "Stand In B", weight: 0.5 }] } },
   },
+  /** G5: Qloo has the artist but no audience data, so NotOnQ asks Qloo about the artist's own genre and says so, on the block and each row. */
+  genreDemographics: {
+    results: { demographics: [{ entity_id: "syn-qloo-1", query: { age: { "24_and_younger": 0.2, "25_to_29": -0.1 }, gender: { female: 0.1, male: -0.1 } }, "notonq:basis": { stand_ins: [], genres: ["urn:tag:genre:music:indie_folk"] } }] },
+    notonq: { served_by: "mixed", gap: { kind: "G5", qloo_status: 200 }, proxy: { replaced: [], stand_ins: [], genres: ["urn:tag:genre:music:indie_folk"] }, note: "Synthetic note." },
+  },
 };
 
 async function fresh() {
@@ -156,6 +161,14 @@ describe("qloo through the NotOnQ proxy", () => {
     expect(result.data[0]).toMatchObject({ affinity: 0.7 });
   });
 
+  it("carries demographics NotOnQ answered through the artist's own genres (G5) as `via`, with the genres' names", async () => {
+    const qloo = await fresh();
+    mockFetch([route(isProxy, () => json(SYNTHETIC.genreDemographics))]);
+    const result = await qloo.crowdProfile(["syn-qloo-1"], LIVE);
+    expect(result).toMatchObject({ mode: "live", via: { by: "notonq", standIns: [], genres: ["indie folk"] } });
+    expect(result.data?.age).toMatchObject({ "24_and_younger": 0.2 });
+  });
+
   it("labels artists NotOnQ filled in (a 'Not in Qloo' description or NotOnQ's own tags) and leaves Qloo's own unlabelled", async () => {
     const qloo = await fresh();
     mockFetch([route(isProxy, () => json(SYNTHETIC.filledSearch))]);
@@ -212,43 +225,56 @@ describe("NotOnQ provenance helpers", () => {
   it("reads the notonq block leniently: stand-in names once each, an odd block dropped without losing Qloo's answer", async () => {
     const { heatmapResponseSchema } = await import("@/server/adapters/qloo/schema");
     const parsed = heatmapResponseSchema.parse({ ...SYNTHETIC.standInHeatmap, notonq: { ...SYNTHETIC.standInHeatmap.notonq, proxy: { stand_ins: [{ name: " Stand In A " }, { name: "Stand In A" }, {}] } } });
-    expect(parsed.notonq).toEqual({ servedBy: "mixed", gapKind: "G2", standIns: ["Stand In A"] });
+    expect(parsed.notonq).toEqual({ servedBy: "mixed", gapKind: "G2", standIns: ["Stand In A"], genres: [] });
     const odd = heatmapResponseSchema.parse({ ...SYNTHETIC.heatmap, notonq: "not an object" });
     expect(odd.notonq).toBeUndefined();
     expect(odd.results.heatmap).toHaveLength(1);
   });
 
-  it("only an answer served for stand-ins (mixed or fallback, with stand-ins or a G2 gap) is `via` NotOnQ", async () => {
+  it("only an answer served for stand-ins or genres (mixed or fallback, with stand-ins, genres, or a G2 or G5 gap) is `via` NotOnQ", async () => {
     const { viaOf, tagVia, untagVia, collectVia } = await import("@/server/adapters/qloo/via");
+    const block = (b: { servedBy: string; gapKind: string | null; standIns?: string[]; genres?: string[] }) => ({ standIns: [], genres: [], ...b });
     expect(viaOf(undefined)).toBeNull();
-    expect(viaOf({ servedBy: "qloo", gapKind: null, standIns: ["A"] })).toBeNull();
-    expect(viaOf({ servedBy: "needs_choice", gapKind: "G1", standIns: [] })).toBeNull();
-    expect(viaOf({ servedBy: "fallback", gapKind: "G1", standIns: [] })).toBeNull();
-    expect(viaOf({ servedBy: "fallback", gapKind: "G2", standIns: [] })).toEqual({ by: "notonq", standIns: [] });
-    expect(viaOf({ servedBy: "mixed", gapKind: null, standIns: ["A"] })).toEqual({ by: "notonq", standIns: ["A"] });
+    expect(viaOf(block({ servedBy: "qloo", gapKind: null, standIns: ["A"] }))).toBeNull();
+    expect(viaOf(block({ servedBy: "qloo", gapKind: null, genres: ["folk"] }))).toBeNull();
+    expect(viaOf(block({ servedBy: "needs_choice", gapKind: "G1" }))).toBeNull();
+    expect(viaOf(block({ servedBy: "fallback", gapKind: "G1" }))).toBeNull();
+    expect(viaOf(block({ servedBy: "fallback", gapKind: "G2" }))).toEqual({ by: "notonq", standIns: [] });
+    expect(viaOf(block({ servedBy: "mixed", gapKind: null, standIns: ["A"] }))).toEqual({ by: "notonq", standIns: ["A"] });
+    expect(viaOf(block({ servedBy: "mixed", gapKind: "G5" }))).toEqual({ by: "notonq", standIns: [] });
+    expect(viaOf(block({ servedBy: "mixed", gapKind: "G5", genres: ["mathcore"] }))).toEqual({ by: "notonq", standIns: [], genres: ["mathcore"] });
+    expect(viaOf(block({ servedBy: "mixed", gapKind: "G2", standIns: ["A"], genres: ["folk"] }))).toEqual({ by: "notonq", standIns: ["A"], genres: ["folk"] });
     // A value cached before tagging existed, and any untagged value, passes through.
     expect(untagVia([1, 2])).toEqual([1, 2]);
     expect(untagVia(null)).toBeNull();
-    const { value, via } = await collectVia(async () => [untagVia(tagVia([1], { servedBy: "mixed", gapKind: "G2", standIns: ["A"] })), untagVia(tagVia([2], { servedBy: "mixed", gapKind: "G2", standIns: ["B", "A"] }))]);
+    const { value, via } = await collectVia(async () => [untagVia(tagVia([1], block({ servedBy: "mixed", gapKind: "G2", standIns: ["A"] }))), untagVia(tagVia([2], block({ servedBy: "mixed", gapKind: "G2", standIns: ["B", "A"] })))]);
     expect(value).toEqual([[1], [2]]);
     expect(via).toEqual({ by: "notonq", standIns: ["A", "B"] });
     expect((await collectVia(async () => untagVia({ a: 1 }))).via).toBeNull();
   });
 
   it("labels and merges in plain words", async () => {
-    const { FILLED_BY_NOTONQ, viaStandInsLabel, isNotOnQFilled, mergeVia, filledMark, viaMark } = await import("@/lib/notonq");
+    const { FILLED_BY_NOTONQ, viaLabel, genreName, isNotOnQFilled, mergeVia, filledMark, viaMark } = await import("@/lib/notonq");
     expect(FILLED_BY_NOTONQ).toBe("Filled by NotOnQ");
-    expect(viaStandInsLabel(["A", "B"])).toBe("Via NotOnQ stand-ins: A, B");
-    expect(viaStandInsLabel([])).toBe("Via NotOnQ stand-ins");
+    expect(viaLabel({ standIns: ["A", "B"] })).toBe("Via NotOnQ stand-ins: A, B");
+    expect(viaLabel({ standIns: [] })).toBe("Via NotOnQ stand-ins");
+    // Genres first: Qloo was asked about them (G5, or stand-ins with no audience data of their own).
+    expect(viaLabel({ standIns: ["A"], genres: ["mathcore"] })).toBe("Via NotOnQ genres: mathcore");
+    expect(genreName("urn:tag:genre:music:indie_folk")).toBe("indie folk");
+    expect(genreName("mathcore")).toBe("mathcore");
     expect(isNotOnQFilled({ shortDescription: "Not in Qloo: a possible match (AU, 10 listeners)" })).toBe(true);
     expect(isNotOnQFilled({ shortDescription: "An Australian band. Not in Qloo terms." })).toBe(false);
     expect(isNotOnQFilled({ tagIds: ["urn:tag:genre:music:folk", "notonq:urn:tag:genre:x"] })).toBe(true);
     expect(isNotOnQFilled({})).toBe(false);
     expect(mergeVia([null, undefined])).toBeNull();
+    expect(mergeVia([{ by: "notonq", standIns: ["A"] }, { by: "notonq", standIns: [], genres: ["folk"] }, { by: "notonq", standIns: ["A"], genres: ["folk", "jazz"] }])).toEqual({ by: "notonq", standIns: ["A"], genres: ["folk", "jazz"] });
+    // Notonq home and languages are properties NotOnQ adds to Qloo's own records: never tags, so those records stay unlabelled.
+    expect(isNotOnQFilled({ shortDescription: "An Australian singer.", tagIds: ["urn:tag:genre:music:folk"] })).toBe(false);
     expect(filledMark("notonq")).toEqual({ filledBy: "notonq" });
     expect(filledMark(null)).toEqual({});
     expect(filledMark(undefined)).toEqual({});
     expect(viaMark(null)).toEqual({});
     expect(viaMark({ by: "notonq", standIns: ["A"] })).toEqual({ via: { by: "notonq", standIns: ["A"] } });
+    expect(viaMark({ by: "notonq", standIns: [], genres: ["folk"] })).toEqual({ via: { by: "notonq", standIns: [], genres: ["folk"] } });
   });
 });

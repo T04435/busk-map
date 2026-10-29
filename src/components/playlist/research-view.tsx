@@ -10,6 +10,7 @@ import type { TrackResult } from "@/components/forms/repertoire-api";
 import { ArtistChip, ArtistChipList } from "@/components/honeycomb/artist-chip";
 import { ArtistProfile, AudienceTags } from "@/components/honeycomb/artist-profile";
 import { InfoTag, NotOnQTag } from "@/components/honeycomb/info-tag";
+import type { NotOnQVia } from "@/lib/notonq";
 import { Reason } from "@/components/honeycomb/reason";
 import { SongActions } from "@/components/honeycomb/song-actions";
 import { SongRow } from "@/components/honeycomb/song-row";
@@ -140,7 +141,7 @@ const DESTRUCTIVE = "*:data-[slot=alert-description]:text-destructive";
 const stepsOf = (events: readonly LearnStreamEvent[]): AgentStep[] => events.reduce<AgentStep[]>((steps, e) => applyStreamEvent(steps, e), []);
 
 /** A results section: its heading, and a skeleton until its step has landed (null). */
-function Section({ id, title, ready, live, children, testId, standIns }: { id: string; title: string; ready: boolean; live: boolean; children: ReactNode; testId: string; /** NotOnQ answered this result through these stand-ins (lib/notonq.ts): labelled under the heading. */ standIns?: string[] }) {
+function Section({ id, title, ready, live, children, testId, via }: { id: string; title: string; ready: boolean; live: boolean; children: ReactNode; testId: string; /** NotOnQ answered this result through stand-ins or genres (lib/notonq.ts): labelled under the heading. */ via?: NotOnQVia }) {
   // Outside a run, a section with nothing yet (a Repertoire made before research) is left out rather than skeletoned.
   if (!ready && !live) return null;
   return (
@@ -148,7 +149,7 @@ function Section({ id, title, ready, live, children, testId, standIns }: { id: s
       <h2 id={id} className={H2}>
         {title}
       </h2>
-      {ready && standIns ? <NotOnQTag standIns={standIns} /> : null}
+      {ready && via ? <NotOnQTag via={via} /> : null}
       {ready ? (
         children
       ) : (
@@ -579,7 +580,7 @@ export function ResearchView() {
   const soundsLikeBlock = (
     <>
       {/* 3. Artists you sound like (editable). */}
-      <Section id="research-sounds-like" title={R.soundsLikeHeading} ready={r.soundsLike !== null} live={active} testId="research-sounds-like" standIns={r.standIns.soundsLike}>
+      <Section id="research-sounds-like" title={R.soundsLikeHeading} ready={r.soundsLike !== null} live={active} testId="research-sounds-like" via={r.via.soundsLike}>
         {active ? (
           <ArtistChipList inline label={R.soundsLikeHeading}>
             {(r.soundsLike ?? []).map((a) => (
@@ -612,7 +613,7 @@ export function ResearchView() {
   const fansBlock = (
     <>
       {/* 4. Who your fans are. */}
-      <Section id="research-fans" title={R.fansHeading} ready={r.fans !== null} live={active} testId="research-fans" standIns={r.standIns.fans}>
+      <Section id="research-fans" title={R.fansHeading} ready={r.fans !== null} live={active} testId="research-fans" via={r.via.fans}>
         {r.fans && (r.fans.age.length > 0 || r.fans.gender.length > 0) ? (
           <div className="space-y-3">
             {[r.fans.age, r.fans.gender].map((rows, i) =>
@@ -637,7 +638,7 @@ export function ResearchView() {
       {mapProps ? (
         // FansMap brings its own heading, Qloo mark and honesty line; the plain Section only holds the place while it loads.
         <div id="research-fans-map" data-testid="research-fans-map" className="w-full space-y-2">
-          {r.standIns.fansMap ? <NotOnQTag standIns={r.standIns.fansMap} /> : null}
+          {r.via.fansMap ? <NotOnQTag via={r.via.fansMap} /> : null}
           <FansMap cells={mapProps.cells} cities={mapProps.cities} />
         </div>
       ) : (
@@ -650,7 +651,7 @@ export function ResearchView() {
   const fansLoveBlock = (
     <>
       {/* 5. What your fans also love. */}
-      <Section id="research-fans-love" title={R.fansLoveHeading} ready={r.fansLove !== null} live={active} testId="research-fans-love" standIns={r.standIns.fansLove}>
+      <Section id="research-fans-love" title={R.fansLoveHeading} ready={r.fansLove !== null} live={active} testId="research-fans-love" via={r.via.fansLove}>
         <ArtistChipList inline label={R.fansLoveHeading}>
           {(r.fansLove ?? []).map((a) => (
             <li key={a.name}>

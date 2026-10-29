@@ -7,6 +7,7 @@ import { ANY_TIME_DAY, anyTimeWindowsLeft, DEFAULT_SLOT_HOURS, isAnyTime, slotUt
 import { nameKey, trackKey } from "@/lib/text";
 import { suburbsOfPlaces } from "@/lib/venue";
 import type { PlanRequest } from "@/lib/plan-schema";
+import { mergeVia, type NotOnQVia } from "@/lib/notonq";
 import type { AdapterContext, AdapterName, AdapterResult } from "@/server/adapters/core";
 import { getEvents, getEventsBetween, EVENTS_LOOKBACK_HOURS } from "@/server/adapters/events";
 import { getPitches } from "@/server/adapters/pitches";
@@ -152,7 +153,7 @@ export class PlanContext {
   /** Things the plan should tell the performer, e.g. that a search was widened. */
   readonly notes: string[] = [];
   /** NotOnQ (lib/notonq.ts): the stand-ins any Qloo answer of this plan came through, and the artists it filled in (name keys). */
-  private readonly notOnQ = { standIns: new Set<string>(), filled: new Set<string>() };
+  private readonly notOnQ = { via: [] as NotOnQVia[], filled: new Set<string>() };
 
   /** The city's current hour, for dropping any-time windows that have started (only matters on today's date). */
   private readonly nowHour: number;
@@ -199,9 +200,9 @@ export class PlanContext {
     return this.memo.get(key) as Promise<T>;
   }
 
-  /** The stand-ins NotOnQ answered this plan's Qloo calls through (lib/notonq.ts), in the order met; empty when Qloo answered alone. */
-  notOnQStandIns(): string[] {
-    return [...this.notOnQ.standIns];
+  /** The stand-ins and genres NotOnQ answered this plan's Qloo calls through (lib/notonq.ts), in the order met; null when Qloo answered alone. */
+  notOnQVia(): NotOnQVia | null {
+    return mergeVia(this.notOnQ.via);
   }
 
   /** Whether NotOnQ filled in an artist of this name in any Qloo answer this plan used. */
@@ -213,7 +214,7 @@ export class PlanContext {
   private track<T>(key: string, load: () => Promise<AdapterResult<T>>): Promise<T> {
     return this.once(key, async () => {
       const result = await this.sharedLoad(key, load);
-      if (result.via) for (const name of result.via.standIns) this.notOnQ.standIns.add(name);
+      if (result.via) this.notOnQ.via.push(result.via);
       for (const name of filledNames(result.data)) this.notOnQ.filled.add(nameKey(name));
       const extra = optionalQlooFeature(key);
       if (result.adapter === "qloo" && result.mode === "fallback" && extra && !this.qlooFailed()) {

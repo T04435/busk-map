@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { FilledBy } from "@/lib/notonq";
+import { genreName, type FilledBy } from "@/lib/notonq";
 
 /**
  * Qloo hackathon API response schemas. Verified against live responses from
@@ -81,20 +81,22 @@ export type RawEntity = z.infer<typeof entitySchema>;
 
 /**
  * NotOnQ's top-level `notonq` block (lib/notonq.ts), added beside Qloo's response when the proxy took part. Only what Busk Map
- * shows is kept: who served it (qloo | fallback | mixed | needs_choice), the gap kind (G1, G2, G4) and the stand-ins' names. A
+ * shows is kept: who served it (qloo | fallback | mixed | needs_choice), the gap kind (G1, G2, G4, G5), the stand-ins' names and
+ * the genres it asked Qloo about instead (G5: Qloo has no audience data for the artist). A
  * block in an unexpected shape is dropped, never the Qloo answer it came with.
  */
 export const notonqBlockSchema = z
   .object({
     served_by: z.string().optional(),
     gap: z.object({ kind: z.string().optional() }).loose().nullish(),
-    proxy: z.object({ stand_ins: z.array(z.object({ name: z.string().optional() }).loose()).nullish() }).loose().nullish(),
+    proxy: z.object({ stand_ins: z.array(z.object({ name: z.string().optional() }).loose()).nullish(), genres: z.array(z.string()).nullish().catch(null) }).loose().nullish(),
   })
   .loose()
   .transform((b) => ({
     servedBy: b.served_by ?? null,
     gapKind: b.gap?.kind ?? null,
     standIns: [...new Set((b.proxy?.stand_ins ?? []).flatMap((s) => (s.name?.trim() ? [s.name.trim()] : [])))],
+    genres: [...new Set((b.proxy?.genres ?? []).map(genreName).filter(Boolean))],
   }));
 export type NotOnQBlock = z.infer<typeof notonqBlockSchema>;
 const notonq = notonqBlockSchema.optional().catch(undefined);

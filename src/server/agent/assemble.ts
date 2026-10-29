@@ -7,6 +7,7 @@ import { noBuskingCells } from "./zone-cells";
 import { titleCase } from "@/lib/text";
 import { venueDetail } from "@/lib/venue";
 import { planSchema, type Plan, type PlanPitch } from "@/lib/plan-schema";
+import { viaMark } from "@/lib/notonq";
 import { leadingAgeBand, relativeActivity, SCENE_ACTS_SHOWN, skippedForSpacing, type ScoredPitch } from "@/server/scoring";
 import * as qloo from "@/server/adapters/qloo";
 import { agentChanges } from "@/lib/agent-vs-engine";
@@ -261,7 +262,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
   const topIds = new Set(top.map((p) => p.id));
   // NotOnQ (lib/notonq.ts): an artist it filled in is labelled wherever the plan names it; Qloo's own artists keep their shape.
   const filled = (name: string): { filledBy?: "notonq" } => (context.filledByNotOnQ(name) ? { filledBy: "notonq" } : {});
-  const standIns = context.notOnQStandIns();
+  const notOnQ = context.notOnQVia();
   const nameOf = (entityId: string) => context.entityName(entityId, artists);
   const own = context.ownArtist();
   const ownIds = await context.entityIds();
@@ -372,7 +373,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
       drivers: drivers(locals.slice(0, 10), nameOf, impact),
       usualCrowd:
         usual && usual.artists.length > 0 ? { hotspot: usual.hotspot, artists: usual.artists.slice(0, 5).map((a) => ({ name: a.name, affinity: a.affinity })) } : null,
-      ...(standIns.length > 0 ? { via: { by: "notonq" as const, standIns } } : {}),
+      ...(notOnQ && (notOnQ.standIns.length > 0 || notOnQ.genres?.length) ? viaMark(notOnQ) : {}),
     },
     learnThese: learn.map((l) => ({ artist: l.artist, title: l.title, playcount: l.playcount, reason: l.reason, audienceGrowth: l.audienceGrowth, ...(photoOf.get(l.entityId) ? { artistImage: photoOf.get(l.entityId) } : {}), ...filled(l.artist) })),
     ageLean: leadingAgeBand(profile?.age ?? null),

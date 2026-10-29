@@ -10,7 +10,7 @@ import type { LearnStreamEvent, LearnSuggestionEvent, LearnTotals } from "./lear
 import { SPOTIFY_ARTIST_URL, SPOTIFY_TRACK_URL, spotifyHref, type MentionSource } from "./mention";
 import { profilePhoto } from "./spotify-profile";
 import { nameKey } from "./text";
-import { filledMark, type FilledBy } from "./notonq";
+import { filledMark, type FilledBy, type NotOnQVia } from "./notonq";
 import { playlistSongKey, type LearnSuggestionView, type PlaylistSongView, type PlaylistView } from "./playlist-schema";
 import type { FansMapOutput } from "./repertoire-research";
 import { MORE_STEPS, RESEARCH_STEP_OF, RESEARCH_STEPS, type ResearchSnapshot, type ResearchStepKey, type StepOutputs } from "./repertoire-research";
@@ -30,8 +30,8 @@ export type LearnSong = ResearchSong & { reason: string; because?: ResearchArtis
 export type Lean = { label: string; lean: number };
 export type RepertoireResults = {
   profile: { name: string; image?: string; genres: string[]; audience: string[]; followers?: number; href?: string; /** "notonq": Qloo lacks the act and NotOnQ filled it in. */ filledBy?: FilledBy } | null;
-  /** Per result, the stand-ins NotOnQ answered it through (absent when Qloo answered alone). */
-  standIns: Partial<Record<StandInKey, string[]>>;
+  /** Per result, the stand-ins or genres NotOnQ answered it through (absent when Qloo answered alone). */
+  via: Partial<Record<StandInKey, NotOnQVia>>;
   summary: string | null;
   fans: { age: Lean[]; gender: Lean[] } | null;
   /** "Where your fans are" (U24): the step's output, as BRAND's FansMap takes it (lib/fans-map.ts: fansMapProps). Null until the step lands, and for research saved before it. */
@@ -257,7 +257,7 @@ export function toRepertoireView(input: ViewInput): RepertoireView {
           ...filledMark(o.qloo?.filledBy),
         }
       : null,
-    standIns: Object.fromEntries((["soundsLike", "fans", "fansMap", "fansLove", "genres"] as const).flatMap((k) => (o[k]?.via ? [[k, o[k]!.via!.standIns]] : []))),
+    via: Object.fromEntries((["soundsLike", "fans", "fansMap", "fansLove", "genres"] as const).flatMap((k) => (o[k]?.via ? [[k, o[k]!.via!]] : []))),
     // The paragraph about the act is retired (the page has no such section); old snapshots' text is ignored.
     summary: null,
     fans: o.fans ? { age: o.fans.age.map(({ label, lean }) => ({ label, lean })), gender: o.fans.gender.map(({ label, lean }) => ({ label, lean })) } : null,

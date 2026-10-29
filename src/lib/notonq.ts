@@ -11,15 +11,24 @@
 /** Who filled an artist in: NotOnQ, or nobody (Qloo's own entity). Optional where stored: missing is null. */
 export type FilledBy = "notonq" | null;
 
-/** An answer NotOnQ gave through stand-ins: Qloo's answer for similar artists Qloo knows, in place of an artist it lacks. */
-export type NotOnQVia = { by: "notonq"; standIns: string[] };
+/**
+ * An answer NotOnQ gave in place of Qloo's for an artist: Qloo's answer for similar artists Qloo knows (stand-ins), or for the
+ * artist's own Qloo genres when Qloo has no audience data for it (gap G5). `genres` holds readable genre names; absent when none.
+ */
+export type NotOnQVia = { by: "notonq"; standIns: string[]; genres?: string[] };
 
 /** The label on anything NotOnQ filled in (an act, a sound-alike, a crowd artist). */
 export const FILLED_BY_NOTONQ = "Filled by NotOnQ";
 
-/** The label on a result Qloo answered for NotOnQ's stand-ins. */
-export function viaStandInsLabel(standIns: readonly string[]): string {
-  return standIns.length > 0 ? `Via NotOnQ stand-ins: ${standIns.join(", ")}` : "Via NotOnQ stand-ins";
+/** The label on a result Qloo answered for NotOnQ's genres or stand-ins. Genres come first: they are what Qloo was asked about. */
+export function viaLabel(via: Pick<NotOnQVia, "standIns" | "genres">): string {
+  if (via.genres?.length) return `Via NotOnQ genres: ${via.genres.join(", ")}`;
+  return via.standIns.length > 0 ? `Via NotOnQ stand-ins: ${via.standIns.join(", ")}` : "Via NotOnQ stand-ins";
+}
+
+/** A genre's readable name from its Qloo tag ID: `urn:tag:genre:music:indie_folk` is "indie folk". */
+export function genreName(tagId: string): string {
+  return (tagId.split(":").pop() ?? tagId).replace(/_/g, " ").trim();
 }
 
 /** NotOnQ starts every short description of an artist it filled (or offers as a candidate) with these words. */
@@ -36,11 +45,12 @@ export function isNotOnQFilled(entity: { shortDescription?: string | null; tagId
 export function mergeVia(list: readonly (NotOnQVia | null | undefined)[]): NotOnQVia | null {
   const given = list.filter((v): v is NotOnQVia => Boolean(v));
   if (given.length === 0) return null;
-  return { by: "notonq", standIns: [...new Set(given.flatMap((v) => v.standIns))] };
+  const genres = [...new Set(given.flatMap((v) => v.genres ?? []))];
+  return { by: "notonq", standIns: [...new Set(given.flatMap((v) => v.standIns))], ...(genres.length ? { genres } : {}) };
 }
 
 /** The `{ filledBy }` field to spread into a stored row: present only when NotOnQ filled it, so rows Qloo answered keep their shape. */
 export const filledMark = (filledBy: FilledBy | undefined): { filledBy?: "notonq" } => (filledBy === "notonq" ? { filledBy } : {});
 
 /** The `{ via }` field to spread into a stored step or result: present only for an answer given through NotOnQ's stand-ins. */
-export const viaMark = (via: NotOnQVia | null | undefined): { via?: NotOnQVia } => (via ? { via: { by: "notonq", standIns: [...via.standIns] } } : {});
+export const viaMark = (via: NotOnQVia | null | undefined): { via?: NotOnQVia } => (via ? { via: { by: "notonq", standIns: [...via.standIns], ...(via.genres?.length ? { genres: [...via.genres] } : {}) } } : {});

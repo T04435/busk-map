@@ -20,10 +20,11 @@ describe("NotOnQTag", () => {
     expect(filled).toContain(FILLED);
     expect(filled).toContain('data-testid="notonq-filled"');
     expect(filled).toContain('data-tone="neutral"');
-    const via = html(createElement(NotOnQTag, { standIns: ["Paul Kelly", "Courtney Barnett"] }));
+    const via = html(createElement(NotOnQTag, { via: { standIns: ["Paul Kelly", "Courtney Barnett"] } }));
     expect(via).toContain("Via NotOnQ stand-ins: Paul Kelly, Courtney Barnett");
     expect(via).toContain('data-testid="notonq-via"');
     expect(via).not.toContain("title=");
+    expect(html(createElement(NotOnQTag, { via: { standIns: [], genres: ["mathcore"] } }))).toContain("Via NotOnQ genres: mathcore");
   });
 });
 
@@ -62,12 +63,14 @@ describe("the plan's crowd panel", () => {
     const out = html(createElement(CrowdPanel, { crowd: { ...crowd, via: { by: "notonq", standIns: ["Paul Kelly"] } }, resolved: [], topPitch: null }));
     expect(out).toContain("Via NotOnQ stand-ins: Paul Kelly");
     expect(out.match(/Filled by NotOnQ/g)).toHaveLength(1);
+    const genres = html(createElement(CrowdPanel, { crowd: { ...crowd, via: { by: "notonq", standIns: [], genres: ["indie folk"] } }, resolved: [], topPitch: null }));
+    expect(genres).toContain("Via NotOnQ genres: indie folk");
     expect(html(createElement(CrowdPanel, { crowd: { ...crowd, localArtists: [crowd.localArtists[1]] }, resolved: [], topPitch: null }))).not.toContain("NotOnQ");
   });
 });
 
 describe("the research view model", () => {
-  it("carries the act's filledBy, each artist's, and each result's stand-ins; nothing for research Qloo answered alone", () => {
+  it("carries the act's filledBy, each artist's, and each result's stand-ins or genres; nothing for research Qloo answered alone", () => {
     const via = { by: "notonq" as const, standIns: ["Paul Kelly", "Courtney Barnett"] };
     const snapshot = {
       version: 1,
@@ -89,7 +92,7 @@ describe("the research view model", () => {
     expect(r.profile?.filledBy).toBe("notonq");
     expect(r.soundsLike?.[0].filledBy).toBe("notonq");
     expect(r.fansLove?.[0].filledBy).toBeUndefined();
-    expect(r.standIns).toEqual({ soundsLike: via.standIns, fans: via.standIns, fansLove: via.standIns });
+    expect(r.via).toEqual({ soundsLike: via, fans: via, fansLove: via });
     const plain = structuredClone(snapshot);
     delete (plain.steps.qloo!.output as { filledBy?: unknown }).filledBy;
     for (const k of ["soundsLike", "fans", "fansLove"] as const) delete (plain.steps[k]!.output as { via?: unknown }).via;
@@ -97,7 +100,7 @@ describe("the research view model", () => {
     const p = toRepertoireView({ snapshot: plain }).results;
     expect(p.profile?.filledBy).toBeUndefined();
     expect(p.soundsLike?.[0].filledBy).toBeUndefined();
-    expect(p.standIns).toEqual({});
+    expect(p.via).toEqual({});
   });
 });
 

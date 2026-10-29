@@ -4,7 +4,7 @@ import { Icon, type IconName } from "@/components/honeycomb/icon";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
 import type { MentionSource } from "@/lib/mention";
 import { Badge } from "@/components/ui/badge";
-import { FILLED_BY_NOTONQ, viaStandInsLabel } from "@/lib/notonq";
+import { FILLED_BY_NOTONQ, viaLabel, type NotOnQVia } from "@/lib/notonq";
 
 const tones = {
   neutral: "border-input text-foreground",
@@ -44,13 +44,14 @@ export function InfoTag({
 
 /**
  * THE NotOnQ label (lib/notonq.ts), on anything NotOnQ supplied rather than Qloo: "Filled by NotOnQ" on an artist it filled in, or,
- * with `standIns`, "Via NotOnQ stand-ins: A, B" on a result Qloo answered for similar artists it knows. A neutral data tag: NotOnQ's
+ * with `via`, "Via NotOnQ stand-ins: A, B" on a result Qloo answered for similar artists it knows, or "Via NotOnQ genres: x" on
+ * one it answered for the artist's own genres. A neutral data tag: NotOnQ's
  * fills are not Qloo data, so never the Qloo tone.
  */
-export function NotOnQTag({ standIns, className }: { standIns?: readonly string[]; className?: string }) {
+export function NotOnQTag({ via, className }: { via?: Pick<NotOnQVia, "standIns" | "genres">; className?: string }) {
   return (
-    <InfoTag className={className} testId={standIns ? "notonq-via" : "notonq-filled"}>
-      {standIns ? viaStandInsLabel(standIns) : FILLED_BY_NOTONQ}
+    <InfoTag className={className} testId={via ? "notonq-via" : "notonq-filled"}>
+      {via ? viaLabel(via) : FILLED_BY_NOTONQ}
     </InfoTag>
   );
 }

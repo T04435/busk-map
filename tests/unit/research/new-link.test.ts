@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CatalogueTrack } from "@/server/adapters/repertoire/schema";
 import { CATALOG } from "@/server/qloo-mock/catalog";
 
-/** U31/U32/U33: a new Spotify link renames the act, labels songs with their real artist, and sound-alikes keep their photos. */
+/** U31/U32/U33: a new Spotify link renames the act, labels songs with their real artist, and sound-alikes keep their photos. A different act starts clean. */
 const [A, B] = CATALOG.filter((a) => a.spotifyId);
 const NAMES: Record<string, string> = { [A.spotifyId]: "El B", [B.spotifyId]: "Al2 El Aldeano" };
 const track = (i: number, artists: { id: string; name: string }[]): CatalogueTrack => ({ id: `tid${String(i).padStart(19, "0")}xyz`.slice(0, 22), title: `Song ${i}`, artists, album: "LP", image: null, durationMs: 200_000, url: null, year: 2020 });
@@ -57,7 +57,7 @@ async function boot() {
 const link = (id: string) => ({ link: id });
 
 describe("a new Spotify link", () => {
-  it("renames the auto-filled act, labels each song with its Spotify artist, and keeps the previous act's songs as they were", async () => {
+  it("renames the auto-filled act, labels each song with its Spotify artist, and drops the previous act's imported songs", async () => {
     const { research, playlist } = await boot();
     const first = await research.POST(req("POST", "/research", link(A.spotifyId)));
     const cookie = first.headers.get("set-cookie")?.split(";")[0] ?? "";
@@ -76,11 +76,38 @@ describe("a new Spotify link", () => {
     expect(text).toContain("Al2 El Aldeano");
     const by = (title: string) => view.songs.filter((s: { title: string }) => s.title === title);
     const artists = (view.songs as { title: string; artist: string }[]).map((s) => `${s.title}|${s.artist}`);
-    expect(artists).toContain("Song 1|El B"); // the previous link's own song stays, not relabelled
+    expect(artists).not.toContain("Song 1|El B"); // the previous act's own imported song goes
+    expect(artists).not.toContain("Song 2|El B");
     expect(artists).toContain("Song 1|Al2 El Aldeano");
     expect(artists).toContain("Song 2|Al2 El Aldeano"); // the linked artist, matched by id, not the guest first on the track
     expect(artists).toContain("Song 3|Somebody Else"); // a track without the linked artist: its own artist, never the act name
     expect(by("Song 3")[0].artist).not.toBe("Al2 El Aldeano");
+  });
+
+  it("keeps the songs the user added by hand", async () => {
+    const { research, playlist } = await boot();
+    const songsApi = await import("@/app/api/playlist/songs/route");
+    const first = await research.POST(req("POST", "/research", link(A.spotifyId)));
+    const cookie = first.headers.get("set-cookie")?.split(";")[0] ?? "";
+    await first.text();
+    await (await songsApi.POST(req("POST", "/songs", { title: "Typed Tune", artist: "Me", own: true, source: "typed" }, cookie))).text();
+    await (await research.POST(req("POST", "/research", link(B.spotifyId), cookie))).text();
+    const view = (await (await playlist.GET(req("GET", "", undefined, cookie))).json()).playlist;
+    const titles = (view.songs as { title: string; artist: string }[]).map((s) => `${s.title}|${s.artist}`);
+    expect(titles).toContain("Typed Tune|Me");
+    expect(titles).toContain("Song 3|Somebody Else"); // a cover: not the previous act's own song
+    expect(titles).not.toContain("Song 1|El B");
+  });
+
+  it("refreshing the same link keeps every song", async () => {
+    const { research, playlist } = await boot();
+    const first = await research.POST(req("POST", "/research", link(A.spotifyId)));
+    const cookie = first.headers.get("set-cookie")?.split(";")[0] ?? "";
+    await first.text();
+    const before = (await (await playlist.GET(req("GET", "", undefined, cookie))).json()).playlist.songs.length;
+    await (await research.POST(req("POST", "/research", { ...link(A.spotifyId), refresh: true }, cookie))).text();
+    const after = (await (await playlist.GET(req("GET", "", undefined, cookie))).json()).playlist.songs.length;
+    expect(after).toBe(before);
   });
 
   it("keeps an act name the user typed", async () => {
@@ -110,6 +137,15 @@ describe("pure helpers", () => {
     expect(actNameFollowsProfile("El B", "el b")).toBe(true);
     expect(actNameFollowsProfile("Los Dos", "El B")).toBe(false);
     expect(actNameFollowsProfile("Los Dos", null)).toBe(false);
+  });
+
+  it("keepsOnNewLink: typed songs, covers and learned songs stay; the previous act's imported own songs go", async () => {
+    const { keepsOnNewLink } = await import("@/server/research/run");
+    expect(keepsOnNewLink({ source: "typed", own: true, state: "can_sing" })).toBe(true);
+    expect(keepsOnNewLink({ source: "spotify", own: false, state: "can_sing" })).toBe(true);
+    expect(keepsOnNewLink({ source: "lastfm", own: true, state: "learned" })).toBe(true);
+    expect(keepsOnNewLink({ source: "spotify", own: true, state: "can_sing" })).toBe(false);
+    expect(keepsOnNewLink({ source: "lastfm", own: true, state: "can_sing" })).toBe(false);
   });
 
   it("trackArtist: the linked artist by id, else the track's first artist, else the profile name", async () => {

@@ -6,7 +6,7 @@ import type { MentionSource } from "@/lib/mention";
 import type { CallRecord } from "@/lib/call-record";
 import { andList, PLAYLIST_COPY } from "@/lib/playlist-copy";
 import type { QlooCandidateView } from "@/lib/qloo-match";
-import type { SoundsLike } from "@/lib/playlist-schema";
+import type { PlaylistSongView, SoundsLike } from "@/lib/playlist-schema";
 import {
   MORE_STEPS,
   RESEARCH_LABELS,
@@ -160,6 +160,14 @@ const qlooEndCode = (forceBudget = false) => (forceBudget || qlooBudgetSpent() ?
 export function actNameFollowsProfile(actName: string | null, previousProfileName: string | null | undefined): boolean {
   if (!actName) return true;
   return Boolean(previousProfileName) && nameKey(actName) === nameKey(previousProfileName as string);
+}
+
+/**
+ * A link to a different act starts that act clean: the previous act's own songs that research imported (Spotify or Last.fm,
+ * still "can sing") go. Songs the user typed, covers by other artists and songs marked learned stay.
+ */
+export function keepsOnNewLink(song: Pick<PlaylistSongView, "source" | "own" | "state">): boolean {
+  return song.source === "typed" || !song.own || song.state === "learned";
 }
 
 /**
@@ -445,7 +453,15 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           // The act name follows the new profile unless the user typed their own (U31): a name that is empty or still the previous profile's is auto-filled.
           const follows = actNameFollowsProfile(playlist.actName, playlist.spotifyProfile?.name);
           if (follows) actLabel = p.name.slice(0, 80);
-          await patch({ spotifyArtistId: args.spotifyId, spotifyProfile: p, ...(follows ? { actName: p.name.slice(0, 80) } : {}) });
+          // A different act's link: the previous act's imported songs and the Hive's sound-alikes go in the same edit (keepsOnNewLink).
+          const otherAct = Boolean(args.playlist.spotifyArtistId) && args.playlist.spotifyArtistId !== args.spotifyId;
+          const clean = otherAct
+            ? {
+                songs: (await playlists.songs(playlist.id)).filter(keepsOnNewLink).map((s) => ({ title: s.title, artist: s.artist, own: s.own, source: s.source === "suggested" ? ("typed" as const) : s.source, ...(s.durationMs ? { durationMs: s.durationMs } : {}) })),
+                soundsLike: playlist.soundsLike.filter((a) => a.foundBy !== "hive"),
+              }
+            : {};
+          await patch({ spotifyArtistId: args.spotifyId, spotifyProfile: p, ...(follows ? { actName: p.name.slice(0, 80) } : {}), ...clean });
           const image = p.images.find((i) => (i.width ?? 0) >= 160)?.url ?? p.images[0]?.url ?? null;
           return {
             summary: `Read ${p.name} on Spotify${p.genres.length ? `: ${p.genres.slice(0, 3).join(", ")}` : ""}`,

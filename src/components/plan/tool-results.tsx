@@ -236,9 +236,11 @@ const RESEARCH_UI: Record<string, ToolUi> = {
     if (o.spotifyDown === "limited" || o.spotifyDown === "down") {
       return [o.spotifyDown === "limited" ? "Spotify isn't answering right now, so " : "Spotify didn't answer, so ", `${num(o.added) ?? songs.length} of your songs come from `, mentionSource("lastfm"), " Last.fm, including ", ...listOf(songs.slice(0, 3).map((x) => mentionSong(str(x.title) as string, { artist: str(x.artist), image: str(x.image), href: str(x.href) })))];
     }
+    // A rerun finds the songs already saved: "Added 0 … including" would contradict itself.
+    const already = num(o.already) ?? 0;
+    const lead = num(o.added) === 0 && already > 0 ? [`Your ${already} songs`, ...from, " were already in your Repertoire"] : [`Added ${num(o.added) ?? songs.length} of your songs`, ...from];
     return [
-      `Added ${num(o.added) ?? songs.length} of your songs`,
-      ...from,
+      ...lead,
       ", including ",
       ...listOf(songs.slice(0, 3).map((x) => mentionSong(str(x.title) as string, { artist: str(x.artist), image: str(x.image), href: str(x.href) }))),
     ];

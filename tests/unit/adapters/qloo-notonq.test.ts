@@ -233,6 +233,18 @@ describe("the RAW call log", () => {
 });
 
 describe("NotOnQ provenance helpers", () => {
+  it("a fill with no `notonq:standIns` is marked noStandIns; one with stand-ins, and Qloo's own artists, are not", async () => {
+    const { toEntity, toDetail } = await import("@/server/adapters/qloo/normalize");
+    const filled = { entity_id: "fill-1", name: "Synthetic Fill", properties: { short_description: "Not in Qloo: filled by NotOnQ." } };
+    expect(toEntity(filled)).toMatchObject({ filledBy: "notonq", noStandIns: true });
+    expect(toDetail(filled)).toMatchObject({ filledBy: "notonq", noStandIns: true });
+    expect(toEntity({ ...filled, properties: { ...filled.properties, "notonq:standIns": [] } }).noStandIns).toBe(true);
+    const withStandIns = { ...filled, properties: { ...filled.properties, "notonq:standIns": [{ entity_id: "q-1", name: "Stand In A" }] } };
+    expect(toEntity(withStandIns).noStandIns).toBeUndefined();
+    expect(toDetail(withStandIns).noStandIns).toBeUndefined();
+    expect(toEntity({ entity_id: "q-2", name: "Qloo Act" }).noStandIns).toBeUndefined();
+  });
+
   it("reads the notonq block leniently: stand-in names once each, an odd block dropped without losing Qloo's answer", async () => {
     const { heatmapResponseSchema } = await import("@/server/adapters/qloo/schema");
     const parsed = heatmapResponseSchema.parse({ ...SYNTHETIC.standInHeatmap, notonq: { ...SYNTHETIC.standInHeatmap.notonq, proxy: { stand_ins: [{ name: " Stand In A " }, { name: "Stand In A" }, {}] } } });

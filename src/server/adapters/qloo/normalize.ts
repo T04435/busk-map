@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { filledMark, isNotOnQFilled, type FilledBy } from "@/lib/notonq";
+import { filledMark, isNotOnQFilled, noStandInsMark, type FilledBy } from "@/lib/notonq";
 import { entitySchema, type EntityDetail, type explainabilityAggregateSchema, type Explanation, type Impact, type QlooEntity, type QlooPlace, type RawEntity } from "./schema";
 
 /**
@@ -40,6 +40,7 @@ export function toEntity(raw: RawEntity): QlooEntity {
     tags: (raw.tags ?? []).flatMap((t) => (t.id ? [{ id: t.id, name: t.name || t.id }] : [])),
     explanation,
     ...filledMark(filledByOf(raw)),
+    ...noStandInsMark(filledByOf(raw), raw.properties as Record<string, unknown> | undefined),
   };
 }
 
@@ -59,6 +60,7 @@ export function toDetail(raw: RawEntity): EntityDetail {
     description: textOf(props.description) ?? textOf(props.short_description),
     tags: (raw.tags ?? []).flatMap((t) => (t.id ? [{ id: t.id, name: (t.name || t.id).trim(), type: t.type ?? null }] : [])),
     ...filledMark(filledByOf(raw)),
+    ...noStandInsMark(filledByOf(raw), props),
   };
 }
 

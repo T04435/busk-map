@@ -253,6 +253,8 @@ export type QlooEntity = {
   explanation: Explanation[];
   /** "notonq": NotOnQ filled this artist in (Qloo lacks it). Missing (cached before, or Qloo's own entity) means null. */
   filledBy?: FilledBy;
+  /** NotOnQ filled this artist in but has no stand-ins for it (lib/notonq.ts: hasNoStandIns): no taste answers. Missing: false. */
+  noStandIns?: true;
 };
 
 export type QlooPlace = QlooEntity & {
@@ -302,6 +304,8 @@ export type EntityDetail = {
   tags: { id: string; name: string; type: string | null }[];
   /** "notonq": NotOnQ filled this artist in (Qloo lacks it). Missing means null. */
   filledBy?: FilledBy;
+  /** NotOnQ filled this artist in but has no stand-ins for it: no taste answers. Missing: false. */
+  noStandIns?: true;
 };
 
 /** Share (0–1) of each group's artists tagged with this genre. */

@@ -41,6 +41,19 @@ export function isNotOnQFilled(entity: { shortDescription?: string | null; tagId
   return Boolean(entity.shortDescription && NOT_IN_QLOO.test(entity.shortDescription)) || (entity.tagIds ?? []).some((id) => id.startsWith(NOTONQ_TAG_PREFIX));
 }
 
+/**
+ * Whether an artist NotOnQ filled in has no stand-ins: it found no similar artists Qloo knows (`notonq:standIns` absent or empty),
+ * so it can't answer taste questions about the artist. Such a fill is the act's name only, not a Qloo taste signal.
+ */
+export function hasNoStandIns(properties: Record<string, unknown> | undefined): boolean {
+  const list = properties?.["notonq:standIns"];
+  return !Array.isArray(list) || list.length === 0;
+}
+
+/** The `{ noStandIns }` field to spread into an entity: present only for a NotOnQ fill with no stand-ins. */
+export const noStandInsMark = (filledBy: FilledBy, properties: Record<string, unknown> | undefined): { noStandIns?: true } =>
+  filledBy === "notonq" && hasNoStandIns(properties) ? { noStandIns: true } : {};
+
 /** Several stand-in answers as one: the stand-ins of all of them, once each, in order. Null when there are none. */
 export function mergeVia(list: readonly (NotOnQVia | null | undefined)[]): NotOnQVia | null {
   const given = list.filter((v): v is NotOnQVia => Boolean(v));

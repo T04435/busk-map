@@ -561,6 +561,8 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           // A name Qloo has but with no music-genre tag: not the taste signal alone, so the Hive's sound-alikes are tried first.
           let weak: { id: string; name: string; popularity: number | null; genres: string[]; by: "id" | "name"; filledBy?: qloo.QlooEntity["filledBy"] } | null = null;
           let detail: qloo.EntityDetail | null = null;
+          // NotOnQ filled the act in but has no stand-ins (lib/notonq.ts: hasNoStandIns): the act's name only, no taste answers.
+          let emptyFill = false;
           let by: QlooOutput["by"];
           let candidates: QlooCandidateView[] = [];
           // The performer's pick, then the id already saved for this link, then a search.
@@ -570,6 +572,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             if (detail) {
               by = chosenId ? "chosen" : "saved";
               entity = { id: detail.id, name: detail.name, popularity: detail.popularity, genres: [], ...filledMark(detail.filledBy) };
+              emptyFill = detail.noStandIns === true;
             }
           }
           if (!entity && !declined) {
@@ -579,6 +582,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
             else if (hit.entity) {
               by = hit.by ?? "name";
               entity = { id: hit.entity.id, name: hit.entity.name, popularity: hit.entity.popularity, genres: hit.entity.tags.map((t) => t.name), ...filledMark(hit.entity.filledBy) };
+              emptyFill = hit.entity.noStandIns === true;
             } else candidates = hit.candidates;
           }
           const matchedOut = async (e: NonNullable<typeof entity>): Promise<QlooOutput> => {
@@ -605,7 +609,7 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
               ...filledMark(filledBy),
             };
           };
-          if (entity) return matchedOut(entity);
+          if (entity && !emptyFill) return matchedOut(entity);
           await patch({ qlooArtistId: null });
           if (candidates.length > 0) return { ...empty, summary: R.candidates.summary, candidates, waiting: "choice" };
           // Qloo doesn't know the act, and the run never stops for that. The signal, in order: the performer's own "Artists you sound
@@ -615,6 +619,9 @@ export async function executeResearchRun(args: ResearchRunArgs): Promise<void> {
           if (mine.length > 0) return { ...empty, summary: R.fallback.label(mine.slice(0, 3).map((a) => a.name)), fallback: "soundsLike", ...declinedMark };
           const genrePick = (args.genre ?? (before?.genrePick && !before.matched ? before.genrePick : undefined))?.trim().slice(0, 40) || undefined;
           const genreMark = genrePick ? { genrePick } : {};
+          // An empty NotOnQ fill is not a match, and Last.fm isn't asked again: NotOnQ's stand-ins are the act's Last.fm similar
+          // artists Qloo knows, so the Hive would find none either. With no genre picked, the run asks the performer.
+          if (emptyFill && !genrePick) return { ...empty, summary: R.fallback.noneLabel, fallback: "none", ...declinedMark };
           const hive = await findSoundAlikes({ name: profile.name, actName: actLabel, genres: profile.genres, pick: genrePick ?? null, tracks: ownTracks(), spotifyId: args.spotifyId }, adapters);
           if (hive.source === "unavailable") throw new QlooDown("Qloo didn't answer, so artists like you couldn't be found.");
           if (hive.source === "lastfm") {

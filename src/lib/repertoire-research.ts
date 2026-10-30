@@ -333,6 +333,11 @@ export const OFFLINE_TEST_ACTS = {
    * Qloo knows. Its research is labelled "Filled by NotOnQ" and "Via NotOnQ stand-ins: …".
    */
   notonq: { name: "Nqo Filled", spotifyId: "MockNotOnQFilledAct012", genres: ["indie folk"], similar: [], tags: [], standIns: ["Paul Kelly", "Courtney Barnett"] },
+  /**
+   * Like Victoria Queen through NotOnQ (live, 30 Oct): NotOnQ fills the act in but has no stand-ins for it (it found no similar
+   * artists Qloo knows, `notonq:standIns` absent), and its taste answers are empty. The run asks, as for an act Qloo lacks.
+   */
+  notonqEmpty: { name: "Nqe Empty", spotifyId: "MockNotOnQEmptyAct0013", genres: [], similar: [], tags: [] },
 } as const;
 
 /**

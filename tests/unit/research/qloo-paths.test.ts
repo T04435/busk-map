@@ -299,7 +299,7 @@ describe("path 4: Qloo doesn't know the act, so the Hive finds artists like it a
   });
 
   it("only the test acts with no taste signal anywhere wait for input", async () => {
-    const waits = new Set(["otherId", "nothing", "silent", "taggedAlikes"]);
+    const waits = new Set(["otherId", "nothing", "silent", "taggedAlikes", "notonqEmpty"]);
     for (const key of Object.keys(OFFLINE_TEST_ACTS) as (keyof typeof OFFLINE_TEST_ACTS)[]) {
       const m = await load();
       const r = await go(m, act(key));

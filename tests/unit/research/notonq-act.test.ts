@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { learnStreamEventSchema, type LearnStreamEvent } from "@/lib/learn-schema";
 import { OFFLINE_TEST_ACTS, RESEARCH_STEPS, type ResearchSnapshot } from "@/lib/repertoire-research";
+import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 import { NOTONQ_FILLED_ID } from "@/server/qloo-mock/notonq";
 
 /**
@@ -55,6 +56,21 @@ describe("an act NotOnQ filled in", () => {
     expect(steps.fansLove!.output!.artists.every((a) => a.filledBy === undefined)).toBe(true);
     // Steps that aren't taste answers carry no stand-ins.
     expect((steps.learn!.output as { via?: unknown }).via).toBeUndefined();
+  }, 20_000);
+
+  it("with no stand-ins it is no match: Last.fm isn't asked again, and the run asks who the act sounds like", async () => {
+    const m = await load();
+    const res = await m.research.POST(req("POST", "/research", { link: OFFLINE_TEST_ACTS.notonqEmpty.spotifyId }));
+    const cookie = res.headers.get("set-cookie")?.split(";")[0] ?? "";
+    const stream = await events(res);
+    expect(stream.at(-1)).toMatchObject({ type: "end", ok: true, code: "needs_sounds_like" });
+    const qlooStep = stream.findLast((e) => e.type === "tool-end" && e.tool === "research_qloo") as Extract<LearnStreamEvent, { type: "tool-end" }>;
+    expect(qlooStep.calls?.some((c) => c.provider === "qloo")).toBe(true);
+    expect(qlooStep.calls?.some((c) => c.provider === "lastfm")).toBe(false);
+    const view = (await (await m.playlist.GET(req("GET", "", undefined, cookie))).json()).playlist as { qlooArtistId: string | null; research: ResearchSnapshot };
+    expect(view.qlooArtistId).toBeNull();
+    expect(view.research.steps.qloo!.output).toMatchObject({ matched: false, qlooId: null, fallback: "none", summary: PLAYLIST_COPY.research.fallback.noneLabel });
+    expect(view.research.waiting).toMatchObject({ step: "soundsLike" });
   }, 20_000);
 
   it("a Qloo act's research carries no NotOnQ provenance at all", async () => {

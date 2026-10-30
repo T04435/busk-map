@@ -14,8 +14,8 @@ import { PLAYLIST_COPY } from "@/lib/playlist-copy";
 
 /** The parts of a plan's song and "learn these" entry the panel shows, so the landing can feed it labelled example data. */
 type SetlistSong = Pick<PlanPitch["setlist"][number], "songId" | "title" | "artist" | "own" | "score" | "reason" | "durationMs" | "year"> &
-  Partial<Pick<PlanPitch["setlist"][number], "origin" | "suggestion" | "artistImage">>;
-type LearnThese = (Pick<Plan["learnThese"][number], "artist" | "title" | "reason"> & Partial<Pick<Plan["learnThese"][number], "audienceGrowth" | "artistImage">>)[];
+  Partial<Pick<PlanPitch["setlist"][number], "origin" | "suggestion" | "artistImage" | "filledBy">>;
+type LearnThese = (Pick<Plan["learnThese"][number], "artist" | "title" | "reason"> & Partial<Pick<Plan["learnThese"][number], "audienceGrowth" | "artistImage" | "filledBy">>)[];
 
 /** A suggested song's Spotify link: its track URL, else built from the track id; Last.fm (or no) source means no link (U06). */
 const suggestionHref = (s: SetlistSong["suggestion"] | undefined): string | undefined =>
@@ -136,6 +136,7 @@ function SetlistPreview({
                 durationMs={song.durationMs}
                 image={song.suggestion?.image}
                 artistImage={song.artistImage}
+                filledBy={song.filledBy}
                 href={suggestionHref(song.suggestion)}
                 source={song.suggestion?.source}
                 score={song.score}
@@ -174,6 +175,7 @@ function SetlistPreview({
                 title={s.title ?? "Any song"}
                 artist={s.artist}
                 artistImage={s.artistImage}
+                filledBy={s.filledBy}
                 className="border-b border-border last:border-b-0"
                 {...reasonSlots(s.reason, [mentionArtist(s.artist, { image: (s as { artistImage?: string | null }).artistImage })])}
                 actions={s.title ? <SongActions title={s.title} artist={s.artist} learnIt /> : undefined}

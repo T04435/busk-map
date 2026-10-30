@@ -1,5 +1,6 @@
 import "server-only";
 import { nameKey } from "@/lib/text";
+import { filledMark } from "@/lib/notonq";
 import { genreSearchTexts, isMusicGenreTag, isPlaceOrPeopleTag } from "@/lib/genre-tags";
 import { log } from "@/server/log";
 import type { SoundsLikeSuggestions, SoundsLikeStatus, SpotifyProfile } from "@/lib/playlist-schema";
@@ -59,13 +60,20 @@ export type OwnOnQloo = {
   searches: number;
 };
 
-const toMatchCandidate = (e: QlooEntity): MatchCandidate => ({ id: e.id, name: e.name, popularity: e.popularity, genres: e.tags.map((t) => t.name), image: e.image ?? null });
+const toMatchCandidate = (e: QlooEntity): MatchCandidate => ({ id: e.id, name: e.name, popularity: e.popularity, genres: e.tags.map((t) => t.name), image: e.image ?? null, ...filledMark(e.filledBy) });
 export const candidateView = (c: MatchCandidate): QlooCandidateView => ({
   qlooId: c.id,
   name: c.name,
   ...(c.image && /^https:\/\//.test(c.image) && c.image.length <= 500 ? { image: c.image } : {}),
   genres: [...new Set(c.genres.map((g) => g.trim()).filter(Boolean))].slice(0, 2),
+  ...filledMark(c.filledBy),
 });
+
+/**
+ * A match with no music-genre tag is weak (a name without taste data). Not one NotOnQ filled in (lib/notonq.ts): Qloo lacks the
+ * act, so NotOnQ's artist IS the act, labelled, and its taste questions are answered through stand-ins Qloo knows.
+ */
+const isWeak = (entity: QlooEntity) => !hasMusicGenre(entity) && entity.filledBy !== "notonq";
 
 /**
  * The act's own artist on Qloo, from its Spotify id and name. Shared by the profile refresh and Repertoire research step 3.
@@ -77,7 +85,7 @@ export const candidateView = (c: MatchCandidate): QlooCandidateView => ({
 export async function findOwnOnQloo(spotifyId: string, name: string, context: AdapterContext, options: { actName?: string | null; genres?: readonly string[] } = {}): Promise<OwnOnQloo> {
   const byId = await resolveSpotifyArtists([spotifyId], context);
   const viaId = byId.data[0] ?? null;
-  if (viaId) return { entity: viaId, qloo: "matched", by: "id", candidates: [], weak: !hasMusicGenre(viaId), searches: 0 };
+  if (viaId) return { entity: viaId, qloo: "matched", by: "id", candidates: [], weak: isWeak(viaId), searches: 0 };
   if (byId.mode === "fallback") return { entity: null, qloo: "unavailable", by: null, candidates: [], weak: false, searches: 0 };
 
   const variants = nameVariants([name, options.actName]);
@@ -101,7 +109,7 @@ export async function findOwnOnQloo(spotifyId: string, name: string, context: Ad
   }
   if (decision.kind === "match") {
     const entity = pool.get(decision.best.id) ?? null;
-    return { entity, qloo: "matched", by: "name", candidates: [], weak: entity ? !hasMusicGenre(entity) : false, searches };
+    return { entity, qloo: "matched", by: "name", candidates: [], weak: entity ? isWeak(entity) : false, searches };
   }
   return { entity: null, qloo: "unknown", by: null, candidates: decision.kind === "ask" ? decision.candidates.map(candidateView) : [], weak: false, searches };
 }
@@ -135,6 +143,7 @@ export async function soundsLikeFor(playlist: PlaylistRecord, context: AdapterCo
       ...(a.spotifyId && /^[A-Za-z0-9]{22}$/.test(a.spotifyId) ? { spotifyId: a.spotifyId } : {}),
       ...(a.image && /^https:\/\//.test(a.image) ? { image: a.image } : {}),
       ...(a.tags.length > 0 ? { tags: a.tags.slice(0, 3).map((t) => t.name) } : {}),
+      ...filledMark(a.filledBy),
     }));
   return { status: "ok", artists };
 }

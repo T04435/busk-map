@@ -56,6 +56,7 @@ import {
 import { DAYS, MOCK_PLACES, PLACE_BY_ID, REGION_PLACES, categoryTag, placeFit, type MockPlace } from "./places";
 import { WORLD_PLACES } from "@/lib/world-places";
 import { toMockFrame } from "@/server/offline-city";
+import { notOnQMock } from "./notonq";
 import { GENRE_DEMOGRAPHICS, MOCK_COVERAGE, cosine, density, liftAt, mixGenres, tasteAt, type GenreVector } from "./taste-field";
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
@@ -930,8 +931,18 @@ export async function handleQlooMock(request: Request): Promise<Response> {
   const path = url.pathname.replace(/\/+$/, "") || "/";
   if (request.method !== "GET") return error(404, "No path matching request parameters");
   if (!request.headers.get("x-api-key")?.trim()) return json({ message: "No API key found in request" }, 401);
-  const params = new Params(url.searchParams);
-  const key = `${path}?${[...url.searchParams.entries()].sort().map(([k, v]) => `${k}=${v}`).join("&")}`;
+  // One offline test act plays the NotOnQ proxy's fill-ins (notonq.ts); every other request is the mock's own Qloo answer.
+  const notonq = notOnQMock(path, url.searchParams);
+  if (notonq && "response" in notonq) return notonq.response;
+  if (!notonq) return answer(path, url.searchParams);
+  const plain = await answer(path, notonq.search);
+  if (!plain.ok) return plain;
+  return json({ ...((await plain.json()) as Record<string, unknown>), notonq: notonq.notonq });
+}
+
+function answer(path: string, searchParams: URLSearchParams): Response {
+  const params = new Params(searchParams);
+  const key = `${path}?${[...searchParams.entries()].sort().map(([k, v]) => `${k}=${v}`).join("&")}`;
   try {
     switch (path) {
       case "/":

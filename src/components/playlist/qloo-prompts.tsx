@@ -25,7 +25,8 @@ export function QlooCandidates({ candidates, busy, onPick, onNone }: { candidate
       <ul aria-label={C.heading} className="m-0 grid list-none gap-1 p-0">
         {candidates.map((c) => (
           <li key={c.qlooId} data-testid="research-candidate" data-qloo-id={c.qlooId} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border">
-            <ArtistChip name={c.name} image={c.image} source="qloo" tags={c.genres.length ? c.genres : [C.noGenres]} className="min-w-0 flex-1 basis-60" />
+            {/* A possible match NotOnQ offers is not Qloo's: labelled as NotOnQ's, never as Qloo. */}
+            <ArtistChip name={c.name} image={c.image} source={c.filledBy === "notonq" ? undefined : "qloo"} filledBy={c.filledBy} tags={c.genres.length ? c.genres : [C.noGenres]} className="min-w-0 flex-1 basis-60" />
             <Button type="button" variant="outline" size="sm" disabled={busy} aria-label={C.pickLabel(c.name)} onClick={() => onPick(c.qlooId)}>
               {C.pick}
             </Button>

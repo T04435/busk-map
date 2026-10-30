@@ -3,6 +3,7 @@
 import { cn } from "cn";
 import { HexCell, initialsOf } from "@/components/honeycomb/hex-cell";
 import { Chip } from "@/components/honeycomb/chip";
+import { NotOnQTag } from "@/components/honeycomb/info-tag";
 import { Icon } from "@/components/honeycomb/icon";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { Button } from "@/components/ui/button";
@@ -142,6 +143,7 @@ export function ArtistProfile({
               >
                 {profile.name}
               </Heading>
+              {profile.filledBy === "notonq" ? <NotOnQTag className="mt-2" /> : null}
               {(profile.followers ?? 0) > 0 || profile.href ? (
                 <p className="mt-2 mb-0 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-sm text-muted-foreground">
                   {(profile.followers ?? 0) > 0 ? <span>{formatFollowers(profile.followers!)} followers</span> : null}

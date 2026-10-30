@@ -10,6 +10,7 @@ import { FoundByBadge } from "@/components/honeycomb/found-by-badge";
 import { Icon, type IconName } from "@/components/honeycomb/icon";
 import { ArtistChip } from "@/components/honeycomb/artist-chip";
 import { InfoTag } from "@/components/honeycomb/info-tag";
+import { Empty, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { MeterBar } from "@/components/honeycomb/score-cell";
 import { PitchRow } from "@/components/honeycomb/pitch-row";
 import { RankTile } from "@/components/honeycomb/rank-tile";
@@ -235,15 +236,19 @@ const RESEARCH_UI: Record<string, ToolUi> = {
     if (o.spotifyDown === "limited" || o.spotifyDown === "down") {
       return [o.spotifyDown === "limited" ? "Spotify isn't answering right now, so " : "Spotify didn't answer, so ", `${num(o.added) ?? songs.length} of your songs come from `, mentionSource("lastfm"), " Last.fm, including ", ...listOf(songs.slice(0, 3).map((x) => mentionSong(str(x.title) as string, { artist: str(x.artist), image: str(x.image), href: str(x.href) })))];
     }
+    // A rerun finds the songs already saved: "Added 0 … including" would contradict itself.
+    const already = num(o.already) ?? 0;
+    const lead = num(o.added) === 0 && already > 0 ? [`Your ${already} songs`, ...from, " were already in your Repertoire"] : [`Added ${num(o.added) ?? songs.length} of your songs`, ...from];
     return [
-      `Added ${num(o.added) ?? songs.length} of your songs`,
-      ...from,
+      ...lead,
       ", including ",
       ...listOf(songs.slice(0, 3).map((x) => mentionSong(str(x.title) as string, { artist: str(x.artist), image: str(x.image), href: str(x.href) }))),
     ];
   }),
   research_qloo: researchUi((o) => {
     if (!o.matched || !str(o.name)) return str(o.summary) ?? "";
+    // NotOnQ filled the act in (lib/notonq.ts): never "found on Qloo".
+    if (o.filledBy === "notonq") return [PLAYLIST_COPY.research.filledByNotOnQLead, mentionArtist(str(o.name) as string, { image: str(o.image) })];
     const audience = Array.isArray(o.audience) ? (o.audience as string[]) : [];
     return ["Found ", mentionArtist(str(o.name) as string, { image: str(o.image) }), " on ", mentionSource("qloo"), ...(audience.length ? [`: ${audience.slice(0, 4).join(", ")}`] : [])];
   }),
@@ -265,8 +270,38 @@ const RESEARCH_UI: Record<string, ToolUi> = {
 };
 
 /** Each tool as a busker sees it: what it is doing while it runs, a plain title once done, and its result drawn from the contract fields. */
+/** "No trending data yet": Qloo's /v2/trending has returned no rows for any act since about May 2026, so this is the usual answer. */
+export const NO_TRENDING = "No trending data yet";
+
 export const TOOL_UI: Record<string, ToolUi> = {
   ...RESEARCH_UI,
+  // The learn run's momentum check (Qloo trending): who is rising, or the DS empty state when Qloo has no rows or no movement.
+  rising: {
+    doing: () => "Checking who's rising with those crowds",
+    title: () => "Who's rising with those crowds",
+    render: (o) => {
+      const moving = arr(o.artists).filter((a) => str(a.name) && (num(a.trendDelta) ?? 0) !== 0);
+      if (!moving.length)
+        return (
+          <Empty role="status" data-testid="rising-empty" className="items-start gap-3 border border-border p-4">
+            <EmptyMedia>
+              <Icon name="trending" size={20} />
+            </EmptyMedia>
+            <EmptyTitle className="font-display text-base leading-5 font-extrabold uppercase">{NO_TRENDING}</EmptyTitle>
+          </Empty>
+        );
+      return (
+        <ul className="m-0 flex list-none flex-wrap gap-2 p-0" data-testid="rising-artists">
+          {moving.map((a) => (
+            <li key={str(a.name)}>
+              <ArtistChip size="xs" name={str(a.name) as string} />{" "}
+              <InfoTag icon="trending">{PLAYLIST_COPY.learn.rising(num(a.trendDelta) as number)}</InfoTag>
+            </li>
+          ))}
+        </ul>
+      );
+    },
+  },
   // A metro planned across its areas: the areas compared, by name, best first.
   compare_areas: {
     doing: () => "Comparing areas across the city",

@@ -7,6 +7,7 @@ import { noBuskingCells } from "./zone-cells";
 import { titleCase } from "@/lib/text";
 import { venueDetail } from "@/lib/venue";
 import { planSchema, type Plan, type PlanPitch } from "@/lib/plan-schema";
+import { viaMark } from "@/lib/notonq";
 import { leadingAgeBand, relativeActivity, SCENE_ACTS_SHOWN, skippedForSpacing, type ScoredPitch } from "@/server/scoring";
 import * as qloo from "@/server/adapters/qloo";
 import { agentChanges } from "@/lib/agent-vs-engine";
@@ -259,6 +260,9 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     }),
   );
   const topIds = new Set(top.map((p) => p.id));
+  // NotOnQ (lib/notonq.ts): an artist it filled in is labelled wherever the plan names it; Qloo's own artists keep their shape.
+  const filled = (name: string): { filledBy?: "notonq" } => (context.filledByNotOnQ(name) ? { filledBy: "notonq" } : {});
+  const notOnQ = context.notOnQVia();
   const nameOf = (entityId: string) => context.entityName(entityId, artists);
   const own = context.ownArtist();
   const ownIds = await context.entityIds();
@@ -314,7 +318,7 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
     ...(districts.length > 0 ? { districts: districts.map((d) => ({ name: d.name, lat: d.center.lat, lon: d.center.lon })) } : {}),
     ...(areas.length > 0 ? { areas: areas.map((a) => ({ name: a.name, lat: a.lat, lon: a.lon, zoomed: districts.some((d) => d.area && d.name === a.name) })) } : {}),
     weights: context.weights,
-    pitches,
+    pitches: pitches.map((p) => (p.setlist.some((s) => context.filledByNotOnQ(s.artist)) ? { ...p, setlist: p.setlist.map((s) => ({ ...s, ...filled(s.artist) })) } : p)),
     others: (qlooDown ? [] : ranked)
       .filter((p) => !topIds.has(p.id))
       .slice(0, 25)
@@ -344,13 +348,14 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
         trend: trends.find((t) => t.entityId === a.id)?.windowChange ?? null,
         ...(a.image && /^https:\/\//.test(a.image) ? { image: a.image } : {}),
         ...(a.spotifyId && /^[A-Za-z0-9]{22}$/.test(a.spotifyId) ? { spotifyId: a.spotifyId } : {}),
+        ...filled(a.name),
       })),
       // The local scene: the city's over-indexed genres and its local acts, re-scored for the performer's fans (null: today's crowd only).
       localScene:
         localScene && localScene.acts.length > 0
           ? {
               genres: localScene.genres.map((g) => ({ name: titleCase(g.name), over: g.over, ...(localScene.yours?.includes(g.id) ? { yours: true } : {}) })),
-              acts: localScene.acts.slice(0, SCENE_ACTS_SHOWN).map((a) => ({ name: a.name, affinity: a.affinity === null ? null : Math.round(a.affinity * 100) / 100, ...(a.image ? { image: a.image } : {}) })),
+              acts: localScene.acts.slice(0, SCENE_ACTS_SHOWN).map((a) => ({ name: a.name, affinity: a.affinity === null ? null : Math.round(a.affinity * 100) / 100, ...(a.image ? { image: a.image } : {}), ...filled(a.name) })),
             }
           : null,
       // Qloo genre names arrive in mixed case ("indie", "Alternative Rock"): shown in title case.
@@ -368,8 +373,9 @@ export async function assemblePlan(context: PlanContext, ai: AiText | null, opti
       drivers: drivers(locals.slice(0, 10), nameOf, impact),
       usualCrowd:
         usual && usual.artists.length > 0 ? { hotspot: usual.hotspot, artists: usual.artists.slice(0, 5).map((a) => ({ name: a.name, affinity: a.affinity })) } : null,
+      ...(notOnQ && (notOnQ.standIns.length > 0 || notOnQ.genres?.length) ? viaMark(notOnQ) : {}),
     },
-    learnThese: learn.map((l) => ({ artist: l.artist, title: l.title, playcount: l.playcount, reason: l.reason, audienceGrowth: l.audienceGrowth, ...(photoOf.get(l.entityId) ? { artistImage: photoOf.get(l.entityId) } : {}) })),
+    learnThese: learn.map((l) => ({ artist: l.artist, title: l.title, playcount: l.playcount, reason: l.reason, audienceGrowth: l.audienceGrowth, ...(photoOf.get(l.entityId) ? { artistImage: photoOf.get(l.entityId) } : {}), ...filled(l.artist) })),
     ageLean: leadingAgeBand(profile?.age ?? null),
     weather: weather
       ? {

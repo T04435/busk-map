@@ -1,3 +1,4 @@
+import type { FilledBy } from "./notonq";
 import { isPlaceOrPeopleTag } from "./genre-tags";
 /**
  * Finding the act on Qloo without picking the wrong artist. Pure, client-safe, no I/O: the name variants worth searching,
@@ -135,7 +136,7 @@ export function genreOverlap(a: readonly string[], b: readonly string[]): boolea
   return false;
 }
 
-export type MatchCandidate = { id: string; name: string; popularity: number | null; genres: string[]; image: string | null };
+export type MatchCandidate = { id: string; name: string; popularity: number | null; genres: string[]; image: string | null; /** NotOnQ filled it in, or offers it as a possible match (lib/notonq.ts). */ filledBy?: FilledBy };
 export type ScoredCandidate = MatchCandidate & { score: number; basis: VariantKind | "near" };
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -177,7 +178,7 @@ export function decideMatch(candidates: readonly MatchCandidate[], variants: rea
 }
 
 /** What the page shows for one candidate. */
-export type QlooCandidateView = { qlooId: string; name: string; image?: string; genres: string[] };
+export type QlooCandidateView = { qlooId: string; name: string; image?: string; genres: string[]; /** "notonq": a possible match NotOnQ offers (Qloo lacks the name). Missing: null. */ filledBy?: FilledBy };
 
 /** Whether a Qloo tag id is a music genre (`urn:tag:genre:music:folk`). */
 export const isMusicGenreTagId = (id: string) => id.startsWith("urn:tag:genre:music");

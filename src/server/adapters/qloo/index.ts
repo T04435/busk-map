@@ -3,6 +3,7 @@ import type { BBox, LatLon } from "@/lib/geo";
 import { qlooBackend, type QlooBackend } from "@/server/env";
 import { runAdapter, type AdapterContext, type AdapterResult } from "../core";
 import * as client from "./client";
+import { collectVia } from "./via";
 import type { CrowdProfile, EntityDetail, GenreContrast, HeatCell, LocalArtists, QlooEntity, QlooPlace, TasteTag, TrendRow } from "./schema";
 
 export type { CrowdProfile, EntityDetail, Explanation, GenreContrast, HeatCell, Impact, LocalArtists, QlooEntity, QlooPlace, TasteTag, TrendRow } from "./schema";
@@ -22,6 +23,8 @@ export const TRENDING_PROBES = client.TRENDING_MAX_PROBES;
  */
 function run<T>(context: AdapterContext, fallback: T, call: (backend: QlooBackend) => Promise<T>): Promise<AdapterResult<T>> {
   const backend = qlooBackend(context.offline);
+  // NotOnQ's stand-ins (lib/notonq.ts), when any lookup of this call was answered through them: carried on the result as `via`.
+  let via: AdapterResult<T>["via"];
   return runAdapter({
     adapter: "qloo",
     source: "qloo",
@@ -29,12 +32,17 @@ function run<T>(context: AdapterContext, fallback: T, call: (backend: QlooBacken
     context: { ...context, offline: false },
     fallback,
     synthetic: () => fallback,
-    live: () => call(backend),
+    live: async () => {
+      const collected = await collectVia(() => call(backend));
+      via = collected.via ?? undefined;
+      return collected.value;
+    },
   }).then((result) => {
+    const marked = via && result.mode !== "fallback" ? { ...result, via } : result;
     // A call with nothing to signal was never sent (client.ts noSignal): empty data, not an outage. The typed reason stays, so a
     // tool can say "nothing to signal" instead of "Qloo failed".
-    if (result.reason === "no_signal") return { ...result, mode: backend === "mock" ? "synthetic" : "live" };
-    return backend === "mock" && result.mode === "live" ? { ...result, mode: "synthetic" } : result;
+    if (marked.reason === "no_signal") return { ...marked, mode: backend === "mock" ? "synthetic" : "live" };
+    return backend === "mock" && marked.mode === "live" ? { ...marked, mode: "synthetic" } : marked;
   });
 }
 

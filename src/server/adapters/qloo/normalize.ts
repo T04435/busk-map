@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { filledMark, isNotOnQFilled, noStandInsMark, type FilledBy } from "@/lib/notonq";
 import { entitySchema, type EntityDetail, type explainabilityAggregateSchema, type Explanation, type Impact, type QlooEntity, type QlooPlace, type RawEntity } from "./schema";
 
 /**
@@ -19,6 +20,12 @@ export function extractExplanations(value: unknown, depth = 0): Explanation[] {
   return Object.values(record).flatMap((child) => extractExplanations(child, depth + 1));
 }
 
+/** Whether NotOnQ filled this entity in (lib/notonq.ts): its short description says "Not in Qloo", or it carries NotOnQ's own tags. */
+export function filledByOf(raw: RawEntity): FilledBy {
+  const shortDescription = textOf((raw.properties as Record<string, unknown> | undefined)?.short_description);
+  return isNotOnQFilled({ shortDescription, tagIds: (raw.tags ?? []).flatMap((t) => (t.id ? [t.id] : [])) }) ? "notonq" : null;
+}
+
 export function toEntity(raw: RawEntity): QlooEntity {
   const explanation = extractExplanations(raw.query?.explainability).sort((a, b) => b.score - a.score);
   return {
@@ -32,6 +39,8 @@ export function toEntity(raw: RawEntity): QlooEntity {
     image: raw.properties?.image?.url || null,
     tags: (raw.tags ?? []).flatMap((t) => (t.id ? [{ id: t.id, name: t.name || t.id }] : [])),
     explanation,
+    ...filledMark(filledByOf(raw)),
+    ...noStandInsMark(filledByOf(raw), raw.properties as Record<string, unknown> | undefined),
   };
 }
 
@@ -50,6 +59,8 @@ export function toDetail(raw: RawEntity): EntityDetail {
     popularity: raw.popularity ?? null,
     description: textOf(props.description) ?? textOf(props.short_description),
     tags: (raw.tags ?? []).flatMap((t) => (t.id ? [{ id: t.id, name: (t.name || t.id).trim(), type: t.type ?? null }] : [])),
+    ...filledMark(filledByOf(raw)),
+    ...noStandInsMark(filledByOf(raw), props),
   };
 }
 

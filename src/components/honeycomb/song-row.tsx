@@ -5,6 +5,8 @@ import { Icon } from "@/components/honeycomb/icon";
 import { Mention } from "@/components/honeycomb/mention";
 import { SourceLogo } from "@/components/honeycomb/source-logo";
 import { ScoreCell } from "@/components/honeycomb/score-cell";
+import { NotOnQTag } from "@/components/honeycomb/info-tag";
+import type { FilledBy } from "@/lib/notonq";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import type { MentionSource } from "@/lib/mention";
 
@@ -41,6 +43,7 @@ export function SongRow({
   index,
   tags,
   info,
+  filledBy,
   reason,
   score,
   scoreLabel,
@@ -78,6 +81,8 @@ export function SongRow({
   tags?: ReactNode;
   /** InfoTags under the meta line (Rising +x, Builds on X). */
   info?: ReactNode;
+  /** "notonq": the song's artist was filled in by NotOnQ (Qloo lacks it): labelled "Filled by NotOnQ" with the InfoTags. */
+  filledBy?: FilledBy;
   /** A Reason: why this song, with the artists behind it. */
   reason?: ReactNode;
   /** 0-100: shown as a ScoreCell at the right. */
@@ -169,7 +174,12 @@ export function SongRow({
               ) : null}
             </div>
           </ItemDescription>
-          {info ? <div className="mt-1.5 flex flex-wrap gap-1.5">{info}</div> : null}
+          {info || filledBy === "notonq" ? (
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {filledBy === "notonq" ? <NotOnQTag /> : null}
+              {info}
+            </div>
+          ) : null}
           {reason ? <div className="mt-2">{reason}</div> : null}
           {children ? <div className="mt-2 text-sm">{children}</div> : null}
         </ItemContent>

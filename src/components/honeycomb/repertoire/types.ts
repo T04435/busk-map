@@ -73,6 +73,8 @@ export type RepertoireProfile = {
   followers?: number | null;
   /** A Spotify artist link. */
   href?: string | null;
+  /** "notonq": Qloo lacks the act and NotOnQ filled it in (lib/notonq.ts): the header says so. */
+  filledBy?: import("@/lib/notonq").FilledBy;
 };
 
 export type RepertoireResults = {

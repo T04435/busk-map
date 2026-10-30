@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { genreName, type FilledBy } from "@/lib/notonq";
 
 /**
  * Qloo hackathon API response schemas. Verified against live responses from
@@ -78,12 +79,36 @@ export const entitySchema = z.object({
 
 export type RawEntity = z.infer<typeof entitySchema>;
 
+/**
+ * NotOnQ's top-level `notonq` block (lib/notonq.ts), added beside Qloo's response when the proxy took part. Only what Busk Map
+ * shows is kept: who served it (qloo | fallback | mixed | needs_choice), the gap kind (G1, G2, G4, G5), the stand-ins' names and
+ * the genres it asked Qloo about instead (G5: Qloo has no audience data for the artist). A
+ * block in an unexpected shape is dropped, never the Qloo answer it came with.
+ */
+export const notonqBlockSchema = z
+  .object({
+    served_by: z.string().optional(),
+    gap: z.object({ kind: z.string().optional() }).loose().nullish(),
+    proxy: z.object({ stand_ins: z.array(z.object({ name: z.string().optional() }).loose()).nullish(), genres: z.array(z.string()).nullish().catch(null) }).loose().nullish(),
+  })
+  .loose()
+  .transform((b) => ({
+    servedBy: b.served_by ?? null,
+    gapKind: b.gap?.kind ?? null,
+    standIns: [...new Set((b.proxy?.stand_ins ?? []).flatMap((s) => (s.name?.trim() ? [s.name.trim()] : [])))],
+    genres: [...new Set((b.proxy?.genres ?? []).map(genreName).filter(Boolean))],
+  }));
+export type NotOnQBlock = z.infer<typeof notonqBlockSchema>;
+const notonq = notonqBlockSchema.optional().catch(undefined);
+
 /** /search returns `results` as a list; /v2/insights nests `results.entities`. */
 export const searchResponseSchema = z.object({
+  notonq,
   results: z.union([z.array(z.unknown()), z.object({ entities: z.array(z.unknown()) }).transform((r) => r.entities)]),
 });
 
 export const entitiesResponseSchema = z.object({
+  notonq,
   results: z.union([
     z.object({ entities: z.array(z.unknown()) }).transform((r) => r.entities),
     z.array(z.unknown()),
@@ -91,17 +116,19 @@ export const entitiesResponseSchema = z.object({
 });
 
 export const heatmapResponseSchema = z.object({
+  notonq,
   results: z.object({
     heatmap: z.array(
       z.object({
         location: z.object({ latitude: num, longitude: num, geohash: z.string().optional() }),
         query: z.object({ affinity: num, affinity_rank: num.optional(), popularity: num.optional() }),
       }),
-    ),
+    ).default([]),
   }),
 });
 
 export const demographicsResponseSchema = z.object({
+  notonq,
   results: z.object({
     demographics: z.array(
       z.object({
@@ -111,11 +138,12 @@ export const demographicsResponseSchema = z.object({
           gender: z.record(z.string(), num).optional(),
         }),
       }),
-    ),
+    ).default([]),
   }),
 });
 
 export const trendingResponseSchema = z.object({
+  notonq,
   results: z.object({
     trending: z.array(
       z
@@ -131,12 +159,13 @@ export const trendingResponseSchema = z.object({
           population_percent_delta: numeric.optional(),
         })
         .loose(),
-    ),
+    ).default([]),
   }),
 });
 
 /** `urn:tag` insights: `results.tags[]` with `tag_id` (docs: Taste Analysis). */
 export const tagsResponseSchema = z.object({
+  notonq,
   results: z.object({
     tags: z.array(
       z
@@ -147,7 +176,7 @@ export const tagsResponseSchema = z.object({
           query: z.object({ affinity: num.optional() }).loose().optional(),
         })
         .loose(),
-    ),
+    ).default([]),
   }),
 });
 
@@ -168,6 +197,7 @@ const compareTag = z
   .loose();
 
 export const compareResponseSchema = z.object({
+  notonq,
   results: z.object({
     tags: z.array(compareTag).default([]),
     a: z.array(compareTag).default([]),
@@ -190,9 +220,14 @@ export const explainabilityAggregateSchema = z
   })
   .loose();
 
-/** /v2/insights entities plus the optional top-level query block. */
+/**
+ * /v2/insights answers. A missing list is an empty one: NotOnQ answers `results: {}` when it has nothing for an artist it filled
+ * (no stand-ins Qloo knows), and that is no results, not a broken response to retry on Qloo, which doesn't know the artist's ID.
+ * This one: entities plus the optional top-level query block.
+ */
 export const insightsEntitiesResponseSchema = z.object({
-  results: z.object({ entities: z.array(z.unknown()) }),
+  notonq,
+  results: z.object({ entities: z.array(z.unknown()).default([]) }),
   query: z.object({ explainability: explainabilityAggregateSchema.optional() }).loose().optional(),
 });
 
@@ -216,6 +251,10 @@ export type QlooEntity = {
   tags: { id: string; name: string }[];
   /** Input entities that drove this result (feature.explainability). */
   explanation: Explanation[];
+  /** "notonq": NotOnQ filled this artist in (Qloo lacks it). Missing (cached before, or Qloo's own entity) means null. */
+  filledBy?: FilledBy;
+  /** NotOnQ filled this artist in but has no stand-ins for it (lib/notonq.ts: hasNoStandIns): no taste answers. Missing: false. */
+  noStandIns?: true;
 };
 
 export type QlooPlace = QlooEntity & {
@@ -263,6 +302,10 @@ export type EntityDetail = {
   popularity: number | null;
   description: string | null;
   tags: { id: string; name: string; type: string | null }[];
+  /** "notonq": NotOnQ filled this artist in (Qloo lacks it). Missing means null. */
+  filledBy?: FilledBy;
+  /** NotOnQ filled this artist in but has no stand-ins for it: no taste answers. Missing: false. */
+  noStandIns?: true;
 };
 
 /** Share (0–1) of each group's artists tagged with this genre. */

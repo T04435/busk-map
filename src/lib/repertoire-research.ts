@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { spotifyArtistInputSchema } from "./playlist-schema";
 import type { QlooCandidateView } from "./qloo-match";
+import type { FilledBy, NotOnQVia } from "./notonq";
 
 /**
  * Repertoire research (hackathons/qloo-2026/repertoire-research-spec.md, approved 17 Oct): one Spotify artist link starts a
@@ -90,11 +91,18 @@ export type QlooOutput = {
   similar?: { name: string; spotifyId?: string; image?: string }[];
   /** A genre the performer picked when nothing else was found; kept for this link so a refresh uses it again. */
   genrePick?: string;
+  /** "notonq": Qloo lacks the act and NotOnQ filled it in (lib/notonq.ts); its taste answers then come through stand-ins. Missing: null. */
+  filledBy?: FilledBy;
 };
 
 /** The signal came from "Artists you sound like", not from the act (set on the steps that used it). */
-export type BasedOn = { basedOn?: "soundsLike" | "genres" | "none"; /** basedOn "genres": the genres the step used, by name, for its line ("Based on Dembow and Reggaeton"). */ byGenres?: string[] };
-export type ResearchArtistOut = { name: string; qlooId: string; spotifyId?: string; image?: string; tags?: string[]; affinity: number | null; because?: string[] };
+export type BasedOn = {
+  basedOn?: "soundsLike" | "genres" | "none";
+  /** basedOn "genres": the genres the step used, by name, for its line ("Based on Dembow and Reggaeton"). */ byGenres?: string[];
+  /** NotOnQ answered the step's Qloo calls through stand-ins for an act Qloo lacks (lib/notonq.ts). Missing: Qloo answered alone. */
+  via?: NotOnQVia;
+};
+export type ResearchArtistOut = { name: string; qlooId: string; spotifyId?: string; image?: string; tags?: string[]; affinity: number | null; because?: string[]; /** "notonq": NotOnQ filled this artist in. Missing: null. */ filledBy?: FilledBy };
 /** What the run waits for on a paused step: how many times it has asked (at most RESEARCH_MAX_ASKS), and what Qloo didn't know. */
 export type ResearchAsk = { asks: number; tried: { artists: string[]; genres: string[] }; suggest?: ResearchSuggest };
 /**
@@ -319,6 +327,17 @@ export const OFFLINE_TEST_ACTS = {
    * no tags; the sound-alikes are tagged with specific genres Qloo has only as its own tags (OFFLINE_ALIKE_TAGS). The run asks.
    */
   taggedAlikes: { name: "Wpy Popi", spotifyId: "MockTaggedAlikes000011", genres: [], similar: ["Dny Omy", "Lkm Kimi"], tags: [] },
+  /**
+   * NotOnQ (lib/notonq.ts): Qloo doesn't know the act, and the Qloo mock answers as the NotOnQ proxy would (qloo-mock/notonq.ts):
+   * /search adds a filled-in artist with the act's exact name, and taste questions about it are answered through two stand-ins
+   * Qloo knows. Its research is labelled "Filled by NotOnQ" and "Via NotOnQ stand-ins: …".
+   */
+  notonq: { name: "Nqo Filled", spotifyId: "MockNotOnQFilledAct012", genres: ["indie folk"], similar: [], tags: [], standIns: ["Paul Kelly", "Courtney Barnett"] },
+  /**
+   * Like Victoria Queen through NotOnQ (live, 30 Oct): NotOnQ fills the act in but has no stand-ins for it (it found no similar
+   * artists Qloo knows, `notonq:standIns` absent), and its taste answers are empty. The run asks, as for an act Qloo lacks.
+   */
+  notonqEmpty: { name: "Nqe Empty", spotifyId: "MockNotOnQEmptyAct0013", genres: [], similar: [], tags: [] },
 } as const;
 
 /**

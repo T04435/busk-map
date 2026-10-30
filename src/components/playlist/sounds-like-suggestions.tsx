@@ -64,7 +64,7 @@ export function SoundsLikeSuggestionsList({ enabled, refreshKey, picked, onAdd }
       <ArtistChipList>
         {open.map((artist) => (
           <li key={artist.qlooId}>
-            <ArtistChip name={artist.name} image={artist.image} href={artist.spotifyId ? SPOTIFY_ARTIST_URL(artist.spotifyId) : undefined} source="qloo" tags={artist.tags} state="suggested" onAdd={() => onAdd([artist])} />
+            <ArtistChip name={artist.name} image={artist.image} href={artist.spotifyId ? SPOTIFY_ARTIST_URL(artist.spotifyId) : undefined} source={artist.filledBy === "notonq" ? undefined : "qloo"} filledBy={artist.filledBy} tags={artist.tags} state="suggested" onAdd={() => onAdd([artist])} />
           </li>
         ))}
       </ArtistChipList>

@@ -15,7 +15,7 @@ import { SPOTIFY_ARTIST_URL } from "@/lib/mention";
 import { looksLikeLink } from "@/lib/spotify-link";
 
 /** An artist chip: picked from Spotify (with its id), suggested by Qloo (qlooId, and a spotifyId when Qloo has one), or typed as free text (both null). */
-export type PickedArtist = { name: string; spotifyId: string | null; image: string | null; qlooId?: string | null };
+export type PickedArtist = { name: string; spotifyId: string | null; image: string | null; qlooId?: string | null; /** "notonq": NotOnQ filled this artist in (lib/notonq.ts): the chip says so. */ filledBy?: import("@/lib/notonq").FilledBy };
 
 /** Where a chip came from: Spotify's search, Qloo's suggestions (no Spotify id), or typed text. */
 export const artistSource = (artist: Pick<PickedArtist, "spotifyId" | "qlooId">): "spotify" | "qloo" | "typed" => (artist.spotifyId ? "spotify" : artist.qlooId ? "qloo" : "typed");
@@ -160,6 +160,7 @@ export function ArtistPicker({ value, onChange, query, onQueryChange, hideLabel 
                 image={artist.image}
                 href={artist.spotifyId ? SPOTIFY_ARTIST_URL(artist.spotifyId) : undefined}
                 source={artistSource(artist) === "spotify" ? undefined : artistSource(artist)}
+                filledBy={artist.filledBy}
                 state="picked"
                 onRemove={() => {
                   refocus.current = single ? "input" : null;

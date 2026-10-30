@@ -123,7 +123,7 @@ export const heatmapResponseSchema = z.object({
         location: z.object({ latitude: num, longitude: num, geohash: z.string().optional() }),
         query: z.object({ affinity: num, affinity_rank: num.optional(), popularity: num.optional() }),
       }),
-    ),
+    ).default([]),
   }),
 });
 
@@ -138,7 +138,7 @@ export const demographicsResponseSchema = z.object({
           gender: z.record(z.string(), num).optional(),
         }),
       }),
-    ),
+    ).default([]),
   }),
 });
 
@@ -159,7 +159,7 @@ export const trendingResponseSchema = z.object({
           population_percent_delta: numeric.optional(),
         })
         .loose(),
-    ),
+    ).default([]),
   }),
 });
 
@@ -176,7 +176,7 @@ export const tagsResponseSchema = z.object({
           query: z.object({ affinity: num.optional() }).loose().optional(),
         })
         .loose(),
-    ),
+    ).default([]),
   }),
 });
 
@@ -220,10 +220,14 @@ export const explainabilityAggregateSchema = z
   })
   .loose();
 
-/** /v2/insights entities plus the optional top-level query block. */
+/**
+ * /v2/insights answers. A missing list is an empty one: NotOnQ answers `results: {}` when it has nothing for an artist it filled
+ * (no stand-ins Qloo knows), and that is no results, not a broken response to retry on Qloo, which doesn't know the artist's ID.
+ * This one: entities plus the optional top-level query block.
+ */
 export const insightsEntitiesResponseSchema = z.object({
   notonq,
-  results: z.object({ entities: z.array(z.unknown()) }),
+  results: z.object({ entities: z.array(z.unknown()).default([]) }),
   query: z.object({ explainability: explainabilityAggregateSchema.optional() }).loose().optional(),
 });
 

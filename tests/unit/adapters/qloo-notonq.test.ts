@@ -161,6 +161,17 @@ describe("qloo through the NotOnQ proxy", () => {
     expect(result.data[0]).toMatchObject({ affinity: 0.7 });
   });
 
+  it("takes NotOnQ's empty answer for a filled artist with no stand-ins (`results: {}`) as no results, without asking Qloo for an ID it lacks", async () => {
+    const qloo = await fresh();
+    const empty = { success: true, results: {}, notonq: { served_by: "fallback", proxy: { replaced: [FILL_1], stand_ins: [] }, note: "Synthetic note." } };
+    const { calls } = mockFetch([route(isProxy, () => json(empty))]);
+    const result = await qloo.tasteArtists([FILL_1], 12, LIVE);
+    expect(result).toMatchObject({ mode: "live", data: { artists: [] } });
+    expect(calls.every((c) => isProxy(c.url))).toBe(true);
+    expect((await qloo.tasteMap([FILL_1], area, LIVE)).data).toEqual([]);
+    expect((await qloo.crowdProfile([FILL_1], LIVE)).data).toBeNull();
+  });
+
   it("carries demographics NotOnQ answered through the artist's own genres (G5) as `via`, with the genres' names", async () => {
     const qloo = await fresh();
     mockFetch([route(isProxy, () => json(SYNTHETIC.genreDemographics))]);
